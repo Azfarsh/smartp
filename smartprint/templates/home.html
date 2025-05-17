@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PrintMe - A secure, efficient, and smart printing solution for all users.">
+    <title>PrintMe - Smart Printing System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Google-inspired color palette */
+            --primary-bg: #ffffff;
+            --secondary-bg: #f8f9fa;
+            --text-color: #202124;
+            --text-secondary: #5f6368;
+            --heading-color: #202124;
+            --card-bg: #ffffff;
+            --navbar-bg: #ffffff;
+            --navbar-text: #202124;
+            --accent-color: #1a73e8;
+            --accent-hover: #174ea6;
+            --footer-bg: #f8f9fa;
+            --footer-text: #5f6368;
+            --border-color: #dadce0;
+            --card-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+            --card-shadow-hover: 0 4px 8px rgba(60, 64, 67, 0.18), 0 2px 6px rgba(60, 64, 67, 0.26);
+            --hover-overlay: rgba(60, 64, 67, 0.08);
+            --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-fast: 0.15s;
+            --transition-base: 0.25s;
+            --transition-slow: 0.4s;
+            
+            /* Spacing system */
+            --space-unit: 4px;
+            --space-xs: calc(var(--space-unit) * 1);
+            --space-sm: calc(var(--space-unit) * 2);
+            --space-md: calc(var(--space-unit) * 4);
+            --space-lg: calc(var(--space-unit) * 6);
+            --space-xl: calc(var(--space-unit) * 8);
+            --space-xxl: calc(var(--space-unit) * 12);
+            
+            /* Touch target sizes */
+            --touch-target: 48px;
+            
+            /* Z-index layers */
+            --z-nav: 1000;
+            --z-dropdown: 1010;
+            --z-fixed: 1030;
+            --z-modal: 1050;
+            --z-tooltip: 1070;
+        }
+
+        [data-bs-theme="dark"] {
+            --primary-bg: #202124;
+            --secondary-bg: #28292c;
+            --text-color: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --heading-color: #ffffff;
+            --card-bg: #2d2e30;
+            --navbar-bg: #202124;
+            --navbar-text: #e8eaed;
+            --accent-color: #8ab4f8;
+            --accent-hover: #aecbfa;
+            --footer-bg: #202124;
+            --footer-text: #9aa0a6;
+            --border-color: #5f6368;
+            --card-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+            --hover-overlay: rgba(232, 234, 237, 0.08);
+        }
+
+        body {
+            font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            transition: all var(--transition-base) var(--transition-timing);
+            line-height: 1.5;
+            font-size: 16px;
+            overflow-x: hidden;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            scroll-behavior: smooth;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif;
+            color: var(--heading-color);
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            margin-bottom: var(--space-md);
+            color: var(--text-color);
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.2s var(--transition-timing);
+        }
+
+        a:hover {
+            color: var(--accent-hover);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 8px;
+            right: 16px;
+            z-index: var(--z-fixed);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            width: var(--touch-target);
+            height: var(--touch-target);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--card-shadow);
+            transition: all var(--transition-base) var(--transition-timing);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--hover-overlay);
+            transform: scale(1.05) rotate(5deg);
+            box-shadow: var(--card-shadow-hover);
+        }
+        
+        .theme-toggle:active {
+            transform: scale(0.95);
+            transition: all var(--transition-fast) var(--transition-timing);
+        }
+        
+        .theme-toggle i {
+            font-size: 20px;
+            transition: all var(--transition-base) var(--transition-timing);
+        }
+
+        /* Mobile-first Navbar */
+        .navbar {
+            background-color: var(--navbar-bg);
+            box-shadow: var(--card-shadow);
+            padding: var(--space-sm) var(--space-md);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: var(--z-nav);
+            height: 64px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--navbar-text);
+            position: relative;
+            transition: transform var(--transition-base) var(--transition-bounce);
+            margin-right: auto;
+        }
+        
+        .navbar-brand:hover {
+            transform: translateY(-2px);
+        }
+
+        .navbar-toggler {
+            width: var(--touch-target);
+            height: var(--touch-target);
+            padding: var(--space-xs);
+            border: none;
+            background-color: transparent;
+            transition: transform var(--transition-fast) var(--transition-timing);
+            position: relative;
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: none;
+            outline: none;
+        }
+        
+        .navbar-toggler:hover {
+            transform: scale(1.05);
+        }
+        
+        .navbar-toggler:active {
+            transform: scale(0.95);
+        }
+
+        .navbar-toggler-icon {
+            background-image: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--navbar-text);
+            transition: transform var(--transition-base) var(--transition-timing);
+        }
+
+        .navbar-toggler-icon i {
+            font-size: 24px;
+            transition: all var(--transition-base) var(--transition-timing);
+        }
+        
+        .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon i {
+            transform: rotate(90deg);
+        }
+
+        .navbar-collapse {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            background-color: var(--navbar-bg);
+            padding: var(--space-md);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-base) var(--transition-timing);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: var(--z-dropdown);
+        }
+
+        .navbar-collapse.show {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .navbar-nav {
+            padding-left: 0;
+        }
+
+        .navbar-nav .nav-link {
+            color: var(--navbar-text);
+            font-size: 1rem;
+            padding: var(--space-md) var(--space-sm);
+            display: flex;
+            align-items: center;
+            border-radius: 8px;
+            margin-bottom: var(--space-xs);
+            border-bottom: 1px solid var(--border-color);
+            transition: all var(--transition-base) var(--transition-timing);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .navbar-nav .nav-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background-color: var(--accent-color);
+            transform: scaleY(0);
+            transition: transform var(--transition-base) var(--transition-bounce);
+        }
+
+        .navbar-nav .nav-link:hover {
+            background-color: var(--hover-overlay);
+            transform: translateX(3px);
+            padding-left: var(--space-md);
+        }
+        
+        .navbar-nav .nav-link:hover::before {
+            transform: scaleY(1);
+        }
+        
+        .navbar-nav .nav-link i {
+            margin-right: var(--space-sm);
+            font-size: 18px;
+            color: var(--accent-color);
+            transition: transform var(--transition-base) var(--transition-bounce);
+        }
+        
+        .navbar-nav .nav-link:hover i {
+            transform: scale(1.2);
+        }
+
+        /* Text Gradient */
+        .text-gradient {
+            background: linear-gradient(120deg, var(--heading-color) 0%, var(--accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding-top: 76px;
+            padding-bottom: var(--space-xl);
+            background-color: var(--primary-bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -5%;
+            right: -5%;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(26, 115, 232, 0.1) 0%, rgba(26, 115, 232, 0) 70%);
+            z-index: 0;
+        }
+        
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -5%;
+            left: -5%;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(26, 115, 232, 0.08) 0%, rgba(26, 115, 232, 0) 70%);
+            z-index: 0;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: scaleX(0);
+            }
+            to {
+                transform: scaleX(1);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: var(--card-shadow);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: var(--card-shadow-hover);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: var(--card-shadow);
+            }
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 500;
+            margin-bottom: var(--space-lg);
+            line-height: 1.2;
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s var(--transition-timing) forwards;
+            animation-delay: 0.2s;
+        }
+        
+        .hero h1 .highlight {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .hero h1 .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background-color: rgba(26, 115, 232, 0.2);
+            z-index: -1;
+            transform: scaleX(0);
+            transform-origin: left;
+            animation: slideIn 1s var(--transition-bounce) forwards;
+            animation-delay: 1s;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            margin-bottom: var(--space-lg);
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s var(--transition-timing) forwards;
+            animation-delay: 0.4s;
+        }
+
+        .hero-image {
+            margin-top: var(--space-xl);
+            max-width: 100%;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            transition: transform var(--transition-base) var(--transition-bounce), 
+                        box-shadow var(--transition-base) var(--transition-timing);
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s var(--transition-timing) forwards;
+            animation-delay: 0.6s;
+        }
+        
+        .hero-image:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: var(--card-shadow-hover);
+        }
+        
+        /* Pulsating CTA button for attention */
+        .hero .btn-primary {
+            animation: pulse 2s infinite;
+            animation-delay: 2s;
+        }
+
+        /* Buttons */
+        .btn {
+            height: var(--touch-target);
+            padding: 0 var(--space-lg);
+            border-radius: 8px;
+            font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-base) var(--transition-timing);
+            text-transform: none;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            top: 0;
+            left: -100%;
+            transition: all var(--transition-base) var(--transition-timing);
+            z-index: -1;
+        }
+        
+        .btn:hover::after {
+            left: 0;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+            transition: transform var(--transition-fast) var(--transition-timing);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+            box-shadow: var(--card-shadow-hover);
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary:focus {
+            box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.25);
+            outline: none;
+        }
+
+        .btn-outline-primary {
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            background-color: transparent;
+            transition: all var(--transition-base) var(--transition-timing);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: rgba(26, 115, 232, 0.08);
+            color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+        }
+        
+        .btn-outline-primary:focus {
+            box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.15);
+            outline: none;
+        }
+        
+        .btn i {
+            margin-right: var(--space-sm);
+            font-size: 1.2em;
+            transition: transform var(--transition-base) var(--transition-bounce);
+        }
+        
+        .btn:hover i {
+            transform: translateX(3px);
+        }
+
+        /* Sections */
+        section {
+            padding: var(--space-xl) 0;
+        }
+
+        section h2 {
+            font-size: 1.75rem;
+            font-weight: 500;
+            margin-bottom: var(--space-xl);
+            text-align: center;
+        }
+
+        /* Features Section */
+        .features {
+            background-color: var(--primary-bg);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: var(--space-lg);
+            height: 100%;
+            transition: all var(--transition-base) var(--transition-timing);
+            display: flex;
+            flex-direction: column;
+            margin-bottom: var(--space-xl);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform var(--transition-base) var(--transition-bounce);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--card-shadow-hover);
+        }
+        
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-icon {
+            font-size: 28px;
+            color: var(--accent-color);
+            margin-bottom: var(--space-md);
+            transition: transform var(--transition-base) var(--transition-bounce);
+            background: rgba(26, 115, 232, 0.1);
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+        
+        .card:hover .card-icon {
+            transform: scale(1.1) rotate(10deg);
+            color: var(--accent-hover);
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: var(--space-md);
+            font-weight: 500;
+            transition: color var(--transition-base) var(--transition-timing);
+        }
+        
+        .card:hover h3 {
+            color: var(--accent-color);
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            flex-grow: 1;
+            line-height: 1.6;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: var(--space-xl) 0;
+            background-color: var(--secondary-bg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .how-it-works::before {
+            content: '';
+            position: absolute;
+            top: -10%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(26, 115, 232, 0.05) 0%, rgba(26, 115, 232, 0) 70%);
+            z-index: 0;
+        }
+
+        .step {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+            box-shadow: var(--card-shadow);
+            height: 100%;
+            transition: all var(--transition-base) var(--transition-timing);
+            position: relative;
+            z-index: 1;
+            border: 1px solid var(--border-color);
+        }
+        
+        .step:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            margin-bottom: var(--space-md);
+            font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif;
+            box-shadow: 0 4px 8px rgba(26, 115, 232, 0.25);
+            transition: transform var(--transition-base) var(--transition-bounce);
+            position: relative;
+        }
+        
+        .step:hover .step-number {
+            transform: scale(1.15);
+        }
+
+        .step h3 {
+            font-size: 1.25rem;
+            margin-bottom: var(--space-md);
+            font-weight: 500;
+            transition: color var(--transition-base) var(--transition-timing);
+        }
+        
+        .step:hover h3 {
+            color: var(--accent-color);
+        }
+
+        .step p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            transition: opacity var(--transition-base) var(--transition-timing);
+        }
+        
+        .step:hover p {
+            opacity: 0.95;
+        }
+
+        .step img {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: var(--space-md);
+            transition: all var(--transition-base) var(--transition-timing);
+            box-shadow: var(--card-shadow);
+        }
+        
+        .step:hover img {
+            transform: scale(1.02);
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        /* Benefits */
+        .benefits {
+            background-color: var(--primary-bg);
+        }
+
+        .benefit {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: var(--space-xl);
+        }
+
+        .benefit-icon {
+            font-size: 24px;
+            color: var(--accent-color);
+            margin-right: var(--space-md);
+            flex-shrink: 0;
+        }
+
+        .benefit-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: var(--space-sm);
+            font-weight: 500;
+        }
+
+        .benefit-content p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            background-color: var(--secondary-bg);
+        }
+
+        .testimonial {
+            background-color: var(--card-bg);
+            padding: var(--space-lg);
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: var(--space-xl);
+            position: relative;
+        }
+
+        .testimonial::before {
+            content: '"';
+            position: absolute;
+            top: 8px;
+            left: 16px;
+            font-size: 3rem;
+            color: var(--accent-color);
+            opacity: 0.2;
+            font-family: 'Georgia', serif;
+        }
+
+        .testimonial p {
+            font-size: 0.875rem;
+            font-style: italic;
+            margin-bottom: var(--space-md);
+            color: var(--text-color);
+            position: relative;
+            z-index: 1;
+        }
+
+        .testimonial-author {
+            font-weight: 500;
+            color: var(--heading-color);
+            font-style: normal;
+            font-size: 0.875rem;
+        }
+
+        /* Call to Action */
+        .cta {
+            text-align: center;
+            padding: var(--space-xxl) 0;
+            background-color: var(--primary-bg);
+        }
+
+        .cta h2 {
+            margin-bottom: var(--space-lg);
+        }
+
+        .cta p {
+            font-size: 1rem;
+            margin-bottom: var(--space-xl);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--footer-bg);
+            color: var(--footer-text);
+            padding: var(--space-xl) 0;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-family: 'Google Sans', 'Segoe UI', Arial, sans-serif;
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: var(--space-lg);
+            color: var(--heading-color);
+        }
+
+        .footer .social-links {
+            margin: var(--space-lg) 0;
+        }
+
+        .footer .social-links a {
+            color: var(--footer-text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 var(--space-sm);
+            transition: all 0.2s var(--transition-timing);
+        }
+
+        .footer .social-links a:hover {
+            background-color: var(--hover-overlay);
+            color: var(--accent-color);
+        }
+
+        .footer .legal {
+            margin-top: var(--space-lg);
+        }
+
+        .footer .legal a {
+            color: var(--footer-text);
+            margin: 0 var(--space-md);
+            font-size: 0.8rem;
+            display: inline-block;
+            padding: var(--space-xs);
+        }
+
+        .footer .legal a:hover {
+            color: var(--accent-color);
+        }
+
+        .footer-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: var(--space-lg) 0;
+        }
+
+        .footer-copyright {
+            font-size: 0.8rem;
+            color: var(--footer-text);
+        }
+
+        /* Tablet Breakpoint */
+        @media (min-width: 768px) {
+            .navbar {
+                padding: var(--space-sm) var(--space-lg);
+            }
+            
+            .navbar .container {
+                display: flex;
+                align-items: center;
+                flex-wrap: nowrap;
+            }
+
+            .navbar-collapse {
+                position: static;
+                box-shadow: none;
+                padding: 0;
+                max-height: none;
+                transition: none;
+                width: auto;
+                flex-grow: 0;
+            }
+
+            .navbar-nav {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .navbar-nav .nav-link {
+                padding: var(--space-sm) var(--space-md);
+                margin-left: var(--space-md);
+                border-bottom: none;
+                position: relative;
+            }
+
+            .navbar-nav .nav-link:after {
+                content: '';
+                position: absolute;
+                width: 0;
+                height: 2px;
+                bottom: 0;
+                left: 50%;
+                background-color: var(--accent-color);
+                transition: all 0.2s var(--transition-timing);
+                transform: translateX(-50%);
+            }
+
+            .navbar-nav .nav-link:hover:after {
+                width: 100%;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            section h2 {
+                font-size: 2rem;
+            }
+
+            .card {
+                margin-bottom: 0;
+            }
+
+            .card h3 {
+                font-size: 1.4rem;
+            }
+
+            .step h3 {
+                font-size: 1.4rem;
+            }
+
+            .testimonial {
+                margin-bottom: 0;
+            }
+        }
+
+        /* Desktop Breakpoint */
+        @media (min-width: 992px) {
+            .hero {
+                min-height: 80vh;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero p {
+                font-size: 1.25rem;
+            }
+
+            .hero-image {
+                margin-top: 0;
+            }
+
+            section h2 {
+                font-size: 2.25rem;
+            }
+
+            .card-icon {
+                font-size: 28px;
+            }
+
+            .step-number {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+
+            .testimonial p {
+                font-size: 1rem;
+            }
+        }
+
+        /* Animations and transitions */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s var(--transition-timing), transform 0.5s var(--transition-timing);
+        }
+
+        .fade-in.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Ripple effect for buttons */
+        .btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease-out, height 0.6s ease-out;
+            z-index: 0;
+        }
+
+        .btn:active::after {
+            width: 250px;
+            height: 250px;
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <span class="text-gradient">PrintMe</span>
+            </a>
+            
+
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"><i class="bi bi-list"></i></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features"><i class="bi bi-grid"></i> Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works"><i class="bi bi-arrow-repeat"></i> How It Works</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#benefits"><i class="bi bi-check-circle"></i> Benefits</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#testimonials"><i class="bi bi-chat-quote"></i> Testimonials</a>
+                    </li>
+                    <li class="nav-item d-none d-lg-block">
+                        <a class="btn btn-primary text-white ms-lg-3" href="#cta">Get Started</a>
+                    </li>
+
+                    </ul>
+                                         
+            </div>
+             <!-- Theme toggle button -->
+             <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <i class="bi bi-sun-fill" id="themeIcon"></i>
+                </button>
+        </div>
+    </nav>
+
+
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6 fade-in">
+                    <h1>Smart <span class="highlight text-gradient">Printing</span> for Everyone</h1>
+                    <p>PrintMe offers a secure, efficient, and smart printing solution for all users. Upload your documents, print from anywhere, and collect at your convenience.</p>
+                    <div class="d-flex flex-column flex-sm-row gap-3">
+                        <a href="#how-it-works" class="btn btn-primary"><span>Get Started</span></a>
+                        <a href="#features" class="btn btn-outline-primary"><span>Learn More</span></a>
+                    </div>
+                </div>
+                <div class="col-lg-6 fade-in">
+                    <div class="hero-image-container mt-5 mt-lg-0">
+                        <svg class="hero-image" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="100" y="50" width="600" height="400" rx="20" fill="var(--card-bg)" stroke="var(--border-color)" stroke-width="2"/>
+                            <rect x="150" y="100" width="500" height="60" rx="10" fill="var(--secondary-bg)"/>
+                            <rect x="150" y="180" width="500" height="60" rx="10" fill="var(--secondary-bg)"/>
+                            <rect x="150" y="260" width="500" height="60" rx="10" fill="var(--secondary-bg)"/>
+                            <rect x="400" y="340" width="250" height="60" rx="30" fill="var(--accent-color)"/>
+                            <text x="525" y="380" text-anchor="middle" fill="white" font-family="Google Sans" font-size="24">Print Now</text>
+                            <path d="M300 360 L350 380 L300 400" fill="none" stroke="var(--accent-color)" stroke-width="4"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Key Features</h2>
+            <div class="row">
+                <div class="col-md-6 col-lg-4 fade-in">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <h3>Secure Printing</h3>
+                        <p>End-to-end encryption keeps your documents safe from unauthorized access, ensuring data protection and privacy compliance.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 fade-in">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                        </div>
+                        <h3>Cloud Storage</h3>
+                        <p>Access your documents from anywhere, anytime. Your files are securely stored in the cloud for convenient retrieval.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 fade-in">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                        <h3>Mobile Friendly</h3>
+                        <p>Print directly from your smartphone or tablet with our intuitive mobile app, available for iOS and Android.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 fade-in">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="bi bi-lightning-charge"></i>
+                        </div>
+                        <h3>Fast Processing</h3>
+                        <p>Our advanced algorithms ensure quick document processing and minimal wait times at the printer.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 fade-in">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="bi bi-gear"></i>
+                        </div>
+                        <h3>Custom Settings</h3>
+                        <p>Adjust paper size, quality, color options, and more to get exactly the prints you need, every time.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 fade-in">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <h3>Usage Analytics</h3>
+                        <p>Track your printing patterns, costs, and environmental impact with detailed analytics and reports.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <div class="row">
+                <div class="col-md-4 fade-in">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <svg width="100%" height="160" viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="50" y="30" width="200" height="100" rx="10" fill="var(--card-bg)" stroke="var(--accent-color)" stroke-width="2"/>
+                            <rect x="70" y="50" width="160" height="20" rx="5" fill="var(--secondary-bg)"/>
+                            <rect x="70" y="80" width="160" height="20" rx="5" fill="var(--secondary-bg)"/>
+                            <circle cx="250" cy="50" r="20" fill="var(--accent-color)"/>
+                            <path d="M240 50 L250 60 L260 40" stroke="white" stroke-width="3" fill="none"/>
+                        </svg>
+                        <h3>Upload Your Document</h3>
+                        <p>Upload your files through our website or mobile app. We support various formats including PDF, DOC, DOCX, XLS, and more.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 fade-in">
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <svg width="100%" height="160" viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="50" y="30" width="200" height="100" rx="10" fill="var(--card-bg)" stroke="var(--accent-color)" stroke-width="2"/>
+                            <rect x="70" y="50" width="160" height="60" rx="5" fill="var(--secondary-bg)"/>
+                            <circle cx="100" cy="80" r="15" fill="var(--accent-color)"/>
+                            <circle cx="150" cy="80" r="15" fill="var(--accent-color)" opacity="0.7"/>
+                            <circle cx="200" cy="80" r="15" fill="var(--accent-color)" opacity="0.4"/>
+                            <rect x="90" y="120" width="120" height="20" rx="10" fill="var(--accent-color)"/>
+                        </svg>
+                        <h3>Configure Print Settings</h3>
+                        <p>Select your print preferences such as color/black & white, single/double-sided, paper size, and number of copies.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 fade-in">
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <svg width="100%" height="160" viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="70" y="20" width="160" height="100" rx="5" fill="var(--card-bg)" stroke="var(--accent-color)" stroke-width="2"/>
+                            <rect x="90" y="40" width="120" height="60" fill="var(--secondary-bg)"/>
+                            <path d="M70 140 L230 140" stroke="var(--accent-color)" stroke-width="2"/>
+                            <rect x="130" y="120" width="40" height="20" fill="var(--card-bg)" stroke="var(--accent-color)" stroke-width="2"/>
+                            <path d="M120 140 L120 160 L180 160 L180 140" fill="none" stroke="var(--accent-color)" stroke-width="2"/>
+                        </svg>
+                        <h3>Collect Your Prints</h3>
+                        <p>Visit any PrintMe location, scan your QR code or enter your PIN, and collect your prints within seconds.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="benefits" id="benefits">
+        <div class="container">
+            <h2>Why Choose PrintMe</h2>
+            <div class="row">
+                <div class="col-lg-6 fade-in">
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <i class="bi bi-clock"></i>
+                        </div>
+                        <div class="benefit-content">
+                            <h3>Save Time</h3>
+                            <p>No more waiting in line. Upload in advance and collect when it's convenient for you.</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div class="benefit-content">
+                            <h3>Cost Effective</h3>
+                            <p>Pay only for what you print with transparent pricing and no hidden fees.</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <i class="bi bi-geo-alt"></i>
+                        </div>
+                        <div class="benefit-content">
+                            <h3>Convenient Locations</h3>
+                            <p>With over 500 locations nationwide, there's always a PrintMe kiosk near you.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 fade-in">
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <i class="bi bi-tree"></i>
+                        </div>
+                        <div class="benefit-content">
+                            <h3>Eco-Friendly</h3>
+                            <p>Our smart algorithms optimize printing to reduce waste and save paper.</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="benefit-content">
+                            <h3>For Everyone</h3>
+                            <p>Whether you're a student, professional, or business owner, PrintMe works for you.</p>
+                        </div>
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-icon">
+                            <i class="bi bi-headset"></i>
+                        </div>
+                        <div class="benefit-content">
+                            <h3>24/7 Support</h3>
+                            <p>Our customer service team is always available to help with any issues.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <h2>What Our Users Say</h2>
+            <div class="row">
+                <div class="col-md-4 fade-in">
+                    <div class="testimonial">
+                        <p>"PrintMe has completely changed how I handle my printing needs. No more waiting around for prints or dealing with printer jams!"</p>
+                        <p class="testimonial-author">Sarah K., Graduate Student</p>
+                    </div>
+                </div>
+                <div class="col-md-4 fade-in">
+                    <div class="testimonial">
+                        <p>"As a small business owner, I appreciate the cost savings and convenience. The usage analytics help me track expenses effortlessly."</p>
+                        <p class="testimonial-author">James T., Business Owner</p>
+                    </div>
+                </div>
+                <div class="col-md-4 fade-in">
+                    <div class="testimonial">
+                        <p>"The security features give me peace of mind when printing sensitive documents. PrintMe is now an essential part of my workflow."</p>
+                        <p class="testimonial-author">Michael R., Legal Professional</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta" id="contact">
+        <div class="container fade-in">
+            <h2>Ready to Start Printing Smarter?</h2>
+            <p>Join thousands of satisfied users who have transformed their printing experience with PrintMe.</p>
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                <a href="#" class="btn btn-primary"><span>Create Free Account</span></a>
+                <a href="#" class="btn btn-outline-primary"><span>Contact Sales</span></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">PrintMe</div>
+            <div class="row">
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h5>Contact Us</h5>
+                    <p>123 Print Street<br>Tech City, TP 12345<br>support@printme.com<br>(123) 456-7890</p>
+                </div>
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#how-it-works">How It Works</a></li>
+                        <li><a href="#benefits">Benefits</a></li>
+                        <li><a href="#testimonials">Testimonials</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>Company</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Partner Program</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="social-links">
+                <a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+                <a href="#" aria-label="Twitter"><i class="bi bi-twitter"></i></a>
+                <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                <a href="#" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+            </div>
+            <div class="footer-divider"></div>
+            <div class="legal">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Cookie Policy</a>
+                <a href="#">Accessibility</a>
+            </div>
+            <p class="footer-copyright mt-3">© 2023 PrintMe. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Theme Toggle Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+            
+            // Check if user has a theme preference in localStorage
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme) {
+                document.documentElement.setAttribute('data-bs-theme', currentTheme);
+                updateThemeIcon(currentTheme);
+            } else if (prefersDarkScheme.matches) {
+                // If user prefers dark theme and hasn't set a preference
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+                updateThemeIcon('dark');
+            }
+            
+            themeToggle.addEventListener('click', function() {
+                let theme = document.documentElement.getAttribute('data-bs-theme');
+                let newTheme = theme === 'dark' ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+            
+            function updateThemeIcon(theme) {
+                if (theme === 'dark') {
+                    themeIcon.classList.remove('bi-sun-fill');
+                    themeIcon.classList.add('bi-moon-fill');
+                } else {
+                    themeIcon.classList.remove('bi-moon-fill');
+                    themeIcon.classList.add('bi-sun-fill');
+                }
+            }
+            
+            // Scroll reveal animations
+            const fadeElements = document.querySelectorAll('.fade-in');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('active');
+                    }
+                });
+            }, {
+                threshold: 0.1
+            });
+            
+            fadeElements.forEach(element => {
+                observer.observe(element);
+            });
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        // Close mobile menu if open
+                        const navbarCollapse = document.querySelector('.navbar-collapse');
+                        if (navbarCollapse.classList.contains('show')) {
+                            bootstrap.Collapse.getInstance(navbarCollapse).hide();
+                        }
+                        
+                        window.scrollTo({
+                            top: target.offsetTop - 70, // Account for fixed header
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

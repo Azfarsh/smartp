@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>PrintMe Dashboard</title>
+  <meta name="description" content="PrintMe - Your on-demand printing solution. Easily manage print jobs, track history, and find nearby print locations.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Light mode colors */
+      --background: #FFFFFF;
+      --foreground: #202124;
+      --muted: #F8F9FA;
+      --muted-foreground: #5F6368;
+      --card: #FFFFFF;
+      --card-foreground: #202124;
+      --border: #DADCE0;
+      --input: #F8F9FA;
+      --primary: #1A73E8;
+      --primary-foreground: #FFFFFF;
+      --secondary: #F1F3F4;
+      --secondary-foreground: #202124;
+      --accent: #E8F0FE;
+      --accent-foreground: #1A73E8;
+      --destructive: #EA4335;
+      --destructive-foreground: #FFFFFF;
+      --success: #34A853;
+      --warning: #FBBC04;
+      --error: #EA4335;
+      
+      /* Shadows and effects */
+      --shadow-card: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+      --shadow-hover: 0 4px 8px 0 rgba(60, 64, 67, 0.3);
+      --radius: 8px;
+      
+      /* Transitions */
+      --transition-color: color 0.2s ease-in-out;
+      --transition-background: background-color 0.2s ease-in-out;
+      --transition-shadow: box-shadow 0.2s ease-in-out;
+      --transition-transform: transform 0.2s ease-in-out;
+      --transition-all: all 0.2s ease-in-out;
+    }
+
+    .dark-mode {
+      /* Dark mode colors */
+      --background: #202124;
+      --foreground: #E8EAED;
+      --muted: #303134;
+      --muted-foreground: #9AA0A6;
+      --card: #292A2D;
+      --card-foreground: #E8EAED;
+      --border: #3C4043;
+      --input: #303134;
+      --primary: #8AB4F8;
+      --primary-foreground: #202124;
+      --secondary: #303134;
+      --secondary-foreground: #E8EAED;
+      --accent: #23262A;
+      --accent-foreground: #8AB4F8;
+      --destructive: #F28B82;
+      --destructive-foreground: #202124;
+      --success: #81C995;
+      --warning: #FDD663;
+      --error: #F28B82;
+      
+      /* Shadows and effects */
+      --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+      --shadow-hover: 0 4px 8px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Google Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+      background-color: var(--background);
+      color: var(--foreground);
+      line-height: 1.6;
+      letter-spacing: 0.2px;
+      transition: var(--transition-all);
+      min-height: 100vh;
+      padding-bottom: 70px;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 500;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--background);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      box-shadow: var(--shadow-card);
+      transition: var(--transition-all);
+      width: 100%;
+      padding-bottom: 0.5rem; /* Added bottom padding */
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .menu-toggle {
+      background: none;
+      border: none;
+      color: var(--foreground);
+      margin-right: 1rem;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .icon-button {
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-all);
+    }
+
+    .icon-button:hover {
+      background-color: var(--secondary);
+      color: var(--foreground);
+    }
+
+    .search-container {
+      padding: 0 1rem 1.5rem; /* Increased bottom padding */
+      margin-bottom: 0.5rem     ; /* Added margin at the bottom */
+      
+    }
+
+    .search-bar {
+      width: 100%;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background-color: var(--secondary);
+      color: var(--foreground);
+      font-family: inherit;
+      font-size: 0.875rem;
+      transition: var(--transition-all);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-foreground);
+      font-size: 1rem;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100%;
+      background-color: var(--background);
+      border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 999;
+      padding-top: 4rem;
+      overflow-y: auto;
+      box-shadow: var(--shadow-hover);
+      box-sizing: border-box;
+    }
+
+    .sidebar.active {
+      transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 998;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .sidebar-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .profile-section {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .profile-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+    }
+
+    .profile-avatar i {
+      font-size: 1.5rem;
+      color: var(--muted-foreground);
+    }
+
+    .profile-info {
+      flex: 1;
+    }
+
+    .profile-name {
+      font-weight: 500;
+    }
+
+    .profile-email {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 0 1rem;
+    }
+
+    .nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: var(--muted-foreground);
+      padding: 0.75rem;
+      border-radius: var(--radius);
+      transition: var(--transition-all);
+    }
+
+    .nav-link:hover {
+      background-color: var(--secondary);
+      color: var(--foreground);
+    }
+
+    .nav-link.active {
+      background-color: var(--accent);
+      color: var(--accent-foreground);
+    }
+
+    .nav-link i {
+      margin-right: 1rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    .sign-out {
+      margin-top: 2rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--background);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      z-index: 100;
+      box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .bottom-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      color: var(--muted-foreground);
+      font-size: 0.75rem;
+      padding: 0.5rem 0;
+      transition: var(--transition-color);
+    }
+
+    .bottom-nav-item:hover {
+      color: var(--foreground);
+    }
+
+    .bottom-nav-item.active {
+      color: var(--primary);
+    }
+
+    .bottom-nav-item i {
+      font-size: 1.25rem;
+      margin: 0.25rem;
+    }
+
+    .print-btn {
+      position: relative;
+      transform: translateY(-25px);
+    }
+
+    .print-btn-circle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      color: var(--primary-foreground);
+      border: none;
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+      transition: var(--transition-all);
+    }
+
+    .print-btn-circle:hover {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .print-btn-circle i {
+      font-size: 1.5rem;
+    }
+
+    /* Main content */
+    .main-content {
+        
+      padding: 10rem 1rem 1rem; /* Increased top padding to add more space after search bar */
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: var(--background);
+    }
+    
+    .content-wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    /* Dark mode specific adjustments */
+    .dark-mode .main-content {
+      background-color: var(--background);
+    }
+    
+    .dark-mode .job-card {
+      background-color: var(--card);
+    }
+
+    .section {
+      margin-bottom: 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid transparent;
+    }
+    
+    .dark-mode .section-header {
+      border-bottom-color: var(--border);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+
+    .section-title i {
+      margin-right: 0.5rem;
+      color: var(--primary);
+    }
+
+    .link-button {
+      background: none;
+      border: none;
+      font-size: 0.875rem;
+      color: var(--primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      transition: var(--transition-color);
+    }
+
+    .link-button:hover {
+      text-decoration: underline;
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      transition: var(--transition-all);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem; /* Added top margin */
+      margin-bottom: 2.5rem; /* Increased bottom margin */
+    }
+
+    @media (min-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .stat-card {
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .stat-card i {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+    }
+
+    /* Print Jobs */
+    .job-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .job-card {
+      background-color: var(--card);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: var(--shadow-card);
+      transition: var(--transition-all);
+      border: 1px solid var(--border);
+    }
+
+    .job-card:hover {
+      box-shadow: var(--shadow-hover);
+    }
+    
+    .dark-mode .job-card {
+      border-color: var(--border);
+    }
+
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .job-title {
+      font-weight: 500;
+      margin-bottom: 0;
+      font-size: 1rem;
+    }
+
+    .job-status {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+
+    .status-processing {
+      background-color: rgba(251, 188, 4, 0.2);
+      color: var(--warning);
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .status-queued {
+      background-color: rgba(251, 188, 4, 0.2);
+      color: var(--warning);
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .status-completed {
+      background-color: rgba(52, 168, 83, 0.2);
+      color: var(--success);
+    }
+
+    .status-cancelled {
+      background-color: rgba(234, 67, 53, 0.2);
+      color: var(--error);
+    }
+
+    .job-details {
+      font-size: 0.825rem;
+      color: var(--muted-foreground);
+      margin-bottom: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .progress-bar {
+      height: 0.5rem;
+      background-color: var(--secondary);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: var(--primary);
+      border-radius: 9999px;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-bottom: 0.75rem;
+    }
+
+    .job-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-family: inherit;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition-all);
+    }
+
+    .btn i {
+      margin-right: 0.5rem;
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: var(--accent-foreground);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent);
+      opacity: 0.8;
+    }
+
+    .btn-danger {
+      background-color: var(--destructive);
+      color: var(--destructive-foreground);
+    }
+
+    .btn-danger:hover {
+      background-color: var(--destructive);
+      opacity: 0.8;
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary);
+      color: var(--secondary-foreground);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--secondary);
+      opacity: 0.8;
+    }
+
+    /* Map Section */
+    .map-container {
+      height: 16rem;
+      background-color: var(--secondary);
+      position: relative;
+    }
+
+    /* Location Cards */
+    .location-card {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .location-icon {
+      width: 3rem;
+      height: 3rem;
+      background-color: var(--secondary);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+      flex-shrink: 0;
+    }
+
+    .location-icon i {
+      font-size: 1.25rem;
+      color: var(--primary);
+    }
+
+    .location-info {
+      flex: 1;
+    }
+
+    .location-name {
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .location-details {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+      margin-bottom: 0.5rem;
+    }
+
+    .rating {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .rating i {
+      color: var(--warning);
+      font-size: 0.875rem;
+    }
+
+    .rating-count {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-left: 0.25rem;
+    }
+
+    .select-button {
+      display: inline-block;
+      background-color: var(--accent);
+      color: var(--accent-foreground);
+      padding: 0.25rem 0.75rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition-all);
+    }
+
+    .select-button:hover {
+      background-color: var(--accent);
+      opacity: 0.8;
+    }
+
+    /* Modal styles */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background-color: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-hover);
+      width: 100%;
+      max-width: 500px;
+      margin: 0 1rem;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-weight: 500;
+      font-size: 1.25rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted-foreground);
+      font-size: 1.25rem;
+    }
+
+    .modal-body {
+      padding: 1rem;
+    }
+
+    .modal-footer {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    /* Print Options Modal */
+    .option-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .option-label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .option-hint {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-bottom: 0.5rem;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .radio-option {
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .radio-option input[type="radio"] {
+      display: none;
+    }
+
+    .radio-option label {
+      display: block;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition-all);
+    }
+
+    .radio-option input[type="radio"]:checked + label {
+      background-color: var(--accent);
+      border-color: var(--accent-foreground);
+      color: var(--accent-foreground);
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      padding: 2rem;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background-color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-all);
+      margin-bottom: 1.5rem;
+    }
+
+    .drop-zone:hover {
+      border-color: var(--primary);
+      background-color: var(--secondary);
+    }
+
+    .drop-zone i {
+      font-size: 2.5rem;
+      color: var(--muted-foreground);
+      margin-bottom: 1rem;
+    }
+
+    .drop-zone-text {
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .file-formats {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+    }
+
+    .file-preview {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .file-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius);
+      background-color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .file-icon i {
+      font-size: 1.25rem;
+      color: var(--accent-foreground);
+      margin: 0;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-size {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+    }
+
+    .remove-file {
+      background: none;
+      border: none;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: var(--transition-color);
+    }
+
+    .remove-file:hover {
+      color: var(--destructive);
+    }
+
+    /* Responsive adjustments */
+    @media (min-width: 768px) {
+      .main-content {
+        padding-top: 10rem;
+      }
+
+      .bottom-nav {
+        display: none;
+      }
+
+      body {
+        padding-bottom: 0;
+      }
+
+      .job-actions {
+        justify-content: flex-end;
+      }
+
+      .btn {
+        flex: 0 0 auto;
+        min-width: 100px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .radio-group {
+        flex-direction: column;
+      }
+
+      .radio-option {
+        width: 100%;
+      }
+
+      .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Sidebar Navigation -->
+  <div class="sidebar" id="sidebar">
+    <div class="profile-section">
+      <div class="profile-avatar">
+        <i class="fas fa-user"></i>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name">Alex Johnson</div>
+        <div class="profile-email">alex.johnson@example.com</div>
+      </div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item">
+        <a href="#" class="nav-link active" data-section="dashboard">
+          <i class="fas fa-home"></i>
+          Dashboard
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="#" class="nav-link" data-section="my-documents">
+          <i class="fas fa-file-alt"></i>
+          My Documents
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="#" class="nav-link" data-section="print-history">
+          <i class="fas fa-history"></i>
+          Print History
+        </a>
+      </li>
+      
+      <li class="nav-item">
+        <a href="#" class="nav-link" data-section="payment-methods">
+          <i class="fas fa-credit-card"></i>
+          Payment Methods
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="#" class="nav-link" data-section="settings">
+          <i class="fas fa-cog"></i>
+          Settings
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="#" class="nav-link" data-section="help-support">
+          <i class="fas fa-headset"></i>
+          Help & Support
+        </a>
+      </li>
+      <li class="nav-item sign-out">
+        <a href="#" class="nav-link" data-section="sign-out">
+          <i class="fas fa-sign-out-alt"></i>
+          Sign Out
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <div class="logo-container">
+        <button class="menu-toggle" id="menu-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="logo">PrintMe</div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" id="theme-toggle">
+          <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+        <button class="icon-button">
+          <i class="fas fa-bell"></i>
+        </button>
+      </div>
+    </div>
+    <div class="search-container">
+      <div class="search-bar">
+        <i class="fas fa-search search-icon"></i>
+        <input type="search" class="search-input" placeholder="Search for documents, locations, or help..." />
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="content-wrapper">
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="card stat-card">
+          <i class="fas fa-print"></i>
+          <div class="stat-value">24</div>
+          <div class="stat-label">Total Jobs</div>
+        </div>
+        <div class="card stat-card">
+          <i class="fas fa-check-circle"></i>
+          <div class="stat-value">18</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="card stat-card">
+          <i class="fas fa-clock"></i>
+          <div class="stat-value">3</div>
+          <div class="stat-label">In Progress</div>
+        </div>
+        <div class="card stat-card">
+          <i class="fas fa-dollar-sign"></i>
+          <div class="stat-value">$42.75</div>
+          <div class="stat-label">Total Spent</div>
+        </div>
+      </div>
+
+      <!-- Active Print Jobs -->
+      <section class="section">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="fas fa-print"></i>
+            Active Print Jobs
+          </h2>
+          <button class="link-button" data-action="view-all-jobs">View All</button>
+        </div>
+        <div class="job-list">
+          <div class="job-card">
+            <div class="job-header">
+              <h3 class="job-title">Project_Proposal.pdf</h3>
+              <span class="job-status status-processing">Processing</span>
+            </div>
+            <div class="job-details">24 pages · Color · Double-sided · Submitted 10 mins ago</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 35%;"></div>
+            </div>
+            <div class="progress-info">
+              <span>35% complete</span>
+              <span>ETA: 15 minutes</span>
+            </div>
+            <div class="job-actions">
+              <button class="btn btn-secondary" data-action="details-job" id="details-button-1" style="background: transparent; border: none; color: var(--primary);">
+                <i class="fas fa-info-circle"></i>
+                Details
+              </button>
+              <button class="btn btn-danger" data-action="cancel-job" style="background: var(--error); color: white; padding: 0.25rem 0.75rem; border-radius: 4px;">
+                <i class="fas fa-times"></i>
+                Cancel
+              </button>
+            </div>
+          </div>
+          <div class="job-card">
+            <div class="job-header">
+              <h3 class="job-title">Tax_Documents.pdf</h3>
+              <span class="job-status status-queued">Queued</span>
+            </div>
+            <div class="job-details">8 pages · B&W · Single-sided · Submitted 25 mins ago</div>
+            <div class="progress-info">
+              <span>Waiting in queue</span>
+              <span>ETA: 30 minutes</span>
+            </div>
+            <div class="job-actions">
+              <button class="btn btn-secondary" data-action="details-job" id="details-button-2" style="background: transparent; border: none; color: var(--primary);">
+                <i class="fas fa-info-circle"></i>
+                Details
+              </button>
+              <button class="btn btn-danger" data-action="cancel-job" style="background: var(--error); color: white; padding: 0.25rem 0.75rem; border-radius: 4px;">
+                <i class="fas fa-times"></i>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Nearby Locations -->
+      
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="#" class="bottom-nav-item active" data-section="dashboard">
+      <i class="fas fa-home"></i>
+      <span>Home</span>
+    </a>
+    <a href="#" class="bottom-nav-item" data-section="my-documents">
+      <i class="fas fa-file-alt"></i>
+      <span>Documents</span>
+    </a>
+    <div class="bottom-nav-item print-btn">
+      <button class="print-btn-circle" id="print-btn">
+        <i class="fas fa-print"></i>
+      </button>
+    </div>
+    <a href="#" class="bottom-nav-item" data-section="find-locations">
+      <i class="fas fa-map-marker-alt"></i>
+      <span>Locations</span>
+    </a>
+    <a href="#" class="bottom-nav-item" data-section="profile">
+      <i class="fas fa-user"></i>
+      <span>Profile</span>
+    </a>
+  </nav>
+
+  <!-- Print Modal -->
+  <div class="modal" id="print-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Print Document</h3>
+        <button class="modal-close" id="modal-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="drop-zone" id="drop-zone">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p class="drop-zone-text">Drag and drop a file here, or click to browse</p>
+          <p class="file-formats">Supported formats: PDF, DOC, DOCX, JPG, PNG</p>
+        </div>
+
+        <div class="option-group">
+          <label class="option-label">Color</label>
+          <div class="radio-group">
+            <div class="radio-option">
+              <input type="radio" name="color" id="color-bw" checked>
+              <label for="color-bw">Black & White</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" name="color" id="color-color">
+              <label for="color-color">Color</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label class="option-label">Sides</label>
+          <div class="radio-group">
+            <div class="radio-option">
+              <input type="radio" name="sides" id="sides-one" checked>
+              <label for="sides-one">One-sided</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" name="sides" id="sides-two">
+              <label for="sides-two">Two-sided</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label class="option-label">Paper Size</label>
+          <div class="radio-group">
+            <div class="radio-option">
+              <input type="radio" name="size" id="size-letter" checked>
+              <label for="size-letter">Letter</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" name="size" id="size-legal">
+              <label for="size-legal">Legal</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" name="size" id="size-a4">
+              <label for="size-a4">A4</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel" data-action="cancel-print">Cancel</button>
+        <button class="btn btn-primary" id="modal-submit" data-action="submit-print" >Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    document.addEventListener('DOMContentLoaded', function() {
+      // Theme Toggle
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeIcon = document.getElementById('theme-icon');
+      
+      themeToggle.addEventListener('click', function() {
+        document.body.classList.toggle('dark-mode');
+        
+        if (document.body.classList.contains('dark-mode')) {
+          themeIcon.classList.remove('fa-moon');
+          themeIcon.classList.add('fa-sun');
+          localStorage.setItem('theme', 'dark');
+        } else {
+          themeIcon.classList.remove('fa-sun');
+          themeIcon.classList.add('fa-moon');
+          localStorage.setItem('theme', 'light');
+        }
+      });
+      
+      // Check for saved theme preference
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+      }
+      
+      // Sidebar Toggle
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+      
+      menuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('active');
+        sidebarOverlay.classList.toggle('active');
+      });
+      
+      sidebarOverlay.addEventListener('click', function() {
+        sidebar.classList.remove('active');
+        sidebarOverlay.classList.remove('active');
+      });
+      
+      // Print Modal
+      const printBtn = document.getElementById('print-btn');
+      const printModal = document.getElementById('print-modal');
+      const modalClose = document.getElementById('modal-close');
+      const modalCancel = document.getElementById('modal-cancel');
+      
+      printBtn.addEventListener('click', function() {
+        printModal.style.display = 'flex';
+      });
+      
+      function closeModal() {
+        printModal.style.display = 'none';
+      }
+      
+      modalClose.addEventListener('click', closeModal);
+      modalCancel.addEventListener('click', closeModal);
+      
+      printModal.addEventListener('click', function(e) {
+        if (e.target === printModal) {
+          closeModal();
+        }
+      });
+      
+      // File Upload
+      let selectedFile = null; // Declare globally
+
+const dropZone = document.getElementById('drop-zone');
+let fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+
+dropZone.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) {
+    selectedFile = e.target.files[0];
+    previewFile(selectedFile);
+  }
+});
+
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.style.backgroundColor = 'var(--secondary)';
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.style.backgroundColor = '';
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.style.backgroundColor = '';
+  
+  if (e.dataTransfer.files.length) {
+    selectedFile = e.dataTransfer.files[0];
+    previewFile(selectedFile);
+  }
+});
+
+function previewFile(file) {
+  const fileSize = (file.size / 1024).toFixed(2);
+
+  dropZone.innerHTML = `
+    <div class="file-preview">
+      <div class="file-icon">
+        <i class="fas fa-file"></i>
+      </div>
+      <div class="file-info">
+        <div class="file-name">${file.name}</div>
+        <div class="file-size">${fileSize} KB</div>
+      </div>
+      <button class="remove-file" id="remove-file">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `;
+
+  document.getElementById('remove-file').addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetDropZone();
+    selectedFile = null;
+  });
+}
+
+function resetDropZone() {
+  dropZone.innerHTML = `
+    <i class="fas fa-cloud-upload-alt"></i>
+    <p class="drop-zone-text">Drag and drop a file here, or click to browse</p>
+    <p class="file-formats">Supported formats: PDF, DOC, DOCX, JPG, PNG</p>
+  `;
+  fileInput.value = '';
+}
+
+// ✅ Upload only when Continue is clicked
+document.getElementById('modal-submit').addEventListener('click', () => {
+  const action = modalSubmitBtn.dataset.action;
+  if (action === 'submit-print') {
+    const selectedFile = fileInput.files[0];
+    if (!selectedFile) {
+      alert("Please select a file first.");
+      return;
+    }
+    handleFileUpload(selectedFile);
+  }
+});
+
+// Upload logic
+function handleFileUpload(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  fetch('http://localhost:8000/upload/', {
+    method: 'POST',
+    body: formData
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.url) {
+        console.log('Uploaded file URL:', data.url);
+        alert('File uploaded successfully!');
+      } else if (data.error) {
+        alert(data.error);
+      }
+      closeModal();
+    })
+    .catch((error) => {
+      console.error('Upload error:', error);
+      alert('Upload failed.');
+    });
+}
+
+
+      function resetDropZone() {
+        dropZone.innerHTML = `
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p class="drop-zone-text">Drag and drop a file here, or click to browse</p>
+          <p class="file-formats">Supported formats: PDF, DOC, DOCX, JPG, PNG</p>
+        `;
+        fileInput.value = '';
+      }
+      
+      // For demo purposes - progress bars animation
+      const progressFills = document.querySelectorAll('.progress-fill');
+      progressFills.forEach(fill => {
+        const currentWidth = fill.style.width;
+        fill.style.width = '0';
+        setTimeout(() => {
+          fill.style.width = currentWidth;
+        }, 300);
+      });
+      
+      // Initialize Map (placeholder for demo)
+      function initMap() {
+        // Map initialization code would go here
+        console.log('Map initialized');
+      }
+      
+      // Simulate map loading
+      if (document.getElementById('map')) {
+        setTimeout(initMap, 1000);
+      }
+      
+      // Setup navigation interactions
+      // Sidebar navigation
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Remove active class from all sidebar links
+          document.querySelectorAll('.nav-link').forEach(navLink => {
+            navLink.classList.remove('active');
+          });
+          
+          // Add active class to clicked link
+          this.classList.add('active');
+          
+          // Update main content based on selected navigation item
+          updateContent(this.getAttribute('data-section'));
+          
+          // Close sidebar on mobile after selection
+          if (window.innerWidth < 768) {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+          }
+        });
+      });
+      
+      // Bottom navigation
+      document.querySelectorAll('.bottom-nav-item').forEach(item => {
+        if (!item.classList.contains('print-btn')) {
+          item.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all bottom nav items
+            document.querySelectorAll('.bottom-nav-item').forEach(navItem => {
+              navItem.classList.remove('active');
+            });
+            
+            // Add active class to clicked item
+            this.classList.add('active');
+            
+            // Update content based on selected navigation item
+            updateContent(this.getAttribute('data-section'));
+          });
+        }
+      });
+      
+      // Function to update content based on navigation
+      function updateContent(section) {
+        // You could load different content here
+        console.log(`Navigating to section: ${section}`);
+        
+        // For demonstration purposes, show an alert
+        if (section) {
+          alert(`You've navigated to the "${section}" section. This functionality is working but content isn't being changed for this demo.`);
+        }
+      }
+      
+      // Make buttons work
+     
+      
+      document.querySelectorAll('.select-button').forEach(button => {
+        button.addEventListener('click', function() {
+          const location = this.closest('.location-card').querySelector('.location-name').textContent;
+          alert(`Selected print location: ${location}`);
+        });
+      });
+      
+      document.querySelectorAll('.link-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          const action = this.getAttribute('data-action');
+          if (action) {
+            alert(`Action "${action}" triggered successfully!`);
+          }
+        });
+      });
+
+      const continueBtn = document.getElementById('modal-submit');
+      continueBtn.addEventListener('click', () => {
+        if (!selectedFile) {
+          alert("Please select a file first.");
+          return;
+        }
+        handleFileUpload(selectedFile);
+      });
+    });
+  </script>
+</body>
+</html>

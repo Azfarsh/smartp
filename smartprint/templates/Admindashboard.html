@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PrintMe Admin Dashboard</title>
+  <!-- FontAwesome for high-quality icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f4f4f4;
+      --bg-tertiary: #f9f9f9;
+      --text-primary: #000000;
+      --text-secondary: #555555;
+      --text-muted: #777777;
+      --border-color: #e0e0e0;
+      --accent-color: #111111;
+      --card-bg: #ffffff;
+      --header-bg: #f9f9f9;
+      --table-header: #f1f1f1;
+      --hover-bg: rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --transition: all 0.3s ease;
+    }
+
+    .dark-mode {
+      --bg-primary: #121212;
+      --bg-secondary: #1e1e1e;
+      --bg-tertiary: #252525;
+      --text-primary: #ffffff;
+      --text-secondary: #cccccc;
+      --text-muted: #999999;
+      --border-color: #333333;
+      --accent-color: #ffffff;
+      --card-bg: #1e1e1e;
+      --header-bg: #252525;
+      --table-header: #2a2a2a;
+      --hover-bg: rgba(255, 255, 255, 0.05);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", "Segoe UI", sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      transition: var(--transition);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .sidebar {
+      width: 260px;
+      height: 100vh;
+      background: var(--bg-secondary);
+      padding: 2rem 1.5rem;
+      border-right: 1px solid var(--border-color);
+      position: fixed;
+      left: 0;
+      top: 0;
+      transition: var(--transition);
+      z-index: 50;
+    }
+
+    .sidebar .logo {
+      font-weight: 700;
+      font-size: 1.5rem;
+      margin-bottom: 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sidebar .logo i {
+      font-size: 1.75rem;
+    }
+
+    .sidebar ul {
+      list-style: none;
+    }
+
+    .sidebar ul li {
+      margin: 0.8rem 0;
+    }
+
+    .sidebar ul li a {
+      text-decoration: none;
+      color: var(--text-primary);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+
+    .sidebar ul li a:hover {
+      background: var(--hover-bg);
+    }
+
+    .sidebar ul li a.active {
+      background: var(--hover-bg);
+      font-weight: 600;
+    }
+
+    .sidebar ul li a i {
+      width: 20px;
+      text-align: center;
+    }
+
+    .header {
+      position: fixed;
+      left: 260px;
+      right: 0;
+      height: 70px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2rem;
+      z-index: 40;
+      transition: var(--transition);
+    }
+
+    .theme-toggle {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: var(--transition);
+    }
+
+    .theme-toggle:hover {
+      background: var(--hover-bg);
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .profile img {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--accent-color);
+    }
+
+    .profile-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-info .name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .profile-info .role {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .profile-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .profile-actions a {
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: var(--transition);
+    }
+
+    .profile-actions a:hover {
+      color: var(--text-secondary);
+    }
+
+    .main-content {
+      margin-left: 260px;
+      padding: 90px 2rem 2rem;
+      width: calc(100% - 260px);
+      transition: var(--transition);
+    }
+
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      border-left: 4px solid var(--accent-color);
+      padding-left: 0.8rem;
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    .view-all {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .view-all:hover {
+      color: var(--text-primary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      padding: 1.75rem;
+      border-radius: 12px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-3px);
+    }
+
+    .card i {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-size: 1.5rem;
+      opacity: 0.2;
+      color: var(--text-primary);
+    }
+
+    .card h3 {
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .card p {
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .card .trend {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .trend-up {
+      color: #10b981;
+    }
+
+    .trend-down {
+      color: #ef4444;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    .filters input,
+    .filters select,
+    .filters button {
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--card-bg);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      transition: var(--transition);
+    }
+
+    .filters input:focus,
+    .filters select:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+
+    .filters button {
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .filters button:hover {
+      background: var(--hover-bg);
+    }
+
+    .filters .search-wrapper {
+      position: relative;
+      flex-grow: 1;
+      max-width: 300px;
+    }
+
+    .filters .search-wrapper i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .filters .search-wrapper input {
+      padding-left: 2.5rem;
+      width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th {
+      background: var(--table-header);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: var(--hover-bg);
+    }
+
+    .status {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .status-active {
+      color: #10b981;
+    }
+
+    .status-inactive {
+      color: #9ca3af;
+    }
+
+    .status-pending {
+      color: #f59e0b;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .actions button {
+      padding: 0.5rem;
+      border: none;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .actions button:hover {
+      background: var(--hover-bg);
+    }
+
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .badge-primary {
+      background-color: rgba(0, 0, 255, 0.1);
+      color: #0000ff;
+    }
+
+    .badge-success {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+    }
+
+    .badge-warning {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #f59e0b;
+    }
+
+    .badge-danger {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    /* Adjust for dark mode */
+    .dark-mode .badge-primary {
+      background-color: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+    }
+
+    .dark-mode .badge-success {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .dark-mode .badge-warning {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+
+    .dark-mode .badge-danger {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    #settings .settings-card {
+      padding: 1.5rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    #settings .settings-card h3 {
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #settings .settings-card p {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    #settings .settings-card .settings-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    #settings .settings-card .settings-item {
+      padding: 0.5rem 1rem;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 220px;
+      }
+      .header {
+        left: 220px;
+      }
+      .main-content {
+        margin-left: 220px;
+        width: calc(100% - 220px);
+      }
+      .grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        box-shadow: var(--shadow);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .header {
+        left: 0;
+      }
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+      }
+      .header .menu-toggle {
+        display: block;
+      }
+      .header .profile-info {
+        display: none;
+      }
+    }
+
+    .menu-toggle {
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: none;
+    }
+
+    /* Tooltip Styles */
+    .tooltip {
+      position: relative;
+    }
+
+    .tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      z-index: 100;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <i class="fas fa-print"></i>
+      <span>PrintMe Admin</span>
+    </div>
+    <ul>
+      <li><a href="#overview" class="active"><i class="fas fa-chart-line"></i> Overview</a></li>
+      <li><a href="#financials"><i class="fas fa-coins"></i> Financials</a></li>
+      <li><a href="#vendors"><i class="fas fa-store"></i> Vendors</a></li>
+      <li><a href="#users"><i class="fas fa-users"></i> Users</a></li>
+      <li><a href="#orders"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+      <li><a href="#settings"><i class="fas fa-cog"></i> Settings</a></li>
+    </ul>
+  </aside>
+
+  <!-- Header -->
+  <header class="header">
+    <button class="menu-toggle" id="menu-toggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    
+    <div class="profile-actions">
+      <button class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode">
+        <i class="fas fa-moon"></i>
+      </button>
+    </div>
+    
+    <div class="profile">
+      <div class="profile-info">
+        <span class="name">Admin Name</span>
+        <span class="role">Super Admin</span>
+      </div>
+      <img src="https://via.placeholder.com/100" alt="Admin Profile">
+      <a href="#" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main-content">
+    <!-- Overview -->
+    <section id="overview">
+      <div class="section-header">
+        <h2>Overview</h2>
+        <a href="#" class="view-all">View Report <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <i class="fas fa-users"></i>
+          <h3>Total Users</h3>
+          <p>10,234</p>
+          <div class="trend trend-up">
+            <i class="fas fa-arrow-up"></i> 12% from last month
+          </div>
+        </div>
+        <div class="card">
+          <i class="fas fa-store"></i>
+          <h3>Total Vendors</h3>
+          <p>128</p>
+          <div class="trend trend-up">
+            <i class="fas fa-arrow-up"></i> 4% from last month
+          </div>
+        </div>
+        <div class="card">
+          <i class="fas fa-shopping-cart"></i>
+          <h3>Total Orders</h3>
+          <p>15,672</p>
+          <div class="trend trend-up">
+            <i class="fas fa-arrow-up"></i> 8% from last month
+          </div>
+        </div>
+        <div class="card">
+          <i class="fas fa-rupee-sign"></i>
+          <h3>Total Revenue</h3>
+          <p>₹1,25,000</p>
+          <div class="trend trend-up">
+            <i class="fas fa-arrow-up"></i> 7% from last month
+          </div>
+        </div>
+        <div class="card">
+          <i class="fas fa-chart-line"></i>
+          <h3>Growth Rate</h3>
+          <p>+5%</p>
+          <div class="trend trend-down">
+            <i class="fas fa-arrow-down"></i> 2% from last month
+          </div>
+        </div>
+        <div class="card">
+          <i class="fas fa-clock"></i>
+          <h3>Pending Orders</h3>
+          <p>45</p>
+          <div class="trend trend-down">
+            <i class="fas fa-arrow-down"></i> 10% from last month
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vendors -->
+    <section id="vendors">
+      <div class="section-header">
+        <h2>Vendors</h2>
+        <a href="#" class="view-all">View All Vendors <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="filters">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search vendors">
+        </div>
+        <select>
+          <option>All Locations</option>
+          <option>Mumbai</option>
+          <option>Delhi</option>
+          <option>Bangalore</option>
+        </select>
+        <select>
+          <option>All Status</option>
+          <option>Active</option>
+          <option>Inactive</option>
+        </select>
+        <button><i class="fas fa-filter"></i> Filter</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Location</th>
+            <th>Orders</th>
+            <th>Rating</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>PrintZone</td>
+            <td>Mumbai</td>
+            <td>150</td>
+            <td>4.8 <i class="fas fa-star" style="color: #f59e0b; font-size: 0.8rem;"></i></td>
+            <td>
+              <span class="status status-active">
+                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> Active
+              </span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Edit"><i class="fas fa-edit"></i></button>
+              <button class="tooltip" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+          <tr>
+            <td>QuickPrint</td>
+            <td>Delhi</td>
+            <td>90</td>
+            <td>4.5 <i class="fas fa-star" style="color: #f59e0b; font-size: 0.8rem;"></i></td>
+            <td>
+              <span class="status status-inactive">
+                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> Inactive
+              </span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Edit"><i class="fas fa-edit"></i></button>
+              <button class="tooltip" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+          <tr>
+            <td>InkMasters</td>
+            <td>Bangalore</td>
+            <td>210</td>
+            <td>4.9 <i class="fas fa-star" style="color: #f59e0b; font-size: 0.8rem;"></i></td>
+            <td>
+              <span class="status status-active">
+                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> Active
+              </span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Edit"><i class="fas fa-edit"></i></button>
+              <button class="tooltip" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Users -->
+    <section id="users">
+      <div class="section-header">
+        <h2>Users</h2>
+        <a href="#" class="view-all">View All Users <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="filters">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search users">
+        </div>
+        <select>
+          <option>All</option>
+          <option>Active</option>
+          <option>Inactive</option>
+        </select>
+        <button><i class="fas fa-filter"></i> Filter</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Orders</th>
+            <th>Last Active</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Rahul Sharma</td>
+            <td>rahul@example.com</td>
+            <td>25</td>
+            <td>May 10, 2025</td>
+            <td>
+              <span class="badge badge-success">Active</span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Edit"><i class="fas fa-edit"></i></button>
+            </td>
+          </tr>
+          <tr>
+            <td>Priya Patel</td>
+            <td>priya@example.com</td>
+            <td>12</td>
+            <td>May 8, 2025</td>
+            <td>
+              <span class="badge badge-success">Active</span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Edit"><i class="fas fa-edit"></i></button>
+            </td>
+          </tr>
+          <tr>
+            <td>Akash Singh</td>
+            <td>akash@example.com</td>
+            <td>5</td>
+            <td>Apr 30, 2025</td>
+            <td>
+              <span class="badge badge-warning">Inactive</span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Edit"><i class="fas fa-edit"></i></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Orders -->
+    <section id="orders">
+      <div class="section-header">
+        <h2>Orders</h2>
+        <a href="#" class="view-all">View All Orders <i class="fas fa-arrow-right"></i></a>
+      </div>
+      <div class="filters">
+        <div class="search-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search orders">
+        </div>
+        <select>
+          <option>All Status</option>
+          <option>Pending</option>
+          <option>In Progress</option>
+          <option>Completed</option>
+        </select>
+        <button><i class="fas fa-filter"></i> Apply</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>User</th>
+            <th>Vendor</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>#12345</strong></td>
+            <td>Rahul Sharma</td>
+            <td>PrintZone</td>
+            <td><span class="badge badge-primary">Priority</span></td>
+            <td>₹450</td>
+            <td>
+              <span class="badge badge-success">Completed</span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Print Invoice"><i class="fas fa-file-invoice"></i></button>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>#12346</strong></td>
+            <td>Priya Patel</td>
+            <td>InkMasters</td>
+            <td><span class="badge badge-primary">Standard</span></td>
+            <td>₹320</td>
+            <td>
+              <span class="badge badge-warning">In Progress</span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Print Invoice"><i class="fas fa-file-invoice"></i></button>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>#12347</strong></td>
+            <td>Akash Singh</td>
+            <td>QuickPrint</td>
+            <td><span class="badge badge-danger">Express</span></td>
+            <td>₹650</td>
+            <td>
+              <span class="badge badge-danger">Pending</span>
+            </td>
+            <td class="actions">
+              <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+              <button class="tooltip" data-tooltip="Print Invoice"><i class="fas fa-file-invoice"></i></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings">
+      <div class="section-header">
+        <h2>Settings</h2>
+      </div>
+      <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">Manage roles, system preferences, and integrations.</p>
+      
+      <div class="settings-card">
+        <h3><i class="fas fa-user-shield"></i> User Roles</h3>
+        <p>Manage access levels and permissions for different user types.</p>
+        <div class="settings-items">
+            <div class="settings-item">Super Admin</div>
+            <div class="settings-item">Manager</div>
+            <div class="settings-item">Vendor</div>
+            <div class="settings-item">Support</div>
+          </div>
+        </div>
+        
+        <div class="settings-card">
+          <h3><i class="fas fa-globe"></i> Regional Settings</h3>
+          <p>Configure timezone, currency, and language preferences.</p>
+          <div class="settings-items">
+            <div class="settings-item">INR (₹)</div>
+            <div class="settings-item">IST (GMT+5:30)</div>
+            <div class="settings-item">English</div>
+            <div class="settings-item">Hindi</div>
+          </div>
+        </div>
+        
+        <div class="settings-card">
+          <h3><i class="fas fa-bell"></i> Notification Settings</h3>
+          <p>Manage email, SMS, and in-app notification preferences.</p>
+          <div class="settings-items">
+            <div class="settings-item">Order Updates</div>
+            <div class="settings-item">User Registrations</div>
+            <div class="settings-item">Payment Alerts</div>
+            <div class="settings-item">System Alerts</div>
+          </div>
+        </div>
+        
+        <div class="settings-card">
+          <h3><i class="fas fa-link"></i> Integrations</h3>
+          <p>Connect with payment gateways, delivery services, and CRM tools.</p>
+          <div class="settings-items">
+            <div class="settings-item">RazorPay</div>
+            <div class="settings-item">Delhivery</div>
+            <div class="settings-item">Google Analytics</div>
+            <div class="settings-item">ZohoBooks</div>
+          </div>
+        </div>
+        
+        <div class="settings-card">
+          <h3><i class="fas fa-shield-alt"></i> Security Settings</h3>
+          <p>Configure two-factor authentication, password policies, and API keys.</p>
+          <div class="settings-items">
+            <div class="settings-item">2FA Authentication</div>
+            <div class="settings-item">Password Policy</div>
+            <div class="settings-item">API Access</div>
+            <div class="settings-item">Audit Logs</div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Financials -->
+      <section id="financials">
+        <div class="section-header">
+          <h2>Financials</h2>
+          <a href="#" class="view-all">View Financial Reports <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <div class="grid">
+          <div class="card">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <h3>Total Revenue</h3>
+            <p>₹1,25,000</p>
+            <div class="trend trend-up">
+              <i class="fas fa-arrow-up"></i> 7% from last month
+            </div>
+          </div>
+          <div class="card">
+            <i class="fas fa-coins"></i>
+            <h3>Platform Fees</h3>
+            <p>₹18,750</p>
+            <div class="trend trend-up">
+              <i class="fas fa-arrow-up"></i> 5% from last month
+            </div>
+          </div>
+          <div class="card">
+            <i class="fas fa-hand-holding-usd"></i>
+            <h3>Vendor Payouts</h3>
+            <p>₹98,500</p>
+            <div class="trend trend-up">
+              <i class="fas fa-arrow-up"></i> 6% from last month
+            </div>
+          </div>
+          <div class="card">
+            <i class="fas fa-percentage"></i>
+            <h3>Take Rate</h3>
+            <p>15%</p>
+            <div class="trend">
+              Same as last month
+            </div>
+          </div>
+        </div>
+        
+        <div class="filters" style="margin-top: 2rem;">
+          <div class="search-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search transactions">
+          </div>
+          <select>
+            <option>All Types</option>
+            <option>Revenue</option>
+            <option>Payouts</option>
+            <option>Refunds</option>
+          </select>
+          <button><i class="fas fa-filter"></i> Filter</button>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>#FIN001</strong></td>
+              <td>May 10, 2025</td>
+              <td>Platform fee from order #12345</td>
+              <td><span class="badge badge-primary">Revenue</span></td>
+              <td>₹67.50</td>
+              <td><span class="badge badge-success">Completed</span></td>
+              <td class="actions">
+                <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+                <button class="tooltip" data-tooltip="Download"><i class="fas fa-download"></i></button>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>#FIN002</strong></td>
+              <td>May 10, 2025</td>
+              <td>Vendor payout to PrintZone</td>
+              <td><span class="badge badge-warning">Payout</span></td>
+              <td>₹382.50</td>
+              <td><span class="badge badge-success">Completed</span></td>
+              <td class="actions">
+                <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+                <button class="tooltip" data-tooltip="Download"><i class="fas fa-download"></i></button>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>#FIN003</strong></td>
+              <td>May 9, 2025</td>
+              <td>Refund for order #12340</td>
+              <td><span class="badge badge-danger">Refund</span></td>
+              <td>₹450.00</td>
+              <td><span class="badge badge-success">Completed</span></td>
+              <td class="actions">
+                <button class="tooltip" data-tooltip="View Details"><i class="fas fa-eye"></i></button>
+                <button class="tooltip" data-tooltip="Download"><i class="fas fa-download"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  
+    <script>
+      // Theme Toggle
+      const themeToggle = document.getElementById('theme-toggle');
+      const body = document.body;
+      const icon = themeToggle.querySelector('i');
+      
+      // Check for saved theme preference
+      if (localStorage.getItem('theme') === 'dark') {
+        body.classList.add('dark-mode');
+        icon.classList.replace('fa-moon', 'fa-sun');
+      }
+      
+      themeToggle.addEventListener('click', () => {
+        body.classList.toggle('dark-mode');
+        
+        // Update icon
+        if (body.classList.contains('dark-mode')) {
+          icon.classList.replace('fa-moon', 'fa-sun');
+          localStorage.setItem('theme', 'dark');
+        } else {
+          icon.classList.replace('fa-sun', 'fa-moon');
+          localStorage.setItem('theme', 'light');
+        }
+      });
+      
+      // Mobile menu toggle
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebar = document.querySelector('.sidebar');
+      
+      menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+      });
+      
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 768) {
+          if (!sidebar.contains(e.target) && !menuToggle.contains(e.target) && sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+          }
+        }
+      });
+      
+      // Navigation highlighting
+      const navLinks = document.querySelectorAll('.sidebar a');
+      const sections = document.querySelectorAll('section');
+      
+      // Function to set active link based on scroll position
+      function setActiveLink() {
+        let currentSection = '';
+        
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop - 100;
+          const sectionHeight = section.clientHeight;
+          if (pageYOffset >= sectionTop && pageYOffset < sectionTop + sectionHeight) {
+            currentSection = '#' + section.getAttribute('id');
+          }
+        });
+        
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === currentSection) {
+            link.classList.add('active');
+          }
+        });
+      }
+      
+      // Update active link on scroll
+      window.addEventListener('scroll', setActiveLink);
+      
+      // Update active link on click
+      navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          navLinks.forEach(link => link.classList.remove('active'));
+          this.classList.add('active');
+          
+          // Close sidebar on mobile after click
+          if (window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
+          }
+        });
+      });
+      
+      // Initialize
+      setActiveLink();
+    </script>
+  </body>
+  </html>
