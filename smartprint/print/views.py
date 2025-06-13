@@ -26,24 +26,27 @@ def upload_to_r2(request):
         if not file:
             return JsonResponse({'error': 'No file uploaded'}, status=400)
 
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=settings.R2_ACCESS_KEY,
-            aws_secret_access_key=settings.R2_SECRET_KEY,
-            endpoint_url=settings.R2_ENDPOINT,
-            region_name='auto'
-        )
+        try:
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
 
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=file.name,
-            Body=file.read(),
-            ContentType=file.content_type
-        )
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=file.name,
+                Body=file.read(),
+                ContentType=file.content_type
+            )
 
-        # Optional: return public URL if accessible
-        file_url = f"{settings.R2_ENDPOINT}/{settings.R2_BUCKET}/{file.name}"
-        return JsonResponse({'message': 'File uploaded', 'url': file_url})
+            # Optional: return public URL if accessible
+            file_url = f"{settings.R2_ENDPOINT}/{settings.R2_BUCKET}/{file.name}"
+            return JsonResponse({'message': 'File uploaded', 'url': file_url})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request'}, status=405)
 
