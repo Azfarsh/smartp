@@ -12,24 +12,17 @@ STATICFILES_DIRS = [
 ]
 SECRET_KEY = 'your-secret'
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-ASGI_APPLICATION = 'smartprint.asgi.application'
-# Application definition
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
+ALLOWED_HOSTS = []
+
 INSTALLED_APPS = [
+    'print',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',  # Make sure channels is before your apps
-    'corsheaders',
-    'print',
+    'corsheaders',  # ✅ Required for CORS
 ]
 
 MIDDLEWARE = [
@@ -81,10 +74,10 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ✅ R2 credentials from .env
-R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY')
-R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
-R2_ENDPOINT = os.getenv('R2_ENDPOINT')
-R2_BUCKET = os.getenv('R2_BUCKET')
+R2_ACCESS_KEY = 'e02ce6580b8c81a4899bc6f4b2250f65'
+R2_SECRET_KEY = 'ad35d6fae06bd3fe15956642348a0391fbd8c8f5a3cdca052b7484869179b8e9'
+R2_ENDPOINT = 'https://d3e1ce952178b1093bba642e6d0d4ab5.r2.cloudflarestorage.com'
+R2_BUCKET = 'printme'
 
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
