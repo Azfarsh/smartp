@@ -38,29 +38,43 @@ def upload_to_r2(request):
     if request.method == 'POST':
         # Process multiple files with their settings
         try:
-            copies = request.POST.get("copies")
-            color = request.POST.get("color")
-            orientation = request.POST.get("orientation")
-            
             files_uploaded = 0
+            file_count = int(request.POST.get('file_count', 0))
             
-            for key in request.FILES:
-                file = request.FILES[key]
-                file_content = file.read()
+            # Process each file with its corresponding settings
+            for i in range(file_count):
+                file_key = f'file_{i}'
+                settings_key = f'settings_{i}'
                 
-                # Create a JSON file with the same name but .json extension
-                file_name = file.name
-                json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
-                
-                # Create metadata JSON content
-                metadata = {
-                    "filename": file_name,
-                    "copies": copies,
-                    "color": color,
-                    "orientation": orientation,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "status": "pending"
-                }
+                if file_key in request.FILES and settings_key in request.POST:
+                    # Get the file
+                    file = request.FILES[file_key]
+                    file_content = file.read()
+                    
+                    # Get and parse the settings JSON
+                    settings_json = request.POST.get(settings_key)
+                    print_settings = json.loads(settings_json)
+                    
+                    # Create a JSON file with the same name but .json extension
+                    file_name = file.name
+                    json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
+                    
+                    # Use settings from the parsed JSON
+                    metadata = {
+                        "filename": file_name,
+                        "copies": print_settings.get("copies", "1"),
+                        "color": print_settings.get("color", "bw"),
+                        "orientation": print_settings.get("orientation", "portrait"),
+                        "pageRange": print_settings.get("pageRange", ""),
+                        "specificPages": print_settings.get("specificPages", ""),
+                        "pageSize": print_settings.get("pageSize", "A4"),
+                        "spiralBinding": print_settings.get("spiralBinding", "No"),
+                        "lamination": print_settings.get("lamination", "No"),
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "status": "pending",
+                        "job_completed": "NO",
+                        "Trash": "NO"
+                    }
                 json_content = json.dumps(metadata)
 
                 # Initialize S3 client
@@ -180,28 +194,44 @@ def list_r2_files():
 def process_print_request(request):
     if request.method == 'POST':
         try:
-            copies = request.POST.get("copies")
-            color = request.POST.get("color")
-            orientation = request.POST.get("orientation")
-
-            for key in request.FILES:
-                file = request.FILES[key]
-                file_content = file.read()
+            file_count = int(request.POST.get('file_count', 0))
+            files_processed = 0
+            
+            # Process each file with its corresponding settings
+            for i in range(file_count):
+                file_key = f'file_{i}'
+                settings_key = f'settings_{i}'
                 
-                # Create a JSON file with the same name but .json extension
-                file_name = file.name
-                json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
-                
-                # Create metadata JSON content
-                import json
-                metadata = {
-                    "filename": file_name,
-                    "copies": copies,
-                    "color": color,
-                    "orientation": orientation,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "status": "pending"
-                }
+                if file_key in request.FILES and settings_key in request.POST:
+                    # Get the file
+                    file = request.FILES[file_key]
+                    file_content = file.read()
+                    
+                    # Get and parse the settings JSON
+                    settings_json = request.POST.get(settings_key)
+                    print_settings = json.loads(settings_json)
+                    
+                    # Create a JSON file with the same name but .json extension
+                    file_name = file.name
+                    json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
+                    
+                    # Use settings from the parsed JSON
+                    metadata = {
+                        "filename": file_name,
+                        "copies": print_settings.get("copies", "1"),
+                        "color": print_settings.get("color", "bw"),
+                        "orientation": print_settings.get("orientation", "portrait"),
+                        "pageRange": print_settings.get("pageRange", ""),
+                        "specificPages": print_settings.get("specificPages", ""),
+                        "pageSize": print_settings.get("pageSize", "A4"),
+                        "spiralBinding": print_settings.get("spiralBinding", "No"),
+                        "lamination": print_settings.get("lamination", "No"),
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "status": "pending",
+                        "job_completed": "NO",
+                        "Trash": "NO"
+                    }
+                    files_processed += 1
                 json_content = json.dumps(metadata)
 
                 # Initialize S3 client
