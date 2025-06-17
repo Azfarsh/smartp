@@ -77,21 +77,21 @@ def upload_to_r2(request):
                         "filename":
                         file_name,
                         "copies":
-                        print_settings.get("copies", "1"),
+                        str(print_settings.get("copies", "1")),
                         "color":
-                        print_settings.get("color", "bw"),
+                        str(print_settings.get("color", "bw")),
                         "orientation":
-                        print_settings.get("orientation", "portrait"),
+                        str(print_settings.get("orientation", "portrait")),
                         "pageRange":
-                        print_settings.get("pageRange", ""),
+                        str(print_settings.get("pageRange", "")),
                         "specificPages":
-                        print_settings.get("specificPages", ""),
+                        str(print_settings.get("specificPages", "")),
                         "pageSize":
-                        print_settings.get("pageSize", "A4"),
+                        str(print_settings.get("pageSize", "A4")),
                         "spiralBinding":
-                        print_settings.get("spiralBinding", "No"),
+                        str(print_settings.get("spiralBinding", "No")),
                         "lamination":
-                        print_settings.get("lamination", "No"),
+                        str(print_settings.get("lamination", "No")),
                         "timestamp":
                         datetime.datetime.now().isoformat(),
                         "status":
@@ -264,21 +264,21 @@ def process_print_request(request):
                         "filename":
                         file_name,
                         "copies":
-                        print_settings.get("copies", "1"),
+                        str(print_settings.get("copies", "1")),
                         "color":
-                        print_settings.get("color", "bw"),
+                        str(print_settings.get("color", "bw")),
                         "orientation":
-                        print_settings.get("orientation", "portrait"),
+                        str(print_settings.get("orientation", "portrait")),
                         "pageRange":
-                        print_settings.get("pageRange", ""),
+                        str(print_settings.get("pageRange", "")),
                         "specificPages":
-                        print_settings.get("specificPages", ""),
+                        str(print_settings.get("specificPages", "")),
                         "pageSize":
-                        print_settings.get("pageSize", "A4"),
+                        str(print_settings.get("pageSize", "A4")),
                         "spiralBinding":
-                        print_settings.get("spiralBinding", "No"),
+                        str(print_settings.get("spiralBinding", "No")),
                         "lamination":
-                        print_settings.get("lamination", "No"),
+                        str(print_settings.get("lamination", "No")),
                         "timestamp":
                         datetime.datetime.now().isoformat(),
                         "status":
