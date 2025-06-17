@@ -2,3 +2,28 @@ modules = ["python-3.12", "web", "nodejs-20", "c-clang14"]
 
 [nix]
 channel = "stable-24_05"
+
+[workflows]
+runButton = "Run Django Server"
+
+[[workflows.workflow]]
+name = "Run Django Server"
+author = 42816624
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd smartprint && python manage.py migrate && python manage.py runserver 0.0.0.0:5000"
+
+[[workflows.workflow]]
+name = "Start Server"
+author = 42816624
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd smartprint && python manage.py runserver 0.0.0.0:5000"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
