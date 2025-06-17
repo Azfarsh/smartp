@@ -1180,6 +1180,27 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .auto-print-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .auto-print-btn:hover {
+            background-color: var(--blue-accent);
+        }
+
+        .auto-print-btn i {
+            font-size: 1.1em;
+        }
     </style>
 </head>
 <body>
@@ -1202,6 +1223,10 @@
             <div class="mode-toggle" id="modeToggle">
                 <i class="fas fa-moon"></i>
             </div>
+            <button id="autoPrintBtn" class="auto-print-btn">
+                <i class="fas fa-print"></i>
+                <span>Auto Print Documents</span>
+            </button>
             <a href="#" class="logout">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Logout</span>
@@ -1968,6 +1993,65 @@
                 // For demonstration, we'll just log to console
                 console.log(`Print request accepted: ${documentName}`);
             };
+        });
+
+        // Add auto print functionality
+        document.getElementById('autoPrintBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/auto-print-documents/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Show success message
+                    const notification = document.createElement('div');
+                    notification.className = 'notification success';
+                    notification.innerHTML = `
+                        <i class="fas fa-check-circle"></i>
+                        <span>${data.message}</span>
+                    `;
+                    document.body.appendChild(notification);
+                    
+                    // Remove notification after 5 seconds
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 5000);
+                } else {
+                    // Show error message
+                    const notification = document.createElement('div');
+                    notification.className = 'notification error';
+                    notification.innerHTML = `
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>${data.error || 'Error printing documents'}</span>
+                    `;
+                    document.body.appendChild(notification);
+                    
+                    // Remove notification after 5 seconds
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 5000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                // Show error notification
+                const notification = document.createElement('div');
+                notification.className = 'notification error';
+                notification.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Error connecting to server</span>
+                `;
+                document.body.appendChild(notification);
+                
+                // Remove notification after 5 seconds
+                setTimeout(() => {
+                    notification.remove();
+                }, 5000);
+            }
         });
     </script>
 </body>
