@@ -173,6 +173,17 @@ def list_r2_files():
                     },
                     ExpiresIn=3600
                 )
+                
+                # Generate download URL for direct file access
+                download_url = s3.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params={
+                        'Bucket': settings.R2_BUCKET,
+                        'Key': key,
+                        'ResponseContentDisposition': f'inline; filename="{filename}"'
+                    },
+                    ExpiresIn=3600
+                )
 
                 # Get object metadata
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
@@ -189,6 +200,7 @@ def list_r2_files():
                 file_info = {
                     "filename": filename,
                     "preview_url": url,
+                    "download_url": download_url,
                     "file_type": file_type,
                     "file_extension": file_extension,
                     "size": format_file_size(obj.get('Size', 0)),
