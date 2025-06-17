@@ -234,8 +234,8 @@ def process_print_request(request):
                                   ContentType=file.content_type,
                                   Metadata={
                                       'copies': str(print_settings.get("copies", "1")),
-                                      'color': print_settings.get("color", "bw")),
-                                      'orientation': print_settings.get("orientation", "portrait")),
+                                      'color': print_settings.get("color", "bw"),
+                                      'orientation': print_settings.get("orientation", "portrait"),
                                       'pageRange': str(print_settings.get("pageRange", "")),
                                       'specificPages': str(print_settings.get("specificPages", "")),
                                       'pageSize': str(print_settings.get("pageSize", "A4")),
