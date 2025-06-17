@@ -68,40 +68,8 @@ def upload_to_r2(request):
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
 
-                    # Create a JSON file with the same name but .json extension
+                    # Use settings from the parsed JSON for metadata
                     file_name = file.name
-                    json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
-
-                    # Use settings from the parsed JSON
-                    metadata = {
-                        "filename":
-                        file_name,
-                        "copies":
-                        str(print_settings.get("copies", "1")),
-                        "color":
-                        str(print_settings.get("color", "bw")),
-                        "orientation":
-                        str(print_settings.get("orientation", "portrait")),
-                        "pageRange":
-                        str(print_settings.get("pageRange", "")),
-                        "specificPages":
-                        str(print_settings.get("specificPages", "")),
-                        "pageSize":
-                        str(print_settings.get("pageSize", "A4")),
-                        "spiralBinding":
-                        str(print_settings.get("spiralBinding", "No")),
-                        "lamination":
-                        str(print_settings.get("lamination", "No")),
-                        "timestamp":
-                        datetime.datetime.now().isoformat(),
-                        "status":
-                        "pending",
-                        "job_completed":
-                        "NO",
-                        "Trash":
-                        "NO"
-                    }
-                    json_content = json.dumps(metadata)
 
                     # Initialize S3 client
                     s3 = boto3.client('s3',
@@ -116,25 +84,19 @@ def upload_to_r2(request):
                                   Body=file_content,
                                   ContentType=file.content_type,
                                   Metadata={
-                                      'copies': str(metadata['copies']),
-                                      'color': metadata['color'],
-                                      'orientation': metadata['orientation'],
-                                      'pageRange': metadata['pageRange'],
-                                      'specificPages': metadata['specificPages'],
-                                      'pageSize': metadata['pageSize'],
-                                      'spiralBinding': metadata['spiralBinding'],
-                                      'lamination': metadata['lamination'],
-                                      'timestamp': metadata['timestamp'],
-                                      'status': metadata['status'],
-                                      'job_completed': metadata['job_completed'],
-                                      'trash': metadata['Trash']
+                                      'copies': str(print_settings.get("copies", "1")),
+                                      'color': print_settings.get("color", "bw"),
+                                      'orientation': print_settings.get("orientation", "portrait"),
+                                      'pageRange': str(print_settings.get("pageRange", "")),
+                                      'specificPages': str(print_settings.get("specificPages", "")),
+                                      'pageSize': str(print_settings.get("pageSize", "A4")),
+                                      'spiralBinding': str(print_settings.get("spiralBinding", "No")),
+                                      'lamination': str(print_settings.get("lamination", "No")),
+                                      'timestamp': datetime.datetime.now().isoformat(),
+                                      'status': 'pending',
+                                      'job_completed': 'NO',
+                                      'trash': 'NO'
                                   })
-
-                    # Upload the JSON metadata file
-                    s3.put_object(Bucket=settings.R2_BUCKET,
-                                  Key=json_file_name,
-                                  Body=json_content.encode('utf-8'),
-                                  ContentType='application/json')
 
                     files_uploaded += 1
 
@@ -255,40 +217,8 @@ def process_print_request(request):
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
 
-                    # Create a JSON file with the same name but .json extension
+                    # Use settings from the parsed JSON for metadata
                     file_name = file.name
-                    json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
-
-                    # Use settings from the parsed JSON
-                    metadata = {
-                        "filename":
-                        file_name,
-                        "copies":
-                        str(print_settings.get("copies", "1")),
-                        "color":
-                        str(print_settings.get("color", "bw")),
-                        "orientation":
-                        str(print_settings.get("orientation", "portrait")),
-                        "pageRange":
-                        str(print_settings.get("pageRange", "")),
-                        "specificPages":
-                        str(print_settings.get("specificPages", "")),
-                        "pageSize":
-                        str(print_settings.get("pageSize", "A4")),
-                        "spiralBinding":
-                        str(print_settings.get("spiralBinding", "No")),
-                        "lamination":
-                        str(print_settings.get("lamination", "No")),
-                        "timestamp":
-                        datetime.datetime.now().isoformat(),
-                        "status":
-                        "pending",
-                        "job_completed":
-                        "NO",
-                        "Trash":
-                        "NO"
-                    }
-                    json_content = json.dumps(metadata)
 
                     # Initialize S3 client
                     s3 = boto3.client('s3',
@@ -303,25 +233,19 @@ def process_print_request(request):
                                   Body=file_content,
                                   ContentType=file.content_type,
                                   Metadata={
-                                      'copies': str(metadata['copies']),
-                                      'color': metadata['color'],
-                                      'orientation': metadata['orientation'],
-                                      'pageRange': metadata['pageRange'],
-                                      'specificPages': metadata['specificPages'],
-                                      'pageSize': metadata['pageSize'],
-                                      'spiralBinding': metadata['spiralBinding'],
-                                      'lamination': metadata['lamination'],
-                                      'timestamp': metadata['timestamp'],
-                                      'status': metadata['status'],
-                                      'job_completed': metadata['job_completed'],
-                                      'trash': metadata['Trash']
+                                      'copies': str(print_settings.get("copies", "1")),
+                                      'color': print_settings.get("color", "bw")),
+                                      'orientation': print_settings.get("orientation", "portrait")),
+                                      'pageRange': str(print_settings.get("pageRange", "")),
+                                      'specificPages': str(print_settings.get("specificPages", "")),
+                                      'pageSize': str(print_settings.get("pageSize", "A4")),
+                                      'spiralBinding': str(print_settings.get("spiralBinding", "No")),
+                                      'lamination': str(print_settings.get("lamination", "No")),
+                                      'timestamp': datetime.datetime.now().isoformat(),
+                                      'status': 'pending',
+                                      'job_completed': 'NO',
+                                      'trash': 'NO'
                                   })
-
-                    # Upload the JSON metadata file
-                    s3.put_object(Bucket=settings.R2_BUCKET,
-                                  Key=json_file_name,
-                                  Body=json_content.encode('utf-8'),
-                                  ContentType='application/json')
 
                     files_processed += 1
 
