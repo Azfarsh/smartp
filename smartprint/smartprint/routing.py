@@ -1,6 +1,7 @@
+
 from django.urls import re_path
-from vendor.consumers import VendorConsumer
+from print import consumers
 
 websocket_urlpatterns = [
-    re_path(r'^ws/vendor/print/(?P<vendor_id>\w+)/$', VendorConsumer.as_asgi()),
-] 
+    re_path(r'ws/vendor/(?P<vendor_id>\w+)/$', consumers.VendorConsumer.as_asgi()),
+]

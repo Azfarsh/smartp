@@ -24,6 +24,28 @@ mode = "sequential"
 task = "shell.exec"
 args = "cd smartprint && python manage.py runserver 0.0.0.0:5000"
 
+[[workflows.workflow]]
+name = "Start Vendor Client"
+author = 42816624
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd smartprint && python vendor_client.py --vendor-id vendor1 --url ws://0.0.0.0:5000 --debug"
+
+[[workflows.workflow]]
+name = "Run Full System"
+author = 42816624
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd smartprint && python manage.py migrate && python manage.py runserver 0.0.0.0:5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd smartprint && sleep 5 && python vendor_client.py --vendor-id vendor1 --url ws://0.0.0.0:5000 --debug"
+
 [[ports]]
 localPort = 5000
 externalPort = 80

@@ -37,7 +37,7 @@ else:
         PLATFORM_PRINTING = None
 
 class AutomatedVendorPrintClient:
-    def __init__(self, vendor_id: str, base_url: str = "ws://127.0.0.1:5000", debug: bool = False):
+    def __init__(self, vendor_id: str, base_url: str = "ws://0.0.0.0:5000", debug: bool = False):
         """
         Initialize the automated vendor print client.
         
@@ -130,6 +130,15 @@ class AutomatedVendorPrintClient:
         
         # Start the job request loop
         threading.Thread(target=self.job_request_loop, daemon=True).start()
+        
+        # Send initial job request immediately
+        try:
+            self.ws.send(json.dumps({
+                'type': 'request_print_jobs',
+                'vendor_id': self.vendor_id
+            }))
+        except Exception as e:
+            self.log(f"❌ Error sending initial job request: {str(e)}")
     
     def job_request_loop(self):
         """Continuously request print jobs every 30 seconds."""
@@ -446,7 +455,7 @@ def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(description="Automated Vendor Print Client")
     parser.add_argument("--vendor-id", required=True, help="Vendor ID for identification")
-    parser.add_argument("--url", default="ws://127.0.0.1:5000", help="Base WebSocket URL of the Django application")
+    parser.add_argument("--url", default="ws://0.0.0.0:5000", help="Base WebSocket URL of the Django application")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     
     args = parser.parse_args()

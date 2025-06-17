@@ -19,6 +19,9 @@ class VendorConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
         print(f"Vendor {self.vendor_id} connected")
+        
+        # Automatically send pending jobs when vendor connects
+        await self.send_pending_jobs()
 
     async def disconnect(self, close_code):
         # Leave room group
