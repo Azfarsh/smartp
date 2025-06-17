@@ -68,7 +68,7 @@ def list_available_printers():
     print(f"\nDefault printer: {default}")
     return len(printers) > 0
 
-def download_print_file(file_url, temp_dir):
+def download_print_file(file_url, temp_dir, print_settings=None):
     """Download the print file from the server"""
     try:
         import requests
@@ -77,6 +77,20 @@ def download_print_file(file_url, temp_dir):
             file_path = os.path.join(temp_dir, os.path.basename(file_url))
             with open(file_path, 'wb') as f:
                 f.write(response.content)
+            
+            # Log print settings if available
+            if print_settings:
+                print(f"Print settings for {os.path.basename(file_url)}:")
+                print(f"  Copies: {print_settings.get('copies', 'N/A')}")
+                print(f"  Color: {print_settings.get('color', 'N/A')}")
+                print(f"  Orientation: {print_settings.get('orientation', 'N/A')}")
+                print(f"  Page Size: {print_settings.get('pageSize', 'N/A')}")
+                print(f"  Page Range: {print_settings.get('pageRange', 'N/A')}")
+                if print_settings.get('spiralBinding') == 'true':
+                    print(f"  Spiral Binding: Yes")
+                if print_settings.get('lamination') == 'true':
+                    print(f"  Lamination: Yes")
+            
             return file_path
         return None
     except Exception as e:
@@ -92,6 +106,7 @@ def on_message(ws, message):
         if message_type == 'print_request':
             print("Print request detected!")
             file_url = data.get('file_url')
+            print_settings = data.get('print_settings', {})
             if not file_url:
                 print("No file URL provided in print request")
                 return
@@ -99,7 +114,7 @@ def on_message(ws, message):
             # Create temporary directory for downloaded files
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Download the file
-                file_path = download_print_file(file_url, temp_dir)
+                file_path = download_print_file(file_url, temp_dir, print_settings)
                 if not file_path:
                     print("Failed to download print file")
                     return

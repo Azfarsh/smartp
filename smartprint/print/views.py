@@ -40,25 +40,25 @@ def upload_to_r2(request):
         try:
             files_uploaded = 0
             file_count = int(request.POST.get('file_count', 0))
-            
+
             # Process each file with its corresponding settings
             for i in range(file_count):
                 file_key = f'file_{i}'
                 settings_key = f'settings_{i}'
-                
+
                 if file_key in request.FILES and settings_key in request.POST:
                     # Get the file
                     file = request.FILES[file_key]
                     file_content = file.read()
-                    
+
                     # Get and parse the settings JSON
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
-                    
+
                     # Create a JSON file with the same name but .json extension
                     file_name = file.name
                     json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
-                    
+
                     # Use settings from the parsed JSON
                     metadata = {
                         "filename": file_name,
@@ -85,30 +85,36 @@ def upload_to_r2(request):
                     endpoint_url=settings.R2_ENDPOINT,
                     region_name='auto'
                 )
-                
-                # Upload the original file
+
+                # Upload the original file with metadata
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=file_name,
                     Body=file_content,
-                    ContentType=file.content_type
+                    ContentType=file.content_type,
+                    Metadata={
+                        'copies': str(metadata['copies']),
+                        'color': metadata['color'],
+                        'orientation': metadata['orientation'],
+                        'pageRange': metadata['pageRange'],
+                        'specificPages': metadata['specificPages'],
+                        'pageSize': metadata['pageSize'],
+                        'spiralBinding': metadata['spiralBinding'],
+                        'lamination': metadata['lamination'],
+                        'timestamp': metadata['timestamp'],
+                        'status': metadata['status'],
+                        'job_completed': metadata['job_completed'],
+                        'trash': metadata['Trash']
+                    }
                 )
-                
-                # Upload the metadata JSON file
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=json_file_name,
-                    Body=json_content,
-                    ContentType='application/json'
-                )
-                
+
                 files_uploaded += 1
-            
+
             if files_uploaded > 0:
                 return JsonResponse({'success': True, 'message': f'{files_uploaded} file(s) uploaded successfully'})
             else:
                 return JsonResponse({'error': 'No files uploaded'}, status=400)
-                
+
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
@@ -152,14 +158,14 @@ def list_r2_files():
         # Skip JSON metadata files
         if key.endswith('.json'):
             continue
-            
+
         filename = key.split("/")[-1]
         url = s3.generate_presigned_url(
             ClientMethod='get_object',
             Params={'Bucket': settings.R2_BUCKET, 'Key': key},
             ExpiresIn=3600
         )
-        
+
         # Default values
         file_info = {
             "filename": filename,
@@ -170,7 +176,7 @@ def list_r2_files():
             "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
             "priority": "Medium"
         }
-        
+
         # Add metadata if available
         if filename in metadata_cache:
             metadata = metadata_cache[filename]
@@ -188,7 +194,7 @@ def list_r2_files():
 
 # ─────────────────────────────────────────────────────────────
 # HANDLE 'PROCEED TO PRINT' – FILE + SETTINGS
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────
 
 @csrf_exempt
 def process_print_request(request):
@@ -196,25 +202,25 @@ def process_print_request(request):
         try:
             file_count = int(request.POST.get('file_count', 0))
             files_processed = 0
-            
+
             # Process each file with its corresponding settings
             for i in range(file_count):
                 file_key = f'file_{i}'
                 settings_key = f'settings_{i}'
-                
+
                 if file_key in request.FILES and settings_key in request.POST:
                     # Get the file
                     file = request.FILES[file_key]
                     file_content = file.read()
-                    
+
                     # Get and parse the settings JSON
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
-                    
+
                     # Create a JSON file with the same name but .json extension
                     file_name = file.name
                     json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
-                    
+
                     # Use settings from the parsed JSON
                     metadata = {
                         "filename": file_name,
@@ -242,21 +248,27 @@ def process_print_request(request):
                     endpoint_url=settings.R2_ENDPOINT,
                     region_name='auto'
                 )
-                
-                # Upload the original file
+
+                # Upload the original file with metadata
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=file_name,
                     Body=file_content,
-                    ContentType=file.content_type
-                )
-                
-                # Upload the metadata JSON file
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=json_file_name,
-                    Body=json_content,
-                    ContentType='application/json'
+                    ContentType=file.content_type,
+                    Metadata={
+                        'copies': str(metadata['copies']),
+                        'color': metadata['color'],
+                        'orientation': metadata['orientation'],
+                        'pageRange': metadata['pageRange'],
+                        'specificPages': metadata['specificPages'],
+                        'pageSize': metadata['pageSize'],
+                        'spiralBinding': metadata['spiralBinding'],
+                        'lamination': metadata['lamination'],
+                        'timestamp': metadata['timestamp'],
+                        'status': metadata['status'],
+                        'job_completed': metadata['job_completed'],
+                        'trash': metadata['Trash']
+                    }
                 )
 
             return JsonResponse({'success': True})
