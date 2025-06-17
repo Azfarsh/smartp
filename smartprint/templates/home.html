@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
 <head>
@@ -1725,6 +1726,34 @@
             transform: translateY(0);
         }
 
+        /* Hero Video Styles */
+        .hero-video-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .hero-video {
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .hero-video:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-bs-theme="dark"] .hero-video {
+            box-shadow: 0 8px 32px rgba(255, 255, 255, 0.1);
+        }
+
+        [data-bs-theme="dark"] .hero-video:hover {
+            box-shadow: 0 12px 40px rgba(255, 255, 255, 0.15);
+        }
+
         /* Mobile-First Responsive Design */
         @media (max-width: 768px) {
             /* Container and layout improvements */
@@ -2056,6 +2085,16 @@
                 width: 100%;
                 height: 200px;
                 margin-top: 24px;
+            }
+
+            .hero-video-container {
+                margin-top: 24px;
+            }
+
+            .hero-video {
+                max-width: 100%;
+                height: auto;
+                border-radius: 8px;
             }
 
             /* Navigation for small screens */
@@ -2949,96 +2988,29 @@
             </div>
             
             <div class="container">
-                <div class="row align-items-center">
-                    <div class="col-lg-6 hero-content">
-                        <h1 class="fade-in-up">
-                            Automated Printing Made
-                            <span class="text-gradient">Simple</span>
-                        </h1>
-                        <p class="lead fade-in-up">
-                            Upload your files, pay securely, and collect your prints with our token-based system. 
-                            Fast, reliable, and convenient printing service.
-                        </p>
-                        <div class="d-flex flex-column flex-md-row gap-3 fade-in-up">
-                            <a href="/login" class="btn btn-primary btn-lg" role="button" aria-label="Login to your account">
-                                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                                Login
+                <div class="row min-vh-100 align-items-center">
+                    <div class="col-lg-6">
+                        <h1 class="display-4 fw-bold mb-4">Smart Printing Made Simple</h1>
+                        <p class="lead mb-4">Upload your documents, choose your preferences, and get your prints instantly. Our automated system makes printing effortless.</p>
+                        <div class="d-flex gap-3">
+                            <a href="{% url 'login' %}" class="btn btn-primary btn-lg px-5 py-3">
+                                Get Started <i class="bi bi-arrow-right ms-2"></i>
                             </a>
-                            <a href="/signup" class="btn btn-outline-primary btn-lg" role="button" aria-label="Create new account">
-                                <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
-                                Sign Up
-                            </a>
-                        </div>
-                        
-                        <!-- Process Preview -->
-                        <div class="process-preview mt-5 fade-in-up">
-                            <p class="small text-muted mb-3">Simple 3-step process</p>
-                            <div class="d-flex flex-wrap gap-4 align-items-center">
-                                <div class="process-step">
-                                    <i class="bi bi-upload text-primary"></i>
-                                    <span class="ms-2">Upload Files</span>
-                                </div>
-                                <i class="bi bi-arrow-right text-muted"></i>
-                                <div class="process-step">
-                                    <i class="bi bi-credit-card text-success"></i>
-                                    <span class="ms-2">Pay Online</span>
-                                </div>
-                                <i class="bi bi-arrow-right text-muted"></i>
-                                <div class="process-step">
-                                    <i class="bi bi-ticket-perforated" style="color: #f97316;"></i>
-                                    <span class="ms-2">Collect with Token</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
-                    <div class="col-lg-6 text-center">
-                        <!-- Business Info Visual -->
-                        <div class="business-info-visual p-4">
-                            <!-- Modern Printing Illustration -->
-                            <svg width="500" height="400" viewBox="0 0 500 400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="hero-illustration">
-                                <!-- Printing Shop -->
-                                <rect x="150" y="200" width="200" height="150" rx="12" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/>
-                                <!-- Awning -->
-                                <rect x="130" y="180" width="240" height="30" rx="4" fill="#f97316"/>
-                                <rect x="130" y="210" width="240" height="8" fill="#ffffff"/>
-                                <!-- Sign -->
-                                <rect x="180" y="140" width="140" height="40" rx="6" fill="#0ea5e9"/>
-                                <text x="250" y="165" text-anchor="middle" fill="white" font-size="16" font-weight="bold">PRINT SHOP</text>
-                                
-                                <!-- Phone/Device -->
-                                <rect x="50" y="150" width="80" height="140" rx="12" fill="#1e293b"/>
-                                <rect x="60" y="165" width="60" height="100" rx="4" fill="#0ea5e9"/>
-                                <circle cx="90" cy="180" r="3" fill="white"/>
-                                <text x="90" y="220" text-anchor="middle" fill="white" font-size="14" font-weight="bold">Inkzo</text>
-                                <rect x="70" y="230" width="40" height="3" rx="1" fill="white" opacity="0.7"/>
-                                <rect x="70" y="240" width="30" height="3" rx="1" fill="white" opacity="0.5"/>
-                                
-                                <!-- Printer -->
-                                <rect x="220" y="280" width="60" height="30" rx="4" fill="#1e293b"/>
-                                <rect x="225" y="285" width="50" height="20" rx="2" fill="#0ea5e9"/>
-                                <!-- Paper -->
-                                <rect x="285" y="290" width="15" height="10" rx="1" fill="white"/>
-                                
-                                <!-- Floating Documents -->
-                                <rect x="80" y="80" width="30" height="40" rx="2" fill="white" stroke="#f97316" stroke-width="2" class="floating-element"/>
-                                <rect x="350" y="60" width="30" height="40" rx="2" fill="white" stroke="#0ea5e9" stroke-width="2" class="floating-element"/>
-                                <rect x="320" y="120" width="30" height="40" rx="2" fill="white" stroke="#10b981" stroke-width="2" class="floating-element"/>
-                                
-                                <!-- Token/Collection Area -->
-                                <rect x="190" y="320" width="120" height="25" rx="4" fill="#10b981"/>
-                                <text x="250" y="338" text-anchor="middle" fill="white" font-size="12" font-weight="bold">COLLECTION ZONE</text>
-                                
-                                <!-- People -->
-                                <circle cx="120" cy="320" r="8" fill="#fbbf24"/>
-                                <rect x="114" cy="328" width="12" height="20" rx="2" fill="#0ea5e9"/>
-                                
-                                <circle cx="380" cy="320" r="8" fill="#fbbf24"/>
-                                <rect x="374" cy="328" width="12" height="20" rx="2" fill="#10b981"/>
-                                
-                                <!-- Street -->
-                                <rect x="0" y="350" width="500" height="50" fill="#64748b"/>
-                                <rect x="0" y="375" width="500" height="4" fill="white" opacity="0.8"/>
-                            </svg>
+                    <div class="col-lg-6">
+                        <div class="hero-video-container text-center">
+                            <video 
+                                class="hero-video" 
+                                autoplay 
+                                muted 
+                                loop 
+                                playsinline
+                                style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);"
+                            >
+                                <source src="{% static 'images/download (1).mp4' %}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
                         </div>
                     </div>
                 </div>

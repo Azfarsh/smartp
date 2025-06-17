@@ -1,0 +1,736 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PrintMe</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --primary-hover: #1557b0;
+            --secondary-color: #34a853;
+            --danger-color: #ea4335;
+            --warning-color: #fbbc04;
+            --dark-color: #202124;
+            --light-gray: #f8f9fa;
+            --border-color: #dadce0;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --shadow: 0 1px 3px rgba(60,64,67,0.3);
+            --shadow-hover: 0 4px 8px rgba(60,64,67,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #87ceeb 0%, #b0e0e6 50%, #add8e6 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 900px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+        }
+
+        .login-left {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-left::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="40" r="0.5" fill="white" opacity="0.1"/><circle cx="40" cy="80" r="1.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .brand-logo {
+            position: relative;
+            z-index: 2;
+        }
+
+        .brand-logo h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-logo p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .login-right {
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h2 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .login-tabs {
+            display: flex;
+            background: var(--light-gray);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 2rem;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+        }
+
+        .tab-button.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: var(--shadow);
+        }
+
+        .login-form {
+            display: none;
+        }
+
+        .login-form.active {
+            display: block;
+        }
+
+        .social-login {
+            margin-bottom: 1.5rem;
+        }
+
+        .social-btn {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+        }
+
+        .social-btn:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-hover);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .google-btn {
+            border-color: #4285f4;
+        }
+
+        .google-btn:hover {
+            border-color: #4285f4;
+            background: #4285f4;
+            color: white;
+        }
+
+        .phone-btn {
+            border-color: var(--secondary-color);
+        }
+
+        .phone-btn:hover {
+            border-color: var(--secondary-color);
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--border-color);
+            z-index: 1;
+        }
+
+        .divider span {
+            background: white;
+            padding: 0 1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .forgot-password {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .forgot-password a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+
+        .phone-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .country-code {
+            width: 80px;
+            flex-shrink: 0;
+        }
+
+        .phone-number {
+            flex: 1;
+        }
+
+        .otp-container {
+            display: none;
+        }
+
+        .otp-inputs {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .otp-input {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .otp-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+
+            .login-left {
+                padding: 2rem;
+                text-align: center;
+            }
+
+            .login-left h1 {
+                font-size: 2rem;
+            }
+
+            .login-right {
+                padding: 2rem;
+            }
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Left Side - Branding -->
+        <div class="login-left">
+            <div class="brand-logo">
+                <h1>
+                    <i class="bi bi-printer"></i>
+                    PrintMe
+                </h1>
+                <p>Your smart printing solution. Upload, print, and manage your documents seamlessly from anywhere.</p>
+            </div>
+        </div>
+
+        <!-- Right Side - Login Forms -->
+        <div class="login-right">
+            <div class="login-header">
+                <h2>Welcome Back</h2>
+                <p>Choose your preferred login method</p>
+            </div>
+
+            <!-- Login Type Tabs -->
+            <div class="login-tabs">
+                <button class="tab-button active" onclick="showTab('user')">User</button>
+                <button class="tab-button" onclick="showTab('vendor')">Vendor</button>
+            </div>
+
+            <!-- User Login Form -->
+            <div id="user-form" class="login-form active">
+                <div class="social-login">
+                    <button class="social-btn google-btn" onclick="signInWithGoogle()">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+
+                    <button class="social-btn phone-btn" onclick="showPhoneLogin()">
+                        <i class="bi bi-telephone"></i>
+                        Continue with Phone
+                    </button>
+                </div>
+
+                <!-- Phone Login Container -->
+                <div id="phone-container" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Phone Number</label>
+                        <div class="phone-input-group">
+                            <select class="form-control country-code" id="countryCode">
+                                <option value="+91">+91</option>
+                                <option value="+1">+1</option>
+                                <option value="+44">+44</option>
+                            </select>
+                            <input type="tel" class="form-control phone-number" id="phoneNumber" placeholder="Enter phone number">
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="sendOTP()">Send OTP</button>
+
+                    <!-- OTP Container -->
+                    <div class="otp-container" id="otpContainer">
+                        <div class="form-group">
+                            <label class="form-label">Enter OTP</label>
+                            <div class="otp-inputs">
+                                <input type="text" class="otp-input" maxlength="1" oninput="moveToNext(this, 0)">
+                                <input type="text" class="otp-input" maxlength="1" oninput="moveToNext(this, 1)">
+                                <input type="text" class="otp-input" maxlength="1" oninput="moveToNext(this, 2)">
+                                <input type="text" class="otp-input" maxlength="1" oninput="moveToNext(this, 3)">
+                                <input type="text" class="otp-input" maxlength="1" oninput="moveToNext(this, 4)">
+                                <input type="text" class="otp-input" maxlength="1" oninput="moveToNext(this, 5)">
+                            </div>
+                        </div>
+                        <button class="btn-primary" onclick="verifyOTP()">Verify OTP</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vendor Login Form -->
+            <div id="vendor-form" class="login-form">
+                <form onsubmit="vendorLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">Vendor ID</label>
+                        <input type="text" class="form-control" id="vendorId" placeholder="Enter your vendor ID" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your password" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Sign In as Vendor</button>
+
+                    <div class="forgot-password">
+                        <a href="#" onclick="resetVendorPassword()">Forgot your password?</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyADYh7Xdc8gfe1oQrOxfxY4DqHH5DEjan4",
+            authDomain: "smartprint-9e291.firebaseapp.com",
+            projectId: "smartprint-9e291",
+            storageBucket: "smartprint-9e291.firebasestorage.app",
+            messagingSenderId: "48548800228",
+            appId: "1:48548800228:web:a2b523c97d5824f1836ef1",
+            measurementId: "G-58D71B4CEG"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const analytics = getAnalytics(app);
+
+        // Make Firebase functions globally available
+        window.auth = auth;
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.RecaptchaVerifier = RecaptchaVerifier;
+        window.signInWithPhoneNumber = signInWithPhoneNumber;
+    </script>
+
+    <script>
+        let currentTab = 'user';
+        let recaptchaVerifier;
+        let confirmationResult;
+
+        // Tab switching
+        function showTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+            
+            // Update forms
+            document.querySelectorAll('.login-form').forEach(form => form.classList.remove('active'));
+            document.getElementById(`${tab}-form`).classList.add('active');
+        }
+
+        // Google Sign In
+        async function signInWithGoogle() {
+            try {
+                console.log('Starting Google sign-in...');
+                const provider = new window.GoogleAuthProvider();
+                
+                // Add additional scopes if needed
+                provider.addScope('email');
+                provider.addScope('profile');
+                
+                const result = await window.signInWithPopup(window.auth, provider);
+                const user = result.user;
+                console.log('Firebase user:', user);
+                
+                // Get the ID token
+                const idToken = await user.getIdToken();
+                console.log('ID token received, length:', idToken.length);
+                
+                // Send the ID token to your backend
+                const response = await fetch('/oauth2callback/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        id_token: idToken
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    console.log('Google sign-in successful:', user);
+                    window.location.href = data.redirect_url || '/userdashboard/';
+                } else {
+                    throw new Error(data.message || 'Unknown error occurred');
+                }
+            } catch (error) {
+                console.error('Google sign-in error:', error);
+                
+                let errorMessage = 'Google sign-in failed. ';
+                if (error.code) {
+                    switch (error.code) {
+                        case 'auth/popup-closed-by-user':
+                            errorMessage += 'Sign-in was cancelled.';
+                            break;
+                        case 'auth/popup-blocked':
+                            errorMessage += 'Popup was blocked by browser.';
+                            break;
+                        case 'auth/network-request-failed':
+                            errorMessage += 'Network error occurred.';
+                            break;
+                        default:
+                            errorMessage += `Error: ${error.code}`;
+                    }
+                } else {
+                    errorMessage += error.message || 'Please try again.';
+                }
+                
+                alert(errorMessage);
+            }
+        }
+
+        // Show phone login
+        function showPhoneLogin() {
+            document.getElementById('phone-container').style.display = 'block';
+            document.querySelectorAll('.social-btn').forEach(btn => btn.style.display = 'none');
+        }
+
+        // Send OTP
+        async function sendOTP() {
+            const countryCode = document.getElementById('countryCode').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const fullPhoneNumber = countryCode + phoneNumber;
+
+            if (!phoneNumber) {
+                alert('Please enter a phone number');
+                return;
+            }
+
+            try {
+                // Initialize reCAPTCHA
+                if (!recaptchaVerifier) {
+                    recaptchaVerifier = new window.RecaptchaVerifier(window.auth, 'send-otp-button', {
+                        'size': 'invisible',
+                        'callback': (response) => {
+                            console.log('reCAPTCHA solved');
+                        }
+                    });
+                }
+
+                confirmationResult = await window.signInWithPhoneNumber(window.auth, fullPhoneNumber, recaptchaVerifier);
+                document.getElementById('otpContainer').style.display = 'block';
+                console.log('OTP sent successfully');
+            } catch (error) {
+                console.error('Error sending OTP:', error);
+                alert('Failed to send OTP. Please try again.');
+            }
+        }
+
+        // Verify OTP
+        async function verifyOTP() {
+            const otpInputs = document.querySelectorAll('.otp-input');
+            let otp = '';
+            otpInputs.forEach(input => otp += input.value);
+
+            if (otp.length !== 6) {
+                alert('Please enter complete OTP');
+                return;
+            }
+
+            try {
+                const result = await confirmationResult.confirm(otp);
+                const user = result.user;
+                console.log('Phone verification successful:', user);
+                // Redirect to user dashboard
+                window.location.href = '/userdashboard/';
+            } catch (error) {
+                console.error('OTP verification error:', error);
+                alert('Invalid OTP. Please try again.');
+            }
+        }
+
+        // OTP input navigation
+        function moveToNext(current, index) {
+            if (current.value.length === 1 && index < 5) {
+                document.querySelectorAll('.otp-input')[index + 1].focus();
+            }
+        }
+
+        // Vendor login
+        async function vendorLogin(event) {
+            event.preventDefault();
+            
+            const vendorId = document.getElementById('vendorId').value;
+            const password = document.getElementById('vendorPassword').value;
+
+            try {
+                const response = await fetch('/vendor-login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        vendor_id: vendorId,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Redirect to vendor dashboard
+                    window.location.href = '/vendordashboard/';
+                } else {
+                    alert(data.message || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Vendor login error:', error);
+                alert('Login failed. Please try again.');
+            }
+        }
+
+        // Reset vendor password
+        function resetVendorPassword() {
+            const vendorId = prompt('Enter your Vendor ID:');
+            if (vendorId) {
+                alert('Password reset instructions will be sent to your registered email.');
+                // Implement password reset logic here
+            }
+        }
+
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add loading states to buttons
+            const buttons = document.querySelectorAll('button, .social-btn');
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (!this.classList.contains('tab-button')) {
+                        this.classList.add('loading');
+                        setTimeout(() => this.classList.remove('loading'), 3000);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
