@@ -1,8 +1,9 @@
+
 #!/usr/bin/env python3
 """
-Vendor Print Client Script
-==========================
-Continuously monitors for print jobs via WebSocket and handles printing without storing files locally.
+Automated Vendor Print Client Script
+====================================
+Continuously monitors for print jobs via WebSocket and handles automatic printing.
 """
 
 import os
@@ -14,6 +15,7 @@ import requests
 import io
 import platform
 import websocket
+import threading
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 
@@ -34,10 +36,10 @@ else:
         print("⚠️  Warning: pycups not available. Install pycups for Linux/Mac printing support.")
         PLATFORM_PRINTING = None
 
-class VendorPrintClient:
-    def __init__(self, vendor_id: str, base_url: str = "ws://127.0.0.1:8000", debug: bool = False):
+class AutomatedVendorPrintClient:
+    def __init__(self, vendor_id: str, base_url: str = "ws://127.0.0.1:5000", debug: bool = False):
         """
-        Initialize the vendor print client.
+        Initialize the automated vendor print client.
         
         Args:
             vendor_id: Vendor ID for identification
@@ -45,11 +47,14 @@ class VendorPrintClient:
             debug: Enable debug logging
         """
         self.vendor_id = vendor_id
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.replace('http://', 'ws://').replace('https://', 'wss://')
         self.debug = debug
         self.ws = None
+        self.is_running = True
+        self.job_queue = []
+        self.processing_job = False
         
-        self.log("🚀 Vendor Print Client initialized")
+        self.log("🚀 Automated Vendor Print Client initialized")
         if self.debug:
             self.log(f"📍 Base URL: {self.base_url}")
             self.log(f"🔑 Using Vendor ID: {self.vendor_id}")
@@ -70,15 +75,33 @@ class VendorPrintClient:
             data = json.loads(message)
             message_type = data.get('type')
             
-            if message_type == 'print_jobs_response':
+            if message_type == 'print_job':
+                # Received a new print job
+                job = data.get('job')
+                if job:
+                    self.log(f"📋 Received print job: {job['filename']}")
+                    self.job_queue.append(job)
+                    
+                    # Start processing if not already processing
+                    if not self.processing_job:
+                        threading.Thread(target=self.process_job_queue, daemon=True).start()
+                        
+            elif message_type == 'print_jobs_response':
                 jobs = data.get('jobs', [])
                 if jobs:
-                    self.log(f"📋 Received {len(jobs)} print job(s)")
-                    for job in jobs:
-                        self.process_job(job)
+                    self.log(f"📋 Received {len(jobs)} print jobs")
+                    self.job_queue.extend(jobs)
+                    
+                    if not self.processing_job:
+                        threading.Thread(target=self.process_job_queue, daemon=True).start()
                 else:
                     self.debug_log("📭 No print jobs available")
                     
+            elif message_type == 'job_status_updated':
+                filename = data.get('filename', 'unknown')
+                status = data.get('status', 'unknown')
+                self.log(f"✅ Job status updated: {filename} -> {status}")
+                
             elif message_type == 'error':
                 self.log(f"❌ Server error: {data.get('message', 'Unknown error')}")
                 
@@ -94,15 +117,102 @@ class VendorPrintClient:
     def on_close(self, ws, close_status_code, close_msg):
         """Handle WebSocket connection close."""
         self.log("🔌 WebSocket connection closed")
+        
+        # Attempt to reconnect after a delay
+        if self.is_running:
+            self.log("🔄 Attempting to reconnect in 5 seconds...")
+            time.sleep(5)
+            self.connect_websocket()
     
     def on_open(self, ws):
         """Handle WebSocket connection open."""
         self.log("🔌 WebSocket connection established")
-        # Request print jobs
-        ws.send(json.dumps({
-            'type': 'request_print_jobs',
-            'vendor_id': self.vendor_id
-        }))
+        
+        # Start the job request loop
+        threading.Thread(target=self.job_request_loop, daemon=True).start()
+    
+    def job_request_loop(self):
+        """Continuously request print jobs every 30 seconds."""
+        while self.is_running and self.ws and self.ws.sock:
+            try:
+                # Request print jobs
+                self.ws.send(json.dumps({
+                    'type': 'request_print_jobs',
+                    'vendor_id': self.vendor_id
+                }))
+                
+                # Wait 30 seconds before next request
+                time.sleep(30)
+                
+            except Exception as e:
+                self.log(f"❌ Error in job request loop: {str(e)}")
+                break
+    
+    def process_job_queue(self):
+        """Process all jobs in the queue."""
+        self.processing_job = True
+        
+        while self.job_queue and self.is_running:
+            job = self.job_queue.pop(0)
+            self.process_single_job(job)
+            
+            # Small delay between jobs
+            time.sleep(2)
+        
+        self.processing_job = False
+    
+    def process_single_job(self, job):
+        """Process a single print job automatically."""
+        filename = job.get('filename', 'unknown')
+        download_url = job.get('download_url', '')
+        metadata = job.get('metadata', {})
+        
+        self.log(f"🔄 Processing job: {filename}")
+        
+        # Check if printer is available
+        printer_available, printer_name = self.is_printer_available()
+        
+        if not printer_available:
+            error_msg = "No printer detected on this system"
+            self.log(f"🖨️  {error_msg}")
+            self.notify_job_failed(filename, error_msg)
+            return False
+        
+        # Download document
+        document_data = self.download_document(download_url)
+        if not document_data:
+            error_msg = "Failed to download document"
+            self.notify_job_failed(filename, error_msg)
+            return False
+        
+        # Apply print settings from metadata
+        print_settings = self.prepare_print_settings(metadata)
+        
+        # Print document
+        print_success = self.print_document_with_settings(
+            document_data, printer_name, filename, print_settings
+        )
+        
+        # Notify completion
+        if print_success:
+            self.notify_job_completed(filename)
+        else:
+            self.notify_job_failed(filename, "Printing failed")
+        
+        return print_success
+    
+    def prepare_print_settings(self, metadata):
+        """Prepare print settings from metadata."""
+        return {
+            'copies': int(metadata.get('copies', 1)),
+            'color': metadata.get('color', 'bw'),
+            'orientation': metadata.get('orientation', 'portrait'),
+            'page_size': metadata.get('page_size', 'A4'),
+            'page_range': metadata.get('page_range', 'all'),
+            'specific_pages': metadata.get('specific_pages', ''),
+            'spiral_binding': metadata.get('spiral_binding', 'No'),
+            'lamination': metadata.get('lamination', 'No')
+        }
     
     def get_available_printers(self) -> List[str]:
         """Get list of available printers on the system."""
@@ -168,15 +278,22 @@ class VendorPrintClient:
             self.log(f"❌ Error downloading document: {str(e)}")
             return None
     
-    def print_document(self, document_data: bytes, printer_name: str, job_info: Dict) -> bool:
-        """Print document directly from memory."""
+    def print_document_with_settings(self, document_data: bytes, printer_name: str, 
+                                   filename: str, print_settings: Dict) -> bool:
+        """Print document with specific settings."""
         try:
-            self.log(f"🖨️  Printing job #{job_info.get('id', 'unknown')} to {printer_name}")
+            copies = print_settings.get('copies', 1)
+            self.log(f"🖨️  Printing {filename} ({copies} copies) to {printer_name}")
+            self.log(f"📋 Settings: {print_settings}")
             
             if PLATFORM_PRINTING == "windows":
-                return self._print_windows(document_data, printer_name, job_info)
+                return self._print_windows_with_settings(
+                    document_data, printer_name, filename, print_settings
+                )
             elif PLATFORM_PRINTING == "cups":
-                return self._print_cups(document_data, printer_name, job_info)
+                return self._print_cups_with_settings(
+                    document_data, printer_name, filename, print_settings
+                )
             else:
                 self.log("❌ No printing backend available")
                 return False
@@ -185,29 +302,31 @@ class VendorPrintClient:
             self.log(f"❌ Printing failed: {str(e)}")
             return False
     
-    def _print_windows(self, document_data: bytes, printer_name: str, job_info: Dict) -> bool:
-        """Print document on Windows using win32print."""
+    def _print_windows_with_settings(self, document_data: bytes, printer_name: str, 
+                                   filename: str, print_settings: Dict) -> bool:
+        """Print document on Windows with settings."""
         try:
-            # Create a temporary file in memory
-            doc_stream = io.BytesIO(document_data)
-            
-            job_name = f"SmartPrint Job #{job_info.get('id', 'unknown')}"
+            job_name = f"AutoPrint: {filename}"
+            copies = print_settings.get('copies', 1)
             
             # Open printer
             printer_handle = win32print.OpenPrinter(printer_name)
             
             try:
-                # Start print job
-                job_id = win32print.StartDocPrinter(printer_handle, 1, (job_name, None, "RAW"))
-                win32print.StartPagePrinter(printer_handle)
+                # For each copy
+                for copy_num in range(copies):
+                    # Start print job
+                    job_id = win32print.StartDocPrinter(printer_handle, 1, (f"{job_name} (Copy {copy_num + 1})", None, "RAW"))
+                    win32print.StartPagePrinter(printer_handle)
+                    
+                    # Send document data
+                    win32print.WritePrinter(printer_handle, document_data)
+                    
+                    win32print.EndPagePrinter(printer_handle)
+                    win32print.EndDocPrinter(printer_handle)
+                    
+                    self.log(f"✅ Copy {copy_num + 1}/{copies} sent (Job ID: {job_id})")
                 
-                # For RAW printing, we would send the PDF data directly
-                win32print.WritePrinter(printer_handle, document_data)
-                
-                win32print.EndPagePrinter(printer_handle)
-                win32print.EndDocPrinter(printer_handle)
-                
-                self.log(f"✅ Print job sent successfully (Job ID: {job_id})")
                 return True
                 
             finally:
@@ -217,17 +336,32 @@ class VendorPrintClient:
             self.log(f"❌ Windows printing error: {str(e)}")
             return False
     
-    def _print_cups(self, document_data: bytes, printer_name: str, job_info: Dict) -> bool:
-        """Print document on Linux/Mac using CUPS."""
+    def _print_cups_with_settings(self, document_data: bytes, printer_name: str, 
+                                filename: str, print_settings: Dict) -> bool:
+        """Print document on Linux/Mac using CUPS with settings."""
         try:
             conn = cups.Connection()
-            job_name = f"SmartPrint Job #{job_info.get('id', 'unknown')}"
+            job_name = f"AutoPrint: {filename}"
+            
+            # Prepare CUPS options based on settings
+            options = {}
+            
+            if print_settings.get('copies', 1) > 1:
+                options['copies'] = str(print_settings['copies'])
+            
+            if print_settings.get('color') == 'color':
+                options['ColorModel'] = 'RGB'
+            else:
+                options['ColorModel'] = 'Gray'
+            
+            if print_settings.get('orientation') == 'landscape':
+                options['orientation-requested'] = '4'
             
             # Create temporary file-like object
             doc_stream = io.BytesIO(document_data)
             
             # Print the document
-            job_id = conn.printFile(printer_name, doc_stream, job_name, {})
+            job_id = conn.printFile(printer_name, doc_stream, job_name, options)
             
             self.log(f"✅ Print job sent successfully (Job ID: {job_id})")
             return True
@@ -236,66 +370,41 @@ class VendorPrintClient:
             self.log(f"❌ CUPS printing error: {str(e)}")
             return False
     
-    def notify_job_complete(self, job_id: int, success: bool, error_message: str = None):
+    def notify_job_completed(self, filename: str):
         """Notify the backend that a job has been completed via WebSocket."""
-        if self.ws and self.ws.sock and self.ws.sock.connected:
+        if self.ws and self.ws.sock:
             try:
                 payload = {
-                    'type': 'print_status',
-                    'job_id': job_id,
-                    'status': 'completed' if success else 'failed',
-                    'printed_successfully': success
+                    'type': 'job_completed',
+                    'filename': filename,
+                    'vendor_id': self.vendor_id
                 }
                 
-                if error_message:
-                    payload['error_message'] = error_message
-                
-                self.debug_log(f"📤 Notifying job completion: {payload}")
+                self.debug_log(f"📤 Notifying job completion: {filename}")
                 self.ws.send(json.dumps(payload))
                 
             except Exception as e:
                 self.log(f"❌ Error notifying job completion: {str(e)}")
     
-    def process_job(self, job: Dict) -> bool:
-        """Process a single print job."""
-        job_id = job.get('id', 'unknown')
-        file_url = job.get('file_url', '')
-        
-        self.log(f"🔄 Processing job #{job_id}")
-        
-        # Check if printer is available
-        printer_available, printer_name = self.is_printer_available()
-        
-        if not printer_available:
-            error_msg = "No printer detected on this system"
-            self.log(f"🖨️  {error_msg}")
-            self.notify_job_complete(job_id, False, error_msg)
-            return False
-        
-        # Download document
-        document_data = self.download_document(file_url)
-        if not document_data:
-            error_msg = "Failed to download document"
-            self.notify_job_complete(job_id, False, error_msg)
-            return False
-        
-        # Print document
-        print_success = self.print_document(document_data, printer_name, job)
-        
-        # Notify completion
-        self.notify_job_complete(job_id, print_success, 
-                               None if print_success else "Printing failed")
-        
-        return print_success
+    def notify_job_failed(self, filename: str, error_message: str):
+        """Notify the backend that a job has failed via WebSocket."""
+        if self.ws and self.ws.sock:
+            try:
+                payload = {
+                    'type': 'job_failed',
+                    'filename': filename,
+                    'error_message': error_message,
+                    'vendor_id': self.vendor_id
+                }
+                
+                self.debug_log(f"📤 Notifying job failure: {filename} - {error_message}")
+                self.ws.send(json.dumps(payload))
+                
+            except Exception as e:
+                self.log(f"❌ Error notifying job failure: {str(e)}")
     
-    def run(self):
-        """Main loop to continuously monitor for print jobs via WebSocket."""
-        self.log("🔄 Starting WebSocket connection")
-        
-        # Enable WebSocket debug logging if debug mode is enabled
-        if self.debug:
-            websocket.enableTrace(True)
-        
+    def connect_websocket(self):
+        """Connect to WebSocket server."""
         # WebSocket URL
         ws_url = f"{self.base_url}/ws/vendor/{self.vendor_id}/"
         self.log(f"🔌 Connecting to WebSocket: {ws_url}")
@@ -308,15 +417,36 @@ class VendorPrintClient:
             on_close=self.on_close,
             on_open=self.on_open
         )
+    
+    def run(self):
+        """Main loop to continuously monitor for print jobs via WebSocket."""
+        self.log("🔄 Starting Automated Print Client")
         
-        # Run WebSocket connection
-        self.ws.run_forever()
+        # Enable WebSocket debug logging if debug mode is enabled
+        if self.debug:
+            websocket.enableTrace(True)
+        
+        while self.is_running:
+            try:
+                self.connect_websocket()
+                # Run WebSocket connection (this blocks until connection closes)
+                self.ws.run_forever()
+                
+            except KeyboardInterrupt:
+                self.log("👋 Shutting down...")
+                self.is_running = False
+                break
+            except Exception as e:
+                self.log(f"💥 WebSocket error: {str(e)}")
+                if self.is_running:
+                    self.log("🔄 Retrying connection in 10 seconds...")
+                    time.sleep(10)
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Vendor Print Client")
+    parser = argparse.ArgumentParser(description="Automated Vendor Print Client")
     parser.add_argument("--vendor-id", required=True, help="Vendor ID for identification")
-    parser.add_argument("--url", default="ws://127.0.0.1:8000", help="Base WebSocket URL of the Django application")
+    parser.add_argument("--url", default="ws://127.0.0.1:5000", help="Base WebSocket URL of the Django application")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     
     args = parser.parse_args()
@@ -334,7 +464,7 @@ def main():
         print("   Continuing in read-only mode...")
     
     # Create and run client
-    client = VendorPrintClient(
+    client = AutomatedVendorPrintClient(
         vendor_id=args.vendor_id,
         base_url=args.url,
         debug=args.debug
@@ -350,4 +480,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -1,3 +1,4 @@
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -35,6 +36,186 @@ def get_print_requests(request):
     except Exception as e:
         print(f"Error in get_print_requests: {str(e)}")
         return JsonResponse({"error": str(e), "print_requests": []}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────
+# AUTO PRINT ENDPOINT FOR WEBSOCKET INTEGRATION
+# ─────────────────────────────────────────────────────────────
+
+
+@csrf_exempt
+def auto_print_documents(request):
+    """
+    Get pending print jobs and send them to connected vendor clients via WebSocket
+    """
+    if request.method == 'POST':
+        try:
+            # Get all files with job_completed = 'NO'
+            pending_jobs = get_pending_print_jobs()
+            
+            if not pending_jobs:
+                return JsonResponse({
+                    'success': True, 
+                    'message': 'No pending print jobs found',
+                    'jobs_sent': 0
+                })
+            
+            # Here you would send jobs to WebSocket clients
+            # For now, we'll return the jobs that would be sent
+            return JsonResponse({
+                'success': True,
+                'message': f'Found {len(pending_jobs)} pending print jobs',
+                'jobs_sent': len(pending_jobs),
+                'jobs': pending_jobs
+            })
+            
+        except Exception as e:
+            print(f"Error in auto_print_documents: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def update_job_status(request):
+    """
+    Update job completion status when vendor client completes printing
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            filename = data.get('filename')
+            status = data.get('status', 'completed')
+            
+            if not filename:
+                return JsonResponse({'success': False, 'error': 'Filename required'})
+            
+            # Update the file metadata in R2
+            success = update_file_job_status(filename, status)
+            
+            if success:
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Job status updated for {filename}'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to update job status'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Error updating job status: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+def get_pending_print_jobs():
+    """
+    Get all files from R2 storage where job_completed = 'NO'
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+    
+    try:
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET)
+        pending_jobs = []
+        
+        for obj in objects.get("Contents", []):
+            key = obj["Key"]
+            filename = key.split("/")[-1]
+            
+            try:
+                # Get object metadata
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                metadata = head_response.get('Metadata', {})
+                
+                # Check if job is not completed
+                job_completed = metadata.get('job_completed', 'NO')
+                if job_completed.upper() == 'NO':
+                    # Generate presigned URL for download
+                    download_url = s3.generate_presigned_url(
+                        ClientMethod='get_object',
+                        Params={
+                            'Bucket': settings.R2_BUCKET,
+                            'Key': key
+                        },
+                        ExpiresIn=3600
+                    )
+                    
+                    # Build job info
+                    job_info = {
+                        'filename': filename,
+                        'download_url': download_url,
+                        'metadata': {
+                            'copies': metadata.get('copies', '1'),
+                            'color': metadata.get('color', 'bw'),
+                            'orientation': metadata.get('orientation', 'portrait'),
+                            'page_range': metadata.get('pagerange', 'all'),
+                            'specific_pages': metadata.get('specificpages', ''),
+                            'page_size': metadata.get('pagesize', 'A4'),
+                            'spiral_binding': metadata.get('spiralbinding', 'No'),
+                            'lamination': metadata.get('lamination', 'No'),
+                            'priority': metadata.get('priority', 'Medium'),
+                            'user': metadata.get('user', 'User'),
+                            'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat())
+                        }
+                    }
+                    
+                    pending_jobs.append(job_info)
+                    
+            except Exception as e:
+                print(f"Error processing file {key}: {str(e)}")
+                continue
+        
+        return pending_jobs
+        
+    except Exception as e:
+        print(f"Error getting pending jobs: {str(e)}")
+        return []
+
+
+def update_file_job_status(filename, status='YES'):
+    """
+    Update the job_completed metadata for a specific file
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+    
+    try:
+        # Get current object metadata
+        head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=filename)
+        current_metadata = head_response.get('Metadata', {})
+        
+        # Update job_completed status
+        current_metadata['job_completed'] = status.upper()
+        current_metadata['completion_time'] = datetime.datetime.now().isoformat()
+        
+        # Copy object with updated metadata
+        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': filename}
+        
+        s3.copy_object(
+            CopySource=copy_source,
+            Bucket=settings.R2_BUCKET,
+            Key=filename,
+            Metadata=current_metadata,
+            MetadataDirective='REPLACE'
+        )
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error updating job status for {filename}: {str(e)}")
+        return False
 
 
 # ─────────────────────────────────────────────────────────────
