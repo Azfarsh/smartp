@@ -12,7 +12,7 @@ STATICFILES_DIRS = [
 ]
 SECRET_KEY = 'your-secret'
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # Allow all hosts for development
 
 INSTALLED_APPS = [
     'print',
@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',  # ✅ Required for CORS
+    'channels',  # Add Channels support
 ]
 
 MIDDLEWARE = [
@@ -54,7 +55,15 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'smartprint.wsgi.application'
+# Update ASGI application
+ASGI_APPLICATION = 'smartprint.asgi.application'
+
+# Channel layers configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}
 
 DATABASES = {
     'default': {
