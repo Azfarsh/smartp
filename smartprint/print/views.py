@@ -60,6 +60,14 @@ def upload_to_r2(request):
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
 
+                    # Get the file
+                    file = request.FILES[file_key]
+                    file_content = file.read()
+
+                    # Get and parse the settings JSON
+                    settings_json = request.POST.get(settings_key)
+                    print_settings = json.loads(settings_json)
+
                     # Create a JSON file with the same name but .json extension
                     file_name = file.name
                     json_file_name = f"{file_name.rsplit('.', 1)[0]}.json"
@@ -93,36 +101,42 @@ def upload_to_r2(request):
                         "Trash":
                         "NO"
                     }
-                json_content = json.dumps(metadata)
+                    json_content = json.dumps(metadata)
 
-                # Initialize S3 client
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
+                    # Initialize S3 client
+                    s3 = boto3.client('s3',
+                                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                                      endpoint_url=settings.R2_ENDPOINT,
+                                      region_name='auto')
 
-                # Upload the original file with metadata
-                s3.put_object(Bucket=settings.R2_BUCKET,
-                              Key=file_name,
-                              Body=file_content,
-                              ContentType=file.content_type,
-                              Metadata={
-                                  'copies': str(metadata['copies']),
-                                  'color': metadata['color'],
-                                  'orientation': metadata['orientation'],
-                                  'pageRange': metadata['pageRange'],
-                                  'specificPages': metadata['specificPages'],
-                                  'pageSize': metadata['pageSize'],
-                                  'spiralBinding': metadata['spiralBinding'],
-                                  'lamination': metadata['lamination'],
-                                  'timestamp': metadata['timestamp'],
-                                  'status': metadata['status'],
-                                  'job_completed': metadata['job_completed'],
-                                  'trash': metadata['Trash']
-                              })
+                    # Upload the original file with metadata
+                    s3.put_object(Bucket=settings.R2_BUCKET,
+                                  Key=file_name,
+                                  Body=file_content,
+                                  ContentType=file.content_type,
+                                  Metadata={
+                                      'copies': str(metadata['copies']),
+                                      'color': metadata['color'],
+                                      'orientation': metadata['orientation'],
+                                      'pageRange': metadata['pageRange'],
+                                      'specificPages': metadata['specificPages'],
+                                      'pageSize': metadata['pageSize'],
+                                      'spiralBinding': metadata['spiralBinding'],
+                                      'lamination': metadata['lamination'],
+                                      'timestamp': metadata['timestamp'],
+                                      'status': metadata['status'],
+                                      'job_completed': metadata['job_completed'],
+                                      'trash': metadata['Trash']
+                                  })
 
-                files_uploaded += 1
+                    # Upload the JSON metadata file
+                    s3.put_object(Bucket=settings.R2_BUCKET,
+                                  Key=json_file_name,
+                                  Body=json_content.encode('utf-8'),
+                                  ContentType='application/json')
+
+                    files_uploaded += 1
 
             if files_uploaded > 0:
                 return JsonResponse({
@@ -274,35 +288,42 @@ def process_print_request(request):
                         "Trash":
                         "NO"
                     }
+                    json_content = json.dumps(metadata)
+
+                    # Initialize S3 client
+                    s3 = boto3.client('s3',
+                                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                                      endpoint_url=settings.R2_ENDPOINT,
+                                      region_name='auto')
+
+                    # Upload the original file with metadata
+                    s3.put_object(Bucket=settings.R2_BUCKET,
+                                  Key=file_name,
+                                  Body=file_content,
+                                  ContentType=file.content_type,
+                                  Metadata={
+                                      'copies': str(metadata['copies']),
+                                      'color': metadata['color'],
+                                      'orientation': metadata['orientation'],
+                                      'pageRange': metadata['pageRange'],
+                                      'specificPages': metadata['specificPages'],
+                                      'pageSize': metadata['pageSize'],
+                                      'spiralBinding': metadata['spiralBinding'],
+                                      'lamination': metadata['lamination'],
+                                      'timestamp': metadata['timestamp'],
+                                      'status': metadata['status'],
+                                      'job_completed': metadata['job_completed'],
+                                      'trash': metadata['Trash']
+                                  })
+
+                    # Upload the JSON metadata file
+                    s3.put_object(Bucket=settings.R2_BUCKET,
+                                  Key=json_file_name,
+                                  Body=json_content.encode('utf-8'),
+                                  ContentType='application/json')
+
                     files_processed += 1
-                json_content = json.dumps(metadata)
-
-                # Initialize S3 client
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
-
-                # Upload the original file with metadata
-                s3.put_object(Bucket=settings.R2_BUCKET,
-                              Key=file_name,
-                              Body=file_content,
-                              ContentType=file.content_type,
-                              Metadata={
-                                  'copies': str(metadata['copies']),
-                                  'color': metadata['color'],
-                                  'orientation': metadata['orientation'],
-                                  'pageRange': metadata['pageRange'],
-                                  'specificPages': metadata['specificPages'],
-                                  'pageSize': metadata['pageSize'],
-                                  'spiralBinding': metadata['spiralBinding'],
-                                  'lamination': metadata['lamination'],
-                                  'timestamp': metadata['timestamp'],
-                                  'status': metadata['status'],
-                                  'job_completed': metadata['job_completed'],
-                                  'trash': metadata['Trash']
-                              })
 
             return JsonResponse({'success': True})
         except Exception as e:
