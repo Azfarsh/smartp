@@ -86,17 +86,24 @@ def update_job_status(request):
             data = json.loads(request.body)
             filename = data.get('filename')
             status = data.get('status', 'completed')
+            vendor_id = data.get('vendor_id')
+            completion_time = data.get('completion_time')
             
             if not filename:
                 return JsonResponse({'success': False, 'error': 'Filename required'})
             
+            # Convert status to job_completed format
+            job_completed_status = 'YES' if status.lower() in ['completed', 'yes'] else 'NO'
+            
             # Update the file metadata in R2
-            success = update_file_job_status(filename, status)
+            success = update_file_job_status(filename, job_completed_status, vendor_id, completion_time)
             
             if success:
+                print(f"✅ Job status updated by vendor {vendor_id}: {filename} -> {job_completed_status}")
                 return JsonResponse({
                     'success': True,
-                    'message': f'Job status updated for {filename}'
+                    'message': f'Job status updated for {filename}',
+                    'status': job_completed_status
                 })
             else:
                 return JsonResponse({
@@ -138,7 +145,11 @@ def get_pending_print_jobs():
                 
                 # Check if job is not completed
                 job_completed = metadata.get('job_completed', 'NO')
-                if job_completed.upper() == 'NO':
+                job_status = metadata.get('status', 'pending')
+                
+                # Only include jobs that are truly pending (not completed, failed, or processing)
+                if (job_completed.upper() == 'NO' and 
+                    job_status.lower() not in ['completed', 'failed', 'processing']):
                     # Generate presigned URL for download
                     download_url = s3.generate_presigned_url(
                         ClientMethod='get_object',
@@ -181,7 +192,7 @@ def get_pending_print_jobs():
         return []
 
 
-def update_file_job_status(filename, status='YES'):
+def update_file_job_status(filename, status='YES', vendor_id=None, completion_time=None):
     """
     Update the job_completed metadata for a specific file
     """
@@ -199,6 +210,25 @@ def update_file_job_status(filename, status='YES'):
         # Update job_completed status
         current_metadata['job_completed'] = status.upper()
         current_metadata['completion_time'] = datetime.datetime.now().isoformat()
+        
+        # Add vendor information if provided
+        if vendor_id:
+            current_metadata['completed_by_vendor'] = vendor_id
+        
+        # Use provided completion time if available
+        if completion_time:
+            try:
+                # Convert timestamp to ISO format
+                completion_dt = datetime.datetime.fromtimestamp(float(completion_time))
+                current_metadata['completion_time'] = completion_dt.isoformat()
+            except (ValueError, TypeError):
+                pass  # Use default timestamp if conversion fails
+        
+        # Update status for better tracking
+        if status.upper() == 'YES':
+            current_metadata['status'] = 'completed'
+        else:
+            current_metadata['status'] = current_metadata.get('status', 'pending')
         
         # Copy object with updated metadata
         copy_source = {'Bucket': settings.R2_BUCKET, 'Key': filename}

@@ -18,9 +18,17 @@ class VendorConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
-        print(f"Vendor {self.vendor_id} connected")
+        print(f"✅ Vendor {self.vendor_id} connected successfully")
+        
+        # Send welcome message
+        await self.send(text_data=json.dumps({
+            'type': 'connection_established',
+            'message': f'Connected as vendor {self.vendor_id}',
+            'vendor_id': self.vendor_id
+        }))
         
         # Automatically send pending jobs when vendor connects
+        await asyncio.sleep(1)  # Small delay to ensure connection is stable
         await self.send_pending_jobs()
 
     async def disconnect(self, close_code):
