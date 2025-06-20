@@ -1,5 +1,5 @@
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -21,7 +21,16 @@ def vendordashboard(request):
 
 
 def userdashboard(request):
-    return render(request, 'userdashboard.html')
+    # Check if user is authenticated
+    if not request.user.is_authenticated:
+        return redirect('/login/')
+    
+    context = {
+        'user': request.user,
+        'firebase_uid': request.session.get('firebase_uid'),
+        'auth_method': request.session.get('auth_method', 'unknown')
+    }
+    return render(request, 'userdashboard.html', context)
 
 
 # ─────────────────────────────────────────────────────────────

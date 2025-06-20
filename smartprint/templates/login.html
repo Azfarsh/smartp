@@ -435,6 +435,7 @@
                         </div>
                     </div>
                     <button class="btn-primary" onclick="sendOTP()">Send OTP</button>
+                    <div id="recaptcha-container"></div>
 
                     <!-- OTP Container -->
                     <div class="otp-container" id="otpContainer">
@@ -503,6 +504,9 @@
         window.signInWithPopup = signInWithPopup;
         window.RecaptchaVerifier = RecaptchaVerifier;
         window.signInWithPhoneNumber = signInWithPhoneNumber;
+        
+        // Configure auth settings
+        auth.useDeviceLanguage();
     </script>
 
     <script>
@@ -542,14 +546,15 @@
                 console.log('ID token received, length:', idToken.length);
                 
                 // Send the ID token to your backend
-                const response = await fetch('/oauth2callback/', {
+                const response = await fetch('/firebase-auth/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify({
-                        id_token: idToken
+                        id_token: idToken,
+                        auth_method: 'google'
                     })
                 });
                 
@@ -601,28 +606,57 @@
             const phoneNumber = document.getElementById('phoneNumber').value;
             const fullPhoneNumber = countryCode + phoneNumber;
 
-            if (!phoneNumber) {
-                alert('Please enter a phone number');
+            if (!phoneNumber || phoneNumber.length < 10) {
+                alert('Please enter a valid phone number');
                 return;
             }
 
             try {
-                // Initialize reCAPTCHA
+                const button = event.target;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner"></span> Sending...';
+
+                // Initialize reCAPTCHA for phone auth
                 if (!recaptchaVerifier) {
-                    recaptchaVerifier = new window.RecaptchaVerifier(window.auth, 'send-otp-button', {
+                    recaptchaVerifier = new window.RecaptchaVerifier(window.auth, 'recaptcha-container', {
                         'size': 'invisible',
                         'callback': (response) => {
                             console.log('reCAPTCHA solved');
+                        },
+                        'expired-callback': () => {
+                            console.log('reCAPTCHA expired');
                         }
                     });
                 }
 
                 confirmationResult = await window.signInWithPhoneNumber(window.auth, fullPhoneNumber, recaptchaVerifier);
                 document.getElementById('otpContainer').style.display = 'block';
+                alert('OTP sent successfully! Check your phone.');
                 console.log('OTP sent successfully');
+                
+                button.disabled = false;
+                button.innerHTML = 'Resend OTP';
             } catch (error) {
                 console.error('Error sending OTP:', error);
-                alert('Failed to send OTP. Please try again.');
+                let errorMessage = 'Failed to send OTP. ';
+                
+                if (error.code === 'auth/invalid-phone-number') {
+                    errorMessage = 'Invalid phone number format.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorMessage = 'Too many requests. Please try again later.';
+                } else if (error.code === 'auth/captcha-check-failed') {
+                    errorMessage = 'Captcha verification failed. Please try again.';
+                }
+                
+                alert(errorMessage);
+                button.disabled = false;
+                button.innerHTML = 'Send OTP';
+                
+                // Reset reCAPTCHA
+                if (recaptchaVerifier) {
+                    recaptchaVerifier.clear();
+                    recaptchaVerifier = null;
+                }
             }
         }
 
@@ -638,14 +672,49 @@
             }
 
             try {
+                const button = event.target;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner"></span> Verifying...';
+
                 const result = await confirmationResult.confirm(otp);
                 const user = result.user;
                 console.log('Phone verification successful:', user);
-                // Redirect to user dashboard
-                window.location.href = '/userdashboard/';
+                
+                // Get the ID token and send to backend
+                const idToken = await user.getIdToken();
+                
+                const response = await fetch('/firebase-auth/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        id_token: idToken,
+                        auth_method: 'phone'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect_url || '/userdashboard/';
+                } else {
+                    throw new Error(data.message || 'Authentication failed');
+                }
             } catch (error) {
                 console.error('OTP verification error:', error);
-                alert('Invalid OTP. Please try again.');
+                let errorMessage = 'Invalid OTP. ';
+                
+                if (error.code === 'auth/invalid-verification-code') {
+                    errorMessage = 'Invalid OTP code.';
+                } else if (error.code === 'auth/code-expired') {
+                    errorMessage = 'OTP has expired. Please request a new one.';
+                }
+                
+                alert(errorMessage + ' Please try again.');
+                button.disabled = false;
+                button.innerHTML = 'Verify OTP';
             }
         }
 
