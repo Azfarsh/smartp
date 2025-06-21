@@ -1,11 +1,13 @@
-
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from django.contrib.auth import login
+from django.contrib.auth.models import User
 import boto3
 import datetime
 import json
+import requests
 
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
@@ -571,5 +573,57 @@ def process_print_request(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
-def login_page(request):
-    return render(request, 'login.html')
+from django.shortcuts import render
+from django.conf import settings
+
+def sign_in(request):
+    return render(request, 'login.html', {'client_id': settings.GOOGLE_CLIENT_ID})
+
+from django.http import JsonResponse
+from django.contrib.auth import login
+from django.contrib.auth.models import User
+import requests
+
+def auth_receiver(request):
+    if request.method == 'POST':
+        token = request.POST.get('credential')
+        # Verify the token with Google
+        response = requests.get(
+            'https://www.googleapis.com/oauth2/v3/tokeninfo',
+            params={'id_token': token}
+        )
+        data = response.json()
+        if 'sub' in data:  # 'sub' is the unique Google user ID
+            email = data['email']
+            google_user_id = data['sub']
+
+            # Store the raw authentication details in R2 storage
+            try:
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
+                
+                file_content = json.dumps(data, indent=4)
+                file_key = f"signupdetails/{google_user_id}.json"
+
+                s3.put_object(Bucket=settings.R2_BUCKET,
+                              Key=file_key,
+                              Body=file_content,
+                              ContentType='application/json')
+                
+                print(f"✅ Successfully stored signup details for {email} in R2.")
+
+            except Exception as e:
+                print(f"❌ Error storing signup details in R2: {str(e)}")
+
+            # Find or create user
+            user, created = User.objects.get_or_create(
+                username=email,
+                defaults={'email': email}
+            )
+            login(request, user)
+            return JsonResponse({'status': 'success', 'email': email})
+        return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)

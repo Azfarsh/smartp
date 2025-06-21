@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
 
 # Load environment variables
 load_dotenv()
@@ -92,20 +94,37 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Channels configuration
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+
+# Allow popups for Google Sign-In. This is necessary to prevent the
+# "postMessage" error with the Google Sign-In popup.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
+# Firebase Admin SDK Configuration
+try:
+    if not firebase_admin._apps:
+        # For now, we'll initialize without credentials since we don't have the service account file
+        # You'll need to get the service account key from Firebase Console
+        firebase_admin.initialize_app()
+        print("✅ Firebase Admin SDK initialized successfully (without credentials)")
+    else:
+        print("✅ Firebase Admin SDK already initialized")
+except Exception as e:
+    print(f"❌ Error initializing Firebase Admin SDK: {str(e)}")
+
+# Channel layers configuration
 CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
 }
 

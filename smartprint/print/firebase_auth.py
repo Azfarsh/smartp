@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
 from django.contrib.auth.models import User
 from django.conf import settings
+from firebase_admin import auth as firebase_auth
 
 @csrf_exempt
 def firebase_auth(request):
@@ -23,17 +24,22 @@ def firebase_auth(request):
         if not id_token:
             return JsonResponse({'success': False, 'error': 'ID token required'}, status=400)
         
-        # Verify the Firebase ID token
-        user_info = verify_firebase_token(id_token)
-        
-        if not user_info:
+        # Verify the Firebase ID token using Admin SDK
+        try:
+            decoded_token = firebase_auth.verify_id_token(id_token)
+            firebase_uid = decoded_token['uid']
+            email = decoded_token.get('email', '')
+            name = decoded_token.get('name', '')
+            phone = decoded_token.get('phone_number', '')
+            
+            print(f"✅ Token verified successfully for user: {firebase_uid}")
+            print(f"   Email: {email}")
+            print(f"   Name: {name}")
+            print(f"   Phone: {phone}")
+            
+        except Exception as e:
+            print(f"❌ Token verification failed: {str(e)}")
             return JsonResponse({'success': False, 'error': 'Invalid token'}, status=401)
-        
-        # Extract user information
-        firebase_uid = user_info.get('uid')
-        email = user_info.get('email', '')
-        name = user_info.get('name', '')
-        phone = user_info.get('phone_number', '')
         
         # Create or get Django user
         if auth_method == 'google' and email:
@@ -45,6 +51,7 @@ def firebase_auth(request):
                     'last_name': ' '.join(name.split(' ')[1:]) if name and ' ' in name else '',
                 }
             )
+            print(f"✅ User {'created' if created else 'found'}: {user.username}")
         elif auth_method == 'phone' and phone:
             # For phone auth, use firebase_uid as username
             username = f"phone_{firebase_uid}"
@@ -55,17 +62,20 @@ def firebase_auth(request):
                     'last_name': ' '.join(name.split(' ')[1:]) if name and ' ' in name else '',
                 }
             )
+            print(f"✅ Phone user {'created' if created else 'found'}: {user.username}")
         else:
+            print(f"❌ Unable to create user - missing required fields")
             return JsonResponse({'success': False, 'error': 'Unable to create user account'}, status=400)
         
-        # Store Firebase UID in user profile (you might want to create a UserProfile model)
-        # For now, we'll store it in the user's last_login field as a simple solution
+        # Login the user
         user.backend = 'django.contrib.auth.backends.ModelBackend'
         login(request, user)
         
         # Store user info in session
         request.session['firebase_uid'] = firebase_uid
         request.session['auth_method'] = auth_method
+        
+        print(f"✅ User logged in successfully: {user.username}")
         
         return JsonResponse({
             'success': True,
@@ -81,38 +91,22 @@ def firebase_auth(request):
         })
         
     except json.JSONDecodeError:
+        print("❌ Invalid JSON in request")
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        print(f"Firebase auth error: {str(e)}")
+        print(f"❌ Firebase auth error: {str(e)}")
         return JsonResponse({'success': False, 'error': 'Authentication failed'}, status=500)
 
 
 def verify_firebase_token(id_token):
     """
-    Verify Firebase ID token using Google's public keys
+    Verify Firebase ID token using Firebase Admin SDK
+    This function is now deprecated in favor of direct Admin SDK usage above
     """
     try:
-        # Use Firebase Admin SDK or verify manually
-        # For simplicity, we'll use Google's token verification endpoint
-        verification_url = f"https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={id_token}"
-        
-        response = requests.get(verification_url, timeout=10)
-        
-        if response.status_code == 200:
-            token_info = response.json()
-            
-            # Verify the token is for your Firebase project
-            expected_audience = "1:48548800228:web:a2b523c97d5824f1836ef1"  # Your Firebase app ID
-            
-            if token_info.get('aud') == expected_audience:
-                return token_info
-            else:
-                print(f"Token audience mismatch: {token_info.get('aud')} != {expected_audience}")
-                return None
-        else:
-            print(f"Token verification failed: {response.status_code} - {response.text}")
-            return None
-            
+        # Use Firebase Admin SDK to verify token
+        decoded_token = firebase_auth.verify_id_token(id_token)
+        return decoded_token
     except Exception as e:
         print(f"Token verification error: {str(e)}")
         return None

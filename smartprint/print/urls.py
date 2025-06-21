@@ -1,8 +1,8 @@
-
 from django.urls import path
 from . import views
 from .views import (home, userdashboard, vendordashboard, upload_to_r2,
-                    get_print_requests, process_print_request, auto_print_documents, update_job_status)
+                    get_print_requests, process_print_request, auto_print_documents, update_job_status,
+                    auth_receiver, sign_in)
 from .firebase_auth import firebase_auth
 
 urlpatterns = [
@@ -16,6 +16,7 @@ urlpatterns = [
     path('process_print/', process_print_request, name='process_print'),
     path('auto-print-documents/', auto_print_documents, name='auto-print-documents'),
     path('update-job-status/', update_job_status, name='update-job-status'),
-    path('login/', views.login_page, name='login'),
+    path('login/', sign_in, name='login'),
     path('firebase-auth/', firebase_auth, name='firebase-auth'),
+    path('auth-receiver/', auth_receiver, name='auth_receiver'),
 ]
