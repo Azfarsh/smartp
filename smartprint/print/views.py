@@ -19,7 +19,32 @@ def home(request):
 
 
 def vendordashboard(request):
-    return render(request, 'vendordashboard.html')
+    # Get real data from R2 storage for the dashboard
+    try:
+        files = list_r2_files()
+        
+        # Categorize files for dashboard
+        print_requests = [f for f in files if f.get('job_completed') == 'NO' and f.get('status', '').lower() == 'pending']
+        active_jobs = [f for f in files if f.get('job_completed') == 'NO' and f.get('status', '').lower() in ['processing', 'printing', 'in progress']]
+        completed_jobs = [f for f in files if f.get('job_completed') == 'YES' or f.get('status', '').lower() == 'completed']
+        
+        context = {
+            'print_requests_count': len(print_requests),
+            'active_jobs_count': len(active_jobs),
+            'completed_jobs_count': len(completed_jobs),
+            'total_jobs': len(files)
+        }
+        
+        return render(request, 'vendordashboard.html', context)
+    except Exception as e:
+        print(f"Error loading vendor dashboard data: {str(e)}")
+        return render(request, 'vendordashboard.html', {
+            'print_requests_count': 0,
+            'active_jobs_count': 0,
+            'completed_jobs_count': 0,
+            'total_jobs': 0
+        })
+
 
 
 def userdashboard(request):
@@ -39,7 +64,6 @@ def userdashboard(request):
 # FILE LISTING FROM R2
 # ─────────────────────────────────────────────────────────────
 
-
 def get_print_requests(request):
     try:
         files = list_r2_files()
@@ -47,7 +71,6 @@ def get_print_requests(request):
     except Exception as e:
         print(f"Error in get_print_requests: {str(e)}")
         return JsonResponse({"error": str(e), "print_requests": []}, status=500)
-
 
 # ─────────────────────────────────────────────────────────────
 # AUTO PRINT ENDPOINT FOR WEBSOCKET INTEGRATION
