@@ -1056,6 +1056,106 @@
       color: var(--destructive-foreground);
     }
 
+    /* Vendor Selection */
+    .vendor-selection {
+      margin-bottom: 1.5rem;
+    }
+
+    .vendor-options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .vendor-option {
+      display: flex;
+      align-items: center;
+      padding: 1.5rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background-color: var(--background);
+      cursor: pointer;
+      transition: var(--transition-all);
+      gap: 1rem;
+    }
+
+    .vendor-option:hover {
+      border-color: var(--primary);
+      background-color: var(--accent);
+    }
+
+    .vendor-option.selected {
+      border-color: var(--primary);
+      background-color: var(--accent);
+      color: var(--accent-foreground);
+    }
+
+    .vendor-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background-color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .vendor-option.selected .vendor-icon {
+      background-color: var(--primary);
+      color: var(--primary-foreground);
+    }
+
+    .vendor-icon i {
+      font-size: 1.5rem;
+      color: var(--muted-foreground);
+    }
+
+    .vendor-option.selected .vendor-icon i {
+      color: var(--primary-foreground);
+    }
+
+    .vendor-info {
+      flex: 1;
+    }
+
+    .vendor-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .vendor-description {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+      margin-bottom: 0.5rem;
+    }
+
+    .vendor-option.selected .vendor-description {
+      color: var(--accent-foreground);
+      opacity: 0.8;
+    }
+
+    .vendor-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .vendor-select-icon {
+      color: var(--primary);
+      font-size: 1.25rem;
+      opacity: 0;
+      transition: var(--transition-all);
+    }
+
+    .vendor-option.selected .vendor-select-icon {
+      opacity: 1;
+    }
+
     /* Print Settings */
     .print-settings {
       margin-bottom: 1.5rem;
@@ -2153,7 +2253,32 @@
           Add files
         </button>
         
-        <!-- Print Settings -->
+        <!-- Vendor Selection -->
+        <div class="vendor-selection" id="vendorSelection" style="display: none;">
+          <h4 class="settings-label">Choose Print Shop</h4>
+          <p class="settings-subtitle">Select the print shop where you want to print your documents</p>
+          
+          <div class="vendor-options">
+            <div class="vendor-option selected" data-vendor="testshop">
+              <div class="vendor-icon">
+                <i class="fas fa-store"></i>
+              </div>
+              <div class="vendor-info">
+                <div class="vendor-name">TestShop</div>
+                <div class="vendor-description">Local printing services</div>
+                <div class="vendor-status">
+                  <i class="fas fa-circle" style="color: #34A853;"></i>
+                  <span>Available</span>
+                </div>
+              </div>
+              <div class="vendor-select-icon">
+                <i class="fas fa-check-circle"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+          <!-- Print Settings -->
         <div class="print-settings" id="printSettings" style="display: none;">
           <h4 class="settings-label">Print settings</h4>
           <p class="settings-subtitle" id="settingsSubtitle">Configure settings for selected file</p>
@@ -2333,6 +2458,7 @@
     let uploadedFiles = [];
     let selectedFileIndex = -1;
     let fileSettings = {};
+    let selectedVendor = 'testshop'; // Default vendor
     
     // Default settings
     const defaultSettings = {
@@ -2544,6 +2670,7 @@
       // Hide upload area after first file is uploaded
       uploadArea.style.display = hasFiles ? 'none' : 'block';
       addMoreBtn.style.display = hasFiles ? 'block' : 'none';
+      document.getElementById('vendorSelection').style.display = hasFiles ? 'block' : 'none';
       printSettings.style.display = hasFiles ? 'block' : 'none';
       orderSummary.style.display = hasFiles ? 'block' : 'none';
       actionButtons.style.display = hasFiles ? 'flex' : 'none';
@@ -2820,6 +2947,15 @@
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('lamination', laminationCheckbox.checked);
     });
+
+    // Vendor selection
+    document.querySelectorAll('.vendor-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.vendor-option').forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedVendor = option.dataset.vendor;
+      });
+    });
     
     // Action buttons
     document.getElementById('cancelBtn').addEventListener('click', closeModalFunc);
@@ -2869,8 +3005,9 @@
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
         }
         
-        // Add the total number of files
+        // Add the total number of files and selected vendor
         formData.append('file_count', uploadedFiles.length);
+        formData.append('selected_vendor', selectedVendor);
         
         // Send the files and settings to the server
         const response = await fetch('/upload/', {

@@ -24,6 +24,11 @@
             color: #333;
             margin-bottom: 30px;
         }
+        .error-message {
+            color: #d32f2f;
+            margin-top: 10px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -32,19 +37,40 @@
         <div id="g_id_onload"
              data-client_id="{{ client_id }}"
              data-callback="handleCredentialResponse"
-             data-auto_prompt="false">
+             data-auto_prompt="false"
+             data-cancel_on_tap_outside="false">
         </div>
         <div class="g_id_signin" 
              data-type="standard" 
              data-size="large" 
              data-theme="outline" 
              data-text="sign_in_with" 
-             data-shape="rectangular">
+             data-shape="rectangular"
+             data-width="300">
         </div>
+        <div id="error-message" class="error-message"></div>
     </div>
 
     <script>
+        // Debug: Check if client_id is available
+        const clientId = '{{ client_id }}';
+        console.log('Client ID:', clientId);
+        
+        if (!clientId || clientId === 'None' || clientId === '') {
+            document.getElementById('error-message').textContent = 'Google Client ID is not configured. Please check your environment variables.';
+            console.error('Google Client ID is missing or empty');
+        }
+        
+        // Check if Google Sign-In is loaded
+        window.addEventListener('load', function() {
+            if (typeof google === 'undefined') {
+                document.getElementById('error-message').textContent = 'Google Sign-In failed to load. Please refresh the page.';
+            }
+        });
+
         function handleCredentialResponse(response) {
+            console.log('Google Sign-In response received');
+            
             // Send the credential to our backend
             fetch('/auth-receiver/', {
                 method: 'POST',
@@ -54,18 +80,23 @@
                 },
                 body: 'credential=' + encodeURIComponent(response.credential)
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     // Redirect to user dashboard on successful login
                     window.location.href = '/userdashboard/';
                 } else {
-                    alert('Login failed: ' + data.message);
+                    document.getElementById('error-message').textContent = 'Login failed: ' + data.message;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Login failed. Please try again.');
+                document.getElementById('error-message').textContent = 'Login failed. Please try again.';
             });
         }
 
@@ -83,6 +114,13 @@
             }
             return cookieValue;
         }
+
+        // Add error handling for Google Sign-In
+        window.addEventListener('error', function(e) {
+            if (e.message && e.message.includes('postMessage')) {
+                console.warn('Google Sign-In postMessage error (this is usually harmless)');
+            }
+        });
     </script>
 </body>
 </html>

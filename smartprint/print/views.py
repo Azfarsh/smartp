@@ -286,13 +286,13 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 # FILE UPLOAD TO CLOUDFLARE R2
 # ─────────────────────────────────────────────────────────────
 
-
 @csrf_exempt  # Use proper CSRF protection in production!
 def upload_to_r2(request):
     if request.method == 'POST':
         try:
             files_uploaded = 0
             file_count = int(request.POST.get('file_count', 0))
+            selected_vendor = request.POST.get('selected_vendor', 'testshop')
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -343,10 +343,13 @@ def upload_to_r2(request):
                     if file_extension in content_type_map:
                         content_type = content_type_map[file_extension]
 
+                    # Create vendor-specific file path
+                    vendor_file_key = f"{selected_vendor}/{file.name}"
+
                     # Upload the file with metadata stored in object metadata
                     s3.put_object(
                         Bucket=settings.R2_BUCKET,
-                        Key=file.name,
+                        Key=vendor_file_key,
                         Body=file_content,
                         ContentType=content_type,
                         Metadata={
@@ -364,7 +367,9 @@ def upload_to_r2(request):
                             'trash': 'NO',
                             'user': 'User',
                             'priority': 'Medium',
-                            'pages': str(estimate_pages_from_size(len(file_content), file_extension))
+                            'pages': str(estimate_pages_from_size(len(file_content), file_extension)),
+                            'vendor': selected_vendor,
+                            'original_filename': file.name
                         }
                     )
 
@@ -600,7 +605,9 @@ from django.shortcuts import render
 from django.conf import settings
 
 def sign_in(request):
-    return render(request, 'login.html', {'client_id': settings.GOOGLE_CLIENT_ID})
+    client_id = settings.GOOGLE_CLIENT_ID
+    print(f"🔍 Debug: Google Client ID loaded: {client_id[:20] if client_id else 'None'}...")
+    return render(request, 'login.html', {'client_id': client_id})
 
 from django.http import JsonResponse
 from django.contrib.auth import login

@@ -130,6 +130,10 @@ R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
 R2_ENDPOINT = os.getenv('R2_ENDPOINT')
 R2_BUCKET = os.getenv('R2_BUCKET')
 
+# ✅ Google OAuth settings
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
 
