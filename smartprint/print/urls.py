@@ -3,7 +3,7 @@ from . import views
 from .views import (home, userdashboard, vendordashboard, upload_to_r2,
                     get_print_requests, process_print_request, auto_print_documents, update_job_status,
                     auth_receiver, sign_in)
-from .firebase_auth import firebase_auth
+
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -17,6 +17,5 @@ urlpatterns = [
     path('auto-print-documents/', auto_print_documents, name='auto-print-documents'),
     path('update-job-status/', update_job_status, name='update-job-status'),
     path('login/', sign_in, name='login'),
-    path('firebase-auth/', firebase_auth, name='firebase-auth'),
     path('auth-receiver/', auth_receiver, name='auth_receiver'),
 ]

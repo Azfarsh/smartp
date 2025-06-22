@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials
 
 # Load environment variables
 load_dotenv()
@@ -101,21 +99,15 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Google OAuth Configuration
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-
-# Allow popups for Google Sign-In. This is necessary to prevent the
-# "postMessage" error with the Google Sign-In popup.
-SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
-
 # Firebase Admin SDK Configuration
+import firebase_admin
+from firebase_admin import credentials
+
 try:
     if not firebase_admin._apps:
-        # For now, we'll initialize without credentials since we don't have the service account file
-        # You'll need to get the service account key from Firebase Console
-        firebase_admin.initialize_app()
-        print("✅ Firebase Admin SDK initialized successfully (without credentials)")
+        cred = credentials.Certificate(os.path.join(BASE_DIR, 'firebase-service-account.json'))
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase Admin SDK initialized successfully")
     else:
         print("✅ Firebase Admin SDK already initialized")
 except Exception as e:

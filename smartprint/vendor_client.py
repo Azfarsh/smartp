@@ -3,7 +3,8 @@
 """
 Automated Vendor Print Client Script
 ====================================
-Continuously monitors for print jobs via WebSocket and handles automatic printing.
+Continuously monitors for print jobs via WebSocket and handles automatic printing
+with linked list queue system and multiple printer support.
 """
 
 import os
@@ -20,6 +21,10 @@ import subprocess
 import tempfile
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urljoin
+from dataclasses import dataclass
+from collections import deque
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 # Additional imports for Windows printing
 try:
@@ -47,10 +52,204 @@ else:
         print("⚠️  Warning: pycups not available. Install pycups for Linux/Mac printing support.")
         PLATFORM_PRINTING = None
 
+@dataclass
+class PrintJobNode:
+    """Node for the linked list queue containing print job data"""
+    filename: str
+    download_url: str
+    metadata: Dict
+    status: str = "pending"  # pending, processing, completed, failed
+    attempts: int = 0
+    max_attempts: int = 3
+    created_time: float = None
+    assigned_printer: str = None
+    next_node: 'PrintJobNode' = None
+    
+    def __post_init__(self):
+        if self.created_time is None:
+            self.created_time = time.time()
+
+class PrintJobQueue:
+    """Linked list implementation for print job queue"""
+    
+    def __init__(self):
+        self.head = None
+        self.tail = None
+        self.size = 0
+        self.lock = threading.RLock()
+    
+    def enqueue(self, job_node: PrintJobNode):
+        """Add a job to the end of the queue"""
+        with self.lock:
+            if self.tail is None:
+                self.head = self.tail = job_node
+            else:
+                self.tail.next_node = job_node
+                self.tail = job_node
+            self.size += 1
+    
+    def dequeue(self) -> Optional[PrintJobNode]:
+        """Remove and return the first job from the queue"""
+        with self.lock:
+            if self.head is None:
+                return None
+            
+            job_node = self.head
+            self.head = self.head.next_node
+            
+            if self.head is None:
+                self.tail = None
+            
+            job_node.next_node = None
+            self.size -= 1
+            return job_node
+    
+    def peek(self) -> Optional[PrintJobNode]:
+        """Return the first job without removing it"""
+        with self.lock:
+            return self.head
+    
+    def remove_by_filename(self, filename: str) -> bool:
+        """Remove a specific job by filename"""
+        with self.lock:
+            if self.head is None:
+                return False
+            
+            # If head node matches
+            if self.head.filename == filename:
+                self.head = self.head.next_node
+                if self.head is None:
+                    self.tail = None
+                self.size -= 1
+                return True
+            
+            # Search for the node
+            current = self.head
+            while current.next_node:
+                if current.next_node.filename == filename:
+                    current.next_node = current.next_node.next_node
+                    if current.next_node is None:
+                        self.tail = current
+                    self.size -= 1
+                    return True
+                current = current.next_node
+            
+            return False
+    
+    def get_all_jobs(self) -> List[PrintJobNode]:
+        """Get all jobs in the queue"""
+        with self.lock:
+            jobs = []
+            current = self.head
+            while current:
+                jobs.append(current)
+                current = current.next_node
+            return jobs
+    
+    def is_empty(self) -> bool:
+        """Check if queue is empty"""
+        return self.size == 0
+    
+    def get_size(self) -> int:
+        """Get queue size"""
+        return self.size
+
+class PrinterManager:
+    """Manages multiple printers and job distribution"""
+    
+    def __init__(self, max_printers: int = 10):
+        self.max_printers = max_printers
+        self.printers = {}  # printer_name -> printer_info
+        self.printer_status = {}  # printer_name -> status (idle, busy, error)
+        self.printer_jobs = {}  # printer_name -> current_job
+        self.lock = threading.RLock()
+        
+        # Initialize with default printer
+        self.add_printer("HP Deskjet 1510 series (copy 3)")
+    
+    def add_printer(self, printer_name: str):
+        """Add a printer to the manager"""
+        with self.lock:
+            if len(self.printers) >= self.max_printers:
+                return False
+            
+            self.printers[printer_name] = {
+                'name': printer_name,
+                'added_time': time.time(),
+                'jobs_completed': 0,
+                'jobs_failed': 0
+            }
+            self.printer_status[printer_name] = 'idle'
+            self.printer_jobs[printer_name] = None
+            return True
+    
+    def get_available_printer(self) -> Optional[str]:
+        """Get an available printer for job assignment"""
+        with self.lock:
+            for printer_name, status in self.printer_status.items():
+                if status == 'idle':
+                    return printer_name
+            return None
+    
+    def set_printer_busy(self, printer_name: str, job: PrintJobNode):
+        """Mark printer as busy with a job"""
+        with self.lock:
+            if printer_name in self.printer_status:
+                self.printer_status[printer_name] = 'busy'
+                self.printer_jobs[printer_name] = job
+    
+    def set_printer_idle(self, printer_name: str):
+        """Mark printer as idle"""
+        with self.lock:
+            if printer_name in self.printer_status:
+                self.printer_status[printer_name] = 'idle'
+                self.printer_jobs[printer_name] = None
+    
+    def set_printer_error(self, printer_name: str):
+        """Mark printer as having an error"""
+        with self.lock:
+            if printer_name in self.printer_status:
+                self.printer_status[printer_name] = 'error'
+                self.printer_jobs[printer_name] = None
+    
+    def get_printer_stats(self) -> Dict:
+        """Get statistics for all printers"""
+        with self.lock:
+            stats = {
+                'total_printers': len(self.printers),
+                'idle_printers': len([s for s in self.printer_status.values() if s == 'idle']),
+                'busy_printers': len([s for s in self.printer_status.values() if s == 'busy']),
+                'error_printers': len([s for s in self.printer_status.values() if s == 'error']),
+                'printers': []
+            }
+            
+            for name, info in self.printers.items():
+                stats['printers'].append({
+                    'name': name,
+                    'status': self.printer_status.get(name, 'unknown'),
+                    'current_job': self.printer_jobs.get(name),
+                    'jobs_completed': info.get('jobs_completed', 0),
+                    'jobs_failed': info.get('jobs_failed', 0)
+                })
+            
+            return stats
+    
+    def increment_job_completed(self, printer_name: str):
+        """Increment completed job count for printer"""
+        with self.lock:
+            if printer_name in self.printers:
+                self.printers[printer_name]['jobs_completed'] += 1
+    
+    def increment_job_failed(self, printer_name: str):
+        """Increment failed job count for printer"""
+        with self.lock:
+            if printer_name in self.printers:
+                self.printers[printer_name]['jobs_failed'] += 1
+
 class AutomatedVendorPrintClient:
-    def __init__(self, vendor_id: str, base_url: str = "ws://localhost:5000", debug: bool = False):
+    def __init__(self, vendor_id: str, base_url: str = "ws://localhost:8000", debug: bool = False):
         """
-        Initialize the automated vendor print client.
+        Initialize the automated vendor print client with enhanced queue system.
         
         Args:
             vendor_id: Vendor ID for identification
@@ -58,6 +257,7 @@ class AutomatedVendorPrintClient:
             debug: Enable debug logging
         """
         self.vendor_id = vendor_id
+        
         # Handle different URL formats
         if base_url.startswith('http://'):
             self.base_url = base_url.replace('http://', 'ws://')
@@ -74,19 +274,34 @@ class AutomatedVendorPrintClient:
         self.debug = debug
         self.ws = None
         self.is_running = True
-        self.job_queue = []
-        self.processing_job = False
         
-        # Enhanced job tracking
+        # Enhanced queue system
+        self.print_queue = PrintJobQueue()
         self.processed_jobs = set()  # Cache of completed job filenames
-        self.job_execution_array = []  # Array to track job executions
-        self.job_lock = threading.Lock()  # Thread safety for job processing
+        self.failed_jobs_queue = PrintJobQueue()  # Priority queue for failed jobs
         
-        self.log("🚀 Automated Vendor Print Client initialized")
+        # Printer management
+        self.printer_manager = PrinterManager()
+        
+        # Threading and processing
+        self.executor = ThreadPoolExecutor(max_workers=10)  # For parallel processing
+        self.processing_threads = {}  # Track active processing threads
+        self.queue_processor_running = False
+        
+        # Performance tracking
+        self.job_metrics = {
+            'total_received': 0,
+            'total_completed': 0,
+            'total_failed': 0,
+            'average_processing_time': 0,
+            'processing_times': deque(maxlen=100)  # Keep last 100 processing times
+        }
+        
+        self.log("🚀 Enhanced Automated Vendor Print Client initialized")
         if self.debug:
             self.log(f"📍 Base URL: {self.base_url}")
             self.log(f"🔑 Using Vendor ID: {self.vendor_id}")
-            self.log("📊 Job execution tracking enabled")
+            self.log("📊 Enhanced queue system with printer management enabled")
     
     def log(self, message: str, level: str = "INFO"):
         """Log a message with timestamp."""
@@ -99,55 +314,25 @@ class AutomatedVendorPrintClient:
             self.log(message, "DEBUG")
     
     def on_message(self, ws, message):
-        """Handle incoming WebSocket messages."""
+        """Handle incoming WebSocket messages with enhanced processing."""
         try:
             data = json.loads(message)
             message_type = data.get('type')
             
             if message_type == 'print_job':
-                # Received a new print job
                 job = data.get('job')
-                if job:
-                    filename = job['filename']
-                    
-                    # Check if job was already processed
-                    with self.job_lock:
-                        if filename in self.processed_jobs:
-                            self.debug_log(f"🔄 Skipping already processed job: {filename}")
-                            return
-                        
-                        # Add to processed set immediately to prevent duplicates
-                        self.processed_jobs.add(filename)
-                    
-                    self.log(f"📋 Received print job: {filename}")
-                    self.job_queue.append(job)
-                    
-                    # Start processing if not already processing
-                    if not self.processing_job:
-                        threading.Thread(target=self.process_job_queue, daemon=True).start()
+                if job and job.get('metadata', {}).get('status') == 'no':
+                    self.handle_new_print_job(job)
                         
             elif message_type == 'print_jobs_response':
                 jobs = data.get('jobs', [])
                 if jobs:
-                    # Filter out already processed jobs
-                    new_jobs = []
-                    with self.job_lock:
-                        for job in jobs:
-                            filename = job['filename']
-                            if filename not in self.processed_jobs:
-                                self.processed_jobs.add(filename)
-                                new_jobs.append(job)
-                            else:
-                                self.debug_log(f"🔄 Skipping already processed job: {filename}")
-                    
-                    if new_jobs:
-                        self.log(f"📋 Received {len(new_jobs)} new print jobs (filtered {len(jobs) - len(new_jobs)} duplicates)")
-                        self.job_queue.extend(new_jobs)
-                        
-                        if not self.processing_job:
-                            threading.Thread(target=self.process_job_queue, daemon=True).start()
+                    # Filter jobs with status 'no'
+                    pending_jobs = [job for job in jobs if job.get('metadata', {}).get('status') == 'no']
+                    if pending_jobs:
+                        self.handle_multiple_print_jobs(pending_jobs)
                     else:
-                        self.debug_log("📭 No new print jobs (all were duplicates)")
+                        self.debug_log("📭 No jobs with status 'no' found")
                 else:
                     self.debug_log("📭 No print jobs available")
                     
@@ -164,166 +349,218 @@ class AutomatedVendorPrintClient:
         except Exception as e:
             self.log(f"❌ Error processing message: {str(e)}")
     
-    def on_error(self, ws, error):
-        """Handle WebSocket errors."""
-        self.log(f"❌ WebSocket error: {str(error)}")
-    
-    def on_close(self, ws, close_status_code, close_msg):
-        """Handle WebSocket connection close."""
-        self.log("🔌 WebSocket connection closed")
-        
-        # Attempt to reconnect after a delay
-        if self.is_running:
-            self.log("🔄 Attempting to reconnect in 5 seconds...")
-            time.sleep(5)
-            self.connect_websocket()
-    
-    def on_open(self, ws):
-        """Handle WebSocket connection open."""
-        self.log("🔌 WebSocket connection established")
-        
-        # Start the job request loop
-        threading.Thread(target=self.job_request_loop, daemon=True).start()
-        
-        # Send initial job request immediately
-        try:
-            self.ws.send(json.dumps({
-                'type': 'request_print_jobs',
-                'vendor_id': self.vendor_id
-            }))
-        except Exception as e:
-            self.log(f"❌ Error sending initial job request: {str(e)}")
-    
-    def job_request_loop(self):
-        """Continuously request print jobs every 60 seconds."""
-        loop_count = 0
-        while self.is_running and self.ws and self.ws.sock:
-            try:
-                # Only request if not currently processing jobs
-                if not self.processing_job and len(self.job_queue) == 0:
-                    self.debug_log("📤 Requesting new print jobs...")
-                    self.ws.send(json.dumps({
-                        'type': 'request_print_jobs',
-                        'vendor_id': self.vendor_id
-                    }))
-                else:
-                    self.debug_log("⏳ Skipping job request - currently processing or queue not empty")
-                
-                # Log job execution summary every 10 minutes
-                loop_count += 1
-                if loop_count % 10 == 0:  # Every 10 loops (10 minutes)
-                    summary = self.get_job_execution_summary()
-                    self.log(f"📊 Job Summary: {summary['completed']}/{summary['total']} completed " +
-                           f"({summary['success_rate']:.1f}% success rate)")
-                    
-                    # Cleanup old entries every hour
-                    if loop_count % 60 == 0:  # Every 60 loops (1 hour)
-                        self.cleanup_old_job_entries()
-                
-                # Wait 60 seconds before next request (reduced frequency)
-                time.sleep(60)
-                
-            except Exception as e:
-                self.log(f"❌ Error in job request loop: {str(e)}")
-                break
-    
-    def process_job_queue(self):
-        """Process all jobs in the queue."""
-        self.processing_job = True
-        
-        while self.job_queue and self.is_running:
-            job = self.job_queue.pop(0)
-            self.process_single_job(job)
-            
-            # Small delay between jobs
-            time.sleep(2)
-        
-        self.processing_job = False
-    
-    def process_single_job(self, job):
-        """Process a single print job automatically with enhanced tracking."""
+    def handle_new_print_job(self, job):
+        """Handle a new print job by adding it to the queue"""
         filename = job.get('filename', 'unknown')
-        download_url = job.get('download_url', '')
-        metadata = job.get('metadata', {})
         
-        # Add job to execution tracking
-        job_entry = {
-            'filename': filename,
-            'start_time': time.time(),
-            'status': 'processing',
-            'attempts': 1,
-            'metadata': metadata
-        }
+        # Check if already processed
+        if filename in self.processed_jobs:
+            self.debug_log(f"🔄 Skipping already processed job: {filename}")
+            return
         
-        with self.job_lock:
-            self.job_execution_array.append(job_entry)
+        # Create job node
+        job_node = PrintJobNode(
+            filename=filename,
+            download_url=job.get('download_url', ''),
+            metadata=job.get('metadata', {})
+        )
         
-        self.log(f"🔄 Processing job: {filename} (Tracked: {len(self.job_execution_array)} jobs)")
+        # Add to queue
+        self.print_queue.enqueue(job_node)
+        self.job_metrics['total_received'] += 1
+        
+        self.log(f"📋 Added print job to queue: {filename} (Queue size: {self.print_queue.get_size()})")
+        
+        # Start queue processor if not running
+        if not self.queue_processor_running:
+            threading.Thread(target=self.process_print_queue, daemon=True).start()
+    
+    def handle_multiple_print_jobs(self, jobs):
+        """Handle multiple print jobs efficiently"""
+        new_jobs = []
+        
+        for job in jobs:
+            filename = job.get('filename', 'unknown')
+            
+            if filename not in self.processed_jobs:
+                job_node = PrintJobNode(
+                    filename=filename,
+                    download_url=job.get('download_url', ''),
+                    metadata=job.get('metadata', {})
+                )
+                new_jobs.append(job_node)
+                self.processed_jobs.add(filename)
+        
+        if new_jobs:
+            # Add all jobs to queue
+            for job_node in new_jobs:
+                self.print_queue.enqueue(job_node)
+                self.job_metrics['total_received'] += 1
+            
+            self.log(f"📋 Added {len(new_jobs)} print jobs to queue (Queue size: {self.print_queue.get_size()})")
+            
+            # Start queue processor if not running
+            if not self.queue_processor_running:
+                threading.Thread(target=self.process_print_queue, daemon=True).start()
+        else:
+            self.debug_log("📭 No new print jobs to process")
+    
+    def process_print_queue(self):
+        """Main queue processor that handles jobs efficiently"""
+        self.queue_processor_running = True
+        self.log("🔄 Starting print queue processor")
         
         try:
-            # Check if printer is available
-            printer_available, printer_name = self.is_printer_available()
+            while self.is_running and (not self.print_queue.is_empty() or not self.failed_jobs_queue.is_empty()):
+                # Process failed jobs first (priority)
+                if not self.failed_jobs_queue.is_empty():
+                    job_node = self.failed_jobs_queue.dequeue()
+                    if job_node:
+                        self.debug_log(f"🔄 Processing priority failed job: {job_node.filename}")
+                        self.process_single_job_async(job_node, priority=True)
+                
+                # Process regular jobs
+                elif not self.print_queue.is_empty():
+                    job_node = self.print_queue.dequeue()
+                    if job_node:
+                        self.process_single_job_async(job_node)
+                
+                # Small delay to prevent overwhelming
+                time.sleep(0.1)
             
-            if not printer_available:
-                error_msg = "No printer detected on this system"
-                self.log(f"🖨️  {error_msg}")
-                self._update_job_status(filename, 'failed', error_msg)
-                self.notify_job_failed(filename, error_msg)
-                self.remove_from_processed_cache(filename)  # Allow retry later
+        except Exception as e:
+            self.log(f"❌ Error in queue processor: {str(e)}")
+        finally:
+            self.queue_processor_running = False
+            self.log("⏹️ Print queue processor stopped")
+    
+    def process_single_job_async(self, job_node: PrintJobNode, priority: bool = False):
+        """Process a single job asynchronously with printer assignment"""
+        try:
+            # Get available printer
+            printer_name = self.printer_manager.get_available_printer()
+            
+            if not printer_name:
+                # No available printer, re-queue the job
+                if priority:
+                    self.failed_jobs_queue.enqueue(job_node)
+                else:
+                    self.print_queue.enqueue(job_node)
+                self.debug_log(f"⏳ No available printer, re-queuing job: {job_node.filename}")
+                time.sleep(2)  # Wait before retry
+                return
+            
+            # Assign printer and mark as busy
+            job_node.assigned_printer = printer_name
+            job_node.status = "processing"
+            self.printer_manager.set_printer_busy(printer_name, job_node)
+            
+            # Submit job to thread pool
+            future = self.executor.submit(self.process_job_with_printer, job_node, printer_name)
+            self.processing_threads[job_node.filename] = future
+            
+            # Handle completion
+            def on_job_complete(fut):
+                try:
+                    success = fut.result()
+                    self.handle_job_completion(job_node, success, priority)
+                except Exception as e:
+                    self.log(f"❌ Error in job processing thread: {str(e)}")
+                    self.handle_job_completion(job_node, False, priority)
+                finally:
+                    # Clean up
+                    self.processing_threads.pop(job_node.filename, None)
+                    self.printer_manager.set_printer_idle(printer_name)
+            
+            future.add_done_callback(on_job_complete)
+            
+        except Exception as e:
+            self.log(f"❌ Error processing job async: {str(e)}")
+            self.handle_job_completion(job_node, False, priority)
+    
+    def process_job_with_printer(self, job_node: PrintJobNode, printer_name: str) -> bool:
+        """Process a print job with assigned printer"""
+        start_time = time.time()
+        
+        try:
+            self.log(f"🖨️  Processing {job_node.filename} on {printer_name} (Attempt {job_node.attempts + 1})")
+            
+            # Check if printer is actually available
+            if not self.is_specific_printer_available(printer_name):
+                self.log(f"🖨️  Printer {printer_name} not available")
+                self.printer_manager.set_printer_error(printer_name)
                 return False
             
-            # Update status to downloading
-            self._update_job_status(filename, 'downloading')
+            job_node.attempts += 1
             
             # Download document
-            document_data = self.download_document(download_url)
+            document_data = self.download_document(job_node.download_url)
             if not document_data:
-                error_msg = "Failed to download document"
-                self._update_job_status(filename, 'failed', error_msg)
-                self.notify_job_failed(filename, error_msg)
-                self.remove_from_processed_cache(filename)  # Allow retry later
+                self.log(f"❌ Failed to download document: {job_node.filename}")
                 return False
             
-            # Update status to printing
-            self._update_job_status(filename, 'printing')
+            # Prepare print settings
+            print_settings = self.prepare_print_settings(job_node.metadata)
             
-            # Apply print settings from metadata
-            print_settings = self.prepare_print_settings(metadata)
-            
-            # Print document - ONLY notify completion if printing actually succeeds
+            # Print document
             print_success = self.print_document_with_settings(
-                document_data, printer_name, filename, print_settings
+                document_data, printer_name, job_node.filename, print_settings
             )
             
-            # Only notify completion after successful printing
             if print_success:
-                # Wait a moment to ensure print job is actually sent to printer
-                time.sleep(2)
+                # Update metrics
+                processing_time = time.time() - start_time
+                self.job_metrics['processing_times'].append(processing_time)
+                self.job_metrics['total_completed'] += 1
                 
-                # Update job status to completed
-                self._update_job_status(filename, 'completed')
+                # Calculate average processing time
+                if self.job_metrics['processing_times']:
+                    self.job_metrics['average_processing_time'] = sum(self.job_metrics['processing_times']) / len(self.job_metrics['processing_times'])
                 
-                # Notify backend and update R2 storage
-                self.notify_job_completed(filename)
-                self.update_r2_job_status(filename, 'YES')
+                # Update printer stats
+                self.printer_manager.increment_job_completed(printer_name)
                 
-                self.log(f"✅ Successfully completed and notified job: {filename}")
+                self.log(f"✅ Successfully completed job: {job_node.filename} ({processing_time:.2f}s)")
                 return True
             else:
-                error_msg = "Printing failed - job not sent to printer"
-                self.log(f"❌ {error_msg}: {filename}")
-                self._update_job_status(filename, 'failed', error_msg)
-                self.notify_job_failed(filename, error_msg)
-                self.remove_from_processed_cache(filename)  # Allow retry later
+                self.printer_manager.increment_job_failed(printer_name)
                 return False
             
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            self.log(f"❌ Error processing job {filename}: {error_msg}")
-            self._update_job_status(filename, 'failed', error_msg)
-            self.notify_job_failed(filename, error_msg)
-            self.remove_from_processed_cache(filename)  # Allow retry later
+            self.log(f"❌ Error processing job {job_node.filename}: {str(e)}")
             return False
+    
+    def handle_job_completion(self, job_node: PrintJobNode, success: bool, was_priority: bool = False):
+        """Handle job completion or failure with retry logic"""
+        if success:
+            job_node.status = "completed"
+            self.processed_jobs.add(job_node.filename)
+            
+            # Notify backend
+            self.notify_job_completed(job_node.filename)
+            self.update_r2_job_status(job_node.filename, 'YES')
+            
+        else:
+            job_node.status = "failed"
+            self.job_metrics['total_failed'] += 1
+            
+            # Retry logic
+            if job_node.attempts < job_node.max_attempts:
+                self.log(f"🔄 Retrying failed job: {job_node.filename} (Attempt {job_node.attempts + 1}/{job_node.max_attempts})")
+                
+                # Add to priority failed jobs queue for immediate retry
+                self.failed_jobs_queue.enqueue(job_node)
+                
+                # If this was a priority job that failed, pause other processing briefly
+                if was_priority:
+                    time.sleep(1)
+                    
+            else:
+                self.log(f"❌ Job failed permanently: {job_node.filename} (Max attempts reached)")
+                self.notify_job_failed(job_node.filename, f"Failed after {job_node.max_attempts} attempts")
+                
+                # Remove from processed cache to allow manual retry later
+                self.processed_jobs.discard(job_node.filename)
     
     def prepare_print_settings(self, metadata):
         """Prepare print settings from metadata."""
@@ -380,6 +617,11 @@ class AutomatedVendorPrintClient:
         self.debug_log(f"🎯 Using printer: {default_printer}")
         
         return True, default_printer
+    
+    def is_specific_printer_available(self, printer_name: str) -> bool:
+        """Check if a specific printer is available"""
+        available_printers = self.get_available_printers()
+        return printer_name in available_printers
     
     def download_document(self, file_url: str) -> Optional[bytes]:
         """Download document content from the signed URL."""
@@ -750,10 +992,6 @@ try {{
             except:
                 pass
     
-    
-    
-    
-    
     def _print_cups_with_settings(self, document_data: bytes, printer_name: str, 
                                 filename: str, print_settings: Dict) -> bool:
         """Print document on Linux/Mac using CUPS with settings and wait for completion."""
@@ -923,23 +1161,6 @@ try {{
             except Exception as e:
                 self.log(f"❌ Error notifying job failure: {str(e)}")
     
-    def remove_from_processed_cache(self, filename: str):
-        """Remove a job from the processed cache to allow retry."""
-        with self.job_lock:
-            self.processed_jobs.discard(filename)
-            self.debug_log(f"🗑️ Removed {filename} from processed cache for retry")
-    
-    def _update_job_status(self, filename: str, status: str, error_msg: str = None):
-        """Update job status in the execution array."""
-        with self.job_lock:
-            for job in self.job_execution_array:
-                if job['filename'] == filename:
-                    job['status'] = status
-                    job['last_update'] = time.time()
-                    if error_msg:
-                        job['error'] = error_msg
-                    break
-    
     def update_r2_job_status(self, filename: str, status: str):
         """Update job completion status in R2 storage via API call."""
         try:
@@ -964,45 +1185,103 @@ try {{
         except Exception as e:
             self.log(f"❌ Error updating R2 job status: {str(e)}")
     
-    def get_job_execution_summary(self):
-        """Get summary of job executions for monitoring."""
-        with self.job_lock:
-            total_jobs = len(self.job_execution_array)
-            completed_jobs = len([j for j in self.job_execution_array if j['status'] == 'completed'])
-            failed_jobs = len([j for j in self.job_execution_array if j['status'] == 'failed'])
-            processing_jobs = len([j for j in self.job_execution_array if j['status'] == 'processing'])
-            
-            return {
-                'total': total_jobs,
-                'completed': completed_jobs,
-                'failed': failed_jobs,
-                'processing': processing_jobs,
-                'success_rate': (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
-            }
+    def on_error(self, ws, error):
+        """Handle WebSocket errors."""
+        self.log(f"❌ WebSocket error: {str(error)}")
     
-    def cleanup_old_job_entries(self, max_age_hours: int = 24):
-        """Remove old job entries from tracking array."""
-        current_time = time.time()
-        max_age_seconds = max_age_hours * 3600
+    def on_close(self, ws, close_status_code, close_msg):
+        """Handle WebSocket connection close."""
+        self.log("🔌 WebSocket connection closed")
         
-        with self.job_lock:
-            original_count = len(self.job_execution_array)
-            self.job_execution_array = [
-                job for job in self.job_execution_array
-                if (current_time - job.get('start_time', current_time)) < max_age_seconds
-            ]
-            cleaned_count = original_count - len(self.job_execution_array)
-            
-            if cleaned_count > 0:
-                self.log(f"🧹 Cleaned up {cleaned_count} old job entries")
+        # Attempt to reconnect after a delay
+        if self.is_running:
+            self.log("🔄 Attempting to reconnect in 5 seconds...")
+            time.sleep(5)
+            self.connect_websocket()
     
-    def clear_processed_cache(self):
-        """Clear the processed jobs cache (useful for testing)."""
-        with self.job_lock:
-            cleared_count = len(self.processed_jobs)
-            self.processed_jobs.clear()
-            self.job_execution_array.clear()
-            self.log(f"🗑️ Cleared processed cache ({cleared_count} jobs) and execution array")
+    def on_open(self, ws):
+        """Handle WebSocket connection open."""
+        self.log("🔌 WebSocket connection established")
+        
+        # Start the job request loop
+        threading.Thread(target=self.job_request_loop, daemon=True).start()
+        
+        # Start status monitoring
+        threading.Thread(target=self.status_monitor_loop, daemon=True).start()
+        
+        # Send initial job request immediately
+        try:
+            self.ws.send(json.dumps({
+                'type': 'request_print_jobs',
+                'vendor_id': self.vendor_id
+            }))
+        except Exception as e:
+            self.log(f"❌ Error sending initial job request: {str(e)}")
+    
+    def job_request_loop(self):
+        """Continuously request print jobs every 60 seconds."""
+        loop_count = 0
+        while self.is_running and self.ws and self.ws.sock:
+            try:
+                # Only request if queue is not too full
+                if self.print_queue.get_size() < 5:
+                    self.debug_log("📤 Requesting new print jobs...")
+                    self.ws.send(json.dumps({
+                        'type': 'request_print_jobs',
+                        'vendor_id': self.vendor_id
+                    }))
+                else:
+                    self.debug_log("⏳ Skipping job request - queue is full")
+                
+                # Log status every 10 minutes
+                loop_count += 1
+                if loop_count % 10 == 0:  # Every 10 loops (10 minutes)
+                    self.log_system_status()
+                
+                # Wait 60 seconds before next request
+                time.sleep(60)
+                
+            except Exception as e:
+                self.log(f"❌ Error in job request loop: {str(e)}")
+                break
+    
+    def status_monitor_loop(self):
+        """Monitor system status and performance"""
+        while self.is_running:
+            try:
+                # Monitor queue sizes
+                if self.print_queue.get_size() > 10:
+                    self.log(f"⚠️  Large queue detected: {self.print_queue.get_size()} jobs pending")
+                
+                # Monitor failed jobs
+                if self.failed_jobs_queue.get_size() > 5:
+                    self.log(f"⚠️  Many failed jobs: {self.failed_jobs_queue.get_size()} jobs retrying")
+                
+                # Monitor printer status
+                printer_stats = self.printer_manager.get_printer_stats()
+                if printer_stats['error_printers'] > 0:
+                    self.log(f"⚠️  {printer_stats['error_printers']} printers have errors")
+                
+                time.sleep(30)  # Check every 30 seconds
+                
+            except Exception as e:
+                self.debug_log(f"Error in status monitor: {str(e)}")
+                time.sleep(60)
+    
+    def log_system_status(self):
+        """Log comprehensive system status"""
+        printer_stats = self.printer_manager.get_printer_stats()
+        
+        self.log("📊 SYSTEM STATUS REPORT:")
+        self.log(f"   📋 Queue Size: {self.print_queue.get_size()} jobs pending")
+        self.log(f"   🔄 Failed Queue: {self.failed_jobs_queue.get_size()} jobs retrying")
+        self.log(f"   🖨️  Printers: {printer_stats['idle_printers']} idle, {printer_stats['busy_printers']} busy, {printer_stats['error_printers']} error")
+        self.log(f"   📈 Metrics: {self.job_metrics['total_completed']} completed, {self.job_metrics['total_failed']} failed")
+        self.log(f"   ⏱️  Avg Processing: {self.job_metrics['average_processing_time']:.2f}s")
+        
+        # Log active processing threads
+        active_threads = len([t for t in self.processing_threads.values() if not t.done()])
+        self.log(f"   🧵 Active Threads: {active_threads}/{len(self.processing_threads)}")
     
     def connect_websocket(self):
         """Connect to WebSocket server."""
@@ -1021,7 +1300,8 @@ try {{
     
     def run(self):
         """Main loop to continuously monitor for print jobs via WebSocket."""
-        self.log("🔄 Starting Automated Print Client")
+        self.log("🔄 Starting Enhanced Automated Print Client")
+        self.log(f"🖨️  Available printers: {self.printer_manager.get_printer_stats()['total_printers']}")
         
         # Enable WebSocket debug logging if debug mode is enabled
         if self.debug:
@@ -1042,12 +1322,16 @@ try {{
                 if self.is_running:
                     self.log("🔄 Retrying connection in 10 seconds...")
                     time.sleep(10)
+        
+        # Cleanup
+        self.executor.shutdown(wait=True)
+        self.log("🏁 Enhanced Print Client shutdown complete")
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Automated Vendor Print Client")
+    parser = argparse.ArgumentParser(description="Enhanced Automated Vendor Print Client")
     parser.add_argument("--vendor-id", required=True, help="Vendor ID for identification")
-    parser.add_argument("--url", default="ws://localhost:5000", help="Base WebSocket URL of the Django application")
+    parser.add_argument("--url", default="ws://localhost:8000", help="Base WebSocket URL of the Django application")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     
     args = parser.parse_args()
