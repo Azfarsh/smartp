@@ -206,6 +206,7 @@ def userdashboard(request):
         'firebase_uid': request.session.get('firebase_uid'),
         'auth_method': request.session.get('auth_method', 'unknown'),
         'user_jobs': user_jobs[:10],  # Show only recent 10 jobs
+        'user_jobs_json': json.dumps(user_jobs[:10]),  # JSON serialized for JavaScript
         'total_jobs': total_jobs,
         'pending_jobs': pending_jobs,
         'completed_jobs': completed_jobs,
@@ -525,7 +526,7 @@ def upload_to_r2(request):
                     vendor_file_key = f"{selected_vendor}/{file.name}"
                     
                     # Create user-specific file path (for user dashboard)
-                    user_file_key = f"users/{user_email}/{file.name}"
+                    user_file_key = f"printme/users/{user_email}/{file.name}"
 
                     # Upload to vendor folder (for vendor processing)
                     s3.put_object(

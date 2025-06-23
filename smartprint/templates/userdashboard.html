@@ -412,7 +412,7 @@
       margin-top: 0.5rem;
     }
 
-    /* Recent Jobs Section */
+    /* Print Jobs Section with Horizontal Scrolling */
     .jobs-section {
       margin-bottom: 3rem;
     }
@@ -442,10 +442,42 @@
       background-color: var(--surface-variant);
     }
 
-    .jobs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    .jobs-container {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .jobs-scroll-wrapper {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--outline) var(--surface-variant);
+    }
+
+    .jobs-scroll-wrapper::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .jobs-scroll-wrapper::-webkit-scrollbar-track {
+      background: var(--surface-variant);
+      border-radius: 4px;
+    }
+
+    .jobs-scroll-wrapper::-webkit-scrollbar-thumb {
+      background: var(--outline);
+      border-radius: 4px;
+    }
+
+    .jobs-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+      background: var(--on-surface-variant);
+    }
+
+    .jobs-row {
+      display: flex;
       gap: 1.5rem;
+      min-width: max-content;
+      padding: 0.5rem 0;
     }
 
     .job-card {
@@ -457,6 +489,9 @@
       transition: all var(--transition-standard);
       position: relative;
       backdrop-filter: blur(10px);
+      min-width: 320px;
+      max-width: 400px;
+      flex-shrink: 0;
     }
 
     .job-card:hover {
@@ -477,6 +512,8 @@
       color: var(--on-surface);
       font-size: 1.1rem;
       margin-bottom: 0.25rem;
+      word-break: break-all;
+      max-width: 200px;
     }
 
     .job-subtitle {
@@ -491,6 +528,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      flex-shrink: 0;
     }
 
     .status-completed {
@@ -513,20 +551,40 @@
       color: white;
     }
 
-    .job-details {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 0.75rem;
+    .job-metadata {
+      background-color: var(--surface-variant);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
       margin: 1rem 0;
     }
 
-    .job-detail {
+    .metadata-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .metadata-title i {
+      color: var(--primary);
+    }
+
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .metadata-item {
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
     }
 
-    .job-detail-label {
+    .metadata-label {
       font-size: 0.75rem;
       color: var(--on-surface-variant);
       text-transform: uppercase;
@@ -534,9 +592,10 @@
       font-weight: 500;
     }
 
-    .job-detail-value {
+    .metadata-value {
       font-weight: 600;
       color: var(--on-surface);
+      font-size: 0.875rem;
     }
 
     .job-actions {
@@ -571,6 +630,44 @@
 
     .job-btn.primary:hover {
       background-color: var(--primary-variant);
+    }
+
+    .no-jobs-message {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--on-surface-variant);
+      font-style: italic;
+      background: var(--surface-variant);
+      border-radius: var(--radius-lg);
+      border: 2px dashed var(--outline);
+    }
+
+    .no-jobs-message i {
+      font-size: 3rem;
+      color: var(--outline);
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .loading-message {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--on-surface-variant);
+      background: var(--surface-variant);
+      border-radius: var(--radius-lg);
+    }
+
+    .loading-message i {
+      font-size: 2rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: block;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* Services Section */
@@ -1038,11 +1135,15 @@
         gap: 0.75rem;
       }
 
-      .jobs-grid, .services-grid {
+      .services-grid {
         grid-template-columns: 1fr;
       }
 
-      .job-details {
+      .job-card {
+        min-width: 280px;
+      }
+
+      .metadata-grid {
         grid-template-columns: 1fr;
       }
 
@@ -1088,6 +1189,10 @@
         padding: 1rem;
       }
 
+      .job-card {
+        min-width: 260px;
+      }
+
       .job-actions {
         flex-direction: column;
       }
@@ -1117,11 +1222,6 @@
       border-top: 2px solid currentColor;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
     }
 
     /* Additional Modal Styles */
@@ -1725,7 +1825,7 @@
               <i class="fas fa-print"></i>
             </div>
           </div>
-          <div class="stat-value">24</div>
+          <div class="stat-value" id="totalJobsCount">{{ total_jobs }}</div>
           <div class="stat-label">Total Jobs</div>
         </div>
         <div class="stat-card">
@@ -1734,7 +1834,7 @@
               <i class="fas fa-clock"></i>
             </div>
           </div>
-          <div class="stat-value">3</div>
+          <div class="stat-value" id="pendingJobsCount">{{ pending_jobs }}</div>
           <div class="stat-label">Pending</div>
         </div>
         <div class="stat-card">
@@ -1743,7 +1843,7 @@
               <i class="fas fa-check-circle"></i>
             </div>
           </div>
-          <div class="stat-value">18</div>
+          <div class="stat-value" id="completedJobsCount">{{ completed_jobs }}</div>
           <div class="stat-label">Completed</div>
         </div>
         <div class="stat-card">
@@ -1752,7 +1852,7 @@
               <i class="fas fa-indian-rupee-sign"></i>
             </div>
           </div>
-          <div class="stat-value">₹1,240</div>
+          <div class="stat-value" id="totalEarningsCount">₹{{ total_earnings }}</div>
           <div class="stat-label">This Month</div>
         </div>
       </div>
@@ -1763,107 +1863,20 @@
       <div class="section-header">
         <h2 class="section-title">
           <i class="fas fa-history"></i>
-          Recent Jobs
+          Print Requests (Pending Jobs)
         </h2>
-        <button class="view-all-btn">
-          View All <i class="fas fa-arrow-right"></i>
+        <button class="view-all-btn" onclick="refreshJobs()">
+          <i class="fas fa-sync-alt"></i> Refresh
         </button>
       </div>
 
-      <div class="jobs-grid">
-        <div class="job-card">
-          <div class="job-header">
-            <div>
-              <div class="job-title">Resume_Final.pdf</div>
-              <div class="job-subtitle">2 minutes ago</div>
+      <div class="jobs-container">
+        <div class="jobs-scroll-wrapper">
+          <div class="jobs-row" id="jobsContainer">
+            <div class="loading-message">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading your print jobs...</p>
             </div>
-            <span class="job-status status-completed">Completed</span>
-          </div>
-          <div class="job-details">
-            <div class="job-detail">
-              <div class="job-detail-label">Pages</div>
-              <div class="job-detail-value">2</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Copies</div>
-              <div class="job-detail-value">1</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Color</div>
-              <div class="job-detail-value">B&W</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Total</div>
-              <div class="job-detail-value">₹6</div>
-            </div>
-          </div>
-          <div class="job-actions">
-            <button class="job-btn">Download</button>
-            <button class="job-btn primary">Reprint</button>
-          </div>
-        </div>
-
-        <div class="job-card">
-          <div class="job-header">
-            <div>
-              <div class="job-title">Project_Report.docx</div>
-              <div class="job-subtitle">1 hour ago</div>
-            </div>
-            <span class="job-status status-processing">Processing</span>
-          </div>
-          <div class="job-details">
-            <div class="job-detail">
-              <div class="job-detail-label">Pages</div>
-              <div class="job-detail-value">45</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Copies</div>
-              <div class="job-detail-value">2</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Color</div>
-              <div class="job-detail-value">Color</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Total</div>
-              <div class="job-detail-value">₹450</div>
-            </div>
-          </div>
-          <div class="job-actions">
-            <button class="job-btn">Cancel</button>
-            <button class="job-btn">Track</button>
-          </div>
-        </div>
-
-        <div class="job-card">
-          <div class="job-header">
-            <div>
-              <div class="job-title">Presentation.pptx</div>
-              <div class="job-subtitle">3 hours ago</div>
-            </div>
-            <span class="job-status status-failed">Failed</span>
-          </div>
-          <div class="job-details">
-            <div class="job-detail">
-              <div class="job-detail-label">Pages</div>
-              <div class="job-detail-value">12</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Copies</div>
-              <div class="job-detail-value">1</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Color</div>
-              <div class="job-detail-value">Color</div>
-            </div>
-            <div class="job-detail">
-              <div class="job-detail-label">Total</div>
-              <div class="job-detail-value">₹60</div>
-            </div>
-          </div>
-          <div class="job-actions">
-            <button class="job-btn">Retry</button>
-            <button class="job-btn">Support</button>
           </div>
         </div>
       </div>
@@ -1993,6 +2006,15 @@
       <span>Profile</span>
     </a>
   </nav>
+
+  <!-- Data from backend -->
+  <script>
+    // Global variable to store user jobs data from backend
+    window.userJobsData = [];
+  </script>
+
+  <!-- Hidden element with user jobs data -->
+  <div id="userJobsData" data-jobs='{{ user_jobs_json|safe }}' style="display: none;"></div>
 
   <!-- Print Modal (keeping all existing functionality) -->
   <div class="modal-overlay" id="printModal">
@@ -2238,6 +2260,18 @@
     let selectedFileIndex = -1;
     let fileSettings = {};
     let selectedVendor = 'testshop';
+    let userJobs = [];
+
+    // Initialize user jobs data from backend
+    try {
+      const userJobsElement = document.getElementById('userJobsData');
+      if (userJobsElement) {
+        userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+      }
+    } catch (error) {
+      console.error('Error parsing user jobs data:', error);
+      userJobs = [];
+    }
 
     const defaultSettings = {
       copies: 1,
@@ -2301,6 +2335,255 @@
 
     menuToggle.addEventListener('click', openSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // Load user jobs on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadUserJobs();
+    });
+
+    // Function to load user jobs from backend
+    async function loadUserJobs() {
+      try {
+        // The jobs are already loaded from backend in context, let's use them
+        const userJobsElement = document.getElementById('userJobsData');
+        if (userJobsElement) {
+          userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+        }
+        renderUserJobs();
+      } catch (error) {
+        console.error('Error loading user jobs:', error);
+        showNoJobs('Error loading print jobs. Please refresh the page.');
+      }
+    }
+
+    // Function to refresh jobs
+    async function refreshJobs() {
+      const refreshIcon = document.querySelector('.view-all-btn i');
+      refreshIcon.classList.add('fa-spin');
+      
+      showLoading();
+      
+      try {
+        const response = await fetch(window.location.href);
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Extract updated stats
+        const totalJobs = doc.querySelector('#totalJobsCount')?.textContent || '0';
+        const pendingJobs = doc.querySelector('#pendingJobsCount')?.textContent || '0';
+        const completedJobs = doc.querySelector('#completedJobsCount')?.textContent || '0';
+        const totalEarnings = doc.querySelector('#totalEarningsCount')?.textContent || '₹0';
+        
+        // Update stats
+        document.getElementById('totalJobsCount').textContent = totalJobs;
+        document.getElementById('pendingJobsCount').textContent = pendingJobs;
+        document.getElementById('completedJobsCount').textContent = completedJobs;
+        document.getElementById('totalEarningsCount').textContent = totalEarnings;
+        
+        // Reload user jobs
+        await loadUserJobs();
+        
+      } catch (error) {
+        console.error('Error refreshing jobs:', error);
+        showNoJobs('Error refreshing jobs. Please try again.');
+      } finally {
+        refreshIcon.classList.remove('fa-spin');
+      }
+    }
+
+    // Function to render user jobs
+    function renderUserJobs() {
+      const container = document.getElementById('jobsContainer');
+      
+      if (!userJobs || userJobs.length === 0) {
+        showNoJobs();
+        return;
+      }
+
+      // Filter only pending jobs (job_completed = 'NO')
+      const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
+      
+      if (pendingJobs.length === 0) {
+        showNoJobs('No pending print jobs found. All your jobs are completed!');
+        return;
+      }
+
+      const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
+      container.innerHTML = jobsHTML;
+    }
+
+    // Function to create a job card
+    function createJobCard(job) {
+      const getStatusClass = (status) => {
+        const statusLower = status.toLowerCase();
+        if (statusLower === 'completed') return 'status-completed';
+        if (statusLower === 'pending') return 'status-pending';
+        if (statusLower === 'processing' || statusLower === 'printing') return 'status-processing';
+        return 'status-failed';
+      };
+
+      const getFileIcon = (filename) => {
+        const ext = filename.split('.').pop().toLowerCase();
+        const iconMap = {
+          'pdf': 'fa-file-pdf',
+          'doc': 'fa-file-word',
+          'docx': 'fa-file-word',
+          'txt': 'fa-file-alt',
+          'ppt': 'fa-file-powerpoint',
+          'pptx': 'fa-file-powerpoint',
+          'xls': 'fa-file-excel',
+          'xlsx': 'fa-file-excel',
+          'jpg': 'fa-file-image',
+          'jpeg': 'fa-file-image',
+          'png': 'fa-file-image',
+          'gif': 'fa-file-image',
+          'bmp': 'fa-file-image',
+          'tiff': 'fa-file-image',
+          'svg': 'fa-file-image'
+        };
+        return iconMap[ext] || 'fa-file';
+      };
+
+      const calculateEstimatedCost = (job) => {
+        const pages = parseInt(job.pages) || 1;
+        const copies = parseInt(job.copies) || 1;
+        const basePrice = job.color === 'color' ? 5 : 3;
+        let cost = pages * copies * basePrice;
+        
+        if (job.spiralBinding === 'Yes') cost += 20;
+        if (job.lamination === 'Yes') cost += pages * copies * 15;
+        
+        return cost;
+      };
+
+      return `
+        <div class="job-card">
+          <div class="job-header">
+            <div>
+              <div class="job-title" title="${job.filename}">
+                <i class="fas ${getFileIcon(job.filename)}" style="margin-right: 0.5rem; color: var(--primary);"></i>
+                ${job.filename.length > 25 ? job.filename.substring(0, 25) + '...' : job.filename}
+              </div>
+              <div class="job-subtitle">${job.uploaded_at}</div>
+            </div>
+            <span class="job-status ${getStatusClass(job.status)}">${job.status}</span>
+          </div>
+          
+          <div class="job-metadata">
+            <div class="metadata-title">
+              <i class="fas fa-info-circle"></i>
+              Print Settings
+            </div>
+            <div class="metadata-grid">
+              <div class="metadata-item">
+                <div class="metadata-label">Pages</div>
+                <div class="metadata-value">${job.pages || 'N/A'}</div>
+              </div>
+              <div class="metadata-item">
+                <div class="metadata-label">Copies</div>
+                <div class="metadata-value">${job.copies || '1'}</div>
+              </div>
+              <div class="metadata-item">
+                <div class="metadata-label">Color</div>
+                <div class="metadata-value">${job.color === 'bw' ? 'B&W' : 'Color'}</div>
+              </div>
+              <div class="metadata-item">
+                <div class="metadata-label">Size</div>
+                <div class="metadata-value">${job.pageSize || 'A4'}</div>
+              </div>
+              <div class="metadata-item">
+                <div class="metadata-label">Orientation</div>
+                <div class="metadata-value">${job.orientation || 'Portrait'}</div>
+              </div>
+              <div class="metadata-item">
+                <div class="metadata-label">Vendor</div>
+                <div class="metadata-value">${job.vendor || 'Default'}</div>
+              </div>
+              ${job.spiralBinding === 'Yes' ? `
+              <div class="metadata-item">
+                <div class="metadata-label">Binding</div>
+                <div class="metadata-value">Spiral</div>
+              </div>
+              ` : ''}
+              ${job.lamination === 'Yes' ? `
+              <div class="metadata-item">
+                <div class="metadata-label">Lamination</div>
+                <div class="metadata-value">Yes</div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <div class="job-metadata" style="margin-top: 0.5rem;">
+            <div class="metadata-title">
+              <i class="fas fa-rupee-sign"></i>
+              Cost Details
+            </div>
+            <div class="metadata-grid">
+              <div class="metadata-item">
+                <div class="metadata-label">Estimated Cost</div>
+                <div class="metadata-value">₹${calculateEstimatedCost(job)}</div>
+              </div>
+              <div class="metadata-item">
+                <div class="metadata-label">Status</div>
+                <div class="metadata-value">${job.job_completed === 'YES' ? 'Paid' : 'Pending'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="job-actions">
+            <button class="job-btn" onclick="viewJobDetails('${job.filename}')">
+              <i class="fas fa-eye"></i> View
+            </button>
+            <button class="job-btn primary" onclick="trackJob('${job.filename}')">
+              <i class="fas fa-map-marker-alt"></i> Track
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Function to show loading state
+    function showLoading() {
+      const container = document.getElementById('jobsContainer');
+      container.innerHTML = `
+        <div class="loading-message">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading your print jobs...</p>
+        </div>
+      `;
+    }
+
+    // Function to show no jobs message
+    function showNoJobs(message = 'No pending print jobs found.') {
+      const container = document.getElementById('jobsContainer');
+      container.innerHTML = `
+        <div class="no-jobs-message">
+          <i class="fas fa-print"></i>
+          <p>${message}</p>
+          <p style="margin-top: 1rem; font-size: 0.875rem;">Click the + button below to start a new print job!</p>
+        </div>
+      `;
+    }
+
+    // Function to view job details
+    function viewJobDetails(filename) {
+      const job = userJobs.find(j => j.filename === filename);
+      if (job && job.preview_url) {
+        window.open(job.preview_url, '_blank');
+      } else {
+        alert('Preview not available for this file.');
+      }
+    }
+
+    // Function to track job
+    function trackJob(filename) {
+      const job = userJobs.find(j => j.filename === filename);
+      if (job) {
+        alert(`Job Status: ${job.status}\nVendor: ${job.vendor}\nUploaded: ${job.uploaded_at}\n\nYour print job is being processed. You will be notified when it's ready for pickup.`);
+      }
+    }
 
     // All existing print modal functionality (keeping intact)
     const printBtn = document.getElementById('printBtn');
@@ -2816,6 +3099,11 @@
           fileSettings = {};
           updateFileList();
           updateUI();
+          
+          // Refresh the jobs after successful upload
+          setTimeout(() => {
+            refreshJobs();
+          }, 1000);
         } else {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to upload files');
