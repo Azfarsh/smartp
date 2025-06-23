@@ -47,15 +47,169 @@ def vendordashboard(request):
 
 
 
+def get_user_details_from_r2(user_email):
+    """
+    Fetch user details from R2 storage signup folder
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+    
+    try:
+        # List all files in signupdetails folder
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='signupdetails/')
+        
+        for obj in objects.get("Contents", []):
+            key = obj["Key"]
+            if key.endswith('.json'):
+                try:
+                    # Get the JSON file content
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                    content = response['Body'].read().decode('utf-8')
+                    user_data = json.loads(content)
+                    
+                    # Check if this is the user we're looking for
+                    if user_data.get('email') == user_email:
+                        return {
+                            'name': user_data.get('name', ''),
+                            'email': user_data.get('email', ''),
+                            'profile_picture': user_data.get('picture', ''),
+                            'given_name': user_data.get('given_name', ''),
+                            'family_name': user_data.get('family_name', ''),
+                            'locale': user_data.get('locale', ''),
+                            'email_verified': user_data.get('email_verified', False)
+                        }
+                except Exception as e:
+                    print(f"Error reading user data from {key}: {str(e)}")
+                    continue
+        
+        return None
+        
+    except Exception as e:
+        print(f"Error fetching user details from R2: {str(e)}")
+        return None
+
+
+def get_user_jobs_from_r2(user_email):
+    """
+    Get all jobs uploaded by a specific user from R2 storage
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+    
+    try:
+        # List all files in the user's folder
+        user_prefix = f"users/{user_email}/"
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=user_prefix)
+        user_jobs = []
+        
+        for obj in objects.get("Contents", []):
+            key = obj["Key"]
+            filename = key.split("/")[-1]
+            
+            # Skip if it's just the folder itself
+            if filename == "":
+                continue
+                
+            try:
+                # Generate presigned URL for preview
+                url = s3.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params={
+                        'Bucket': settings.R2_BUCKET,
+                        'Key': key
+                    },
+                    ExpiresIn=3600
+                )
+                
+                # Get object metadata
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                metadata = head_response.get('Metadata', {})
+                
+                # Determine file type and icon
+                file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
+                file_type = get_file_type(file_extension)
+                
+                # Calculate estimated pages if not in metadata
+                pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
+
+                # Build job info
+                job_info = {
+                    "filename": filename,
+                    "preview_url": url,
+                    "file_type": file_type,
+                    "file_extension": file_extension,
+                    "size": format_file_size(obj.get('Size', 0)),
+                    "pages": pages,
+                    "status": metadata.get('status', 'pending').title(),
+                    "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
+                    "priority": metadata.get('priority', 'Medium'),
+                    "copies": metadata.get('copies', '1'),
+                    "color": metadata.get('color', 'bw'),
+                    "orientation": metadata.get('orientation', 'portrait'),
+                    "pageRange": metadata.get('pagerange', 'all'),
+                    "specificPages": metadata.get('specificpages', ''),
+                    "pageSize": metadata.get('pagesize', 'A4'),
+                    "spiralBinding": metadata.get('spiralbinding', 'No'),
+                    "lamination": metadata.get('lamination', 'No'),
+                    "job_completed": metadata.get('job_completed', 'NO'),
+                    "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
+                    "vendor": metadata.get('vendor', 'testshop')
+                }
+                
+                # Create print options string
+                job_info["print_options"] = f"{job_info['copies']} copies, {job_info['color']}, {job_info['orientation']}"
+                
+                user_jobs.append(job_info)
+                
+            except Exception as e:
+                print(f"Error processing user file {key}: {str(e)}")
+                continue
+        
+        # Sort by upload date (most recent first)
+        user_jobs.sort(key=lambda x: x['timestamp'], reverse=True)
+        return user_jobs
+        
+    except Exception as e:
+        print(f"Error getting user jobs from R2: {str(e)}")
+        return []
+
+
 def userdashboard(request):
     # Check if user is authenticated
     if not request.user.is_authenticated:
         return redirect('/login/')
     
+    # Fetch user details from R2 storage
+    user_details = get_user_details_from_r2(request.user.email)
+    
+    # Get user's recent jobs
+    user_jobs = get_user_jobs_from_r2(request.user.email)
+    
+    # Calculate statistics
+    total_jobs = len(user_jobs)
+    pending_jobs = len([job for job in user_jobs if job['job_completed'] == 'NO'])
+    completed_jobs = len([job for job in user_jobs if job['job_completed'] == 'YES'])
+    
+    # Calculate total earnings this month (example calculation)
+    current_month_jobs = [job for job in user_jobs if job['uploaded_at'].startswith(datetime.datetime.now().strftime("%Y-%m"))]
+    total_earnings = len(current_month_jobs) * 50  # Example: ₹50 per job
+    
     context = {
         'user': request.user,
+        'user_details': user_details,
         'firebase_uid': request.session.get('firebase_uid'),
-        'auth_method': request.session.get('auth_method', 'unknown')
+        'auth_method': request.session.get('auth_method', 'unknown'),
+        'user_jobs': user_jobs[:10],  # Show only recent 10 jobs
+        'total_jobs': total_jobs,
+        'pending_jobs': pending_jobs,
+        'completed_jobs': completed_jobs,
+        'total_earnings': total_earnings
     }
     return render(request, 'userdashboard.html', context)
 
@@ -301,6 +455,9 @@ def upload_to_r2(request):
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
 
+            # Get user email for folder creation
+            user_email = request.user.email if request.user.is_authenticated else 'anonymous'
+
             # Process each file with its corresponding settings
             for i in range(file_count):
                 file_key = f'file_{i}'
@@ -343,34 +500,49 @@ def upload_to_r2(request):
                     if file_extension in content_type_map:
                         content_type = content_type_map[file_extension]
 
-                    # Create vendor-specific file path
-                    vendor_file_key = f"{selected_vendor}/{file.name}"
+                    # Create metadata object
+                    file_metadata = {
+                        'copies': str(print_settings.get("copies", "1")),
+                        'color': print_settings.get("color", "bw"),
+                        'orientation': print_settings.get("orientation", "portrait"),
+                        'pagerange': str(print_settings.get("pageRange", "all")),
+                        'specificpages': str(print_settings.get("specificPages", "")),
+                        'pagesize': str(print_settings.get("pageSize", "A4")),
+                        'spiralbinding': str(print_settings.get("spiralBinding", "No")),
+                        'lamination': str(print_settings.get("lamination", "No")),
+                        'timestamp': datetime.datetime.now().isoformat(),
+                        'status': 'pending',
+                        'job_completed': 'NO',
+                        'trash': 'NO',
+                        'user': user_email,
+                        'priority': 'Medium',
+                        'pages': str(estimate_pages_from_size(len(file_content), file_extension)),
+                        'vendor': selected_vendor,
+                        'original_filename': file.name
+                    }
 
-                    # Upload the file with metadata stored in object metadata
+                    # Create vendor-specific file path (for vendor processing)
+                    vendor_file_key = f"{selected_vendor}/{file.name}"
+                    
+                    # Create user-specific file path (for user dashboard)
+                    user_file_key = f"users/{user_email}/{file.name}"
+
+                    # Upload to vendor folder (for vendor processing)
                     s3.put_object(
                         Bucket=settings.R2_BUCKET,
                         Key=vendor_file_key,
                         Body=file_content,
                         ContentType=content_type,
-                        Metadata={
-                            'copies': str(print_settings.get("copies", "1")),
-                            'color': print_settings.get("color", "bw"),
-                            'orientation': print_settings.get("orientation", "portrait"),
-                            'pagerange': str(print_settings.get("pageRange", "all")),
-                            'specificpages': str(print_settings.get("specificPages", "")),
-                            'pagesize': str(print_settings.get("pageSize", "A4")),
-                            'spiralbinding': str(print_settings.get("spiralBinding", "No")),
-                            'lamination': str(print_settings.get("lamination", "No")),
-                            'timestamp': datetime.datetime.now().isoformat(),
-                            'status': 'pending',
-                            'job_completed': 'NO',
-                            'trash': 'NO',
-                            'user': 'User',
-                            'priority': 'Medium',
-                            'pages': str(estimate_pages_from_size(len(file_content), file_extension)),
-                            'vendor': selected_vendor,
-                            'original_filename': file.name
-                        }
+                        Metadata=file_metadata
+                    )
+
+                    # Upload to user folder (for user dashboard)
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=user_file_key,
+                        Body=file_content,
+                        ContentType=content_type,
+                        Metadata=file_metadata
                     )
 
                     files_uploaded += 1

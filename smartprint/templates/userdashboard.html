@@ -3,71 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title>PrintMe Dashboard</title>
+  <title>Printmax Dashboard</title>
   <meta name="description" content="PrintMe - Your on-demand printing solution. Easily manage print jobs, track history, and find nearby print locations.">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* Light mode colors */
-      --background: #FFFFFF;
-      --foreground: #202124;
-      --muted: #F8F9FA;
-      --muted-foreground: #5F6368;
-      --card: #FFFFFF;
-      --card-foreground: #202124;
-      --border: #DADCE0;
-      --input: #F8F9FA;
-      --primary: #1A73E8;
-      --primary-foreground: #FFFFFF;
-      --secondary: #F1F3F4;
-      --secondary-foreground: #202124;
-      --accent: #E8F0FE;
-      --accent-foreground: #1A73E8;
-      --destructive: #EA4335;
-      --destructive-foreground: #FFFFFF;
-      --success: #34A853;
-      --warning: #FBBC04;
-      --error: #EA4335;
-      
-      /* Shadows and effects */
-      --shadow-card: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
-      --shadow-hover: 0 4px 8px 0 rgba(60, 64, 67, 0.3);
-      --radius: 8px;
-      
+      /* Light mode colors - Enhanced Modern Design */
+      --primary: #4285F4;
+      --primary-variant: #1A73E8;
+      --primary-light: #E8F0FE;
+      --secondary: #00D4AA;
+      --secondary-variant: #00B894;
+      --accent: #FF6B35;
+      --accent-light: #FFE4D6;
+      --background: #FAFBFC;
+      --surface: #FFFFFF;
+      --surface-variant: #F5F7FA;
+      --surface-elevated: #FFFFFF;
+      --on-primary: #FFFFFF;
+      --on-secondary: #000000;
+      --on-background: #1A1A1A;
+      --on-surface: #1A1A1A;
+      --on-surface-variant: #5F6368;
+      --outline: #DADCE0;
+      --outline-variant: #E8EAED;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --error: #EF4444;
+      --info: #3B82F6;
+
+      /* Card and elevation */
+      --elevation-1: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+      --elevation-2: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
+      --elevation-3: 0 4px 8px 3px rgba(60, 64, 67, 0.15), 0 1px 3px rgba(60, 64, 67, 0.3);
+      --elevation-4: 0 6px 10px 4px rgba(60, 64, 67, 0.15), 0 2px 3px rgba(60, 64, 67, 0.3);
+
+      /* Gradients */
+      --gradient-primary: linear-gradient(135deg, #4285F4 0%, #1A73E8 100%);
+      --gradient-secondary: linear-gradient(135deg, #00D4AA 0%, #00B894 100%);
+      --gradient-accent: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+      --gradient-surface: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+
+      /* Border radius */
+      --radius-xs: 4px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-2xl: 32px;
+
       /* Transitions */
-      --transition-color: color 0.2s ease-in-out;
-      --transition-background: background-color 0.2s ease-in-out;
-      --transition-shadow: box-shadow 0.2s ease-in-out;
-      --transition-transform: transform 0.2s ease-in-out;
-      --transition-all: all 0.2s ease-in-out;
+      --transition-fast: 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-standard: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-slow: 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
     }
 
-    .dark-mode {
-      /* Dark mode colors */
-      --background: #202124;
-      --foreground: #E8EAED;
-      --muted: #303134;
-      --muted-foreground: #9AA0A6;
-      --card: #292A2D;
-      --card-foreground: #E8EAED;
-      --border: #3C4043;
-      --input: #303134;
+    [data-theme="dark"] {
+      /* Dark mode colors - Enhanced Modern Design */
       --primary: #8AB4F8;
-      --primary-foreground: #202124;
-      --secondary: #303134;
-      --secondary-foreground: #E8EAED;
-      --accent: #23262A;
-      --accent-foreground: #8AB4F8;
-      --destructive: #F28B82;
-      --destructive-foreground: #202124;
-      --success: #81C995;
-      --warning: #FDD663;
-      --error: #F28B82;
-      
-      /* Shadows and effects */
-      --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
-      --shadow-hover: 0 4px 8px 0 rgba(0, 0, 0, 0.3);
+      --primary-variant: #4285F4;
+      --primary-light: #1E3A8A;
+      --secondary: #5EEAD4;
+      --secondary-variant: #14B8A6;
+      --accent: #FFA726;
+      --accent-light: #2D1B69;
+      --background: #0F172A;
+      --surface: #1E293B;
+      --surface-variant: #334155;
+      --surface-elevated: #2D3748;
+      --on-primary: #000000;
+      --on-secondary: #000000;
+      --on-background: #F1F5F9;
+      --on-surface: #F8FAFC;
+      --on-surface-variant: #CBD5E1;
+      --outline: #475569;
+      --outline-variant: #374151;
+      --success: #34D399;
+      --warning: #FBBF24;
+      --error: #F87171;
+      --info: #60A5FA;
+
+      /* Gradients for dark mode */
+      --gradient-primary: linear-gradient(135deg, #8AB4F8 0%, #4285F4 100%);
+      --gradient-secondary: linear-gradient(135deg, #5EEAD4 0%, #14B8A6 100%);
+      --gradient-accent: linear-gradient(135deg, #FFA726 0%, #FF7043 100%);
+      --gradient-surface: linear-gradient(135deg, #1E293B 0%, #334155 100%);
     }
 
     * {
@@ -77,21 +98,13 @@
     }
 
     body {
-      font-family: 'Google Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background-color: var(--background);
-      color: var(--foreground);
+      color: var(--on-background);
       line-height: 1.6;
-      letter-spacing: 0.2px;
-      transition: var(--transition-all);
+      transition: background-color var(--transition-standard), color var(--transition-standard);
       min-height: 100vh;
-      padding-bottom: 70px;
-    }
-
-    /* Typography */
-    h1, h2, h3, h4, h5, h6 {
-      font-weight: 500;
-      line-height: 1.2;
-      margin-bottom: 0.5rem;
+      padding-bottom: 64px;
     }
 
     /* Header */
@@ -100,147 +113,596 @@
       top: 0;
       left: 0;
       right: 0;
-      background-color: var(--background);
-      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline);
       z-index: 100;
-      box-shadow: var(--shadow-card);
-      transition: var(--transition-all);
-      width: 100%;
-      padding-bottom: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: all var(--transition-standard);
+      height: 56px;
     }
 
-    .header-top {
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
+      height: 100%;
     }
 
-    .logo-container {
+    .logo-section {
       display: flex;
       align-items: center;
+      gap: 0.75rem;
     }
 
     .menu-toggle {
       background: none;
       border: none;
-      color: var(--foreground);
-      margin-right: 1rem;
-      font-size: 1.5rem;
+      color: var(--on-surface-variant);
+      font-size: 1.25rem;
       cursor: pointer;
-      transition: var(--transition-color);
+      padding: 0.5rem;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-toggle:hover {
+      background-color: var(--surface-variant);
+      color: var(--on-surface);
     }
 
     .logo {
-      font-size: 1.2rem;
-      font-weight: 500;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.025em;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.25rem;
     }
 
-    .icon-button {
+    .header-btn {
       background: none;
       border: none;
-      color: var(--muted-foreground);
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
+      color: var(--on-surface-variant);
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: var(--transition-all);
-      padding: 0;
-      margin: 0 2px;
-      -webkit-tap-highlight-color: transparent;
+      transition: all var(--transition-fast);
+      font-size: 1.1rem;
     }
 
-    .icon-button:hover {
-      background-color: var(--secondary);
-      color: var(--foreground);
-    }
-    
-    .icon-button:focus {
-      background-color: var(--secondary);
-      color: var(--foreground);
-      outline: 2px solid var(--primary);
-      outline-offset: 2px;
-    }
-    
-    .icon-button:active {
-      background-color: var(--accent);
-      transform: scale(0.95);
-    }
-    
-    /* Improve header icons for mobile */
-    @media (max-width: 480px) {
-      .header-actions {
-        gap: 0.25rem;
-      }
-      
-      .icon-button {
-        width: 48px;
-        height: 48px;
-      }
+    .header-btn:hover {
+      background-color: var(--surface-variant);
+      color: var(--on-surface);
     }
 
-    .search-container {
-      padding: 0 1rem 0.75rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .search-bar {
-      width: 100%;
+    /* User Profile Section */
+    .user-profile-header {
+      background: var(--gradient-primary);
+      color: var(--on-primary);
+      padding: 2rem 1rem;
+      margin-top: 56px;
       position: relative;
+      overflow: hidden;
+      min-height: 160px;
+      display: flex;
+      align-items: center;
     }
 
-    .search-input {
-      width: 100%;
-      padding: 0.75rem 1rem 0.75rem 2.5rem;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background-color: var(--secondary);
-      color: var(--foreground);
-      font-family: inherit;
-      font-size: 0.875rem;
-      transition: var(--transition-all);
-    }
-
-    .search-input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-
-    .search-icon {
+    .user-profile-header::before {
+      content: '';
       position: absolute;
-      left: 0.75rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted-foreground);
-      font-size: 1rem;
+      top: 0;
+      right: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
+      pointer-events: none;
     }
 
-    /* Sidebar Navigation */
+    .user-profile-header::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-secondary);
+    }
+
+    .user-profile-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .user-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 4px solid var(--on-primary);
+      background-color: var(--surface-variant);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: var(--elevation-3);
+      flex-shrink: 0;
+    }
+
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .user-avatar i {
+      font-size: 2rem;
+      color: var(--on-surface-variant);
+    }
+
+    .user-info h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .user-email {
+      font-size: 1rem;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .user-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--success);
+      box-shadow: 0 0 0 2px var(--on-primary);
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    /* Quick Stats */
+    .stats-section {
+      margin-bottom: 3rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title i {
+      color: var(--primary);
+      font-size: 1.25rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--gradient-surface);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      box-shadow: var(--elevation-1);
+      border: 1px solid var(--outline-variant);
+      transition: all var(--transition-standard);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--elevation-3);
+      transform: translateY(-4px);
+      border-color: var(--primary);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--gradient-primary);
+    }
+
+    .stat-card:nth-child(2)::before {
+      background: var(--gradient-secondary);
+    }
+
+    .stat-card:nth-child(3)::before {
+      background: var(--gradient-accent);
+    }
+
+    .stat-card:nth-child(4)::before {
+      background: linear-gradient(90deg, var(--success), var(--secondary));
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      background: var(--gradient-primary);
+      color: var(--on-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      box-shadow: var(--elevation-2);
+    }
+
+    .stat-card:nth-child(2) .stat-icon {
+      background: var(--gradient-secondary);
+    }
+
+    .stat-card:nth-child(3) .stat-icon {
+      background: var(--gradient-accent);
+    }
+
+    .stat-card:nth-child(4) .stat-icon {
+      background: linear-gradient(135deg, var(--success), var(--secondary));
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+      margin-top: 0.5rem;
+    }
+
+    /* Recent Jobs Section */
+    .jobs-section {
+      margin-bottom: 3rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .view-all-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      transition: background-color var(--transition-fast);
+    }
+
+    .view-all-btn:hover {
+      background-color: var(--surface-variant);
+    }
+
+    .jobs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .job-card {
+      background: var(--gradient-surface);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      box-shadow: var(--elevation-1);
+      border: 1px solid var(--outline-variant);
+      transition: all var(--transition-standard);
+      position: relative;
+      backdrop-filter: blur(10px);
+    }
+
+    .job-card:hover {
+      box-shadow: var(--elevation-3);
+      transform: translateY(-3px);
+      border-color: var(--primary);
+    }
+
+    .job-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .job-title {
+      font-weight: 600;
+      color: var(--on-surface);
+      font-size: 1.1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .job-subtitle {
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+    }
+
+    .job-status {
+      padding: 0.375rem 0.75rem;
+      border-radius: var(--radius-xl);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-completed {
+      background-color: var(--success);
+      color: white;
+    }
+
+    .status-processing {
+      background-color: var(--warning);
+      color: white;
+    }
+
+    .status-pending {
+      background-color: var(--surface-variant);
+      color: var(--on-surface-variant);
+    }
+
+    .status-failed {
+      background-color: var(--error);
+      color: white;
+    }
+
+    .job-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .job-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .job-detail-label {
+      font-size: 0.75rem;
+      color: var(--on-surface-variant);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+
+    .job-detail-value {
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+
+    .job-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .job-btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--outline);
+      background-color: var(--surface);
+      color: var(--on-surface);
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-size: 0.875rem;
+    }
+
+    .job-btn:hover {
+      background-color: var(--surface-variant);
+      transform: translateY(-1px);
+    }
+
+    .job-btn.primary {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      border-color: var(--primary);
+    }
+
+    .job-btn.primary:hover {
+      background-color: var(--primary-variant);
+    }
+
+    /* Services Section */
+    .services-section {
+      margin-bottom: 3rem;
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .service-card {
+      background: var(--gradient-surface);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      box-shadow: var(--elevation-1);
+      border: 1px solid var(--outline-variant);
+      transition: all var(--transition-standard);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .service-card:hover {
+      box-shadow: var(--elevation-3);
+      transform: translateY(-3px);
+      border-color: var(--primary);
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      width: 80px;
+      height: 80px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      opacity: 0.1;
+      transition: all var(--transition-standard);
+    }
+
+    .service-card:hover::before {
+      transform: scale(1.2);
+      opacity: 0.15;
+    }
+
+    .service-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .service-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      background: var(--gradient-primary);
+      color: var(--on-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      box-shadow: var(--elevation-2);
+    }
+
+    .service-card:nth-child(even) .service-icon {
+      background: var(--gradient-secondary);
+    }
+
+    .service-card:nth-child(3n) .service-icon {
+      background: var(--gradient-accent);
+    }
+
+    .service-info {
+      flex: 1;
+    }
+
+    .service-name {
+      font-weight: 600;
+      color: var(--on-surface);
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .service-description {
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+      line-height: 1.4;
+      margin-bottom: 1rem;
+    }
+
+    .service-price {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .service-arrow {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      color: var(--on-surface-variant);
+      font-size: 1.25rem;
+      transition: transform var(--transition-fast);
+    }
+
+    .service-card:hover .service-arrow {
+      transform: translateX(4px);
+      color: var(--primary);
+    }
+
+    /* Sidebar */
     .sidebar {
       position: fixed;
       top: 0;
       left: 0;
-      width: 280px;
+      width: 320px;
       height: 100%;
-      background-color: var(--background);
-      border-right: 1px solid var(--border);
+      background-color: var(--surface);
+      border-right: 1px solid var(--outline);
       transform: translateX(-100%);
-      transition: transform 0.3s ease-in-out;
+      transition: transform var(--transition-standard);
       z-index: 999;
-      padding-top: 4rem;
+      box-shadow: var(--elevation-3);
       overflow-y: auto;
-      box-shadow: var(--shadow-hover);
-      box-sizing: border-box;
     }
 
     .sidebar.active {
@@ -257,7 +719,7 @@
       z-index: 998;
       opacity: 0;
       visibility: hidden;
-      transition: all 0.3s ease-in-out;
+      transition: all var(--transition-standard);
     }
 
     .sidebar-overlay.active {
@@ -265,82 +727,78 @@
       visibility: visible;
     }
 
-    .profile-section {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      margin-bottom: 1rem;
+    .sidebar-header {
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid var(--outline-variant);
     }
 
-    .profile-avatar {
+    .sidebar-profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .sidebar-avatar {
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background-color: var(--muted);
+      background-color: var(--surface-variant);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 1rem;
+      overflow: hidden;
     }
 
-    .profile-avatar i {
-      font-size: 1.5rem;
-      color: var(--muted-foreground);
+    .sidebar-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
-    .profile-info {
-      flex: 1;
+    .sidebar-avatar i {
+      font-size: 1.25rem;
+      color: var(--on-surface-variant);
     }
 
-    .profile-name {
-      font-weight: 500;
+    .sidebar-user-info h3 {
+      font-weight: 600;
+      color: var(--on-surface);
+      margin-bottom: 0.25rem;
     }
 
-    .profile-email {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
+    .sidebar-user-info p {
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
     }
 
     .nav-list {
       list-style: none;
-      padding: 0 1rem;
+      padding: 1rem 0;
     }
 
     .nav-item {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.25rem;
     }
 
     .nav-link {
       display: flex;
       align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1.5rem;
+      color: var(--on-surface-variant);
       text-decoration: none;
-      color: var(--muted-foreground);
-      padding: 0.75rem;
-      border-radius: var(--radius);
-      transition: var(--transition-all);
+      transition: all var(--transition-fast);
+      font-weight: 500;
     }
 
-    .nav-link:hover {
-      background-color: var(--secondary);
-      color: var(--foreground);
-    }
-
-    .nav-link.active {
-      background-color: var(--accent);
-      color: var(--accent-foreground);
+    .nav-link:hover, .nav-link.active {
+      background-color: var(--surface-variant);
+      color: var(--primary);
     }
 
     .nav-link i {
-      margin-right: 1rem;
       width: 20px;
       text-align: center;
-    }
-
-    .sign-out {
-      margin-top: 2rem;
-      border-top: 1px solid var(--border);
-      padding-top: 1rem;
     }
 
     /* Bottom Navigation */
@@ -349,13 +807,14 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background-color: var(--background);
-      border-top: 1px solid var(--border);
+      background: var(--surface);
+      border-top: 1px solid var(--outline);
       display: flex;
       justify-content: space-between;
-      padding: 0.5rem 1rem;
+      padding: 0.375rem 1rem;
       z-index: 100;
-      box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+      height: 64px;
     }
 
     .bottom-nav-item {
@@ -363,508 +822,75 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       text-decoration: none;
-      color: var(--muted-foreground);
-      font-size: 0.75rem;
-      padding: 0.5rem 0;
-      transition: var(--transition-color);
+      color: var(--on-surface-variant);
+      font-size: 0.7rem;
+      padding: 0.25rem 0;
+      transition: color var(--transition-fast);
+      font-weight: 500;
+      min-height: 48px;
     }
 
-    .bottom-nav-item:hover {
-      color: var(--foreground);
-    }
-
-    .bottom-nav-item.active {
+    .bottom-nav-item:hover, .bottom-nav-item.active {
       color: var(--primary);
     }
 
     .bottom-nav-item i {
-      font-size: 1.25rem;
-      margin: 0.25rem;
+      font-size: 1.1rem;
+      margin-bottom: 0.2rem;
     }
 
     .print-btn {
       position: relative;
-      transform: translateY(-25px);
+      transform: translateY(-20px);
     }
 
     .print-btn-circle {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background-color: var(--primary);
-      color: var(--primary-foreground);
-      border: none;
-      cursor: pointer;
-      box-shadow: var(--shadow-card);
-      transition: var(--transition-all);
-    }
-
-    .print-btn-circle:hover {
-      transform: scale(1.05);
-      box-shadow: var(--shadow-hover);
-    }
-
-    .print-btn-circle i {
-      font-size: 1.5rem;
-    }
-
-    /* Main content */
-    .main-content {
-      padding: 7rem 1rem 5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      background-color: var(--background);
-    }
-
-    @media (max-width: 359px) {
-      .main-content {
-        padding: 8rem 0.75rem 5rem;
-      }
-    }
-
-    @media (min-width: 360px) and (max-width: 480px) {
-      .main-content {
-        padding: 7.5rem 1rem 5rem;
-      }
-    }
-    
-    .content-wrapper {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .dark-mode .main-content {
-      background-color: var(--background);
-    }
-    
-    .dark-mode .job-card {
-      background-color: var(--card);
-    }
-
-    .section {
-      margin-bottom: 2rem;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid transparent;
-    }
-    
-    .dark-mode .section-header {
-      border-bottom-color: var(--border);
-    }
-
-    .section-title {
-      display: flex;
-      align-items: center;
-      font-size: 1.25rem;
-      font-weight: 500;
-    }
-
-    .section-title i {
-      margin-right: 0.5rem;
-      color: var(--primary);
-    }
-
-    .link-button {
-      background: none;
-      border: none;
-      font-size: 0.875rem;
-      color: var(--primary);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      transition: var(--transition-color);
-    }
-
-    .link-button:hover {
-      text-decoration: underline;
-    }
-
-    /* Cards */
-    .card {
-      background-color: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-card);
-      overflow: hidden;
-      transition: var(--transition-all);
-    }
-
-    .card:hover {
-      box-shadow: var(--shadow-hover);
-    }
-
-    /* Stats Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0.75rem;
-      margin-top: 4rem;
-      margin-bottom: 2.5rem;
-    }
-
-    @media (min-width: 360px) {
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.5rem;
-      }
-    }
-
-    @media (min-width: 480px) {
-      .stats-grid {
-        gap: 0.75rem;
-      }
-    }
-
-    @media (min-width: 640px) {
-      .stats-grid {
-        gap: 1rem;
-      }
-    }
-
-    @media (min-width: 768px) {
-      .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
-
-    .stat-card {
-      padding: 1.5rem 1rem;
-      text-align: center;
-      border: 1px solid var(--border);
-    }
-
-    @media (max-width: 359px) {
-      .stat-card {
-        padding: 1rem 0.5rem;
-      }
-      
-      .stat-value {
-        font-size: 1.1rem;
-      }
-      
-      .stat-label {
-        font-size: 0.65rem;
-      }
-    }
-
-    @media (min-width: 360px) and (max-width: 479px) {
-      .stat-card {
-        padding: 1.25rem 0.75rem;
-      }
-      
-      .stat-value {
-        font-size: 1.25rem;
-      }
-      
-      .stat-label {
-        font-size: 0.7rem;
-      }
-    }
-
-    .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 0.25rem;
-      display: block;
-    }
-
-    .stat-label {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .stat-icon {
-      color: var(--primary);
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    /* Job Cards */
-    .job-grid {
-      display: grid;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    @media (min-width: 768px) {
-      .job-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (min-width: 1024px) {
-      .job-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    .job-card {
-      padding: 1.5rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--card);
-      transition: var(--transition-all);
-    }
-
-    .job-card:hover {
-      box-shadow: var(--shadow-hover);
-      transform: translateY(-2px);
-    }
-
-    .job-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1rem;
-    }
-
-    .job-title {
-      font-weight: 500;
-      font-size: 1rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .job-subtitle {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-    }
-
-    .job-status {
-      padding: 0.25rem 0.75rem;
-      border-radius: 1rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .status-completed {
-      background-color: var(--success);
-      color: white;
-    }
-
-    .status-processing {
-      background-color: var(--warning);
-      color: var(--foreground);
-    }
-
-    .status-pending {
-      background-color: var(--muted);
-      color: var(--muted-foreground);
-    }
-
-    .status-failed {
-      background-color: var(--destructive);
-      color: var(--destructive-foreground);
-    }
-
-    .job-details {
-      margin: 1rem 0;
-    }
-
-    .job-detail {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-    }
-
-    .job-detail:last-child {
-      margin-bottom: 0;
-    }
-
-    .job-detail-label {
-      color: var(--muted-foreground);
-    }
-
-    .job-detail-value {
-      font-weight: 500;
-    }
-
-    .job-actions {
-      margin-top: 1rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .job-action-btn {
-      flex: 1;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      background-color: var(--background);
-      color: var(--foreground);
-      border-radius: var(--radius);
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: var(--transition-all);
-    }
-
-    .job-action-btn:hover {
-      background-color: var(--secondary);
-    }
-
-    .job-action-btn.primary {
-      background-color: var(--primary);
-      color: var(--primary-foreground);
-      border-color: var(--primary);
-    }
-
-    .job-action-btn.primary:hover {
-      background-color: var(--primary);
-      opacity: 0.9;
-    }
-
-    /* Location Cards */
-    .location-grid {
-      display: grid;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    @media (min-width: 768px) {
-      .location-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    .location-card {
-      padding: 1.5rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--card);
-      transition: var(--transition-all);
-    }
-
-    .location-card:hover {
-      box-shadow: var(--shadow-hover);
-      transform: translateY(-2px);
-    }
-
-    .location-header {
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 1rem;
-    }
-
-    .location-icon {
-      background-color: var(--accent);
-      color: var(--accent-foreground);
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 1rem;
-      flex-shrink: 0;
-    }
-
-    .location-info {
-      flex: 1;
-    }
-
-    .location-name {
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-    }
-
-    .location-type {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .location-address {
-      color: var(--muted-foreground);
-      font-size: 0.875rem;
-      margin-bottom: 1rem;
-      line-height: 1.4;
-    }
-
-    .location-stats {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .location-stat {
-      text-align: center;
-    }
-
-    .location-stat-value {
-      font-weight: 700;
-      font-size: 1.25rem;
-      color: var(--primary);
-      display: block;
-    }
-
-    .location-stat-label {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-    }
-
-    .location-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .location-action-btn {
-      flex: 1;
-      padding: 0.75rem;
-      border: 1px solid var(--border);
-      background-color: var(--background);
-      color: var(--foreground);
-      border-radius: var(--radius);
-      font-size: 0.875rem;
+      background: var(--gradient-primary);
+      color: var(--on-primary);
+      border: none;
       cursor: pointer;
-      transition: var(--transition-all);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      box-shadow: var(--elevation-3);
+      transition: all var(--transition-standard);
+      position: relative;
+      overflow: hidden;
     }
 
-    .location-action-btn:hover {
-      background-color: var(--secondary);
+    .print-btn-circle::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+      border-radius: 50%;
     }
 
-    .location-action-btn.primary {
-      background-color: var(--primary);
-      color: var(--primary-foreground);
-      border-color: var(--primary);
+    .print-btn-circle:hover {
+      transform: scale(1.1);
+      box-shadow: var(--elevation-4);
     }
 
-    .location-action-btn.primary:hover {
-      background-color: var(--primary);
-      opacity: 0.9;
+    .print-btn-circle i {
+      font-size: 1.25rem;
     }
 
-    .location-action-btn i {
-      margin-right: 0.5rem;
-    }
-
-    /* Modal */
+    /* Print Modal Styles */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
+      background-color: rgba(0, 0, 0, 0.6);
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -872,7 +898,7 @@
       padding: 1rem;
       opacity: 0;
       visibility: hidden;
-      transition: all 0.3s ease-in-out;
+      transition: all var(--transition-standard);
     }
 
     .modal-overlay.active {
@@ -882,14 +908,14 @@
 
     .modal {
       background-color: var(--background);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-hover);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--elevation-4);
       width: 100%;
-      max-width: 400px;
+      max-width: 500px;
       max-height: 90vh;
       overflow-y: auto;
       transform: scale(0.9);
-      transition: transform 0.3s ease-in-out;
+      transition: transform var(--transition-standard);
     }
 
     .modal-overlay.active .modal {
@@ -900,587 +926,123 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.5rem 1.5rem 1rem;
-      border-bottom: 1px solid var(--border);
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--outline-variant);
     }
 
     .modal-title {
       font-size: 1.25rem;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--on-surface);
     }
 
     .modal-close {
       background: none;
       border: none;
-      color: var(--muted-foreground);
+      color: var(--on-surface-variant);
       font-size: 1.5rem;
       cursor: pointer;
-      padding: 0.25rem;
+      padding: 0.5rem;
       border-radius: 50%;
-      transition: var(--transition-all);
+      transition: all var(--transition-fast);
     }
 
     .modal-close:hover {
-      background-color: var(--secondary);
-      color: var(--foreground);
+      background-color: var(--surface-variant);
+      color: var(--on-surface);
     }
 
     .modal-body {
       padding: 1.5rem;
     }
 
-    /* File Upload */
+    /* Upload Area */
     .upload-area {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
+      border: 2px dashed var(--outline);
+      border-radius: var(--radius-lg);
       padding: 2rem;
       text-align: center;
-      background-color: var(--muted);
+      background-color: var(--surface-variant);
       margin-bottom: 1.5rem;
-      transition: var(--transition-all);
+      transition: all var(--transition-fast);
       cursor: pointer;
     }
 
     .upload-area:hover, .upload-area.dragover {
       border-color: var(--primary);
-      background-color: var(--accent);
+      background-color: rgba(25, 118, 210, 0.05);
     }
 
     .upload-icon {
-      font-size: 2rem;
-      color: var(--success);
+      font-size: 2.5rem;
+      color: var(--primary);
       margin-bottom: 1rem;
     }
 
     .upload-text {
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--on-surface);
       margin-bottom: 0.5rem;
+      font-size: 1.1rem;
     }
 
     .upload-subtitle {
       font-size: 0.875rem;
-      color: var(--muted-foreground);
-      margin-bottom: 1rem;
-    }
-
-    .upload-btn {
-      background-color: var(--success);
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: var(--radius);
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition-all);
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .upload-btn:hover {
-      background-color: var(--success);
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-
-    .upload-btn i {
-      margin-right: 0.5rem;
-    }
-
-    /* File List */
-    .file-list {
+      color: var(--on-surface-variant);
       margin-bottom: 1.5rem;
-    }
-
-    .file-item {
-      display: flex;
-      align-items: center;
-      padding: 1rem;
-      border-radius: var(--radius);
-      background-color: var(--muted);
-      margin-bottom: 0.75rem;
-      transition: var(--transition-all);
-      cursor: pointer;
-      border: 2px solid transparent;
-    }
-
-    .file-item:hover {
-      background-color: var(--secondary);
-    }
-
-    .file-item.selected {
-      border-color: var(--primary);
-      background-color: var(--accent);
-    }
-
-    .file-icon {
-      font-size: 1.5rem;
-      color: var(--muted-foreground);
-      margin-right: 1rem;
-      flex-shrink: 0;
-    }
-
-    .file-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .file-name {
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-      display: block;
-    }
-
-    .file-details {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-    }
-
-    .file-remove {
-      background: none;
-      border: none;
-      color: var(--destructive);
-      font-size: 1rem;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: var(--transition-all);
-      flex-shrink: 0;
-    }
-
-    .file-remove:hover {
-      background-color: var(--destructive);
-      color: var(--destructive-foreground);
-    }
-
-    /* Vendor Selection */
-    .vendor-selection {
-      margin-bottom: 1.5rem;
-    }
-
-    .vendor-options {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .vendor-option {
-      display: flex;
-      align-items: center;
-      padding: 1.5rem;
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--background);
-      cursor: pointer;
-      transition: var(--transition-all);
-      gap: 1rem;
-    }
-
-    .vendor-option:hover {
-      border-color: var(--primary);
-      background-color: var(--accent);
-    }
-
-    .vendor-option.selected {
-      border-color: var(--primary);
-      background-color: var(--accent);
-      color: var(--accent-foreground);
-    }
-
-    .vendor-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background-color: var(--muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .vendor-option.selected .vendor-icon {
-      background-color: var(--primary);
-      color: var(--primary-foreground);
-    }
-
-    .vendor-icon i {
-      font-size: 1.5rem;
-      color: var(--muted-foreground);
-    }
-
-    .vendor-option.selected .vendor-icon i {
-      color: var(--primary-foreground);
-    }
-
-    .vendor-info {
-      flex: 1;
-    }
-
-    .vendor-name {
-      font-weight: 600;
-      font-size: 1.1rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .vendor-description {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
-      margin-bottom: 0.5rem;
-    }
-
-    .vendor-option.selected .vendor-description {
-      color: var(--accent-foreground);
-      opacity: 0.8;
-    }
-
-    .vendor-status {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-
-    .vendor-select-icon {
-      color: var(--primary);
-      font-size: 1.25rem;
-      opacity: 0;
-      transition: var(--transition-all);
-    }
-
-    .vendor-option.selected .vendor-select-icon {
-      opacity: 1;
-    }
-
-    /* Print Settings */
-    .print-settings {
-      margin-bottom: 1.5rem;
-    }
-
-    .settings-group {
-      margin-bottom: 1.5rem;
-    }
-
-    .settings-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .settings-label {
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-      display: block;
-    }
-
-    .settings-subtitle {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
-      margin-bottom: 1rem;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      hyphens: auto;
       line-height: 1.4;
     }
 
-    .copies-control {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
-
-    .copies-btn {
-      background-color: var(--secondary);
-      color: var(--foreground);
-      border: 1px solid var(--border);
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: var(--transition-all);
-      font-size: 1.25rem;
-    }
-
-    .copies-btn:hover {
-      background-color: var(--primary);
-      color: var(--primary-foreground);
-      border-color: var(--primary);
-    }
-
-    .copies-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .copies-btn:disabled:hover {
-      background-color: var(--secondary);
-      color: var(--foreground);
-      border-color: var(--border);
-    }
-
-    .copies-count {
-      font-size: 1.25rem;
+    .upload-btn {
+      background: linear-gradient(135deg, var(--primary), var(--primary-variant));
+      color: var(--on-primary);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius-sm);
       font-weight: 500;
-      min-width: 3rem;
-      text-align: center;
-    }
-
-    .color-options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
-
-    .color-option {
-      padding: 1rem;
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--muted);
       cursor: pointer;
-      transition: var(--transition-all);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .color-option:hover {
-      border-color: var(--primary);
-      background-color: var(--accent);
-    }
-
-    .color-option.selected {
-      border-color: var(--primary);
-      background-color: var(--accent);
-      color: var(--accent-foreground);
-    }
-
-    .color-option-icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .color-option-label {
-      font-weight: 500;
-    }
-
-    .orientation-options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
-
-    .orientation-option {
-      padding: 1rem;
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--muted);
-      cursor: pointer;
-      transition: var(--transition-all);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .orientation-option:hover {
-      border-color: var(--primary);
-      background-color: var(--accent);
-    }
-
-    .orientation-option.selected {
-      border-color: var(--primary);
-      background-color: var(--accent);
-      color: var(--accent-foreground);
-    }
-
-    .orientation-icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .orientation-label {
-      font-weight: 500;
-    }
-
-    /* Page Range Settings */
-    .page-range-settings {
-      margin-top: 1rem;
-      padding: 1rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--muted);
-    }
-
-    .page-range-options {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-
-    .page-range-option {
-      display: flex;
+      transition: all var(--transition-fast);
+      display: inline-flex;
       align-items: center;
       gap: 0.5rem;
     }
 
-    .page-range-option input[type="radio"] {
-      margin: 0;
-    }
-
-    .page-range-option label {
-      font-size: 0.875rem;
-      cursor: pointer;
-    }
-
-    .page-range-input {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--background);
-      color: var(--foreground);
-      font-family: inherit;
-      margin-top: 0.5rem;
-    }
-
-    .page-range-input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-
-    .page-range-input:disabled {
-      background-color: var(--muted);
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .page-range-help {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-      margin-top: 0.25rem;
-    }
-
-    /* Order Summary */
-    .order-summary {
-      background-color: var(--muted);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .summary-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .summary-header i {
-      color: var(--success);
-      margin-right: 0.5rem;
-    }
-
-    .summary-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-    }
-
-    .summary-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .summary-label {
-      color: var(--muted-foreground);
-    }
-
-    .summary-value {
-      font-weight: 500;
-    }
-
-    .summary-total {
-      border-top: 1px solid var(--border);
-      padding-top: 1rem;
-      margin-top: 1rem;
-      font-size: 1.125rem;
-      font-weight: 700;
-    }
-
-    .summary-total .summary-value {
-      color: var(--primary);
-    }
-
-    /* Action Buttons */
-    .action-buttons {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 1.5rem;
-    }
-
-    .btn {
-      flex: 1;
-      padding: 0.875rem 1.5rem;
-      border-radius: var(--radius);
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition-all);
-      border: 1px solid var(--border);
-      text-align: center;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-secondary {
-      background-color: var(--background);
-      color: var(--foreground);
-    }
-
-    .btn-secondary:hover {
-      background-color: var(--secondary);
-    }
-
-    .btn-primary {
-      background-color: var(--success);
-      color: white;
-      border-color: var(--success);
-    }
-
-    .btn-primary:hover {
-      background-color: var(--success);
-      opacity: 0.9;
+    .upload-btn:hover {
       transform: translateY(-1px);
+      box-shadow: var(--elevation-2);
     }
 
-    .btn i {
-      margin-right: 0.5rem;
-    }
-
-    /* Responsive adjustments */
+    /* Responsive Design */
     @media (max-width: 768px) {
       .main-content {
-        padding: 8rem 1rem 5rem;
+        padding: 1rem;
+      }
+
+      .user-profile-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+      }
+
+      .user-avatar {
+        width: 64px;
+        height: 64px;
+      }
+
+      .user-info h1 {
+        font-size: 1.5rem;
       }
 
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
       }
 
-      .job-grid, .location-grid {
+      .jobs-grid, .services-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .job-details {
         grid-template-columns: 1fr;
       }
 
@@ -1488,64 +1050,59 @@
         margin: 1rem;
         max-width: calc(100% - 2rem);
       }
-
-      .action-buttons {
-        flex-direction: column;
-      }
-
-      .btn {
-        flex: none;
-      }
     }
 
     @media (max-width: 480px) {
-      .header-top {
-        padding: 0.75rem 1rem;
+      .header-content {
+        padding: 0 0.75rem;
       }
 
-      .search-container {
-        padding: 0 1rem 1rem;
+      .user-profile-header {
+        padding: 1.5rem 1rem;
       }
 
-      .main-content {
-        padding: 7rem 0.75rem 5rem;
+      .logo {
+        font-size: 1.1rem;
       }
 
-      .stats-grid {
-        gap: 0.75rem;
+      .menu-toggle, .header-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
       }
 
-      .stat-card {
-        padding: 1rem 0.75rem;
+      .bottom-nav {
+        height: 60px;
       }
 
-      .job-card, .location-card {
+      .print-btn-circle {
+        width: 44px;
+        height: 44px;
+      }
+
+      .print-btn-circle i {
+        font-size: 1.1rem;
+      }
+
+      .stat-card, .job-card, .service-card {
         padding: 1rem;
+      }
+
+      .job-actions {
+        flex-direction: column;
       }
 
       .modal-header, .modal-body {
         padding: 1rem;
       }
-
-      .copies-control {
-        gap: 0.75rem;
-      }
-
-      .color-options, .orientation-options {
-        gap: 0.75rem;
-      }
-
-      .color-option, .orientation-option {
-        padding: 0.75rem;
-      }
     }
 
-    /* Hidden file input */
+    /* File input hidden */
     .file-input {
       display: none;
     }
 
-    /* Loading states */
+    /* Loading state */
     .loading {
       opacity: 0.6;
       pointer-events: none;
@@ -1567,44 +1124,243 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Enhanced file selection highlighting */
+    /* Additional Modal Styles */
+    .file-list {
+      margin-bottom: 1.5rem;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      background-color: var(--surface-variant);
+      margin-bottom: 0.75rem;
+      transition: all var(--transition-fast);
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .file-item:hover {
+      background-color: var(--outline-variant);
+    }
+
     .file-item.selected {
       border-color: var(--primary);
-      background-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--primary);
+      background-color: rgba(25, 118, 210, 0.1);
     }
 
-    .file-item.selected .file-name {
-      color: var(--accent-foreground);
-      font-weight: 600;
+    .file-icon {
+      font-size: 1.5rem;
+      color: var(--on-surface-variant);
+      margin-right: 1rem;
     }
 
-    .file-item.selected .file-details {
-      color: var(--accent-foreground);
-      opacity: 0.8;
+    .file-info {
+      flex: 1;
     }
 
-    /* Settings visibility */
-    .settings-group.hidden {
-      display: none;
+    .file-name {
+      font-weight: 500;
+      color: var(--on-surface);
+      margin-bottom: 0.25rem;
     }
 
-    /* No files message */
+    .file-details {
+      font-size: 0.75rem;
+      color: var(--on-surface-variant);
+    }
+
+    .file-remove {
+      background: none;
+      border: none;
+      color: var(--error);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: all var(--transition-fast);
+    }
+
+    .file-remove:hover {
+      background-color: var(--error);
+      color: white;
+    }
+
     .no-files-message {
       text-align: center;
       padding: 2rem;
-      color: var(--muted-foreground);
+      color: var(--on-surface-variant);
       font-style: italic;
     }
 
-    /* File settings info */
-    .file-settings-info {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
+    /* Print Settings */
+    .print-settings {
+      margin-bottom: 1.5rem;
+    }
+
+    .vendor-selection {
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-label {
+      font-weight: 500;
+      color: var(--on-surface);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .settings-subtitle {
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+      margin-bottom: 1rem;
+      line-height: 1.4;
+    }
+
+    .vendor-options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .vendor-option {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      border: 2px solid var(--outline);
+      border-radius: var(--radius-sm);
+      background-color: var(--surface);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      gap: 1rem;
+    }
+
+    .vendor-option:hover {
+      border-color: var(--primary);
+      background-color: rgba(25, 118, 210, 0.05);
+    }
+
+    .vendor-option.selected {
+      border-color: var(--primary);
+      background-color: rgba(25, 118, 210, 0.1);
+    }
+
+    .vendor-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      background-color: var(--surface-variant);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .vendor-option.selected .vendor-icon {
+      background: linear-gradient(135deg, var(--primary), var(--primary-variant));
+      color: var(--on-primary);
+    }
+
+    .vendor-info {
+      flex: 1;
+    }
+
+    .vendor-name {
+      font-weight: 600;
+      color: var(--on-surface);
+      margin-bottom: 0.25rem;
+    }
+
+    .vendor-description {
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+    }
+
+    .vendor-select-icon {
+      color: var(--primary);
+      font-size: 1.25rem;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .vendor-option.selected .vendor-select-icon {
+      opacity: 1;
+    }
+
+    /* Copies Control */
+    .copies-control {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
       margin-top: 0.5rem;
-      padding: 0.5rem;
-      background-color: var(--secondary);
-      border-radius: 4px;
+    }
+
+    .copies-btn {
+      background-color: var(--surface-variant);
+      color: var(--on-surface);
+      border: 1px solid var(--outline);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .copies-btn:hover {
+      background-color: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .copies-count {
+      font-size: 1.25rem;
+      font-weight: 500;
+      min-width: 3rem;
+      text-align: center;
+      color: var(--on-surface);
+    }
+
+    /* Color and Orientation Options */
+    .color-options, .orientation-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .color-option, .orientation-option {
+      padding: 1rem;
+      border: 2px solid var(--outline);
+      border-radius: var(--radius-sm);
+      background-color: var(--surface-variant);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-align: center;
+    }
+
+    .color-option:hover, .orientation-option:hover {
+      border-color: var(--primary);
+    }
+
+    .color-option.selected, .orientation-option.selected {
+      border-color: var(--primary);
+      background-color: rgba(25, 118, 210, 0.1);
+    }
+
+    .color-option-icon, .orientation-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .color-option-label, .orientation-label {
+      font-weight: 500;
+      color: var(--on-surface);
     }
 
     /* Page Size Options */
@@ -1617,12 +1373,12 @@
     .page-size-option {
       flex: 1;
       padding: 1rem;
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
+      border: 2px solid var(--outline);
+      border-radius: var(--radius-sm);
       text-align: center;
       cursor: pointer;
-      transition: var(--transition-all);
-      background-color: var(--background);
+      transition: all var(--transition-fast);
+      background-color: var(--surface);
     }
 
     .page-size-option:hover {
@@ -1631,21 +1387,12 @@
 
     .page-size-option.selected {
       border-color: var(--primary);
-      background-color: var(--accent);
-    }
-
-    .page-size-icon {
-      margin-bottom: 0.5rem;
-      color: var(--muted-foreground);
-    }
-
-    .page-size-option.selected .page-size-icon {
-      color: var(--primary);
+      background-color: rgba(25, 118, 210, 0.1);
     }
 
     .page-size-label {
-      font-size: 0.875rem;
       font-weight: 500;
+      color: var(--on-surface);
     }
 
     /* Additional Options */
@@ -1658,24 +1405,18 @@
       align-items: center;
       margin-bottom: 1rem;
       padding: 1rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--background);
-      transition: var(--transition-all);
+      border: 1px solid var(--outline);
+      border-radius: var(--radius-sm);
+      background-color: var(--surface);
+      transition: background-color var(--transition-fast);
     }
 
     .option-item:hover {
-      background-color: var(--secondary);
-    }
-
-    .option-item:last-child {
-      margin-bottom: 0;
+      background-color: var(--surface-variant);
     }
 
     .option-checkbox {
       margin-right: 1rem;
-      width: 18px;
-      height: 18px;
       accent-color: var(--primary);
     }
 
@@ -1684,8 +1425,8 @@
       align-items: center;
       flex: 1;
       cursor: pointer;
-      font-size: 0.875rem;
       font-weight: 500;
+      color: var(--on-surface);
     }
 
     .option-label i {
@@ -1697,171 +1438,191 @@
     .option-price {
       margin-left: auto;
       font-size: 0.75rem;
-      color: var(--muted-foreground);
-      font-weight: 400;
+      color: var(--on-surface-variant);
     }
 
-    /* Printing Services */
-    .services-grid {
-      display: grid;
-      gap: 1rem;
-      margin-top: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    }
-
-    @media (min-width: 768px) {
-      .services-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (min-width: 1200px) {
-      .services-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    .service-card {
+    /* Order Summary */
+    .order-summary {
+      background-color: var(--surface-variant);
+      border-radius: var(--radius-sm);
       padding: 1.5rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background-color: var(--card);
-      transition: var(--transition-all);
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-      position: relative;
-      overflow: hidden;
-      min-height: 120px;
+      margin-bottom: 1.5rem;
     }
 
-    .service-card:hover {
-      box-shadow: var(--shadow-hover);
-      transform: translateY(-2px);
+    .summary-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      color: var(--on-surface);
+    }
+
+    .summary-header i {
+      color: var(--primary);
+      margin-right: 0.5rem;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .summary-label {
+      color: var(--on-surface-variant);
+    }
+
+    .summary-value {
+      font-weight: 500;
+      color: var(--on-surface);
+    }
+
+    .summary-total {
+      border-top: 1px solid var(--outline);
+      padding-top: 1rem;
+      margin-top: 1rem;
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .summary-total .summary-value {
+      color: var(--primary);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.875rem 1.5rem;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 1px solid var(--outline);
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn-secondary {
+      background-color: var(--surface);
+      color: var(--on-surface);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--surface-variant);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-variant));
+      color: var(--on-primary);
       border-color: var(--primary);
     }
 
-    .service-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 12px;
-      background-color: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      margin-top: 0.25rem;
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--elevation-2);
     }
 
-    .service-icon i {
-      font-size: 1.5rem;
-      color: var(--primary);
+    /* Page Range Settings */
+    .page-range-settings {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius-sm);
+      background-color: var(--surface-variant);
     }
 
-    .service-info {
-      flex: 1;
+    .page-range-options {
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      min-height: 80px;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
     }
 
-    .service-name {
-      font-weight: 600;
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-      color: var(--foreground);
-      line-height: 1.3;
-    }
-
-    .service-description {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
-      line-height: 1.4;
-      margin-bottom: 0.75rem;
-      flex-grow: 1;
-    }
-
-    .service-price {
-      font-size: 0.9rem;
-      color: var(--primary);
-      font-weight: 600;
-      margin-top: auto;
-    }
-
-    .service-btn {
-      background: none;
-      border: none;
-      color: var(--muted-foreground);
-      padding: 0.5rem;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: var(--transition-all);
-      width: 44px;
-      height: 44px;
+    .page-range-option {
       display: flex;
       align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      gap: 0.5rem;
+    }
+
+    .page-range-option input[type="radio"] {
+      accent-color: var(--primary);
+    }
+
+    .page-range-option label {
+      font-size: 0.875rem;
+      cursor: pointer;
+      color: var(--on-surface);
+    }
+
+    .page-range-input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius-sm);
+      background-color: var(--surface);
+      color: var(--on-surface);
+      font-family: inherit;
+      margin-top: 0.5rem;
+    }
+
+    .page-range-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    }
+
+    .page-range-help {
+      font-size: 0.75rem;
+      color: var(--on-surface-variant);
       margin-top: 0.25rem;
     }
 
-    .service-btn:hover {
-      background-color: var(--secondary);
-      color: var(--primary);
-      transform: translateX(2px);
+    .file-settings-info {
+      font-size: 0.75rem;
+      color: var(--on-surface-variant);
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background-color: var(--surface-variant);
+      border-radius: var(--radius-sm);
     }
 
-    @media (max-width: 767px) {
-      .services-grid {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-      }
-      
-      .service-card {
-        padding: 1.25rem;
-        min-height: 100px;
-      }
-
-      .service-icon {
-        width: 48px;
-        height: 48px;
-      }
-
-      .service-icon i {
-        font-size: 1.25rem;
-      }
-
-      .service-name {
-        font-size: 1rem;
-      }
-
-      .service-description {
-        font-size: 0.8rem;
-      }
-
-      .service-price {
-        font-size: 0.85rem;
-      }
+    .settings-group.hidden {
+      display: none;
     }
   </style>
 </head>
-<body>
+<body data-theme="light">
   <!-- Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
-    <div class="profile-section">
-      <div class="profile-avatar">
-        <i class="fas fa-user"></i>
-      </div>
-      <div class="profile-info">
-        <div class="profile-name">John Doe</div>
-        <div class="profile-email">john.doe@example.com</div>
+    <div class="sidebar-header">
+      <div class="sidebar-profile">
+        <div class="sidebar-avatar">
+          {% if user_details and user_details.profile_picture %}
+            <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+          {% else %}
+            <i class="fas fa-user"></i>
+          {% endif %}
+        </div>
+        <div class="sidebar-user-info">
+          <h3>{% if user_details and user_details.name %}{{ user_details.name }}{% else %}{{ user.username }}{% endif %}</h3>
+          <p>{% if user_details and user_details.email %}{{ user_details.email }}{% else %}{{ user.email }}{% endif %}</p>
+        </div>
       </div>
     </div>
-    
+
     <ul class="nav-list">
       <li class="nav-item">
         <a href="#" class="nav-link active">
@@ -1899,8 +1660,8 @@
           Settings
         </a>
       </li>
-      <li class="nav-item sign-out">
-        <a href="#" class="nav-link">
+      <li class="nav-item">
+        <a href="/admin/" class="nav-link">
           <i class="fas fa-sign-out-alt"></i>
           Sign Out
         </a>
@@ -1910,184 +1671,219 @@
 
   <!-- Header -->
   <header class="header">
-    <div class="header-top">
-      <div class="logo-container">
+    <div class="header-content">
+      <div class="logo-section">
         <button class="menu-toggle" id="menuToggle">
           <i class="fas fa-bars"></i>
         </button>
-        <div class="logo">PrintMe</div>
+        <div class="logo">Printmax</div>
       </div>
       <div class="header-actions">
-        <button class="icon-button" id="themeToggle">
+        <button class="header-btn" id="themeToggle">
           <i class="fas fa-sun"></i>
         </button>
-        <button class="icon-button">
+        <button class="header-btn">
           <i class="fas fa-bell"></i>
         </button>
       </div>
     </div>
-    <div class="search-container">
-      <div class="search-bar">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" class="search-input" placeholder="Search print jobs, locations...">
+  </header>
+
+  <!-- User Profile Header -->
+  <section class="user-profile-header">
+    <div class="user-profile-content">
+      <div class="user-avatar">
+        {% if user_details and user_details.profile_picture %}
+          <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+        {% else %}
+          <i class="fas fa-user"></i>
+        {% endif %}
+      </div>
+      <div class="user-info">
+        <h1>Welcome, {% if user_details and user_details.given_name %}{{ user_details.given_name }}{% else %}{{ user.username }}{% endif %}!</h1>
+        <div class="user-email">{% if user_details and user_details.email %}{{ user_details.email }}{% else %}{{ user.email }}{% endif %}</div>
+        <div class="user-status">
+          <div class="status-indicator"></div>
+          <span>Online</span>
+        </div>
       </div>
     </div>
-  </header>
+  </section>
 
   <!-- Main Content -->
   <main class="main-content">
-    <div class="content-wrapper">
-      <!-- Quick Stats -->
-      <section class="section">
-        <div class="stats-grid">
-          <div class="card stat-card">
-            <i class="fas fa-print stat-icon"></i>
-            <span class="stat-value">24</span>
-            <span class="stat-label">Total Jobs</span>
+    <!-- Quick Stats -->
+    <section class="stats-section">
+      <h2 class="section-title">
+        <i class="fas fa-chart-line"></i>
+        Dashboard Overview
+      </h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon">
+              <i class="fas fa-print"></i>
+            </div>
           </div>
-          <div class="card stat-card">
-            <i class="fas fa-clock stat-icon"></i>
-            <span class="stat-value">3</span>
-            <span class="stat-label">Pending</span>
-          </div>
-          <div class="card stat-card">
-            <i class="fas fa-check-circle stat-icon"></i>
-            <span class="stat-value">18</span>
-            <span class="stat-label">Completed</span>
-          </div>
-          <div class="card stat-card">
-            <i class="fas fa-indian-rupee-sign stat-icon"></i>
-            <span class="stat-value">₹1,240</span>
-            <span class="stat-label">This Month</span>
-          </div>
+          <div class="stat-value">24</div>
+          <div class="stat-label">Total Jobs</div>
         </div>
-      </section>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+          </div>
+          <div class="stat-value">3</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+          </div>
+          <div class="stat-value">18</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon">
+              <i class="fas fa-indian-rupee-sign"></i>
+            </div>
+          </div>
+          <div class="stat-value">₹1,240</div>
+          <div class="stat-label">This Month</div>
+        </div>
+      </div>
+    </section>
 
-      <!-- Recent Jobs -->
-      <section class="section">
-        <div class="section-header">
-          <h2 class="section-title">
-            <i class="fas fa-history"></i>
-            Recent Jobs
-          </h2>
-          <button class="link-button">
-            View All <i class="fas fa-arrow-right"></i>
-          </button>
-        </div>
-        
-        <div class="job-grid">
-          <div class="card job-card">
-            <div class="job-header">
-              <div>
-                <div class="job-title">Resume_Final.pdf</div>
-                <div class="job-subtitle">2 minutes ago</div>
-              </div>
-              <span class="job-status status-completed">Completed</span>
-            </div>
-            <div class="job-details">
-              <div class="job-detail">
-                <span class="job-detail-label">Pages:</span>
-                <span class="job-detail-value">2</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Copies:</span>
-                <span class="job-detail-value">1</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Color:</span>
-                <span class="job-detail-value">B&W</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Total:</span>
-                <span class="job-detail-value">₹6</span>
-              </div>
-            </div>
-            <div class="job-actions">
-              <button class="job-action-btn">Download</button>
-              <button class="job-action-btn primary">Reprint</button>
-            </div>
-          </div>
-          
-          <div class="card job-card">
-            <div class="job-header">
-              <div>
-                <div class="job-title">Project_Report.docx</div>
-                <div class="job-subtitle">1 hour ago</div>
-              </div>
-              <span class="job-status status-processing">Processing</span>
-            </div>
-            <div class="job-details">
-              <div class="job-detail">
-                <span class="job-detail-label">Pages:</span>
-                <span class="job-detail-value">45</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Copies:</span>
-                <span class="job-detail-value">2</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Color:</span>
-                <span class="job-detail-value">Color</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Total:</span>
-                <span class="job-detail-value">₹450</span>
-              </div>
-            </div>
-            <div class="job-actions">
-              <button class="job-action-btn">Cancel</button>
-              <button class="job-action-btn">Track</button>
-            </div>
-          </div>
-          
-          <div class="card job-card">
-            <div class="job-header">
-              <div>
-                <div class="job-title">Presentation.pptx</div>
-                <div class="job-subtitle">3 hours ago</div>
-              </div>
-              <span class="job-status status-failed">Failed</span>
-            </div>
-            <div class="job-details">
-              <div class="job-detail">
-                <span class="job-detail-label">Pages:</span>
-                <span class="job-detail-value">12</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Copies:</span>
-                <span class="job-detail-value">1</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Color:</span>
-                <span class="job-detail-value">Color</span>
-              </div>
-              <div class="job-detail">
-                <span class="job-detail-label">Total:</span>
-                <span class="job-detail-value">₹60</span>
-              </div>
-            </div>
-            <div class="job-actions">
-              <button class="job-action-btn">Retry</button>
-              <button class="job-action-btn">Support</button>
-            </div>
-          </div>
-        </div>
-      </section>
+    <!-- Recent Jobs -->
+    <section class="jobs-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-history"></i>
+          Recent Jobs
+        </h2>
+        <button class="view-all-btn">
+          View All <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
 
-      <!-- Printing Services -->
-      <section class="section">
-        <div class="section-header">
-          <h2 class="section-title">
-            <i class="fas fa-print"></i>
-            Printing Services
-          </h2>
-          <button class="link-button">
-            View All <i class="fas fa-arrow-right"></i>
-          </button>
+      <div class="jobs-grid">
+        <div class="job-card">
+          <div class="job-header">
+            <div>
+              <div class="job-title">Resume_Final.pdf</div>
+              <div class="job-subtitle">2 minutes ago</div>
+            </div>
+            <span class="job-status status-completed">Completed</span>
+          </div>
+          <div class="job-details">
+            <div class="job-detail">
+              <div class="job-detail-label">Pages</div>
+              <div class="job-detail-value">2</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Copies</div>
+              <div class="job-detail-value">1</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Color</div>
+              <div class="job-detail-value">B&W</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Total</div>
+              <div class="job-detail-value">₹6</div>
+            </div>
+          </div>
+          <div class="job-actions">
+            <button class="job-btn">Download</button>
+            <button class="job-btn primary">Reprint</button>
+          </div>
         </div>
-        
-        <div class="services-grid">
-          <div class="card service-card">
+
+        <div class="job-card">
+          <div class="job-header">
+            <div>
+              <div class="job-title">Project_Report.docx</div>
+              <div class="job-subtitle">1 hour ago</div>
+            </div>
+            <span class="job-status status-processing">Processing</span>
+          </div>
+          <div class="job-details">
+            <div class="job-detail">
+              <div class="job-detail-label">Pages</div>
+              <div class="job-detail-value">45</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Copies</div>
+              <div class="job-detail-value">2</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Color</div>
+              <div class="job-detail-value">Color</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Total</div>
+              <div class="job-detail-value">₹450</div>
+            </div>
+          </div>
+          <div class="job-actions">
+            <button class="job-btn">Cancel</button>
+            <button class="job-btn">Track</button>
+          </div>
+        </div>
+
+        <div class="job-card">
+          <div class="job-header">
+            <div>
+              <div class="job-title">Presentation.pptx</div>
+              <div class="job-subtitle">3 hours ago</div>
+            </div>
+            <span class="job-status status-failed">Failed</span>
+          </div>
+          <div class="job-details">
+            <div class="job-detail">
+              <div class="job-detail-label">Pages</div>
+              <div class="job-detail-value">12</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Copies</div>
+              <div class="job-detail-value">1</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Color</div>
+              <div class="job-detail-value">Color</div>
+            </div>
+            <div class="job-detail">
+              <div class="job-detail-label">Total</div>
+              <div class="job-detail-value">₹60</div>
+            </div>
+          </div>
+          <div class="job-actions">
+            <button class="job-btn">Retry</button>
+            <button class="job-btn">Support</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Printing Services -->
+    <section class="services-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-print"></i>
+          Printing Services
+        </h2>
+        <button class="view-all-btn">
+          View All <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-image"></i>
             </div>
@@ -2096,12 +1892,12 @@
               <div class="service-description">High-quality photo printing on premium paper</div>
               <div class="service-price">Starting from ₹5/photo</div>
             </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
           </div>
-          
-          <div class="card service-card">
+          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <div class="service-card">
+          <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-file-alt"></i>
             </div>
@@ -2110,12 +1906,12 @@
               <div class="service-description">Fast digital printing for documents and presentations</div>
               <div class="service-price">Starting from ₹2/page</div>
             </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
           </div>
-          
-          <div class="card service-card">
+          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <div class="service-card">
+          <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-book"></i>
             </div>
@@ -2124,12 +1920,12 @@
               <div class="service-description">Professional binding for reports and projects</div>
               <div class="service-price">Starting from ₹15/binding</div>
             </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
           </div>
-          
-          <div class="card service-card">
+          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <div class="service-card">
+          <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-star"></i>
             </div>
@@ -2138,26 +1934,26 @@
               <div class="service-description">Shiny finish printing for presentations and marketing</div>
               <div class="service-price">Starting from ₹8/page</div>
             </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
           </div>
-          
-          <div class="card service-card">
+          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <div class="service-card">
+          <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-file"></i>
             </div>
             <div class="service-info">
-              <div class="service-name">Matt Paper Printing</div>
-              <div class="service-description">Non-reflective matte finish for professional documents</div>
+              <div class="service-name">Jumbo Paper Printing</div>
+              <div class="service-description">A0, A1, A2, A3 print sizes available</div>
               <div class="service-price">Starting from ₹6/page</div>
             </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
           </div>
-          
-          <div class="card service-card">
+          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <div class="service-card">
+          <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-drafting-compass"></i>
             </div>
@@ -2166,28 +1962,11 @@
               <div class="service-description">Technical drawings and engineering prints</div>
               <div class="service-price">Starting from ₹12/page</div>
             </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
           </div>
-          
-          <div class="card service-card">
-            <div class="service-icon">
-              <i class="fas fa-tint"></i>
-            </div>
-            <div class="service-info">
-              <div class="service-name">Cartridge Printing</div>
-              <div class="service-description">High-capacity cartridge printing for bulk orders</div>
-              <div class="service-price">Starting from ₹3/page</div>
-            </div>
-            <button class="service-btn">
-              <i class="fas fa-arrow-right"></i>
-            </button>
-          </div>
+          <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-      </section>
-
-    </div>
+      </div>
+    </section>
   </main>
 
   <!-- Bottom Navigation -->
@@ -2215,7 +1994,7 @@
     </a>
   </nav>
 
-  <!-- Print Modal -->
+  <!-- Print Modal (keeping all existing functionality) -->
   <div class="modal-overlay" id="printModal">
     <div class="modal">
       <div class="modal-header">
@@ -2237,27 +2016,27 @@
             Add files
           </button>
         </div>
-        
+
         <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg">
-        
+
         <!-- File List -->
         <div class="file-list" id="fileList">
           <div class="no-files-message" id="noFilesMessage">
             No files selected yet
           </div>
         </div>
-        
+
         <!-- Add More Files Button -->
         <button class="upload-btn" id="addMoreBtn" style="display: none; width: 100%; margin-bottom: 1.5rem;">
           <i class="fas fa-plus"></i>
           Add files
         </button>
-        
+
         <!-- Vendor Selection -->
         <div class="vendor-selection" id="vendorSelection" style="display: none;">
           <h4 class="settings-label">Choose Print Shop</h4>
           <p class="settings-subtitle">Select the print shop where you want to print your documents</p>
-          
+
           <div class="vendor-options">
             <div class="vendor-option selected" data-vendor="testshop">
               <div class="vendor-icon">
@@ -2267,7 +2046,7 @@
                 <div class="vendor-name">TestShop</div>
                 <div class="vendor-description">Local printing services</div>
                 <div class="vendor-status">
-                  <i class="fas fa-circle" style="color: #34A853;"></i>
+                  <i class="fas fa-circle" style="color: #4CAF50;"></i>
                   <span>Available</span>
                 </div>
               </div>
@@ -2278,11 +2057,11 @@
           </div>
         </div>
 
-          <!-- Print Settings -->
+        <!-- Print Settings -->
         <div class="print-settings" id="printSettings" style="display: none;">
           <h4 class="settings-label">Print settings</h4>
           <p class="settings-subtitle" id="settingsSubtitle">Configure settings for selected file</p>
-          
+
           <!-- Copies -->
           <div class="settings-group">
             <label class="settings-label">Choose number of copies</label>
@@ -2297,7 +2076,7 @@
               </button>
             </div>
           </div>
-          
+
           <!-- Color Options -->
           <div class="settings-group">
             <label class="settings-label">Choose print colour</label>
@@ -2316,7 +2095,7 @@
                 <div class="color-option-label">Color</div>
               </div>
             </div>
-            
+
             <!-- Page Range Settings for Color/BW -->
             <div class="page-range-settings" id="pageRangeSettings">
               <label class="settings-label">Page Range Selection</label>
@@ -2336,7 +2115,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Orientation -->
           <div class="settings-group">
             <label class="settings-label">Choose print orientation</label>
@@ -2356,7 +2135,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Page Size -->
           <div class="settings-group">
             <label class="settings-label">Choose page size</label>
@@ -2382,12 +2161,12 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Additional Options -->
           <div class="settings-group">
             <label class="settings-label">Additional options</label>
             <p class="settings-subtitle">Extra services for your print job</p>
-            
+
             <div class="additional-options">
               <div class="option-item">
                 <input type="checkbox" id="spiralBinding" class="option-checkbox">
@@ -2397,7 +2176,7 @@
                   <span class="option-price">+₹20</span>
                 </label>
               </div>
-              
+
               <div class="option-item">
                 <input type="checkbox" id="lamination" class="option-checkbox">
                 <label for="lamination" class="option-label">
@@ -2408,20 +2187,20 @@
               </div>
             </div>
           </div>
-          
+
           <!-- File Settings Info -->
           <div class="file-settings-info" id="fileSettingsInfo" style="display: none;">
             Select a file to configure its print settings
           </div>
         </div>
-        
+
         <!-- Order Summary -->
         <div class="order-summary" id="orderSummary" style="display: none;">
           <div class="summary-header">
             <i class="fas fa-shopping-cart"></i>
             <span>Total <span id="totalPages">0</span> pages</span>
           </div>
-          
+
           <div class="summary-item">
             <span class="summary-label">Pages:</span>
             <span class="summary-value" id="summaryPages">0</span>
@@ -2434,13 +2213,13 @@
             <span class="summary-label">Color:</span>
             <span class="summary-value" id="summaryColor">Mixed</span>
           </div>
-          
+
           <div class="summary-item summary-total">
             <span class="summary-label">Total:</span>
             <span class="summary-value">₹<span id="totalAmount">0</span></span>
           </div>
         </div>
-        
+
         <!-- Action Buttons -->
         <div class="action-buttons" id="actionButtons" style="display: none;">
           <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
@@ -2454,13 +2233,12 @@
   </div>
 
   <script>
-    // Global state management
+    // Global state management (keeping all existing functionality)
     let uploadedFiles = [];
     let selectedFileIndex = -1;
     let fileSettings = {};
-    let selectedVendor = 'testshop'; // Default vendor
-    
-    // Default settings
+    let selectedVendor = 'testshop';
+
     const defaultSettings = {
       copies: 1,
       color: 'bw',
@@ -2471,20 +2249,60 @@
       spiralBinding: false,
       lamination: false
     };
-    
-    // Price per page
+
     const pricePerPage = {
       bw: 3,
       color: 5
     };
-    
-    // Additional service prices
+
     const servicePrices = {
       spiralBinding: 20,
       lamination: 15
     };
-    
-    // DOM elements
+
+    // Theme toggle functionality
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle.querySelector('i');
+    let isDarkMode = false;
+
+    // Check for saved theme preference or default to light mode
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      isDarkMode = savedTheme === 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+      themeIcon.className = isDarkMode ? 'fas fa-moon' : 'fas fa-sun';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      const theme = isDarkMode ? 'dark' : 'light';
+      document.body.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+
+      themeIcon.className = isDarkMode ? 'fas fa-moon' : 'fas fa-sun';
+    });
+
+    // Sidebar functionality
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    function openSidebar() {
+      sidebar.classList.add('active');
+      sidebarOverlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    menuToggle.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // All existing print modal functionality (keeping intact)
     const printBtn = document.getElementById('printBtn');
     const printModal = document.getElementById('printModal');
     const closeModal = document.getElementById('closeModal');
@@ -2499,8 +2317,7 @@
     const fileSettingsInfo = document.getElementById('fileSettingsInfo');
     const orderSummary = document.getElementById('orderSummary');
     const actionButtons = document.getElementById('actionButtons');
-    
-    // Settings controls
+
     const copiesCount = document.getElementById('copiesCount');
     const decreaseCopies = document.getElementById('decreaseCopies');
     const increaseCopies = document.getElementById('increaseCopies');
@@ -2511,39 +2328,37 @@
     const pageSizeOptions = document.querySelectorAll('.page-size-option');
     const spiralBindingCheckbox = document.getElementById('spiralBinding');
     const laminationCheckbox = document.getElementById('lamination');
-    
-    // Summary elements
+
     const totalPages = document.getElementById('totalPages');
     const summaryPages = document.getElementById('summaryPages');
     const summaryCopies = document.getElementById('summaryCopies');
     const summaryColor = document.getElementById('summaryColor');
     const totalAmount = document.getElementById('totalAmount');
-    
+
     // Modal functions
     function openModal() {
       printModal.classList.add('active');
       document.body.style.overflow = 'hidden';
     }
-    
+
     function closeModalFunc() {
       printModal.classList.remove('active');
       document.body.style.overflow = '';
     }
-    
-    // File management functions
+
+    // All existing file management functions (keeping intact)
     function handleFileSelect(files) {
       console.log('handleFileSelect called with', files.length, 'files');
       let filesAdded = false;
-      
+
       for (let file of files) {
         console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
-        
+
         if (isValidFile(file)) {
-          // Check if file already exists
           const isDuplicate = uploadedFiles.some(existingFile => 
             existingFile.name === file.name && existingFile.size === file.size
           );
-          
+
           if (!isDuplicate) {
             const fileId = Date.now() + Math.random();
             const fileObj = {
@@ -2553,7 +2368,7 @@
               size: file.size,
               pages: getPageCount(file)
             };
-            
+
             uploadedFiles.push(fileObj);
             fileSettings[fileId] = { ...defaultSettings };
             filesAdded = true;
@@ -2565,7 +2380,7 @@
           console.warn('Invalid file type:', file.name, 'Type:', file.type);
         }
       }
-      
+
       if (filesAdded) {
         console.log('Updating UI with', uploadedFiles.length, 'total files');
         updateFileList();
@@ -2574,7 +2389,7 @@
         console.log('No files were added');
       }
     }
-    
+
     function isValidFile(file) {
       const validTypes = [
         'application/pdf',
@@ -2592,21 +2407,19 @@
         'image/tiff',
         'image/svg+xml'
       ];
-      
-      // Also check file extension as fallback
+
       const fileName = file.name.toLowerCase();
       const validExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.svg'];
       const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-      
+
       return validTypes.includes(file.type) || hasValidExtension;
     }
-    
+
     function getPageCount(file) {
-      // Simulate page count calculation
       const basePage = Math.floor(file.size / 50000) + 1;
       return Math.max(1, Math.min(basePage, 100));
     }
-    
+
     function formatFileSize(bytes) {
       if (bytes === 0) return '0 Bytes';
       const k = 1024;
@@ -2614,13 +2427,13 @@
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
-    
+
     function updateFileList() {
       if (uploadedFiles.length === 0) {
         fileList.innerHTML = '<div class="no-files-message">No files selected yet</div>';
         return;
       }
-      
+
       const fileListHTML = uploadedFiles.map((fileObj, index) => {
         const isSelected = index === selectedFileIndex;
         const displayName = fileObj.name.length > 25 ? fileObj.name.substring(0, 25) + '...' : fileObj.name;
@@ -2639,93 +2452,86 @@
           </div>
         `;
       }).join('');
-      
+
       fileList.innerHTML = fileListHTML;
     }
-    
+
     function selectFile(index) {
       selectedFileIndex = index;
       updateFileList();
       updateSettingsDisplay();
     }
-    
+
     function removeFile(index) {
       const fileId = uploadedFiles[index].id;
       uploadedFiles.splice(index, 1);
       delete fileSettings[fileId];
-      
+
       if (selectedFileIndex === index) {
         selectedFileIndex = uploadedFiles.length > 0 ? 0 : -1;
       } else if (selectedFileIndex > index) {
         selectedFileIndex--;
       }
-      
+
       updateFileList();
       updateUI();
     }
-    
+
     function updateUI() {
       const hasFiles = uploadedFiles.length > 0;
-      
-      // Hide upload area after first file is uploaded
+
       uploadArea.style.display = hasFiles ? 'none' : 'block';
       addMoreBtn.style.display = hasFiles ? 'block' : 'none';
       document.getElementById('vendorSelection').style.display = hasFiles ? 'block' : 'none';
       printSettings.style.display = hasFiles ? 'block' : 'none';
       orderSummary.style.display = hasFiles ? 'block' : 'none';
       actionButtons.style.display = hasFiles ? 'flex' : 'none';
-      
+
       if (hasFiles && selectedFileIndex === -1) {
         selectedFileIndex = 0;
         updateFileList();
       }
-      
+
       updateSettingsDisplay();
       updateOrderSummary();
     }
-    
+
     function updateSettingsDisplay() {
       if (selectedFileIndex === -1 || uploadedFiles.length === 0) {
         settingsSubtitle.textContent = 'Select a file to configure its settings';
         fileSettingsInfo.style.display = 'block';
         return;
       }
-      
+
       fileSettingsInfo.style.display = 'none';
       const selectedFile = uploadedFiles[selectedFileIndex];
       const settings = fileSettings[selectedFile.id];
-      
+
       const displayName = selectedFile.name.length > 30 ? selectedFile.name.substring(0, 30) + '...' : selectedFile.name;
       settingsSubtitle.textContent = `Configure settings for ${displayName}`;
-      
-      // Update copies
+
       copiesCount.textContent = settings.copies;
-      
-      // Update color options
+
       colorOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.color === settings.color);
       });
-      
-      // Update orientation options
+
       orientationOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.orientation === settings.orientation);
       });
-      
-      // Update page size options
+
       pageSizeOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.size === settings.pageSize);
       });
-      
-      // Update page range
+
       document.querySelector(`input[value="${settings.pageRange}"]`).checked = true;
       pageRangeInput.disabled = settings.pageRange === 'all';
       pageRangeInput.value = settings.specificPages || '';
-      
-      // Update additional options
+
       spiralBindingCheckbox.checked = settings.spiralBinding;
       laminationCheckbox.checked = settings.lamination;
     }
-    
+
     function updateOrderSummary() {
       if (uploadedFiles.length === 0) {
         totalPages.textContent = '0';
@@ -2735,59 +2541,55 @@
         totalAmount.textContent = '0';
         return;
       }
-      
+
       let totalPagesCount = 0;
       let totalCopiesCount = 0;
       let totalCost = 0;
       let colorTypes = new Set();
-      
+
       uploadedFiles.forEach(fileObj => {
         const settings = fileSettings[fileObj.id];
         const pages = calculatePages(fileObj, settings);
         const copies = settings.copies;
-        
+
         totalPagesCount += pages;
         totalCopiesCount += copies;
-        
-        // Calculate base cost
+
         let cost = pages * copies * pricePerPage[settings.color];
-        
-        // Add lamination cost if selected
+
         if (settings.lamination) {
           cost += pages * copies * servicePrices.lamination;
         }
-        
-        // Add spiral binding cost if selected (per file, not per page)
+
         if (settings.spiralBinding) {
           cost += servicePrices.spiralBinding;
         }
-        
+
         totalCost += cost;
         colorTypes.add(settings.color);
       });
-      
+
       totalPages.textContent = totalPagesCount;
       summaryPages.textContent = totalPagesCount;
       summaryCopies.textContent = totalCopiesCount;
-      
+
       if (colorTypes.size === 1) {
         summaryColor.textContent = colorTypes.has('bw') ? 'B&W' : 'Color';
       } else {
         summaryColor.textContent = 'Mixed';
       }
-      
+
       totalAmount.textContent = totalCost;
     }
-    
+
     function calculatePages(fileObj, settings) {
       if (settings.pageRange === 'all') {
         return fileObj.pages;
       }
-      
-      // Parse specific pages
+
       const pageRanges = settings.specificPages.split(',').map(s => s.trim()).filter(s => s);
       let pageCount = 0;
-      
+
       pageRanges.forEach(range => {
         if (range.includes('-')) {
           const [start, end] = range.split('-').map(n => parseInt(n.trim()));
@@ -2801,33 +2603,33 @@
           }
         }
       });
-      
+
       return pageCount;
     }
-    
+
     function updateCurrentFileSettings(key, value) {
       if (selectedFileIndex === -1) return;
-      
+
       const selectedFile = uploadedFiles[selectedFileIndex];
       fileSettings[selectedFile.id][key] = value;
       updateOrderSummary();
     }
-    
-    // Event listeners
+
+    // Event listeners (keeping all existing ones)
     printBtn.addEventListener('click', openModal);
     closeModal.addEventListener('click', closeModalFunc);
-    
+
     printModal.addEventListener('click', (e) => {
       if (e.target === printModal) {
         closeModalFunc();
       }
     });
-    
+
     function triggerFileInput() {
       fileInput.value = '';
       fileInput.click();
     }
-    
+
     uploadArea.addEventListener('click', triggerFileInput);
     uploadBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -2839,7 +2641,7 @@
       e.stopPropagation();
       triggerFileInput();
     });
-    
+
     fileInput.addEventListener('change', (e) => {
       console.log('File input change event triggered');
       if (e.target.files && e.target.files.length > 0) {
@@ -2849,17 +2651,17 @@
         console.log('No files found in input');
       }
     });
-    
+
     // Drag and drop
     uploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
       uploadArea.classList.add('dragover');
     });
-    
+
     uploadArea.addEventListener('dragleave', () => {
       uploadArea.classList.remove('dragover');
     });
-    
+
     uploadArea.addEventListener('drop', (e) => {
       e.preventDefault();
       uploadArea.classList.remove('dragover');
@@ -2867,8 +2669,8 @@
         handleFileSelect(Array.from(e.dataTransfer.files));
       }
     });
-    
-    // Settings controls
+
+    // Settings controls (keeping all existing functionality)
     decreaseCopies.addEventListener('click', () => {
       if (selectedFileIndex === -1) return;
       const currentCopies = fileSettings[uploadedFiles[selectedFileIndex].id].copies;
@@ -2877,7 +2679,7 @@
         copiesCount.textContent = currentCopies - 1;
       }
     });
-    
+
     increaseCopies.addEventListener('click', () => {
       if (selectedFileIndex === -1) return;
       const currentCopies = fileSettings[uploadedFiles[selectedFileIndex].id].copies;
@@ -2886,63 +2688,61 @@
         copiesCount.textContent = currentCopies + 1;
       }
     });
-    
+
     colorOptions.forEach(option => {
       option.addEventListener('click', () => {
         if (selectedFileIndex === -1) return;
-        
+
         colorOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('color', option.dataset.color);
       });
     });
-    
+
     orientationOptions.forEach(option => {
       option.addEventListener('click', () => {
         if (selectedFileIndex === -1) return;
-        
+
         orientationOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('orientation', option.dataset.orientation);
       });
     });
-    
+
     pageRangeRadios.forEach(radio => {
       radio.addEventListener('change', () => {
         if (selectedFileIndex === -1) return;
-        
+
         pageRangeInput.disabled = radio.value === 'all';
         updateCurrentFileSettings('pageRange', radio.value);
-        
+
         if (radio.value === 'all') {
           updateCurrentFileSettings('specificPages', '');
           pageRangeInput.value = '';
         }
       });
     });
-    
+
     pageRangeInput.addEventListener('input', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('specificPages', pageRangeInput.value);
     });
-    
-    // Page size options
+
     pageSizeOptions.forEach(option => {
       option.addEventListener('click', () => {
         if (selectedFileIndex === -1) return;
-        
+
         pageSizeOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('pageSize', option.dataset.size);
       });
     });
-    
-    // Additional options
+
     spiralBindingCheckbox.addEventListener('change', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('spiralBinding', spiralBindingCheckbox.checked);
     });
-    
+
     laminationCheckbox.addEventListener('change', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('lamination', laminationCheckbox.checked);
@@ -2956,35 +2756,29 @@
         selectedVendor = option.dataset.vendor;
       });
     });
-    
+
     // Action buttons
     document.getElementById('cancelBtn').addEventListener('click', closeModalFunc);
-    
+
     document.getElementById('proceedBtn').addEventListener('click', async () => {
-      // Disable the button to prevent multiple submissions
       const proceedBtn = document.getElementById('proceedBtn');
       proceedBtn.disabled = true;
       proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-      
+
       try {
-        // Check if there are files to upload
         if (uploadedFiles.length === 0) {
           alert('Please add at least one file to print.');
           return;
         }
-        
-        // Create FormData to send files and settings
+
         const formData = new FormData();
-        
-        // Process each file and its settings
+
         for (let i = 0; i < uploadedFiles.length; i++) {
           const fileObj = uploadedFiles[i];
           const settings = fileSettings[fileObj.id];
-          
-          // Add the file to FormData
+
           formData.append(`file_${i}`, fileObj.file);
-          
-          // Create a JSON object with the print settings for this file
+
           const settingsJson = {
             filename: fileObj.name,
             copies: settings.copies,
@@ -3000,27 +2794,23 @@
             job_completed: "NO",
             Trash: "NO"
           };
-          
-          // Add the settings as a JSON string
+
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
         }
-        
-        // Add the total number of files and selected vendor
+
         formData.append('file_count', uploadedFiles.length);
         formData.append('selected_vendor', selectedVendor);
-        
-        // Send the files and settings to the server
+
         const response = await fetch('/upload/', {
           method: 'POST',
           body: formData
         });
-        
+
         if (response.ok) {
           const result = await response.json();
           alert(result.message || 'Print job submitted successfully!');
           closeModalFunc();
-          
-          // Reset state
+
           uploadedFiles = [];
           selectedFileIndex = -1;
           fileSettings = {};
@@ -3034,48 +2824,11 @@
         console.error('Error submitting print job:', error);
         alert(`Error: ${error.message || 'Failed to submit print job. Please try again.'}`);
       } finally {
-        // Re-enable the button
         proceedBtn.disabled = false;
         proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
       }
     });
-    
-    // Theme toggle functionality
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = themeToggle.querySelector('i');
-    let isDarkMode = false;
-    
-    themeToggle.addEventListener('click', () => {
-      isDarkMode = !isDarkMode;
-      document.body.classList.toggle('dark-mode', isDarkMode);
-      
-      if (isDarkMode) {
-        themeIcon.className = 'fas fa-moon';
-      } else {
-        themeIcon.className = 'fas fa-sun';
-      }
-    });
-    
-    // Sidebar functionality
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    
-    function openSidebar() {
-      sidebar.classList.add('active');
-      sidebarOverlay.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    }
-    
-    function closeSidebar() {
-      sidebar.classList.remove('active');
-      sidebarOverlay.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-    
-    menuToggle.addEventListener('click', openSidebar);
-    sidebarOverlay.addEventListener('click', closeSidebar);
-    
+
     // Initialize UI
     updateUI();
   </script>

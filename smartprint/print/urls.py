@@ -19,3 +19,4 @@ urlpatterns = [
     path('login/', sign_in, name='login'),
     path('auth-receiver/', auth_receiver, name='auth_receiver'),
 ]
+
