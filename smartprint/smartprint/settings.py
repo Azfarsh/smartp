@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
 
 # Load environment variables
 load_dotenv()
@@ -99,15 +101,21 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Firebase Admin SDK Configuration
-import firebase_admin
-from firebase_admin import credentials
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 
+# Allow popups for Google Sign-In. This is necessary to prevent the
+# "postMessage" error with the Google Sign-In popup.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
+# Firebase Admin SDK Configuration
 try:
     if not firebase_admin._apps:
-        cred = credentials.Certificate(os.path.join(BASE_DIR, 'firebase-service-account.json'))
-        firebase_admin.initialize_app(cred)
-        print("✅ Firebase Admin SDK initialized successfully")
+        # For now, we'll initialize without credentials since we don't have the service account file
+        # You'll need to get the service account key from Firebase Console
+        firebase_admin.initialize_app()
+        print("✅ Firebase Admin SDK initialized successfully (without credentials)")
     else:
         print("✅ Firebase Admin SDK already initialized")
 except Exception as e:
@@ -125,14 +133,10 @@ VENDOR_DASHBOARD_URL = os.getenv('VENDOR_DASHBOARD_URL', 'http://localhost:8000'
 VENDOR_TOKEN = os.getenv('VENDOR_TOKEN', 'your_vendor_token')
 
 # ✅ R2 credentials from .env
-R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY')
-R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
-R2_ENDPOINT = os.getenv('R2_ENDPOINT')
-R2_BUCKET = os.getenv('R2_BUCKET')
-
-# ✅ Google OAuth settings
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+R2_ACCESS_KEY = 'e02ce6580b8c81a4899bc6f4b2250f65'
+R2_SECRET_KEY = 'ad35d6fae06bd3fe15956642348a0391fbd8c8f5a3cdca052b7484869179b8e9'
+R2_ENDPOINT = 'https://d3e1ce952178b1093bba642e6d0d4ab5.r2.cloudflarestorage.com'
+R2_BUCKET = 'printme'
 
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
