@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1976,7 +1975,8 @@
       </div>
 
       <div class="services-grid">
-        <div class="service-card">
+        <!-- Photo Print -->
+        <div class="service-card" onclick="openServiceModal('photo')">
           <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-image"></i>
@@ -1989,8 +1989,8 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-
-        <div class="service-card">
+        <!-- Digital Print -->
+        <div class="service-card" onclick="openServiceModal('digital')">
           <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-file-alt"></i>
@@ -2003,8 +2003,8 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-
-        <div class="service-card">
+        <!-- Project Binding -->
+        <div class="service-card" onclick="openServiceModal('binding')">
           <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-book"></i>
@@ -2017,8 +2017,8 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-
-        <div class="service-card">
+        <!-- Gloss Paper Printing -->
+        <div class="service-card" onclick="openServiceModal('gloss')">
           <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-star"></i>
@@ -2031,8 +2031,8 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-
-        <div class="service-card">
+        <!-- Jumbo Paper Printing -->
+        <div class="service-card" onclick="openServiceModal('jumbo')">
           <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-file"></i>
@@ -2045,8 +2045,8 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-
-        <div class="service-card">
+        <!-- Tracing Printing -->
+        <div class="service-card" onclick="openServiceModal('tracing')">
           <div class="service-header">
             <div class="service-icon">
               <i class="fas fa-drafting-compass"></i>
@@ -2061,33 +2061,329 @@
         </div>
       </div>
     </section>
-  </main>
 
-  <!-- Bottom Navigation -->
-  <nav class="bottom-nav">
-    <a href="#" class="bottom-nav-item active">
-      <i class="fas fa-home"></i>
-      <span>Home</span>
-    </a>
-    <a href="#" class="bottom-nav-item">
-      <i class="fas fa-print"></i>
-      <span>Jobs</span>
-    </a>
-    <div class="print-btn">
-      <button class="print-btn-circle" id="printBtn">
+    <!-- Service Modals (one for each service) -->
+    <div id="serviceModalsContainer"></div>
+
+    <style>
+      .service-modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .service-modal-overlay.active { display: flex; }
+      .service-modal {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        max-width: 420px;
+        width: 100%;
+        padding: 2rem 1.5rem 1.5rem 1.5rem;
+        position: relative;
+        animation: fadeIn 0.2s;
+      }
+      .service-modal h3 {
+        margin-bottom: 1rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e3a8a;
+      }
+      .service-modal .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        color: #888;
+        cursor: pointer;
+      }
+      .service-modal label {
+        font-weight: 500;
+        margin-top: 1rem;
+        display: block;
+      }
+      .service-modal input[type="number"],
+      .service-modal select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        margin-top: 0.3rem;
+        font-size: 1rem;
+      }
+      .service-modal .file-upload {
+        margin: 1rem 0;
+        padding: 1rem;
+        border: 2px dashed #1e3a8a33;
+        border-radius: 8px;
+        text-align: center;
+        background: #f8fafc;
+        cursor: pointer;
+      }
+      .service-modal .file-upload input { display: none; }
+      .service-modal .file-preview {
+        margin: 1rem 0;
+        text-align: center;
+      }
+      .service-modal .file-preview img,
+      .service-modal .file-preview embed {
+        max-width: 100%;
+        max-height: 180px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      }
+      .service-modal .submit-btn {
+        margin-top: 1.5rem;
+        width: 100%;
+        background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0.8rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .service-modal .submit-btn:disabled {
+        background: #b6c3e0;
+        cursor: not-allowed;
+      }
+      @keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+    </style>
+
+    <script>
+      // Service modal templates and logic
+      const serviceModalTemplates = {
+        photo: {
+          title: 'Photo Print',
+          fields: [
+            { label: 'Upload Photo', type: 'file', accept: '.jpg,.jpeg,.png,.bmp,.tiff,.gif', required: true },
+            { label: 'Number of Copies', type: 'number', min: 1, max: 20, default: 1, required: true },
+            { label: 'Paper Size', type: 'select', options: ['4x6', '5x7', 'A4'], required: true }
+          ]
+        },
+        digital: {
+          title: 'Digital Print',
+          fields: [
+            { label: 'Upload Document', type: 'file', accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx', required: true },
+            { label: 'Number of Copies', type: 'number', min: 1, max: 50, default: 1, required: true },
+            { label: 'Color', type: 'select', options: ['Black & White', 'Color'], required: true },
+            { label: 'Page Size', type: 'select', options: ['A4', 'A3', 'Letter'], required: true }
+          ]
+        },
+        binding: {
+          title: 'Project Binding',
+          fields: [
+            { label: 'Upload Document', type: 'file', accept: '.pdf,.doc,.docx', required: true },
+            { label: 'Binding Type', type: 'select', options: ['Spiral', 'Hardcover', 'Softcover'], required: true },
+            { label: 'Number of Copies', type: 'number', min: 1, max: 10, default: 1, required: true }
+          ]
+        },
+        gloss: {
+          title: 'Gloss Paper Printing',
+          fields: [
+            { label: 'Upload Document', type: 'file', accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png', required: true },
+            { label: 'Number of Copies', type: 'number', min: 1, max: 20, default: 1, required: true },
+            { label: 'Gloss Level', type: 'select', options: ['Standard', 'High Gloss'], required: true }
+          ]
+        },
+        jumbo: {
+          title: 'Jumbo Paper Printing',
+          fields: [
+            { label: 'Upload Document', type: 'file', accept: '.pdf,.jpg,.jpeg,.png', required: true },
+            { label: 'Paper Size', type: 'select', options: ['A0', 'A1', 'A2', 'A3'], required: true },
+            { label: 'Number of Copies', type: 'number', min: 1, max: 10, default: 1, required: true }
+          ]
+        },
+        tracing: {
+          title: 'Tracing Printing',
+          fields: [
+            { label: 'Upload Drawing', type: 'file', accept: '.pdf,.jpg,.jpeg,.png,.tiff,.svg', required: true },
+            { label: 'Number of Copies', type: 'number', min: 1, max: 10, default: 1, required: true },
+            { label: 'Paper Size', type: 'select', options: ['A4', 'A3', 'A2'], required: true }
+          ]
+        }
+      };
+
+      function openServiceModal(service) {
+        const modalId = `service-modal-${service}`;
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+          // Create modal if not exists
+          modal = document.createElement('div');
+          modal.className = 'service-modal-overlay active';
+          modal.id = modalId;
+          modal.innerHTML = renderServiceModal(service);
+          document.getElementById('serviceModalsContainer').appendChild(modal);
+          setTimeout(() => attachServiceModalEvents(service, modal), 100);
+        } else {
+          modal.classList.add('active');
+        }
+      }
+
+      function closeServiceModal(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        if (modal) modal.classList.remove('active');
+      }
+
+      function renderServiceModal(service) {
+        const tmpl = serviceModalTemplates[service];
+        if (!tmpl) return '';
+        let fieldsHtml = '';
+        tmpl.fields.forEach((f, idx) => {
+          if (f.type === 'file') {
+            fieldsHtml += `<label>${f.label}${f.required ? ' *' : ''}</label>
+              <div class='file-upload' id='${service}-file-upload' onclick="document.getElementById('${service}-file-input').click()">
+                <span id='${service}-file-upload-label'>Click to select file</span>
+                <input type='file' id='${service}-file-input' accept='${f.accept}' ${f.required ? 'required' : ''} />
+              </div>
+              <div class='file-preview' id='${service}-file-preview'></div>`;
+          } else if (f.type === 'select') {
+            fieldsHtml += `<label>${f.label}${f.required ? ' *' : ''}</label>
+              <select id='${service}-field-${idx}' ${f.required ? 'required' : ''}>
+                ${f.options.map(opt => `<option value='${opt}'>${opt}</option>`).join('')}
+              </select>`;
+          } else if (f.type === 'number') {
+            fieldsHtml += `<label>${f.label}${f.required ? ' *' : ''}</label>
+              <input type='number' id='${service}-field-${idx}' min='${f.min||1}' max='${f.max||99}' value='${f.default||1}' ${f.required ? 'required' : ''} />`;
+          }
+        });
+        return `
+          <div class='service-modal'>
+            <button class='close-btn' onclick="closeServiceModal('${service}')"><i class='fas fa-times'></i></button>
+            <h3>${tmpl.title}</h3>
+            <form id='${service}-modal-form'>
+              ${fieldsHtml}
+              <button class='submit-btn' type='submit'>Submit</button>
+            </form>
+          </div>
+        `;
+      }
+
+      function attachServiceModalEvents(service, modal) {
+        const tmpl = serviceModalTemplates[service];
+        let fileObj = null;
+        // File input and preview
+        const fileInput = modal.querySelector(`#${service}-file-input`);
+        const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
+        const filePreview = modal.querySelector(`#${service}-file-preview`);
+        fileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          fileObj = file;
+          if (!file) {
+            fileUploadLabel.textContent = 'Click to select file';
+            filePreview.innerHTML = '';
+            return;
+          }
+          fileUploadLabel.textContent = file.name;
+          // Preview logic
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              filePreview.innerHTML = `<img src='${ev.target.result}' alt='Preview' />`;
+            };
+            reader.readAsDataURL(file);
+          } else if (file.type === 'application/pdf') {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              filePreview.innerHTML = `<embed src='${ev.target.result}' type='application/pdf' width='100%' height='180px' />`;
+            };
+            reader.readAsDataURL(file);
+          } else {
+            filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}</div>`;
+          }
+        });
+        // Form submit
+        const form = modal.querySelector(`#${service}-modal-form`);
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!fileObj) { alert('Please upload a file.'); return; }
+          const formData = new FormData();
+          formData.append('file_0', fileObj);
+          // Collect field values
+          tmpl.fields.forEach((f, idx) => {
+            if (f.type === 'file') return;
+            let val = form.querySelector(`#${service}-field-${idx}`)?.value;
+            formData.append(`field_${idx}`, val);
+          });
+          // Metadata
+          const settingsJson = {
+            service: service,
+            service_manual: 'yes',
+            job_completed: 'no',
+            filename: fileObj.name,
+          };
+          tmpl.fields.forEach((f, idx) => {
+            if (f.type === 'file') return;
+            let val = form.querySelector(`#${service}-field-${idx}`)?.value;
+            settingsJson[f.label.replace(/ /g,'_').toLowerCase()] = val;
+          });
+          formData.append('settings_0', JSON.stringify(settingsJson));
+          formData.append('file_count', 1);
+          formData.append('selected_vendor', 'testshop');
+          // Submit
+          const submitBtn = form.querySelector('.submit-btn');
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+          try {
+            const resp = await fetch('/upload/', {
+              method: 'POST',
+              body: formData,
+              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await resp.json();
+            if (data.success) {
+              alert('Request submitted successfully!');
+              closeServiceModal(service);
+            } else {
+              alert('Error: ' + (data.error || 'Failed to submit.'));
+            }
+          } catch (err) {
+            alert('Error: ' + err.message);
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit';
+          }
+        });
+        // Close modal on overlay click
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeServiceModal(service);
+        });
+      }
+    </script>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <a href="#" class="bottom-nav-item active">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </a>
+      <a href="#" class="bottom-nav-item">
         <i class="fas fa-print"></i>
-      </button>
-      <span style="color: var(--on-surface); font-size: 0.65rem; font-weight: 600; margin-top: 0.2rem;">Print</span>
-    </div>
-    <a href="#" class="bottom-nav-item">
-      <i class="fas fa-map-marker-alt"></i>
-      <span>Locations</span>
-    </a>
-    <a href="#" class="bottom-nav-item">
-      <i class="fas fa-user"></i>
-      <span>Profile</span>
-    </a>
-  </nav>
+        <span>Jobs</span>
+      </a>
+      <div class="print-btn">
+        <button class="print-btn-circle" id="printBtn">
+          <i class="fas fa-print"></i>
+        </button>
+        <span style="color: var(--on-surface); font-size: 0.65rem; font-weight: 600; margin-top: 0.2rem;">Print</span>
+      </div>
+      <a href="#" class="bottom-nav-item">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Locations</span>
+      </a>
+      <a href="#" class="bottom-nav-item">
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+      </a>
+    </nav>
+  </main>
 
   <!-- Data from backend -->
   <script>
