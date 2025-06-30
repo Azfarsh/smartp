@@ -1,92 +1,739 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Google Sign-In</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f5f5f5;
-        }
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - PrintMe</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet"/>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <!-- Google Sign-In -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    :root {
+      --primary-color: #1a73e8;
+      --primary-hover: #1557b0;
+      --secondary-color: #34a853;
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --border-color: #dadce0;
+      --light-gray: #f8f9fa;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #87ceeb, #b0e0e6, #add8e6);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      max-width: 900px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 600px;
+      overflow: hidden;
+    }
+
+    .login-left {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+
+    .login-left h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+
+    .login-left p {
+      margin-top: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .login-right {
+      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-tabs {
+      display: flex;
+      background: var(--light-gray);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 2rem;
+    }
+
+    .tab-button {
+      flex: 1;
+      padding: 12px;
+      background: none;
+      border: none;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .tab-button.active {
+      background: white;
+      color: var(--primary-color);
+      box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+    }
+
+    .login-form {
+      display: none;
+    }
+
+    .login-form.active {
+      display: block;
+    }
+
+    .form-control {
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid var(--border-color);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      background: var(--primary-color);
+      color: white;
+      font-weight: 600;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .forgot-password {
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    /* Advanced Black Transition Welcome Screen */
+    #welcomeScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: white;
+      z-index: 9999;
+      opacity: 0;
+      transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+      padding: 20px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    #welcomeScreen.show {
+      opacity: 1;
+    }
+
+    /* Advanced particle system */
+    #welcomeScreen::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02) 1px, transparent 1px),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.015) 1px, transparent 1px),
+        radial-gradient(circle at 40% 60%, rgba(255,255,255,0.01) 1px, transparent 1px),
+        radial-gradient(circle at 60% 40%, rgba(255,255,255,0.008) 1px, transparent 1px);
+      background-size: 100px 100px, 150px 150px, 200px 200px, 120px 120px;
+      animation: particleFlow 30s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes particleFlow {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(-10px, -10px) rotate(90deg); }
+      50% { transform: translate(10px, -5px) rotate(180deg); }
+      75% { transform: translate(-5px, 10px) rotate(270deg); }
+      100% { transform: translate(0, 0) rotate(360deg); }
+    }
+
+    /* Scanning light effect */
+    #welcomeScreen::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255,255,255,0.05) 30%,
+        rgba(255,255,255,0.1) 50%,
+        rgba(255,255,255,0.05) 70%,
+        transparent 100%);
+      animation: scanEffect 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scanEffect {
+      0% { 
+        left: -100%;
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% { 
+        left: 100%;
+        opacity: 0;
+      }
+    }
+
+    /* Advanced Transition Welcome Message */
+    #welcomeMessage {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 200;
+      margin-bottom: clamp(60px, 8vh, 100px);
+      text-align: center;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      max-width: 90vw;
+      color: #ffffff;
+      animation: advancedSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+      transform: translateY(60px) scale(0.95);
+      opacity: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      text-shadow: 0 0 40px rgba(255,255,255,0.1);
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Glowing text effect */
+    #welcomeMessage::before {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      color: rgba(255,255,255,0.1);
+      filter: blur(20px);
+      z-index: -1;
+      animation: textGlow 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes advancedSlideIn {
+      0% {
+        transform: translateY(60px) scale(0.95);
+        opacity: 0;
+        filter: blur(10px);
+      }
+      60% {
+        transform: translateY(-5px) scale(1.01);
+        opacity: 0.8;
+        filter: blur(2px);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        filter: blur(0);
+      }
+    }
+
+    @keyframes textGlow {
+      0% { opacity: 0.05; }
+      100% { opacity: 0.15; }
+    }
+
+    /* Advanced Loading Animation */
+    .spinner {
+      width: clamp(50px, 10vw, 80px);
+      height: clamp(50px, 10vw, 80px);
+      position: relative;
+      animation: spinnerFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 0.5s forwards;
+      opacity: 0;
+      transform: scale(0.8);
+    }
+
+    /* Multi-ring spinner */
+    .spinner::before,
+    .spinner::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid transparent;
+    }
+
+    .spinner::before {
+      width: 100%;
+      height: 100%;
+      border-top-color: rgba(255,255,255,0.8);
+      border-right-color: rgba(255,255,255,0.4);
+      animation: advancedSpinner 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    }
+
+    .spinner::after {
+      width: 70%;
+      height: 70%;
+      top: 15%;
+      left: 15%;
+      border-top-color: rgba(255,255,255,0.6);
+      border-left-color: rgba(255,255,255,0.3);
+      animation: advancedSpinner 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
+    }
+
+    /* Pulsing center dot */
+    .spinner {
+      background: radial-gradient(circle at center, rgba(255,255,255,0.8) 3px, transparent 4px);
+      animation: spinnerFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 0.5s forwards,
+                 centerPulse 2s ease-in-out infinite 1s;
+    }
+
+    @keyframes spinnerFadeIn {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes advancedSpinner {
+      0% {
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: rotate(180deg) scale(1.1);
+        opacity: 0.8;
+      }
+      100% {
+        transform: rotate(360deg) scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes centerPulse {
+      0%, 100% {
+        background: radial-gradient(circle at center, rgba(255,255,255,0.8) 3px, transparent 4px);
+      }
+      50% {
+        background: radial-gradient(circle at center, rgba(255,255,255,1) 4px, transparent 5px);
+      }
+    }
+
+    /* Welcome container for better organization */
+    .welcome-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+      position: relative;
+    }
+
+    /* Progress bar animation */
+    .progress-bar {
+      width: clamp(200px, 40vw, 300px);
+      height: 2px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: clamp(40px, 6vh, 60px);
+      animation: progressBarFadeIn 1.5s cubic-bezier(0.19, 1, 0.22, 1) 1s forwards;
+      opacity: 0;
+      transform: scaleX(0.8);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, 
+        rgba(255,255,255,0.8) 0%, 
+        rgba(255,255,255,1) 50%, 
+        rgba(255,255,255,0.8) 100%);
+      width: 0%;
+      border-radius: 1px;
+      animation: progressFill 3s cubic-bezier(0.4, 0, 0.2, 1) 1.5s forwards;
+    }
+
+    @keyframes progressBarFadeIn {
+      to {
+        opacity: 1;
+        transform: scaleX(1);
+      }
+    }
+
+    @keyframes progressFill {
+      0% { width: 0%; }
+      100% { width: 100%; }
+    }
+
+    /* Status text */
+    .status-text {
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      font-weight: 300;
+      color: rgba(255,255,255,0.7);
+      margin-top: clamp(20px, 3vh, 30px);
+      animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
+      opacity: 0;
+      transform: translateY(20px);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    @keyframes statusFadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Geometric shapes for advanced visual appeal */
+    .geometric-shapes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .shape {
+      position: absolute;
+      border: 1px solid rgba(255,255,255,0.05);
+      opacity: 0;
+      animation: shapeFloat 8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+    }
+
+    .shape-1 {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      top: 20%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    .shape-2 {
+      width: 60px;
+      height: 60px;
+      top: 70%;
+      right: 15%;
+      animation-delay: 2s;
+      transform: rotate(45deg);
+    }
+
+    .shape-3 {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      bottom: 30%;
+      left: 20%;
+      animation-delay: 4s;
+    }
+
+    .shape-4 {
+      width: 40px;
+      height: 40px;
+      top: 40%;
+      right: 25%;
+      animation-delay: 6s;
+      transform: rotate(45deg);
+    }
+
+    @keyframes shapeFloat {
+      0%, 100% {
+        opacity: 0;
+        transform: translateY(0) scale(1);
+      }
+      50% {
+        opacity: 0.1;
+        transform: translateY(-20px) scale(1.1);
+      }
+    }
+
+
+
+    /* Responsive design for welcome screen */
+    @media (max-width: 768px) {
+      .login-container {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+      }
+
+      .login-left {
+        padding: 2rem;
+        text-align: center;
+      }
+
+      #welcomeScreen {
+        padding: 15px;
+      }
+
+      #welcomeMessage {
+        line-height: 1.2;
+        word-break: break-word;
+        hyphens: auto;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #welcomeScreen {
+        padding: 10px;
+      }
+
+      #welcomeMessage {
+        line-height: 1.3;
+        word-spacing: 0.1em;
+      }
+    }
+
+    @media (max-width: 360px) {
+      #welcomeMessage {
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+      }
+    }
+
+    /* Landscape orientation adjustments */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #welcomeMessage {
+        font-size: clamp(1.5rem, 6vw, 3rem);
+        margin-bottom: clamp(10px, 2vh, 20px);
+      }
+      
+      .spinner {
+        width: clamp(30px, 8vw, 50px);
+        height: clamp(30px, 8vw, 50px);
+        margin-top: clamp(5px, 1vh, 10px);
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>Sign in with Google</h1>
-        <div id="g_id_onload"
-             data-client_id="{{ client_id }}"
-             data-callback="handleCredentialResponse"
-             data-auto_prompt="false">
-        </div>
-        <div class="g_id_signin" 
-             data-type="standard" 
-             data-size="large" 
-             data-theme="outline" 
-             data-text="sign_in_with" 
-             data-shape="rectangular">
-        </div>
+
+<!-- Advanced Black Transition Welcome Screen -->
+<div id="welcomeScreen">
+  <div class="welcome-container">
+    <div id="welcomeMessage" data-text="Welcome">Welcome</div>
+    <div class="spinner"></div>
+    <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+    <div class="status-text">Signing you in...</div>
+  </div>
+  <div class="geometric-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+    <div class="shape shape-4"></div>
+  </div>
+</div>
+
+<div class="login-container">
+  <!-- Left Panel -->
+  <div class="login-left">
+    <h1><i class="bi bi-printer"></i> PrintMe</h1>
+    <p>Your smart printing solution. Upload, print, and manage your documents from anywhere.</p>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="login-right">
+    <div class="login-header">
+      <h2>Welcome Back</h2>
+      <p>Choose your preferred login method</p>
     </div>
 
-    <script>
-        function handleCredentialResponse(response) {
-            // First ensure we have a CSRF token by making a GET request to the same endpoint
-            fetch('/auth-receiver/', { method: 'GET' })
-            .then(() => {
-                // Now send the credential to our backend with the CSRF token that should be set
-                return fetch('/auth-receiver/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: 'credential=' + encodeURIComponent(response.credential)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Redirect to user dashboard on successful login
-                        window.location.href = '/userdashboard/';
-                    } else {
-                        alert('Login failed: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Login failed. Please try again.');
-                });
-            })
-        }
+    <!-- Tab Navigation -->
+    <div class="login-tabs">
+      <button class="tab-button active" onclick="showTab('user')">User</button>
+      <button class="tab-button" onclick="showTab('vendor')">Vendor</button>
+    </div>
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
+    <!-- Student Login Form -->
+    <div id="user-form" class="login-form active">
+      <div id="g_id_onload"
+           data-client_id="{{ client_id }}"
+           data-callback="handleCredentialResponse"
+           data-auto_prompt="false">
+      </div>
+      <div class="google-signin-container d-flex justify-content-center">
+        <div class="g_id_signin"
+             data-type="standard"
+             data-size="large"
+             data-theme="outline"
+             data-text="sign_in_with"
+             data-shape="rectangular">
+        </div>
+      </div>
+    </div>
+
+    <!-- Vendor Login Form -->
+    <div id="vendor-form" class="login-form">
+      <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label for="vendorId" class="form-label">Vendor ID</label>
+          <input type="text" class="form-control" id="vendorId" required />
+        </div>
+        <div class="mb-3">
+          <label for="vendorPassword" class="form-label">Password</label>
+          <input type="password" class="form-control" id="vendorPassword" required />
+        </div>
+        <button type="submit" class="btn-primary">Sign In as Vendor</button>
+        <div class="forgot-password mt-2">
+          <a href="#" onclick="resetVendorPassword()">Forgot your password?</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script>
+  function showTab(tab) {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+
+    document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+    document.getElementById(`${tab}-form`).classList.add('active');
+  }
+
+  function showWelcome(name) {
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    welcomeMessage.textContent = `Welcome, ${name}`;
+    // Set data attribute for glow effect
+    welcomeMessage.setAttribute('data-text', `Welcome, ${name}`);
+    
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    welcomeScreen.style.display = 'flex';
+    
+    // Advanced transition sequence
+    setTimeout(() => {
+      welcomeScreen.classList.add('show');
+    }, 50);
+    
+    // Enhanced entrance with staggered animations
+    setTimeout(() => {
+      welcomeMessage.style.animationDelay = '0.3s';
+    }, 100);
+  }
+
+  function handleCredentialResponse(response) {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    const userName = payload.name || "User";
+
+    showWelcome(userName);
+
+    fetch('/auth-receiver/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: 'credential=' + encodeURIComponent(response.credential)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        setTimeout(() => window.location.href = '/userdashboard/', 2000);
+      } else {
+        alert('Login failed: ' + data.message);
+        document.getElementById('welcomeScreen').style.display = 'none';
+      }
+    })
+    .catch(err => {
+      console.error('Auth error:', err);
+      alert('Login failed. Please try again.');
+      document.getElementById('welcomeScreen').style.display = 'none';
+    });
+  }
+
+  async function vendorLogin(event) {
+    event.preventDefault();
+    const vendorId = document.getElementById('vendorId').value;
+    const password = document.getElementById('vendorPassword').value;
+
+    try {
+      const response = await fetch('/vendor-login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ vendor_id: vendorId, password: password })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        window.location.href = '/vendordashboard/';
+      } else {
+        alert(data.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Login failed. Please try again.');
+    }
+  }
+
+  function resetVendorPassword() {
+    const vendorId = prompt('Enter your Vendor ID:');
+    if (vendorId) {
+      alert('Password reset instructions will be sent to your registered email.');
+    }
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
         }
-    </script>
+      }
+    }
+    return cookieValue;
+  }
+</script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
