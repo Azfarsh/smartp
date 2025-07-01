@@ -26,16 +26,43 @@ def vendordashboard(request):
         # Service types that require manual printing
         manual_services = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing']
 
-        # Categorize files for dashboard
-        manual_print_jobs = [f for f in files if f.get('job_completed') == 'NO' and f.get('service_type') in manual_services]
-        print_requests = [f for f in files if f.get('job_completed') == 'NO' and (not f.get('service_type') or f.get('service_type') not in manual_services)]
-        completed_jobs = [f for f in files if f.get('job_completed') == 'YES']
+        # Enhanced categorization for manual print jobs
+        manual_print_jobs = []
+        print_requests = []
+        completed_jobs = []
+
+        for file in files:
+            job_completed = file.get('job_completed', 'NO')
+            service_type = file.get('service_type', '')
+            
+            if job_completed == 'YES':
+                completed_jobs.append(file)
+            elif job_completed == 'NO':
+                # Check if it's a manual service job
+                if service_type and service_type in manual_services:
+                    manual_print_jobs.append(file)
+                else:
+                    print_requests.append(file)
+
+        # Debug logging
+        print(f"📊 Dashboard Stats:")
+        print(f"   - Total files: {len(files)}")
+        print(f"   - Manual print jobs: {len(manual_print_jobs)}")
+        print(f"   - Print requests: {len(print_requests)}")
+        print(f"   - Completed jobs: {len(completed_jobs)}")
+        
+        # Log some manual jobs for debugging
+        for job in manual_print_jobs[:3]:
+            print(f"   - Manual job: {job.get('filename')} (service: {job.get('service_type')})")
 
         context = {
             'manual_print_count': len(manual_print_jobs),
             'print_requests_count': len(print_requests),
             'completed_jobs_count': len(completed_jobs),
-            'total_jobs': len(files)
+            'total_jobs': len(files),
+            'manual_print_jobs': manual_print_jobs,
+            'print_requests': print_requests,
+            'completed_jobs': completed_jobs
         }
 
         return render(request, 'vendordashboard.html', context)
@@ -45,7 +72,10 @@ def vendordashboard(request):
             'manual_print_count': 0,
             'print_requests_count': 0,
             'completed_jobs_count': 0,
-            'total_jobs': 0
+            'total_jobs': 0,
+            'manual_print_jobs': [],
+            'print_requests': [],
+            'completed_jobs': []
         })
 
 
@@ -162,7 +192,8 @@ def get_user_jobs_from_r2(user_email):
                     "lamination": metadata.get('lamination', 'No'),
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
-                    "vendor": metadata.get('vendor', 'testshop')
+                    "vendor": metadata.get('vendor', 'testshop'),
+                    "service_type": metadata.get('service_type', '')
                 }
 
                 # Create print options string
@@ -376,7 +407,8 @@ def get_pending_print_jobs():
                                 'pages': metadata.get('pages', '1'),
                                 'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
                                 'vendor': metadata.get('vendor', 'testshop'),
-                                'user': metadata.get('user', 'Unknown')
+                                'user': metadata.get('user', 'Unknown'),
+                                'service_type': metadata.get('service_type', '')
                             }
                         }
                         
@@ -442,7 +474,8 @@ def get_pending_print_jobs():
                                 'pages': metadata.get('pages', '1'),
                                 'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
                                 'vendor': metadata.get('vendor', 'testshop'),
-                                'user': user_email or metadata.get('user', 'Unknown')
+                                'user': user_email or metadata.get('user', 'Unknown'),
+                                'service_type': metadata.get('service_type', '')
                             }
                         }
                         
@@ -727,7 +760,8 @@ def upload_to_r2(request):
                         'priority': 'Medium',
                         'pages': str(estimate_pages_from_size(len(file_content), file_extension)),
                         'vendor': selected_vendor,
-                        'original_filename': file.name
+                        'original_filename': file.name,
+                        'service_type': print_settings.get("service_type", "")  # Add service type
                     }
 
                     # Create vendor-specific file path (for vendor processing)
@@ -850,7 +884,8 @@ def list_r2_files():
                     "lamination": metadata.get('lamination', 'No'),
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "trash": metadata.get('trash', 'NO'),
-                    "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat())
+                    "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
+                    "service_type": metadata.get('service_type', '')  # Add service type
                 }
 
                 # Create print options string
@@ -919,7 +954,7 @@ def format_file_size(size_bytes):
 
 # ─────────────────────────────────────────────────────────────
 # HANDLE 'PROCEED TO PRINT' – FILE + SETTINGS
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 
 
 @csrf_exempt

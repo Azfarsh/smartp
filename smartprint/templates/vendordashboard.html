@@ -9,48 +9,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Modern Color Palette */
-            --primary-blue: #2563eb;
-            --primary-blue-hover: #1d4ed8;
+            /* Modern Color Palette - Avoiding Orange */
+            --primary-blue: #3b82f6;
+            --primary-blue-hover: #2563eb;
             --secondary-blue: #eff6ff;
-            --success-green: #059669;
-            --warning-orange: #d97706;
-            --error-red: #dc2626;
-            --purple: #7c3aed;
-            --indigo: #4f46e5;
+            --success-green: #10b981;
+            --warning-amber: #f59e0b;
+            --error-red: #ef4444;
+            --purple: #8b5cf6;
+            --indigo: #6366f1;
             --pink: #ec4899;
+            --teal: #14b8a6;
+            --emerald: #059669;
+            --cyan: #06b6d4;
             --text-primary: #111827;
             --text-secondary: #6b7280;
             --text-tertiary: #9ca3af;
             --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb;
-            --bg-tertiary: #f3f4f6;
-            --border-light: #e5e7eb;
-            --border-medium: #d1d5db;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --border-light: #e2e8f0;
+            --border-medium: #cbd5e1;
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --gradient-primary: linear-gradient(135deg, var(--primary-blue), var(--indigo));
+            --gradient-success: linear-gradient(135deg, var(--success-green), var(--emerald));
+            --gradient-warning: linear-gradient(135deg, var(--purple), var(--pink));
         }
 
         [data-theme="dark"] {
             --primary-blue: #60a5fa;
             --primary-blue-hover: #3b82f6;
             --secondary-blue: #1e3a8a;
-            --success-green: #10b981;
-            --warning-orange: #f59e0b;
-            --error-red: #ef4444;
-            --purple: #a855f7;
-            --indigo: #6366f1;
+            --success-green: #34d399;
+            --warning-amber: #fbbf24;
+            --error-red: #f87171;
+            --purple: #a78bfa;
+            --indigo: #818cf8;
             --pink: #f472b6;
+            --teal: #5eead4;
+            --emerald: #6ee7b7;
+            --cyan: #67e8f9;
             --text-primary: #f9fafb;
             --text-secondary: #d1d5db;
             --text-tertiary: #9ca3af;
-            --bg-primary: #111827;
-            --bg-secondary: #1f2937;
-            --bg-tertiary: #374151;
-            --border-light: #374151;
-            --border-medium: #4b5563;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --border-light: #334155;
+            --border-medium: #475569;
         }
 
         * {
@@ -88,11 +97,15 @@
             gap: 12px;
             font-size: 24px;
             font-weight: 700;
-            color: var(--primary-blue);
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .header-brand i {
             font-size: 28px;
+            color: var(--primary-blue);
         }
 
         .header-controls {
@@ -106,7 +119,7 @@
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            background: linear-gradient(135deg, var(--success-green), #10b981);
+            background: var(--gradient-success);
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
@@ -165,7 +178,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            background: var(--bg-primary);
             border: 1px solid var(--border-light);
             border-radius: 16px;
             padding: 24px;
@@ -182,7 +195,22 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary-blue), var(--purple));
+        }
+
+        .stat-card:nth-child(1)::before {
+            background: var(--gradient-warning);
+        }
+
+        .stat-card:nth-child(2)::before {
+            background: var(--gradient-primary);
+        }
+
+        .stat-card:nth-child(3)::before {
+            background: var(--gradient-success);
+        }
+
+        .stat-card:nth-child(4)::before {
+            background: linear-gradient(135deg, var(--teal), var(--cyan));
         }
 
         .stat-card:hover {
@@ -256,13 +284,13 @@
         }
 
         .manual-section .section-icon { 
-            background: linear-gradient(135deg, var(--warning-orange), #f59e0b); 
+            background: var(--gradient-warning);
         }
         .completed-section .section-icon { 
-            background: linear-gradient(135deg, var(--success-green), #10b981); 
+            background: var(--gradient-success);
         }
         .requests-section .section-icon { 
-            background: linear-gradient(135deg, var(--primary-blue), var(--indigo)); 
+            background: var(--gradient-primary);
         }
 
         .section-title {
@@ -278,7 +306,7 @@
         }
 
         .job-count {
-            background: linear-gradient(135deg, var(--primary-blue), var(--indigo));
+            background: var(--gradient-primary);
             color: white;
             padding: 8px 16px;
             border-radius: 20px;
@@ -312,7 +340,7 @@
         .search-input:focus {
             outline: none;
             border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .search-icon {
@@ -351,16 +379,16 @@
 
         .jobs-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
         }
 
-        /* Job Block - Compact and Colorful */
+        /* Job Block - Enhanced Design */
         .job-block {
             background: var(--bg-primary);
             border: 2px solid var(--border-light);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 16px;
+            padding: 20px;
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
@@ -378,20 +406,20 @@
         }
 
         .manual-job::before {
-            background: linear-gradient(90deg, var(--warning-orange), #f59e0b);
+            background: var(--gradient-warning);
         }
 
         .completed-job::before {
-            background: linear-gradient(90deg, var(--success-green), #10b981);
+            background: var(--gradient-success);
         }
 
         .pending-job::before {
-            background: linear-gradient(90deg, var(--primary-blue), var(--indigo));
+            background: var(--gradient-primary);
         }
 
         .job-block:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
             border-color: var(--primary-blue);
         }
 
@@ -399,7 +427,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
         .job-token {
@@ -407,61 +435,60 @@
             font-weight: 700;
             color: var(--text-secondary);
             background: var(--bg-secondary);
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .job-status {
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 10px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .status-manual {
-            background: rgba(217, 119, 6, 0.1);
-            color: var(--warning-orange);
-            border: 1px solid rgba(217, 119, 6, 0.2);
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--purple);
+            border: 1px solid rgba(139, 92, 246, 0.2);
         }
 
         .status-completed {
-            background: rgba(5, 150, 105, 0.1);
+            background: rgba(16, 185, 129, 0.1);
             color: var(--success-green);
-            border: 1px solid rgba(5, 150, 105, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .status-pending {
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(59, 130, 246, 0.1);
             color: var(--primary-blue);
-            border: 1px solid rgba(37, 99, 235, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         .job-filename {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .job-details {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
         .job-meta {
             display: flex;
-            gap: 12px;
-            font-size: 11px;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 12px;
             color: var(--text-secondary);
+            margin-bottom: 12px;
         }
 
         .job-meta-item {
@@ -469,8 +496,8 @@
             align-items: center;
             gap: 4px;
             background: var(--bg-secondary);
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
         }
 
         .job-meta-item i {
@@ -480,25 +507,29 @@
         .job-actions {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .btn-small {
-            padding: 6px 12px;
-            border-radius: 8px;
+            padding: 8px 16px;
+            border-radius: 10px;
             border: none;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            flex: 1;
+            justify-content: center;
+            min-height: 36px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-blue), var(--indigo));
+            background: var(--gradient-primary);
             color: white;
             box-shadow: var(--shadow-sm);
         }
@@ -509,7 +540,7 @@
         }
 
         .btn-success {
-            background: linear-gradient(135deg, var(--success-green), #10b981);
+            background: var(--gradient-success);
             color: white;
             box-shadow: var(--shadow-sm);
         }
@@ -519,12 +550,23 @@
             box-shadow: var(--shadow-md);
         }
 
+        .btn-print {
+            background: var(--gradient-warning);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-print:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
         /* Service Badge */
         .service-badge {
             position: absolute;
-            top: 12px;
-            right: 12px;
-            background: linear-gradient(135deg, var(--purple), var(--pink));
+            top: 16px;
+            right: 16px;
+            background: var(--gradient-warning);
             color: white;
             padding: 4px 8px;
             border-radius: 8px;
@@ -646,7 +688,7 @@
             bottom: -80px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, var(--success-green), #10b981);
+            background: var(--gradient-success);
             color: white;
             padding: 16px 24px;
             border-radius: 12px;
@@ -701,20 +743,28 @@
 
         @media (max-width: 480px) {
             .job-block {
-                padding: 12px;
+                padding: 16px;
             }
 
             .job-filename {
-                font-size: 13px;
+                font-size: 14px;
             }
 
             .job-meta {
-                gap: 8px;
-                font-size: 10px;
+                gap: 6px;
+                font-size: 11px;
             }
 
             .search-input {
                 width: 160px;
+            }
+
+            .job-actions {
+                flex-direction: column;
+            }
+
+            .btn-small {
+                flex: none;
             }
         }
     </style>
@@ -783,16 +833,59 @@
                             oninput="searchJobs('manual', this.value)"
                         >
                     </div>
-                    <div class="job-count" id="manualCount">0</div>
+                    <div class="job-count" id="manualCount">{{ manual_print_count|default:0 }}</div>
                 </div>
             </div>
             <div class="jobs-container">
                 <div id="manualJobs" class="jobs-grid">
+                    {% if manual_print_jobs %}
+                        {% for job in manual_print_jobs %}
+                        <div class="job-block manual-job" onclick="showPreview('{{ job.filename }}', '{{ job.preview_url|default:job.download_url }}')">
+                            {% if job.service_type %}
+                            <div class="service-badge">{{ job.service_type|title }}</div>
+                            {% endif %}
+                            <div class="job-header">
+                                <div class="job-token">#{{ forloop.counter|stringformat:"03d" }}MAN</div>
+                                <div class="job-status status-manual">Manual</div>
+                            </div>
+                            <div class="job-filename" title="{{ job.filename }}">{{ job.filename }}</div>
+                            <div class="job-details">
+                                <div class="job-meta">
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-user"></i>
+                                        <span>{{ job.user|default:"User" }}</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-file"></i>
+                                        <span>{{ job.pages|default:1 }}p</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-copy"></i>
+                                        <span>{{ job.copies|default:1 }}x</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-palette"></i>
+                                        <span>{{ job.color|default:"BW" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="job-actions" onclick="event.stopPropagation()">
+                                <button class="btn-small btn-print" onclick="sendToPrint('{{ job.filename }}', '{{ job.download_url }}')">
+                                    <i class="fas fa-print"></i> Send Print
+                                </button>
+                                <button class="btn-small btn-success" onclick="markCompleted('{{ job.filename }}')">
+                                    <i class="fas fa-check"></i> Complete
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
                     <div class="empty-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <h3>Loading Manual Jobs</h3>
-                        <p>Please wait while we fetch your manual print jobs...</p>
+                        <i class="fas fa-tools"></i>
+                        <h3>No Manual Jobs</h3>
+                        <p>All manual print jobs will appear here</p>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -816,16 +909,53 @@
                             oninput="searchJobs('requests', this.value)"
                         >
                     </div>
-                    <div class="job-count" id="requestsCount">0</div>
+                    <div class="job-count" id="requestsCount">{{ print_requests_count|default:0 }}</div>
                 </div>
             </div>
             <div class="jobs-container">
                 <div id="printRequests" class="jobs-grid">
+                    {% if print_requests %}
+                        {% for job in print_requests %}
+                        <div class="job-block pending-job" onclick="showPreview('{{ job.filename }}', '{{ job.preview_url|default:job.download_url }}')">
+                            <div class="job-header">
+                                <div class="job-token">#{{ forloop.counter|stringformat:"03d" }}REQ</div>
+                                <div class="job-status status-pending">Pending</div>
+                            </div>
+                            <div class="job-filename" title="{{ job.filename }}">{{ job.filename }}</div>
+                            <div class="job-details">
+                                <div class="job-meta">
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-user"></i>
+                                        <span>{{ job.user|default:"User" }}</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-file"></i>
+                                        <span>{{ job.pages|default:1 }}p</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-copy"></i>
+                                        <span>{{ job.copies|default:1 }}x</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-palette"></i>
+                                        <span>{{ job.color|default:"BW" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="job-actions" onclick="event.stopPropagation()">
+                                <button class="btn-small btn-success" onclick="acceptJob('{{ job.filename }}')">
+                                    <i class="fas fa-check"></i> Accept
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
                     <div class="empty-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <h3>Loading Print Requests</h3>
-                        <p>Please wait while we fetch your print requests...</p>
+                        <i class="fas fa-file-import"></i>
+                        <h3>No Print Requests</h3>
+                        <p>New print requests will appear here</p>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -849,16 +979,48 @@
                             oninput="searchJobs('completed', this.value)"
                         >
                     </div>
-                    <div class="job-count" id="completedCount">0</div>
+                    <div class="job-count" id="completedCount">{{ completed_jobs_count|default:0 }}</div>
                 </div>
             </div>
             <div class="jobs-container">
                 <div id="completedJobs" class="jobs-grid">
+                    {% if completed_jobs %}
+                        {% for job in completed_jobs %}
+                        <div class="job-block completed-job" onclick="showPreview('{{ job.filename }}', '{{ job.preview_url|default:job.download_url }}')">
+                            <div class="job-header">
+                                <div class="job-token">#{{ forloop.counter|stringformat:"03d" }}DONE</div>
+                                <div class="job-status status-completed">Done</div>
+                            </div>
+                            <div class="job-filename" title="{{ job.filename }}">{{ job.filename }}</div>
+                            <div class="job-details">
+                                <div class="job-meta">
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-user"></i>
+                                        <span>{{ job.user|default:"User" }}</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-file"></i>
+                                        <span>{{ job.pages|default:1 }}p</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-copy"></i>
+                                        <span>{{ job.copies|default:1 }}x</span>
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Completed</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
                     <div class="empty-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <h3>Loading Completed Jobs</h3>
-                        <p>Please wait while we fetch your completed jobs...</p>
+                        <i class="fas fa-check-circle"></i>
+                        <h3>No Completed Jobs</h3>
+                        <p>Completed jobs will be shown here</p>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -885,9 +1047,11 @@
 
     <script>
         // Global variables
-        let allJobs = [];
-        let filteredJobs = { manual: [], completed: [], requests: [] };
-        const manualServices = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing'];
+        let allJobs = {
+            manual: {{ manual_print_jobs|safe|default:"[]" }},
+            requests: {{ print_requests|safe|default:"[]" }},
+            completed: {{ completed_jobs|safe|default:"[]" }}
+        };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -933,8 +1097,7 @@
                 const data = await response.json();
                 
                 if (data.print_requests) {
-                    allJobs = data.print_requests;
-                    categorizeJobs();
+                    categorizeJobs(data.print_requests);
                 }
             } catch (error) {
                 console.error('Error loading jobs:', error);
@@ -942,26 +1105,28 @@
             }
         }
 
-        function categorizeJobs() {
+        function categorizeJobs(jobs) {
+            const manualServices = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing'];
+            
             // Manual Print Jobs (job_completed = 'NO' AND has manual service type)
-            const manual = allJobs.filter(job => 
+            const manual = jobs.filter(job => 
                 job.job_completed === 'NO' && 
                 job.service_type && 
                 manualServices.includes(job.service_type)
             );
 
             // Print Requests (job_completed = 'NO' AND no manual service type)
-            const requests = allJobs.filter(job => 
+            const requests = jobs.filter(job => 
                 job.job_completed === 'NO' && 
                 (!job.service_type || !manualServices.includes(job.service_type))
             );
 
             // Completed Jobs (job_completed = 'YES')
-            const completed = allJobs.filter(job => 
+            const completed = jobs.filter(job => 
                 job.job_completed === 'YES'
             );
 
-            filteredJobs = { manual, completed, requests };
+            allJobs = { manual, requests, completed };
 
             // Update counts
             document.getElementById('manualCount').textContent = manual.length;
@@ -972,93 +1137,65 @@
             document.getElementById('manualStatCount').textContent = manual.length;
             document.getElementById('requestsStatCount').textContent = requests.length;
             document.getElementById('completedStatCount').textContent = completed.length;
-            document.getElementById('totalStatCount').textContent = allJobs.length;
-
-            // Render jobs
-            renderJobs('manual', manual);
-            renderJobs('requests', requests);
-            renderJobs('completed', completed);
+            document.getElementById('totalStatCount').textContent = jobs.length;
         }
 
-        function renderJobs(type, jobs) {
-            const containerId = type === 'manual' ? 'manualJobs' : 
-                               type === 'completed' ? 'completedJobs' : 'printRequests';
-            const container = document.getElementById(containerId);
-
-            if (jobs.length === 0) {
-                const emptyIcon = type === 'manual' ? 'fa-tools' : 
-                                 type === 'completed' ? 'fa-check-circle' : 'fa-file-import';
-                const emptyTitle = type === 'manual' ? 'No Manual Jobs' : 
-                                  type === 'completed' ? 'No Completed Jobs' : 'No Print Requests';
-                const emptyDesc = type === 'manual' ? 'All manual print jobs will appear here' : 
-                                 type === 'completed' ? 'Completed jobs will be shown here' : 'New print requests will appear here';
+        // Print Functionality
+        function sendToPrint(filename, downloadUrl) {
+            try {
+                // Create a new window for printing
+                const printWindow = window.open('', '_blank');
                 
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas ${emptyIcon}"></i>
-                        <h3>${emptyTitle}</h3>
-                        <p>${emptyDesc}</p>
-                    </div>
-                `;
-                return;
+                if (printWindow) {
+                    printWindow.document.write(`
+                        <html>
+                            <head>
+                                <title>Print: ${filename}</title>
+                                <style>
+                                    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                                    .print-header { text-align: center; margin-bottom: 20px; }
+                                    .print-content { width: 100%; height: 80vh; }
+                                    iframe { width: 100%; height: 100%; border: none; }
+                                    img { max-width: 100%; height: auto; }
+                                    @media print {
+                                        .print-header { display: none; }
+                                        .print-content { height: 100vh; }
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="print-header">
+                                    <h2>Document: ${filename}</h2>
+                                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">Print Document</button>
+                                </div>
+                                <div class="print-content">
+                                    <iframe src="${downloadUrl}" onload="this.contentWindow.focus()"></iframe>
+                                </div>
+                            </body>
+                        </html>
+                    `);
+                    printWindow.document.close();
+                    
+                    // Focus the print window
+                    printWindow.focus();
+                    
+                    showToast(`Print window opened for ${filename}`);
+                } else {
+                    // Fallback: direct download
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = filename;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showToast(`Download started for ${filename}`);
+                }
+            } catch (error) {
+                console.error('Error opening print window:', error);
+                showToast('Error opening print window');
             }
-
-            container.innerHTML = jobs.map(job => createJobBlock(job, type)).join('');
-        }
-
-        function createJobBlock(job, type) {
-            const fileExt = job.filename.split('.').pop().toLowerCase();
-            const statusClass = type === 'completed' ? 'status-completed' : 
-                               type === 'manual' ? 'status-manual' : 'status-pending';
-            const statusText = type === 'completed' ? 'Done' : 
-                              type === 'manual' ? 'Manual' : 'Pending';
-            const blockClass = type === 'completed' ? 'completed-job' : 
-                              type === 'manual' ? 'manual-job' : 'pending-job';
-
-            // Generate token number
-            const tokenNumber = `#${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-            const serviceBadge = job.service_type ? 
-                `<div class="service-badge">${job.service_type.replace('_', ' ')}</div>` : '';
-
-            const actions = type === 'requests' ? 
-                `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
-                    <i class="fas fa-check"></i> Accept
-                </button>` : 
-                type === 'manual' ? 
-                `<button class="btn-small btn-primary" onclick="processJob('${job.filename}')">
-                    <i class="fas fa-play"></i> Process
-                </button>` : '';
-
-            return `
-                <div class="job-block ${blockClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')">
-                    ${serviceBadge}
-                    <div class="job-header">
-                        <div class="job-token">${tokenNumber}</div>
-                        <div class="job-status ${statusClass}">${statusText}</div>
-                    </div>
-                    <div class="job-filename" title="${job.filename}">${job.filename}</div>
-                    <div class="job-details">
-                        <div class="job-meta">
-                            <div class="job-meta-item">
-                                <i class="fas fa-user"></i>
-                                <span>${job.user || 'User'}</span>
-                            </div>
-                            <div class="job-meta-item">
-                                <i class="fas fa-file"></i>
-                                <span>${job.pages || 1}p</span>
-                            </div>
-                            <div class="job-meta-item">
-                                <i class="fas fa-copy"></i>
-                                <span>${job.copies || 1}x</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="job-actions" onclick="event.stopPropagation()">
-                        ${actions}
-                    </div>
-                </div>
-            `;
         }
 
         // Job Actions
@@ -1067,9 +1204,33 @@
             setTimeout(loadJobs, 1000);
         }
 
-        async function processJob(filename) {
-            showToast(`Processing "${filename}"...`);
-            setTimeout(loadJobs, 1000);
+        async function markCompleted(filename) {
+            try {
+                const response = await fetch('/update-job-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        status: 'completed',
+                        vendor_id: 'vendor1',
+                        completion_time: Date.now() / 1000
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast(`Job "${filename}" marked as completed!`);
+                    setTimeout(loadJobs, 1000);
+                } else {
+                    showToast('Error updating job status');
+                }
+            } catch (error) {
+                console.error('Error updating job status:', error);
+                showToast('Error updating job status');
+            }
         }
 
         // Preview Modal
@@ -1105,9 +1266,14 @@
 
         // Search Functionality
         function searchJobs(type, term) {
-            const jobs = filteredJobs[type];
+            const jobs = allJobs[type] || [];
+            const containerId = type === 'manual' ? 'manualJobs' : 
+                               type === 'completed' ? 'completedJobs' : 'printRequests';
+            const container = document.getElementById(containerId);
+            
             if (!term.trim()) {
-                renderJobs(type, jobs);
+                // Show all jobs if no search term
+                renderJobsInContainer(container, jobs, type);
                 return;
             }
 
@@ -1115,7 +1281,90 @@
                 job.filename.toLowerCase().includes(term.toLowerCase()) ||
                 (job.user && job.user.toLowerCase().includes(term.toLowerCase()))
             );
-            renderJobs(type, filtered);
+            
+            renderJobsInContainer(container, filtered, type);
+        }
+
+        function renderJobsInContainer(container, jobs, type) {
+            if (jobs.length === 0) {
+                const emptyIcon = type === 'manual' ? 'fa-tools' : 
+                                 type === 'completed' ? 'fa-check-circle' : 'fa-file-import';
+                const emptyTitle = type === 'manual' ? 'No Manual Jobs' : 
+                                  type === 'completed' ? 'No Completed Jobs' : 'No Print Requests';
+                const emptyDesc = type === 'manual' ? 'All manual print jobs will appear here' : 
+                                 type === 'completed' ? 'Completed jobs will be shown here' : 'New print requests will appear here';
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas ${emptyIcon}"></i>
+                        <h3>${emptyTitle}</h3>
+                        <p>${emptyDesc}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = jobs.map((job, index) => createJobBlock(job, type, index)).join('');
+        }
+
+        function createJobBlock(job, type, index) {
+            const statusClass = type === 'completed' ? 'status-completed' : 
+                               type === 'manual' ? 'status-manual' : 'status-pending';
+            const statusText = type === 'completed' ? 'Done' : 
+                              type === 'manual' ? 'Manual' : 'Pending';
+            const blockClass = type === 'completed' ? 'completed-job' : 
+                              type === 'manual' ? 'manual-job' : 'pending-job';
+
+            // Generate token number
+            const tokenSuffix = type === 'manual' ? 'MAN' : type === 'completed' ? 'DONE' : 'REQ';
+            const tokenNumber = `#${String(index + 1).padStart(3, '0')}${tokenSuffix}`;
+
+            const serviceBadge = job.service_type ? 
+                `<div class="service-badge">${job.service_type.replace('_', ' ')}</div>` : '';
+
+            const actions = type === 'requests' ? 
+                `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
+                    <i class="fas fa-check"></i> Accept
+                </button>` : 
+                type === 'manual' ? 
+                `<button class="btn-small btn-print" onclick="sendToPrint('${job.filename}', '${job.download_url}')">
+                    <i class="fas fa-print"></i> Send Print
+                </button>
+                <button class="btn-small btn-success" onclick="markCompleted('${job.filename}')">
+                    <i class="fas fa-check"></i> Complete
+                </button>` : '';
+
+            return `
+                <div class="job-block ${blockClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')">
+                    ${serviceBadge}
+                    <div class="job-header">
+                        <div class="job-token">${tokenNumber}</div>
+                        <div class="job-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="job-filename" title="${job.filename}">${job.filename}</div>
+                    <div class="job-details">
+                        <div class="job-meta">
+                            <div class="job-meta-item">
+                                <i class="fas fa-user"></i>
+                                <span>${job.user || 'User'}</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-file"></i>
+                                <span>${job.pages || 1}p</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-copy"></i>
+                                <span>${job.copies || 1}x</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-palette"></i>
+                                <span>${job.color || 'BW'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${actions ? `<div class="job-actions" onclick="event.stopPropagation()">${actions}</div>` : ''}
+                </div>
+            `;
         }
 
         // Toast Notification
@@ -1124,6 +1373,22 @@
             toast.textContent = message;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Utility Functions
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
 
         // Event Listeners
