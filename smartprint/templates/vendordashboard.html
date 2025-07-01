@@ -4,49 +4,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PrintMax Vendor Dashboard - Manage print jobs, view analytics, and more.">
+    <meta name="description" content="PrintMax Vendor Dashboard - Manage print jobs efficiently">
     <title>PrintMax Vendor Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Google Material Design Open Source Colors */
-            --primary-blue: #4285f4;
-            --primary-dark: #3367d6;
+            /* Google Material Design Colors */
+            --primary-blue: #1a73e8;
+            --primary-blue-hover: #1557b0;
             --secondary-blue: #e8f0fe;
-            --success-green: #0f9d58;
-            --warning-orange: #ff6d01;
-            --error-red: #db4437;
+            --success-green: #137333;
+            --warning-orange: #ea8600;
+            --error-red: #d93025;
             --text-primary: #202124;
             --text-secondary: #5f6368;
+            --text-tertiary: #80868b;
             --bg-primary: #ffffff;
-            --bg-secondary: #fafafa;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e8eaed;
             --border-light: #dadce0;
-            --shadow-light: rgba(0, 0, 0, 0.12);
-            --header-bg: #ffffff;
-            --card-bg: #ffffff;
-            --accent-purple: #9c27b0;
-            --accent-teal: #009688;
+            --border-medium: #c1c7cd;
+            --shadow-sm: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+            --shadow-md: 0 1px 2px 0 rgba(60,64,67,0.3), 0 2px 6px 2px rgba(60,64,67,0.15);
+            --shadow-lg: 0 4px 8px 3px rgba(60,64,67,0.15), 0 1px 3px rgba(60,64,67,0.3);
         }
 
-        /* Dark Mode Variables */
         [data-theme="dark"] {
-            --primary-blue: #5e97f6;
-            --primary-dark: #4285f4;
-            --secondary-blue: #1a2332;
-            --success-green: #5fb85f;
-            --warning-orange: #ffab52;
+            --primary-blue: #8ab4f8;
+            --primary-blue-hover: #669df6;
+            --secondary-blue: #1e3a5f;
+            --success-green: #81c995;
+            --warning-orange: #fcad70;
             --error-red: #f28b82;
             --text-primary: #e8eaed;
             --text-secondary: #9aa0a6;
-            --bg-primary: #1f2937;
-            --bg-secondary: #111827;
-            --border-light: #374151;
-            --shadow-light: rgba(0, 0, 0, 0.4);
-            --header-bg: #1f2937;
-            --card-bg: #1f2937;
-            --accent-purple: #bb86fc;
-            --accent-teal: #4db6ac;
+            --text-tertiary: #80868b;
+            --bg-primary: #202124;
+            --bg-secondary: #303134;
+            --bg-tertiary: #3c4043;
+            --border-light: #5f6368;
+            --border-medium: #80868b;
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+            --shadow-md: 0 1px 2px 0 rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+            --shadow-lg: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
         }
 
         * {
@@ -56,134 +57,293 @@
         }
 
         body {
-            font-family: 'Google Sans', sans-serif;
+            font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-secondary);
             color: var(--text-primary);
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
+            line-height: 1.5;
             min-height: 100vh;
         }
 
-        /* Header */
-        .top-header {
-            background: var(--header-bg);
+        /* Compact Header */
+        .header {
+            background: var(--bg-primary);
             border-bottom: 1px solid var(--border-light);
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 8px var(--shadow-light);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+            padding: 12px 20px;
+            box-shadow: var(--shadow-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header-brand {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 600;
             color: var(--primary-blue);
-            font-size: 1.5rem;
-            font-weight: 700;
         }
 
-        .analytics-header {
+        .header-controls {
             display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
             align-items: center;
+            gap: 12px;
         }
 
-        .analytics-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            text-align: center;
-            box-shadow: 0 2px 4px var(--shadow-light);
-            min-width: 100px;
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: var(--secondary-blue);
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--primary-blue);
         }
 
-        .analytics-card .icon {
-            width: 24px;
-            height: 24px;
+        .status-dot {
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 0.25rem;
-            color: white;
-            font-size: 0.75rem;
+            background: var(--success-green);
         }
 
-        .analytics-card .icon.jobs { background: var(--success-green); }
-        .analytics-card .icon.revenue { background: var(--primary-blue); }
-        .analytics-card .icon.total { background: var(--warning-orange); }
-        .analytics-card .icon.pending { background: var(--error-red); }
-
-        .analytics-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.1rem;
-        }
-
-        .analytics-label {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            font-weight: 500;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        /* Main Content */
-        .main-content {
-            padding: 2rem;
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-
-        .page-title {
-            background: var(--card-bg);
+        .theme-toggle {
+            background: var(--bg-secondary);
             border: 1px solid var(--border-light);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 8px var(--shadow-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .page-title h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            font-weight: 500;
+            border-radius: 20px;
+            padding: 6px 12px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            text-decoration: none;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Main Container */
+        .main-container {
+            padding: 16px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Job Section */
+        .job-section {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: between;
+            gap: 12px;
+        }
+
+        .section-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .section-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .manual-section .section-icon { background: var(--warning-orange); }
+        .completed-section .section-icon { background: var(--success-green); }
+        .requests-section .section-icon { background: var(--primary-blue); }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .job-count {
+            background: var(--primary-blue);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .search-input {
+            padding: 6px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            font-size: 12px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            width: 160px;
+            transition: all 0.2s ease;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+        }
+
+        /* Jobs Container */
+        .jobs-container {
+            padding: 12px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .jobs-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px;
+        }
+
+        /* Job Card - Compact Design */
+        .job-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 10px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .job-card:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-blue);
+        }
+
+        .job-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .file-icon {
+            width: 16px;
+            height: 16px;
+            background: var(--primary-blue);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 8px;
+            flex-shrink: 0;
+        }
+
+        .job-filename {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .job-status {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-manual {
+            background: rgba(234, 134, 0, 0.15);
+            color: var(--warning-orange);
+        }
+
+        .status-completed {
+            background: rgba(19, 115, 51, 0.15);
+            color: var(--success-green);
+        }
+
+        .status-pending {
+            background: rgba(26, 115, 232, 0.15);
+            color: var(--primary-blue);
+        }
+
+        .job-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .job-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .job-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-primary {
@@ -192,244 +352,7 @@
         }
 
         .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: var(--secondary-blue);
-            border-radius: 20px;
-            color: var(--primary-blue);
-            font-weight: 500;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--success-green);
-        }
-
-        /* Job Sections */
-        .job-section {
-            background: var(--card-bg);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 12px var(--shadow-light);
-            overflow: hidden;
-        }
-
-        .section-header {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--card-bg) 100%);
-        }
-
-        .section-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.1rem;
-        }
-
-        .completed-jobs .section-icon { background: linear-gradient(135deg, var(--success-green), #0d8043); }
-        .print-requests .section-icon { background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark)); }
-        .active-jobs .section-icon { background: linear-gradient(135deg, var(--warning-orange), #e65100); }
-
-        .section-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .section-count {
-            background: var(--primary-blue);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 16px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-left: auto;
-        }
-
-        /* Job Container */
-        .jobs-container {
-            padding: 1.5rem;
-            overflow-x: auto;
-            overflow-y: hidden;
-            max-width: 100%;
-        }
-
-        .jobs-row {
-            display: flex;
-            gap: 1.5rem;
-            min-width: fit-content;
-            padding-bottom: 1rem;
-            align-items: flex-start;
-        }
-
-        /* Job Cards */
-        .job-card {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            padding: 1.25rem;
-            min-width: 320px;
-            max-width: 320px;
-            width: 320px;
-            box-shadow: 0 4px 12px var(--shadow-light);
-            position: relative;
-            border-top: 4px solid var(--primary-blue);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            flex-shrink: 0;
-            overflow: hidden;
-            word-wrap: break-word;
-        }
-
-        .job-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px var(--shadow-light);
-        }
-
-        .job-serial {
-            position: absolute;
-            top: -2px;
-            left: 1rem;
-            background: var(--primary-blue);
-            color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0 0 8px 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .job-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .job-title {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex: 1;
-            word-break: break-word;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-
-        .job-title span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-icon {
-            width: 24px;
-            height: 24px;
-            background: var(--primary-blue);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.75rem;
-            flex-shrink: 0;
-        }
-
-        .job-status {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-
-        .status-completed {
-            background: rgba(52, 168, 83, 0.15);
-            color: var(--success-green);
-            border: 1px solid rgba(52, 168, 83, 0.3);
-        }
-
-        .status-pending {
-            background: rgba(26, 115, 232, 0.15);
-            color: var(--primary-blue);
-            border: 1px solid rgba(26, 115, 232, 0.3);
-        }
-
-        .status-active {
-            background: rgba(255, 152, 0, 0.15);
-            color: var(--warning-orange);
-            border: 1px solid rgba(255, 152, 0, 0.3);
-        }
-
-        .job-meta {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .meta-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .meta-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            font-weight: 500;
-        }
-
-        .meta-value {
-            font-size: 0.9rem;
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .job-actions {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-            border-radius: 6px;
-            flex: 1;
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-light);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border-light);
+            background: var(--primary-blue-hover);
         }
 
         .btn-success {
@@ -438,56 +361,42 @@
         }
 
         .btn-success:hover {
-            background: #2d8f47;
+            background: rgba(19, 115, 51, 0.9);
         }
 
-        /* Night Mode Toggle */
-        .theme-toggle {
-            background: var(--bg-secondary);
-            border: 2px solid var(--border-light);
-            border-radius: 25px;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        .theme-toggle:hover {
-            background: var(--border-light);
-            transform: translateY(-1px);
-        }
-
-        .theme-toggle i {
-            font-size: 1.1rem;
-            transition: transform 0.3s ease;
-        }
-
-        [data-theme="dark"] .theme-toggle i.fa-moon {
-            transform: rotate(180deg);
-        }
-
-        [data-theme="light"] .theme-toggle i.fa-sun {
-            transform: rotate(0deg);
+        /* Service Badge */
+        .service-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: var(--warning-orange);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
         }
 
         /* Empty State */
         .empty-state {
             text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
+            padding: 40px 20px;
+            color: var(--text-tertiary);
         }
 
         .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+            font-size: 32px;
+            margin-bottom: 12px;
             opacity: 0.5;
         }
 
-        /* Modal Styles */
+        .empty-state p {
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -496,37 +405,37 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
         }
 
-        .modal.open {
+        .modal.show {
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .modal-content {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 2rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 20px;
             max-width: 90%;
             max-height: 90%;
-            width: 800px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow-y: auto;
+            width: 600px;
+            box-shadow: var(--shadow-lg);
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border-light);
         }
 
         .modal-title {
-            font-size: 1.5rem;
+            font-size: 16px;
             font-weight: 600;
             color: var(--text-primary);
         }
@@ -536,102 +445,28 @@
             color: white;
             border: none;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 28px;
+            height: 28px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 12px;
         }
 
         .preview-container {
             width: 100%;
-            height: 500px;
+            height: 400px;
             border: 1px solid var(--border-light);
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            background: var(--bg-secondary);
-            margin-bottom: 1.5rem;
         }
 
-        .preview-frame, .preview-image {
+        .preview-frame {
             width: 100%;
             height: 100%;
             border: none;
-            object-fit: contain;
         }
-
-        .metadata-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .metadata-item {
-            background: var(--bg-secondary);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-light);
-        }
-
-        .metadata-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .metadata-value {
-            font-size: 1rem;
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        /* Search Box */
-        .search-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .search-box {
-            padding: 0.5rem 1rem;
-            border: 2px solid #1a365d;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            background: #1a365d;
-            color: white;
-            min-width: 200px;
-            transition: all 0.3s ease;
-        }
-
-        .search-box::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .search-box:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
-        }
-
-        [data-theme="dark"] .search-box {
-            background: white;
-            color: #1a365d;
-            border-color: white;
-        }
-
-        [data-theme="dark"] .search-box::placeholder {
-            color: rgba(26, 54, 93, 0.7);
-        }
-
-        [data-theme="dark"] .search-box:focus {
-            border-color: var(--primary-blue);
-        }
-
-        
 
         /* Toast */
         .toast {
@@ -641,10 +476,11 @@
             transform: translateX(-50%);
             background: var(--success-green);
             color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 13px;
             font-weight: 500;
-            box-shadow: 0 4px 20px var(--shadow-light);
+            box-shadow: var(--shadow-lg);
             z-index: 1100;
             transition: bottom 0.3s ease;
         }
@@ -653,192 +489,126 @@
             bottom: 20px;
         }
 
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .analytics-header {
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-            
-            .analytics-card {
-                min-width: 80px;
-                padding: 0.5rem;
-            }
-            
-            .job-card {
-                min-width: 280px;
-                max-width: 280px;
-                width: 280px;
-            }
-            
-            .search-box {
-                min-width: 150px;
-            }
-        }
-
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .top-header {
-                padding: 1rem;
+            .header {
+                padding: 10px 16px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .main-container {
+                padding: 12px;
+            }
+
+            .section-header {
                 flex-direction: column;
                 align-items: flex-start;
+                gap: 10px;
             }
-            
-            .analytics-header {
+
+            .section-controls {
                 width: 100%;
                 justify-content: space-between;
             }
-            
-            .main-content {
-                padding: 1rem;
+
+            .search-input {
+                width: 140px;
             }
-            
-            .job-card {
-                min-width: 260px;
-                max-width: 260px;
-                width: 260px;
-            }
-            
+
             .jobs-row {
-                gap: 1rem;
-            }
-            
-            .section-header {
-                flex-wrap: wrap;
-                gap: 0.5rem;
-            }
-            
-            .search-container {
-                order: 3;
-                width: 100%;
-                margin-top: 1rem;
-                margin-left: 0;
-            }
-            
-            .search-box {
-                min-width: 120px;
-                flex: 1;
+                grid-template-columns: 1fr;
+                gap: 8px;
             }
         }
 
         @media (max-width: 480px) {
-            .top-header {
-                padding: 0.75rem;
-            }
-            
-            .analytics-card {
-                min-width: 70px;
-                padding: 0.4rem;
-            }
-            
-            .analytics-value {
-                font-size: 1rem;
-            }
-            
-            .analytics-label {
-                font-size: 0.65rem;
-            }
-            
             .job-card {
-                min-width: 240px;
-                max-width: 240px;
-                width: 240px;
-                padding: 1rem;
+                padding: 8px;
             }
-            
-            .job-title {
-                max-width: 150px;
+
+            .job-filename {
+                max-width: 120px;
+            }
+
+            .job-meta {
+                gap: 8px;
+                font-size: 9px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Header with Analytics -->
-    <header class="top-header">
+    <!-- Compact Header -->
+    <header class="header">
         <div class="header-brand">
             <i class="fas fa-print"></i>
-            PrintMax Vendor Portal
+            PrintMax Vendor
         </div>
-        
-        <div class="analytics-header">
-            <div class="analytics-card">
-                <div class="icon jobs">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="analytics-value" id="completedJobsAnalytics">0</div>
-                <div class="analytics-label">Completed</div>
-            </div>
-
-            <div class="analytics-card">
-                <div class="icon revenue">
-                    <i class="fas fa-rupee-sign"></i>
-                </div>
-                <div class="analytics-value" id="revenueAnalytics">₹0</div>
-                <div class="analytics-label">Revenue</div>
-            </div>
-
-            <div class="analytics-card">
-                <div class="icon total">
-                    <i class="fas fa-list-alt"></i>
-                </div>
-                <div class="analytics-value" id="totalJobsAnalytics">0</div>
-                <div class="analytics-label">Total Jobs</div>
-            </div>
-
-            <div class="analytics-card">
-                <div class="icon pending">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="analytics-value" id="pendingJobsAnalytics">0</div>
-                <div class="analytics-label">Pending</div>
-            </div>
-        </div>
-
-        <div class="header-actions">
-            <div class="status-indicator">
+        <div class="header-controls">
+            <div class="status-badge">
                 <div class="status-dot"></div>
                 <span>Online</span>
             </div>
             <button id="themeToggle" class="theme-toggle">
                 <i class="fas fa-moon"></i>
-                <span>Night View</span>
-            </button>
-            <button id="autoPrintBtn" class="btn btn-primary">
-                <i class="fas fa-print"></i>
-                Auto Print
+                <span>Night</span>
             </button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Page Title -->
-        <div class="page-title">
-            <h1>
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard Overview
-            </h1>
-        </div>
-
-        <!-- Completed Jobs Section (First) -->
-        <section class="job-section completed-jobs">
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Manual Print Jobs Section -->
+        <section class="job-section manual-section">
             <div class="section-header">
-                <div class="section-icon">
-                    <i class="fas fa-check-circle"></i>
+                <div class="section-title-wrapper">
+                    <div class="section-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h2 class="section-title">Manual Print Jobs</h2>
                 </div>
-                <h2 class="section-title">Completed Jobs</h2>
-                <div class="search-container">
+                <div class="section-controls">
                     <input 
                         type="text" 
-                        id="searchBox" 
-                        class="search-box" 
-                        placeholder="Search by serial number..."
-                        oninput="searchJobs(this.value)"
+                        class="search-input" 
+                        placeholder="Search manual jobs..."
+                        oninput="searchJobs('manual', this.value)"
                     >
+                    <div class="job-count" id="manualCount">0</div>
                 </div>
-                <div class="section-count" id="completedJobsCount">0</div>
             </div>
             <div class="jobs-container">
-                <div id="completedJobsContainer" class="jobs-row">
+                <div id="manualJobs" class="jobs-row">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading manual jobs...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Completed Jobs Section -->
+        <section class="job-section completed-section">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <div class="section-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 class="section-title">Completed Jobs</h2>
+                </div>
+                <div class="section-controls">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        placeholder="Search completed..."
+                        oninput="searchJobs('completed', this.value)"
+                    >
+                    <div class="job-count" id="completedCount">0</div>
+                </div>
+            </div>
+            <div class="jobs-container">
+                <div id="completedJobs" class="jobs-row">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
                         <p>Loading completed jobs...</p>
@@ -847,39 +617,30 @@
             </div>
         </section>
 
-        <!-- Print Requests Section (Second) -->
-        <section class="job-section print-requests">
+        <!-- Print Requests Section -->
+        <section class="job-section requests-section">
             <div class="section-header">
-                <div class="section-icon">
-                    <i class="fas fa-file-import"></i>
+                <div class="section-title-wrapper">
+                    <div class="section-icon">
+                        <i class="fas fa-file-import"></i>
+                    </div>
+                    <h2 class="section-title">Print Requests</h2>
                 </div>
-                <h2 class="section-title">Print Requests</h2>
-                <div class="section-count" id="printRequestsCount">0</div>
+                <div class="section-controls">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        placeholder="Search requests..."
+                        oninput="searchJobs('requests', this.value)"
+                    >
+                    <div class="job-count" id="requestsCount">0</div>
+                </div>
             </div>
             <div class="jobs-container">
-                <div id="printRequestsContainer" class="jobs-row">
+                <div id="printRequests" class="jobs-row">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
                         <p>Loading print requests...</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Active Jobs Section (Third) -->
-        <section class="job-section active-jobs">
-            <div class="section-header">
-                <div class="section-icon">
-                    <i class="fas fa-cog"></i>
-                </div>
-                <h2 class="section-title">Active Jobs</h2>
-                <div class="section-count" id="activeJobsCount">0</div>
-            </div>
-            <div class="jobs-container">
-                <div id="activeJobsContainer" class="jobs-row">
-                    <div class="empty-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading active jobs...</p>
                     </div>
                 </div>
             </div>
@@ -891,484 +652,266 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">Document Preview</h3>
-                <button class="modal-close" id="closeModal">
+                <button class="modal-close" onclick="closeModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="preview-container">
-                <iframe id="previewFrame" class="preview-frame" style="display: none;"></iframe>
-                <img id="previewImage" class="preview-image" style="display: none;" alt="Document Preview">
+                <iframe id="previewFrame" class="preview-frame"></iframe>
+                <img id="previewImage" class="preview-frame" style="display: none; object-fit: contain;" alt="Preview">
             </div>
         </div>
     </div>
 
-    <!-- Metadata Modal -->
-    <div class="modal" id="metadataModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="metadataModalTitle">Document Metadata</h3>
-                <button class="modal-close" id="closeMetadataModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div id="metadataContent" class="metadata-grid">
-                <!-- Metadata will be populated here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
+    <!-- Toast -->
     <div class="toast" id="toast"></div>
 
     <script>
         // Global variables
-        let printRequests = [];
-        let activeJobs = [];
-        let completedJobs = [];
+        let allJobs = [];
+        let filteredJobs = { manual: [], completed: [], requests: [] };
+        const manualServices = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing'];
 
-        // Initialize dashboard
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            initializeTheme();
-            loadAllData();
-            setupEventListeners();
-            setInterval(loadAllData, 30000);
+            initTheme();
+            loadJobs();
+            setInterval(loadJobs, 30000); // Refresh every 30 seconds
         });
 
-        // Theme management
-        function initializeTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            updateThemeToggleIcon(savedTheme);
+        // Theme Management
+        function initTheme() {
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            updateThemeButton(theme);
         }
 
         function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
-            updateThemeToggleIcon(newTheme);
-            
-            showToast(`Switched to ${newTheme === 'dark' ? 'Night' : 'Day'} view`);
+            updateThemeButton(newTheme);
+            showToast(`Switched to ${newTheme === 'dark' ? 'Night' : 'Day'} mode`);
         }
 
-        function updateThemeToggleIcon(theme) {
-            const toggle = document.getElementById('themeToggle');
-            const icon = toggle.querySelector('i');
-            const text = toggle.querySelector('span');
+        function updateThemeButton(theme) {
+            const btn = document.getElementById('themeToggle');
+            const icon = btn.querySelector('i');
+            const text = btn.querySelector('span');
             
             if (theme === 'dark') {
                 icon.className = 'fas fa-sun';
-                text.textContent = 'Day View';
+                text.textContent = 'Day';
             } else {
                 icon.className = 'fas fa-moon';
-                text.textContent = 'Night View';
+                text.textContent = 'Night';
             }
         }
 
-        // Load all data from R2 storage
-        async function loadAllData() {
+        // Data Loading
+        async function loadJobs() {
             try {
                 const response = await fetch('/get-print-requests/');
                 const data = await response.json();
-
+                
                 if (data.print_requests) {
-                    categorizeJobs(data.print_requests);
-                    renderCompletedJobs();
-                    renderPrintRequests();
-                    renderActiveJobs();
-                    updateAnalytics();
+                    allJobs = data.print_requests;
+                    categorizeJobs();
                 }
             } catch (error) {
-                console.error('Error loading data:', error);
-                showToast('Error loading data');
+                console.error('Error loading jobs:', error);
+                showToast('Error loading jobs');
             }
         }
 
-        // Categorize jobs based on status
-        function categorizeJobs(jobs) {
-            completedJobs = jobs.filter(job => 
-                job.job_completed === 'YES' || job.status.toLowerCase() === 'completed'
-            );
-
-            printRequests = jobs.filter(job => 
-                job.job_completed === 'NO' && job.status.toLowerCase() === 'pending'
-            );
-
-            activeJobs = jobs.filter(job => 
+        function categorizeJobs() {
+            // Manual Print Jobs
+            const manual = allJobs.filter(job => 
                 job.job_completed === 'NO' && 
-                ['processing', 'printing', 'in progress'].includes(job.status.toLowerCase())
+                job.service_type && 
+                manualServices.includes(job.service_type)
             );
+
+            // Completed Jobs
+            const completed = allJobs.filter(job => 
+                job.job_completed === 'YES'
+            );
+
+            // Print Requests
+            const requests = allJobs.filter(job => 
+                job.job_completed === 'NO' && 
+                (!job.service_type || !manualServices.includes(job.service_type))
+            );
+
+            filteredJobs = { manual, completed, requests };
 
             // Update counts
-            document.getElementById('completedJobsCount').textContent = completedJobs.length;
-            document.getElementById('printRequestsCount').textContent = printRequests.length;
-            document.getElementById('activeJobsCount').textContent = activeJobs.length;
+            document.getElementById('manualCount').textContent = manual.length;
+            document.getElementById('completedCount').textContent = completed.length;
+            document.getElementById('requestsCount').textContent = requests.length;
+
+            // Render jobs
+            renderJobs('manual', manual);
+            renderJobs('completed', completed);
+            renderJobs('requests', requests);
         }
 
-        // Update analytics sidebar
-        function updateAnalytics() {
-            const totalJobs = completedJobs.length + printRequests.length + activeJobs.length;
-            const pendingJobs = printRequests.length + activeJobs.length;
-            
-            // Calculate estimated revenue (₹5 per page average)
-            const totalPages = completedJobs.reduce((sum, job) => sum + parseInt(job.pages || 1), 0);
-            const revenue = totalPages * 5;
+        function renderJobs(type, jobs) {
+            const containerId = type === 'manual' ? 'manualJobs' : 
+                               type === 'completed' ? 'completedJobs' : 'printRequests';
+            const container = document.getElementById(containerId);
 
-            document.getElementById('completedJobsAnalytics').textContent = completedJobs.length;
-            document.getElementById('revenueAnalytics').textContent = `₹${revenue}`;
-            document.getElementById('totalJobsAnalytics').textContent = totalJobs;
-            document.getElementById('pendingJobsAnalytics').textContent = pendingJobs;
-            document.getElementById('todayJobsAnalytics').textContent = completedJobs.length;
-            document.getElementById('avgTimeAnalytics').textContent = '5min';
-        }
-
-        // Render completed jobs
-        function renderCompletedJobs() {
-            const container = document.getElementById('completedJobsContainer');
-            if (completedJobs.length === 0) {
+            if (jobs.length === 0) {
+                const emptyIcon = type === 'manual' ? 'fa-tools' : 
+                                 type === 'completed' ? 'fa-check-circle' : 'fa-file-import';
                 container.innerHTML = `
                     <div class="empty-state">
-                        <i class="fas fa-check-circle"></i>
-                        <p>No completed jobs</p>
+                        <i class="fas ${emptyIcon}"></i>
+                        <p>No ${type === 'requests' ? 'print requests' : type + ' jobs'}</p>
                     </div>
                 `;
                 return;
             }
-            container.innerHTML = completedJobs.map((job, index) => createJobCard(job, 'completed', index)).join('');
+
+            container.innerHTML = jobs.map(job => createJobCard(job, type)).join('');
         }
 
-        // Render print requests
-        function renderPrintRequests() {
-            const container = document.getElementById('printRequestsContainer');
-            if (printRequests.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>No pending print requests</p>
-                    </div>
-                `;
-                return;
-            }
-            container.innerHTML = printRequests.map((job, index) => createJobCard(job, 'pending', index)).join('');
-        }
-
-        // Render active jobs
-        function renderActiveJobs() {
-            const container = document.getElementById('activeJobsContainer');
-            if (activeJobs.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-cog"></i>
-                        <p>No active print jobs</p>
-                    </div>
-                `;
-                return;
-            }
-            container.innerHTML = activeJobs.map((job, index) => createJobCard(job, 'active', index)).join('');
-        }
-
-        // Create job card HTML
-        function createJobCard(job, type, index) {
-            const fileExtension = job.filename.split('.').pop().toLowerCase();
+        function createJobCard(job, type) {
+            const fileExt = job.filename.split('.').pop().toLowerCase();
             const statusClass = type === 'completed' ? 'status-completed' : 
-                               type === 'pending' ? 'status-pending' : 'status-active';
-            const statusText = type === 'completed' ? 'Completed' : 
-                              type === 'pending' ? 'Pending' : 'Active';
+                               type === 'manual' ? 'status-manual' : 'status-pending';
+            const statusText = type === 'completed' ? 'Done' : 
+                              type === 'manual' ? 'Manual' : 'Pending';
+
+            const serviceBadge = job.service_type ? 
+                `<div class="service-badge">${job.service_type.replace('_', ' ')}</div>` : '';
+
+            const actions = type === 'requests' ? 
+                `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
+                    <i class="fas fa-check"></i> Accept
+                </button>` : 
+                type === 'manual' ? 
+                `<button class="btn-small btn-primary" onclick="processJob('${job.filename}')">
+                    <i class="fas fa-play"></i> Process
+                </button>` : '';
 
             return `
-                <div class="job-card" data-filename="${job.filename}">
-                    <div class="job-serial">#${String(index + 1).padStart(3, '0')}</div>
-                    <div class="job-card-header">
-                        <div class="job-title">
-                            <div class="file-icon">
-                                <i class="fas fa-file-${getFileIcon(fileExtension)}"></i>
-                            </div>
-                            <span>${job.filename}</span>
+                <div class="job-card" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')">
+                    ${serviceBadge}
+                    <div class="job-header">
+                        <div class="file-icon">
+                            <i class="fas fa-file-${getFileIcon(fileExt)}"></i>
                         </div>
+                        <div class="job-filename">${job.filename}</div>
                         <div class="job-status ${statusClass}">${statusText}</div>
                     </div>
-
-                    <div class="job-meta">
-                        <div class="meta-item">
-                            <div class="meta-label">User</div>
-                            <div class="meta-value">${job.user || 'User'}</div>
+                    <div class="job-details">
+                        <div class="job-meta">
+                            <div class="job-meta-item">
+                                <i class="fas fa-user"></i>
+                                <span>${job.user || 'User'}</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-file"></i>
+                                <span>${job.pages || 1}p</span>
+                            </div>
+                            <div class="job-meta-item">
+                                <i class="fas fa-copy"></i>
+                                <span>${job.copies || 1}x</span>
+                            </div>
                         </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Pages</div>
-                            <div class="meta-value">${job.pages || '1'}</div>
+                        <div class="job-actions" onclick="event.stopPropagation()">
+                            ${actions}
                         </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Copies</div>
-                            <div class="meta-value">${job.copies || '1'}</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Color</div>
-                            <div class="meta-value">${job.color || 'BW'}</div>
-                        </div>
-                    </div>
-
-                    <div class="job-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="showPreview('${job.filename}', '${job.preview_url}', '${job.download_url}')">
-                            <i class="fas fa-eye"></i>
-                            Preview
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="showMetadata('${job.filename}')">
-                            <i class="fas fa-info-circle"></i>
-                            Details
-                        </button>
-                        ${type === 'pending' ? `
-                            <button class="btn btn-success btn-sm" onclick="acceptJob('${job.filename}')">
-                                <i class="fas fa-check"></i>
-                                Accept
-                            </button>
-                        ` : ''}
                     </div>
                 </div>
             `;
         }
 
-        // Get file icon based on extension
-        function getFileIcon(extension) {
-            const iconMap = {
-                'pdf': 'pdf',
-                'doc': 'word',
-                'docx': 'word',
-                'xls': 'excel',
-                'xlsx': 'excel',
-                'ppt': 'powerpoint',
-                'pptx': 'powerpoint',
-                'txt': 'alt',
-                'jpg': 'image',
-                'jpeg': 'image',
-                'png': 'image',
-                'gif': 'image'
+        function getFileIcon(ext) {
+            const icons = {
+                'pdf': 'pdf', 'doc': 'word', 'docx': 'word',
+                'xls': 'excel', 'xlsx': 'excel', 'ppt': 'powerpoint', 'pptx': 'powerpoint',
+                'txt': 'alt', 'jpg': 'image', 'jpeg': 'image', 'png': 'image', 'gif': 'image'
             };
-            return iconMap[extension] || 'alt';
+            return icons[ext] || 'alt';
         }
 
-        // Show preview modal
-        function showPreview(filename, previewUrl, downloadUrl) {
+        // Job Actions
+        async function acceptJob(filename) {
+            showToast(`Job "${filename}" accepted!`);
+            setTimeout(loadJobs, 1000);
+        }
+
+        async function processJob(filename) {
+            showToast(`Processing "${filename}"...`);
+            setTimeout(loadJobs, 1000);
+        }
+
+        // Preview Modal
+        function showPreview(filename, url) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('modalTitle');
             const frame = document.getElementById('previewFrame');
             const image = document.getElementById('previewImage');
 
             title.textContent = filename;
+            const ext = filename.split('.').pop().toLowerCase();
 
-            const extension = filename.split('.').pop().toLowerCase();
-
-            if (extension === 'pdf') {
+            if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = downloadUrl || previewUrl;
-            } else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(extension)) {
-                frame.style.display = 'block';
-                image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(downloadUrl || previewUrl)}&embedded=true`;
-            } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(extension)) {
+                frame.src = url;
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 frame.style.display = 'none';
                 image.style.display = 'block';
-                image.src = previewUrl;
+                image.src = url;
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = downloadUrl || previewUrl;
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
             }
 
-            modal.classList.add('open');
+            modal.classList.add('show');
         }
 
-        // Show metadata modal
-        function showMetadata(filename) {
-            const job = [...printRequests, ...activeJobs, ...completedJobs].find(j => j.filename === filename);
-            if (!job) return;
-
-            const modal = document.getElementById('metadataModal');
-            const title = document.getElementById('metadataModalTitle');
-            const content = document.getElementById('metadataContent');
-
-            title.textContent = `Details - ${filename}`;
-
-            content.innerHTML = `
-                <div class="metadata-item">
-                    <div class="metadata-label">File Name</div>
-                    <div class="metadata-value">${job.filename}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">File Type</div>
-                    <div class="metadata-value">${job.file_type || 'Document'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Size</div>
-                    <div class="metadata-value">${job.size || 'N/A'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Pages</div>
-                    <div class="metadata-value">${job.pages || '1'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">User</div>
-                    <div class="metadata-value">${job.user || 'Unknown'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Uploaded</div>
-                    <div class="metadata-value">${job.uploaded_at || 'N/A'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Priority</div>
-                    <div class="metadata-value">${job.priority || 'Medium'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Copies</div>
-                    <div class="metadata-value">${job.copies || '1'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Color Mode</div>
-                    <div class="metadata-value">${job.color || 'Black & White'}</div>
-                </div>
-                <div class="metadata-item">
-                    <div class="metadata-label">Status</div>
-                    <div class="metadata-value">${job.status || 'Pending'}</div>
-                </div>
-            `;
-
-            modal.classList.add('open');
+        function closeModal() {
+            document.getElementById('previewModal').classList.remove('show');
         }
 
-        // Accept job
-        async function acceptJob(filename) {
-            try {
-                showToast(`Job "${filename}" accepted for printing!`);
-                setTimeout(loadAllData, 1000);
-            } catch (error) {
-                console.error('Error accepting job:', error);
-                showToast('Error accepting job');
+        // Search Functionality
+        function searchJobs(type, term) {
+            const jobs = filteredJobs[type];
+            if (!term.trim()) {
+                renderJobs(type, jobs);
+                return;
             }
+
+            const filtered = jobs.filter(job => 
+                job.filename.toLowerCase().includes(term.toLowerCase()) ||
+                (job.user && job.user.toLowerCase().includes(term.toLowerCase()))
+            );
+            renderJobs(type, filtered);
         }
 
-        // Setup event listeners
-        function setupEventListeners() {
-            // Modal close buttons
-            document.getElementById('closeModal').addEventListener('click', function() {
-                document.getElementById('previewModal').classList.remove('open');
-            });
-
-            document.getElementById('closeMetadataModal').addEventListener('click', function() {
-                document.getElementById('metadataModal').classList.remove('open');
-            });
-
-            // Close modals when clicking outside
-            window.addEventListener('click', function(event) {
-                const previewModal = document.getElementById('previewModal');
-                const metadataModal = document.getElementById('metadataModal');
-
-                if (event.target === previewModal) {
-                    previewModal.classList.remove('open');
-                }
-                if (event.target === metadataModal) {
-                    metadataModal.classList.remove('open');
-                }
-            });
-
-            // Theme toggle button
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
-            // Auto print button
-            document.getElementById('autoPrintBtn').addEventListener('click', async function() {
-                try {
-                    const response = await fetch('/auto-print-documents/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        showToast(data.message);
-                        setTimeout(loadAllData, 1000);
-                    } else {
-                        showToast(data.error || 'Error auto-printing documents');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showToast('Error connecting to server');
-                }
-            });
-        }
-
-        // Show toast notification
+        // Toast Notification
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.classList.add('show');
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 4000);
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // Search functionality
-        function searchJobs(searchTerm) {
-            const completedContainer = document.getElementById('completedJobsContainer');
-            const jobCards = completedContainer.querySelectorAll('.job-card');
-            
-            if (!searchTerm.trim()) {
-                // Show all jobs if search is empty
-                jobCards.forEach(card => {
-                    card.style.display = 'block';
-                });
-                return;
+        // Event Listeners
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('previewModal');
+            if (event.target === modal) {
+                closeModal();
             }
-            
-            let foundCount = 0;
-            jobCards.forEach(card => {
-                const serialElement = card.querySelector('.job-serial');
-                if (serialElement) {
-                    const serialNumber = serialElement.textContent.replace('#', '').trim();
-                    if (serialNumber.includes(searchTerm.trim())) {
-                        card.style.display = 'block';
-                        foundCount++;
-                    } else {
-                        card.style.display = 'none';
-                    }
-                }
-            });
-            
-            // Show message if no results found
-            if (foundCount === 0 && searchTerm.trim()) {
-                if (!completedContainer.querySelector('.no-results')) {
-                    const noResults = document.createElement('div');
-                    noResults.className = 'empty-state no-results';
-                    noResults.innerHTML = `
-                        <i class="fas fa-search"></i>
-                        <p>No jobs found with serial number "${searchTerm}"</p>
-                    `;
-                    completedContainer.appendChild(noResults);
-                }
-            } else {
-                // Remove no results message
-                const noResults = completedContainer.querySelector('.no-results');
-                if (noResults) {
-                    noResults.remove();
-                }
-            }
-        }
-        
-        function clearSearch() {
-            const searchBox = document.getElementById('searchBox');
-            searchBox.value = '';
-            searchJobs('');
-        }
-
-        // Make functions globally accessible
-        window.showPreview = showPreview;
-        window.showMetadata = showMetadata;
-        window.acceptJob = acceptJob;
-        window.searchJobs = searchJobs;
-        window.clearSearch = clearSearch;
+        });
     </script>
 </body>
 </html>

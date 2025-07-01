@@ -2162,6 +2162,7 @@
       const serviceModalTemplates = {
         photo: {
           title: 'Photo Print',
+          service_type: 'photo_print',
           fields: [
             { label: 'Upload Photo', type: 'file', accept: '.jpg,.jpeg,.png,.bmp,.tiff,.gif', required: true },
             { label: 'Number of Copies', type: 'number', min: 1, max: 20, default: 1, required: true },
@@ -2170,6 +2171,7 @@
         },
         digital: {
           title: 'Digital Print',
+          service_type: 'digital_print',
           fields: [
             { label: 'Upload Document', type: 'file', accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx', required: true },
             { label: 'Number of Copies', type: 'number', min: 1, max: 50, default: 1, required: true },
@@ -2179,6 +2181,7 @@
         },
         binding: {
           title: 'Project Binding',
+          service_type: 'project_binding',
           fields: [
             { label: 'Upload Document', type: 'file', accept: '.pdf,.doc,.docx', required: true },
             { label: 'Binding Type', type: 'select', options: ['Spiral', 'Hardcover', 'Softcover'], required: true },
@@ -2187,6 +2190,7 @@
         },
         gloss: {
           title: 'Gloss Paper Printing',
+          service_type: 'gloss_printing',
           fields: [
             { label: 'Upload Document', type: 'file', accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png', required: true },
             { label: 'Number of Copies', type: 'number', min: 1, max: 20, default: 1, required: true },
@@ -2195,6 +2199,7 @@
         },
         jumbo: {
           title: 'Jumbo Paper Printing',
+          service_type: 'jumbo_printing',
           fields: [
             { label: 'Upload Document', type: 'file', accept: '.pdf,.jpg,.jpeg,.png', required: true },
             { label: 'Paper Size', type: 'select', options: ['A0', 'A1', 'A2', 'A3'], required: true },
@@ -2203,6 +2208,7 @@
         },
         tracing: {
           title: 'Tracing Printing',
+          service_type: 'tracing_printing',
           fields: [
             { label: 'Upload Drawing', type: 'file', accept: '.pdf,.jpg,.jpeg,.png,.tiff,.svg', required: true },
             { label: 'Number of Copies', type: 'number', min: 1, max: 10, default: 1, required: true },
@@ -2315,6 +2321,8 @@
           // Metadata
           const settingsJson = {
             service: service,
+            service_type: tmpl.service_type, // Use service_type from template
+            service_name: tmpl.title, // Add service name from template
             service_manual: 'yes',
             job_completed: 'no',
             filename: fileObj.name,
@@ -3433,6 +3441,8 @@
 
           const settingsJson = {
             filename: fileObj.name,
+            service_type: 'digital_print', // Default service type for regular print modal
+            service_name: 'Digital Print', // Default service name for regular print modal
             copies: settings.copies,
             color: settings.color,
             orientation: settings.orientation,

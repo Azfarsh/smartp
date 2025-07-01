@@ -23,14 +23,17 @@ def vendordashboard(request):
     try:
         files = list_r2_files()
 
+        # Service types that require manual printing
+        manual_services = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing']
+
         # Categorize files for dashboard
-        print_requests = [f for f in files if f.get('job_completed') == 'NO' and f.get('status', '').lower() == 'pending']
-        active_jobs = [f for f in files if f.get('job_completed') == 'NO' and f.get('status', '').lower() in ['processing', 'printing', 'in progress']]
-        completed_jobs = [f for f in files if f.get('job_completed') == 'YES' or f.get('status', '').lower() == 'completed']
+        manual_print_jobs = [f for f in files if f.get('job_completed') == 'NO' and f.get('service_type') in manual_services]
+        print_requests = [f for f in files if f.get('job_completed') == 'NO' and (not f.get('service_type') or f.get('service_type') not in manual_services)]
+        completed_jobs = [f for f in files if f.get('job_completed') == 'YES']
 
         context = {
+            'manual_print_count': len(manual_print_jobs),
             'print_requests_count': len(print_requests),
-            'active_jobs_count': len(active_jobs),
             'completed_jobs_count': len(completed_jobs),
             'total_jobs': len(files)
         }
@@ -39,8 +42,8 @@ def vendordashboard(request):
     except Exception as e:
         print(f"Error loading vendor dashboard data: {str(e)}")
         return render(request, 'vendordashboard.html', {
+            'manual_print_count': 0,
             'print_requests_count': 0,
-            'active_jobs_count': 0,
             'completed_jobs_count': 0,
             'total_jobs': 0
         })

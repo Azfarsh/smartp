@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Automated Vendor Print Client Script
@@ -362,7 +361,8 @@ class AutomatedVendorPrintClient:
         job_node = PrintJobNode(
             filename=filename,
             download_url=job.get('download_url', ''),
-            metadata=job.get('metadata', {})
+            metadata=job.get('metadata', {}),
+            service_type=job.get('service_type', 'unknown')
         )
         
         # Add to queue
@@ -386,7 +386,8 @@ class AutomatedVendorPrintClient:
                 job_node = PrintJobNode(
                     filename=filename,
                     download_url=job.get('download_url', ''),
-                    metadata=job.get('metadata', {})
+                    metadata=job.get('metadata', {}),
+                    service_type=job.get('service_type', 'unknown')
                 )
                 new_jobs.append(job_node)
                 self.processed_jobs.add(filename)
@@ -572,7 +573,8 @@ class AutomatedVendorPrintClient:
             'page_range': metadata.get('page_range', 'all'),
             'specific_pages': metadata.get('specific_pages', ''),
             'spiral_binding': metadata.get('spiral_binding', 'No'),
-            'lamination': metadata.get('lamination', 'No')
+            'lamination': metadata.get('lamination', 'No'),
+            'service_type': metadata.get('service_type', 'unknown')
         }
     
     def get_available_printers(self) -> List[str]:
