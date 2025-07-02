@@ -10,34 +10,22 @@
   <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet"/>
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <!-- Google Sign-In -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
     :root {
-      /* Modern Printing Theme Colors */
-      --primary-blue: #2563eb;
-      --primary-blue-hover: #1d4ed8;
-      --secondary-blue: #eff6ff;
-      --success-green: #059669;
-      --purple: #7c3aed;
-      --indigo: #4f46e5;
-      --pink: #ec4899;
-      --teal: #0d9488;
-      --cyan: #0891b2;
-      --text-primary: #111827;
-      --text-secondary: #6b7280;
-      --text-tertiary: #9ca3af;
-      --bg-primary: #ffffff;
-      --bg-secondary: #f9fafb;
-      --bg-tertiary: #f3f4f6;
-      --border-light: #e5e7eb;
-      --border-medium: #d1d5db;
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --secondary-color: #f8fafc;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
 
     * {
@@ -48,275 +36,121 @@
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    /* Animated Background Elements */
-    body::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 1px, transparent 1px),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08) 1px, transparent 1px),
-        radial-gradient(circle at 40% 60%, rgba(255,255,255,0.06) 1px, transparent 1px);
-      background-size: 100px 100px, 150px 150px, 200px 200px;
-      animation: floatingDots 20s linear infinite;
-      pointer-events: none;
-    }
-
-    @keyframes floatingDots {
-      0% { transform: translate(0, 0) rotate(0deg); }
-      25% { transform: translate(-10px, -10px) rotate(90deg); }
-      50% { transform: translate(10px, -5px) rotate(180deg); }
-      75% { transform: translate(-5px, 10px) rotate(270deg); }
-      100% { transform: translate(0, 0) rotate(360deg); }
-    }
-
-    /* Floating Printer Icons */
-    .floating-icons {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .floating-icon {
-      position: absolute;
-      color: rgba(255, 255, 255, 0.1);
-      font-size: 24px;
-      animation: float 6s ease-in-out infinite;
-    }
-
-    .floating-icon:nth-child(1) {
-      top: 10%;
-      left: 10%;
-      animation-delay: 0s;
-    }
-
-    .floating-icon:nth-child(2) {
-      top: 20%;
-      right: 15%;
-      animation-delay: 2s;
-    }
-
-    .floating-icon:nth-child(3) {
-      bottom: 30%;
-      left: 20%;
-      animation-delay: 4s;
-    }
-
-    .floating-icon:nth-child(4) {
-      bottom: 20%;
-      right: 25%;
-      animation-delay: 1s;
-    }
-
-    .floating-icon:nth-child(5) {
-      top: 50%;
-      left: 5%;
-      animation-delay: 3s;
-    }
-
-    .floating-icon:nth-child(6) {
-      top: 60%;
-      right: 10%;
-      animation-delay: 5s;
-    }
-
-    @keyframes float {
-      0%, 100% {
-        transform: translateY(0px) rotate(0deg);
-        opacity: 0.1;
-      }
-      50% {
-        transform: translateY(-20px) rotate(180deg);
-        opacity: 0.2;
-      }
+      padding: 16px;
+      color: var(--text-primary);
     }
 
     .login-container {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border-radius: 24px;
-      box-shadow: var(--shadow-xl);
-      max-width: 1000px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      max-width: 400px;
       width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      min-height: 650px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      position: relative;
-      z-index: 10;
+      border: 1px solid var(--border-color);
     }
 
-    .login-left {
-      background: linear-gradient(135deg, var(--primary-blue), var(--purple));
+    .login-header {
+      background: linear-gradient(135deg, var(--primary-color), #3b82f6);
       color: white;
-      padding: 3rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
       position: relative;
-      overflow: hidden;
     }
 
-    .login-left::before {
+    .login-header::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 2px, transparent 2px),
-        radial-gradient(circle at 70% 70%, rgba(255,255,255,0.08) 1px, transparent 1px);
-      background-size: 80px 80px, 120px 120px;
-      animation: backgroundShift 15s ease-in-out infinite;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
       pointer-events: none;
-    }
-
-    @keyframes backgroundShift {
-      0%, 100% { transform: translate(0, 0); }
-      50% { transform: translate(-10px, -10px); }
-    }
-
-    .brand-section {
-      position: relative;
-      z-index: 2;
     }
 
     .brand-logo {
       display: flex;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 2rem;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 2;
     }
 
     .brand-logo i {
-      font-size: 3rem;
-      background: linear-gradient(45deg, #ffffff, #e0e7ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 2.5rem;
+      opacity: 0.9;
     }
 
     .brand-title {
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin-bottom: 1rem;
-      background: linear-gradient(45deg, #ffffff, #e0e7ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      position: relative;
+      z-index: 2;
     }
 
     .brand-subtitle {
-      font-size: 1.2rem;
-      font-weight: 500;
-      margin-bottom: 2rem;
+      font-size: 0.9rem;
       opacity: 0.9;
-      line-height: 1.6;
+      font-weight: 400;
+      position: relative;
+      z-index: 2;
     }
 
-    .features-list {
-      list-style: none;
-      padding: 0;
+    .login-body {
+      padding: 2rem 1.5rem;
     }
 
-    .features-list li {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      font-size: 1rem;
-      opacity: 0.9;
-    }
-
-    .features-list li i {
-      width: 20px;
-      height: 20px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-    }
-
-    .login-right {
-      padding: 3rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      background: var(--bg-primary);
-    }
-
-    .login-header {
+    .welcome-text {
       text-align: center;
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.5rem;
     }
 
-    .login-header h2 {
-      font-size: 2rem;
-      font-weight: 700;
+    .welcome-text h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
       color: var(--text-primary);
       margin-bottom: 0.5rem;
     }
 
-    .login-header p {
+    .welcome-text p {
       color: var(--text-secondary);
-      font-size: 1rem;
+      font-size: 0.9rem;
     }
 
     .login-tabs {
       display: flex;
-      background: var(--bg-secondary);
-      border-radius: 16px;
-      padding: 6px;
-      margin-bottom: 2rem;
-      box-shadow: var(--shadow-sm);
+      background: var(--secondary-color);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 1.5rem;
     }
 
     .tab-button {
       flex: 1;
-      padding: 14px 20px;
+      padding: 12px 16px;
       background: none;
       border: none;
-      border-radius: 12px;
-      font-weight: 600;
+      border-radius: 8px;
+      font-weight: 500;
       cursor: pointer;
       color: var(--text-secondary);
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
     }
 
     .tab-button.active {
       background: white;
-      color: var(--primary-blue);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-1px);
-    }
-
-    .tab-button i {
-      font-size: 16px;
+      color: var(--primary-color);
+      box-shadow: var(--shadow-sm);
     }
 
     .login-form {
@@ -328,61 +162,62 @@
     }
 
     .google-signin-container {
-      margin-bottom: 2rem;
-    }
-
-    .google-signin-wrapper {
-      background: var(--bg-secondary);
-      border-radius: 16px;
-      padding: 24px;
       text-align: center;
-      border: 2px solid var(--border-light);
-      transition: all 0.3s ease;
+      margin-bottom: 1rem;
     }
 
-    .google-signin-wrapper:hover {
-      border-color: var(--primary-blue);
-      box-shadow: var(--shadow-md);
+    .signin-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      font-weight: 500;
     }
 
-    .signin-title {
-      font-size: 1.1rem;
-      font-weight: 600;
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
       color: var(--text-primary);
-      margin-bottom: 16px;
+      margin-bottom: 0.5rem;
     }
 
     .form-control {
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 2px solid var(--border-light);
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
       font-size: 1rem;
-      transition: all 0.3s ease;
-      background: var(--bg-primary);
+      transition: all 0.2s ease;
+      background: white;
     }
 
     .form-control:focus {
       outline: none;
-      border-color: var(--primary-blue);
+      border-color: var(--primary-color);
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
     .btn-primary {
       width: 100%;
-      padding: 14px;
+      padding: 12px;
       border: none;
-      background: linear-gradient(135deg, var(--primary-blue), var(--indigo));
+      background: var(--primary-color);
       color: white;
       font-weight: 600;
-      border-radius: 12px;
-      margin-top: 1rem;
-      transition: all 0.3s ease;
-      box-shadow: var(--shadow-md);
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-lg);
+      background: var(--primary-hover);
+      transform: translateY(-1px);
     }
 
     .forgot-password {
@@ -391,24 +226,24 @@
     }
 
     .forgot-password a {
-      color: var(--primary-blue);
+      color: var(--primary-color);
       text-decoration: none;
+      font-size: 0.9rem;
       font-weight: 500;
-      transition: all 0.3s ease;
     }
 
     .forgot-password a:hover {
-      color: var(--primary-blue-hover);
+      text-decoration: underline;
     }
 
-    /* Advanced Welcome Screen */
+    /* Welcome Screen */
     #welcomeScreen {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, #3b82f6 100%);
       display: none;
       align-items: center;
       justify-content: center;
@@ -416,267 +251,182 @@
       color: white;
       z-index: 9999;
       opacity: 0;
-      transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-      padding: 20px;
-      box-sizing: border-box;
-      overflow: hidden;
+      transition: opacity 0.5s ease;
     }
 
     #welcomeScreen.show {
       opacity: 1;
     }
 
-    #welcomeScreen::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 1px, transparent 1px),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.02) 1px, transparent 1px);
-      background-size: 100px 100px, 150px 150px;
-      animation: welcomeParticles 25s linear infinite;
-      pointer-events: none;
-    }
-
-    @keyframes welcomeParticles {
-      0% { transform: translate(0, 0) rotate(0deg); }
-      100% { transform: translate(-50px, -50px) rotate(360deg); }
-    }
-
     #welcomeMessage {
-      font-size: clamp(2.5rem, 6vw, 4rem);
-      font-weight: 300;
-      margin-bottom: clamp(60px, 8vh, 100px);
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
       text-align: center;
-      letter-spacing: -0.03em;
-      line-height: 1.1;
-      max-width: 90vw;
-      animation: welcomeSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-      transform: translateY(60px) scale(0.95);
-      opacity: 0;
-      position: relative;
-      z-index: 2;
-    }
-
-    @keyframes welcomeSlideIn {
-      0% {
-        transform: translateY(60px) scale(0.95);
-        opacity: 0;
-        filter: blur(10px);
-      }
-      60% {
-        transform: translateY(-5px) scale(1.01);
-        opacity: 0.8;
-        filter: blur(2px);
-      }
-      100% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-        filter: blur(0);
-      }
     }
 
     .welcome-spinner {
-      width: clamp(60px, 12vw, 100px);
-      height: clamp(60px, 12vw, 100px);
-      position: relative;
-      animation: spinnerFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 0.5s forwards;
-      opacity: 0;
-      transform: scale(0.8);
-    }
-
-    .welcome-spinner::before,
-    .welcome-spinner::after {
-      content: '';
-      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid white;
       border-radius: 50%;
-      border: 2px solid transparent;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
     }
 
-    .welcome-spinner::before {
-      width: 100%;
-      height: 100%;
-      border-top-color: rgba(255,255,255,0.8);
-      border-right-color: rgba(255,255,255,0.4);
-      animation: welcomeSpinner 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-    }
-
-    .welcome-spinner::after {
-      width: 70%;
-      height: 70%;
-      top: 15%;
-      left: 15%;
-      border-top-color: rgba(255,255,255,0.6);
-      border-left-color: rgba(255,255,255,0.3);
-      animation: welcomeSpinner 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
-    }
-
-    @keyframes spinnerFadeIn {
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes welcomeSpinner {
-      0% {
-        transform: rotate(0deg) scale(1);
-        opacity: 1;
-      }
-      50% {
-        transform: rotate(180deg) scale(1.1);
-        opacity: 0.8;
-      }
-      100% {
-        transform: rotate(360deg) scale(1);
-        opacity: 1;
-      }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     .welcome-status {
-      font-size: clamp(1rem, 2.5vw, 1.2rem);
-      font-weight: 400;
-      color: rgba(255,255,255,0.8);
-      margin-top: clamp(30px, 5vh, 50px);
-      animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
-      opacity: 0;
-      transform: translateY(20px);
+      font-size: 1rem;
+      opacity: 0.9;
     }
 
-    @keyframes statusFadeIn {
-      to {
-        opacity: 1;
-        transform: translateY(0);
+    /* Mobile Optimizations */
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
       }
-    }
 
-    /* Responsive Design */
-    @media (max-width: 768px) {
       .login-container {
-        grid-template-columns: 1fr;
-        max-width: 450px;
-        min-height: auto;
+        max-width: 100%;
+        border-radius: 12px;
       }
 
-      .login-left {
-        padding: 2rem;
-        text-align: center;
-      }
-
-      .login-right {
-        padding: 2rem;
+      .login-header {
+        padding: 1.5rem 1rem 1rem;
       }
 
       .brand-title {
-        font-size: 2rem;
+        font-size: 1.5rem;
       }
 
       .brand-subtitle {
-        font-size: 1rem;
+        font-size: 0.8rem;
       }
 
-      .features-list {
-        display: none;
+      .login-body {
+        padding: 1.5rem 1rem;
+      }
+
+      .welcome-text h2 {
+        font-size: 1.25rem;
+      }
+
+      .tab-button {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+      }
+
+      .form-control {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+      }
+
+      .btn-primary {
+        padding: 10px;
+        font-size: 0.95rem;
+      }
+
+      #welcomeMessage {
+        font-size: 1.5rem;
+        padding: 0 1rem;
       }
     }
 
-    @media (max-width: 480px) {
-      body {
-        padding: 10px;
+    @media (max-width: 360px) {
+      .login-header {
+        padding: 1rem 0.75rem 0.75rem;
       }
 
-      .login-container {
-        border-radius: 16px;
+      .login-body {
+        padding: 1rem 0.75rem;
       }
 
-      .login-left,
-      .login-right {
-        padding: 1.5rem;
+      .brand-logo i {
+        font-size: 2rem;
+      }
+
+      .brand-title {
+        font-size: 1.25rem;
+      }
+    }
+
+    /* Landscape mobile */
+    @media (max-height: 600px) and (orientation: landscape) {
+      .login-header {
+        padding: 1rem 1.5rem 0.75rem;
+      }
+
+      .brand-logo {
+        margin-bottom: 0.5rem;
+      }
+
+      .brand-logo i {
+        font-size: 2rem;
+      }
+
+      .brand-title {
+        font-size: 1.25rem;
+      }
+
+      .brand-subtitle {
+        font-size: 0.8rem;
+      }
+
+      .login-body {
+        padding: 1rem 1.5rem;
+      }
+
+      .welcome-text {
+        margin-bottom: 1rem;
+      }
+
+      .welcome-text h2 {
+        font-size: 1.25rem;
       }
     }
   </style>
 </head>
 <body>
 
-<!-- Floating Printer Icons -->
-<div class="floating-icons">
-  <i class="bi bi-printer floating-icon"></i>
-  <i class="bi bi-file-earmark-text floating-icon"></i>
-  <i class="bi bi-cloud-upload floating-icon"></i>
-  <i class="bi bi-gear floating-icon"></i>
-  <i class="bi bi-lightning floating-icon"></i>
-  <i class="bi bi-shield-check floating-icon"></i>
-</div>
-
-<!-- Advanced Welcome Screen -->
+<!-- Welcome Screen -->
 <div id="welcomeScreen">
   <div id="welcomeMessage">Welcome to PrintMe</div>
   <div class="welcome-spinner"></div>
-  <div class="welcome-status">Connecting to your printing solution...</div>
+  <div class="welcome-status">Signing you in...</div>
 </div>
 
 <div class="login-container">
-  <!-- Left Panel - Brand Section -->
-  <div class="login-left">
-    <div class="brand-section">
-      <div class="brand-logo">
-        <i class="bi bi-printer-fill"></i>
-        <div class="brand-title">PrintMe</div>
-      </div>
-      <div class="brand-subtitle">
-        Smart Automated Printing Solutions for Modern Businesses
-      </div>
-      <ul class="features-list">
-        <li>
-          <i class="bi bi-lightning-fill"></i>
-          <span>Instant automated printing</span>
-        </li>
-        <li>
-          <i class="bi bi-cloud-upload-fill"></i>
-          <span>Cloud-based document management</span>
-        </li>
-        <li>
-          <i class="bi bi-shield-check-fill"></i>
-          <span>Secure & reliable service</span>
-        </li>
-        <li>
-          <i class="bi bi-geo-alt-fill"></i>
-          <span>Multiple vendor locations</span>
-        </li>
-        <li>
-          <i class="bi bi-clock-fill"></i>
-          <span>24/7 printing availability</span>
-        </li>
-      </ul>
+  <!-- Header -->
+  <div class="login-header">
+    <div class="brand-logo">
+      <i class="bi bi-printer-fill"></i>
     </div>
+    <div class="brand-title">PrintMe</div>
+    <div class="brand-subtitle">Smart Printing Solutions</div>
   </div>
 
-  <!-- Right Panel - Login Section -->
-  <div class="login-right">
-    <div class="login-header">
+  <!-- Body -->
+  <div class="login-body">
+    <div class="welcome-text">
       <h2>Welcome Back</h2>
-      <p>Access your smart printing dashboard</p>
+      <p>Sign in to access your printing dashboard</p>
     </div>
 
     <!-- Tab Navigation -->
     <div class="login-tabs">
-      <button class="tab-button active" onclick="showTab('user')">
-        <i class="bi bi-person-fill"></i>
-        <span>User Login</span>
-      </button>
-      <button class="tab-button" onclick="showTab('vendor')">
-        <i class="bi bi-shop"></i>
-        <span>Vendor Login</span>
-      </button>
+      <button class="tab-button active" onclick="showTab('user')">User</button>
+      <button class="tab-button" onclick="showTab('vendor')">Vendor</button>
     </div>
 
     <!-- User Login Form -->
     <div id="user-form" class="login-form active">
-      <div class="google-signin-wrapper">
-        <div class="signin-title">Sign in with Google</div>
+      <div class="signin-label">Continue with Google</div>
+      <div class="google-signin-container">
         <div id="g_id_onload"
              data-client_id="{{ client_id }}"
              data-callback="handleCredentialResponse"
@@ -696,20 +446,17 @@
     <div id="vendor-form" class="login-form">
       <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
         {% csrf_token %}
-        <div class="mb-3">
+        <div class="form-group">
           <label for="vendorId" class="form-label">Vendor ID</label>
           <input type="text" class="form-control" id="vendorId" placeholder="Enter your vendor ID" required />
         </div>
-        <div class="mb-3">
+        <div class="form-group">
           <label for="vendorPassword" class="form-label">Password</label>
           <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your password" required />
         </div>
-        <button type="submit" class="btn-primary">
-          <i class="bi bi-box-arrow-in-right me-2"></i>
-          Sign In as Vendor
-        </button>
+        <button type="submit" class="btn-primary">Sign In</button>
         <div class="forgot-password">
-          <a href="#" onclick="resetVendorPassword()">Forgot your password?</a>
+          <a href="#" onclick="resetVendorPassword()">Forgot password?</a>
         </div>
       </form>
     </div>
@@ -755,7 +502,7 @@
     .then(res => res.json())
     .then(data => {
       if (data.status === 'success') {
-        setTimeout(() => window.location.href = '/userdashboard/', 3000);
+        setTimeout(() => window.location.href = '/userdashboard/', 2000);
       } else {
         alert('Login failed: ' + data.message);
         document.getElementById('welcomeScreen').style.display = 'none';
@@ -779,7 +526,7 @@
       // Simulate vendor login (replace with actual endpoint)
       setTimeout(() => {
         window.location.href = '/vendordashboard/';
-      }, 3000);
+      }, 2000);
       
     } catch (err) {
       console.error(err);
