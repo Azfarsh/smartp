@@ -10,12 +10,6 @@ urlpatterns = [
     path('', include('print.urls')),  # Include your app's routes
 ]
 
-# Custom 404 handler
-def custom_404_view(request, exception):
-    from django.shortcuts import render
-    return render(request, '404.html', status=404)
-
-handler404 = custom_404_view
 
 # Add WebSocket routing
 application = ProtocolTypeRouter({
