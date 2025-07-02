@@ -239,8 +239,8 @@ def userdashboard(request):
         'user_details': user_details,
         'firebase_uid': request.session.get('firebase_uid'),
         'auth_method': request.session.get('auth_method', 'unknown'),
-        'user_jobs': user_jobs[:10],  # Show only recent 10 jobs
-        'user_jobs_json': json.dumps(user_jobs[:10]),  # JSON serialized for JavaScript
+        'user_jobs': user_jobs,  # Show all jobs
+        'user_jobs_json': json.dumps(user_jobs),  # JSON serialized for JavaScript
         'total_jobs': total_jobs,
         'pending_jobs': pending_jobs,
         'completed_jobs': completed_jobs,

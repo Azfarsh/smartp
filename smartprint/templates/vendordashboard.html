@@ -717,6 +717,33 @@
                 width: 160px;
             }
         }
+
+        /* Add after .job-block styles */
+        .job-block .delete-btn {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--error-red);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2;
+            opacity: 0.85;
+            transition: background 0.2s, opacity 0.2s;
+        }
+        .job-block .delete-btn:hover {
+            background: #b91c1c;
+            opacity: 1;
+        }
+        .completed-job:hover .delete-btn {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -1043,7 +1070,8 @@
                 </button>` : '';
 
             return `
-                <div class="job-block ${blockClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')">
+                <div class="job-block ${blockClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
+                    ${type === 'completed' ? `<button class='delete-btn' title='Delete' onclick="event.stopPropagation(); deleteCompletedJob('${job.filename}')">&times;</button>` : ''}
                     ${serviceBadge}
                     <div class="job-header">
                         <div class="job-token">${tokenNumber}</div>
@@ -1051,19 +1079,19 @@
                     </div>
                     <div class="job-filename" title="${job.filename}">${job.filename}</div>
                     <div class="job-details">
-                    <div class="job-meta">
+                        <div class="job-meta">
                             <div class="job-meta-item">
                                 <i class="fas fa-user"></i>
                                 <span>${job.user || 'User'}</span>
-                        </div>
+                            </div>
                             <div class="job-meta-item">
                                 <i class="fas fa-file"></i>
                                 <span>${job.pages || 1}p</span>
-                        </div>
+                            </div>
                             <div class="job-meta-item">
                                 <i class="fas fa-copy"></i>
                                 <span>${job.copies || 1}x</span>
-                        </div>
+                            </div>
                         </div>
                     </div>
                     <div class="job-actions" onclick="event.stopPropagation()">
@@ -1165,6 +1193,14 @@
                 closeModal();
             }
         });
+
+        // Add this JS function:
+        function deleteCompletedJob(filename) {
+            // Remove from filteredJobs.completed and re-render
+            filteredJobs.completed = filteredJobs.completed.filter(job => job.filename !== filename);
+            renderJobs('completed', filteredJobs.completed);
+            showToast('Job removed from completed list.');
+        }
     </script>
 </body>
 </html>

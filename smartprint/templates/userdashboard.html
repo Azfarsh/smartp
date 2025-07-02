@@ -1755,6 +1755,129 @@
         padding: 1rem;
       }
     }
+
+    .completed-jobs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    .completed-job-card {
+      background: var(--surface);
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(30,58,138,0.08);
+      padding: 1rem 0.8rem 0.8rem 0.8rem;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      border: 1px solid var(--outline);
+      transition: box-shadow 0.18s, transform 0.18s, background 0.18s;
+      position: relative;
+    }
+    .completed-job-card:hover {
+      box-shadow: 0 4px 16px rgba(30,58,138,0.13);
+      transform: translateY(-2px) scale(1.01);
+      background: var(--surface-elevated);
+    }
+    .completed-job-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .completed-job-filename {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--info);
+      flex: 1;
+      word-break: break-all;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .completed-job-status {
+      background: linear-gradient(90deg, var(--success), var(--secondary));
+      color: var(--on-primary);
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 0.15rem 0.7rem;
+      margin-left: auto;
+      letter-spacing: 0.4px;
+      box-shadow: 0 1px 2px rgba(16,185,129,0.08);
+      border: none;
+    }
+    .completed-job-date {
+      font-size: 0.82rem;
+      color: var(--on-surface-variant);
+      margin-bottom: 0.4rem;
+    }
+    .completed-job-section {
+      background: var(--surface-variant);
+      border-radius: 8px;
+      padding: 0.5rem 0.7rem;
+      margin-bottom: 0.4rem;
+      box-shadow: 0 1px 2px rgba(30,58,138,0.03);
+    }
+    .completed-job-section-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .completed-job-section-title i {
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+    .completed-job-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.2rem 0.7rem;
+      font-size: 0.93rem;
+    }
+    .completed-job-details-label {
+      color: var(--on-surface-variant);
+      font-size: 0.75rem;
+    }
+    .completed-job-details-value {
+      font-weight: 600;
+      color: var(--on-surface);
+      font-size: 0.93rem;
+    }
+    .completed-job-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+    }
+    .completed-job-btn {
+      flex: 1;
+      padding: 0.5rem 0.5rem;
+      border-radius: 7px;
+      border: 1px solid var(--outline);
+      background: var(--background-solid);
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.13s, color 0.13s, border 0.13s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+    }
+    .completed-job-btn:hover {
+      background: var(--primary-light);
+      color: var(--primary-variant);
+      border-color: var(--primary);
+    }
+    @media (max-width: 600px) {
+      .completed-jobs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body data-theme="light">
@@ -2372,9 +2495,9 @@
         <i class="fas fa-home"></i>
         <span>Home</span>
       </a>
-      <a href="#" class="bottom-nav-item">
-        <i class="fas fa-print"></i>
-        <span>Jobs</span>
+      <a href="#" class="bottom-nav-item" id="historyBtn">
+        <i class="fas fa-history"></i>
+        <span>History</span>
       </a>
       <div class="print-btn">
         <button class="print-btn-circle" id="printBtn">
@@ -2634,6 +2757,23 @@
             <i class="fas fa-print"></i>
             Proceed to print
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completed Jobs Modal -->
+  <div class="modal-overlay" id="completedJobsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Completed Print Jobs</h3>
+        <button class="modal-close" id="closeCompletedJobsModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="completedJobsList" class="completed-jobs-grid">
+          <!-- Completed jobs will be rendered here by JS -->
         </div>
       </div>
     </div>
@@ -3517,6 +3657,70 @@
 
     // Initialize UI
     updateUI();
+
+    // Add after the main print modal JS and before updateUI();
+    // Completed Jobs Modal Logic
+    const historyBtn = document.getElementById('historyBtn');
+    const completedJobsModal = document.getElementById('completedJobsModal');
+    const closeCompletedJobsModal = document.getElementById('closeCompletedJobsModal');
+    const completedJobsList = document.getElementById('completedJobsList');
+
+    function openCompletedJobsModal() {
+      renderCompletedJobs();
+      completedJobsModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeCompletedJobsModalFunc() {
+      completedJobsModal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    historyBtn.addEventListener('click', openCompletedJobsModal);
+    closeCompletedJobsModal.addEventListener('click', closeCompletedJobsModalFunc);
+    completedJobsModal.addEventListener('click', (e) => {
+      if (e.target === completedJobsModal) closeCompletedJobsModalFunc();
+    });
+
+    function renderCompletedJobs() {
+      if (!userJobs || userJobs.length === 0) {
+        completedJobsList.innerHTML = '<div class="no-jobs-message">No completed print jobs found.</div>';
+        return;
+      }
+      const completedJobs = userJobs.filter(job => job.job_completed === 'YES');
+      if (completedJobs.length === 0) {
+        completedJobsList.innerHTML = '<div class="no-jobs-message">No completed print jobs found.</div>';
+        return;
+      }
+      completedJobsList.innerHTML = completedJobs.map(job => `
+        <div class="completed-job-card">
+          <div class="completed-job-header">
+            <i class="fas fa-file-${job.file_extension === 'pdf' ? 'pdf' : (['jpg','jpeg','png','gif','bmp','tiff','svg'].includes(job.file_extension) ? 'image' : 'alt')}"></i>
+            <span class="completed-job-filename">${job.filename.length > 28 ? job.filename.substring(0, 28) + '...' : job.filename}</span>
+            <span class="completed-job-status">COMPLETED</span>
+          </div>
+          <div class="completed-job-date">${job.uploaded_at}</div>
+          <div class="completed-job-section">
+            <div class="completed-job-section-title"><i class="fas fa-cog"></i> Print Settings</div>
+            <div class="completed-job-details">
+              <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${job.pages || 'N/A'}</span></div>
+              <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${job.copies || '1'}</span></div>
+              <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'bw' ? 'B&W' : 'Color'}</span></div>
+              <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
+            </div>
+          </div>
+          <div class="completed-job-section">
+            <div class="completed-job-section-title"><i class="fas fa-rupee-sign"></i> Cost Details</div>
+            <div class="completed-job-details">
+              <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${(parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3) + (job.spiralBinding==='Yes'?20:0) + (job.lamination==='Yes'?parseInt(job.pages||1)*parseInt(job.copies||1)*15:0))}</span></div>
+              <div><span class="completed-job-details-label">Status</span><br><span class="completed-job-details-value">Paid</span></div>
+            </div>
+          </div>
+          <div class="completed-job-actions">
+            <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
+            <button class="completed-job-btn" onclick="trackJob('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
+          </div>
+        </div>
+      `).join('');
+    }
   </script>
 </body>
 </html>
