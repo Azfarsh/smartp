@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -129,14 +129,14 @@ CHANNEL_LAYERS = {
 }
 
 # Vendor dashboard configuration
-VENDOR_DASHBOARD_URL = os.getenv('VENDOR_DASHBOARD_URL', 'http://localhost:8000')
-VENDOR_TOKEN = os.getenv('VENDOR_TOKEN', 'your_vendor_token')
+VENDOR_DASHBOARD_URL = os.getenv('VENDOR_DASHBOARD_URL')
+VENDOR_TOKEN = os.getenv('VENDOR_TOKEN')
 
 # ✅ R2 credentials from .env
-R2_ACCESS_KEY = 'e02ce6580b8c81a4899bc6f4b2250f65'
-R2_SECRET_KEY = 'ad35d6fae06bd3fe15956642348a0391fbd8c8f5a3cdca052b7484869179b8e9'
-R2_ENDPOINT = 'https://d3e1ce952178b1093bba642e6d0d4ab5.r2.cloudflarestorage.com'
-R2_BUCKET = 'printme'
+R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY')
+R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
+R2_ENDPOINT = os.getenv('R2_ENDPOINT')
+R2_BUCKET = os.getenv('R2_BUCKET')
 
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
