@@ -1878,6 +1878,18 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Job Token Badge */
+    .job-token-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      font-weight: bold;
+      border-radius: 6px;
+      padding: 0 0.5em;
+      margin-right: 0.5em;
+      font-size: 0.95em;
+    }
   </style>
 </head>
 <body data-theme="light">
@@ -2168,20 +2180,6 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-        <!-- Tracing Printing -->
-        <div class="service-card" onclick="openServiceModal('tracing')">
-          <div class="service-header">
-            <div class="service-icon">
-              <i class="fas fa-drafting-compass"></i>
-            </div>
-            <div class="service-info">
-              <div class="service-name">Tracing Printing</div>
-              <div class="service-description">Technical drawings and engineering prints</div>
-              <div class="service-price">Starting from ₹12/page</div>
-            </div>
-          </div>
-          <i class="fas fa-arrow-right service-arrow"></i>
-        </div>
       </div>
     </section>
 
@@ -2329,13 +2327,13 @@
             { label: 'Number of Copies', type: 'number', min: 1, max: 10, default: 1, required: true }
           ]
         },
-        tracing: {
-          title: 'Tracing Printing',
-          service_type: 'tracing_printing',
+        passport: {
+          title: 'Passport Photo Print',
+          service_type: 'passport_photo',
           fields: [
-            { label: 'Upload Drawing', type: 'file', accept: '.pdf,.jpg,.jpeg,.png,.tiff,.svg', required: true },
-            { label: 'Number of Copies', type: 'number', min: 1, max: 10, default: 1, required: true },
-            { label: 'Paper Size', type: 'select', options: ['A4', 'A3', 'A2'], required: true }
+            { label: 'Upload Photo', type: 'file', accept: '.jpg,.jpeg,.png', required: true },
+            { label: 'Total Prints', type: 'select', options: ['8', '16', '32'], required: true },
+            { label: 'Paper Size', type: 'select', options: ['A4'], required: true, default: 'A4' }
           ]
         }
       };
@@ -2487,6 +2485,11 @@
           if (e.target === modal) closeServiceModal(service);
         });
       }
+
+      document.getElementById('passportPhotoBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        openServiceModal('passport');
+      });
     </script>
 
     <!-- Bottom Navigation -->
@@ -2505,9 +2508,9 @@
         </button>
         <span style="color: var(--on-surface); font-size: 0.65rem; font-weight: 600; margin-top: 0.2rem;">Print</span>
       </div>
-      <a href="#" class="bottom-nav-item">
-        <i class="fas fa-map-marker-alt"></i>
-        <span>Locations</span>
+      <a href="#" class="bottom-nav-item" id="passportPhotoBtn">
+        <i class="fas fa-id-card"></i>
+        <span>Passport Photo</span>
       </a>
       <a href="#" class="bottom-nav-item">
         <i class="fas fa-user"></i>
@@ -3720,6 +3723,25 @@
           </div>
         </div>
       `).join('');
+    }
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var passportBtn = document.getElementById('passportPhotoBtn');
+      if (passportBtn) {
+        passportBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          openServiceModal('passport');
+        });
+      }
+    });
+  </script>
+
+  <script>
+    // Add a JS function to display the token when called
+    function showUserToken(token) {
+      alert('Your Print Job Token: ' + token);
     }
   </script>
 </body>

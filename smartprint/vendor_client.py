@@ -346,6 +346,26 @@ try {{
         pass
     return False
 
+def open_in_edge_and_print(file_path):
+    """Open the file in Microsoft Edge for manual printing (Windows only)."""
+    import os
+    import subprocess
+    edge_paths = [
+        r"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+        r"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
+    ]
+    edge_path = None
+    for path in edge_paths:
+        if os.path.exists(path):
+            edge_path = path
+            break
+    if not edge_path:
+        print("Edge not found!")
+        return False
+    subprocess.Popen([edge_path, file_path])
+    print(f"Opened {file_path} in Microsoft Edge. Please print manually.")
+    return True
+
 class AutomatedVendorPrintClient:
     def __init__(self, vendor_id: str, base_url: str = "ws://localhost:8000", debug: bool = False, primary_printer: str = None):
         """

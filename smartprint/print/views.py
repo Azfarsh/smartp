@@ -8,6 +8,8 @@ import boto3
 import datetime
 import json
 import requests
+import uuid
+import random
 
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
@@ -23,8 +25,21 @@ def vendordashboard(request):
     try:
         files = list_r2_files()
 
+        # Deduplicate by job_id, then by filename
+        unique_files = {}
+        for file in files:
+            job_id = file.get('job_id')
+            key = job_id if job_id else file.get('filename')
+            file_path = file.get('preview_url', '')
+            # Prefer testshop/ jobs
+            if '/testshop/' in file_path or file_path.startswith('testshop/'):
+                unique_files[key] = file
+            elif key not in unique_files:
+                unique_files[key] = file
+        files = list(unique_files.values())
+
         # Service types that require manual printing
-        manual_services = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing']
+        manual_services = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing']
 
         # Enhanced categorization for manual print jobs
         manual_print_jobs = []
@@ -34,15 +49,16 @@ def vendordashboard(request):
         for file in files:
             job_completed = file.get('job_completed', 'NO')
             service_type = file.get('service_type', '')
-            
-            if job_completed == 'YES':
-                completed_jobs.append(file)
-            elif job_completed == 'NO':
+            file_path = file.get('preview_url', '')
+            # Only include jobs from testshop with job_completed == 'NO'
+            if ('/testshop/' in file_path or file_path.startswith('testshop/')) and job_completed == 'NO':
                 # Check if it's a manual service job
                 if service_type and service_type in manual_services:
                     manual_print_jobs.append(file)
                 else:
                     print_requests.append(file)
+            elif job_completed == 'YES':
+                completed_jobs.append(file)
 
         # Debug logging
         print(f"📊 Dashboard Stats:")
@@ -193,7 +209,9 @@ def get_user_jobs_from_r2(user_email):
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
                     "vendor": metadata.get('vendor', 'testshop'),
-                    "service_type": metadata.get('service_type', '')
+                    "service_type": metadata.get('service_type', ''),
+                    "job_id": metadata.get('job_id', ''),
+                    "token": metadata.get('token', '')
                 }
 
                 # Create print options string
@@ -408,7 +426,9 @@ def get_pending_print_jobs():
                                 'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
                                 'vendor': metadata.get('vendor', 'testshop'),
                                 'user': metadata.get('user', 'Unknown'),
-                                'service_type': metadata.get('service_type', '')
+                                'service_type': metadata.get('service_type', ''),
+                                'job_id': metadata.get('job_id', ''),
+                                'token': metadata.get('token', '')
                             }
                         }
                         
@@ -475,7 +495,9 @@ def get_pending_print_jobs():
                                 'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
                                 'vendor': metadata.get('vendor', 'testshop'),
                                 'user': user_email or metadata.get('user', 'Unknown'),
-                                'service_type': metadata.get('service_type', '')
+                                'service_type': metadata.get('service_type', ''),
+                                'job_id': metadata.get('job_id', ''),
+                                'token': metadata.get('token', '')
                             }
                         }
                         
@@ -714,6 +736,15 @@ def upload_to_r2(request):
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
 
+                    # Generate a unique 3-digit token for this job
+                    token = str(random.randint(100, 999))
+
+                    # Generate a unique job_id for this file (use original_filename + timestamp for idempotency)
+                    job_id = print_settings.get('job_id')
+                    if not job_id:
+                        job_id = str(uuid.uuid4())
+                        print_settings['job_id'] = job_id
+
                     # Determine content type
                     content_type = file.content_type or 'application/octet-stream'
 
@@ -744,6 +775,8 @@ def upload_to_r2(request):
 
                     # Create metadata object
                     file_metadata = {
+                        'job_id': job_id,
+                        'token': token,
                         'copies': str(print_settings.get("copies", "1")),
                         'color': print_settings.get("color", "bw"),
                         'orientation': print_settings.get("orientation", "portrait"),
@@ -828,6 +861,10 @@ def list_r2_files():
             key = obj["Key"]
             filename = key.split("/")[-1]
 
+            # Skip .json files (metadata, not print jobs)
+            if filename.lower().endswith('.json'):
+                continue
+
             try:
                 # Generate presigned URL for preview
                 url = s3.generate_presigned_url(
@@ -864,6 +901,7 @@ def list_r2_files():
                 # Build file info
                 file_info = {
                     "filename": filename,
+                    "job_id": metadata.get('job_id', ''),
                     "preview_url": url,
                     "download_url": download_url,
                     "file_type": file_type,
@@ -885,7 +923,8 @@ def list_r2_files():
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "trash": metadata.get('trash', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
-                    "service_type": metadata.get('service_type', '')  # Add service type
+                    "service_type": metadata.get('service_type', ''),  # Add service type
+                    "token": metadata.get('token', '')  # Add token field
                 }
 
                 # Create print options string

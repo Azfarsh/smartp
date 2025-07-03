@@ -403,14 +403,15 @@
         }
 
         .job-token {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            background: var(--bg-secondary);
-            padding: 4px 8px;
+            display: inline-block;
+            background: #2563eb;
+            color: #fff;
+            font-weight: bold;
             border-radius: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            padding: 0 0.5em;
+            margin-right: 0.5em;
+            font-size: 1.1em;
+            letter-spacing: 1px;
         }
 
         .job-status {
@@ -744,6 +745,21 @@
         .completed-job:hover .delete-btn {
             display: block;
         }
+
+        .show-token-btn {
+            background: #10b981;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0.4em 1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 0.5em;
+            font-size: 1em;
+        }
+        .show-token-btn:hover {
+            background: #059669;
+        }
     </style>
 </head>
 <body>
@@ -914,7 +930,7 @@
         // Global variables
         let allJobs = [];
         let filteredJobs = { manual: [], completed: [], requests: [] };
-        const manualServices = ['photo_prints', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'tracing_printing'];
+        const manualServices = ['photo_prints', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1050,8 +1066,8 @@
             const blockClass = type === 'completed' ? 'completed-job' : 
                               type === 'manual' ? 'manual-job' : 'pending-job';
 
-            // Generate token number
-            const tokenNumber = `#${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+            // Use the real token from job metadata
+            const tokenNumber = job.token ? `#${job.token}` : '';
 
             const serviceBadge = job.service_type ? 
                 `<div class="service-badge">${job.service_type.replace('_', ' ')}</div>` : '';
@@ -1172,14 +1188,22 @@
                 showToast('No file available to print.');
                 return;
             }
-            // Open a new window and print the file
+            // Open the file in a new window
             const printWindow = window.open(fileUrl, '_blank');
             if (printWindow) {
+                // For most browsers, wait for the file to load before printing
                 printWindow.onload = function() {
                     printWindow.focus();
                     printWindow.print();
                 };
-                    } else {
+                // Fallback for some browsers (especially for PDFs)
+                setTimeout(() => {
+                    try {
+                        printWindow.focus();
+                        printWindow.print();
+                    } catch (e) {}
+                }, 1500);
+            } else {
                 showToast('Popup blocked! Please allow popups for this site.');
             }
         }
@@ -1200,6 +1224,10 @@
             filteredJobs.completed = filteredJobs.completed.filter(job => job.filename !== filename);
             renderJobs('completed', filteredJobs.completed);
             showToast('Job removed from completed list.');
+        }
+
+        function showToken(token) {
+            alert('Token Number: ' + token + '\nShare this token with the user to view their completed job.');
         }
     </script>
 </body>
