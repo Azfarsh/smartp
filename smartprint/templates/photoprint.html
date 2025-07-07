@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Print Modal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 8px;
+            width: 95%;
+            max-width: 1000px;
+            height: 90%;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #d0d0d0;
+        }
+
+        .modal-title {
+            font-size: 14px;
+            font-weight: 400;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 3px;
+            transition: background-color 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 16px;
+            overflow: hidden;
+        }
+
+        .question-text {
+            font-size: 16px;
+            color: #0066cc;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+
+        .image-mode-selection {
+            margin-bottom: 16px;
+            padding: 16px;
+            background: #f8f8f8;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            border-color: #0066cc;
+            background: #f0f8ff;
+        }
+
+        .mode-btn.selected {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+
+        .mode-description {
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .settings-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .setting-label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .setting-select {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+            background: white;
+            color: #333;
+            min-width: 120px;
+        }
+
+        .preview-container {
+            flex: 1;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 300px;
+            max-width: 500px;
+            max-height: 400px;
+            overflow: hidden;
+        }
+
+        .preview-area {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .page-preview {
+            width: 240px;
+            height: 320px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: grid;
+            gap: 4px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .page-preview.layout-1x1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .page-preview.layout-2x1 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .page-preview.layout-2x2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+
+        .page-preview.layout-2x3 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+        }
+
+        .page-preview.layout-3x3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+        }
+
+        /* Adjust cell sizing for different layouts */
+        .page-preview.layout-1x1 .preview-cell {
+            aspect-ratio: 3/4;
+        }
+
+        .page-preview.layout-2x1 .preview-cell {
+            aspect-ratio: 3/2;
+        }
+
+        .page-preview.layout-2x2 .preview-cell {
+            aspect-ratio: 1;
+        }
+
+        .page-preview.layout-2x3 .preview-cell {
+            aspect-ratio: 3/4;
+        }
+
+        .page-preview.layout-3x3 .preview-cell {
+            aspect-ratio: 1;
+        }
+
+        .preview-cell {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            min-height: 50px;
+            aspect-ratio: 1;
+        }
+
+        .preview-cell img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 1px;
+        }
+
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 14px;
+            gap: 8px;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            background: #fafafa;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #0066cc;
+            background: #f0f8ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #999;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .add-more-images {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        .add-more-btn {
+            padding: 8px 12px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-more-btn:hover {
+            background: #0052a3;
+        }
+
+        .page-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .page-info {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .nav-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .nav-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .nav-btn:disabled {
+            background: #f5f5f5;
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .layout-options {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .layout-option {
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .layout-option:hover {
+            border-color: #0066cc;
+        }
+
+        .layout-option.selected {
+            border-color: #0066cc;
+            background: #e6f3ff;
+        }
+
+        .layout-preview {
+            width: 40px;
+            height: 50px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            display: grid;
+            gap: 1px;
+            background: white;
+            overflow: hidden;
+        }
+
+        .layout-preview.preview-1x1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .layout-preview.preview-2x1 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .layout-preview.preview-2x2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+
+        .layout-preview.preview-2x3 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+        }
+
+        .layout-preview.preview-3x3 {
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+        }
+
+        .layout-preview-cell {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: #666;
+        }
+
+        .layout-label {
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: #f8f8f8;
+            border-left: 1px solid #d0d0d0;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .layout-number-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .layout-number-option {
+            background: white;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .layout-number-option:hover {
+            border-color: #0066cc;
+            background: #f0f8ff;
+        }
+
+        .layout-number-option.selected {
+            border-color: #0066cc;
+            background: #e6f3ff;
+        }
+
+        .layout-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066cc;
+            background: #f0f8ff;
+            border: 2px solid #0066cc;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .layout-number-option.selected .layout-number {
+            background: #0066cc;
+            color: white;
+        }
+
+        .layout-description {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-top: 1px solid #d0d0d0;
+            background: #f8f8f8;
+        }
+
+        .copies-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .copies-label {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .copies-input {
+            width: 50px;
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .checkbox-section {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .checkbox-section input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .checkbox-section label {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 16px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+
+        .btn-primary:hover {
+            background: #0052a3;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .modal {
+                width: 98%;
+                height: 98%;
+            }
+
+            .modal-body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid #d0d0d0;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            .settings-row {
+                flex-wrap: wrap;
+            }
+
+            .layout-options {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    🖼️ Print Pictures
+                </h2>
+                <button class="close-btn" onclick="window.location.href='/userdashboard/'">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="main-content">
+                    <div class="question-text">How do you want to print your pictures?</div>
+                    
+                    <div class="image-mode-selection">
+                        <div class="mode-buttons">
+                            <button class="mode-btn selected" id="sameImageBtn" data-mode="same">
+                                Same Image
+                            </button>
+                            <button class="mode-btn" id="multipleImagesBtn" data-mode="multiple">
+                                Multiple Images
+                            </button>
+                        </div>
+                        <div class="mode-description" id="modeDescription">
+                            Print the same image multiple times in different layouts
+                        </div>
+                    </div>
+                    
+                    <div class="settings-row">
+                        <div class="setting-group">
+                            <label class="setting-label">Printer:</label>
+                            <select class="setting-select" id="printerSelect">
+                                <option>HP DeskJet 1510 series (Copy)</option>
+                                <option>Canon PIXMA</option>
+                                <option>Epson EcoTank</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Paper size:</label>
+                            <select class="setting-select" id="paperSizeSelect">
+                                <option>Letter</option>
+                                <option>A4 (210 x 297 mm)</option>
+                                <option>4x6 (10 x 15 cm)</option>
+                                <option>5x7 (13 x 18 cm)</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Quality:</label>
+                            <select class="setting-select" id="qualitySelect">
+                                <option>Automatic</option>
+                                <option>Best (600 DPI)</option>
+                                <option>High (300 DPI)</option>
+                                <option>Normal (150 DPI)</option>
+                                <option>Draft (75 DPI)</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">Paper type:</label>
+                            <select class="setting-select" id="paperTypeSelect">
+                                <option>Plain Paper, Normal</option>
+                                <option>Photo Paper, Glossy</option>
+                                <option>Photo Paper, Matte</option>
+                                <option>Heavy Paper</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="preview-container">
+                        <div class="preview-area">
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-icon">📁</div>
+                                <div class="upload-text">Drop images here or click to browse</div>
+                                <div class="upload-subtext">Supports JPG, PNG, GIF (max 10MB each)</div>
+                            </div>
+                            <div class="page-preview layout-1x1 hidden" id="pagePreview">
+                                <!-- Preview cells will be generated dynamically -->
+                            </div>
+                            <div class="add-more-images hidden" id="addMoreImages">
+                                <button class="add-more-btn" id="addMoreBtn">
+                                    + Add More Images
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+                        <input type="file" id="additionalFileInput" accept="image/*" multiple class="hidden">
+                    </div>
+
+                    <div class="page-navigation">
+                        <button class="nav-btn" id="prevBtn" disabled>◀</button>
+                        <span class="page-info" id="pageInfo">1 of 1 pages</span>
+                        <button class="nav-btn" id="nextBtn" disabled>▶</button>
+                    </div>
+
+                    <!-- Layout options removed from main content -->
+                </div>
+
+                <div class="sidebar">
+                    <div class="sidebar-title">Layout Options</div>
+                    <div class="layout-number-options">
+                        <div class="layout-number-option selected" data-count="1" data-layout="1x1">
+                            <div class="layout-number">1</div>
+                            <div class="layout-description">Full page photo</div>
+                        </div>
+                        <div class="layout-number-option" data-count="2" data-layout="2x1">
+                            <div class="layout-number">2</div>
+                            <div class="layout-description">2 photos per page</div>
+                        </div>
+                        <div class="layout-number-option" data-count="4" data-layout="2x2">
+                            <div class="layout-number">4</div>
+                            <div class="layout-description">4 photos per page</div>
+                        </div>
+                        <div class="layout-number-option" data-count="6" data-layout="2x3">
+                            <div class="layout-number">6</div>
+                            <div class="layout-description">6 photos per page</div>
+                        </div>
+                        <div class="layout-number-option" data-count="9" data-layout="3x3">
+                            <div class="layout-number">9</div>
+                            <div class="layout-description">9 photos per page</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="copies-section">
+                    <label class="copies-label">Copies of each:</label>
+                    <input type="number" class="copies-input" value="1" min="1" max="99">
+                </div>
+                
+                <div class="checkbox-section">
+                    <input type="checkbox" id="fitPicture" checked>
+                    <label for="fitPicture">Fit picture to frame</label>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="printBtn">Print</button>
+                    <button class="btn btn-secondary" id="cancelBtn">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let selectedLayout = '1x1';
+        let selectedCount = 1;
+        let uploadedImages = [];
+        let imageMode = 'same'; // 'same' or 'multiple'
+
+        // DOM elements
+        const pagePreview = document.getElementById('pagePreview');
+        const uploadArea = document.getElementById('uploadArea');
+        const layoutNumberOptions = document.querySelectorAll('.layout-number-option');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.querySelector('.preview-container');
+        const pageInfo = document.getElementById('pageInfo');
+        const printBtn = document.getElementById('printBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const closeBtn = document.querySelector('.close-btn');
+        const sameImageBtn = document.getElementById('sameImageBtn');
+        const multipleImagesBtn = document.getElementById('multipleImagesBtn');
+        const modeDescription = document.getElementById('modeDescription');
+        const addMoreImages = document.getElementById('addMoreImages');
+        const addMoreBtn = document.getElementById('addMoreBtn');
+        const additionalFileInput = document.getElementById('additionalFileInput');
+
+        // Initialize
+        updateModeDescription();
+
+        // Event listeners
+        sameImageBtn.addEventListener('click', () => {
+            if (imageMode !== 'same') {
+                imageMode = 'same';
+                sameImageBtn.classList.add('selected');
+                multipleImagesBtn.classList.remove('selected');
+                updateModeDescription();
+                resetUpload();
+            }
+        });
+
+        multipleImagesBtn.addEventListener('click', () => {
+            if (imageMode !== 'multiple') {
+                imageMode = 'multiple';
+                multipleImagesBtn.classList.add('selected');
+                sameImageBtn.classList.remove('selected');
+                updateModeDescription();
+                resetUpload();
+            }
+        });
+
+        layoutNumberOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                layoutNumberOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedLayout = option.dataset.layout;
+                selectedCount = parseInt(option.dataset.count);
+                updatePreview();
+            });
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files);
+            }
+        });
+
+        addMoreBtn.addEventListener('click', () => {
+            additionalFileInput.click();
+        });
+
+        additionalFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleAdditionalFileUpload(e.target.files);
+            }
+        });
+
+        printBtn.addEventListener('click', () => {
+            submitPhotoPrintJob();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            window.location.href = '/userdashboard/';
+        });
+
+        closeBtn.addEventListener('click', () => {
+            window.location.href = '/userdashboard/';
+        });
+
+        // Functions
+        function updateModeDescription() {
+            if (imageMode === 'same') {
+                modeDescription.textContent = 'Print the same image multiple times in different layouts';
+                fileInput.removeAttribute('multiple');
+            } else {
+                modeDescription.textContent = 'Upload multiple different images to arrange on the page';
+                fileInput.setAttribute('multiple', true);
+            }
+        }
+
+        function resetUpload() {
+            uploadedImages = [];
+            uploadArea.classList.remove('hidden');
+            pagePreview.classList.add('hidden');
+            addMoreImages.classList.add('hidden');
+            fileInput.value = '';
+            additionalFileInput.value = '';
+            
+            // Remove any existing prompts
+            const existingPrompt = document.querySelector('.upload-prompt');
+            if (existingPrompt) existingPrompt.remove();
+        }
+
+        function handleFileUpload(files) {
+            uploadedImages = [];
+            let loadedCount = 0;
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            
+            if (imageFiles.length === 0) return;
+
+            if (imageMode === 'same') {
+                // Only take the first image for "same image" mode
+                const file = imageFiles[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedImages = [e.target.result];
+                    showPreview();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Load all images for "multiple images" mode
+                imageFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImages.push(e.target.result);
+                        loadedCount++;
+                        if (loadedCount === imageFiles.length) {
+                            showPreview();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        function showPreview() {
+            uploadArea.classList.add('hidden');
+            pagePreview.classList.remove('hidden');
+            updatePreview();
+        }
+
+        function updatePreview() {
+            if (uploadedImages.length === 0) return;
+            
+            // Clear existing preview
+            pagePreview.innerHTML = '';
+            
+            // Set layout class
+            pagePreview.className = `page-preview layout-${selectedLayout}`;
+            
+            // Create cells based on selected count and mode
+            for (let i = 0; i < selectedCount; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'preview-cell';
+                
+                let imageToShow;
+                if (imageMode === 'same') {
+                    // Use the same image for all cells
+                    imageToShow = uploadedImages[0];
+                } else {
+                    // Use different images or show placeholder
+                    imageToShow = uploadedImages[i];
+                }
+                
+                if (imageToShow) {
+                    const img = document.createElement('img');
+                    img.src = imageToShow;
+                    img.alt = `Image ${i + 1}`;
+                    cell.appendChild(img);
+                } else {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'preview-placeholder';
+                    placeholder.textContent = `Upload Image ${i + 1}`;
+                    cell.appendChild(placeholder);
+                }
+                
+                pagePreview.appendChild(cell);
+            }
+
+            // Update info text based on mode
+            if (imageMode === 'multiple' && uploadedImages.length < selectedCount) {
+                updateUploadPrompt();
+            }
+        }
+
+        function handleAdditionalFileUpload(files) {
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            if (imageFiles.length === 0) return;
+
+            let loadedCount = 0;
+            imageFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedImages.push(e.target.result);
+                    loadedCount++;
+                    if (loadedCount === imageFiles.length) {
+                        updatePreview();
+                        additionalFileInput.value = '';
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function updateUploadPrompt() {
+            const needed = selectedCount - uploadedImages.length;
+            if (needed > 0) {
+                const promptText = document.createElement('div');
+                promptText.className = 'upload-prompt';
+                promptText.textContent = `You need ${needed} more image${needed > 1 ? 's' : ''} for this layout`;
+                promptText.style.cssText = 'position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: #fff3cd; padding: 8px 12px; border-radius: 4px; font-size: 11px; color: #856404; border: 1px solid #ffeaa7;';
+                
+                // Remove existing prompt
+                const existingPrompt = document.querySelector('.upload-prompt');
+                if (existingPrompt) existingPrompt.remove();
+                
+                previewContainer.style.position = 'relative';
+                previewContainer.appendChild(promptText);
+
+                // Show "Add More Images" button in multiple mode
+                if (imageMode === 'multiple') {
+                    addMoreImages.classList.remove('hidden');
+                }
+            } else {
+                // Hide "Add More Images" button when no more images needed
+                addMoreImages.classList.add('hidden');
+                const existingPrompt = document.querySelector('.upload-prompt');
+                if (existingPrompt) existingPrompt.remove();
+            }
+        }
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#0066cc';
+            uploadArea.style.backgroundColor = '#f0f8ff';
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            uploadArea.style.backgroundColor = '#fafafa';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            uploadArea.style.backgroundColor = '#fafafa';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files);
+            }
+        });
+
+        // Function to submit photo print job
+        async function submitPhotoPrintJob() {
+            if (uploadedImages.length === 0) {
+                alert('Please upload at least one image before submitting.');
+                return;
+            }
+
+            // Disable the print button and show loading state
+            printBtn.disabled = true;
+            printBtn.textContent = 'Processing...';
+
+            try {
+                // Get form data
+                const formData = new FormData();
+                
+                // Get settings
+                const printer = document.getElementById('printerSelect').value;
+                const paperSize = document.getElementById('paperSizeSelect').value;
+                const quality = document.getElementById('qualitySelect').value;
+                const paperType = document.getElementById('paperTypeSelect').value;
+                const copies = document.querySelector('.copies-input').value;
+                const fitPicture = document.getElementById('fitPicture').checked;
+
+                // Generate unique job ID for photo print job
+                const jobId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Create metadata
+                const metadata = {
+                    service_type: 'photo_print',
+                    service_name: 'Photo Print',
+                    job_id: jobId,
+                    image_mode: imageMode,
+                    layout: selectedLayout,
+                    photo_count: selectedCount,
+                    printer: printer,
+                    paper_size: paperSize,
+                    quality: quality,
+                    paper_type: paperType,
+                    copies: parseInt(copies),
+                    fit_picture: fitPicture,
+                    timestamp: new Date().toISOString(),
+                    status: "pending",
+                    job_completed: "NO",
+                    trash: "NO"
+                };
+
+                // Convert base64 images to files and add to form data
+                for (let i = 0; i < uploadedImages.length; i++) {
+                    const base64Data = uploadedImages[i];
+                    const response = await fetch(base64Data);
+                    const blob = await response.blob();
+                    const file = new File([blob], `photo_${i + 1}.jpg`, { type: 'image/jpeg' });
+                    formData.append(`file_${i}`, file);
+                }
+
+                formData.append('file_count', uploadedImages.length);
+                formData.append('settings_0', JSON.stringify(metadata));
+                formData.append('selected_vendor', 'testshop');
+
+                // Submit to server
+                const response = await fetch('/upload/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('Photo print job submitted successfully!');
+                    window.location.href = '/userdashboard/';
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to submit photo print job');
+                }
+
+            } catch (error) {
+                console.error('Error submitting photo print job:', error);
+                alert(`Error: ${error.message || 'Failed to submit photo print job. Please try again.'}`);
+            } finally {
+                // Re-enable the print button
+                printBtn.disabled = false;
+                printBtn.textContent = 'Print';
+            }
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from .views import (home, userdashboard, vendordashboard, upload_to_r2,
                     get_print_requests, process_print_request, auto_print_documents, update_job_status,
-                    auth_receiver, sign_in)
+                    auth_receiver, sign_in, photoprint)
 
 
 urlpatterns = [
@@ -18,5 +18,6 @@ urlpatterns = [
     path('update-job-status/', update_job_status, name='update-job-status'),
     path('login/', sign_in, name='login'),
     path('auth-receiver/', auth_receiver, name='auth_receiver'),
+    path('photoprint/', photoprint, name='photoprint'),
 ]
 

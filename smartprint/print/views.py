@@ -25,73 +25,37 @@ def vendordashboard(request):
     try:
         files = list_r2_files()
 
-        # Deduplicate by job_id, then by filename
-        unique_files = {}
-        for file in files:
-            job_id = file.get('job_id')
-            key = job_id if job_id else file.get('filename')
-            file_path = file.get('preview_url', '')
-            # Prefer testshop/ jobs
-            if '/testshop/' in file_path or file_path.startswith('testshop/'):
-                unique_files[key] = file
-            elif key not in unique_files:
-                unique_files[key] = file
-        files = list(unique_files.values())
-
-        # Service types that require manual printing
-        manual_services = ['photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing']
-
-        # Enhanced categorization for manual print jobs
+        manual_services = [
+            'photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
+        ]
         manual_print_jobs = []
         print_requests = []
         completed_jobs = []
 
-        for file in files:
-            job_completed = file.get('job_completed', 'NO')
-            service_type = file.get('service_type', '')
-            file_path = file.get('preview_url', '')
-            # Only include jobs from testshop with job_completed == 'NO'
-            if ('/testshop/' in file_path or file_path.startswith('testshop/')) and job_completed == 'NO':
-                # Check if it's a manual service job
-                if service_type and service_type in manual_services:
-                    manual_print_jobs.append(file)
-                else:
-                    print_requests.append(file)
+        for job in files:
+            job_completed = job.get('job_completed', 'NO').upper()
+            service_type = job.get('service_type', '').strip().lower()
+            if job_completed == 'NO':
+                if service_type == 'regular print':
+                    print_requests.append(job)
+                elif service_type in manual_services:
+                    manual_print_jobs.append(job)
             elif job_completed == 'YES':
-                completed_jobs.append(file)
-
-        # Debug logging
-        print(f"📊 Dashboard Stats:")
-        print(f"   - Total files: {len(files)}")
-        print(f"   - Manual print jobs: {len(manual_print_jobs)}")
-        print(f"   - Print requests: {len(print_requests)}")
-        print(f"   - Completed jobs: {len(completed_jobs)}")
-        
-        # Log some manual jobs for debugging
-        for job in manual_print_jobs[:3]:
-            print(f"   - Manual job: {job.get('filename')} (service: {job.get('service_type')})")
+                completed_jobs.append(job)
 
         context = {
-            'manual_print_count': len(manual_print_jobs),
-            'print_requests_count': len(print_requests),
-            'completed_jobs_count': len(completed_jobs),
-            'total_jobs': len(files),
             'manual_print_jobs': manual_print_jobs,
             'print_requests': print_requests,
-            'completed_jobs': completed_jobs
+            'completed_jobs': completed_jobs,
+            # ... add other context variables as needed ...
         }
-
         return render(request, 'vendordashboard.html', context)
     except Exception as e:
         print(f"Error loading vendor dashboard data: {str(e)}")
         return render(request, 'vendordashboard.html', {
-            'manual_print_count': 0,
-            'print_requests_count': 0,
-            'completed_jobs_count': 0,
-            'total_jobs': 0,
             'manual_print_jobs': [],
             'print_requests': [],
-            'completed_jobs': []
+            'completed_jobs': [],
         })
 
 
@@ -391,11 +355,12 @@ def get_pending_print_jobs():
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                     metadata = head_response.get('Metadata', {})
                     
-                    # Check if job is pending (job_completed = 'NO')
+                    # Check if job is pending (job_completed = 'NO') and service_type is 'regular print'
                     job_completed = metadata.get('job_completed', 'NO').upper()
                     status = metadata.get('status', 'pending').lower()
+                    service_type = metadata.get('service_type', '').strip().lower()
                     
-                    if job_completed == 'NO' or status == 'pending':
+                    if (job_completed == 'NO' or status == 'pending') and service_type == 'regular print':
                         # Generate download URL with proper R2 structure
                         download_url = f"printme/{key}"  # Add printme prefix for R2 structure validation
                         
@@ -433,7 +398,7 @@ def get_pending_print_jobs():
                         }
                         
                         pending_jobs.append(job_info)
-                        print(f"✅ Found pending job: {filename} (status: {status}, completed: {job_completed})")
+                        print(f"✅ Found pending REGULAR PRINT job: {filename} (status: {status}, completed: {job_completed})")
                         
                 except Exception as e:
                     print(f"Error processing testshop file {key}: {str(e)}")
@@ -778,8 +743,8 @@ def upload_to_r2(request):
                         'job_id': job_id,
                         'token': token,
                         'copies': str(print_settings.get("copies", "1")),
-                        'color': print_settings.get("color", "bw"),
-                        'orientation': print_settings.get("orientation", "portrait"),
+                        'color': str(print_settings.get("color", "bw")),
+                        'orientation': str(print_settings.get("orientation", "portrait")),
                         'pagerange': str(print_settings.get("pageRange", "all")),
                         'specificpages': str(print_settings.get("specificPages", "")),
                         'pagesize': str(print_settings.get("pageSize", "A4")),
@@ -794,14 +759,33 @@ def upload_to_r2(request):
                         'pages': str(estimate_pages_from_size(len(file_content), file_extension)),
                         'vendor': selected_vendor,
                         'original_filename': file.name,
-                        'service_type': print_settings.get("service_type", "")  # Add service type
+                        'service_type': str(print_settings.get("service_type", "")),
+                        'service_name': str(print_settings.get("service_name", ""))
                     }
 
-                    # Create vendor-specific file path (for vendor processing)
-                    vendor_file_key = f"{selected_vendor}/{file.name}"
+                    # Add photo print specific metadata
+                    service_type = print_settings.get("service_type", "")
+                    if service_type == "photo_print":
+                        file_metadata.update({
+                            'image_mode': str(print_settings.get("image_mode", "")),
+                            'layout': str(print_settings.get("layout", "")),
+                            'photo_count': str(print_settings.get("photo_count", "")),
+                            'printer': str(print_settings.get("printer", "")),
+                            'paper_size': str(print_settings.get("paper_size", "")),
+                            'quality': str(print_settings.get("quality", "")),
+                            'paper_type': str(print_settings.get("paper_type", "")),
+                            'fit_picture': str(print_settings.get("fit_picture", False))
+                        })
 
-                    # Create user-specific file path (for user dashboard)
-                    user_file_key = f"users/{user_email}/{file.name}"
+                    # Handle photo print jobs with special folder structure
+                    if service_type == "photo_print" and job_id:
+                        # For photo print jobs, create a job-specific folder
+                        vendor_file_key = f"{selected_vendor}/photo_jobs/{job_id}/{file.name}"
+                        user_file_key = f"users/{user_email}/photo_jobs/{job_id}/{file.name}"
+                    else:
+                        # For regular jobs, use the standard structure
+                        vendor_file_key = f"{selected_vendor}/{file.name}"
+                        user_file_key = f"users/{user_email}/{file.name}"
 
                     # Upload to vendor folder (for vendor processing)
                     s3.put_object(
@@ -853,10 +837,11 @@ def list_r2_files():
                       region_name='auto')
 
     try:
-        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET)
+        # Only get files from testshop folder
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='testshop/')
         file_data = []
 
-        # Process all files and get their metadata
+        # Process testshop files and get their metadata
         for obj in objects.get("Contents", []):
             key = obj["Key"]
             filename = key.split("/")[-1]
@@ -866,6 +851,15 @@ def list_r2_files():
                 continue
 
             try:
+                # Get object metadata first
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                metadata = head_response.get('Metadata', {})
+                job_completed = metadata.get('job_completed', 'NO').upper()
+
+                # Only include jobs with job_completed == 'NO' or 'YES'
+                if job_completed not in ['NO', 'YES']:
+                    continue
+
                 # Generate presigned URL for preview
                 url = s3.generate_presigned_url(
                     ClientMethod='get_object',
@@ -886,10 +880,6 @@ def list_r2_files():
                     },
                     ExpiresIn=3600
                 )
-
-                # Get object metadata
-                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
-                metadata = head_response.get('Metadata', {})
 
                 # Determine file type and icon
                 file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
@@ -923,8 +913,9 @@ def list_r2_files():
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "trash": metadata.get('trash', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
-                    "service_type": metadata.get('service_type', ''),  # Add service type
-                    "token": metadata.get('token', '')  # Add token field
+                    "service_type": metadata.get('service_type', ''),
+                    "service_name": metadata.get('service_name', ''),
+                    "token": metadata.get('token', '')
                 }
 
                 # Create print options string
@@ -936,6 +927,11 @@ def list_r2_files():
                 print(f"Error processing file {key}: {str(e)}")
                 continue
 
+        # Count jobs by status
+        pending_count = len([job for job in file_data if job['job_completed'] == 'NO'])
+        completed_count = len([job for job in file_data if job['job_completed'] == 'YES'])
+        
+        print(f"📋 Total jobs found: {len(file_data)} (Pending: {pending_count}, Completed: {completed_count})")
         return file_data
 
     except Exception as e:
@@ -1112,3 +1108,10 @@ def auth_receiver(request):
             return JsonResponse({'status': 'success', 'email': email})
         return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+def photoprint(request):
+    """
+    Render the photo print page
+    """
+    return render(request, 'photoprint.html')

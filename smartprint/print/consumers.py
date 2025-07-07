@@ -45,6 +45,27 @@ class VendorConsumer(AsyncWebsocketConsumer):
             data = json.loads(text_data)
             message_type = data.get('type')
             
+            if message_type == 'auth':
+                # Handle authentication (from vendor/consumers.py)
+                token = data.get('token')
+                if await self.verify_token(token):
+                    await self.send(json.dumps({
+                        'type': 'auth_status',
+                        'status': 'success'
+                    }))
+                else:
+                    await self.send(json.dumps({
+                        'type': 'auth_status',
+                        'status': 'error',
+                        'message': 'Invalid token'
+                    }))
+                return
+            
+            if message_type == 'print_status':
+                # Handle print status updates (from vendor/consumers.py)
+                await self.handle_print_status(data)
+                return
+            
             if message_type == 'request_print_jobs':
                 # Enhanced request handling with R2 folder structure validation
                 await self.handle_print_jobs_request(data)
@@ -384,4 +405,32 @@ class VendorConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'priority_job',
             'job': event['job']
+        }))
+
+    @database_sync_to_async
+    def verify_token(self, token):
+        """Verify vendor token (from vendor/consumers.py)"""
+        # Add your token verification logic here
+        return True  # For testing, always return True
+
+    @database_sync_to_async
+    def handle_print_status(self, data):
+        """Handle print status updates (from vendor/consumers.py)"""
+        try:
+            from .models import PrintJob
+            print_job = PrintJob.objects.get(id=data.get('request_id'))
+            print_job.status = data.get('status')
+            print_job.save()
+        except PrintJob.DoesNotExist:
+            logger.error(f"Print job {data.get('request_id')} not found")
+        except Exception as e:
+            logger.error(f"Error updating print job status: {e}")
+
+    async def send_print_request(self, event):
+        """Send print request to vendor (from vendor/consumers.py)"""
+        print_job = event['print_job']
+        await self.send(json.dumps({
+            'type': 'print_request',
+            'file_url': print_job['file_url'],
+            'request_id': print_job['id']
         }))

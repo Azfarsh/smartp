@@ -986,21 +986,18 @@
         }
 
         function categorizeJobs() {
-            // Manual Print Jobs (job_completed = 'NO' AND has manual service type or service name)
+            // Manual Print Jobs (job_completed = 'NO' AND has service_type or service_name field present)
             const manual = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
-                // Normalize both service_type and service_name for comparison
-                const typeNorm = (job.service_type || '').toLowerCase().replace(/ /g, '_');
-                const nameNorm = (job.service_name || '').toLowerCase().replace(/ /g, '_');
-                return manualServices.includes(typeNorm) || manualServices.includes(nameNorm);
+                // Only include jobs that have a non-empty service_type or service_name field
+                return (job.service_type && job.service_type.trim() !== '') || (job.service_name && job.service_name.trim() !== '');
             });
 
             // Print Requests (job_completed = 'NO' AND not a manual service)
             const requests = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
-                const typeNorm = (job.service_type || '').toLowerCase().replace(/ /g, '_');
-                const nameNorm = (job.service_name || '').toLowerCase().replace(/ /g, '_');
-                return !manualServices.includes(typeNorm) && !manualServices.includes(nameNorm);
+                // Exclude jobs that have a non-empty service_type or service_name field
+                return !( (job.service_type && job.service_type.trim() !== '') || (job.service_name && job.service_name.trim() !== '') );
             });
 
             // Completed Jobs (job_completed = 'YES')
