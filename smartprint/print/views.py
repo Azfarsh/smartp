@@ -12,6 +12,8 @@ import uuid
 import random
 import re
 from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
+import os
 
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
@@ -45,11 +47,28 @@ def vendordashboard(request):
             elif job_completed == 'YES':
                 completed_jobs.append(job)
 
+        # --- NEW: Fetch vendor details from R2 ---
+        vendor_email = request.session.get('vendor_email') or request.GET.get('vendor_email')
+        vendor_details = None
+        if vendor_email:
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            try:
+                reg_key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                vendor_details = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                print(f"Error fetching vendor details for dashboard: {str(e)}")
+                vendor_details = None
+
         context = {
             'manual_print_jobs': manual_print_jobs,
             'print_requests': print_requests,
             'completed_jobs': completed_jobs,
-            # ... add other context variables as needed ...
+            'vendor_details': vendor_details,
         }
         return render(request, 'vendordashboard.html', context)
     except Exception as e:
@@ -58,6 +77,7 @@ def vendordashboard(request):
             'manual_print_jobs': [],
             'print_requests': [],
             'completed_jobs': [],
+            'vendor_details': None,
         })
 
 
@@ -1140,14 +1160,11 @@ def vendor_pricing(request):
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
-            vendor_id = data.get('vendor_id')
+            vendor_email = data.get('vendor_email') or data.get('email') or data.get('vendor_id')
             pricing_entries = data.get('pricing_entries', [])
 
-            if not vendor_id or not pricing_entries:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Vendor ID and pricing entries are required'
-                })
+            if not vendor_email:
+                return JsonResponse({'success': False, 'message': 'Vendor email required'})
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -1158,21 +1175,21 @@ def vendor_pricing(request):
 
             # Prepare pricing data
             pricing_data = {
-                'vendor_id': vendor_id,
+                'vendor_email': vendor_email,
                 'pricing_data': data.get('pricing_data', {}),
                 'created_at': datetime.datetime.now().isoformat(),
                 'updated_at': datetime.datetime.now().isoformat()
             }
 
             file_content = json.dumps(pricing_data, indent=4)
-            file_key = f"vendor register details/pricing_{vendor_id}.json"
+            file_key = f"vendor_register_details/{sanitize_email(vendor_email)}/pricing.json"
 
             s3.put_object(Bucket=settings.R2_BUCKET,
                           Key=file_key,
                           Body=file_content,
                           ContentType='application/json')
 
-            print(f"✅ Successfully saved pricing data for vendor {vendor_id}")
+            print(f"✅ Successfully saved pricing data for vendor {vendor_email}")
 
             return JsonResponse({
                 'success': True,
@@ -1205,7 +1222,7 @@ def vendor_info(request, vendor_id):
                           region_name='auto')
 
         # Look for vendor registration file
-        file_key = f"vendor register details/vendor_{vendor_id}.json"
+        file_key = f"vendor_register_details/{sanitize_email(vendor_id)}/registration_details.json"
 
         try:
             response = s3.get_object(Bucket=settings.R2_BUCKET, Key=file_key)
@@ -1239,12 +1256,12 @@ def vendor_info(request, vendor_id):
 @csrf_exempt
 def vendor_login(request):
     """
-    Handle vendor login by email (not vendor_id/UUID)
+    Handle vendor login by email using new R2 storage structure
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            email = data.get('vendor_id')  # frontend sends email as 'vendor_id'
+            email = data.get('email')  # frontend now sends email as 'email'
             password = data.get('password')
 
             if not email or not password:
@@ -1260,67 +1277,76 @@ def vendor_login(request):
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
 
-            # Search for vendor by email in all vendor register details
+            # Search for vendor by email in the new R2 structure
             found_vendor = None
             vendor_id = None
-            objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor register details/')
-            for obj in objects.get("Contents", []):
-                if obj["Key"].endswith('.json'):
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
-                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
-                    if vendor_data.get('email') == email:
-                        found_vendor = vendor_data
-                        vendor_id = vendor_data.get('vendor_id')
-                        break
-            if not found_vendor:
-                # Log failed attempt
-                login_log = {
-                    'timestamp': datetime.datetime.now().isoformat(),
-                    'vendor_id': None,
-                    'email': email,
-                    'ip': request.META.get('REMOTE_ADDR'),
-                    'result': 'failure'
-                }
-                log_key = f"vendor login details/{email.replace('@','_at_')}-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.json"
-                s3.put_object(Bucket=settings.R2_BUCKET, Key=log_key, Body=json.dumps(login_log), ContentType='application/json')
+            
+            try:
+                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+                for obj in objects.get("Contents", []):
+                    if obj["Key"].endswith('/login_details.json'):
+                        try:
+                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                            login_details = json.loads(response['Body'].read().decode('utf-8'))
+                            if login_details.get('email') == email:
+                                found_vendor = login_details
+                                # Extract vendor_id from the key path
+                                vendor_id = obj["Key"].split('/')[1].replace('vendor_', '')
+                                break
+                        except Exception as e:
+                            print(f"Error reading login details from {obj['Key']}: {str(e)}")
+                            continue
+                
+                if not found_vendor:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Vendor not found with this email address'
+                    })
+                
+                # Check password
+                if check_password(password, found_vendor['hashed_password']):
+                    # Update last login timestamp
+                    found_vendor['last_login'] = timezone.now().isoformat()
+                    login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
+                    s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(found_vendor), ContentType='application/json')
+                    
+                    # Get vendor registration details for additional info
+                    try:
+                        reg_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=f'vendor_register_details/{sanitize_email(email)}/registration_details.json')
+                        reg_details = json.loads(reg_response['Body'].read().decode('utf-8'))
+                        vendor_name = reg_details.get('vendor_name', '')
+                    except:
+                        vendor_name = ''
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Login successful',
+                        'vendor': {
+                            'vendor_id': vendor_id,
+                            'vendor_name': vendor_name,
+                            'email': email
+                        }
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid password'
+                    })
+                    
+            except Exception as e:
+                print(f"Error searching for vendor: {str(e)}")
                 return JsonResponse({
                     'success': False,
-                    'message': 'Invalid vendor email or password'
+                    'message': 'Error finding vendor account'
                 })
-            # Check password
-            stored_password_hash = found_vendor.get('password_hash', '')
-            login_result = check_password(password, stored_password_hash)
-            # Log attempt
-            login_log = {
-                'timestamp': datetime.datetime.now().isoformat(),
-                'vendor_id': vendor_id,
-                'email': email,
-                'ip': request.META.get('REMOTE_ADDR'),
-                'result': 'success' if login_result else 'failure'
-            }
-            log_key = f"vendor login details/{vendor_id or email.replace('@','_at_')}-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.json"
-            s3.put_object(Bucket=settings.R2_BUCKET, Key=log_key, Body=json.dumps(login_log), ContentType='application/json')
-            if login_result:
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Login successful',
-                    'vendor': {
-                        'vendor_id': vendor_id,
-                        'vendor_name': found_vendor.get('vendor_name', ''),
-                        'email': found_vendor.get('email', '')
-                    }
-                })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Invalid vendor email or password'
-                })
+                
         except Exception as e:
-            print(f"✖ Error during vendor login: {str(e)}")
+            print(f"Error during vendor login: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Login error: {str(e)}'
             })
+    
     return JsonResponse({
         'success': False,
         'message': 'Invalid request method'
@@ -1395,47 +1421,52 @@ def vendor_register_api(request):
 
             # Check if email already exists
             try:
-                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor register details/')
+                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=f'vendor_register_details/{sanitize_email(email)}/')
                 for obj in objects.get("Contents", []):
-                    if obj["Key"].endswith('.json'):
-                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
-                        existing_data = json.loads(response['Body'].read().decode('utf-8'))
-                        if existing_data.get('email') == email:
-                            return JsonResponse({
-                                'success': False,
-                                'message': 'Email already registered'
-                            })
+                    if obj["Key"].endswith('registration_details.json'):
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Email already registered'
+                        })
             except Exception as e:
                 print(f"Warning: Could not check for existing email: {str(e)}")
 
-            # Prepare vendor data
-            vendor_data = {
-                'vendor_id': vendor_id,
-                'email': email,
-                'password_hash': password_hash,
+            # Prepare registration details
+            registration_details = {
+                'vendor_email': email,
                 'vendor_name': vendor_name,
-                'phone_number': phone_clean,
+                'phone_number': phone_number,
                 'shop_address': shop_address,
                 'city': city,
                 'pincode': pincode,
-                'created_at': datetime.datetime.now().isoformat(),
-                'status': 'active'
+                'registration_date': timezone.now().isoformat(),
+                'hashed_password': password_hash
             }
+            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+            s3.put_object(Bucket=settings.R2_BUCKET, Key=reg_key, Body=json.dumps(registration_details), ContentType='application/json')
 
-            file_content = json.dumps(vendor_data, indent=4)
-            file_key = f"vendor register details/vendor_{vendor_id}.json"
+            # Prepare login details
+            login_details = {
+                'email': email,
+                'hashed_password': password_hash,
+                'last_login': None
+            }
+            login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
+            s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(login_details), ContentType='application/json')
 
-            s3.put_object(Bucket=settings.R2_BUCKET,
-                          Key=file_key,
-                          Body=file_content,
-                          ContentType='application/json')
+            # Prepare pricing details if present
+            pricing_entries = data.get('pricing_entries', [])
+            for entry in pricing_entries:
+                pricing_id = str(uuid.uuid4())
+                key = f'vendor_register_details/{sanitize_email(email)}/pricing_details/pricing_{pricing_id}.json'
+                s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
 
-            print(f"✅ Successfully registered vendor {vendor_id} ({email})")
+            print(f"✅ Successfully registered vendor {email}")
 
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful',
-                'vendor_id': vendor_id
+                'vendor_email': email
             })
 
         except Exception as e:
@@ -1449,5 +1480,12 @@ def vendor_register_api(request):
         'success': False,
         'message': 'Invalid request method'
     })
+
+def sanitize_email(email):
+    # Lowercase, replace @ with _at_, . with _dot_, and remove other special chars
+    return re.sub(r'[^a-zA-Z0-9_]', '', email.lower().replace('@', '_at_').replace('.', '_dot_'))
+
+def vendor_email_folder(email):
+    return f'vendor_register_details/{sanitize_email(email)}'
 
 # This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.
