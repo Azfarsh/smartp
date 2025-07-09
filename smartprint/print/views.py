@@ -10,6 +10,8 @@ import json
 import requests
 import uuid
 import random
+import re
+from django.contrib.auth.hashers import make_password, check_password
 
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
@@ -1115,3 +1117,329 @@ def photoprint(request):
     Render the photo print page
     """
     return render(request, 'photoprint.html')
+
+
+# ─────────────────────────────────────────────────────────────
+# VENDOR REGISTRATION AND PRICING VIEWS
+# ─────────────────────────────────────────────────────────────
+
+def vendor_register(request):
+    """
+    Render the vendor registration page
+    """
+    return render(request, 'vendor_register.html')
+
+
+@csrf_exempt
+def vendor_pricing(request):
+    """
+    Render the pricing form on GET, handle pricing submission on POST.
+    """
+    if request.method == 'GET':
+        return render(request, 'vendor_pricing.html')
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_id = data.get('vendor_id')
+            pricing_entries = data.get('pricing_entries', [])
+            
+            if not vendor_id or not pricing_entries:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Vendor ID and pricing entries are required'
+                })
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Save pricing data to R2 storage
+            pricing_data = {
+                'vendor_id': vendor_id,
+                'pricing_entries': pricing_entries,
+                'created_at': datetime.datetime.now().isoformat(),
+                'updated_at': datetime.datetime.now().isoformat()
+            }
+            
+            file_content = json.dumps(pricing_data, indent=4)
+            file_key = f"vendor register details/pricing_{vendor_id}.json"
+            
+            s3.put_object(Bucket=settings.R2_BUCKET,
+                          Key=file_key,
+                          Body=file_content,
+                          ContentType='application/json')
+            
+            print(f"✅ Successfully saved pricing data for vendor {vendor_id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Pricing saved successfully'
+            })
+            
+        except Exception as e:
+            print(f"❌ Error saving pricing data: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Error saving pricing: {str(e)}'
+            })
+    else:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method'
+        })
+
+
+def vendor_info(request, vendor_id):
+    """
+    Get vendor information by vendor ID
+    """
+    try:
+        # Initialize S3 client
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Look for vendor registration file
+        file_key = f"vendor register details/vendor_{vendor_id}.json"
+        
+        try:
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=file_key)
+            vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+            
+            return JsonResponse({
+                'success': True,
+                'vendor': {
+                    'vendor_id': vendor_id,
+                    'vendor_name': vendor_data.get('vendor_name', ''),
+                    'email': vendor_data.get('email', ''),
+                    'phone_number': vendor_data.get('phone_number', '')
+                }
+            })
+            
+        except s3.exceptions.NoSuchKey:
+            return JsonResponse({
+                'success': False,
+                'message': 'Vendor not found'
+            })
+            
+    except Exception as e:
+        print(f"❌ Error fetching vendor info: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Error fetching vendor info: {str(e)}'
+        })
+
+
+# Add vendor login endpoint
+@csrf_exempt
+def vendor_login(request):
+    """
+    Handle vendor login by email (not vendor_id/UUID)
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('vendor_id')  # frontend sends email as 'vendor_id'
+            password = data.get('password')
+            
+            if not email or not password:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Email and password are required'
+                })
+            
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Search for vendor by email in all vendor register details
+            found_vendor = None
+            vendor_id = None
+            objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor register details/')
+            for obj in objects.get("Contents", []):
+                if obj["Key"].endswith('.json'):
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                    if vendor_data.get('email') == email:
+                        found_vendor = vendor_data
+                        vendor_id = vendor_data.get('vendor_id')
+                        break
+            if not found_vendor:
+                # Log failed attempt
+                login_log = {
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'vendor_id': None,
+                    'email': email,
+                    'ip': request.META.get('REMOTE_ADDR'),
+                    'result': 'failure'
+                }
+                log_key = f"vendor login details/{email.replace('@','_at_')}-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+                s3.put_object(Bucket=settings.R2_BUCKET, Key=log_key, Body=json.dumps(login_log), ContentType='application/json')
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid vendor email or password'
+                })
+            # Check password
+            stored_password_hash = found_vendor.get('password_hash', '')
+            login_result = check_password(password, stored_password_hash)
+            # Log attempt
+            login_log = {
+                'timestamp': datetime.datetime.now().isoformat(),
+                'vendor_id': vendor_id,
+                'email': email,
+                'ip': request.META.get('REMOTE_ADDR'),
+                'result': 'success' if login_result else 'failure'
+            }
+            log_key = f"vendor login details/{vendor_id or email.replace('@','_at_')}-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+            s3.put_object(Bucket=settings.R2_BUCKET, Key=log_key, Body=json.dumps(login_log), ContentType='application/json')
+            if login_result:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Login successful',
+                    'vendor': {
+                        'vendor_id': vendor_id,
+                        'vendor_name': found_vendor.get('vendor_name', ''),
+                        'email': found_vendor.get('email', '')
+                    }
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid vendor email or password'
+                })
+        except Exception as e:
+            print(f"✖ Error during vendor login: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Login error: {str(e)}'
+            })
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method'
+    })
+
+
+# Add vendor registration endpoint
+@csrf_exempt
+def vendor_register_api(request):
+    """
+    Handle vendor registration API
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            password = data.get('password')
+            vendor_name = data.get('vendor_name')
+            phone_number = data.get('phone_number')
+            
+            # Validate required fields
+            if not all([email, password, vendor_name, phone_number]):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'All fields are required'
+                })
+            
+            # Validate email format
+            email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+            if not re.match(email_regex, email):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please enter a valid email address'
+                })
+            
+            # Validate password strength
+            if len(password) < 8:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Password must be at least 8 characters long'
+                })
+            
+            if not re.search(r'[a-zA-Z]', password) or not re.search(r'\d', password):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Password must contain at least one letter and one number'
+                })
+            
+            # Validate phone number (10 digits)
+            phone_clean = re.sub(r'\D', '', phone_number)
+            if len(phone_clean) != 10:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please enter a valid 10-digit phone number'
+                })
+            
+            # Generate unique vendor ID
+            vendor_id = str(uuid.uuid4())
+            
+            # Hash password
+            password_hash = make_password(password)
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Check if email already exists
+            try:
+                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor register details/')
+                for obj in objects.get("Contents", []):
+                    if obj["Key"].endswith('.json'):
+                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                        existing_data = json.loads(response['Body'].read().decode('utf-8'))
+                        if existing_data.get('email') == email:
+                            return JsonResponse({
+                                'success': False,
+                                'message': 'Email already registered'
+                            })
+            except Exception as e:
+                print(f"Warning: Could not check for existing email: {str(e)}")
+            
+            # Save vendor registration data
+            vendor_data = {
+                'vendor_id': vendor_id,
+                'email': email,
+                'password_hash': password_hash,
+                'vendor_name': vendor_name,
+                'phone_number': phone_clean,
+                'created_at': datetime.datetime.now().isoformat(),
+                'status': 'active'
+            }
+            
+            file_content = json.dumps(vendor_data, indent=4)
+            file_key = f"vendor register details/vendor_{vendor_id}.json"
+            
+            s3.put_object(Bucket=settings.R2_BUCKET,
+                          Key=file_key,
+                          Body=file_content,
+                          ContentType='application/json')
+            
+            print(f"✅ Successfully registered vendor {vendor_id} ({email})")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Registration successful',
+                'vendor_id': vendor_id
+            })
+            
+        except Exception as e:
+            print(f"❌ Error during vendor registration: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Registration error: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method'
+    })
