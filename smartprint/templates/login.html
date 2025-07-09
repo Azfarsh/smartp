@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,104 +6,231 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login - PrintMe</title>
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <!-- Bootstrap Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet"/>
+  <!-- Material Design Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Google Sign-In -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     :root {
-      --primary-color: #1a73e8;
-      --primary-hover: #1557b0;
-      --secondary-color: #34a853;
-      --text-primary: #202124;
-      --text-secondary: #5f6368;
-      --border-color: #dadce0;
-      --light-gray: #f8f9fa;
+      --primary-blue: #1976D2;
+      --primary-blue-dark: #1565C0;
+      --primary-blue-light: #42A5F5;
+      --secondary-teal: #00ACC1;
+      --secondary-teal-light: #26C6DA;
+      --accent-orange: #FF9800;
+      --accent-orange-light: #FFB74D;
+      --success-green: #4CAF50;
+      --error-red: #F44336;
+      --warning-amber: #FFC107;
+      --text-primary: #212121;
+      --text-secondary: #757575;
+      --text-hint: #9E9E9E;
+      --surface: #FFFFFF;
+      --background: #F5F5F5;
+      --divider: #E0E0E0;
+      --shadow: rgba(0, 0, 0, 0.1);
+      --shadow-hover: rgba(0, 0, 0, 0.15);
     }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #87ceeb, #b0e0e6, #add8e6);
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #E3F2FD 0%, #E8F5E8 30%, #FFF3E0 60%, #F3E5F5 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
-      margin: 0;
-    }
-
-    .login-container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      max-width: 900px;
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      min-height: 600px;
+      position: relative;
       overflow: hidden;
     }
 
+    /* Animated background particles */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 20%, rgba(25, 118, 210, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0, 172, 193, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(255, 152, 0, 0.05) 0%, transparent 50%);
+      animation: backgroundShift 15s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes backgroundShift {
+      0%, 100% { transform: translateX(0) translateY(0); }
+      25% { transform: translateX(-20px) translateY(-10px); }
+      50% { transform: translateX(10px) translateY(-20px); }
+      75% { transform: translateX(-10px) translateY(10px); }
+    }
+
+    .login-container {
+      background: var(--surface);
+      border-radius: 24px;
+      box-shadow: 0 12px 48px var(--shadow);
+      max-width: 1000px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 650px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
     .login-left {
-      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-teal) 100%);
       color: white;
-      padding: 3rem;
+      padding: 4rem 3rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
       position: relative;
+      overflow: hidden;
+    }
+
+    .login-left::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: pulse 6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.3; }
+      50% { transform: scale(1.2) rotate(180deg); opacity: 0.1; }
+    }
+
+    .login-left-content {
+      position: relative;
+      z-index: 2;
     }
 
     .login-left h1 {
-      font-size: 2.5rem;
+      font-family: 'Poppins', sans-serif;
+      font-size: 3rem;
       font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .login-left .material-icons {
+      font-size: 3.5rem;
     }
 
     .login-left p {
-      margin-top: 1rem;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
+      opacity: 0.9;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    .feature-list {
+      margin-top: 2rem;
+      list-style: none;
+    }
+
+    .feature-list li {
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .feature-list .material-icons {
+      font-size: 1.2rem;
     }
 
     .login-right {
-      padding: 3rem;
+      padding: 4rem 3rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
+      background: var(--surface);
     }
 
     .login-header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .login-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .login-header p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
     }
 
     .login-tabs {
       display: flex;
-      background: var(--light-gray);
-      border-radius: 12px;
-      padding: 4px;
-      margin-bottom: 2rem;
+      background: var(--background);
+      border-radius: 16px;
+      padding: 6px;
+      margin-bottom: 2.5rem;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
     }
 
     .tab-button {
       flex: 1;
-      padding: 12px;
+      padding: 16px 24px;
       background: none;
       border: none;
-      border-radius: 8px;
-      font-weight: 500;
+      border-radius: 12px;
+      font-weight: 600;
       cursor: pointer;
       color: var(--text-secondary);
+      transition: all 0.3s ease;
+      font-size: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tab-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .tab-button:hover::before {
+      left: 100%;
     }
 
     .tab-button.active {
-      background: white;
-      color: var(--primary-color);
-      box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+      background: linear-gradient(135deg, var(--primary-blue), var(--secondary-teal));
+      color: white;
+      box-shadow: 0 4px 16px rgba(25, 118, 210, 0.3);
+      transform: translateY(-2px);
     }
 
     .login-form {
@@ -113,30 +241,147 @@
       display: block;
     }
 
+    .google-signin-container {
+      margin-bottom: 2rem;
+    }
+
+    .google-signin-container .g_id_signin {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-container .material-icons {
+      position: absolute;
+      left: 16px;
+      color: var(--text-hint);
+      font-size: 20px;
+      z-index: 2;
+    }
+
     .form-control {
-      padding: 12px;
-      border-radius: 8px;
-      border: 2px solid var(--border-color);
+      width: 100%;
+      padding: 16px 16px 16px 52px;
+      border: 2px solid var(--divider);
+      border-radius: 12px;
+      font-size: 1rem;
+      background: var(--surface);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    }
+
+    .form-control:focus + .material-icons {
+      color: var(--primary-blue);
     }
 
     .btn-primary {
       width: 100%;
-      padding: 12px;
-      border: none;
-      background: var(--primary-color);
+      padding: 18px;
+      background: linear-gradient(135deg, var(--primary-blue), var(--secondary-teal));
       color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
       font-weight: 600;
-      border-radius: 8px;
-      margin-top: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-primary:hover::before {
+      left: 100%;
     }
 
     .btn-primary:hover {
-      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(25, 118, 210, 0.3);
+    }
+
+    .btn-outline-primary {
+      width: 100%;
+      padding: 16px;
+      background: transparent;
+      color: var(--primary-blue);
+      border: 2px solid var(--primary-blue);
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 1rem;
+    }
+
+    .btn-outline-primary:hover {
+      background: var(--primary-blue);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(25, 118, 210, 0.3);
     }
 
     .forgot-password {
       text-align: center;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .forgot-password a {
+      color: var(--primary-blue);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .forgot-password a:hover {
+      color: var(--primary-blue-dark);
+    }
+
+    .text-muted {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
     }
 
     /* Advanced Black Transition Welcome Screen */
@@ -146,7 +391,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: #000000;
+      background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
       display: none;
       align-items: center;
       justify-content: center;
@@ -154,17 +399,13 @@
       color: white;
       z-index: 9999;
       opacity: 0;
-      transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-      padding: 20px;
-      box-sizing: border-box;
-      overflow: hidden;
+      transition: all 1.5s cubic-bezier(0.23, 1, 0.32, 1);
     }
 
     #welcomeScreen.show {
       opacity: 1;
     }
 
-    /* Advanced particle system */
     #welcomeScreen::before {
       content: '';
       position: absolute;
@@ -173,131 +414,52 @@
       width: 100%;
       height: 100%;
       background: 
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02) 1px, transparent 1px),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.015) 1px, transparent 1px),
-        radial-gradient(circle at 40% 60%, rgba(255,255,255,0.01) 1px, transparent 1px),
-        radial-gradient(circle at 60% 40%, rgba(255,255,255,0.008) 1px, transparent 1px);
-      background-size: 100px 100px, 150px 150px, 200px 200px, 120px 120px;
-      animation: particleFlow 30s linear infinite;
-      pointer-events: none;
+        radial-gradient(circle at 20% 20%, rgba(25, 118, 210, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0, 172, 193, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(255, 152, 0, 0.05) 0%, transparent 50%);
+      animation: welcomeParticles 20s ease-in-out infinite;
     }
 
-    @keyframes particleFlow {
-      0% { transform: translate(0, 0) rotate(0deg); }
-      25% { transform: translate(-10px, -10px) rotate(90deg); }
-      50% { transform: translate(10px, -5px) rotate(180deg); }
-      75% { transform: translate(-5px, 10px) rotate(270deg); }
-      100% { transform: translate(0, 0) rotate(360deg); }
+    @keyframes welcomeParticles {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.1) rotate(180deg); }
     }
 
-    /* Scanning light effect */
-    #welcomeScreen::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, 
-        transparent 0%, 
-        rgba(255,255,255,0.05) 30%,
-        rgba(255,255,255,0.1) 50%,
-        rgba(255,255,255,0.05) 70%,
-        transparent 100%);
-      animation: scanEffect 8s ease-in-out infinite;
-      pointer-events: none;
-    }
-
-    @keyframes scanEffect {
-      0% { 
-        left: -100%;
-        opacity: 0;
-      }
-      10% {
-        opacity: 1;
-      }
-      90% {
-        opacity: 1;
-      }
-      100% { 
-        left: 100%;
-        opacity: 0;
-      }
-    }
-
-    /* Advanced Transition Welcome Message */
     #welcomeMessage {
       font-size: clamp(2.5rem, 6vw, 4rem);
-      font-weight: 200;
-      margin-bottom: clamp(60px, 8vh, 100px);
+      font-weight: 300;
+      font-family: 'Poppins', sans-serif;
+      margin-bottom: 3rem;
       text-align: center;
-      letter-spacing: -0.03em;
-      line-height: 1.1;
-      max-width: 90vw;
+      letter-spacing: -0.02em;
       color: #ffffff;
-      animation: advancedSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-      transform: translateY(60px) scale(0.95);
+      animation: welcomeSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+      transform: translateY(60px);
       opacity: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      text-shadow: 0 0 40px rgba(255,255,255,0.1);
       position: relative;
       z-index: 2;
     }
 
-    /* Glowing text effect */
-    #welcomeMessage::before {
-      content: attr(data-text);
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      color: rgba(255,255,255,0.1);
-      filter: blur(20px);
-      z-index: -1;
-      animation: textGlow 3s ease-in-out infinite alternate;
-    }
-
-    @keyframes advancedSlideIn {
-      0% {
-        transform: translateY(60px) scale(0.95);
-        opacity: 0;
-        filter: blur(10px);
-      }
-      60% {
-        transform: translateY(-5px) scale(1.01);
-        opacity: 0.8;
-        filter: blur(2px);
-      }
-      100% {
-        transform: translateY(0) scale(1);
+    @keyframes welcomeSlideIn {
+      to {
+        transform: translateY(0);
         opacity: 1;
-        filter: blur(0);
       }
     }
 
-    @keyframes textGlow {
-      0% { opacity: 0.05; }
-      100% { opacity: 0.15; }
-    }
-
-    /* Advanced Loading Animation */
     .spinner {
-      width: clamp(50px, 10vw, 80px);
-      height: clamp(50px, 10vw, 80px);
+      width: 60px;
+      height: 60px;
       position: relative;
-      animation: spinnerFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 0.5s forwards;
-      opacity: 0;
-      transform: scale(0.8);
+      margin: 2rem 0;
     }
 
-    /* Multi-ring spinner */
     .spinner::before,
     .spinner::after {
       content: '';
       position: absolute;
       border-radius: 50%;
-      border: 1px solid transparent;
+      border: 2px solid transparent;
     }
 
     .spinner::before {
@@ -305,7 +467,7 @@
       height: 100%;
       border-top-color: rgba(255,255,255,0.8);
       border-right-color: rgba(255,255,255,0.4);
-      animation: advancedSpinner 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+      animation: spin 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
     }
 
     .spinner::after {
@@ -315,103 +477,21 @@
       left: 15%;
       border-top-color: rgba(255,255,255,0.6);
       border-left-color: rgba(255,255,255,0.3);
-      animation: advancedSpinner 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
+      animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
     }
 
-    /* Pulsing center dot */
-    .spinner {
-      background: radial-gradient(circle at center, rgba(255,255,255,0.8) 3px, transparent 4px);
-      animation: spinnerFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 0.5s forwards,
-                 centerPulse 2s ease-in-out infinite 1s;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
-    @keyframes spinnerFadeIn {
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes advancedSpinner {
-      0% {
-        transform: rotate(0deg) scale(1);
-        opacity: 1;
-      }
-      50% {
-        transform: rotate(180deg) scale(1.1);
-        opacity: 0.8;
-      }
-      100% {
-        transform: rotate(360deg) scale(1);
-        opacity: 1;
-      }
-    }
-
-    @keyframes centerPulse {
-      0%, 100% {
-        background: radial-gradient(circle at center, rgba(255,255,255,0.8) 3px, transparent 4px);
-      }
-      50% {
-        background: radial-gradient(circle at center, rgba(255,255,255,1) 4px, transparent 5px);
-      }
-    }
-
-    /* Welcome container for better organization */
-    .welcome-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 3;
-      position: relative;
-    }
-
-    /* Progress bar animation */
-    .progress-bar {
-      width: clamp(200px, 40vw, 300px);
-      height: 2px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 1px;
-      overflow: hidden;
-      margin-top: clamp(40px, 6vh, 60px);
-      animation: progressBarFadeIn 1.5s cubic-bezier(0.19, 1, 0.22, 1) 1s forwards;
-      opacity: 0;
-      transform: scaleX(0.8);
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, 
-        rgba(255,255,255,0.8) 0%, 
-        rgba(255,255,255,1) 50%, 
-        rgba(255,255,255,0.8) 100%);
-      width: 0%;
-      border-radius: 1px;
-      animation: progressFill 3s cubic-bezier(0.4, 0, 0.2, 1) 1.5s forwards;
-    }
-
-    @keyframes progressBarFadeIn {
-      to {
-        opacity: 1;
-        transform: scaleX(1);
-      }
-    }
-
-    @keyframes progressFill {
-      0% { width: 0%; }
-      100% { width: 100%; }
-    }
-
-    /* Status text */
     .status-text {
-      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      font-size: 1.1rem;
       font-weight: 300;
       color: rgba(255,255,255,0.7);
-      margin-top: clamp(20px, 3vh, 30px);
       animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
       opacity: 0;
       transform: translateY(20px);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     @keyframes statusFadeIn {
@@ -421,125 +501,62 @@
       }
     }
 
-    /* Geometric shapes for advanced visual appeal */
-    .geometric-shapes {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .shape {
-      position: absolute;
-      border: 1px solid rgba(255,255,255,0.05);
-      opacity: 0;
-      animation: shapeFloat 8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
-    }
-
-    .shape-1 {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      top: 20%;
-      left: 10%;
-      animation-delay: 0s;
-    }
-
-    .shape-2 {
-      width: 60px;
-      height: 60px;
-      top: 70%;
-      right: 15%;
-      animation-delay: 2s;
-      transform: rotate(45deg);
-    }
-
-    .shape-3 {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      bottom: 30%;
-      left: 20%;
-      animation-delay: 4s;
-    }
-
-    .shape-4 {
-      width: 40px;
-      height: 40px;
-      top: 40%;
-      right: 25%;
-      animation-delay: 6s;
-      transform: rotate(45deg);
-    }
-
-    @keyframes shapeFloat {
-      0%, 100% {
-        opacity: 0;
-        transform: translateY(0) scale(1);
-      }
-      50% {
-        opacity: 0.1;
-        transform: translateY(-20px) scale(1.1);
-      }
-    }
-
-
-
-    /* Responsive design for welcome screen */
+    /* Mobile Responsive */
     @media (max-width: 768px) {
       .login-container {
         grid-template-columns: 1fr;
-        max-width: 400px;
+        max-width: 480px;
+        margin: 10px;
       }
 
       .login-left {
-        padding: 2rem;
+        padding: 3rem 2rem;
         text-align: center;
       }
 
-      #welcomeScreen {
-        padding: 15px;
+      .login-left h1 {
+        font-size: 2.5rem;
+      }
+
+      .login-right {
+        padding: 3rem 2rem;
+      }
+
+      .login-header h2 {
+        font-size: 1.8rem;
+      }
+
+      .tab-button {
+        padding: 14px 20px;
+        font-size: 0.95rem;
       }
 
       #welcomeMessage {
-        line-height: 1.2;
-        word-break: break-word;
-        hyphens: auto;
+        font-size: 2rem;
+        margin-bottom: 2rem;
       }
     }
 
     @media (max-width: 480px) {
-      #welcomeScreen {
-        padding: 10px;
+      .login-left {
+        padding: 2rem 1.5rem;
       }
 
-      #welcomeMessage {
-        line-height: 1.3;
-        word-spacing: 0.1em;
+      .login-left h1 {
+        font-size: 2rem;
       }
-    }
 
-    @media (max-width: 360px) {
-      #welcomeMessage {
-        line-height: 1.4;
-        letter-spacing: -0.01em;
+      .login-right {
+        padding: 2.5rem 1.5rem;
       }
-    }
 
-    /* Landscape orientation adjustments */
-    @media (max-height: 500px) and (orientation: landscape) {
-      #welcomeMessage {
-        font-size: clamp(1.5rem, 6vw, 3rem);
-        margin-bottom: clamp(10px, 2vh, 20px);
+      .form-control {
+        padding: 14px 14px 14px 48px;
       }
-      
-      .spinner {
-        width: clamp(30px, 8vw, 50px);
-        height: clamp(30px, 8vw, 50px);
-        margin-top: clamp(5px, 1vh, 10px);
+
+      .btn-primary {
+        padding: 16px;
+        font-size: 1rem;
       }
     }
   </style>
@@ -548,27 +565,40 @@
 
 <!-- Advanced Black Transition Welcome Screen -->
 <div id="welcomeScreen">
-  <div class="welcome-container">
-    <div id="welcomeMessage" data-text="Welcome">Welcome</div>
-    <div class="spinner"></div>
-    <div class="progress-bar">
-      <div class="progress-fill"></div>
-    </div>
-    <div class="status-text">Signing you in...</div>
-  </div>
-  <div class="geometric-shapes">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
-    <div class="shape shape-4"></div>
-  </div>
+  <div id="welcomeMessage">Welcome</div>
+  <div class="spinner"></div>
+  <div class="status-text">Signing you in...</div>
 </div>
 
 <div class="login-container">
   <!-- Left Panel -->
   <div class="login-left">
-    <h1><i class="bi bi-printer"></i> PrintMe</h1>
-    <p>Your smart printing solution. Upload, print, and manage your documents from anywhere.</p>
+    <div class="login-left-content">
+      <h1>
+        <span class="material-icons">local_print_shop</span>
+        PrintMe
+      </h1>
+      <p>Your comprehensive printing solution. Upload, print, and manage your documents from anywhere with ease.</p>
+      
+      <ul class="feature-list">
+        <li>
+          <span class="material-icons">cloud_upload</span>
+          Easy file upload
+        </li>
+        <li>
+          <span class="material-icons">print</span>
+          Quick printing
+        </li>
+        <li>
+          <span class="material-icons">store</span>
+          Find nearby vendors
+        </li>
+        <li>
+          <span class="material-icons">payment</span>
+          Secure payments
+        </li>
+      </ul>
+    </div>
   </div>
 
   <!-- Right Panel -->
@@ -580,24 +610,31 @@
 
     <!-- Tab Navigation -->
     <div class="login-tabs">
-      <button class="tab-button active" onclick="showTab('user')">User</button>
-      <button class="tab-button" onclick="showTab('vendor')">Vendor</button>
+      <button class="tab-button active" onclick="showTab('user')">
+        <span class="material-icons">person</span>
+        User
+      </button>
+      <button class="tab-button" onclick="showTab('vendor')">
+        <span class="material-icons">store</span>
+        Vendor
+      </button>
     </div>
 
-    <!-- Student Login Form -->
+    <!-- User Login Form -->
     <div id="user-form" class="login-form active">
       <div id="g_id_onload"
            data-client_id="{{ client_id }}"
            data-callback="handleCredentialResponse"
            data-auto_prompt="false">
       </div>
-      <div class="google-signin-container d-flex justify-content-center">
+      <div class="google-signin-container">
         <div class="g_id_signin"
              data-type="standard"
              data-size="large"
              data-theme="outline"
              data-text="sign_in_with"
-             data-shape="rectangular">
+             data-shape="rectangular"
+             data-width="100%">
         </div>
       </div>
     </div>
@@ -606,16 +643,25 @@
     <div id="vendor-form" class="login-form">
       <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
         {% csrf_token %}
-        <div class="mb-3">
+        <div class="form-group">
           <label for="vendorId" class="form-label">Vendor ID</label>
-          <input type="text" class="form-control" id="vendorId" required />
+          <div class="input-container">
+            <input type="text" class="form-control" id="vendorId" required />
+            <span class="material-icons">badge</span>
+          </div>
         </div>
-        <div class="mb-3">
+        <div class="form-group">
           <label for="vendorPassword" class="form-label">Password</label>
-          <input type="password" class="form-control" id="vendorPassword" required />
+          <div class="input-container">
+            <input type="password" class="form-control" id="vendorPassword" required />
+            <span class="material-icons">lock</span>
+          </div>
         </div>
-        <button type="submit" class="btn-primary">Sign In as Vendor</button>
-        <div class="forgot-password mt-2">
+        <button type="submit" class="btn-primary">
+          <span class="material-icons">login</span>
+          Sign In as Vendor
+        </button>
+        <div class="forgot-password">
           <a href="#" onclick="resetVendorPassword()">Forgot your password?</a>
         </div>
       </form>
@@ -623,8 +669,9 @@
       <!-- Register Button -->
       <div class="text-center mt-3">
         <p class="text-muted">Don't have a vendor account?</p>
-        <button type="button" class="btn btn-outline-primary" onclick="window.location.href='/vendor-register/'">
-          <i class="bi bi-person-plus"></i> Register as Vendor
+        <button type="button" class="btn-outline-primary" onclick="window.location.href='/vendor-register/'">
+          <span class="material-icons">person_add</span>
+          Register as Vendor
         </button>
       </div>
     </div>
@@ -644,21 +691,13 @@
   function showWelcome(name) {
     const welcomeMessage = document.getElementById('welcomeMessage');
     welcomeMessage.textContent = `Welcome, ${name}`;
-    // Set data attribute for glow effect
-    welcomeMessage.setAttribute('data-text', `Welcome, ${name}`);
     
     const welcomeScreen = document.getElementById('welcomeScreen');
     welcomeScreen.style.display = 'flex';
     
-    // Advanced transition sequence
     setTimeout(() => {
       welcomeScreen.classList.add('show');
     }, 50);
-    
-    // Enhanced entrance with staggered animations
-    setTimeout(() => {
-      welcomeMessage.style.animationDelay = '0.3s';
-    }, 100);
   }
 
   function handleCredentialResponse(response) {
@@ -740,8 +779,5 @@
     return cookieValue;
   }
 </script>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

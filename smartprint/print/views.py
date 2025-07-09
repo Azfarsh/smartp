@@ -339,33 +339,33 @@ def get_pending_print_jobs():
                           region_name='auto')
 
         pending_jobs = []
-        
+
         # Check testshop folder for documents
         try:
             testshop_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='testshop/')
-            
+
             for obj in testshop_objects.get("Contents", []):
                 key = obj["Key"]
                 filename = key.split("/")[-1]
-                
+
                 # Skip folder itself
                 if not filename:
                     continue
-                
+
                 try:
                     # Get object metadata
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                     metadata = head_response.get('Metadata', {})
-                    
+
                     # Check if job is pending (job_completed = 'NO') and service_type is 'regular print'
                     job_completed = metadata.get('job_completed', 'NO').upper()
                     status = metadata.get('status', 'pending').lower()
                     service_type = metadata.get('service_type', '').strip().lower()
-                    
+
                     if (job_completed == 'NO' or status == 'pending') and service_type == 'regular print':
                         # Generate download URL with proper R2 structure
                         download_url = f"printme/{key}"  # Add printme prefix for R2 structure validation
-                        
+
                         # Generate actual presigned URL for downloading
                         actual_download_url = s3.generate_presigned_url(
                             ClientMethod='get_object',
@@ -375,7 +375,7 @@ def get_pending_print_jobs():
                             },
                             ExpiresIn=3600
                         )
-                        
+
                         # Build job info with proper R2 structure
                         job_info = {
                             'filename': filename,
@@ -398,43 +398,43 @@ def get_pending_print_jobs():
                                 'token': metadata.get('token', '')
                             }
                         }
-                        
+
                         pending_jobs.append(job_info)
                         print(f"✅ Found pending REGULAR PRINT job: {filename} (status: {status}, completed: {job_completed})")
-                        
+
                 except Exception as e:
                     print(f"Error processing testshop file {key}: {str(e)}")
                     continue
-                    
+
         except Exception as e:
             print(f"Error accessing testshop folder: {str(e)}")
-        
+
         # Also check users folder for pending jobs
         try:
             users_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='users/')
-            
+
             for obj in users_objects.get("Contents", []):
                 key = obj["Key"]
                 filename = key.split("/")[-1]
-                
+
                 # Skip folder itself
                 if not filename:
                     continue
-                
+
                 try:
                     # Get object metadata
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                     metadata = head_response.get('Metadata', {})
-                    
+
                     # Check if job is pending
                     job_completed = metadata.get('job_completed', 'NO').upper()
                     status = metadata.get('status', 'pending').lower()
-                    
+
                     if job_completed == 'NO' or status == 'pending':
                         # Extract user email from path
                         path_parts = key.split('/')
                         user_email = path_parts[1] if len(path_parts) > 1 else ''
-                        
+
                         # Generate download URL
                         download_url = s3.generate_presigned_url(
                             ClientMethod='get_object',
@@ -444,7 +444,7 @@ def get_pending_print_jobs():
                             },
                             ExpiresIn=3600
                         )
-                        
+
                         # Build job info
                         job_info = {
                             'filename': filename,
@@ -467,14 +467,14 @@ def get_pending_print_jobs():
                                 'token': metadata.get('token', '')
                             }
                         }
-                        
+
                         pending_jobs.append(job_info)
                         print(f"✅ Found pending user job: {filename} (status: {status}, completed: {job_completed})")
-                        
+
                 except Exception as e:
                     print(f"Error processing user file {key}: {str(e)}")
                     continue
-                    
+
         except Exception as e:
             print(f"Error accessing users folder: {str(e)}")
 
@@ -504,15 +504,15 @@ def update_job_status_in_r2(filename, status, vendor_id, user_email, r2_folder_s
             # Check if file exists in testshop
             head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=testshop_key)
             current_metadata = head_response.get('Metadata', {})
-            
+
             # Update metadata
             current_metadata['job_completed'] = job_completed_status
             current_metadata['completion_time'] = datetime.datetime.now().isoformat()
             current_metadata['completed_by_vendor'] = vendor_id
-            
+
             if job_completed_status == 'YES':
                 current_metadata['status'] = 'completed'
-            
+
             # Copy object with updated metadata
             copy_source = {'Bucket': settings.R2_BUCKET, 'Key': testshop_key}
             s3.copy_object(
@@ -522,10 +522,10 @@ def update_job_status_in_r2(filename, status, vendor_id, user_email, r2_folder_s
                 Metadata=current_metadata,
                 MetadataDirective='REPLACE'
             )
-            
+
             updated_files.append(testshop_key)
             print(f"✅ Updated testshop job status: {testshop_key} -> {job_completed_status}")
-            
+
         except Exception as e:
             print(f"⚠️  Testshop file {testshop_key} not found or error updating: {str(e)}")
 
@@ -536,15 +536,15 @@ def update_job_status_in_r2(filename, status, vendor_id, user_email, r2_folder_s
                 # Check if file exists in users folder
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=user_key)
                 current_metadata = head_response.get('Metadata', {})
-                
+
                 # Update metadata
                 current_metadata['job_completed'] = job_completed_status
                 current_metadata['completion_time'] = datetime.datetime.now().isoformat()
                 current_metadata['completed_by_vendor'] = vendor_id
-                
+
                 if job_completed_status == 'YES':
                     current_metadata['status'] = 'completed'
-                
+
                 # Copy object with updated metadata
                 copy_source = {'Bucket': settings.R2_BUCKET, 'Key': user_key}
                 s3.copy_object(
@@ -554,10 +554,10 @@ def update_job_status_in_r2(filename, status, vendor_id, user_email, r2_folder_s
                     Metadata=current_metadata,
                     MetadataDirective='REPLACE'
                 )
-                
+
                 updated_files.append(user_key)
                 print(f"✅ Updated user job status: {user_key} -> {job_completed_status}")
-                
+
             except Exception as e:
                 print(f"⚠️  User file {user_key} not found or error updating: {str(e)}")
 
@@ -932,7 +932,7 @@ def list_r2_files():
         # Count jobs by status
         pending_count = len([job for job in file_data if job['job_completed'] == 'NO'])
         completed_count = len([job for job in file_data if job['job_completed'] == 'YES'])
-        
+
         print(f"📋 Total jobs found: {len(file_data)} (Pending: {pending_count}, Completed: {completed_count})")
         return file_data
 
@@ -1142,43 +1142,43 @@ def vendor_pricing(request):
             data = json.loads(request.body)
             vendor_id = data.get('vendor_id')
             pricing_entries = data.get('pricing_entries', [])
-            
+
             if not vendor_id or not pricing_entries:
                 return JsonResponse({
                     'success': False,
                     'message': 'Vendor ID and pricing entries are required'
                 })
-            
+
             # Initialize S3 client
             s3 = boto3.client('s3',
                               aws_access_key_id=settings.R2_ACCESS_KEY,
                               aws_secret_access_key=settings.R2_SECRET_KEY,
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
-            
-            # Save pricing data to R2 storage
+
+            # Prepare pricing data
             pricing_data = {
                 'vendor_id': vendor_id,
-                'pricing_entries': pricing_entries,
+                'pricing_data': data.get('pricing_data', {}),
                 'created_at': datetime.datetime.now().isoformat(),
                 'updated_at': datetime.datetime.now().isoformat()
             }
-            
+
             file_content = json.dumps(pricing_data, indent=4)
             file_key = f"vendor register details/pricing_{vendor_id}.json"
-            
+
             s3.put_object(Bucket=settings.R2_BUCKET,
                           Key=file_key,
                           Body=file_content,
                           ContentType='application/json')
-            
+
             print(f"✅ Successfully saved pricing data for vendor {vendor_id}")
-            
+
             return JsonResponse({
                 'success': True,
                 'message': 'Pricing saved successfully'
             })
-            
+
         except Exception as e:
             print(f"❌ Error saving pricing data: {str(e)}")
             return JsonResponse({
@@ -1203,14 +1203,14 @@ def vendor_info(request, vendor_id):
                           aws_secret_access_key=settings.R2_SECRET_KEY,
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
-        
+
         # Look for vendor registration file
         file_key = f"vendor register details/vendor_{vendor_id}.json"
-        
+
         try:
             response = s3.get_object(Bucket=settings.R2_BUCKET, Key=file_key)
             vendor_data = json.loads(response['Body'].read().decode('utf-8'))
-            
+
             return JsonResponse({
                 'success': True,
                 'vendor': {
@@ -1220,13 +1220,13 @@ def vendor_info(request, vendor_id):
                     'phone_number': vendor_data.get('phone_number', '')
                 }
             })
-            
+
         except s3.exceptions.NoSuchKey:
             return JsonResponse({
                 'success': False,
                 'message': 'Vendor not found'
             })
-            
+
     except Exception as e:
         print(f"❌ Error fetching vendor info: {str(e)}")
         return JsonResponse({
@@ -1246,20 +1246,20 @@ def vendor_login(request):
             data = json.loads(request.body)
             email = data.get('vendor_id')  # frontend sends email as 'vendor_id'
             password = data.get('password')
-            
+
             if not email or not password:
                 return JsonResponse({
                     'success': False,
                     'message': 'Email and password are required'
                 })
-            
+
             # Initialize R2 client
             s3 = boto3.client('s3',
                               aws_access_key_id=settings.R2_ACCESS_KEY,
                               aws_secret_access_key=settings.R2_SECRET_KEY,
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
-            
+
             # Search for vendor by email in all vendor register details
             found_vendor = None
             vendor_id = None
@@ -1340,14 +1340,17 @@ def vendor_register_api(request):
             password = data.get('password')
             vendor_name = data.get('vendor_name')
             phone_number = data.get('phone_number')
-            
+            shop_address = data.get('shop_address')
+            city = data.get('city')
+            pincode = data.get('pincode')
+
             # Validate required fields
-            if not all([email, password, vendor_name, phone_number]):
+            if not all([email, password, vendor_name, phone_number, shop_address, city, pincode]):
                 return JsonResponse({
                     'success': False,
                     'message': 'All fields are required'
                 })
-            
+
             # Validate email format
             email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
             if not re.match(email_regex, email):
@@ -1355,20 +1358,20 @@ def vendor_register_api(request):
                     'success': False,
                     'message': 'Please enter a valid email address'
                 })
-            
+
             # Validate password strength
             if len(password) < 8:
                 return JsonResponse({
                     'success': False,
                     'message': 'Password must be at least 8 characters long'
                 })
-            
+
             if not re.search(r'[a-zA-Z]', password) or not re.search(r'\d', password):
                 return JsonResponse({
                     'success': False,
                     'message': 'Password must contain at least one letter and one number'
                 })
-            
+
             # Validate phone number (10 digits)
             phone_clean = re.sub(r'\D', '', phone_number)
             if len(phone_clean) != 10:
@@ -1376,20 +1379,20 @@ def vendor_register_api(request):
                     'success': False,
                     'message': 'Please enter a valid 10-digit phone number'
                 })
-            
+
             # Generate unique vendor ID
             vendor_id = str(uuid.uuid4())
-            
+
             # Hash password
             password_hash = make_password(password)
-            
+
             # Initialize S3 client
             s3 = boto3.client('s3',
                               aws_access_key_id=settings.R2_ACCESS_KEY,
                               aws_secret_access_key=settings.R2_SECRET_KEY,
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
-            
+
             # Check if email already exists
             try:
                 objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor register details/')
@@ -1404,42 +1407,47 @@ def vendor_register_api(request):
                             })
             except Exception as e:
                 print(f"Warning: Could not check for existing email: {str(e)}")
-            
-            # Save vendor registration data
+
+            # Prepare vendor data
             vendor_data = {
                 'vendor_id': vendor_id,
                 'email': email,
                 'password_hash': password_hash,
                 'vendor_name': vendor_name,
                 'phone_number': phone_clean,
+                'shop_address': shop_address,
+                'city': city,
+                'pincode': pincode,
                 'created_at': datetime.datetime.now().isoformat(),
                 'status': 'active'
             }
-            
+
             file_content = json.dumps(vendor_data, indent=4)
             file_key = f"vendor register details/vendor_{vendor_id}.json"
-            
+
             s3.put_object(Bucket=settings.R2_BUCKET,
                           Key=file_key,
                           Body=file_content,
                           ContentType='application/json')
-            
+
             print(f"✅ Successfully registered vendor {vendor_id} ({email})")
-            
+
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful',
                 'vendor_id': vendor_id
             })
-            
+
         except Exception as e:
             print(f"❌ Error during vendor registration: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Registration error: {str(e)}'
             })
-    
+
     return JsonResponse({
         'success': False,
         'message': 'Invalid request method'
     })
+
+# This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.
