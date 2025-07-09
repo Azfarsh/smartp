@@ -778,11 +778,53 @@
                 <i class="fas fa-moon"></i>
                 <span>Night Mode</span>
             </button>
+            {% if vendor_details %}
+            <div class="vendor-profile" style="display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); border-radius: 16px; padding: 8px 18px; box-shadow: var(--shadow-sm);">
+                <div style="background: var(--primary-blue); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700;">
+                    {{ vendor_details.vendor_name|slice:":1"|upper }}
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                    <span style="font-weight: 600; color: var(--primary-blue); font-size: 1.1rem;">{{ vendor_details.vendor_name }}</span>
+                    <span style="font-size: 0.95rem; color: var(--text-secondary);">{{ vendor_details.vendor_email }}</span>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </header>
 
     <!-- Main Container -->
     <main class="main-container">
+        <!-- Vendor Details Card -->
+        {% if vendor_details %}
+        <div class="vendor-details-card" style="
+            background: var(--bg-primary);
+            border: 1.5px solid var(--primary-blue);
+            border-radius: 18px;
+            box-shadow: var(--shadow-lg);
+            padding: 32px 32px 24px 32px;
+            margin: 32px auto 24px auto;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        ">
+            <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 8px;">
+                <span class="fa fa-store" style="font-size: 2.2rem; color: var(--primary-blue);"></span>
+                <div>
+                    <div style="font-size: 1.7rem; font-weight: 700; color: var(--primary-blue);">{{ vendor_details.vendor_name }}</div>
+                    <div style="font-size: 1.1rem; color: var(--text-secondary);">Shop Profile</div>
+                </div>
+            </div>
+            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>Email:</b> {{ vendor_details.vendor_email }}</div>
+            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>Phone:</b> {{ vendor_details.phone_number }}</div>
+            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>Address:</b> {{ vendor_details.shop_address }}</div>
+            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>City:</b> {{ vendor_details.city }}</div>
+            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>PIN Code:</b> {{ vendor_details.pincode }}</div>
+        </div>
+        {% endif %}
+        <!-- End Vendor Details Card -->
+
         <!-- Statistics Cards -->
         <div class="stats-grid">
             <div class="stat-card">

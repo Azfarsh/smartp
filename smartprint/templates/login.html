@@ -50,7 +50,8 @@
       justify-content: center;
       padding: 20px;
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     /* Animated background particles */
@@ -84,7 +85,7 @@
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      min-height: 650px;
+      min-height: 0;
       overflow: hidden;
       position: relative;
       z-index: 1;
@@ -644,10 +645,10 @@
       <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
         {% csrf_token %}
         <div class="form-group">
-          <label for="vendorId" class="form-label">Vendor ID</label>
+          <label for="vendorEmail" class="form-label">Email Address</label>
           <div class="input-container">
-            <input type="text" class="form-control" id="vendorId" required />
-            <span class="material-icons">badge</span>
+            <input type="email" class="form-control" id="vendorEmail" required />
+            <span class="material-icons">email</span>
           </div>
         </div>
         <div class="form-group">
@@ -732,7 +733,7 @@
 
   async function vendorLogin(event) {
     event.preventDefault();
-    const vendorId = document.getElementById('vendorId').value;
+    const email = document.getElementById('vendorEmail').value;
     const password = document.getElementById('vendorPassword').value;
 
     try {
@@ -742,7 +743,7 @@
           'Content-Type': 'application/json',
           'X-CSRFToken': getCookie('csrftoken')
         },
-        body: JSON.stringify({ vendor_id: vendorId, password: password })
+        body: JSON.stringify({ email: email, password: password })
       });
 
       const data = await response.json();
@@ -758,8 +759,8 @@
   }
 
   function resetVendorPassword() {
-    const vendorId = prompt('Enter your Vendor ID:');
-    if (vendorId) {
+    const email = prompt('Enter your registered email address:');
+    if (email) {
       alert('Password reset instructions will be sent to your registered email.');
     }
   }

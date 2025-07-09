@@ -1,16 +1,15 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vendor Registration - PrintMe</title>
-    
+
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         * {
             margin: 0;
@@ -46,32 +45,55 @@
 
         body {
             font-family: 'Roboto', sans-serif;
-            background: #ffffff;
+            background: var(--background);
             min-height: 100vh;
             padding: 20px 10px;
             overflow-x: hidden;
             position: relative;
         }
 
+
+
         .container {
-            max-width: 700px;
+            max-width: 900px;
             margin: 0 auto;
-            background: #ffffff;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.15),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
             overflow: hidden;
             position: relative;
             z-index: 2;
-            border: 1px solid #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .header {
             background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-teal) 50%, var(--accent-orange) 100%);
             color: white;
-            padding: 35px 30px;
+            padding: 50px 40px;
             text-align: center;
             position: relative;
             overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 60%);
+            animation: headerPulse 8s ease-in-out infinite;
+        }
+
+        @keyframes headerPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 0.2; }
         }
 
         .header-content {
@@ -81,31 +103,31 @@
 
         .header h1 {
             font-family: 'Poppins', sans-serif;
-            font-size: 2.2rem;
+            font-size: 2.8rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 16px;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         .header .material-icons {
-            font-size: 2.5rem;
+            font-size: 3rem;
             filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
         }
 
         .header p {
-            font-size: 1rem;
+            font-size: 1.2rem;
             opacity: 0.95;
             font-weight: 300;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
         .form-container {
-            padding: 35px 30px;
-            background: #ffffff;
+            padding: 50px 40px;
+            background: rgba(255, 255, 255, 0.98);
         }
 
         .success-message {
@@ -128,8 +150,8 @@
         .form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            margin-bottom: 25px;
+            gap: 30px;
+            margin-bottom: 35px;
         }
 
         .form-group {
@@ -157,23 +179,24 @@
 
         .input-container .material-icons {
             position: absolute;
-            left: 16px;
+            left: 18px;
             color: var(--text-hint);
-            font-size: 20px;
+            font-size: 22px;
             z-index: 3;
             transition: all 0.3s ease;
         }
 
         .form-control {
             width: 100%;
-            padding: 14px 14px 14px 50px;
+            padding: 18px 18px 18px 58px;
             border: 2px solid var(--divider);
-            border-radius: 12px;
-            font-size: 1rem;
-            background: #ffffff;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.9);
             color: var(--text-primary);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             outline: none;
+            backdrop-filter: blur(10px);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
@@ -219,6 +242,9 @@
 
         .password-strength {
             margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .strength-bar {
@@ -228,6 +254,7 @@
             overflow: hidden;
             margin-bottom: 10px;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            width: 100%;
         }
 
         .strength-fill {
@@ -251,24 +278,26 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
             font-weight: 500;
+            word-break: break-word;
+            max-width: 100%;
         }
 
         .submit-btn {
             width: 100%;
-            padding: 18px;
+            padding: 22px;
             background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-teal) 50%, var(--accent-orange) 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
+            border-radius: 16px;
+            font-size: 1.2rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-top: 25px;
+            gap: 12px;
+            margin-top: 30px;
             position: relative;
             overflow: hidden;
             box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3);
@@ -323,19 +352,19 @@
 
         .pricing-btn {
             width: 100%;
-            padding: 16px;
+            padding: 20px;
             background: linear-gradient(135deg, var(--success-green), #66BB6A);
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 1rem;
+            border-radius: 16px;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 25px;
             display: none;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             transition: all 0.4s ease;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -349,8 +378,8 @@
 
         .back-link {
             text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 40px;
+            padding-top: 25px;
             border-top: 2px solid var(--divider);
         }
 
@@ -439,6 +468,15 @@
             .submit-btn, .pricing-btn {
                 font-size: 1rem;
             }
+            .password-strength {
+                font-size: 0.85rem;
+            }
+            .strength-bar {
+                height: 5px;
+            }
+            .strength-text {
+                font-size: 0.8rem;
+            }
         }
 
         /* Improved scrolling */
@@ -475,12 +513,12 @@
         <div class="form-container">
             <div class="success-message" id="successMessage">
                 <span class="material-icons">check_circle</span>
-                Registration successful! Setting up your pricing...
+                Registration successful! Redirecting to pricing setup...
             </div>
 
             <form id="vendorRegisterForm" onsubmit="handleRegistration(event)">
                 {% csrf_token %}
-                
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="email">Email Address *</label>
@@ -572,11 +610,6 @@
                     <span class="material-icons">person_add</span>
                     Register Shop
                 </button>
-
-                <button type="button" class="pricing-btn" id="goToPricingBtn">
-                    <span class="material-icons">attach_money</span>
-                    Setup Pricing
-                </button>
             </form>
 
             <div class="back-link">
@@ -605,7 +638,7 @@
             const strengthText = document.getElementById('strengthText');
 
             strengthFill.className = 'strength-fill';
-            
+
             if (strength <= 1) {
                 strengthFill.style.width = '25%';
                 strengthFill.classList.add('strength-weak');
@@ -643,9 +676,9 @@
             const email = document.getElementById('email').value;
             const emailError = document.getElementById('emailError');
             const emailField = document.getElementById('email');
-            
+
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            
+
             if (!email) {
                 showError(emailField, emailError, 'Email is required');
                 return false;
@@ -663,7 +696,7 @@
             const passwordError = document.getElementById('passwordError');
             const passwordField = document.getElementById('password');
             const strength = checkPasswordStrength(password);
-            
+
             if (!password) {
                 showError(passwordField, passwordError, 'Password is required');
                 return false;
@@ -681,7 +714,7 @@
             const confirmPassword = document.getElementById('confirmPassword').value;
             const confirmPasswordError = document.getElementById('confirmPasswordError');
             const confirmPasswordField = document.getElementById('confirmPassword');
-            
+
             if (!confirmPassword) {
                 showError(confirmPasswordField, confirmPasswordError, 'Please confirm your password');
                 return false;
@@ -698,7 +731,7 @@
             const vendorName = document.getElementById('vendorName').value;
             const vendorNameError = document.getElementById('vendorNameError');
             const vendorNameField = document.getElementById('vendorName');
-            
+
             if (!vendorName.trim()) {
                 showError(vendorNameField, vendorNameError, 'Shop name is required');
                 return false;
@@ -715,9 +748,9 @@
             const phoneNumber = document.getElementById('phoneNumber').value;
             const phoneNumberError = document.getElementById('phoneNumberError');
             const phoneNumberField = document.getElementById('phoneNumber');
-            
+
             const phoneRegex = /^\d{10}$/;
-            
+
             if (!phoneNumber) {
                 showError(phoneNumberField, phoneNumberError, 'Phone number is required');
                 return false;
@@ -734,7 +767,7 @@
             const shopAddress = document.getElementById('shopAddress').value;
             const shopAddressError = document.getElementById('shopAddressError');
             const shopAddressField = document.getElementById('shopAddress');
-            
+
             if (!shopAddress.trim()) {
                 showError(shopAddressField, shopAddressError, 'Shop address is required');
                 return false;
@@ -751,7 +784,7 @@
             const city = document.getElementById('city').value;
             const cityError = document.getElementById('cityError');
             const cityField = document.getElementById('city');
-            
+
             if (!city.trim()) {
                 showError(cityField, cityError, 'City is required');
                 return false;
@@ -768,9 +801,9 @@
             const pincode = document.getElementById('pincode').value;
             const pincodeError = document.getElementById('pincodeError');
             const pincodeField = document.getElementById('pincode');
-            
+
             const pincodeRegex = /^\d{6}$/;
-            
+
             if (!pincode) {
                 showError(pincodeField, pincodeError, 'PIN code is required');
                 return false;
@@ -809,11 +842,10 @@
             return cookieValue;
         }
 
-        let lastVendorId = null;
+        let lastVendorEmail = null;
 
         async function handleRegistration(event) {
             event.preventDefault();
-            
             // Validate all fields
             const isEmailValid = validateEmail();
             const isPasswordValid = validatePassword();
@@ -823,19 +855,19 @@
             const isShopAddressValid = validateShopAddress();
             const isCityValid = validateCity();
             const isPincodeValid = validatePincode();
-            
+
             if (!isEmailValid || !isPasswordValid || !isConfirmPasswordValid || 
                 !isVendorNameValid || !isPhoneNumberValid || !isShopAddressValid || 
                 !isCityValid || !isPincodeValid) {
                 return;
             }
-            
+
             // Show loading state
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
             submitBtn.disabled = true;
             loadingSpinner.style.display = 'inline-block';
-            
+
             // Prepare form data
             const formData = {
                 email: document.getElementById('email').value,
@@ -846,7 +878,7 @@
                 city: document.getElementById('city').value,
                 pincode: document.getElementById('pincode').value
             };
-            
+
             try {
                 const response = await fetch('/vendor-register-api/', {
                     method: 'POST',
@@ -856,40 +888,27 @@
                     },
                     body: JSON.stringify(formData)
                 });
-                
+
                 const data = await response.json();
-                
-                if (data.success && data.vendor_id) {
+
+                if (data.success && data.vendor_email) {
                     document.getElementById('successMessage').style.display = 'block';
-                    lastVendorId = data.vendor_id;
-                    
-                    const goToPricingBtn = document.getElementById('goToPricingBtn');
-                    goToPricingBtn.style.display = 'flex';
-                    goToPricingBtn.onclick = function() {
-                        window.location.href = `/vendor-pricing/?vendorId=${encodeURIComponent(lastVendorId)}`;
-                    };
-                    
+                    document.getElementById('vendorRegisterForm').style.display = 'none';
                     setTimeout(() => {
-                        window.location.href = `/vendor-pricing/?vendorId=${encodeURIComponent(data.vendor_id)}`;
+                        window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(data.vendor_email)}`;
                     }, 2000);
                 } else {
-                    alert(data.message || 'Registration failed. Please try again.');
+                    throw new Error(data.message || 'Registration failed');
                 }
             } catch (error) {
-                console.error('Registration error:', error);
-                alert('Registration failed. Please check your connection and try again.');
+                alert(error.message || 'Registration failed. Please try again.');
             } finally {
-                // Reset loading state
                 submitBtn.disabled = false;
                 loadingSpinner.style.display = 'none';
             }
         }
 
-        // Smooth scrolling enhancement
-        document.addEventListener('DOMContentLoaded', function() {
-            // Enable smooth scrolling for the entire page
-            document.documentElement.style.scrollBehavior = 'smooth';
-        });
+
     </script>
 </body>
 </html>
