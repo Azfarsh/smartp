@@ -762,68 +762,151 @@
         }
     </style>
 </head>
-<body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-brand">
-            <i class="fas fa-print"></i>
-            PrintMax Vendor
+<!-- Classic Vendor Dashboard with Collapsible Sidebar, Navbar Dropdown, and Day/Night Mode -->
+<body style="display: flex; min-height: 100vh;">
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-variant: #1e40af;
+            --primary-light: #dbeafe;
+            --secondary: #10b981;
+            --secondary-variant: #059669;
+            --background: #f8fafc;
+            --surface: #fff;
+            --on-surface: #1f2937;
+            --on-surface-variant: #6b7280;
+            --sidebar-width: 280px;
+            --shadow-lg: 0 10px 15px -3px rgba(30,58,138,0.07), 0 4px 6px -2px rgba(30,58,138,0.05);
+        }
+        [data-theme="dark"] {
+            --primary: #60a5fa;
+            --primary-variant: #3b82f6;
+            --primary-light: #1e293b;
+            --secondary: #34d399;
+            --secondary-variant: #10b981;
+            --background: #111827;
+            --surface: #1f2937;
+            --on-surface: #f9fafb;
+            --on-surface-variant: #d1d5db;
+        }
+        .sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100%; background: var(--surface); border-right: 1px solid #e5e7eb; z-index: 999; box-shadow: var(--shadow-lg); overflow-y: auto; transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .sidebar.closed { transform: translateX(-100%); }
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #f1f5f9; background: #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+        .sidebar-profile { display: flex; align-items: center; gap: 1rem; }
+        .sidebar-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--primary); font-size: 1.25rem; color: var(--primary); font-weight: 700; }
+        .sidebar-user-info h3 { font-weight: 700; color: var(--primary); margin-bottom: 0.2rem; font-size: 1rem; }
+        .sidebar-user-info p { font-size: 0.8rem; color: var(--on-surface-variant); }
+        .sidebar-close-btn { display: none; background: none; border: none; font-size: 1.5rem; color: var(--on-surface-variant); cursor: pointer; }
+        @media (max-width: 900px) { .sidebar { position: fixed; left: 0; top: 0; height: 100vh; z-index: 1200; } .sidebar-close-btn { display: block; } }
+        .nav-list { list-style: none; padding: 1rem 0; }
+        .nav-item { margin-bottom: 0.2rem; }
+        .nav-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1.5rem; color: var(--on-surface-variant); text-decoration: none; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+        .nav-link.active, .nav-link:hover { background: var(--primary-light); color: var(--primary); transform: translateX(6px); }
+        .nav-link i { width: 18px; text-align: center; font-size: 0.95rem; }
+        .main-container { padding-top: 80px; }
+        .header { position: fixed; top: 0; left: var(--sidebar-width); right: 0; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-variant) 100%); backdrop-filter: blur(20px); z-index: 100; box-shadow: var(--shadow-lg); height: 64px; display: flex; align-items: center; }
+        .header-content { max-width: 1200px; margin: 0 auto; padding: 0 1rem; display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; }
+        .logo-section { display: flex; align-items: center; gap: 0.75rem; }
+        .logo { font-size: 1.75rem; font-weight: 800; color: white; letter-spacing: -0.025em; text-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .menu-toggle { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0.625rem; border-radius: 6px; margin-right: 1rem; display: flex; align-items: center; justify-content: center; }
+        .menu-toggle:hover { background: rgba(255,255,255,0.2); }
+        .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+        .header-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 44px; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; }
+        .header-btn:hover { background: rgba(255,255,255,0.2); }
+        .user-profile-dropdown { position: relative; }
+        .user-profile-trigger { display: flex; align-items: center; gap: 0.75rem; background: rgba(255,255,255,0.1); border: none; color: white; padding: 0.5rem 1rem; border-radius: 16px; cursor: pointer; }
+        .user-profile-trigger:hover { background: rgba(255,255,255,0.2); }
+        .user-avatar-small { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-size: 1rem; color: white; }
+        .user-name-header { font-weight: 600; font-size: 0.9rem; }
+        .dropdown-arrow { font-size: 0.8rem; }
+        .user-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid #e5e7eb; min-width: 220px; z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s; }
+        .user-dropdown.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .user-dropdown-header { padding: 1.2rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 1rem; }
+        .user-avatar-large { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--primary); background: var(--primary-light); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-size: 1.5rem; color: var(--primary); }
+        .user-info-dropdown h3 { font-weight: 600; color: var(--on-surface); margin-bottom: 0.25rem; font-size: 1rem; }
+        .user-info-dropdown p { font-size: 0.875rem; color: var(--on-surface-variant); }
+        .user-dropdown-menu { padding: 0.5rem; }
+        .dropdown-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 12px; color: var(--on-surface); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+        .dropdown-item:hover { background: #f1f5f9; color: var(--primary); }
+        .dropdown-item i { width: 20px; text-align: center; color: var(--on-surface-variant); }
+        .dropdown-item:hover i { color: var(--primary); }
+    </style>
+    <aside class="sidebar closed" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-profile">
+                <div class="sidebar-avatar">{% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}</div>
+                <div class="sidebar-user-info">
+                    <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
+                    <p>{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@email.com{% endif %}</p>
         </div>
-        <div class="header-controls">
-            <div class="status-badge">
-                <div class="status-dot"></div>
-                <span>Online</span>
             </div>
-            <button id="themeToggle" class="theme-toggle">
-                <i class="fas fa-moon"></i>
-                <span>Night Mode</span>
+            <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar">&times;</button>
+        </div>
+        <ul class="nav-list">
+            <li class="nav-item"><a class="nav-link active" href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-rupee-sign"></i> Pricing</a></li>
+            <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+    </aside>
+    <div style="margin-left: var(--sidebar-width); width: 100%; min-height: 100vh; background: var(--background);">
+        <!-- Navbar -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <button class="menu-toggle" id="sidebarOpenBtn" aria-label="Open sidebar"><i class="fas fa-bars"></i></button>
+                    <span class="logo"><i class="fas fa-store"></i> PrintMax Vendor</span>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+                    <div class="user-profile-dropdown" id="profileDropdown">
+                        <button class="user-profile-trigger" id="profileDropdownBtn">
+                            <span class="user-avatar-small">{% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}</span>
+                            <span class="user-name-header">{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</span>
+                            <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
             </button>
-            {% if vendor_details %}
-            <div class="vendor-profile" style="display: flex; align-items: center; gap: 12px; background: var(--bg-secondary); border-radius: 16px; padding: 8px 18px; box-shadow: var(--shadow-sm);">
-                <div style="background: var(--primary-blue); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700;">
-                    {{ vendor_details.vendor_name|slice:":1"|upper }}
+                        <div class="user-dropdown" id="profileDropdownMenu">
+                            <div class="user-dropdown-header">
+                                <div class="user-avatar-large">{% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}</div>
+                                <div class="user-info-dropdown">
+                                    <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
+                                    <p>{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@email.com{% endif %}</p>
                 </div>
-                <div style="display: flex; flex-direction: column; align-items: flex-start;">
-                    <span style="font-weight: 600; color: var(--primary-blue); font-size: 1.1rem;">{{ vendor_details.vendor_name }}</span>
-                    <span style="font-size: 0.95rem; color: var(--text-secondary);">{{ vendor_details.vendor_email }}</span>
                 </div>
+                            <div class="user-dropdown-menu">
+                                <a class="dropdown-item" href="#"><i class="fas fa-cogs"></i> Settings</a>
+                                <a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
-            {% endif %}
+                        </div>
+                    </div>
+                </div>
         </div>
     </header>
-
-    <!-- Main Container -->
     <main class="main-container">
+            {% if vendor_details_error %}
+            <div style="background: #ffcdd2; color: #b71c1c; border: 1.5px solid #b71c1c; border-radius: 12px; padding: 18px 24px; margin: 32px auto 24px auto; max-width: 600px; font-weight: 600; text-align: center;">
+                {{ vendor_details_error }}
+            </div>
+            {% endif %}
         <!-- Vendor Details Card -->
         {% if vendor_details %}
-        <div class="vendor-details-card" style="
-            background: var(--bg-primary);
-            border: 1.5px solid var(--primary-blue);
-            border-radius: 18px;
-            box-shadow: var(--shadow-lg);
-            padding: 32px 32px 24px 32px;
-            margin: 32px auto 24px auto;
-            max-width: 600px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-        ">
+            <div class="vendor-details-card" style="background: #fffde7; border: 1.5px solid #fbc02d; border-radius: 18px; box-shadow: var(--shadow-lg); padding: 32px 32px 24px 32px; margin: 32px auto 24px auto; max-width: 600px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 8px;">
-                <span class="fa fa-store" style="font-size: 2.2rem; color: var(--primary-blue);"></span>
+                    <span class="fa fa-store" style="font-size: 2.2rem; color: #fbc02d;"></span>
                 <div>
-                    <div style="font-size: 1.7rem; font-weight: 700; color: var(--primary-blue);">{{ vendor_details.vendor_name }}</div>
-                    <div style="font-size: 1.1rem; color: var(--text-secondary);">Shop Profile</div>
+                        <div style="font-size: 1.7rem; font-weight: 700; color: #1565c0;">{{ vendor_details.vendor_name }}</div>
+                        <div style="font-size: 1.1rem; color: #757575;">Shop Profile</div>
                 </div>
             </div>
-            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>Email:</b> {{ vendor_details.vendor_email }}</div>
-            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>Phone:</b> {{ vendor_details.phone_number }}</div>
-            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>Address:</b> {{ vendor_details.shop_address }}</div>
-            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>City:</b> {{ vendor_details.city }}</div>
-            <div style="font-size: 1.1rem; color: var(--text-primary);"><b>PIN Code:</b> {{ vendor_details.pincode }}</div>
+                <div style="font-size: 1.1rem; color: #222;"><b>Email:</b> {{ vendor_details.vendor_email }}</div>
+                <div style="font-size: 1.1rem; color: #222;"><b>Phone:</b> {{ vendor_details.phone_number }}</div>
+                <div style="font-size: 1.1rem; color: #222;"><b>Address:</b> {{ vendor_details.shop_address }}</div>
+                <div style="font-size: 1.1rem; color: #222;"><b>City:</b> {{ vendor_details.city }}</div>
+                <div style="font-size: 1.1rem; color: #222;"><b>PIN Code:</b> {{ vendor_details.pincode }}</div>
         </div>
         {% endif %}
-        <!-- End Vendor Details Card -->
 
         <!-- Statistics Cards -->
         <div class="stats-grid">

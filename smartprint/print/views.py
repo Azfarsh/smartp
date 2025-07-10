@@ -47,9 +47,10 @@ def vendordashboard(request):
             elif job_completed == 'YES':
                 completed_jobs.append(job)
 
-        # --- NEW: Fetch vendor details from R2 ---
+        # --- Robust: Fetch vendor details from R2 ---
         vendor_email = request.session.get('vendor_email') or request.GET.get('vendor_email')
         vendor_details = None
+        vendor_details_error = None
         if vendor_email:
             s3 = boto3.client('s3',
                               aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -60,15 +61,32 @@ def vendordashboard(request):
                 reg_key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
                 response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
                 vendor_details = json.loads(response['Body'].read().decode('utf-8'))
+                shop_folder_name = sanitize_shop_name(vendor_details.get('vendor_name', ''))
+                vendor_details['shop_folder'] = shop_folder_name
             except Exception as e:
                 print(f"Error fetching vendor details for dashboard: {str(e)}")
                 vendor_details = None
+                vendor_details_error = 'Could not fetch your shop details. Please contact support.'
+        else:
+            print("No vendor_email found in session or GET params for dashboard.")
+            vendor_details_error = 'No vendor email found. Please log in again.'
+
+        # Calculate statistics
+        total_jobs = len(files)
+        manual_print_count = len(manual_print_jobs)
+        print_requests_count = len(print_requests)
+        completed_jobs_count = len(completed_jobs)
 
         context = {
             'manual_print_jobs': manual_print_jobs,
             'print_requests': print_requests,
             'completed_jobs': completed_jobs,
             'vendor_details': vendor_details,
+            'vendor_details_error': vendor_details_error,
+            'total_jobs': total_jobs,
+            'manual_print_count': manual_print_count,
+            'print_requests_count': print_requests_count,
+            'completed_jobs_count': completed_jobs_count,
         }
         return render(request, 'vendordashboard.html', context)
     except Exception as e:
@@ -78,6 +96,11 @@ def vendordashboard(request):
             'print_requests': [],
             'completed_jobs': [],
             'vendor_details': None,
+            'vendor_details_error': 'Dashboard error. Please try again later.',
+            'total_jobs': 0,
+            'manual_print_count': 0,
+            'print_requests_count': 0,
+            'completed_jobs_count': 0,
         })
 
 
@@ -1317,7 +1340,8 @@ def vendor_login(request):
                         vendor_name = reg_details.get('vendor_name', '')
                     except:
                         vendor_name = ''
-                    
+                    # Set vendor email in session
+                    request.session['vendor_email'] = email
                     return JsonResponse({
                         'success': True,
                         'message': 'Login successful',
@@ -1454,6 +1478,22 @@ def vendor_register_api(request):
             login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
             s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(login_details), ContentType='application/json')
 
+            # Create shop folder with vendor name
+            shop_folder_name = sanitize_shop_name(vendor_name)
+            shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
+            
+            # Create a placeholder file to establish the folder structure
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=f'{shop_folder_key}shop_info.json',
+                Body=json.dumps({
+                    'shop_name': vendor_name,
+                    'created_at': timezone.now().isoformat(),
+                    'folder_created': True
+                }),
+                ContentType='application/json'
+            )
+
             # Prepare pricing details if present
             pricing_entries = data.get('pricing_entries', [])
             for entry in pricing_entries:
@@ -1461,12 +1501,13 @@ def vendor_register_api(request):
                 key = f'vendor_register_details/{sanitize_email(email)}/pricing_details/pricing_{pricing_id}.json'
                 s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
 
-            print(f"✅ Successfully registered vendor {email}")
+            print(f"✅ Successfully registered vendor {email} with shop folder: {shop_folder_name}")
 
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful',
-                'vendor_email': email
+                'vendor_email': email,
+                'shop_folder': shop_folder_name
             })
 
         except Exception as e:
@@ -1484,6 +1525,12 @@ def vendor_register_api(request):
 def sanitize_email(email):
     # Lowercase, replace @ with _at_, . with _dot_, and remove other special chars
     return re.sub(r'[^a-zA-Z0-9_]', '', email.lower().replace('@', '_at_').replace('.', '_dot_'))
+
+def sanitize_shop_name(shop_name):
+    # Convert to lowercase, replace spaces with underscores, remove special chars except underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9_\s]', '', shop_name.lower())
+    sanitized = re.sub(r'\s+', '_', sanitized.strip())
+    return sanitized
 
 def vendor_email_folder(email):
     return f'vendor_register_details/{sanitize_email(email)}'
