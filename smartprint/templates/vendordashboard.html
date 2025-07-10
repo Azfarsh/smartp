@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,51 +7,101 @@
     <meta name="description" content="PrintMax Vendor Dashboard - Manage print jobs efficiently">
     <title>PrintMax Vendor Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Modern Color Palette */
-            --primary-blue: #2563eb;
-            --primary-blue-hover: #1d4ed8;
-            --secondary-blue: #eff6ff;
-            --success-green: #059669;
-            --warning-orange: #d97706;
-            --error-red: #dc2626;
-            --purple: #7c3aed;
-            --indigo: #4f46e5;
-            --pink: #ec4899;
-            --text-primary: #111827;
-            --text-secondary: #6b7280;
-            --text-tertiary: #9ca3af;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb;
-            --bg-tertiary: #f3f4f6;
-            --border-light: #e5e7eb;
-            --border-medium: #d1d5db;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            /* Light Mode Colors - Professional Palette */
+            --primary: #1565c0;
+            --primary-light: #1976d2;
+            --primary-dark: #0d47a1;
+            --secondary: #2e7d32;
+            --secondary-light: #43a047;
+            --accent: #6a1b9a;
+            --accent-light: #8e24aa;
+            
+            --surface: #ffffff;
+            --surface-variant: #f8fafc;
+            --surface-container: #f1f5f9;
+            --surface-container-high: #e2e8f0;
+            --background: #f8fafc;
+            
+            --on-surface: #0f172a;
+            --on-surface-variant: #475569;
+            --on-primary: #ffffff;
+            --on-secondary: #ffffff;
+            
+            --outline: #cbd5e1;
+            --outline-variant: #e2e8f0;
+            
+            --shadow: rgba(15, 23, 42, 0.08);
+            --shadow-light: rgba(15, 23, 42, 0.04);
+            
+            --sidebar-width: 280px;
+            --header-height: 65px;
+            
+            /* Job Type Colors - Based on your reference */
+            --manual-color: #BA55D3;
+            --manual-bg: rgba(186, 85, 211, 0.1);
+            --requests-color: #3B82F6;
+            --requests-bg: rgba(59, 130, 246, 0.1);
+            --completed-color: #10B981;
+            --completed-bg: rgba(16, 185, 129, 0.1);
+            
+            /* Service Type Colors */
+            --digital-print: #BA55D3;
+            --digital-print-bg: linear-gradient(135deg, #8A2BE2, #BA55D3);
+            --project-binding: #BA55D3;
+            --project-binding-bg: linear-gradient(135deg, #8A2BE2, #BA55D3);
+            --gloss-printing: #BA55D3;
+            --gloss-printing-bg: linear-gradient(135deg, #8A2BE2, #BA55D3);
+            --jumbo-printing: #BA55D3;
+            --jumbo-printing-bg: linear-gradient(135deg, #8A2BE2, #BA55D3);
         }
 
         [data-theme="dark"] {
-            --primary-blue: #60a5fa;
-            --primary-blue-hover: #3b82f6;
-            --secondary-blue: #1e3a8a;
-            --success-green: #10b981;
-            --warning-orange: #f59e0b;
-            --error-red: #ef4444;
-            --purple: #a855f7;
-            --indigo: #6366f1;
-            --pink: #f472b6;
-            --text-primary: #f9fafb;
-            --text-secondary: #d1d5db;
-            --text-tertiary: #9ca3af;
-            --bg-primary: #111827;
-            --bg-secondary: #1f2937;
-            --bg-tertiary: #374151;
-            --border-light: #374151;
-            --border-medium: #4b5563;
+            /* Dark Mode Colors - Professional Dark Theme */
+            --primary: #60a5fa;
+            --primary-light: #93c5fd;
+            --primary-dark: #3b82f6;
+            --secondary: #34d399;
+            --secondary-light: #6ee7b7;
+            --accent: #c084fc;
+            --accent-light: #d8b4fe;
+            
+            --surface: #1e293b;
+            --surface-variant: #334155;
+            --surface-container: #475569;
+            --surface-container-high: #64748b;
+            --background: #0f172a;
+            
+            --on-surface: #f1f5f9;
+            --on-surface-variant: #cbd5e1;
+            --on-primary: #0f172a;
+            --on-secondary: #0f172a;
+            
+            --outline: #475569;
+            --outline-variant: #334155;
+            
+            --shadow: rgba(0, 0, 0, 0.25);
+            --shadow-light: rgba(0, 0, 0, 0.15);
+            
+            /* Dark Mode Job Colors */
+            --manual-color: #DA70D6;
+            --manual-bg: rgba(218, 112, 214, 0.15);
+            --requests-color: #60a5fa;
+            --requests-bg: rgba(96, 165, 250, 0.15);
+            --completed-color: #34d399;
+            --completed-bg: rgba(52, 211, 153, 0.15);
+            
+            /* Dark Mode Service Type Colors */
+            --digital-print: #DA70D6;
+            --digital-print-bg: linear-gradient(135deg, #9370DB, #DA70D6);
+            --project-binding: #DA70D6;
+            --project-binding-bg: linear-gradient(135deg, #9370DB, #DA70D6);
+            --gloss-printing: #DA70D6;
+            --gloss-printing-bg: linear-gradient(135deg, #9370DB, #DA70D6);
+            --jumbo-printing: #DA70D6;
+            --jumbo-printing-bg: linear-gradient(135deg, #9370DB, #DA70D6);
         }
 
         * {
@@ -61,99 +112,271 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-            color: var(--text-primary);
+            background: var(--background);
+            color: var(--on-surface);
             line-height: 1.6;
-            min-height: 100vh;
+            transition: all 0.3s ease;
         }
 
-        /* Header */
+        /* Header with Logo */
         .header {
-            background: var(--bg-primary);
-            border-bottom: 1px solid var(--border-light);
-            padding: 16px 24px;
-            box-shadow: var(--shadow-sm);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
+            position: fixed;
             top: 0;
-            z-index: 100;
-            backdrop-filter: blur(10px);
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background: var(--surface);
+            border-bottom: 1px solid var(--outline);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            z-index: 1000;
+            transition: all 0.3s ease;
         }
 
-        .header-brand {
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
             display: flex;
             align-items: center;
             gap: 12px;
             font-size: 24px;
             font-weight: 700;
-            color: var(--primary-blue);
+            color: var(--primary);
         }
 
-        .header-brand i {
+        .logo i {
             font-size: 28px;
         }
 
-        .header-controls {
+        .menu-toggle {
+            background: var(--surface-container);
+            border: 1px solid var(--outline);
+            color: var(--on-surface);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-toggle:hover {
+            background: var(--surface-container-high);
+            transform: scale(1.05);
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .header-actions {
+            margin-left: auto;
             display: flex;
             align-items: center;
             gap: 16px;
         }
 
-        .status-badge {
+        .theme-toggle {
+            background: var(--surface-container);
+            border: 1px solid var(--outline);
+            color: var(--on-surface-variant);
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            background: var(--surface-container-high);
+            transform: scale(1.1);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: var(--header-height);
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--header-height));
+            background: var(--surface);
+            border-right: 1px solid var(--outline);
+            z-index: 999;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .vendor-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            background: var(--surface-container);
+            margin: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--outline);
+        }
+
+        .vendor-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--on-primary);
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .vendor-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--on-surface);
+            margin-bottom: 2px;
+        }
+
+        .vendor-info p {
+            font-size: 14px;
+            color: var(--on-surface-variant);
+        }
+
+        .vendor-status {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 16px;
-            background: linear-gradient(135deg, var(--success-green), #10b981);
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            color: white;
-            box-shadow: var(--shadow-md);
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--secondary);
         }
 
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: white;
+            background: var(--secondary);
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
         }
 
-        .theme-toggle {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            padding: 10px 16px;
-            cursor: pointer;
+        .nav-menu {
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            margin: 4px 16px;
+        }
+
+        .nav-link {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-primary);
+            gap: 12px;
+            padding: 14px 16px;
+            color: var(--on-surface-variant);
+            text-decoration: none;
+            border-radius: 12px;
             transition: all 0.3s ease;
-            box-shadow: var(--shadow-sm);
+            font-weight: 500;
         }
 
-        .theme-toggle:hover {
-            background: var(--bg-tertiary);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
+        .nav-link:hover {
+            background: var(--surface-container);
+            color: var(--on-surface);
+            transform: translateX(4px);
         }
 
-        /* Main Container */
-        .main-container {
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--on-primary);
+        }
+
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .nav-badge {
+            background: var(--primary);
+            color: var(--on-primary);
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            margin-left: auto;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
             padding: 24px;
-            max-width: 1400px;
-            margin: 0 auto;
+            border-top: 1px solid var(--outline);
+            background: var(--surface-variant);
+        }
+
+        .logout-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: transparent;
+            border: 2px solid var(--manual-color);
+            color: var(--manual-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: var(--manual-color);
+            color: var(--on-primary);
+            transform: translateY(-2px);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--header-height);
+            padding: 24px;
+            min-height: calc(100vh - var(--header-height));
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.full-width {
+            margin-left: 0;
         }
 
         /* Statistics Cards */
@@ -165,11 +388,10 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: var(--shadow-md);
+            background: var(--surface);
+            border: 1px solid var(--outline);
+            border-radius: 12px;
+            padding: 16px;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -182,65 +404,76 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary-blue), var(--purple));
         }
+
+        .stat-card.manual::before { background: var(--manual-color); }
+        .stat-card.requests::before { background: var(--requests-color); }
+        .stat-card.completed::before { background: var(--completed-color); }
+        .stat-card.total::before { background: linear-gradient(90deg, var(--primary), var(--secondary)); }
 
         .stat-card:hover {
             transform: translateY(-4px);
-            box-shadow: var(--shadow-xl);
+            box-shadow: 0 8px 24px var(--shadow);
         }
 
-        .stat-card h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-card .number {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-
-        .stat-card .label {
-            font-size: 12px;
-            color: var(--text-tertiary);
-        }
-
-        /* Job Section */
-        .job-section {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            margin-bottom: 24px;
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .job-section:hover {
-            box-shadow: var(--shadow-xl);
-        }
-
-        .section-header {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border-light);
+        .stat-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
+            margin-bottom: 16px;
         }
 
-        .section-title-wrapper {
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--on-primary);
+        }
+
+        .stat-icon.manual { background: var(--manual-color); }
+        .stat-icon.requests { background: var(--requests-color); }
+        .stat-icon.completed { background: var(--completed-color); }
+        .stat-icon.total { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--on-surface);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--on-surface-variant);
+            font-weight: 500;
+        }
+
+        /* Job Sections */
+        .job-section {
+            background: var(--surface);
+            border: 1px solid var(--outline);
+            border-radius: 20px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: var(--surface-variant);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--outline);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-title-group {
             display: flex;
             align-items: center;
             gap: 16px;
-            flex: 1;
         }
 
         .section-icon {
@@ -250,25 +483,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             font-size: 20px;
-            box-shadow: var(--shadow-md);
+            color: var(--on-primary);
         }
 
-        .manual-section .section-icon { 
-            background: linear-gradient(135deg, var(--warning-orange), #f59e0b); 
-        }
-        .completed-section .section-icon { 
-            background: linear-gradient(135deg, var(--success-green), #10b981); 
-        }
-        .requests-section .section-icon { 
-            background: linear-gradient(135deg, var(--primary-blue), var(--indigo)); 
-        }
+        .section-icon.manual { background: var(--manual-color); }
+        .section-icon.requests { background: var(--requests-color); }
+        .section-icon.completed { background: var(--completed-color); }
 
         .section-title {
             font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
+            font-weight: 600;
+            color: var(--on-surface);
         }
 
         .section-controls {
@@ -277,51 +503,45 @@
             gap: 16px;
         }
 
-        .job-count {
-            background: linear-gradient(135deg, var(--primary-blue), var(--indigo));
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 700;
-            min-width: 40px;
-            text-align: center;
-            box-shadow: var(--shadow-md);
-        }
-
         .search-container {
             position: relative;
         }
 
         .search-input {
-            padding: 12px 16px 12px 44px;
-            border: 2px solid var(--border-light);
-            border-radius: 12px;
-            font-size: 14px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            padding: 12px 16px 12px 40px;
+            border: 1px solid var(--outline);
+            border-radius: 24px;
+            background: var(--surface);
+            color: var(--on-surface);
             width: 240px;
+            font-size: 14px;
             transition: all 0.3s ease;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .search-input::placeholder {
-            color: var(--text-tertiary);
         }
 
         .search-input:focus {
             outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
         }
 
         .search-icon {
             position: absolute;
-            left: 16px;
+            left: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--text-tertiary);
+            color: var(--on-surface-variant);
             font-size: 16px;
+        }
+
+        .job-count {
+            background: var(--primary);
+            color: var(--on-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: center;
         }
 
         /* Jobs Container */
@@ -331,68 +551,41 @@
             overflow-y: auto;
         }
 
-        .jobs-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .jobs-container::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-            border-radius: 3px;
-        }
-
-        .jobs-container::-webkit-scrollbar-thumb {
-            background: var(--border-medium);
-            border-radius: 3px;
-        }
-
-        .jobs-container::-webkit-scrollbar-thumb:hover {
-            background: var(--text-tertiary);
-        }
-
         .jobs-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 16px;
         }
 
-        /* Job Block - Compact and Colorful */
-        .job-block {
-            background: var(--bg-primary);
-            border: 2px solid var(--border-light);
+        /* Streamlined Job Cards */
+        .job-card {
+            background: var(--surface);
+            border: 1px solid var(--outline);
             border-radius: 12px;
             padding: 16px;
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            box-shadow: var(--shadow-sm);
         }
 
-        .job-block::before {
+        .job-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
+            height: 3px;
         }
 
-        .manual-job::before {
-            background: linear-gradient(90deg, var(--warning-orange), #f59e0b);
-        }
+        .job-card.manual::before { background: var(--manual-color); }
+        .job-card.requests::before { background: var(--requests-color); }
+        .job-card.completed::before { background: var(--completed-color); }
 
-        .completed-job::before {
-            background: linear-gradient(90deg, var(--success-green), #10b981);
-        }
-
-        .pending-job::before {
-            background: linear-gradient(90deg, var(--primary-blue), var(--indigo));
-        }
-
-        .job-block:hover {
+        .job-card:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--primary-blue);
+            box-shadow: 0 4px 12px var(--shadow);
+            border-color: var(--primary);
         }
 
         .job-header {
@@ -403,79 +596,68 @@
         }
 
         .job-token {
-            display: inline-block;
-            background: #2563eb;
-            color: #fff;
-            font-weight: bold;
+            background: var(--primary);
+            color: var(--on-primary);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
             border-radius: 6px;
-            padding: 0 0.5em;
-            margin-right: 0.5em;
-            font-size: 1.1em;
-            letter-spacing: 1px;
         }
 
         .job-status {
+            font-size: 11px;
+            font-weight: 600;
             padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: 700;
+            border-radius: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .status-manual {
-            background: rgba(217, 119, 6, 0.1);
-            color: var(--warning-orange);
-            border: 1px solid rgba(217, 119, 6, 0.2);
+            background: var(--manual-bg);
+            color: var(--manual-color);
+        }
+
+        .status-requests {
+            background: var(--requests-bg);
+            color: var(--requests-color);
         }
 
         .status-completed {
-            background: rgba(5, 150, 105, 0.1);
-            color: var(--success-green);
-            border: 1px solid rgba(5, 150, 105, 0.2);
-        }
-
-        .status-pending {
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--primary-blue);
-            border: 1px solid rgba(37, 99, 235, 0.2);
+            background: var(--completed-bg);
+            color: var(--completed-color);
         }
 
         .job-filename {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--on-surface);
             margin-bottom: 8px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .job-details {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
         .job-meta {
             display: flex;
-            gap: 12px;
-            font-size: 11px;
-            color: var(--text-secondary);
+            gap: 16px;
+            font-size: 13px;
+            color: var(--on-surface-variant);
+            margin-bottom: 12px;
+            flex-wrap: wrap;
         }
 
         .job-meta-item {
             display: flex;
             align-items: center;
-            gap: 4px;
-            background: var(--bg-secondary);
-            padding: 2px 6px;
-            border-radius: 4px;
+            gap: 6px;
+            background: var(--surface-container);
+            padding: 4px 8px;
+            border-radius: 6px;
         }
 
         .job-meta-item i {
-            font-size: 10px;
+            font-size: 12px;
+            color: var(--primary);
         }
 
         .job-actions {
@@ -483,64 +665,79 @@
             gap: 8px;
         }
 
+        .service-type-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .service-type-badge.digital-print {
+            background: var(--digital-print-bg);
+            color: white;
+        }
+
+        .service-type-badge.project-binding {
+            background: var(--project-binding-bg);
+            color: white;
+        }
+
+        .service-type-badge.gloss-printing {
+            background: var(--gloss-printing-bg);
+            color: white;
+        }
+
+        .service-type-badge.jumbo-printing {
+            background: var(--jumbo-printing-bg);
+            color: white;
+        }
+
         .btn-small {
-            padding: 6px 12px;
-            border-radius: 8px;
+            padding: 8px 12px;
             border: none;
-            font-size: 11px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             gap: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            flex: 1;
+            justify-content: center;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-blue), var(--indigo));
-            color: white;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
+            background: var(--primary);
+            color: var(--on-primary);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, var(--success-green), #10b981);
-            color: white;
-            box-shadow: var(--shadow-sm);
+            background: var(--completed-color);
+            color: var(--on-primary);
         }
 
-        .btn-success:hover {
+        .btn-secondary {
+            background: var(--surface-container);
+            color: var(--on-surface);
+            border: 1px solid var(--outline);
+        }
+
+        .btn-small:hover {
             transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-        /* Service Badge */
-        .service-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: linear-gradient(135deg, var(--purple), var(--pink));
-            color: white;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 2px 8px var(--shadow);
         }
 
         /* Empty State */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: var(--text-tertiary);
+            padding: 40px 20px;
+            color: var(--on-surface-variant);
         }
 
         .empty-state i {
@@ -551,27 +748,22 @@
 
         .empty-state h3 {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 500;
             margin-bottom: 8px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state p {
-            font-size: 14px;
-            margin-bottom: 12px;
+            color: var(--on-surface);
         }
 
         /* Modal */
         .modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: 2000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
         }
 
         .modal.show {
@@ -581,58 +773,50 @@
         }
 
         .modal-content {
-            background: var(--bg-primary);
-            border-radius: 20px;
-            padding: 32px;
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
             max-width: 90%;
             max-height: 90%;
             width: 700px;
-            box-shadow: var(--shadow-xl);
-            border: 1px solid var(--border-light);
+            border: 1px solid var(--outline);
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             padding-bottom: 16px;
-            border-bottom: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--outline);
         }
 
         .modal-title {
             font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
+            font-weight: 600;
+            color: var(--on-surface);
         }
 
         .modal-close {
-            background: var(--error-red);
-            color: white;
+            background: var(--manual-color);
+            color: var(--on-primary);
             border: none;
             border-radius: 50%;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow-md);
-        }
-
-        .modal-close:hover {
-            transform: scale(1.1);
         }
 
         .preview-container {
             width: 100%;
-            height: 500px;
-            border: 1px solid var(--border-light);
+            height: 400px;
+            border: 1px solid var(--outline);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: var(--shadow-md);
         }
 
         .preview-frame {
@@ -644,17 +828,16 @@
         /* Toast */
         .toast {
             position: fixed;
-            bottom: -80px;
+            bottom: -100px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, var(--success-green), #10b981);
-            color: white;
-            padding: 16px 24px;
+            background: var(--completed-color);
+            color: var(--on-primary);
+            padding: 12px 20px;
             border-radius: 12px;
             font-size: 14px;
-            font-weight: 600;
-            box-shadow: var(--shadow-xl);
-            z-index: 1100;
+            font-weight: 500;
+            z-index: 2100;
             transition: bottom 0.4s ease;
         }
 
@@ -663,17 +846,34 @@
         }
 
         /* Responsive Design */
+        @media (max-width: 1024px) {
+            :root {
+                --sidebar-width: 260px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 16px;
+            }
+            
+            .jobs-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+        }
+
         @media (max-width: 768px) {
-            .header {
-                padding: 12px 16px;
-                flex-direction: column;
-                gap: 12px;
+            .sidebar {
+                transform: translateX(-100%);
             }
-
-            .main-container {
-                padding: 16px;
+            
+            .sidebar.show {
+                transform: translateX(0);
             }
-
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
             .section-header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -688,269 +888,243 @@
             .search-input {
                 width: 200px;
             }
-
-            .jobs-grid {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-
+            
             .stats-grid {
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 16px;
             }
-        }
-
-        @media (max-width: 480px) {
-            .job-block {
-                padding: 12px;
-            }
-
-            .job-filename {
-                font-size: 13px;
+            
+            .jobs-grid {
+                grid-template-columns: 1fr;
             }
 
             .job-meta {
                 gap: 8px;
-                font-size: 10px;
             }
 
+            .job-meta-item {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 16px;
+            }
+            
+            .vendor-profile {
+                margin: 16px;
+            }
+            
             .search-input {
                 width: 160px;
             }
+            
+            .job-card {
+                padding: 12px;
+            }
         }
 
-        /* Add after .job-block styles */
-        .job-block .delete-btn {
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--surface-variant);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--outline);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--on-surface-variant);
+        }
+
+        /* Sidebar Overlay for Mobile */
+        .sidebar-overlay {
             display: none;
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: var(--error-red);
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 2;
-            opacity: 0.85;
-            transition: background 0.2s, opacity 0.2s;
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            height: calc(100vh - var(--header-height));
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
         }
-        .job-block .delete-btn:hover {
-            background: #b91c1c;
-            opacity: 1;
-        }
-        .completed-job:hover .delete-btn {
+
+        .sidebar-overlay.show {
             display: block;
         }
 
-        .show-token-btn {
-            background: #10b981;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 0.4em 1em;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 0.5em;
-            font-size: 1em;
-        }
-        .show-token-btn:hover {
-            background: #059669;
+        @media (max-width: 768px) {
+            .sidebar-overlay.show {
+                display: block;
+            }
         }
     </style>
 </head>
-<!-- Classic Vendor Dashboard with Collapsible Sidebar, Navbar Dropdown, and Day/Night Mode -->
-<body style="display: flex; min-height: 100vh;">
-    <style>
-        :root {
-            --primary: #1e3a8a;
-            --primary-variant: #1e40af;
-            --primary-light: #dbeafe;
-            --secondary: #10b981;
-            --secondary-variant: #059669;
-            --background: #f8fafc;
-            --surface: #fff;
-            --on-surface: #1f2937;
-            --on-surface-variant: #6b7280;
-            --sidebar-width: 280px;
-            --shadow-lg: 0 10px 15px -3px rgba(30,58,138,0.07), 0 4px 6px -2px rgba(30,58,138,0.05);
-        }
-        [data-theme="dark"] {
-            --primary: #60a5fa;
-            --primary-variant: #3b82f6;
-            --primary-light: #1e293b;
-            --secondary: #34d399;
-            --secondary-variant: #10b981;
-            --background: #111827;
-            --surface: #1f2937;
-            --on-surface: #f9fafb;
-            --on-surface-variant: #d1d5db;
-        }
-        .sidebar {
-            position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100%; background: var(--surface); border-right: 1px solid #e5e7eb; z-index: 999; box-shadow: var(--shadow-lg); overflow-y: auto; transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        }
-        .sidebar.closed { transform: translateX(-100%); }
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #f1f5f9; background: #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-        .sidebar-profile { display: flex; align-items: center; gap: 1rem; }
-        .sidebar-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--primary); font-size: 1.25rem; color: var(--primary); font-weight: 700; }
-        .sidebar-user-info h3 { font-weight: 700; color: var(--primary); margin-bottom: 0.2rem; font-size: 1rem; }
-        .sidebar-user-info p { font-size: 0.8rem; color: var(--on-surface-variant); }
-        .sidebar-close-btn { display: none; background: none; border: none; font-size: 1.5rem; color: var(--on-surface-variant); cursor: pointer; }
-        @media (max-width: 900px) { .sidebar { position: fixed; left: 0; top: 0; height: 100vh; z-index: 1200; } .sidebar-close-btn { display: block; } }
-        .nav-list { list-style: none; padding: 1rem 0; }
-        .nav-item { margin-bottom: 0.2rem; }
-        .nav-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1.5rem; color: var(--on-surface-variant); text-decoration: none; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
-        .nav-link.active, .nav-link:hover { background: var(--primary-light); color: var(--primary); transform: translateX(6px); }
-        .nav-link i { width: 18px; text-align: center; font-size: 0.95rem; }
-        .main-container { padding-top: 80px; }
-        .header { position: fixed; top: 0; left: var(--sidebar-width); right: 0; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-variant) 100%); backdrop-filter: blur(20px); z-index: 100; box-shadow: var(--shadow-lg); height: 64px; display: flex; align-items: center; }
-        .header-content { max-width: 1200px; margin: 0 auto; padding: 0 1rem; display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; }
-        .logo-section { display: flex; align-items: center; gap: 0.75rem; }
-        .logo { font-size: 1.75rem; font-weight: 800; color: white; letter-spacing: -0.025em; text-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        .menu-toggle { background: rgba(255,255,255,0.1); border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 0.625rem; border-radius: 6px; margin-right: 1rem; display: flex; align-items: center; justify-content: center; }
-        .menu-toggle:hover { background: rgba(255,255,255,0.2); }
-        .header-actions { display: flex; align-items: center; gap: 0.5rem; }
-        .header-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 44px; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; }
-        .header-btn:hover { background: rgba(255,255,255,0.2); }
-        .user-profile-dropdown { position: relative; }
-        .user-profile-trigger { display: flex; align-items: center; gap: 0.75rem; background: rgba(255,255,255,0.1); border: none; color: white; padding: 0.5rem 1rem; border-radius: 16px; cursor: pointer; }
-        .user-profile-trigger:hover { background: rgba(255,255,255,0.2); }
-        .user-avatar-small { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-size: 1rem; color: white; }
-        .user-name-header { font-weight: 600; font-size: 0.9rem; }
-        .dropdown-arrow { font-size: 0.8rem; }
-        .user-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid #e5e7eb; min-width: 220px; z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s; }
-        .user-dropdown.active { opacity: 1; visibility: visible; transform: translateY(0); }
-        .user-dropdown-header { padding: 1.2rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 1rem; }
-        .user-avatar-large { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--primary); background: var(--primary-light); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; font-size: 1.5rem; color: var(--primary); }
-        .user-info-dropdown h3 { font-weight: 600; color: var(--on-surface); margin-bottom: 0.25rem; font-size: 1rem; }
-        .user-info-dropdown p { font-size: 0.875rem; color: var(--on-surface-variant); }
-        .user-dropdown-menu { padding: 0.5rem; }
-        .dropdown-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 12px; color: var(--on-surface); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
-        .dropdown-item:hover { background: #f1f5f9; color: var(--primary); }
-        .dropdown-item i { width: 20px; text-align: center; color: var(--on-surface-variant); }
-        .dropdown-item:hover i { color: var(--primary); }
-    </style>
-    <aside class="sidebar closed" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-profile">
-                <div class="sidebar-avatar">{% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}</div>
-                <div class="sidebar-user-info">
-                    <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
-                    <p>{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@email.com{% endif %}</p>
-        </div>
-            </div>
-            <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar">&times;</button>
-        </div>
-        <ul class="nav-list">
-            <li class="nav-item"><a class="nav-link active" href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-rupee-sign"></i> Pricing</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-cogs"></i> Settings</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </aside>
-    <div style="margin-left: var(--sidebar-width); width: 100%; min-height: 100vh; background: var(--background);">
-        <!-- Navbar -->
-        <header class="header">
-            <div class="header-content">
-                <div class="logo-section">
-                    <button class="menu-toggle" id="sidebarOpenBtn" aria-label="Open sidebar"><i class="fas fa-bars"></i></button>
-                    <span class="logo"><i class="fas fa-store"></i> PrintMax Vendor</span>
-                </div>
-                <div class="header-actions">
-                    <button class="header-btn" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
-                    <div class="user-profile-dropdown" id="profileDropdown">
-                        <button class="user-profile-trigger" id="profileDropdownBtn">
-                            <span class="user-avatar-small">{% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}</span>
-                            <span class="user-name-header">{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</span>
-                            <span class="dropdown-arrow"><i class="fas fa-chevron-down"></i></span>
+<body>
+    <!-- Header with Logo -->
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
             </button>
-                        <div class="user-dropdown" id="profileDropdownMenu">
-                            <div class="user-dropdown-header">
-                                <div class="user-avatar-large">{% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}</div>
-                                <div class="user-info-dropdown">
-                                    <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
-                                    <p>{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@email.com{% endif %}</p>
-                </div>
-                </div>
-                            <div class="user-dropdown-menu">
-                                <a class="dropdown-item" href="#"><i class="fas fa-cogs"></i> Settings</a>
-                                <a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <div class="logo">
+                <i class="fas fa-print"></i>
+                <span>PrintMax</span>
             </div>
-                        </div>
-                    </div>
-                </div>
+            <h1 class="page-title">Vendor Dashboard</h1>
+        </div>
+        
+        <div class="header-actions">
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
     </header>
-    <main class="main-container">
-            {% if vendor_details_error %}
-            <div style="background: #ffcdd2; color: #b71c1c; border: 1.5px solid #b71c1c; border-radius: 12px; padding: 18px 24px; margin: 32px auto 24px auto; max-width: 600px; font-weight: 600; text-align: center;">
-                {{ vendor_details_error }}
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Vendor Profile -->
+        <div class="vendor-profile">
+            <div class="vendor-avatar">
+                {% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}
             </div>
-            {% endif %}
-        <!-- Vendor Details Card -->
-        {% if vendor_details %}
-            <div class="vendor-details-card" style="background: #fffde7; border: 1.5px solid #fbc02d; border-radius: 18px; box-shadow: var(--shadow-lg); padding: 32px 32px 24px 32px; margin: 32px auto 24px auto; max-width: 600px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 8px;">
-                    <span class="fa fa-store" style="font-size: 2.2rem; color: #fbc02d;"></span>
-                <div>
-                        <div style="font-size: 1.7rem; font-weight: 700; color: #1565c0;">{{ vendor_details.vendor_name }}</div>
-                        <div style="font-size: 1.1rem; color: #757575;">Shop Profile</div>
+            <div class="vendor-info">
+                <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
+                <p>{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@example.com{% endif %}</p>
+                <div class="vendor-status">
+                    <div class="status-dot"></div>
+                    Online
                 </div>
             </div>
-                <div style="font-size: 1.1rem; color: #222;"><b>Email:</b> {{ vendor_details.vendor_email }}</div>
-                <div style="font-size: 1.1rem; color: #222;"><b>Phone:</b> {{ vendor_details.phone_number }}</div>
-                <div style="font-size: 1.1rem; color: #222;"><b>Address:</b> {{ vendor_details.shop_address }}</div>
-                <div style="font-size: 1.1rem; color: #222;"><b>City:</b> {{ vendor_details.city }}</div>
-                <div style="font-size: 1.1rem; color: #222;"><b>PIN Code:</b> {{ vendor_details.pincode }}</div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="nav-menu">
+            <div class="nav-item">
+                <a href="#overview" class="nav-link active" onclick="setActiveNav(this)">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#manual-jobs" class="nav-link" onclick="setActiveNav(this); scrollToSection('manual-section')">
+                    <i class="fas fa-tools"></i>
+                    <span>Manual Jobs</span>
+                    <span class="nav-badge" id="manualNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#print-requests" class="nav-link" onclick="setActiveNav(this); scrollToSection('requests-section')">
+                    <i class="fas fa-file-import"></i>
+                    <span>Print Requests</span>
+                    <span class="nav-badge" id="requestsNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#completed-jobs" class="nav-link" onclick="setActiveNav(this); scrollToSection('completed-section')">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Completed Jobs</span>
+                    <span class="nav-badge" id="completedNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#profile" class="nav-link" onclick="setActiveNav(this); showProfile()">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#settings" class="nav-link" onclick="setActiveNav(this)">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer">
+            <a href="/logout/" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        {% if vendor_details_error %}
+        <div style="background: var(--manual-bg); color: var(--manual-color); border: 2px solid var(--manual-color); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; font-weight: 500; text-align: center;">
+            {{ vendor_details_error }}
         </div>
         {% endif %}
 
         <!-- Statistics Cards -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Manual Print Jobs</h3>
-                <div class="number" id="manualStatCount">{{ manual_print_count|default:0 }}</div>
-                <div class="label">Requires Manual Processing</div>
+            <div class="stat-card manual">
+                <div class="stat-header">
+                    <div class="stat-icon manual">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                </div>
+                <div class="stat-number" id="manualStatCount">{{ manual_print_count|default:0 }}</div>
+                <div class="stat-label">Manual Print Jobs</div>
             </div>
-            <div class="stat-card">
-                <h3>Print Requests</h3>
-                <div class="number" id="requestsStatCount">{{ print_requests_count|default:0 }}</div>
-                <div class="label">Pending Requests</div>
+            <div class="stat-card requests">
+                <div class="stat-header">
+                    <div class="stat-icon requests">
+                        <i class="fas fa-file-import"></i>
+                    </div>
+                </div>
+                <div class="stat-number" id="requestsStatCount">{{ print_requests_count|default:0 }}</div>
+                <div class="stat-label">Print Requests</div>
             </div>
-            <div class="stat-card">
-                <h3>Completed Jobs</h3>
-                <div class="number" id="completedStatCount">{{ completed_jobs_count|default:0 }}</div>
-                <div class="label">Successfully Completed</div>
+            <div class="stat-card completed">
+                <div class="stat-header">
+                    <div class="stat-icon completed">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+                <div class="stat-number" id="completedStatCount">{{ completed_jobs_count|default:0 }}</div>
+                <div class="stat-label">Completed Jobs</div>
             </div>
-            <div class="stat-card">
-                <h3>Total Jobs</h3>
-                <div class="number" id="totalStatCount">{{ total_jobs|default:0 }}</div>
-                <div class="label">All Time</div>
+            <div class="stat-card total">
+                <div class="stat-header">
+                    <div class="stat-icon total">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+                <div class="stat-number" id="totalStatCount">{{ total_jobs|default:0 }}</div>
+                <div class="stat-label">Total Jobs</div>
             </div>
         </div>
 
         <!-- Manual Print Jobs Section -->
-        <section class="job-section manual-section">
+        <section class="job-section" id="manual-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                <div class="section-icon">
+                <div class="section-title-group">
+                    <div class="section-icon manual">
                         <i class="fas fa-tools"></i>
-                </div>
+                    </div>
                     <h2 class="section-title">Manual Print Jobs</h2>
                 </div>
                 <div class="section-controls">
-                <div class="search-container">
+                    <div class="search-container">
                         <i class="fas fa-search search-icon"></i>
-                    <input 
-                        type="text" 
+                        <input 
+                            type="text" 
                             class="search-input" 
                             placeholder="Search manual jobs..."
                             oninput="searchJobs('manual', this.value)"
-                    >
-                </div>
+                        >
+                    </div>
                     <div class="job-count" id="manualCount">0</div>
                 </div>
             </div>
@@ -966,13 +1140,13 @@
         </section>
 
         <!-- Print Requests Section -->
-        <section class="job-section requests-section">
+        <section class="job-section" id="requests-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                <div class="section-icon">
-                    <i class="fas fa-file-import"></i>
-                </div>
-                <h2 class="section-title">Print Requests</h2>
+                <div class="section-title-group">
+                    <div class="section-icon requests">
+                        <i class="fas fa-file-import"></i>
+                    </div>
+                    <h2 class="section-title">Print Requests</h2>
                 </div>
                 <div class="section-controls">
                     <div class="search-container">
@@ -999,12 +1173,12 @@
         </section>
 
         <!-- Completed Jobs Section -->
-        <section class="job-section completed-section">
+        <section class="job-section" id="completed-section">
             <div class="section-header">
-                <div class="section-title-wrapper">
-                <div class="section-icon">
+                <div class="section-title-group">
+                    <div class="section-icon completed">
                         <i class="fas fa-check-circle"></i>
-                </div>
+                    </div>
                     <h2 class="section-title">Completed Jobs</h2>
                 </div>
                 <div class="section-controls">
@@ -1055,14 +1229,78 @@
         // Global variables
         let allJobs = [];
         let filteredJobs = { manual: [], completed: [], requests: [] };
-        const manualServices = ['photo_prints', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'];
+        let sidebarCollapsed = false;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();
             loadJobs();
-            setInterval(loadJobs, 30000); // Refresh every 30 seconds
+            setInterval(loadJobs, 30000);
+            initResponsiveLayout();
         });
+
+        // Responsive Layout
+        function initResponsiveLayout() {
+            if (window.innerWidth <= 768) {
+                toggleSidebar(true);
+            }
+        }
+
+        // Sidebar Management
+        function toggleSidebar(force = null) {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (window.innerWidth <= 768) {
+                // Mobile behavior
+                if (force !== null) {
+                    if (force) {
+                        sidebar.classList.remove('show');
+                        overlay.classList.remove('show');
+                    } else {
+                        sidebar.classList.add('show');
+                        overlay.classList.add('show');
+                    }
+                } else {
+                    sidebar.classList.toggle('show');
+                    overlay.classList.toggle('show');
+                }
+            } else {
+                // Desktop behavior
+                sidebarCollapsed = force !== null ? force : !sidebarCollapsed;
+                if (sidebarCollapsed) {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('full-width');
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('full-width');
+                }
+            }
+        }
+
+        // Navigation
+        function setActiveNav(element) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            element.classList.add('active');
+            
+            if (window.innerWidth <= 768) {
+                toggleSidebar(true);
+            }
+        }
+
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function showProfile() {
+            showToast('Profile section - Coming soon!');
+        }
 
         // Theme Management
         function initTheme() {
@@ -1077,20 +1315,17 @@
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
             updateThemeButton(newTheme);
-            showToast(`Switched to ${newTheme === 'dark' ? 'Night' : 'Day'} mode`);
+            showToast(`Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} mode`);
         }
 
         function updateThemeButton(theme) {
             const btn = document.getElementById('themeToggle');
             const icon = btn.querySelector('i');
-            const text = btn.querySelector('span');
             
             if (theme === 'dark') {
                 icon.className = 'fas fa-sun';
-                text.textContent = 'Day Mode';
             } else {
                 icon.className = 'fas fa-moon';
-                text.textContent = 'Night Mode';
             }
         }
 
@@ -1111,46 +1346,51 @@
         }
 
         function categorizeJobs() {
-            // Manual Print Jobs (job_completed = 'NO' AND has service_type or service_name field present)
+            // Manual Jobs: job_completed = 'NO' AND service_type in ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing']
             const manual = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
-                // Only include jobs that have a non-empty service_type or service_name field
-                return (job.service_type && job.service_type.trim() !== '') || (job.service_name && job.service_name.trim() !== '');
+                const serviceType = (job.service_type || '').trim().toLowerCase();
+                return ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'].includes(serviceType);
             });
 
-            // Print Requests (job_completed = 'NO' AND not a manual service)
+            // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
             const requests = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
-                // Exclude jobs that have a non-empty service_type or service_name field
-                return !( (job.service_type && job.service_type.trim() !== '') || (job.service_name && job.service_name.trim() !== '') );
+                const serviceType = (job.service_type || '').trim().toLowerCase();
+                // Include regular print jobs and specific service types
+                return serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
             });
 
-            // Completed Jobs (job_completed = 'YES')
+            // Completed Jobs: job_completed = 'YES'
             const completed = allJobs.filter(job => job.job_completed === 'YES');
-
-            // Debug logging
-            console.log('All jobs:', allJobs);
-            console.log('Manual jobs:', manual);
-            console.log('Requests:', requests);
-            console.log('Completed:', completed);
 
             filteredJobs = { manual, completed, requests };
 
             // Update counts
-            document.getElementById('manualCount').textContent = manual.length;
-            document.getElementById('requestsCount').textContent = requests.length;
-            document.getElementById('completedCount').textContent = completed.length;
-
-            // Update statistics
-            document.getElementById('manualStatCount').textContent = manual.length;
-            document.getElementById('requestsStatCount').textContent = requests.length;
-            document.getElementById('completedStatCount').textContent = completed.length;
-            document.getElementById('totalStatCount').textContent = allJobs.length;
-
+            updateCounts(manual.length, requests.length, completed.length);
+            
             // Render jobs
             renderJobs('manual', manual);
             renderJobs('requests', requests);
             renderJobs('completed', completed);
+        }
+
+        function updateCounts(manualCount, requestsCount, completedCount) {
+            // Update main stats
+            document.getElementById('manualStatCount').textContent = manualCount;
+            document.getElementById('requestsStatCount').textContent = requestsCount;
+            document.getElementById('completedStatCount').textContent = completedCount;
+            document.getElementById('totalStatCount').textContent = allJobs.length;
+
+            // Update section counts
+            document.getElementById('manualCount').textContent = manualCount;
+            document.getElementById('requestsCount').textContent = requestsCount;
+            document.getElementById('completedCount').textContent = completedCount;
+
+            // Update nav badges
+            document.getElementById('manualNavBadge').textContent = manualCount;
+            document.getElementById('requestsNavBadge').textContent = requestsCount;
+            document.getElementById('completedNavBadge').textContent = completedCount;
         }
 
         function renderJobs(type, jobs) {
@@ -1176,60 +1416,75 @@
                 return;
             }
 
-            container.innerHTML = jobs.map(job => createJobBlock(job, type)).join('');
+            container.innerHTML = jobs.map(job => createJobCard(job, type)).join('');
         }
 
-        function createJobBlock(job, type) {
-            const fileExt = job.filename.split('.').pop().toLowerCase();
+        function createJobCard(job, type) {
             const statusClass = type === 'completed' ? 'status-completed' : 
-                               type === 'manual' ? 'status-manual' : 'status-pending';
+                               type === 'manual' ? 'status-manual' : 'status-requests';
             const statusText = type === 'completed' ? 'Done' : 
                               type === 'manual' ? 'Manual' : 'Pending';
-            const blockClass = type === 'completed' ? 'completed-job' : 
-                              type === 'manual' ? 'manual-job' : 'pending-job';
+            const cardClass = type === 'completed' ? 'completed' : 
+                              type === 'manual' ? 'manual' : 'requests';
 
-            // Use the real token from job metadata
             const tokenNumber = job.token ? `#${job.token}` : '';
 
-            const serviceBadge = job.service_type ? 
-                `<div class="service-badge">${job.service_type.replace('_', ' ')}</div>` : '';
+            // Get service type for badge
+            const serviceType = (job.service_type || '').trim().toLowerCase();
+            let serviceTypeBadge = '';
+            
+            if (type === 'manual' && serviceType) {
+                const serviceTypeDisplay = {
+                    'digital_print': 'DIGITAL PRINT',
+                    'project_binding': 'PROJECT BINDING', 
+                    'gloss_printing': 'GLOSS PRINTING',
+                    'jumbo_printing': 'JUMBO PRINTING'
+                };
+                
+                const serviceTypeClass = {
+                    'digital_print': 'digital-print',
+                    'project_binding': 'project-binding',
+                    'gloss_printing': 'gloss-printing', 
+                    'jumbo_printing': 'jumbo-printing'
+                };
+                
+                if (serviceTypeDisplay[serviceType]) {
+                    serviceTypeBadge = `<div class="service-type-badge ${serviceTypeClass[serviceType]}">${serviceTypeDisplay[serviceType]}</div>`;
+                }
+            }
 
-            // Add Send Print button for manual jobs
             const actions = type === 'requests' ? 
                 `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
                     <i class="fas fa-check"></i> Accept
                 </button>` : 
                 type === 'manual' ? 
                 `<button class="btn-small btn-primary" onclick="event.stopPropagation(); sendPrintJob('${job.download_url || job.preview_url}', '${job.filename}')" title="Send to printer">
-                    <i class="fas fa-print"></i> Send Print
+                    <i class="fas fa-print"></i> Print
                 </button>
                 <button class="btn-small btn-secondary" onclick="event.stopPropagation(); processJob('${job.filename}')">
                     <i class="fas fa-play"></i> Process
                 </button>` : '';
 
             return `
-                <div class="job-block ${blockClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
-                    ${type === 'completed' ? `<button class='delete-btn' title='Delete' onclick="event.stopPropagation(); deleteCompletedJob('${job.filename}')">&times;</button>` : ''}
-                    ${serviceBadge}
+                <div class="job-card ${cardClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
+                    ${serviceTypeBadge}
                     <div class="job-header">
                         <div class="job-token">${tokenNumber}</div>
                         <div class="job-status ${statusClass}">${statusText}</div>
                     </div>
                     <div class="job-filename" title="${job.filename}">${job.filename}</div>
-                    <div class="job-details">
-                        <div class="job-meta">
-                            <div class="job-meta-item">
-                                <i class="fas fa-user"></i>
-                                <span>${job.user || 'User'}</span>
-                            </div>
-                            <div class="job-meta-item">
-                                <i class="fas fa-file"></i>
-                                <span>${job.pages || 1}p</span>
-                            </div>
-                            <div class="job-meta-item">
-                                <i class="fas fa-copy"></i>
-                                <span>${job.copies || 1}x</span>
-                            </div>
+                    <div class="job-meta">
+                        <div class="job-meta-item">
+                            <i class="fas fa-user"></i>
+                            <span>${job.user || 'User'}</span>
+                        </div>
+                        <div class="job-meta-item">
+                            <i class="fas fa-file-alt"></i>
+                            <span>${job.pages || 1} pages</span>
+                        </div>
+                        <div class="job-meta-item">
+                            <i class="fas fa-copy"></i>
+                            <span>${job.copies || 1} copies</span>
                         </div>
                     </div>
                     <div class="job-actions" onclick="event.stopPropagation()">
@@ -1248,6 +1503,28 @@
         async function processJob(filename) {
             showToast(`Processing "${filename}"...`);
             setTimeout(loadJobs, 1000);
+        }
+
+        function sendPrintJob(fileUrl, filename) {
+            if (!fileUrl) {
+                showToast('No file available to print.');
+                return;
+            }
+            const printWindow = window.open(fileUrl, '_blank');
+            if (printWindow) {
+                printWindow.onload = function() {
+                    printWindow.focus();
+                    printWindow.print();
+                };
+                setTimeout(() => {
+                    try {
+                        printWindow.focus();
+                        printWindow.print();
+                    } catch (e) {}
+                }, 1500);
+            } else {
+                showToast('Popup blocked! Please allow popups for this site.');
+            }
         }
 
         // Preview Modal
@@ -1304,35 +1581,7 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // Send Print Job: open print dialog for the file
-        function sendPrintJob(fileUrl, filename) {
-            if (!fileUrl) {
-                showToast('No file available to print.');
-                return;
-            }
-            // Open the file in a new window
-            const printWindow = window.open(fileUrl, '_blank');
-            if (printWindow) {
-                // For most browsers, wait for the file to load before printing
-                printWindow.onload = function() {
-                    printWindow.focus();
-                    printWindow.print();
-                };
-                // Fallback for some browsers (especially for PDFs)
-                setTimeout(() => {
-                    try {
-                        printWindow.focus();
-                        printWindow.print();
-                    } catch (e) {}
-                }, 1500);
-            } else {
-                showToast('Popup blocked! Please allow popups for this site.');
-            }
-        }
-
         // Event Listeners
-        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
         window.addEventListener('click', function(event) {
             const modal = document.getElementById('previewModal');
             if (event.target === modal) {
@@ -1340,17 +1589,9 @@
             }
         });
 
-        // Add this JS function:
-        function deleteCompletedJob(filename) {
-            // Remove from filteredJobs.completed and re-render
-            filteredJobs.completed = filteredJobs.completed.filter(job => job.filename !== filename);
-            renderJobs('completed', filteredJobs.completed);
-            showToast('Job removed from completed list.');
-        }
-
-        function showToken(token) {
-            alert('Token Number: ' + token + '\nShare this token with the user to view their completed job.');
-        }
+        window.addEventListener('resize', function() {
+            initResponsiveLayout();
+        });
     </script>
 </body>
 </html>
