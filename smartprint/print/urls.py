@@ -26,5 +26,6 @@ urlpatterns = [
     path('vendor-info/<str:vendor_id>/', vendor_info, name='vendor_info'),
     path('vendor-login/', vendor_login, name='vendor_login'),
     path('vendor-register-api/', vendor_register_api, name='vendor_register_api'),
+    path('vendor-authenticate/', views.vendor_authenticate, name='vendor_authenticate'),
     path('get-available-shops/', views.get_available_shops, name='get_available_shops'),
 ]

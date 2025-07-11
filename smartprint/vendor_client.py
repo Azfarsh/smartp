@@ -1559,7 +1559,7 @@ try {{
     $successCount = 0
     for ($i = 0; $i -lt {copies}; $i++) {{
         try {{
-            $process = [System.Diagnostics.Process]::Start($startInfo)
+            $process = [System.Diagnostics.Diagnostics.Process]::Start($startInfo)
             if ($process) {{
                 $process.WaitForExit(30000)  # Wait up to 30 seconds
                 if ($process.ExitCode -eq 0) {{
@@ -2251,6 +2251,39 @@ try {{
                 self.log(f"❌ Error scanning local job directory: {e}")
             time.sleep(self.job_scan_interval)
 
+    def poll_for_print_jobs(self):
+        """Poll the Django API for new print jobs from vendor-specific folder"""
+        while self.is_running:
+            try:
+                # Make API request to get vendor-specific print jobs
+                response = requests.post(
+                    f"{self.api_url}/get-vendor-print-jobs/",
+                    headers={'Content-Type': 'application/json'},
+                    json={'vendor_id': self.vendor_id},
+                    timeout=30
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('success') and data.get('jobs'):
+                        print(f"📋 Found {len(data['jobs'])} vendor-specific print jobs from API")
+
+                        for job in data['jobs']:
+                            # Save job to local storage for processing
+                            self.save_job_to_local_storage(job)
+
+                    else:
+                        print("📋 No new vendor-specific print jobs found")
+                else:
+                    self.log(f"❌ API request failed with status {response.status_code}")
+
+            except requests.exceptions.RequestException as e:
+                self.log(f"❌ API request error: {e}")
+            except Exception as e:
+                self.log(f"❌ Unexpected error in poll_for_print_jobs: {e}")
+
+            time.sleep(self.poll_interval)
+
 # --- HTTP POLLING FUNCTIONS ---
 def poll_print_jobs():
     """Poll the Django API for new print jobs"""
@@ -2323,7 +2356,7 @@ def process_print_queue():
                         error_logger.error(f"PDF not found for job {token}")
                         continue
 
-                    # Read job info
+                    # Read job info```python
                     with open(json_path, 'r', encoding='utf-8') as f:
                         job_data = json.load(f)
 
@@ -2364,6 +2397,11 @@ def polling_main():
     """Main function for HTTP polling mode"""
     os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
     os.makedirs(FAILED_JOB_DIR, exist_ok=True)
+
+    # Authenticate vendor before polling
+    if not authenticate_vendor():
+        print("Exiting: Vendor authentication required.")
+        return
 
     # Start print queue processor in background
     print_queue_thread = threading.Thread(target=process_print_queue, daemon=True)
@@ -2866,6 +2904,72 @@ def print_and_notify_adobe():
         except Exception as e:
             print(f"Error processing job {token}: {e}")
 
+# --- VENDOR CREDENTIALS (replace with your actual values) ---
+VENDOR_EMAIL = "abd@gmail.com"
+VENDOR_NAME = "abdshop"
+VENDOR_ID = "5263393941"
+VENDOR_TOKEN = "7911273877"
+BASE_URL = "http://localhost:8000"  # Change if your Django server is running elsewhere
+
+# --- AUTHENTICATION FUNCTION ---
+def authenticate_vendor():
+    url = f"{BASE_URL}/vendor-authenticate/"
+    payload = {
+        "vendor_email": VENDOR_EMAIL,
+        "vendor_id": VENDOR_ID,
+        "vendor_token": VENDOR_TOKEN,
+        "shop_name": VENDOR_NAME
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=10)
+        data = resp.json()
+        if data.get('success', False):
+            print("✅ Vendor authentication successful!")
+            return True
+        else:
+            print(f"❌ Vendor authentication failed: {data.get('error', 'Unknown error')}")
+            return False
+    except Exception as e:
+        print(f"❌ Error during authentication: {e}")
+        return False
+
+# --- MAIN ENTRY FOR HTTP POLLING ---
+def polling_main():
+    os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
+    os.makedirs(FAILED_JOB_DIR, exist_ok=True)
+
+    # Authenticate vendor before polling
+    if not authenticate_vendor():
+        print("Exiting: Vendor authentication required.")
+        return
+
+    # Start print queue processor in background
+    print_queue_thread = threading.Thread(target=process_print_queue, daemon=True)
+    print_queue_thread.start()
+    logging.info("Started print queue processor.")
+
+    print("🔄 Starting HTTP polling loop...")
+    print("   Press Ctrl+C to stop")
+
+    while True:
+        try:
+            jobs = poll_print_jobs()
+            for job in jobs:
+                # Only process regular print jobs with job_completed == NO
+                if job['metadata'].get('job_completed', 'NO').upper() == 'NO' and \
+                   job['metadata'].get('service_type', '').lower() == 'regular print':
+                    save_job_and_pdf(job)
+            time.sleep(POLL_INTERVAL)
+
+        except KeyboardInterrupt:
+            print("\n🛑 Stopping HTTP polling...")
+            break
+
+        except Exception as e:
+            error_logger.error(f"Error in polling loop: {e}")
+            time.sleep(POLL_INTERVAL)
+
+# --- INSTRUCTIONS FOR RUNNING ---
 if __name__ == "__main__":
     # Install required packages check
     try:
@@ -2881,4 +2985,8 @@ if __name__ == "__main__":
         test_printing_functionality()
         sys.exit(0)
 
-    main()
+    # Default: HTTP polling mode with authentication
+    polling_main()
+    print("\nTo run the vendor client, use:")
+    print("  python vendor_client.py")
+    print("\nMake sure your Django server is running and accessible at:", BASE_URL)
