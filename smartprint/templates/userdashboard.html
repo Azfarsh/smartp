@@ -2486,7 +2486,11 @@
           });
           formData.append('settings_0', JSON.stringify(settingsJson));
           formData.append('file_count', 1);
+          // Get vendor_id for the selected shop
+          const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
+          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
           formData.append('selected_vendor', selectedShop);
+          formData.append('vendor_id', vendorId);
           // Submit
           const submitBtn = form.querySelector('.submit-btn');
           submitBtn.disabled = true;
@@ -3733,6 +3737,11 @@
 
         formData.append('file_count', uploadedFiles.length);
         formData.append('selected_vendor', selectedVendor);
+        
+        // Get vendor_id for the selected vendor
+        const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+        const vendorId = selectedVendorData ? selectedVendorData.vendor_id : 'vendor1';
+        formData.append('vendor_id', vendorId);
 
         const response = await fetch('/upload/', {
           method: 'POST',
