@@ -306,125 +306,125 @@ def find_working_printer():
 def create_passport_photo_layout(input_image_path, output_path):
     """
     Create a passport photo layout with 8 copies (2x4 grid) on a single page
-    
+
     Args:
         input_image_path (str): Path to the input image
         output_path (str): Path to save the output layout
-    
+
     Returns:
         bool: True if successful, False otherwise
     """
     try:
         print("📸 Creating passport photo layout...")
-        
+
         # Standard passport photo dimensions (in pixels at 300 DPI)
         PASSPORT_WIDTH = 413   # 35mm at 300 DPI
         PASSPORT_HEIGHT = 531  # 45mm at 300 DPI
-        
+
         # A4 page dimensions at 300 DPI
         A4_WIDTH = 2480   # 210mm at 300 DPI
         A4_HEIGHT = 3508  # 297mm at 300 DPI
-        
+
         # Margins and spacing
         MARGIN = 118      # 10mm margins
         SPACING = 59      # 5mm spacing between photos
-        
+
         # Load and process the input image
         print(f"📂 Loading image: {input_image_path}")
         original_image = Image.open(input_image_path)
-        
+
         # Convert to RGB if needed
         if original_image.mode != 'RGB':
             original_image = original_image.convert('RGB')
-        
+
         # Resize to passport photo dimensions while maintaining aspect ratio
         print("🔄 Resizing to passport photo dimensions...")
-        
+
         # Calculate scaling to fit passport dimensions
         original_width, original_height = original_image.size
         scale_width = PASSPORT_WIDTH / original_width
         scale_height = PASSPORT_HEIGHT / original_height
         scale = min(scale_width, scale_height)
-        
+
         # Calculate new dimensions
         new_width = int(original_width * scale)
         new_height = int(original_height * scale)
-        
+
         # Resize the image
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        
+
         # Create passport photo with white background if needed
         passport_photo = Image.new('RGB', (PASSPORT_WIDTH, PASSPORT_HEIGHT), 'white')
-        
+
         # Center the resized image on the passport photo
         x_offset = (PASSPORT_WIDTH - new_width) // 2
         y_offset = (PASSPORT_HEIGHT - new_height) // 2
         passport_photo.paste(resized_image, (x_offset, y_offset))
-        
+
         # Create the A4 layout
         print("📄 Creating A4 layout with 8 passport photos...")
         layout = Image.new('RGB', (A4_WIDTH, A4_HEIGHT), 'white')
-        
+
         # Calculate positions for 2x4 grid (2 columns, 4 rows)
         cols = 2
         rows = 4
-        
+
         # Calculate starting positions to center the grid
         total_width = cols * PASSPORT_WIDTH + (cols - 1) * SPACING
         total_height = rows * PASSPORT_HEIGHT + (rows - 1) * SPACING
-        
+
         start_x = (A4_WIDTH - total_width) // 2
         start_y = (A4_HEIGHT - total_height) // 2
-        
+
         # Place 8 passport photos in a 2x4 grid
         photo_count = 0
         for row in range(rows):
             for col in range(cols):
                 x = start_x + col * (PASSPORT_WIDTH + SPACING)
                 y = start_y + row * (PASSPORT_HEIGHT + SPACING)
-                
+
                 layout.paste(passport_photo, (x, y))
                 photo_count += 1
                 print(f"  ✓ Placed photo {photo_count}/8 at position ({col+1}, {row+1})")
-        
+
         # Add corner marks for cutting guidance
         draw = ImageDraw.Draw(layout)
         mark_length = 20
         mark_color = 'black'
-        
+
         # Add cutting guides around each photo
         for row in range(rows):
             for col in range(cols):
                 x = start_x + col * (PASSPORT_WIDTH + SPACING)
                 y = start_y + row * (PASSPORT_HEIGHT + SPACING)
-                
+
                 # Top-left corner
                 draw.line([(x-5, y-5), (x-5+mark_length, y-5)], fill=mark_color, width=1)
                 draw.line([(x-5, y-5), (x-5, y-5+mark_length)], fill=mark_color, width=1)
-                
+
                 # Top-right corner
                 draw.line([(x+PASSPORT_WIDTH+5-mark_length, y-5), (x+PASSPORT_WIDTH+5, y-5)], fill=mark_color, width=1)
                 draw.line([(x+PASSPORT_WIDTH+5, y-5), (x+PASSPORT_WIDTH+5, y-5+mark_length)], fill=mark_color, width=1)
-                
+
                 # Bottom-left corner
                 draw.line([(x-5, y+PASSPORT_HEIGHT+5-mark_length), (x-5, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
                 draw.line([(x-5, y+PASSPORT_HEIGHT+5), (x-5+mark_length, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
-                
+
                 # Bottom-right corner
                 draw.line([(x+PASSPORT_WIDTH+5, y+PASSPORT_HEIGHT+5-mark_length), (x+PASSPORT_WIDTH+5, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
                 draw.line([(x+PASSPORT_WIDTH+5-mark_length, y+PASSPORT_HEIGHT+5), (x+PASSPORT_WIDTH+5, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
-        
+
         # Save the layout
         print(f"💾 Saving passport photo layout...")
         layout.save(output_path, 'JPEG', quality=95, dpi=(300, 300))
-        
+
         print(f"✅ Passport photo layout created successfully!")
         print(f"   📁 Output file: {output_path}")
         print(f"   📏 Layout: 8 passport photos (35x45mm each) on A4 page")
         print(f"   🎯 Resolution: 300 DPI for high-quality printing")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"❌ Error creating passport photo layout: {e}")
         return False
@@ -629,7 +629,14 @@ class AutomatedVendorPrintClient:
         self.job_dir = r"C:\Users\Azfar\Downloads\printjobs"
         self.job_scan_interval = 10  # seconds
         self.seen_tokens = set()
+        # Set vendor-specific folder path
+        self.vendor_folder_path = f'vendor_register_details/{self.vendor_id}/firozshop'
+
+        # API endpoint for getting vendor jobs
+        self.vendor_api_url = f"{base_url.replace('ws://', 'http://').replace('wss://', 'https://')}/get-vendor-print-jobs/"
+
         threading.Thread(target=self.job_directory_watcher, daemon=True).start()
+        threading.Thread(target=self.vendor_api_poller, daemon=True).start()
 
     def log(self, message: str, level: str = "INFO"):
         """Log a message with timestamp."""
@@ -814,7 +821,7 @@ class AutomatedVendorPrintClient:
         token = None
         try:
             # Find the token (json file) for this job
-            for file in glob.glob(os.path.join(self.job_dir, '*.json')):
+            for file in glob.glob(os.path.join(self.job_dir, 'vendor_jobs', '*.json')):
                 if job_node.filename in file or Path(file).stem == job_node.filename.split('.')[0]:
                     token = Path(file).stem
                     break
@@ -823,7 +830,7 @@ class AutomatedVendorPrintClient:
                 self.log(f"❌ No printer found for job: {job_node.filename}")
                 return False
             # Download document to job_dir with correct filename
-            document_path = os.path.join(self.job_dir, job_node.filename)
+            document_path = os.path.join(self.job_dir, 'vendor_jobs', job_node.filename)
             try:
                 response = requests.get(job_node.download_url, stream=True, timeout=30)
                 response.raise_for_status()
@@ -850,7 +857,7 @@ class AutomatedVendorPrintClient:
                 self.log(f"✅ Successfully completed job: {job_node.filename} ({processing_time:.2f}s)")
                 # Delete the JSON file after successful print
                 if token:
-                    json_file = os.path.join(self.job_dir, f'{token}.json')
+                    json_file = os.path.join(self.job_dir, 'vendor_jobs', f'{token}.json')
                     try:
                         os.remove(json_file)
                         self.log(f"🗑️ Deleted job file: {json_file}")
@@ -897,7 +904,7 @@ class AutomatedVendorPrintClient:
         try:
             checkpoint_dir = tempfile.gettempdir()
             checkpoint_file = os.path.join(checkpoint_dir, f"printjob_{job_node.filename}.checkpoint")
-            
+
             checkpoint_data = {
                 'filename': job_node.filename,
                 'printer_name': printer_name,
@@ -906,12 +913,12 @@ class AutomatedVendorPrintClient:
                 'completed_copies': getattr(job_node, 'completed_copies', 0),
                 'metadata': job_node.metadata
             }
-            
+
             with open(checkpoint_file, 'w') as f:
                 json.dump(checkpoint_data, f)
-                
+
             return checkpoint_file
-            
+
         except Exception as e:
             self.debug_log(f"Error creating checkpoint: {e}")
             return None
@@ -922,7 +929,7 @@ class AutomatedVendorPrintClient:
         try:
             checkpoint_dir = tempfile.gettempdir()
             data_file = os.path.join(checkpoint_dir, f"printjob_{job_node.filename}.data")
-            
+
             checkpoint_data = {
                 'filename': job_node.filename,
                 'printer_name': printer_name,
@@ -932,16 +939,16 @@ class AutomatedVendorPrintClient:
                 'metadata': job_node.metadata,
                 'save_time': time.time()
             }
-            
+
             # Save document data separately
             with open(data_file, 'wb') as f:
                 f.write(document_data)
-            
+
             # Save checkpoint metadata
             checkpoint_file = os.path.join(checkpoint_dir, f"printjob_{job_node.filename}.checkpoint")
             with open(checkpoint_file, 'w') as f:
                 json.dump(checkpoint_data, f)
-                
+
         except Exception as e:
             self.debug_log(f"Error saving checkpoint: {e}")
 
@@ -951,24 +958,24 @@ class AutomatedVendorPrintClient:
             checkpoint_dir = tempfile.gettempdir()
             checkpoint_file = os.path.join(checkpoint_dir, f"printjob_{filename}.checkpoint")
             data_file = os.path.join(checkpoint_dir, f"printjob_{filename}.data")
-            
+
             if os.path.exists(checkpoint_file) and os.path.exists(data_file):
                 # Check if checkpoint is recent (within 24 hours)
                 if time.time() - os.path.getmtime(checkpoint_file) < 86400:
                     with open(checkpoint_file, 'r') as f:
                         checkpoint_data = json.load(f)
-                    
+
                     with open(data_file, 'rb') as f:
                         document_data = f.read()
-                    
+
                     return {
                         'document_data': document_data,
                         'print_settings': checkpoint_data.get('print_settings', {}),
                         'completed_copies': checkpoint_data.get('completed_copies', 0)
                     }
-            
+
             return None
-            
+
         except Exception as e:
             self.debug_log(f"Error checking resume checkpoint: {e}")
             return None
@@ -979,13 +986,13 @@ class AutomatedVendorPrintClient:
             checkpoint_dir = tempfile.gettempdir()
             checkpoint_file = os.path.join(checkpoint_dir, f"printjob_{filename}.checkpoint")
             data_file = os.path.join(checkpoint_dir, f"printjob_{filename}.data")
-            
+
             for file_path in [checkpoint_file, data_file]:
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                    
+
             self.debug_log(f"🧹 Cleaned up checkpoint for {filename}")
-            
+
         except Exception as e:
             self.debug_log(f"Error cleaning checkpoint: {e}")
 
@@ -995,7 +1002,7 @@ class AutomatedVendorPrintClient:
             self.log(f"💾 Saving interrupt checkpoint for {job_node.filename}")
             checkpoint_dir = tempfile.gettempdir()
             interrupt_file = os.path.join(checkpoint_dir, f"interrupted_{job_node.filename}.checkpoint")
-            
+
             interrupt_data = {
                 'filename': job_node.filename,
                 'printer_name': printer_name,
@@ -1004,10 +1011,10 @@ class AutomatedVendorPrintClient:
                 'completed_copies': getattr(job_node, 'completed_copies', 0),
                 'metadata': job_node.metadata
             }
-            
+
             with open(interrupt_file, 'w') as f:
                 json.dump(interrupt_data, f)
-                
+
         except Exception as e:
             self.debug_log(f"Error saving interrupt checkpoint: {e}")
 
@@ -1176,16 +1183,16 @@ class AutomatedVendorPrintClient:
         """Handle passport photo printing by creating layout and printing."""
         try:
             self.log("📸 Processing passport photo service...")
-            
+
             # Create temporary files
             input_temp_fd, input_temp_path = tempfile.mkstemp(suffix='.jpg', prefix='passport_input_')
             output_temp_fd, output_temp_path = tempfile.mkstemp(suffix='.jpg', prefix='passport_layout_')
-            
+
             try:
                 # Save input image
                 with os.fdopen(input_temp_fd, 'wb') as input_file:
                     input_file.write(document_data)
-                
+
                 # Auto-select printer if not available
                 if not printer_name or not self.is_specific_printer_available(printer_name):
                     self.log(f"🔍 Printer '{printer_name}' not available, auto-selecting working printer...")
@@ -1194,19 +1201,19 @@ class AutomatedVendorPrintClient:
                         self.log("❌ No working printer found!")
                         return False
                     self.log(f"🎯 Using printer: {printer_name}")
-                
+
                 # Create passport photo layout
                 self.log("🔄 Creating passport photo layout...")
                 layout_success = create_passport_photo_layout(input_temp_path, output_temp_path)
-                
+
                 if not layout_success:
                     self.log("❌ Failed to create passport photo layout")
                     return False
-                
+
                 # Print the layout
                 copies = print_settings.get('copies', 1)
                 self.log(f"🖨️ Printing passport photo layout ({copies} copies)...")
-                
+
                 success = True
                 for i in range(copies):
                     if not print_image_automatically(output_temp_path, printer_name):
@@ -1215,15 +1222,15 @@ class AutomatedVendorPrintClient:
                         break
                     if i < copies - 1:  # Not the last copy
                         time.sleep(2)  # Small delay between copies
-                
+
                 if success:
                     self.log("✅ Passport photos printed successfully!")
                     self.log("📄 8 passport-size photos (35x45mm each) on one A4 page")
                     self.log("✂️ Cut along the corner marks for individual photos")
                     self.log("🎨 Printed in high quality with color settings")
-                
+
                 return success
-                
+
             finally:
                 # Clean up temporary files
                 for temp_path in [input_temp_path, output_temp_path]:
@@ -1232,7 +1239,7 @@ class AutomatedVendorPrintClient:
                             os.remove(temp_path)
                         except Exception:
                             pass
-                            
+
         except Exception as e:
             self.log(f"❌ Passport photo printing error: {str(e)}")
             return False
@@ -1253,7 +1260,7 @@ class AutomatedVendorPrintClient:
                     sumatra_exe = path
                     self.log(f"✅ Found SumatraPDF at: {path}")
                     break
-            
+
             if sumatra_exe:
                 success_count = 0
                 for i in range(copies):
@@ -1265,7 +1272,7 @@ class AutomatedVendorPrintClient:
                     else:
                         self.log(f"❌ SumatraPDF copy {i+1} failed with return code: {result.returncode}")
                     time.sleep(1)
-                
+
                 if success_count == copies:
                     self.log("✅ All copies printed successfully using SumatraPDF")
                     return True
@@ -1331,10 +1338,10 @@ class AutomatedVendorPrintClient:
         """Enhanced Adobe printing with synchronous operation and automatic cleanup."""
         adobe_process = None
         temp_status_file = None
-        
+
         try:
             self.log(f"🖨️ Starting Adobe print job: {copies} copies to {printer_name}")
-            
+
             # Adobe paths in priority order
             adobe_paths = [
                 r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
@@ -1357,16 +1364,16 @@ class AutomatedVendorPrintClient:
 
             # Create status tracking file
             temp_status_file = tempfile.mktemp(suffix='.status')
-            
+
             # Enhanced printing with job monitoring
             success_count = 0
-            
+
             for copy_num in range(copies):
                 self.log(f"🖨️ Printing copy {copy_num + 1}/{copies}")
-                
+
                 # Start Adobe with print command
                 cmd = [adobe_exe, "/t", file_path, f'"{printer_name}"']
-                
+
                 try:
                     # Start Adobe process
                     adobe_process = subprocess.Popen(
@@ -1375,11 +1382,11 @@ class AutomatedVendorPrintClient:
                         stderr=subprocess.PIPE,
                         creationflags=subprocess.CREATE_NO_WINDOW
                     )
-                    
+
                     # Monitor Adobe process with timeout
                     start_time = time.time()
                     timeout = 120  # 2 minutes per copy
-                    
+
                     while adobe_process.poll() is None:
                         if time.time() - start_time > timeout:
                             self.log(f"⏰ Adobe process timeout for copy {copy_num + 1}")
@@ -1389,38 +1396,38 @@ class AutomatedVendorPrintClient:
                                 adobe_process.kill()
                             break
                         time.sleep(1)
-                    
+
                     # Check if process completed successfully
                     return_code = adobe_process.returncode
-                    
+
                     if return_code == 0:
                         success_count += 1
                         self.log(f"✅ Copy {copy_num + 1} sent to printer successfully")
-                        
+
                         # Wait for print job to be processed by printer
                         self._wait_for_printer_processing(printer_name)
-                        
+
                     else:
                         self.log(f"❌ Copy {copy_num + 1} failed with return code: {return_code}")
-                        
+
                         # Try to recover from error
                         if copy_num < copies - 1:  # Not the last copy
                             self.log("🔄 Attempting recovery for next copy...")
                             self._cleanup_adobe_processes()
                             time.sleep(3)
-                    
+
                     # Small delay between copies
                     if copy_num < copies - 1:
                         time.sleep(2)
-                        
+
                 except subprocess.TimeoutExpired:
                     self.log(f"⏰ Adobe process timed out for copy {copy_num + 1}")
                     if adobe_process:
                         adobe_process.kill()
-                    
+
                 except Exception as copy_error:
                     self.log(f"❌ Error printing copy {copy_num + 1}: {str(copy_error)}")
-                    
+
                 finally:
                     # Cleanup Adobe process for this copy
                     if adobe_process and adobe_process.poll() is None:
@@ -1434,7 +1441,7 @@ class AutomatedVendorPrintClient:
 
             # Final cleanup of all Adobe processes
             self._cleanup_adobe_processes()
-            
+
             # Check overall success
             if success_count == copies:
                 self.log(f"✅ All {copies} copies printed successfully via Adobe")
@@ -1449,7 +1456,7 @@ class AutomatedVendorPrintClient:
         except Exception as e:
             self.log(f"❌ Adobe printing error: {str(e)}")
             return False
-            
+
         finally:
             # Final cleanup
             if adobe_process and adobe_process.poll() is None:
@@ -1460,14 +1467,14 @@ class AutomatedVendorPrintClient:
                         adobe_process.kill()
                 except:
                     pass
-            
+
             # Cleanup status file
             if temp_status_file and os.path.exists(temp_status_file):
                 try:
                     os.remove(temp_status_file)
                 except:
                     pass
-            
+
             # Final Adobe cleanup
             self._cleanup_adobe_processes()
 
@@ -1482,7 +1489,7 @@ class AutomatedVendorPrintClient:
                     "AdobeARM.exe",
                     "armsvc.exe"
                 ]
-                
+
                 for process_name in adobe_processes:
                     try:
                         # Use taskkill to terminate processes
@@ -1493,9 +1500,9 @@ class AutomatedVendorPrintClient:
                         )
                     except:
                         pass
-                        
+
             self.debug_log("🧹 Adobe processes cleaned up")
-                        
+
         except Exception as e:
             self.debug_log(f"Error cleaning Adobe processes: {e}")
 
@@ -1503,7 +1510,7 @@ class AutomatedVendorPrintClient:
         """Wait for printer to process the job."""
         try:
             start_time = time.time()
-            
+
             while time.time() - start_time < timeout:
                 try:
                     # Check printer queue using Windows API
@@ -1521,12 +1528,12 @@ class AutomatedVendorPrintClient:
                             win32print.ClosePrinter(printer_handle)
                 except:
                     pass
-                
+
                 time.sleep(2)
-            
+
             self.debug_log(f"⏰ Printer processing timeout for {printer_name}")
             return False
-            
+
         except Exception as e:
             self.debug_log(f"Error waiting for printer: {e}")
             return False
@@ -1567,7 +1574,7 @@ try {{
         }} catch {{
             Write-Host "Error printing copy $($i+1): $_"
         }}
-        
+
         if ($i -lt {copies} - 1) {{
             Start-Sleep -Seconds 2  # Small delay between copies
         }}
@@ -1608,10 +1615,10 @@ try {{
         """Try printing with Windows default PDF handler using enhanced methods."""
         try:
             success_count = 0
-            
+
             for i in range(copies):
                 copy_success = False
-                
+
                 # Method 1: Try printto verb with printer name
                 try:
                     result = win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
@@ -1620,7 +1627,7 @@ try {{
                         self.log(f"✅ Windows printto method succeeded for copy {i+1}")
                 except Exception as e:
                     self.debug_log(f"Windows printto method failed for copy {i+1}: {e}")
-                
+
                 # Method 2: Try default print verb if printto failed
                 if not copy_success:
                     try:
@@ -1630,7 +1637,7 @@ try {{
                             self.log(f"✅ Windows default print method succeeded for copy {i+1}")
                     except Exception as e:
                         self.debug_log(f"Windows default print method failed for copy {i+1}: {e}")
-                
+
                 # Method 3: Try using rundll32 for PDF printing
                 if not copy_success:
                     try:
@@ -1646,13 +1653,13 @@ try {{
                             self.log(f"✅ Windows rundll32 method succeeded for copy {i+1}")
                     except Exception as e:
                         self.debug_log(f"Windows rundll32 method failed for copy {i+1}: {e}")
-                
+
                 if copy_success:
                     success_count += 1
                     time.sleep(2)  # Small delay between copies
                 else:
                     self.log(f"❌ All Windows methods failed for copy {i+1}")
-            
+
             if success_count == copies:
                 self.log("✅ All copies printed using Windows default methods")
                 return True
@@ -2121,11 +2128,100 @@ try {{
         self.executor.shutdown(wait=True)
         self.log("🏁 Enhanced Print Client shutdown complete")
 
+    def vendor_api_poller(self):
+        """Background thread to poll vendor dashboard for print jobs via API."""
+        while self.is_running:
+            try:
+                # Poll vendor dashboard for jobs
+                self.log(f"🔄 Polling vendor dashboard for jobs...")
+
+                payload = {
+                    'vendor_id': self.vendor_id
+                }
+
+                response = requests.post(
+                    self.vendor_api_url,
+                    json=payload,
+                    headers={'Content-Type': 'application/json'},
+                    timeout=30
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('success'):
+                        jobs = data.get('jobs', [])
+                        if jobs:
+                            self.log(f"📋 Received {len(jobs)} jobs from vendor dashboard")
+                            for job in jobs:
+                                self.save_job_to_local_storage(job)
+                        else:
+                            self.log("📭 No jobs available from vendor dashboard")
+                    else:
+                        self.log(f"❌ Error from vendor dashboard: {data.get('error', 'Unknown error')}")
+                else:
+                    self.log(f"❌ HTTP error polling vendor dashboard: {response.status_code}")
+
+            except Exception as e:
+                self.log(f"❌ Error polling vendor dashboard: {e}")
+
+            time.sleep(self.job_scan_interval)  # Poll every 10 seconds
+
+    def save_job_to_local_storage(self, job):
+        """Save job from vendor dashboard to local storage"""
+        try:
+            filename = job.get('filename', 'unknown.pdf')
+            token = job.get('metadata', {}).get('token') or job.get('metadata', {}).get('job_id') or filename.split('.')[0]
+
+            if token in self.seen_tokens:
+                return  # Already processed this job
+
+            # Create local job directory structure
+            vendor_job_dir = os.path.join(self.job_dir, 'vendor_jobs')
+            os.makedirs(vendor_job_dir, exist_ok=True)
+
+            # Save job metadata as JSON
+            job_file_path = os.path.join(vendor_job_dir, f'{token}.json')
+            job_data = {
+                'document_url': job.get('download_url'),
+                'metadata': job.get('metadata', {}),
+                'service_type': job.get('metadata', {}).get('service_type', 'unknown'),
+                'filename': filename,
+                'vendor_id': self.vendor_id
+            }
+
+            with open(job_file_path, 'w', encoding='utf-8') as f:
+                json.dump(job_data, f, indent=2)
+
+            self.log(f"💾 Saved job to local storage: {job_file_path}")
+
+            # Create job node and enqueue
+            job_node = PrintJobNode(
+                filename=filename,
+                download_url=job.get('download_url'),
+                metadata=job.get('metadata', {}),
+                service_type=job.get('metadata', {}).get('service_type', 'unknown')
+            )
+
+            self.print_queue.enqueue(job_node)
+            self.seen_tokens.add(token)
+            self.log(f"📋 Enqueued job from vendor dashboard: {filename}")
+
+            if not self.queue_processor_running:
+                threading.Thread(target=self.process_print_queue, daemon=True).start()
+
+        except Exception as e:
+            self.log(f"❌ Error saving job to local storage: {e}")
+
     def job_directory_watcher(self):
         """Background thread to scan for new print job JSON files and enqueue them."""
         while self.is_running:
             try:
-                job_files = sorted(glob.glob(os.path.join(self.job_dir, '*.json')))
+                # Poll from local vendor jobs folder
+                vendor_job_dir = os.path.join(self.job_dir, 'vendor_jobs')
+                os.makedirs(vendor_job_dir, exist_ok=True)
+
+                # Scan for job files in vendor folder
+                job_files = sorted(glob.glob(os.path.join(vendor_job_dir, '*.json')))
                 for job_file in job_files:
                     token = Path(job_file).stem
                     if token in self.seen_tokens:
@@ -2146,13 +2242,13 @@ try {{
                         )
                         self.print_queue.enqueue(job_node)
                         self.seen_tokens.add(token)
-                        self.log(f"📋 Enqueued job from file: {job_file}")
+                        self.log(f"📋 Enqueued job from local storage: {job_file}")
                         if not self.queue_processor_running:
                             threading.Thread(target=self.process_print_queue, daemon=True).start()
                     except Exception as e:
                         self.log(f"❌ Error loading job file {job_file}: {e}")
             except Exception as e:
-                self.log(f"❌ Error scanning job directory: {e}")
+                self.log(f"❌ Error scanning local job directory: {e}")
             time.sleep(self.job_scan_interval)
 
 # --- HTTP POLLING FUNCTIONS ---
@@ -2215,22 +2311,22 @@ def process_print_queue():
             if not json_files:
                 time.sleep(5)
                 continue
-            
+
             for json_file in json_files:
                 try:
                     token = os.path.splitext(json_file)[0]
                     json_path = os.path.join(LOCAL_JOB_DIR, json_file)
                     pdf_path = os.path.join(LOCAL_JOB_DIR, f"{token}.pdf")
-                    
+
                     # Check if PDF exists
                     if not os.path.exists(pdf_path):
                         error_logger.error(f"PDF not found for job {token}")
                         continue
-                    
+
                     # Read job info
                     with open(json_path, 'r', encoding='utf-8') as f:
                         job_data = json.load(f)
-                    
+
                     # Print PDF with retries
                     success = False
                     for attempt in range(3):
@@ -2241,7 +2337,7 @@ def process_print_queue():
                         else:
                             error_logger.error(f"Print failed for {token} (attempt {attempt+1})")
                             time.sleep(10)
-                    
+
                     if success:
                         # Delete files on success
                         os.remove(json_path)
@@ -2255,10 +2351,10 @@ def process_print_queue():
                         if os.path.exists(pdf_path):
                             os.rename(pdf_path, os.path.join(FAILED_JOB_DIR, f"{token}.pdf"))
                         error_logger.error(f"Moved failed job {token} to failed_jobs.")
-                        
+
                 except Exception as e:
                     error_logger.error(f"Error processing job {json_file}: {e}")
-                    
+
             time.sleep(2)
         except Exception as e:
             error_logger.error(f"Error in print queue processor: {e}")
@@ -2268,15 +2364,15 @@ def polling_main():
     """Main function for HTTP polling mode"""
     os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
     os.makedirs(FAILED_JOB_DIR, exist_ok=True)
-    
+
     # Start print queue processor in background
     print_queue_thread = threading.Thread(target=process_print_queue, daemon=True)
     print_queue_thread.start()
     logging.info("Started print queue processor.")
-    
+
     print("🔄 Starting HTTP polling loop...")
     print("   Press Ctrl+C to stop")
-    
+
     while True:
         try:
             jobs = poll_print_jobs()
@@ -2286,11 +2382,11 @@ def polling_main():
                    job['metadata'].get('service_type', '').lower() == 'regular print':
                     save_job_and_pdf(job)
             time.sleep(POLL_INTERVAL)
-             
+
         except KeyboardInterrupt:
             print("\n🛑 Stopping HTTP polling...")
             break
-           
+
         except Exception as e:
             error_logger.error(f"Error in polling loop: {e}")
             time.sleep(POLL_INTERVAL)
@@ -2375,7 +2471,7 @@ def test_printing_functionality():
     """Test printing functionality to verify it works before running vendor client."""
     print("🧪 TESTING PRINTING FUNCTIONALITY")
     print("=" * 50)
-    
+
     # Test printer detection
     print("1. Testing printer detection...")
     working_printer = find_working_printer()
@@ -2384,7 +2480,7 @@ def test_printing_functionality():
     else:
         print("   ❌ No working printer found!")
         return False
-    
+
     # Test PDF printing with a simple test
     print("2. Testing PDF printing...")
     try:
@@ -2396,7 +2492,7 @@ Add-Type -AssemblyName System.Drawing.Printing
 try {
     $doc = New-Object System.Drawing.Printing.PrintDocument
     $doc.DocumentName = "Test Document"
-    
+
     $printPage = {
         param($sender, $e)
         $font = New-Object System.Drawing.Font("Arial", 12)
@@ -2406,11 +2502,11 @@ try {
         $font.Dispose()
         $brush.Dispose()
     }
-    
+
     $doc.add_PrintPage($printPage)
     $doc.Print()
     $doc.Dispose()
-    
+
     Write-Host "Test print job sent successfully"
     exit 0
 } catch {
@@ -2418,21 +2514,21 @@ try {
     exit 1
 }
 '''
-        
+
         result = subprocess.run(['powershell', '-Command', test_pdf_script], 
                               capture_output=True, text=True, timeout=30)
-        
+
         if result.returncode == 0:
             print("   ✅ Test print job sent successfully!")
             print("   📄 Check your printer for a test page")
         else:
             print(f"   ❌ Test print failed: {result.stderr}")
             return False
-            
+
     except Exception as e:
         print(f"   ❌ Test print error: {e}")
         return False
-    
+
     print("=" * 50)
     print("✅ Printing functionality test completed!")
     print("   You can now run the vendor client with confidence.")
@@ -2779,10 +2875,10 @@ if __name__ == "__main__":
         print("   Please install it using: pip install Pillow")
         input("Press Enter to exit...")
         sys.exit(1)
-    
+
     # Check if user wants to test printing first
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         test_printing_functionality()
         sys.exit(0)
-    
+
     main()

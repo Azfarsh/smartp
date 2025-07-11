@@ -386,7 +386,7 @@
     }
 
     /* Advanced Black Transition Welcome Screen */
-    #welcomeScreen {
+    #welcomeScreen, #vendorLoadingScreen {
       position: fixed;
       top: 0;
       left: 0;
@@ -403,7 +403,7 @@
       transition: all 1.5s cubic-bezier(0.23, 1, 0.32, 1);
     }
 
-    #welcomeScreen.show {
+    #welcomeScreen.show, #vendorLoadingScreen.show {
       opacity: 1;
     }
 
@@ -560,6 +560,36 @@
         font-size: 1rem;
       }
     }
+    #vendorLoadingScreen #vendorWelcomeMessage {
+      font-size: clamp(2.5rem, 6vw, 4rem) !important;
+      font-weight: 700 !important;
+      font-family: 'Poppins', sans-serif !important;
+      margin-bottom: 2.5rem !important;
+      text-align: center !important;
+      letter-spacing: -0.01em !important;
+      color: #fff !important;
+      animation: welcomeSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards !important;
+      transform: translateY(60px) !important;
+      opacity: 0 !important;
+      position: relative !important;
+      z-index: 2 !important;
+    }
+    #vendorLoadingScreen.show #vendorWelcomeMessage {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
+    }
+    #vendorLoadingScreen .status-text {
+      font-size: 1.7rem !important;
+      font-weight: 500 !important;
+      color: rgba(255,255,255,0.95) !important;
+      animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards !important;
+      opacity: 0 !important;
+      transform: translateY(20px) !important;
+    }
+    #vendorLoadingScreen.show .status-text {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
+    }
   </style>
 </head>
 <body>
@@ -569,6 +599,13 @@
   <div id="welcomeMessage">Welcome</div>
   <div class="spinner"></div>
   <div class="status-text">Signing you in...</div>
+</div>
+
+<!-- Vendor Loading Screen -->
+<div id="vendorLoadingScreen" style="display: none;">
+  <div id="vendorWelcomeMessage">Setting Up Your Dashboard</div>
+  <div class="spinner"></div>
+  <div class="status-text" id="vendorStatusText">Preparing your print shop interface...</div>
 </div>
 
 <div class="login-container">
@@ -629,14 +666,8 @@
            data-auto_prompt="false">
       </div>
       <div class="google-signin-container">
-        <div class="g_id_signin"
-             data-type="standard"
-             data-size="large"
-             data-theme="outline"
-             data-text="sign_in_with"
-             data-shape="rectangular"
-             data-width="100%">
-        </div>
+        <!-- Google Sign-In Button (JS rendered for better compatibility) -->
+        <div id="g_id_signin"></div>
       </div>
     </div>
 
@@ -658,9 +689,9 @@
             <span class="material-icons">lock</span>
           </div>
         </div>
-        <button type="submit" class="btn-primary">
-          <span class="material-icons">login</span>
-          Sign In as Vendor
+        <button type="submit" class="btn-primary" id="vendorSignInBtn">
+          <span class="material-icons" id="vendorBtnIcon">login</span>
+          <span id="vendorBtnText">Sign In as Vendor</span>
         </button>
         <div class="forgot-password">
           <a href="#" onclick="resetVendorPassword()">Forgot your password?</a>
@@ -688,6 +719,25 @@
     document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
     document.getElementById(`${tab}-form`).classList.add('active');
   }
+
+  // Google Sign-In Button Render (JS-based, fixes width issue)
+  window.onload = function() {
+    if (window.google && google.accounts && google.accounts.id) {
+      google.accounts.id.initialize({
+        client_id: '{{ client_id }}',
+        callback: handleCredentialResponse,
+        auto_select: false,
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('g_id_signin'),
+        {
+          theme: 'outline',
+          size: 'large',
+          width: 300 // must be a number
+        }
+      );
+    }
+  };
 
   function showWelcome(name) {
     const welcomeMessage = document.getElementById('welcomeMessage');
@@ -731,10 +781,43 @@
     });
   }
 
+  function showVendorLoading(vendorName) {
+    const vendorLoadingScreen = document.getElementById('vendorLoadingScreen');
+    const vendorWelcomeMessage = document.getElementById('vendorWelcomeMessage');
+    const vendorStatusText = document.getElementById('vendorStatusText');
+    
+    vendorWelcomeMessage.textContent = vendorName ? `Welcome Back, ${vendorName}!` : 'Setting Up Your Dashboard';
+    vendorStatusText.textContent = 'Preparing your print shop interface...';
+    
+    vendorLoadingScreen.style.display = 'flex';
+    
+    setTimeout(() => {
+      vendorLoadingScreen.classList.add('show');
+    }, 50);
+
+    // Update status messages during loading
+    setTimeout(() => {
+      vendorStatusText.textContent = 'Loading your print jobs...';
+    }, 1500);
+
+    setTimeout(() => {
+      vendorStatusText.textContent = 'Organizing your dashboard...';
+    }, 3000);
+  }
+
   async function vendorLogin(event) {
     event.preventDefault();
     const email = document.getElementById('vendorEmail').value;
     const password = document.getElementById('vendorPassword').value;
+    const submitBtn = document.getElementById('vendorSignInBtn');
+    const btnIcon = document.getElementById('vendorBtnIcon');
+    const btnText = document.getElementById('vendorBtnText');
+
+    // Show loading state on button
+    submitBtn.disabled = true;
+    btnIcon.textContent = 'hourglass_empty';
+    btnIcon.style.animation = 'spin 1s linear infinite';
+    btnText.textContent = 'Signing In...';
 
     try {
       const response = await fetch('/vendor-login/', {
@@ -748,12 +831,28 @@
 
       const data = await response.json();
       if (data.success) {
-        window.location.href = '/vendordashboard/';
+        // Show vendor loading screen
+        showVendorLoading(data.vendor?.vendor_name);
+        
+        // Redirect after showing loading screen
+        setTimeout(() => {
+          window.location.href = '/vendordashboard/';
+        }, 4500);
       } else {
+        // Reset button state on error
+        submitBtn.disabled = false;
+        btnIcon.textContent = 'login';
+        btnIcon.style.animation = 'none';
+        btnText.textContent = 'Sign In as Vendor';
         alert(data.message || 'Login failed');
       }
     } catch (err) {
       console.error(err);
+      // Reset button state on error
+      submitBtn.disabled = false;
+      btnIcon.textContent = 'login';
+      btnIcon.style.animation = 'none';
+      btnText.textContent = 'Sign In as Vendor';
       alert('Login failed. Please try again.');
     }
   }
