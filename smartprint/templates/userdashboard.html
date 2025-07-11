@@ -1285,73 +1285,42 @@
       line-height: 1.4;
     }
 
-    .vendor-options {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+    .vendor-dropdown {
+      position: relative;
+      width: 100%;
     }
 
-    .vendor-option {
-      display: flex;
-      align-items: center;
-      padding: 1rem;
+    .vendor-dropdown select {
+      width: 100%;
+      padding: 0.875rem;
       border: 2px solid var(--outline);
       border-radius: var(--radius-sm);
-      background-color: var(--surface);
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      gap: 1rem;
-    }
-
-    .vendor-option:hover {
-      border-color: var(--primary);
-      background-color: rgba(25, 118, 210, 0.05);
-    }
-
-    .vendor-option.selected {
-      border-color: var(--primary);
-      background-color: rgba(25, 118, 210, 0.1);
-    }
-
-    .vendor-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-sm);
-      background-color: var(--surface-variant);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .vendor-option.selected .vendor-icon {
-      background: linear-gradient(135deg, var(--primary), var(--primary-variant));
-      color: var(--on-primary);
-    }
-
-    .vendor-info {
-      flex: 1;
-    }
-
-    .vendor-name {
-      font-weight: 600;
+      background: var(--surface);
       color: var(--on-surface);
-      margin-bottom: 0.25rem;
+      font-size: 1rem;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.75rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 3rem;
     }
 
-    .vendor-description {
-      font-size: 0.875rem;
-      color: var(--on-surface-variant);
+    .vendor-dropdown select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
     }
 
-    .vendor-select-icon {
-      color: var(--primary);
-      font-size: 1.25rem;
-      opacity: 0;
-      transition: opacity var(--transition-fast);
+    .vendor-dropdown select:hover {
+      border-color: var(--primary);
     }
 
-    .vendor-option.selected .vendor-select-icon {
-      opacity: 1;
+    .vendor-dropdown option {
+      padding: 0.5rem;
+      background: var(--surface);
+      color: var(--on-surface);
     }
 
     /* Copies Control */
@@ -2275,6 +2244,37 @@
         background: #b6c3e0;
         cursor: not-allowed;
       }
+      .service-modal .shop-selection {
+        margin: 1rem 0;
+      }
+      .service-modal .shop-dropdown {
+        position: relative;
+        width: 100%;
+      }
+      .service-modal .shop-dropdown select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        background: white;
+        font-size: 1rem;
+        color: #1f2937;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+      }
+      .service-modal .shop-dropdown select:focus {
+        outline: none;
+        border-color: #1e3a8a;
+        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+      }
+      .service-modal .shop-dropdown select:hover {
+        border-color: #1e3a8a;
+      }
       @keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
     </style>
 
@@ -2381,12 +2381,27 @@
               <input type='number' id='${service}-field-${idx}' min='${f.min||1}' max='${f.max||99}' value='${f.default||1}' ${f.required ? 'required' : ''} />`;
           }
         });
+        
+        // Add shop selection
+        const shopSelectionHtml = `
+          <div class='shop-selection'>
+            <label>Select Print Shop *</label>
+            <div id='${service}-shop-options'>
+              <div style='text-align: center; padding: 1rem;'>
+                <i class='fas fa-spinner fa-spin'></i>
+                <div>Loading shops...</div>
+              </div>
+            </div>
+          </div>
+        `;
+        
         return `
           <div class='service-modal'>
             <button class='close-btn' onclick="closeServiceModal('${service}')"><i class='fas fa-times'></i></button>
             <h3>${tmpl.title}</h3>
             <form id='${service}-modal-form'>
               ${fieldsHtml}
+              ${shopSelectionHtml}
               <button class='submit-btn' type='submit'>Submit</button>
             </form>
           </div>
@@ -2396,6 +2411,11 @@
       function attachServiceModalEvents(service, modal) {
         const tmpl = serviceModalTemplates[service];
         let fileObj = null;
+        let selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : 'firozshop';
+        
+        // Load shops for this modal
+        setTimeout(() => renderServiceModalShops(service), 100);
+        
         // File input and preview
         const fileInput = modal.querySelector(`#${service}-file-input`);
         const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
@@ -2426,6 +2446,17 @@
             filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}</div>`;
           }
         });
+        
+        // Shop selection handler for dropdown
+        setTimeout(() => {
+          const shopSelect = modal.querySelector(`#${service}-shop-select`);
+          if (shopSelect) {
+            selectedShop = shopSelect.value; // Set initial value
+            shopSelect.addEventListener('change', function() {
+              selectedShop = this.value;
+            });
+          }
+        }, 500);
         // Form submit
         const form = modal.querySelector(`#${service}-modal-form`);
         form.addEventListener('submit', async (e) => {
@@ -2455,7 +2486,7 @@
           });
           formData.append('settings_0', JSON.stringify(settingsJson));
           formData.append('file_count', 1);
-          formData.append('selected_vendor', 'testshop');
+          formData.append('selected_vendor', selectedShop);
           // Submit
           const submitBtn = form.querySelector('.submit-btn');
           submitBtn.disabled = true;
@@ -2523,6 +2554,13 @@
   <script>
     window.userJobsData = [];
   </script>
+  
+  <!-- CSRF Token -->
+  {% csrf_token %}
+  <script>
+    // Make CSRF token globally available
+    window.csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  </script>
 
   <!-- Hidden element with user jobs data -->
   <div id="userJobsData" data-jobs='{{ user_jobs_json|safe }}' style="display: none;"></div>
@@ -2570,22 +2608,10 @@
           <h4 class="settings-label">Choose Print Shop</h4>
           <p class="settings-subtitle">Select the print shop where you want to print your documents</p>
 
-          <div class="vendor-options">
-            <div class="vendor-option selected" data-vendor="testshop">
-              <div class="vendor-icon">
-                <i class="fas fa-store"></i>
-              </div>
-              <div class="vendor-info">
-                <div class="vendor-name">TestShop</div>
-                <div class="vendor-description">Local printing services</div>
-                <div class="vendor-status">
-                  <i class="fas fa-circle" style="color: #4CAF50;"></i>
-                  <span>Available</span>
-                </div>
-              </div>
-              <div class="vendor-select-icon">
-                <i class="fas fa-check-circle"></i>
-              </div>
+          <div class="vendor-options" id="vendorOptions">
+            <div class="loading-message" style="text-align: center; padding: 1rem;">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading available shops...</p>
             </div>
           </div>
         </div>
@@ -2787,8 +2813,9 @@
     let uploadedFiles = [];
     let selectedFileIndex = -1;
     let fileSettings = {};
-    let selectedVendor = 'testshop';
+    let selectedVendor = '';
     let userJobs = [];
+    let availableShops = [];
 
     // Initialize user jobs data from backend
     try {
@@ -2881,10 +2908,118 @@
       e.stopPropagation();
     });
 
-    // Load user jobs on page load
+    // Load user jobs and shops on page load
     document.addEventListener('DOMContentLoaded', function() {
       loadUserJobs();
+      loadAvailableShops();
     });
+
+    // Function to load available shops from R2 storage
+    async function loadAvailableShops() {
+      try {
+        const response = await fetch('/get-available-shops/', {
+          method: 'GET',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+          }
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          availableShops = data.shops;
+          if (availableShops.length > 0) {
+            selectedVendor = availableShops[0].shop_folder;
+          }
+          renderVendorOptions();
+        } else {
+          console.error('Error loading shops:', data.error);
+          availableShops = [];
+          selectedVendor = 'firozshop';
+          renderVendorOptions();
+        }
+      } catch (error) {
+        console.error('Error fetching shops:', error);
+        availableShops = [];
+        selectedVendor = 'firozshop';
+        renderVendorOptions();
+      }
+    }
+
+    // Function to render vendor options in main print modal
+    function renderVendorOptions() {
+      const vendorOptionsContainer = document.getElementById('vendorOptions');
+      if (!vendorOptionsContainer) return;
+
+      if (availableShops.length === 0) {
+        vendorOptionsContainer.innerHTML = `
+          <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
+            <i class="fas fa-store-slash"></i>
+            <p>No print shops available at the moment.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const optionsHtml = availableShops.map((shop, index) => {
+        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}</option>`;
+      }).join('');
+
+      vendorOptionsContainer.innerHTML = `
+        <div class="vendor-dropdown">
+          <select id="vendorSelect">
+            ${optionsHtml}
+          </select>
+        </div>
+      `;
+
+      // Set up change event listener
+      const vendorSelect = document.getElementById('vendorSelect');
+      if (vendorSelect) {
+        selectedVendor = vendorSelect.value; // Set initial value
+        vendorSelect.addEventListener('change', function() {
+          selectedVendor = this.value;
+        });
+      }
+    }
+
+    // Function to render shops in service modals
+    function renderServiceModalShops(service) {
+      const shopOptionsContainer = document.getElementById(`${service}-shop-options`);
+      if (!shopOptionsContainer) return;
+
+      if (availableShops.length === 0) {
+        shopOptionsContainer.innerHTML = `
+          <div style="text-align: center; padding: 1rem; color: #6b7280;">
+            <i class="fas fa-store-slash"></i>
+            <div>No print shops available</div>
+          </div>
+        `;
+        return;
+      }
+
+      const optionsHtml = availableShops.map((shop, index) => {
+        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}</option>`;
+      }).join('');
+
+      shopOptionsContainer.innerHTML = `
+        <div class="shop-dropdown">
+          <select id="${service}-shop-select">
+            ${optionsHtml}
+          </select>
+        </div>
+      `;
+    }
+
+    // Function to handle shop selection in service modals
+    function selectServiceModalShop(service, shopFolder) {
+      const shopOptions = document.querySelectorAll(`#${service}-shop-options .shop-option`);
+      shopOptions.forEach(option => option.classList.remove('selected'));
+      
+      const selectedOption = document.querySelector(`#${service}-shop-options .shop-option[data-shop="${shopFolder}"]`);
+      if (selectedOption) {
+        selectedOption.classList.add('selected');
+      }
+    }
 
     // Function to load user jobs from backend
     async function loadUserJobs() {
@@ -3550,14 +3685,7 @@
       updateCurrentFileSettings('lamination', laminationCheckbox.checked);
     });
 
-    // Vendor selection
-    document.querySelectorAll('.vendor-option').forEach(option => {
-      option.addEventListener('click', () => {
-        document.querySelectorAll('.vendor-option').forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedVendor = option.dataset.vendor;
-      });
-    });
+    // Vendor selection is now handled in renderVendorOptions function
 
     // Action buttons
     document.getElementById('cancelBtn').addEventListener('click', closeModalFunc);
@@ -3644,6 +3772,10 @@
 
     // Helper function to get CSRF token
     function getCookie(name) {
+      if (name === 'csrftoken') {
+        return window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+      }
+      
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');

@@ -25,7 +25,6 @@ def home(request):
 
 
 def vendordashboard(request):
-    # Get real data from R2 storage for the dashboard
     try:
         files = list_r2_files()
 
@@ -217,7 +216,7 @@ def get_user_jobs_from_r2(user_email):
                     "lamination": metadata.get('lamination', 'No'),
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
-                    "vendor": metadata.get('vendor', 'testshop'),
+                    "vendor": metadata.get('vendor', 'firozshop'),
                     "service_type": metadata.get('service_type', ''),
                     "job_id": metadata.get('job_id', ''),
                     "token": metadata.get('token', '')
@@ -329,6 +328,131 @@ def auto_print_documents(request):
 
 
 @csrf_exempt
+def get_vendor_print_jobs(request):
+    """
+    API endpoint for vendor clients to request print jobs from their specific vendor folder
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_id = data.get('vendor_id')
+            
+            if not vendor_id:
+                return JsonResponse({'success': False, 'error': 'Vendor ID required'}, status=400)
+
+            # Get pending jobs from vendor-specific folder
+            pending_jobs = get_vendor_specific_print_jobs(vendor_id)
+            
+            if not pending_jobs:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'No pending print jobs found for this vendor',
+                    'jobs': []
+                })
+
+            print(f"🖨️  Vendor {vendor_id} requested jobs: Found {len(pending_jobs)} pending jobs")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Found {len(pending_jobs)} pending print jobs for vendor {vendor_id}',
+                'jobs': pending_jobs
+            })
+
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Error in get_vendor_print_jobs: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+def get_vendor_specific_print_jobs(vendor_id):
+    """Get pending print jobs from vendor-specific folder in R2 storage"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        pending_jobs = []
+        vendor_folder_path = f'vendor_register_details/{vendor_id}/firozshop'
+        
+        # Check vendor-specific folder for documents
+        try:
+            vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_folder_path)
+
+            for obj in vendor_objects.get("Contents", []):
+                key = obj["Key"]
+                filename = key.split("/")[-1]
+
+                # Skip folder itself and non-document files
+                if not filename or filename.endswith('.json'):
+                    continue
+
+                try:
+                    # Get object metadata
+                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                    metadata = head_response.get('Metadata', {})
+
+                    # Check if job is pending (job_completed = 'NO')
+                    job_completed = metadata.get('job_completed', 'NO').upper()
+                    status = metadata.get('status', 'pending').lower()
+
+                    if job_completed == 'NO' or status == 'pending':
+                        # Generate download URL
+                        download_url = s3.generate_presigned_url(
+                            ClientMethod='get_object',
+                            Params={
+                                'Bucket': settings.R2_BUCKET,
+                                'Key': key
+                            },
+                            ExpiresIn=3600
+                        )
+
+                        # Build job info
+                        job_info = {
+                            'filename': filename,
+                            'download_url': download_url,
+                            'r2_path': key,
+                            'user_email': metadata.get('user', ''),
+                            'metadata': {
+                                'status': 'no',  # Set to 'no' for pending jobs
+                                'job_completed': job_completed,
+                                'copies': metadata.get('copies', '1'),
+                                'color': metadata.get('color', 'bw'),
+                                'orientation': metadata.get('orientation', 'portrait'),
+                                'page_size': metadata.get('pagesize', 'A4'),
+                                'pages': metadata.get('pages', '1'),
+                                'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
+                                'vendor': metadata.get('vendor', vendor_id),
+                                'user': metadata.get('user', 'Unknown'),
+                                'service_type': metadata.get('service_type', ''),
+                                'job_id': metadata.get('job_id', ''),
+                                'token': metadata.get('token', '')
+                            }
+                        }
+
+                        pending_jobs.append(job_info)
+                        print(f"✅ Found pending job for vendor {vendor_id}: {filename}")
+
+                except Exception as e:
+                    print(f"Error processing vendor file {key}: {str(e)}")
+                    continue
+
+        except Exception as e:
+            print(f"Error accessing vendor folder {vendor_folder_path}: {str(e)}")
+
+        print(f"📋 Total pending jobs found for vendor {vendor_id}: {len(pending_jobs)}")
+        return pending_jobs
+
+    except Exception as e:
+        print(f"Error getting vendor-specific jobs: {e}")
+        return []
+
+
+@csrf_exempt
 def update_job_status(request):
     """
     Update job completion status when vendor client completes printing
@@ -383,74 +507,84 @@ def get_pending_print_jobs():
 
         pending_jobs = []
 
-        # Check testshop folder for documents
+        # Check vendor-specific folders for documents
         try:
-            testshop_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='testshop/')
+            vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
 
-            for obj in testshop_objects.get("Contents", []):
+            for obj in vendor_objects.get("Contents", []):
                 key = obj["Key"]
                 filename = key.split("/")[-1]
 
-                # Skip folder itself
-                if not filename:
+                # Skip folder itself and registration files
+                if not filename or filename.lower().endswith('.json'):
                     continue
 
-                try:
-                    # Get object metadata
-                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
-                    metadata = head_response.get('Metadata', {})
+                # Only process files that are in shop folders (not in root vendor folders)
+                path_parts = key.split('/')
+                if len(path_parts) >= 4 and path_parts[0] == 'vendor_register_details':
+                    
+                    try:
+                        # Get object metadata
+                        head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                        metadata = head_response.get('Metadata', {})
 
-                    # Check if job is pending (job_completed = 'NO') and service_type is 'regular print'
-                    job_completed = metadata.get('job_completed', 'NO').upper()
-                    status = metadata.get('status', 'pending').lower()
-                    service_type = metadata.get('service_type', '').strip().lower()
+                        # Check if job is pending (job_completed = 'NO') and service_type is 'regular print'
+                        job_completed = metadata.get('job_completed', 'NO').upper()
+                        status = metadata.get('status', 'pending').lower()
+                        service_type = metadata.get('service_type', '').strip().lower()
 
-                    if (job_completed == 'NO' or status == 'pending') and service_type == 'regular print':
-                        # Generate download URL with proper R2 structure
-                        download_url = f"printme/{key}"  # Add printme prefix for R2 structure validation
+                        if (job_completed == 'NO' or status == 'pending') and service_type == 'regular print':
+                            # Generate download URL with proper R2 structure
+                            download_url = f"printme/{key}"  # Add printme prefix for R2 structure validation
 
-                        # Generate actual presigned URL for downloading
-                        actual_download_url = s3.generate_presigned_url(
-                            ClientMethod='get_object',
-                            Params={
-                                'Bucket': settings.R2_BUCKET,
-                                'Key': key
-                            },
-                            ExpiresIn=3600
-                        )
+                            # Generate actual presigned URL for downloading
+                            actual_download_url = s3.generate_presigned_url(
+                                ClientMethod='get_object',
+                                Params={
+                                    'Bucket': settings.R2_BUCKET,
+                                    'Key': key
+                                },
+                                ExpiresIn=3600
+                            )
 
-                        # Build job info with proper R2 structure
-                        job_info = {
-                            'filename': filename,
-                            'download_url': actual_download_url,  # Use actual presigned URL for download
-                            'r2_path': download_url,  # Use structured path for validation
-                            'user_email': metadata.get('user', ''),
-                            'metadata': {
-                                'status': 'no',  # Set to 'no' for pending jobs
-                                'job_completed': job_completed,
-                                'copies': metadata.get('copies', '1'),
-                                'color': metadata.get('color', 'bw'),
-                                'orientation': metadata.get('orientation', 'portrait'),
-                                'page_size': metadata.get('pagesize', 'A4'),
-                                'pages': metadata.get('pages', '1'),
-                                'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
-                                'vendor': metadata.get('vendor', 'testshop'),
-                                'user': metadata.get('user', 'Unknown'),
-                                'service_type': metadata.get('service_type', ''),
-                                'job_id': metadata.get('job_id', ''),
-                                'token': metadata.get('token', '')
+                            # Extract vendor info from path
+                            vendor_email = path_parts[1] if len(path_parts) > 1 else 'unknown'
+                            shop_folder = path_parts[2] if len(path_parts) > 2 else 'unknown'
+
+                            # Build job info with proper R2 structure
+                            job_info = {
+                                'filename': filename,
+                                'download_url': actual_download_url,  # Use actual presigned URL for download
+                                'r2_path': download_url,  # Use structured path for validation
+                                'user_email': metadata.get('user', ''),
+                                'metadata': {
+                                    'status': 'no',  # Set to 'no' for pending jobs
+                                    'job_completed': job_completed,
+                                    'copies': metadata.get('copies', '1'),
+                                    'color': metadata.get('color', 'bw'),
+                                    'orientation': metadata.get('orientation', 'portrait'),
+                                    'page_size': metadata.get('pagesize', 'A4'),
+                                    'pages': metadata.get('pages', '1'),
+                                    'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
+                                    'vendor': metadata.get('vendor', shop_folder),
+                                    'user': metadata.get('user', 'Unknown'),
+                                    'service_type': metadata.get('service_type', ''),
+                                    'job_id': metadata.get('job_id', ''),
+                                    'token': metadata.get('token', ''),
+                                    'vendor_email': vendor_email,
+                                    'shop_folder': shop_folder
+                                }
                             }
-                        }
 
-                        pending_jobs.append(job_info)
-                        print(f"✅ Found pending REGULAR PRINT job: {filename} (status: {status}, completed: {job_completed})")
+                            pending_jobs.append(job_info)
+                            print(f"✅ Found pending REGULAR PRINT job in {shop_folder}: {filename} (status: {status}, completed: {job_completed})")
 
-                except Exception as e:
-                    print(f"Error processing testshop file {key}: {str(e)}")
-                    continue
+                    except Exception as e:
+                        print(f"Error processing vendor file {key}: {str(e)}")
+                        continue
 
         except Exception as e:
-            print(f"Error accessing testshop folder: {str(e)}")
+            print(f"Error accessing vendor folders: {str(e)}")
 
         # Also check users folder for pending jobs
         try:
@@ -503,7 +637,7 @@ def get_pending_print_jobs():
                                 'page_size': metadata.get('pagesize', 'A4'),
                                 'pages': metadata.get('pages', '1'),
                                 'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
-                                'vendor': metadata.get('vendor', 'testshop'),
+                                'vendor': metadata.get('vendor', 'firozshop'),
                                 'user': user_email or metadata.get('user', 'Unknown'),
                                 'service_type': metadata.get('service_type', ''),
                                 'job_id': metadata.get('job_id', ''),
@@ -536,77 +670,33 @@ def update_job_status_in_r2(filename, status, vendor_id, user_email, r2_folder_s
                           aws_secret_access_key=settings.R2_SECRET_KEY,
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
-
-        # Update job completion status
         job_completed_status = 'YES' if status.upper() == 'YES' else 'NO'
         updated_files = []
-
-        # Update testshop folder
-        testshop_key = f"testshop/{filename}"
-        try:
-            # Check if file exists in testshop
-            head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=testshop_key)
-            current_metadata = head_response.get('Metadata', {})
-
-            # Update metadata
-            current_metadata['job_completed'] = job_completed_status
-            current_metadata['completion_time'] = datetime.datetime.now().isoformat()
-            current_metadata['completed_by_vendor'] = vendor_id
-
-            if job_completed_status == 'YES':
-                current_metadata['status'] = 'completed'
-
-            # Copy object with updated metadata
-            copy_source = {'Bucket': settings.R2_BUCKET, 'Key': testshop_key}
-            s3.copy_object(
-                CopySource=copy_source,
-                Bucket=settings.R2_BUCKET,
-                Key=testshop_key,
-                Metadata=current_metadata,
-                MetadataDirective='REPLACE'
-            )
-
-            updated_files.append(testshop_key)
-            print(f"✅ Updated testshop job status: {testshop_key} -> {job_completed_status}")
-
-        except Exception as e:
-            print(f"⚠️  Testshop file {testshop_key} not found or error updating: {str(e)}")
-
-        # Update users folder if user_email is provided
-        if user_email:
-            user_key = f"users/{user_email}/{filename}"
+        # Only update vendor-specific folders (no testshop)
+        if vendor_id and filename:
+            vendor_key = f'vendor_register_details/{vendor_id}/firozshop/{filename}'
             try:
-                # Check if file exists in users folder
-                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=user_key)
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
                 current_metadata = head_response.get('Metadata', {})
-
-                # Update metadata
                 current_metadata['job_completed'] = job_completed_status
                 current_metadata['completion_time'] = datetime.datetime.now().isoformat()
                 current_metadata['completed_by_vendor'] = vendor_id
-
                 if job_completed_status == 'YES':
                     current_metadata['status'] = 'completed'
-
-                # Copy object with updated metadata
-                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': user_key}
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': vendor_key}
                 s3.copy_object(
                     CopySource=copy_source,
                     Bucket=settings.R2_BUCKET,
-                    Key=user_key,
+                    Key=vendor_key,
                     Metadata=current_metadata,
                     MetadataDirective='REPLACE'
                 )
-
-                updated_files.append(user_key)
-                print(f"✅ Updated user job status: {user_key} -> {job_completed_status}")
-
+                updated_files.append(vendor_key)
+                print(f"✅ Updated vendor job status: {vendor_key} -> {job_completed_status}")
             except Exception as e:
-                print(f"⚠️  User file {user_key} not found or error updating: {str(e)}")
-
+                print(f"⚠️  Vendor file {vendor_key} not found or error updating: {str(e)}")
         print(f"📋 Updated {len(updated_files)} file(s) in R2 storage")
         return len(updated_files) > 0
-
     except Exception as e:
         print(f"❌ Error updating R2 job status: {e}")
         return False
@@ -720,7 +810,7 @@ def upload_to_r2(request):
         try:
             files_uploaded = 0
             file_count = int(request.POST.get('file_count', 0))
-            selected_vendor = request.POST.get('selected_vendor', 'testshop')
+            selected_vendor = request.POST.get('selected_vendor', 'firozshop')
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -822,14 +912,15 @@ def upload_to_r2(request):
                             'fit_picture': str(print_settings.get("fit_picture", False))
                         })
 
-                    # Handle photo print jobs with special folder structure
+                    # Store files directly in the vendor's existing shop folder structure
+                    # The selected_vendor should be the shop_folder from vendor registration
                     if service_type == "photo_print" and job_id:
-                        # For photo print jobs, create a job-specific folder
-                        vendor_file_key = f"{selected_vendor}/photo_jobs/{job_id}/{file.name}"
+                        # For photo print jobs, store in vendor's photo_jobs subfolder
+                        vendor_file_key = f"vendor_register_details/{get_vendor_email_by_shop_folder(selected_vendor)}/{selected_vendor}/photo_jobs/{job_id}/{file.name}"
                         user_file_key = f"users/{user_email}/photo_jobs/{job_id}/{file.name}"
                     else:
-                        # For regular jobs, use the standard structure
-                        vendor_file_key = f"{selected_vendor}/{file.name}"
+                        # For regular jobs, store directly in vendor's shop folder
+                        vendor_file_key = f"vendor_register_details/{get_vendor_email_by_shop_folder(selected_vendor)}/{selected_vendor}/{file.name}"
                         user_file_key = f"users/{user_email}/{file.name}"
 
                     # Upload to vendor folder (for vendor processing)
@@ -882,103 +973,97 @@ def list_r2_files():
                       region_name='auto')
 
     try:
-        # Only get files from testshop folder
-        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='testshop/')
         file_data = []
-
-        # Process testshop files and get their metadata
-        for obj in objects.get("Contents", []):
+        # Only get files from vendor-specific folders (e.g., firozshop)
+        vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in vendor_objects.get("Contents", []):
             key = obj["Key"]
             filename = key.split("/")[-1]
-
-            # Skip .json files (metadata, not print jobs)
-            if filename.lower().endswith('.json'):
+            # Skip .json files (metadata, not print jobs) and registration files
+            if filename.lower().endswith('.json') or not filename:
                 continue
-
-            try:
-                # Get object metadata first
-                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
-                metadata = head_response.get('Metadata', {})
-                job_completed = metadata.get('job_completed', 'NO').upper()
-
-                # Only include jobs with job_completed == 'NO' or 'YES'
-                if job_completed not in ['NO', 'YES']:
+            # Only process files that are in shop folders (not in root vendor folders)
+            path_parts = key.split('/')
+            # Only include jobs from vendor_register_details/<vendor_email>/firozshop/
+            if len(path_parts) >= 4 and path_parts[0] == 'vendor_register_details' and path_parts[2] == 'firozshop':
+                try:
+                    # Get object metadata first
+                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                    metadata = head_response.get('Metadata', {})
+                    job_completed = metadata.get('job_completed', 'NO').upper()
+                    # Only include jobs with job_completed == 'NO' or 'YES'
+                    if job_completed not in ['NO', 'YES']:
+                        continue
+                    # Generate presigned URL for preview
+                    url = s3.generate_presigned_url(
+                        ClientMethod='get_object',
+                        Params={
+                            'Bucket': settings.R2_BUCKET,
+                            'Key': key
+                        },
+                        ExpiresIn=3600
+                    )
+                    # Generate download URL for direct file access
+                    download_url = s3.generate_presigned_url(
+                        ClientMethod='get_object',
+                        Params={
+                            'Bucket': settings.R2_BUCKET,
+                            'Key': key,
+                            'ResponseContentDisposition': f'inline; filename="{filename}"'
+                        },
+                        ExpiresIn=3600
+                    )
+                    # Determine file type and icon
+                    file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
+                    file_type = get_file_type(file_extension)
+                    # Calculate estimated pages if not in metadata
+                    pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
+                    # Extract vendor info from path
+                    vendor_email = path_parts[1] if len(path_parts) > 1 else 'unknown'
+                    shop_folder = path_parts[2] if len(path_parts) > 2 else 'unknown'
+                    # Build file info
+                    file_info = {
+                        "filename": filename,
+                        "job_id": metadata.get('job_id', ''),
+                        "preview_url": url,
+                        "download_url": download_url,
+                        "file_type": file_type,
+                        "file_extension": file_extension,
+                        "size": format_file_size(obj.get('Size', 0)),
+                        "user": metadata.get('user', 'Auto User'),
+                        "pages": pages,
+                        "status": metadata.get('status', 'pending').title(),
+                        "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
+                        "priority": metadata.get('priority', 'Medium'),
+                        "copies": metadata.get('copies', '1'),
+                        "color": metadata.get('color', 'bw'),
+                        "orientation": metadata.get('orientation', 'portrait'),
+                        "pageRange": metadata.get('pagerange', 'all'),
+                        "specificPages": metadata.get('specificpages', ''),
+                        "pageSize": metadata.get('pagesize', 'A4'),
+                        "spiralBinding": metadata.get('spiralbinding', 'No'),
+                        "lamination": metadata.get('lamination', 'No'),
+                        "job_completed": metadata.get('job_completed', 'NO'),
+                        "trash": metadata.get('trash', 'NO'),
+                        "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
+                        "service_type": metadata.get('service_type', ''),
+                        "service_name": metadata.get('service_name', ''),
+                        "token": metadata.get('token', ''),
+                        "vendor_email": vendor_email,
+                        "shop_folder": shop_folder
+                    }
+                    # Create print options string
+                    file_info["print_options"] = f"{file_info['copies']} copies, {file_info['color']}, {file_info['orientation']}"
+                    file_data.append(file_info)
+                    print(f"✅ Found job in {shop_folder}: {filename} (status: {metadata.get('status', 'pending')}, completed: {job_completed})")
+                except Exception as e:
+                    print(f"Error processing vendor file {key}: {str(e)}")
                     continue
-
-                # Generate presigned URL for preview
-                url = s3.generate_presigned_url(
-                    ClientMethod='get_object',
-                    Params={
-                        'Bucket': settings.R2_BUCKET,
-                        'Key': key
-                    },
-                    ExpiresIn=3600
-                )
-
-                # Generate download URL for direct file access
-                download_url = s3.generate_presigned_url(
-                    ClientMethod='get_object',
-                    Params={
-                        'Bucket': settings.R2_BUCKET,
-                        'Key': key,
-                        'ResponseContentDisposition': f'inline; filename="{filename}"'
-                    },
-                    ExpiresIn=3600
-                )
-
-                # Determine file type and icon
-                file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
-                file_type = get_file_type(file_extension)
-
-                # Calculate estimated pages if not in metadata
-                pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
-
-                # Build file info
-                file_info = {
-                    "filename": filename,
-                    "job_id": metadata.get('job_id', ''),
-                    "preview_url": url,
-                    "download_url": download_url,
-                    "file_type": file_type,
-                    "file_extension": file_extension,
-                    "size": format_file_size(obj.get('Size', 0)),
-                    "user": metadata.get('user', 'Auto User'),
-                    "pages": pages,
-                    "status": metadata.get('status', 'pending').title(),
-                    "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
-                    "priority": metadata.get('priority', 'Medium'),
-                    "copies": metadata.get('copies', '1'),
-                    "color": metadata.get('color', 'bw'),
-                    "orientation": metadata.get('orientation', 'portrait'),
-                    "pageRange": metadata.get('pagerange', 'all'),
-                    "specificPages": metadata.get('specificpages', ''),
-                    "pageSize": metadata.get('pagesize', 'A4'),
-                    "spiralBinding": metadata.get('spiralbinding', 'No'),
-                    "lamination": metadata.get('lamination', 'No'),
-                    "job_completed": metadata.get('job_completed', 'NO'),
-                    "trash": metadata.get('trash', 'NO'),
-                    "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
-                    "service_type": metadata.get('service_type', ''),
-                    "service_name": metadata.get('service_name', ''),
-                    "token": metadata.get('token', '')
-                }
-
-                # Create print options string
-                file_info["print_options"] = f"{file_info['copies']} copies, {file_info['color']}, {file_info['orientation']}"
-
-                file_data.append(file_info)
-
-            except Exception as e:
-                print(f"Error processing file {key}: {str(e)}")
-                continue
-
         # Count jobs by status
         pending_count = len([job for job in file_data if job['job_completed'] == 'NO'])
         completed_count = len([job for job in file_data if job['job_completed'] == 'YES'])
-
         print(f"📋 Total jobs found: {len(file_data)} (Pending: {pending_count}, Completed: {completed_count})")
         return file_data
-
     except Exception as e:
         print(f"Error listing R2 files: {str(e)}")
         return []
@@ -1532,7 +1617,67 @@ def sanitize_shop_name(shop_name):
     sanitized = re.sub(r'\s+', '_', sanitized.strip())
     return sanitized
 
+@csrf_exempt
+def get_available_shops(request):
+    """
+    Get all available shops from R2 storage vendor registration details
+    """
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        shops = []
+        try:
+            objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+            for obj in objects.get("Contents", []):
+                key = obj["Key"]
+                if key.endswith('/registration_details.json'):
+                    try:
+                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                        vendor_name = vendor_data.get('vendor_name', '')
+                        vendor_email = vendor_data.get('vendor_email', '')
+                        shop_address = vendor_data.get('shop_address', '')
+                        city = vendor_data.get('city', '')
+                        if vendor_name and vendor_email:
+                            shop_folder = sanitize_shop_name(vendor_name)
+                            if shop_folder == 'firozshop':
+                                shop_info = {
+                                    'shop_name': vendor_name,
+                                    'shop_folder': shop_folder,
+                                    'vendor_email': vendor_email,
+                                    'shop_address': shop_address,
+                                    'city': city,
+                                    'status': 'Available'
+                                }
+                                if not any(s['shop_folder'] == shop_folder for s in shops):
+                                    shops.append(shop_info)
+                    except Exception as e:
+                        print(f"Error reading vendor data from {key}: {str(e)}")
+                        continue
+        except Exception as e:
+            print(f"Error listing vendor folders: {str(e)}")
+        return JsonResponse({
+            'success': True,
+            'shops': shops,
+            'total_shops': len(shops)
+        })
+    except Exception as e:
+        print(f"Error getting available shops: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'shops': []
+        })
+
 def vendor_email_folder(email):
     return f'vendor_register_details/{sanitize_email(email)}'
+
+def get_vendor_email_by_shop_folder(shop_folder):
+    # Implement the logic to fetch vendor email by shop folder
+    # Example placeholder:
+    return shop_folder  # or your actual lookup logic
 
 # This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.

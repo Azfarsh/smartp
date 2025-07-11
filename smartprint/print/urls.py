@@ -15,8 +15,9 @@ urlpatterns = [
          views.get_print_requests,
          name='get-print-requests'),
     path('process_print/', process_print_request, name='process_print'),
-    path('auto-print-documents/', auto_print_documents, name='auto-print-documents'),
-    path('update-job-status/', update_job_status, name='update-job-status'),
+    path('auto-print-documents/', views.auto_print_documents, name='auto-print-documents'),
+    path('get-vendor-print-jobs/', views.get_vendor_print_jobs, name='get_vendor_print_jobs'),
+    path('update-job-status/', update_job_status, name='update_job_status'),
     path('login/', sign_in, name='login'),
     path('auth-receiver/', auth_receiver, name='auth_receiver'),
     path('photoprint/', photoprint, name='photoprint'),
@@ -25,5 +26,5 @@ urlpatterns = [
     path('vendor-info/<str:vendor_id>/', vendor_info, name='vendor_info'),
     path('vendor-login/', vendor_login, name='vendor_login'),
     path('vendor-register-api/', vendor_register_api, name='vendor_register_api'),
+    path('get-available-shops/', views.get_available_shops, name='get_available_shops'),
 ]
-
