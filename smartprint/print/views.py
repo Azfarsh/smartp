@@ -377,9 +377,9 @@ def get_vendor_specific_print_jobs(vendor_id):
                           region_name='auto')
 
         pending_jobs = []
-        vendor_folder_path = f'vendor_register_details/{vendor_id}/firozshop'
+        vendor_folder_path = f'printme/{vendor_id}/vendor_print_jobs'
         
-        # Check vendor-specific folder for documents
+        # Check vendor-specific folder for documents in printme bucket
         try:
             vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_folder_path)
 
@@ -507,36 +507,34 @@ def get_pending_print_jobs():
 
         pending_jobs = []
 
-        # Check vendor-specific folders for documents
+        # Check printme bucket vendor print jobs folders for documents
         try:
-            vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+            printme_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='printme/')
 
-            for obj in vendor_objects.get("Contents", []):
+            for obj in printme_objects.get("Contents", []):
                 key = obj["Key"]
                 filename = key.split("/")[-1]
 
-                # Skip folder itself and registration files
+                # Skip folder itself and metadata files
                 if not filename or filename.lower().endswith('.json'):
                     continue
 
-                # Only process files that are in shop folders (not in root vendor folders)
+                # Only process files that are in vendor_print_jobs folders
                 path_parts = key.split('/')
-                if len(path_parts) >= 4 and path_parts[0] == 'vendor_register_details':
+                # Expected structure: printme/{vendor_id}/vendor_print_jobs/{filename}
+                if len(path_parts) >= 4 and path_parts[0] == 'printme' and path_parts[2] == 'vendor_print_jobs':
                     
                     try:
                         # Get object metadata
                         head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                         metadata = head_response.get('Metadata', {})
 
-                        # Check if job is pending (job_completed = 'NO') and service_type is 'regular print'
+                        # Check if job is pending (job_completed = 'NO')
                         job_completed = metadata.get('job_completed', 'NO').upper()
                         status = metadata.get('status', 'pending').lower()
                         service_type = metadata.get('service_type', '').strip().lower()
 
-                        if (job_completed == 'NO' or status == 'pending') and service_type == 'regular print':
-                            # Generate download URL with proper R2 structure
-                            download_url = f"printme/{key}"  # Add printme prefix for R2 structure validation
-
+                        if (job_completed == 'NO' or status == 'pending'):
                             # Generate actual presigned URL for downloading
                             actual_download_url = s3.generate_presigned_url(
                                 ClientMethod='get_object',
@@ -548,14 +546,13 @@ def get_pending_print_jobs():
                             )
 
                             # Extract vendor info from path
-                            vendor_email = path_parts[1] if len(path_parts) > 1 else 'unknown'
-                            shop_folder = path_parts[2] if len(path_parts) > 2 else 'unknown'
+                            vendor_id = path_parts[1] if len(path_parts) > 1 else 'vendor1'
 
                             # Build job info with proper R2 structure
                             job_info = {
                                 'filename': filename,
                                 'download_url': actual_download_url,  # Use actual presigned URL for download
-                                'r2_path': download_url,  # Use structured path for validation
+                                'r2_path': key,  # Use actual key path
                                 'user_email': metadata.get('user', ''),
                                 'metadata': {
                                     'status': 'no',  # Set to 'no' for pending jobs
@@ -566,25 +563,24 @@ def get_pending_print_jobs():
                                     'page_size': metadata.get('pagesize', 'A4'),
                                     'pages': metadata.get('pages', '1'),
                                     'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
-                                    'vendor': metadata.get('vendor', shop_folder),
+                                    'vendor': metadata.get('vendor', vendor_id),
                                     'user': metadata.get('user', 'Unknown'),
                                     'service_type': metadata.get('service_type', ''),
                                     'job_id': metadata.get('job_id', ''),
                                     'token': metadata.get('token', ''),
-                                    'vendor_email': vendor_email,
-                                    'shop_folder': shop_folder
+                                    'vendor_id': vendor_id
                                 }
                             }
 
                             pending_jobs.append(job_info)
-                            print(f"✅ Found pending REGULAR PRINT job in {shop_folder}: {filename} (status: {status}, completed: {job_completed})")
+                            print(f"✅ Found pending print job for vendor {vendor_id}: {filename} (status: {status}, completed: {job_completed})")
 
                     except Exception as e:
-                        print(f"Error processing vendor file {key}: {str(e)}")
+                        print(f"Error processing printme file {key}: {str(e)}")
                         continue
 
         except Exception as e:
-            print(f"Error accessing vendor folders: {str(e)}")
+            print(f"Error accessing printme bucket: {str(e)}")
 
         # Also check users folder for pending jobs
         try:
@@ -811,6 +807,7 @@ def upload_to_r2(request):
             files_uploaded = 0
             file_count = int(request.POST.get('file_count', 0))
             selected_vendor = request.POST.get('selected_vendor', 'firozshop')
+            vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -851,77 +848,30 @@ def upload_to_r2(request):
                     # Get file extension for better content type detection
                     file_extension = file.name.split('.')[-1].lower() if '.' in file.name else ''
 
-                    # Override content type for better support
-                    content_type_map = {
-                        'pdf': 'application/pdf',
-                        'doc': 'application/msword',
-                        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'txt': 'text/plain',
-                        'ppt': 'application/vnd.ms-powerpoint',
-                        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                        'xls': 'application/vnd.ms-excel',
-                        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'jpg': 'image/jpeg',
-                        'jpeg': 'image/jpeg',
-                        'png': 'image/png',
-                        'gif': 'image/gif',
-                        'bmp': 'image/bmp',
-                        'tiff': 'image/tiff',
-                        'svg': 'image/svg+xml'
-                    }
-
-                    if file_extension in content_type_map:
-                        content_type = content_type_map[file_extension]
-
-                    # Create metadata object
+                    # Build file metadata
                     file_metadata = {
-                        'job_id': job_id,
-                        'token': token,
                         'copies': str(print_settings.get("copies", "1")),
-                        'color': str(print_settings.get("color", "bw")),
-                        'orientation': str(print_settings.get("orientation", "portrait")),
-                        'pagerange': str(print_settings.get("pageRange", "all")),
-                        'specificpages': str(print_settings.get("specificPages", "")),
-                        'pagesize': str(print_settings.get("pageSize", "A4")),
-                        'spiralbinding': str(print_settings.get("spiralBinding", "No")),
+                        'color': print_settings.get("color", "bw"),
+                        'orientation': print_settings.get("orientation", "portrait"),
+                        'pageRange': str(print_settings.get("pageRange", "")),
+                        'specificPages': str(print_settings.get("specificPages", "")),
+                        'pageSize': str(print_settings.get("pageSize", "A4")),
+                        'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                         'lamination': str(print_settings.get("lamination", "No")),
                         'timestamp': datetime.datetime.now().isoformat(),
                         'status': 'pending',
                         'job_completed': 'NO',
                         'trash': 'NO',
                         'user': user_email,
-                        'priority': 'Medium',
-                        'pages': str(estimate_pages_from_size(len(file_content), file_extension)),
-                        'vendor': selected_vendor,
-                        'original_filename': file.name,
-                        'service_type': str(print_settings.get("service_type", "")),
-                        'service_name': str(print_settings.get("service_name", ""))
+                        'vendor': vendor_id,
+                        'job_id': job_id,
+                        'service_type': print_settings.get('service_type', 'regular print'),
+                        'token': token
                     }
 
-                    # Add photo print specific metadata
-                    service_type = print_settings.get("service_type", "")
-                    if service_type == "photo_print":
-                        file_metadata.update({
-                            'image_mode': str(print_settings.get("image_mode", "")),
-                            'layout': str(print_settings.get("layout", "")),
-                            'photo_count': str(print_settings.get("photo_count", "")),
-                            'printer': str(print_settings.get("printer", "")),
-                            'paper_size': str(print_settings.get("paper_size", "")),
-                            'quality': str(print_settings.get("quality", "")),
-                            'paper_type': str(print_settings.get("paper_type", "")),
-                            'fit_picture': str(print_settings.get("fit_picture", False))
-                        })
-
-                    # Store files directly in the vendor's existing shop folder structure
-                    # The selected_vendor should be the shop_folder from vendor registration
-                    if service_type == "photo_print" and job_id:
-                        # For photo print jobs, store in vendor's photo_jobs subfolder
-                        vendor_file_key = f"vendor_register_details/{get_vendor_email_by_shop_folder(selected_vendor)}/{selected_vendor}/photo_jobs/{job_id}/{file.name}"
-                        user_file_key = f"users/{user_email}/photo_jobs/{job_id}/{file.name}"
-                    else:
-                        # For regular jobs, store directly in vendor's shop folder
-                        vendor_file_key = f"vendor_register_details/{get_vendor_email_by_shop_folder(selected_vendor)}/{selected_vendor}/{file.name}"
-                        user_file_key = f"users/{user_email}/{file.name}"
+                    # Store all files in vendor_print_jobs/<vendor_id>/<filename>
+                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
+                    user_file_key = f'users/{user_email}/{file.name}'
 
                     # Upload to vendor folder (for vendor processing)
                     s3.put_object(
@@ -974,18 +924,18 @@ def list_r2_files():
 
     try:
         file_data = []
-        # Only get files from vendor-specific folders (e.g., firozshop)
-        vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
-        for obj in vendor_objects.get("Contents", []):
+        # Get files from printme bucket vendor print jobs folders
+        printme_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='printme/')
+        for obj in printme_objects.get("Contents", []):
             key = obj["Key"]
             filename = key.split("/")[-1]
-            # Skip .json files (metadata, not print jobs) and registration files
+            # Skip .json files (metadata, not print jobs) and folders
             if filename.lower().endswith('.json') or not filename:
                 continue
-            # Only process files that are in shop folders (not in root vendor folders)
+            # Only process files that are in vendor_print_jobs folders
             path_parts = key.split('/')
-            # Only include jobs from vendor_register_details/<vendor_email>/firozshop/
-            if len(path_parts) >= 4 and path_parts[0] == 'vendor_register_details' and path_parts[2] == 'firozshop':
+            # Expected structure: printme/{vendor_id}/vendor_print_jobs/{filename}
+            if len(path_parts) >= 4 and path_parts[0] == 'printme' and path_parts[2] == 'vendor_print_jobs':
                 try:
                     # Get object metadata first
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
@@ -1019,8 +969,7 @@ def list_r2_files():
                     # Calculate estimated pages if not in metadata
                     pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
                     # Extract vendor info from path
-                    vendor_email = path_parts[1] if len(path_parts) > 1 else 'unknown'
-                    shop_folder = path_parts[2] if len(path_parts) > 2 else 'unknown'
+                    vendor_id = path_parts[1] if len(path_parts) > 1 else 'vendor1'
                     # Build file info
                     file_info = {
                         "filename": filename,
@@ -1049,13 +998,12 @@ def list_r2_files():
                         "service_type": metadata.get('service_type', ''),
                         "service_name": metadata.get('service_name', ''),
                         "token": metadata.get('token', ''),
-                        "vendor_email": vendor_email,
-                        "shop_folder": shop_folder
+                        "vendor_id": vendor_id
                     }
                     # Create print options string
                     file_info["print_options"] = f"{file_info['copies']} copies, {file_info['color']}, {file_info['orientation']}"
                     file_data.append(file_info)
-                    print(f"✅ Found job in {shop_folder}: {filename} (status: {metadata.get('status', 'pending')}, completed: {job_completed})")
+                    print(f"✅ Found job for vendor {vendor_id}: {filename} (status: {metadata.get('status', 'pending')}, completed: {job_completed})")
                 except Exception as e:
                     print(f"Error processing vendor file {key}: {str(e)}")
                     continue
@@ -1515,8 +1463,9 @@ def vendor_register_api(request):
                     'message': 'Please enter a valid 10-digit phone number'
                 })
 
-            # Generate unique vendor ID
-            vendor_id = str(uuid.uuid4())
+            # Generate unique 10-digit vendor ID and token
+            vendor_id = str(random.randint(1000000000, 9999999999))
+            vendor_token = str(random.randint(1000000000, 9999999999))
 
             # Hash password
             password_hash = make_password(password)
@@ -1544,6 +1493,8 @@ def vendor_register_api(request):
             registration_details = {
                 'vendor_email': email,
                 'vendor_name': vendor_name,
+                'vendor_id': vendor_id,
+                'vendor_token': vendor_token,
                 'phone_number': phone_number,
                 'shop_address': shop_address,
                 'city': city,
@@ -1567,12 +1518,14 @@ def vendor_register_api(request):
             shop_folder_name = sanitize_shop_name(vendor_name)
             shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
             
-            # Create a placeholder file to establish the folder structure
+            # Create shop info file with hashed vendor ID and token
             s3.put_object(
                 Bucket=settings.R2_BUCKET,
                 Key=f'{shop_folder_key}shop_info.json',
                 Body=json.dumps({
                     'shop_name': vendor_name,
+                    'vendor_id_hash': make_password(vendor_id),
+                    'vendor_token_hash': make_password(vendor_token),
                     'created_at': timezone.now().isoformat(),
                     'folder_created': True
                 }),
@@ -1592,6 +1545,8 @@ def vendor_register_api(request):
                 'success': True,
                 'message': 'Registration successful',
                 'vendor_email': email,
+                'vendor_id': vendor_id,
+                'vendor_token': vendor_token,
                 'shop_folder': shop_folder_name
             })
 
@@ -1643,17 +1598,18 @@ def get_available_shops(request):
                         city = vendor_data.get('city', '')
                         if vendor_name and vendor_email:
                             shop_folder = sanitize_shop_name(vendor_name)
-                            if shop_folder == 'firozshop':
-                                shop_info = {
-                                    'shop_name': vendor_name,
-                                    'shop_folder': shop_folder,
-                                    'vendor_email': vendor_email,
-                                    'shop_address': shop_address,
-                                    'city': city,
-                                    'status': 'Available'
-                                }
-                                if not any(s['shop_folder'] == shop_folder for s in shops):
-                                    shops.append(shop_info)
+                            shop_info = {
+                                'shop_name': vendor_name,
+                                'shop_folder': shop_folder,
+                                'vendor_email': vendor_email,
+                                'shop_address': shop_address,
+                                'city': city,
+                                'status': 'Available',
+                                'vendor_id': vendor_data.get('vendor_id', ''),
+                                'vendor_token': vendor_data.get('vendor_token', '')
+                            }
+                            if not any(s['shop_folder'] == shop_folder for s in shops):
+                                shops.append(shop_info)
                     except Exception as e:
                         print(f"Error reading vendor data from {key}: {str(e)}")
                         continue
@@ -1676,8 +1632,69 @@ def vendor_email_folder(email):
     return f'vendor_register_details/{sanitize_email(email)}'
 
 def get_vendor_email_by_shop_folder(shop_folder):
-    # Implement the logic to fetch vendor email by shop folder
-    # Example placeholder:
-    return shop_folder  # or your actual lookup logic
+    """Get vendor email by shop folder name from R2 storage"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Search through vendor registration details to find matching shop folder
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in objects.get("Contents", []):
+            if obj["Key"].endswith('/registration_details.json'):
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                    vendor_name = vendor_data.get('vendor_name', '')
+                    vendor_email = vendor_data.get('vendor_email', '')
+                    
+                    # Check if this vendor's sanitized shop name matches
+                    if sanitize_shop_name(vendor_name) == shop_folder:
+                        return vendor_email
+                except Exception as e:
+                    print(f"Error reading vendor data from {obj['Key']}: {str(e)}")
+                    continue
+        
+        # Fallback for firozshop or unknown shops
+        return 'firozshop@example.com'
+        
+    except Exception as e:
+        print(f"Error finding vendor email for shop {shop_folder}: {str(e)}")
+        return 'firozshop@example.com'
+
+def get_vendor_id_by_shop_folder(shop_folder):
+    """Get vendor_id by shop folder name from R2 storage"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Search through vendor registration details to find matching shop folder
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in objects.get("Contents", []):
+            if obj["Key"].endswith('/registration_details.json'):
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                    vendor_name = vendor_data.get('vendor_name', '')
+                    vendor_id = vendor_data.get('vendor_id', '')
+                    
+                    # Check if this vendor's sanitized shop name matches
+                    if sanitize_shop_name(vendor_name) == shop_folder:
+                        return vendor_id
+                except Exception as e:
+                    print(f"Error reading vendor data from {obj['Key']}: {str(e)}")
+                    continue
+        
+        # Fallback for firozshop or unknown shops
+        return 'vendor1'
+        
+    except Exception as e:
+        print(f"Error finding vendor_id for shop {shop_folder}: {str(e)}")
+        return 'vendor1'
 
 # This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.

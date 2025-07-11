@@ -894,11 +894,27 @@
                 const data = await response.json();
 
                 if (data.success && data.vendor_email) {
-                    document.getElementById('successMessage').style.display = 'block';
+                    // Display vendor credentials
+                    const successMessage = document.getElementById('successMessage');
+                    successMessage.innerHTML = `
+                        <span class="material-icons">check_circle</span>
+                        <div style="margin-top: 15px;">
+                            <strong>Registration successful!</strong><br>
+                            <div style="margin: 15px 0; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px; text-align: left;">
+                                <strong>Your Vendor Credentials:</strong><br>
+                                <strong>Vendor ID:</strong> ${data.vendor_id}<br>
+                                <strong>Vendor Token:</strong> ${data.vendor_token}<br>
+                                <small style="opacity: 0.9;">Please save these credentials securely. You'll need them for accessing your vendor dashboard.</small>
+                            </div>
+                            Redirecting to pricing setup...
+                        </div>
+                    `;
+                    successMessage.style.display = 'block';
                     document.getElementById('vendorRegisterForm').style.display = 'none';
+                    
                     setTimeout(() => {
                         window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(data.vendor_email)}`;
-                    }, 2000);
+                    }, 5000);
                 } else {
                     throw new Error(data.message || 'Registration failed');
                 }
