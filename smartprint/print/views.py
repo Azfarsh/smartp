@@ -296,10 +296,11 @@ def get_print_requests(request):
 def auto_print_documents(request):
     """
     Get pending print jobs and send them to connected vendor clients via WebSocket
+    (Now only for admin or dashboard, not for vendor client polling)
     """
     if request.method == 'POST':
         try:
-            # Get all files with job_completed = 'NO'
+            # Get all files with job_completed = 'NO' (from vendor folders only)
             pending_jobs = get_pending_print_jobs()
 
             if not pending_jobs:
@@ -330,41 +331,48 @@ def auto_print_documents(request):
 @csrf_exempt
 def get_vendor_print_jobs(request):
     """
-    API endpoint for vendor clients to request print jobs from their specific vendor folder
+    Fetch print jobs for a specific vendor from vendor_print_jobs/<vendor_id>/
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             vendor_id = data.get('vendor_id')
-            
             if not vendor_id:
-                return JsonResponse({'success': False, 'error': 'Vendor ID required'}, status=400)
+                return JsonResponse({'success': False, 'error': 'Missing vendor_id'})
 
-            # Get pending jobs from vendor-specific folder
-            pending_jobs = get_vendor_specific_print_jobs(vendor_id)
-            
-            if not pending_jobs:
-                return JsonResponse({
-                    'success': True,
-                    'message': 'No pending print jobs found for this vendor',
-                    'jobs': []
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+
+            prefix = f'vendor_print_jobs/{vendor_id}/'
+            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
+            jobs = []
+            for obj in response.get('Contents', []):
+                key = obj['Key']
+                filename = key.split('/')[-1]
+                if not filename:
+                    continue
+                download_url = s3.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': settings.R2_BUCKET, 'Key': key},
+                    ExpiresIn=3600
+                )
+                jobs.append({
+                    'filename': filename,
+                    'download_url': download_url,
+                    'metadata': {
+                        'vendor_id': vendor_id,
+                        # Add more metadata if needed
+                    }
                 })
-
-            print(f"🖨️  Vendor {vendor_id} requested jobs: Found {len(pending_jobs)} pending jobs")
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Found {len(pending_jobs)} pending print jobs for vendor {vendor_id}',
-                'jobs': pending_jobs
-            })
-
-        except json.JSONDecodeError:
-            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+            return JsonResponse({'success': True, 'jobs': jobs})
         except Exception as e:
-            print(f"Error in get_vendor_print_jobs: {str(e)}")
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
 
 
 def get_vendor_specific_print_jobs(vendor_id):
@@ -497,7 +505,7 @@ def update_job_status(request):
 
 
 def get_pending_print_jobs():
-    """Get pending print jobs from R2 storage with enhanced validation"""
+    """Get pending print jobs from R2 storage with enhanced validation (for admin or dashboard only)"""
     try:
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -507,7 +515,7 @@ def get_pending_print_jobs():
 
         pending_jobs = []
 
-        # Check printme bucket vendor print jobs folders for documents
+        # Only check printme bucket vendor print jobs folders for documents
         try:
             printme_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='printme/')
 
@@ -523,7 +531,6 @@ def get_pending_print_jobs():
                 path_parts = key.split('/')
                 # Expected structure: printme/{vendor_id}/vendor_print_jobs/{filename}
                 if len(path_parts) >= 4 and path_parts[0] == 'printme' and path_parts[2] == 'vendor_print_jobs':
-                    
                     try:
                         # Get object metadata
                         head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
@@ -581,75 +588,6 @@ def get_pending_print_jobs():
 
         except Exception as e:
             print(f"Error accessing printme bucket: {str(e)}")
-
-        # Also check users folder for pending jobs
-        try:
-            users_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='users/')
-
-            for obj in users_objects.get("Contents", []):
-                key = obj["Key"]
-                filename = key.split("/")[-1]
-
-                # Skip folder itself
-                if not filename:
-                    continue
-
-                try:
-                    # Get object metadata
-                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
-                    metadata = head_response.get('Metadata', {})
-
-                    # Check if job is pending
-                    job_completed = metadata.get('job_completed', 'NO').upper()
-                    status = metadata.get('status', 'pending').lower()
-
-                    if job_completed == 'NO' or status == 'pending':
-                        # Extract user email from path
-                        path_parts = key.split('/')
-                        user_email = path_parts[1] if len(path_parts) > 1 else ''
-
-                        # Generate download URL
-                        download_url = s3.generate_presigned_url(
-                            ClientMethod='get_object',
-                            Params={
-                                'Bucket': settings.R2_BUCKET,
-                                'Key': key
-                            },
-                            ExpiresIn=3600
-                        )
-
-                        # Build job info
-                        job_info = {
-                            'filename': filename,
-                            'download_url': download_url,
-                            'r2_path': key,
-                            'user_email': user_email,
-                            'metadata': {
-                                'status': 'no',  # Set to 'no' for pending jobs
-                                'job_completed': job_completed,
-                                'copies': metadata.get('copies', '1'),
-                                'color': metadata.get('color', 'bw'),
-                                'orientation': metadata.get('orientation', 'portrait'),
-                                'page_size': metadata.get('pagesize', 'A4'),
-                                'pages': metadata.get('pages', '1'),
-                                'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
-                                'vendor': metadata.get('vendor', 'firozshop'),
-                                'user': user_email or metadata.get('user', 'Unknown'),
-                                'service_type': metadata.get('service_type', ''),
-                                'job_id': metadata.get('job_id', ''),
-                                'token': metadata.get('token', '')
-                            }
-                        }
-
-                        pending_jobs.append(job_info)
-                        print(f"✅ Found pending user job: {filename} (status: {status}, completed: {job_completed})")
-
-                except Exception as e:
-                    print(f"Error processing user file {key}: {str(e)}")
-                    continue
-
-        except Exception as e:
-            print(f"Error accessing users folder: {str(e)}")
 
         print(f"📋 Total pending jobs found: {len(pending_jobs)}")
         return pending_jobs
@@ -1561,6 +1499,45 @@ def vendor_register_api(request):
         'success': False,
         'message': 'Invalid request method'
     })
+
+@csrf_exempt
+def vendor_authenticate(request):
+    """
+    Authenticate vendor using vendor_id and vendor_token (hashed in shop_info.json)
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            vendor_id = data.get('vendor_id')
+            vendor_token = data.get('vendor_token')
+            shop_name = data.get('shop_name')
+
+            if not all([vendor_email, vendor_id, vendor_token, shop_name]):
+                return JsonResponse({'success': False, 'error': 'Missing credentials'}, status=400)
+
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+            shop_folder = sanitize_shop_name(shop_name)
+            shop_info_key = f'vendor_register_details/{sanitize_email(vendor_email)}/{shop_folder}/shop_info.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=shop_info_key)
+                shop_info = json.loads(response['Body'].read().decode('utf-8'))
+                vendor_id_hash = shop_info.get('vendor_id_hash')
+                vendor_token_hash = shop_info.get('vendor_token_hash')
+                if check_password(vendor_id, vendor_id_hash) and check_password(vendor_token, vendor_token_hash):
+                    return JsonResponse({'success': True, 'message': 'Authenticated'})
+                else:
+                    return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=401)
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'Shop info not found: {str(e)}'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 
 def sanitize_email(email):
     # Lowercase, replace @ with _at_, . with _dot_, and remove other special chars
