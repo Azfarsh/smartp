@@ -3010,7 +3010,7 @@ def adobe_local_print_jobs():
                 
                 if file_ext == '.pdf':
                     # Use Adobe for PDFs
-                    success = print_service.print_pdf_adobe(temp_path, job_data.get('metadata', {}), working_printer)
+                    success = print_service.print_pdf_adobe(temp_file, job_data.get('metadata', {}), working_printer)
                     if success:
                         print("   ✅ PDF printed successfully using Adobe Reader")
                     else:
@@ -3018,7 +3018,7 @@ def adobe_local_print_jobs():
                         
                 elif file_ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif']:
                     # Use Windows Photo Viewer for images
-                    success = print_image_windows(temp_path, working_printer)
+                    success = print_image_windows(temp_file, working_printer)
                     if success:
                         print("   ✅ Image printed successfully using Windows Photo Viewer")
                     else:
@@ -3191,42 +3191,6 @@ def authenticate_vendor():
         print(f"❌ Error during authentication: {e}")
         return False
 
-# --- MAIN ENTRY FOR HTTP POLLING ---
-def polling_main():
-    os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
-    os.makedirs(FAILED_JOB_DIR, exist_ok=True)
-
-    # Authenticate vendor before polling
-    if not authenticate_vendor():
-        print("Exiting: Vendor authentication required.")
-        return
-
-    # Start print queue processor in background
-    print_queue_thread = threading.Thread(target=process_print_queue, daemon=True)
-    print_queue_thread.start()
-    logging.info("Started print queue processor.")
-
-    print("🔄 Starting HTTP polling loop...")
-    print("   Press Ctrl+C to stop")
-
-    while True:
-        try:
-            jobs = poll_print_jobs()
-            for job in jobs:
-                # Only process regular print jobs with job_completed == NO
-                if job['metadata'].get('job_completed', 'NO').upper() == 'NO' and \
-                   job['metadata'].get('service_type', '').lower() == 'regular print':
-                    save_job_and_pdf(job)
-            time.sleep(POLL_INTERVAL)
-
-        except KeyboardInterrupt:
-            print("\n🛑 Stopping HTTP polling...")
-            break
-
-        except Exception as e:
-            error_logger.error(f"Error in polling loop: {e}")
-            time.sleep(POLL_INTERVAL)
-
 # --- INSTRUCTIONS FOR RUNNING ---
 if __name__ == "__main__":
     # Install required packages check
@@ -3238,13 +3202,5 @@ if __name__ == "__main__":
         input("Press Enter to exit...")
         sys.exit(1)
 
-    # Check if user wants to test printing first
-    if len(sys.argv) > 1 and sys.argv[1] == "--test":
-        test_printing_functionality()
-        sys.exit(0)
-
-    # Default: HTTP polling mode with authentication
-    polling_main()
-    print("\nTo run the vendor client, use:")
-    print("  python vendor_client.py")
-    print("\nMake sure your Django server is running and accessible at:", BASE_URL)
+    # Run the main function with proper argument parsing
+    main()
