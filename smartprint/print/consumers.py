@@ -266,11 +266,11 @@ class VendorConsumer(AsyncWebsocketConsumer):
             r2_path = job.get('r2_path', job.get('download_url', ''))
             
             # Expected structure: users/{email}/{filename}
-            # or printme/testshop/{shop_info}/{filename}
-            # or printme/signupdetails/{signup_info}
+            # or vendor_print_jobs/{vendor_id}/{filename}
+            # or signupdetails/{signup_info}
             
-            base_bucket = r2_folder_structure.get('base_bucket', 'printme')
-            allowed_folders = r2_folder_structure.get('allowed_folders', ['signupdetails', 'testshop', 'users'])
+            base_bucket = r2_folder_structure.get('base_bucket', 'vendor_print_jobs')
+            allowed_folders = r2_folder_structure.get('allowed_folders', ['signupdetails', 'users', 'vendor_print_jobs'])
             
             if not r2_path.startswith(base_bucket):
                 return False
