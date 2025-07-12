@@ -1112,7 +1112,7 @@ class AutomatedVendorPrintClient:
         """Prepare print settings from metadata."""
         return {
             'copies': int(metadata.get('copies', 1)),
-            'color': metadata.get('color', 'bw'),
+            'color': metadata.get('color', 'Black and White'),
             'orientation': metadata.get('orientation', 'portrait'),
             'page_size': metadata.get('page_size', 'A4'),
             'page_range': metadata.get('page_range', 'all'),
@@ -1217,7 +1217,7 @@ class AutomatedVendorPrintClient:
                     return print_image_automatically(temp_path, printer_name, filename)
                 elif file_extension == 'pdf':
                     def print_func():
-                        self._secure_print_pdf(temp_path, printer_name, copies, print_settings.get('color', 'bw') == 'color')
+                        self._secure_print_pdf(temp_path, printer_name, copies, print_settings.get('color', 'Black and White') == 'color')
                     return wait_for_job_in_and_out_of_queue(printer_name, filename, print_func)
                 elif file_extension in ['doc', 'docx', 'txt', 'rtf']:
                     def print_func():
