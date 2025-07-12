@@ -277,31 +277,83 @@ class PrinterManager:
                 self.printers[printer_name]['jobs_failed'] += 1
 
 def find_working_printer():
+    """Find a working printer, prioritizing HP printers."""
     import win32print
-    printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)
-    hp_printers = [p[2] for p in printers if 'HP' in p[2].upper()]
-    hp_printers.sort(key=lambda x: ('Copy' in x, x))
-    for printer_name in hp_printers:
+    
+    try:
+        # Get all printers
+        printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)
+        print(f"🔍 Found {len(printers)} printers on system")
+        
+        # List all printers for debugging
+        for i, printer in enumerate(printers):
+            print(f"   {i+1}. {printer[2]}")
+        
+        # First, try to get default printer
         try:
-            handle = win32print.OpenPrinter(printer_name)
-            info = win32print.GetPrinter(handle, 2)
-            win32print.ClosePrinter(handle)
-            if info['Status'] == 0:
-                return printer_name
-        except:
-            continue
-    for p in printers:
-        printer_name = p[2]
-        if 'PDF' not in printer_name.upper():
+            default_printer = win32print.GetDefaultPrinter()
+            print(f"🎯 Default printer: {default_printer}")
+            
+            # Check if default printer is working
             try:
-                handle = win32print.OpenPrinter(printer_name)
+                handle = win32print.OpenPrinter(default_printer)
                 info = win32print.GetPrinter(handle, 2)
                 win32print.ClosePrinter(handle)
                 if info['Status'] == 0:
-                    return printer_name
-            except:
+                    print(f"✅ Default printer is working: {default_printer}")
+                    return default_printer
+                else:
+                    print(f"⚠️ Default printer has status {info['Status']}: {default_printer}")
+            except Exception as e:
+                print(f"❌ Default printer error: {e}")
+        except Exception as e:
+            print(f"❌ Could not get default printer: {e}")
+        
+        # Look for HP printers specifically
+        hp_printers = [p[2] for p in printers if 'HP' in p[2].upper()]
+        hp_printers.sort(key=lambda x: ('Copy' in x, x))  # Sort copy printers last
+        
+        print(f"🖨️ Found {len(hp_printers)} HP printers")
+        for hp_printer in hp_printers:
+            print(f"   🔍 Testing HP printer: {hp_printer}")
+            try:
+                handle = win32print.OpenPrinter(hp_printer)
+                info = win32print.GetPrinter(handle, 2)
+                win32print.ClosePrinter(handle)
+                if info['Status'] == 0:
+                    print(f"✅ Found working HP printer: {hp_printer}")
+                    return hp_printer
+                else:
+                    print(f"⚠️ HP printer has status {info['Status']}: {hp_printer}")
+            except Exception as e:
+                print(f"❌ HP printer error: {e}")
                 continue
-    return None
+        
+        # Try any other non-PDF printer
+        print("🔄 Trying other non-PDF printers...")
+        for p in printers:
+            printer_name = p[2]
+            if 'PDF' not in printer_name.upper() and 'MICROSOFT' not in printer_name.upper():
+                print(f"   🔍 Testing printer: {printer_name}")
+                try:
+                    handle = win32print.OpenPrinter(printer_name)
+                    info = win32print.GetPrinter(handle, 2)
+                    win32print.ClosePrinter(handle)
+                    if info['Status'] == 0:
+                        print(f"✅ Found working printer: {printer_name}")
+                        return printer_name
+                    else:
+                        print(f"⚠️ Printer has status {info['Status']}: {printer_name}")
+                except Exception as e:
+                    print(f"❌ Printer error: {e}")
+                    continue
+        
+        print("❌ No working printer found!")
+        return None
+        
+    except Exception as e:
+        print(f"❌ Error finding printers: {e}")
+        return None
 
 def create_passport_photo_layout(input_image_path, output_path):
     """
@@ -634,6 +686,12 @@ class AutomatedVendorPrintClient:
 
         # API endpoint for getting vendor jobs
         self.vendor_api_url = f"{base_url.replace('ws://', 'http://').replace('wss://', 'https://')}/get-vendor-print-jobs/"
+        
+        # For Replit, ensure we use the correct port
+        if 'localhost' in self.vendor_api_url:
+            self.vendor_api_url = self.vendor_api_url.replace('localhost:8000', '0.0.0.0:8000')
+        if '127.0.0.1' in self.vendor_api_url:
+            self.vendor_api_url = self.vendor_api_url.replace('127.0.0.1:8000', '0.0.0.0:8000')
 
         threading.Thread(target=self.job_directory_watcher, daemon=True).start()
         threading.Thread(target=self.vendor_api_poller, daemon=True).start()
@@ -2476,34 +2534,59 @@ def print_jobs_from_local_storage():
     print("✅ Done printing all jobs from local storage.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Automated Vendor Print Client (Polling/Local Only)")
+    parser = argparse.ArgumentParser(description="Automated Vendor Print Client")
+    parser.add_argument("--vendor-id", default=VENDOR_ID, help="Vendor ID for authentication")
+    parser.add_argument("--url", default=BASE_URL, help="Base URL of the Django server")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--printer", help="Printer name to use as primary")
     parser.add_argument("--http-poll", action="store_true", help="Use HTTP polling mode to fetch jobs from website")
     parser.add_argument("--print-local", action="store_true", help="Print all jobs from local storage only (legacy)")
     parser.add_argument("--adobe-local-print", action="store_true", help="Print all jobs from local storage using Adobe Reader (robust mode)")
     parser.add_argument("--adobe-monitor-print", action="store_true", help="Print all PDFs from local storage using Adobe, monitor queue, and notify website")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    parser.add_argument("--printer", help="Printer name to use as primary")
+    parser.add_argument("--test", action="store_true", help="Test printing functionality")
     args = parser.parse_args()
 
-    if args.adobe_monitor_print:
+    print("🔧 Parsed arguments:")
+    print(f"   --test: {args.test}")
+    print(f"   --adobe-monitor-print: {args.adobe_monitor_print}")
+    print(f"   --adobe-local-print: {args.adobe_local_print}")
+    print(f"   --print-local: {args.print_local}")
+    print(f"   --http-poll: {args.http_poll}")
+
+    if args.test:
+        print("🧪 Running test mode...")
+        test_printing_functionality()
+        sys.exit(0)
+    elif args.adobe_monitor_print:
+        print("🔄 Running adobe monitor print mode...")
         print_and_notify_adobe()
         sys.exit(0)
-    if args.adobe_local_print:
+    elif args.adobe_local_print:
+        print("🖨️ Running adobe local print mode...")
         adobe_local_print_jobs()
         sys.exit(0)
-    if args.print_local:
+    elif args.print_local:
+        print("🖨️ Running print local mode...")
         print_jobs_from_local_storage()
         sys.exit(0)
-    if args.http_poll:
+    elif args.http_poll:
+        print("🔄 Running HTTP polling mode...")
         polling_main()
         sys.exit(0)
 
-    print("Usage:")
-    print("  python vendor_client.py --http-poll         # Fetch jobs from website to local storage")
-    print("  python vendor_client.py --adobe-local-print  # Print all jobs from local storage using Adobe Reader")
-    print("  python vendor_client.py --adobe-monitor-print # Print PDFs, monitor queue, notify website")
-    print("  python vendor_client.py --print-local         # (Legacy) Print all jobs from local storage")
-    sys.exit(1)
+    # Default: Start enhanced vendor client
+    print("🚀 Starting enhanced vendor client...")
+    try:
+        client = AutomatedVendorPrintClient(
+            vendor_id=args.vendor_id,
+            base_url=args.url,
+            debug=args.debug,
+            primary_printer=args.printer
+        )
+        client.run()
+    except Exception as e:
+        print(f"❌ Error starting vendor client: {e}")
+        sys.exit(1)
 
 def test_printing_functionality():
     """Test printing functionality to verify it works before running vendor client."""
@@ -2658,42 +2741,68 @@ class AdobePrintService:
             logging.error(f"Error downloading PDF: {e}")
             return None
     def print_pdf_adobe(self, pdf_path, metadata, printer_name=None):
+        """Print PDF using Adobe Reader with enhanced error handling."""
         if not self.adobe_exe:
-            logging.error("Adobe Reader not available")
+            print("❌ Adobe Reader not available")
             return False
+        
         try:
+            # Validate PDF file exists
+            if not os.path.exists(pdf_path):
+                print(f"❌ PDF file not found: {pdf_path}")
+                return False
+            
+            # Get printer name if not provided
             if not printer_name:
                 printer_name = self.get_default_printer()
                 if not printer_name:
-                    logging.error("No printer found")
+                    print("❌ No printer found")
                     return False
-            logging.info(f"Using printer: {printer_name}")
+            
+            print(f"🖨️ Using printer: {printer_name}")
+            print(f"📄 Printing: {os.path.basename(pdf_path)}")
+            
+            # Build Adobe command
             cmd = [self.adobe_exe, "/t", pdf_path, printer_name]
-            logging.info(f"Executing: {' '.join(cmd)}")
+            print(f"🔧 Command: {' '.join(cmd)}")
+            
+            # Execute Adobe print command
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
+            
             try:
+                # Wait for process to complete with timeout
                 stdout, stderr = process.communicate(timeout=60)
+                
                 if process.returncode == 0:
-                    logging.info("Print command executed successfully")
+                    print("✅ Adobe print command executed successfully")
+                    
+                    # Wait a bit for the print job to be sent to printer
                     time.sleep(3)
+                    
+                    # Clean up Adobe processes
                     self.close_adobe_reader()
+                    
                     return True
                 else:
-                    logging.error(f"Print command failed with return code: {process.returncode}")
+                    print(f"❌ Adobe print command failed with return code: {process.returncode}")
                     if stderr:
-                        logging.error(f"Error: {stderr.decode()}")
+                        error_msg = stderr.decode().strip()
+                        if error_msg:
+                            print(f"   Error details: {error_msg}")
                     return False
+                    
             except subprocess.TimeoutExpired:
-                logging.error("Print command timed out")
+                print("⏰ Adobe print command timed out")
                 process.kill()
                 return False
+                
         except Exception as e:
-            logging.error(f"Error printing PDF: {e}")
+            print(f"❌ Error printing PDF: {e}")
             return False
     def close_adobe_reader(self):
         try:
@@ -2752,6 +2861,8 @@ class AdobePrintService:
 def print_image_windows(image_path, printer_name=None):
     """Print an image file using Windows Photo Viewer or default print command."""
     try:
+        print(f"🖼️ Printing image: {os.path.basename(image_path)}")
+        
         # Try Windows Photo Viewer (works on most Windows 10/11)
         cmd = [
             'rundll32.exe',
@@ -2759,58 +2870,205 @@ def print_image_windows(image_path, printer_name=None):
             image_path,
             printer_name or ''
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        print(f"🔧 Command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
         if result.returncode == 0:
-            logging.info(f"Image printed successfully: {image_path}")
+            print("✅ Image printed successfully using Windows Photo Viewer")
             return True
         else:
-            logging.error(f"Windows Photo Viewer print failed: {result.stderr}")
-            return False
+            print(f"❌ Windows Photo Viewer print failed: {result.stderr}")
+            
+            # Fallback: Try generic print
+            print("🔄 Trying generic print as fallback...")
+            try:
+                result = win32api.ShellExecute(0, "print", image_path, None, ".", 0)
+                if result > 32:
+                    print("✅ Generic print successful")
+                    return True
+                else:
+                    print("❌ Generic print failed")
+                    return False
+            except Exception as e:
+                print(f"❌ Generic print error: {e}")
+                return False
+                
     except Exception as e:
-        logging.error(f"Error printing image: {e}")
+        print(f"❌ Error printing image: {e}")
         return False
 
 def adobe_local_print_jobs():
     """Process all jobs in local storage using Adobe Reader for PDFs, and Windows Photo Viewer for images."""
+    print("🔄 Starting Adobe Local Print Jobs...")
+    print("=" * 50)
+    
+    # Initialize print service
     print_service = AdobePrintService()
     if not print_service.adobe_exe:
-        print("Please install Adobe Reader to use this service")
-        print("Download from: https://get.adobe.com/reader/")
+        print("❌ Adobe Reader not found. Please install Adobe Reader.")
+        print("   Download from: https://get.adobe.com/reader/")
         return
+    
+    # Create directories if they don't exist
     os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
     os.makedirs(FAILED_JOB_DIR, exist_ok=True)
-    token_folders = [f for f in os.listdir(LOCAL_JOB_DIR) if os.path.isdir(os.path.join(LOCAL_JOB_DIR, f))]
-    for token in token_folders:
+    
+    # Get working printer
+    working_printer = find_working_printer()
+    if not working_printer:
+        print("❌ No working printer found!")
+        return
+    
+    print(f"🖨️ Using printer: {working_printer}")
+    
+    # Look for JSON files in the job directory (both direct files and in subfolders)
+    json_files = []
+    
+    # Check for JSON files directly in the main directory
+    direct_json_files = [f for f in os.listdir(LOCAL_JOB_DIR) if f.endswith('.json')]
+    json_files.extend([(os.path.join(LOCAL_JOB_DIR, f), f) for f in direct_json_files])
+    
+    # Check for JSON files in subfolders (like the 293 folder structure)
+    subfolders = [f for f in os.listdir(LOCAL_JOB_DIR) if os.path.isdir(os.path.join(LOCAL_JOB_DIR, f))]
+    for subfolder in subfolders:
+        subfolder_path = os.path.join(LOCAL_JOB_DIR, subfolder)
+        subfolder_json_files = [f for f in os.listdir(subfolder_path) if f.endswith('.json')]
+        json_files.extend([(os.path.join(subfolder_path, f), f"{subfolder}/{f}") for f in subfolder_json_files])
+    
+    if not json_files:
+        print("📭 No JSON job files found in local storage.")
+        print(f"   Expected location: {LOCAL_JOB_DIR}")
+        print("   Checked both main directory and subfolders")
+        return
+    
+    print(f"📋 Found {len(json_files)} job files to process...")
+    
+    processed_count = 0
+    success_count = 0
+    
+    for json_path, json_file in json_files:
         try:
-            token_dir = os.path.join(LOCAL_JOB_DIR, token)
-            metadata_path = os.path.join(token_dir, 'metadata.json')
-            if not os.path.exists(metadata_path):
-                continue
-            with open(metadata_path, 'r', encoding='utf-8') as f:
+            processed_count += 1
+            print(f"\n📄 Processing job {processed_count}/{len(json_files)}: {json_file}")
+            
+            # json_path is already the full path
+            
+            # Read job data
+            with open(json_path, 'r', encoding='utf-8') as f:
                 job_data = json.load(f)
-            # Find the document file (not metadata.json)
-            doc_files = [f for f in os.listdir(token_dir) if f != 'metadata.json']
-            if not doc_files:
-                error_logger.error(f"No document file found in {token_dir}")
+            
+            # Extract filename and document URL
+            filename = job_data.get('metadata', {}).get('filename', 'document.pdf')
+            document_url = job_data.get('document_url', '')
+            
+            print(f"   📄 File: {filename}")
+            
+            # Check if the PDF file already exists in the same folder as the JSON
+            json_dir = os.path.dirname(json_path)
+            local_pdf_path = os.path.join(json_dir, filename)
+            
+            temp_file = None
+            
+            if os.path.exists(local_pdf_path):
+                print(f"   ✅ Found local file: {os.path.basename(local_pdf_path)}")
+                temp_file = local_pdf_path
+            elif document_url:
+                print(f"   🔗 URL: {document_url[:50]}...")
+                
+                # Download the document
+                print("   ⬇️ Downloading document...")
+                try:
+                    response = requests.get(document_url, stream=True, timeout=30)
+                    response.raise_for_status()
+                    
+                    # Create temporary file with correct extension
+                    file_ext = os.path.splitext(filename)[1] or '.pdf'
+                    temp_fd, temp_path = tempfile.mkstemp(suffix=file_ext, prefix='print_job_')
+                    temp_file = temp_path
+                    
+                    with os.fdopen(temp_fd, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    
+                    print(f"   ✅ Downloaded to: {os.path.basename(temp_path)}")
+                    
+                except Exception as e:
+                    print(f"   ❌ Download failed: {e}")
+                    continue
+            else:
+                print(f"   ❌ No document URL found and no local file: {filename}")
                 continue
-            doc_path = os.path.join(token_dir, doc_files[0])
-            # Update job_data to use local file path
-            job_data['local_file_path'] = doc_path
-            ext = os.path.splitext(doc_path)[1].lower()
-            if ext == '.pdf':
-                success = print_service.process_print_job_local(job_data)
-            elif ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
-                success = print_image_windows(doc_path, print_service.get_default_printer())
-            else:
-                error_logger.error(f"Unsupported file type for printing: {doc_path}")
-                success = False
+            
+            # Print the document based on file type
+            print("   🖨️ Printing document...")
+            success = False
+            
+            try:
+                file_ext = os.path.splitext(filename)[1].lower()
+                
+                if file_ext == '.pdf':
+                    # Use Adobe for PDFs
+                    success = print_service.print_pdf_adobe(temp_path, job_data.get('metadata', {}), working_printer)
+                    if success:
+                        print("   ✅ PDF printed successfully using Adobe Reader")
+                    else:
+                        print("   ❌ PDF printing failed")
+                        
+                elif file_ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif']:
+                    # Use Windows Photo Viewer for images
+                    success = print_image_windows(temp_path, working_printer)
+                    if success:
+                        print("   ✅ Image printed successfully using Windows Photo Viewer")
+                    else:
+                        print("   ❌ Image printing failed")
+                        
+                else:
+                    # Try generic printing for other file types
+                    print(f"   ⚠️ Unknown file type: {file_ext}, trying generic print...")
+                    try:
+                        result = win32api.ShellExecute(0, "print", temp_path, None, ".", 0)
+                        if result > 32:
+                            success = True
+                            print("   ✅ Generic print successful")
+                        else:
+                            print("   ❌ Generic print failed")
+                    except Exception as e:
+                        print(f"   ❌ Generic print error: {e}")
+                
+            except Exception as e:
+                print(f"   ❌ Printing error: {e}")
+            
+            # Clean up temporary file (only if it was downloaded, not if it was a local file)
+            if temp_file and os.path.exists(temp_file) and temp_file != local_pdf_path:
+                try:
+                    os.remove(temp_file)
+                    print("   🗑️ Temporary file cleaned up")
+                except Exception as e:
+                    print(f"   ⚠️ Could not clean up temp file: {e}")
+            elif temp_file == local_pdf_path:
+                print("   📁 Local file preserved")
+            
+            # Track success
             if success:
-                logging.info(f"Printed job in folder {token} (files retained)")
+                success_count += 1
+                print("   ✅ Job completed successfully!")
             else:
-                logging.error(f"Failed to print job in folder {token} (files retained)")
+                print("   ❌ Job failed")
+                
         except Exception as e:
-            error_logger.error(f"Error processing job folder {token}: {e}")
-    print("✅ Done printing all jobs from local storage using Adobe Reader.")
+            print(f"   ❌ Error processing {json_file}: {e}")
+            continue
+    
+    print("\n" + "=" * 50)
+    print(f"📊 PRINTING SUMMARY:")
+    print(f"   📄 Total jobs processed: {processed_count}")
+    print(f"   ✅ Successful prints: {success_count}")
+    print(f"   ❌ Failed prints: {processed_count - success_count}")
+    print(f"   📈 Success rate: {(success_count/processed_count*100):.1f}%" if processed_count > 0 else "   📈 Success rate: 0%")
+    print("=" * 50)
+    print("✅ Adobe Local Print Jobs completed!")
 
 ADOBE_PATH = r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"  # Path to Adobe Acrobat
 WEBSITE_API_URL = "http://yourwebsite.com/api/job-status/"  # Replace with your API endpoint
@@ -2907,9 +3165,9 @@ def print_and_notify_adobe():
 # --- VENDOR CREDENTIALS (replace with your actual values) ---
 VENDOR_EMAIL = "abd@gmail.com"
 VENDOR_NAME = "abdshop"
-VENDOR_ID = "5263393941"
+VENDOR_ID = "5263393941"  # This matches your folder structure
 VENDOR_TOKEN = "7911273877"
-BASE_URL = "http://localhost:8000"  # Change if your Django server is running elsewhere
+BASE_URL = "http://localhost:8000"  # Use localhost for local Django server
 
 # --- AUTHENTICATION FUNCTION ---
 def authenticate_vendor():
