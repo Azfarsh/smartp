@@ -7,6 +7,11 @@
   <meta name="description" content="PrintMe - Your on-demand printing solution. Easily manage print jobs, track history, and find nearby print locations.">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // Configure PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
   <style>
     :root {
       /* Color System */
@@ -2420,7 +2425,7 @@
         const fileInput = modal.querySelector(`#${service}-file-input`);
         const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
         const filePreview = modal.querySelector(`#${service}-file-preview`);
-        fileInput.addEventListener('change', (e) => {
+        fileInput.addEventListener('change', async (e) => {
           const file = e.target.files[0];
           fileObj = file;
           if (!file) {
@@ -2428,22 +2433,37 @@
             filePreview.innerHTML = '';
             return;
           }
-          fileUploadLabel.textContent = file.name;
-          // Preview logic
-          if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              filePreview.innerHTML = `<img src='${ev.target.result}' alt='Preview' />`;
-            };
-            reader.readAsDataURL(file);
-          } else if (file.type === 'application/pdf') {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              filePreview.innerHTML = `<embed src='${ev.target.result}' type='application/pdf' width='100%' height='180px' />`;
-            };
-            reader.readAsDataURL(file);
-          } else {
-            filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}</div>`;
+          
+          // Show loading while processing
+          fileUploadLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing file...';
+          
+          try {
+            // Get accurate page count
+            const pages = await getPageCount(file);
+            fileUploadLabel.textContent = `${file.name} (${pages} pages)`;
+            
+            // Store page count in file object
+            fileObj.pageCount = pages;
+            
+            // Preview logic
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                filePreview.innerHTML = `<img src='${ev.target.result}' alt='Preview' />`;
+              };
+              reader.readAsDataURL(file);
+            } else if (file.type === 'application/pdf') {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                filePreview.innerHTML = `<embed src='${ev.target.result}' type='application/pdf' width='100%' height='180px' />`;
+              };
+              reader.readAsDataURL(file);
+            } else {
+              filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}<br><small>${pages} pages</small></div>`;
+            }
+          } catch (error) {
+            console.error('Error processing file:', error);
+            fileUploadLabel.textContent = file.name;
           }
         });
         
@@ -2645,11 +2665,11 @@
             <label class="settings-label">Choose print colour</label>
             <p class="settings-subtitle">Save money with black & white or get color printouts</p>
             <div class="color-options">
-              <div class="color-option selected" data-color="bw">
+              <div class="color-option selected" data-color="Black and White">
                 <div class="color-option-icon">
                   <i class="fas fa-circle" style="color: #666;"></i>
                 </div>
-                <div class="color-option-label">B&W</div>
+                <div class="color-option-label">Black and White</div>
               </div>
               <div class="color-option" data-color="color">
                 <div class="color-option-icon">
@@ -2659,7 +2679,7 @@
               </div>
             </div>
 
-            <!-- Page Range Settings for Color/BW -->
+            <!-- Page Range Settings for Color/Black and White -->
             <div class="page-range-settings" id="pageRangeSettings">
               <label class="settings-label">Page Range Selection</label>
               <div class="page-range-options">
@@ -2834,7 +2854,7 @@
 
     const defaultSettings = {
       copies: 1,
-      color: 'bw',
+      color: 'Black and White',
       orientation: 'portrait',
       pageRange: 'all',
       specificPages: '',
@@ -2844,8 +2864,8 @@
     };
 
     const pricePerPage = {
-      bw: 3,
-      color: 5
+      'Black and White': 3,
+      'Color': 5
     };
 
     const servicePrices = {
@@ -3164,7 +3184,7 @@
               </div>
               <div class="metadata-item">
                 <div class="metadata-label">Color</div>
-                <div class="metadata-value">${job.color === 'bw' ? 'B&W' : 'Color'}</div>
+                <div class="metadata-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</div>
               </div>
               <div class="metadata-item">
                 <div class="metadata-label">Size</div>
@@ -3288,9 +3308,15 @@
     }
 
     // Complete file management functions (R2 Integration)
-    function handleFileSelect(files) {
+    async function handleFileSelect(files) {
       console.log('handleFileSelect called with', files.length, 'files');
       let filesAdded = false;
+
+      // Show loading state
+      const loadingMessage = document.createElement('div');
+      loadingMessage.className = 'loading-message';
+      loadingMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Processing files and counting pages...</p>';
+      fileList.appendChild(loadingMessage);
 
       for (let file of files) {
         console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
@@ -3302,18 +3328,23 @@
 
           if (!isDuplicate) {
             const fileId = Date.now() + Math.random();
+            
+            // Get accurate page count
+            const pages = await getPageCount(file);
+            console.log(`File ${file.name} has ${pages} pages`);
+            
             const fileObj = {
               id: fileId,
               file: file,
               name: file.name,
               size: file.size,
-              pages: getPageCount(file)
+              pages: pages
             };
 
             uploadedFiles.push(fileObj);
             fileSettings[fileId] = { ...defaultSettings };
             filesAdded = true;
-            console.log('File added successfully:', file.name);
+            console.log('File added successfully:', file.name, 'with', pages, 'pages');
           } else {
             console.log('Duplicate file skipped:', file.name);
           }
@@ -3321,6 +3352,9 @@
           console.warn('Invalid file type:', file.name, 'Type:', file.type);
         }
       }
+
+      // Remove loading message
+      loadingMessage.remove();
 
       if (filesAdded) {
         console.log('Updating UI with', uploadedFiles.length, 'total files');
@@ -3356,9 +3390,35 @@
       return validTypes.includes(file.type) || hasValidExtension;
     }
 
-    function getPageCount(file) {
-      const basePage = Math.floor(file.size / 50000) + 1;
-      return Math.max(1, Math.min(basePage, 100));
+    // Function to get accurate page count for files
+    async function getPageCount(file) {
+      if (file.type === 'application/pdf') {
+        return await getPDFPageCount(file);
+      } else if (file.type.startsWith('image/')) {
+        return 1;
+      } else {
+        // For other document types, use a more accurate estimation
+        const sizeInKB = file.size / 1024;
+        if (sizeInKB < 50) return 1;
+        if (sizeInKB < 200) return Math.ceil(sizeInKB / 50);
+        if (sizeInKB < 1000) return Math.ceil(sizeInKB / 80);
+        return Math.ceil(sizeInKB / 100);
+      }
+    }
+
+    // Function to get PDF page count using PDF.js
+    async function getPDFPageCount(file) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        return pdf.numPages;
+      } catch (error) {
+        console.warn('Error reading PDF pages, using estimation:', error);
+        // Fallback to size-based estimation for PDFs
+        const sizeInKB = file.size / 1024;
+        return Math.max(1, Math.ceil(sizeInKB / 100));
+      }
     }
 
     function formatFileSize(bytes) {
@@ -3515,7 +3575,7 @@
       summaryCopies.textContent = totalCopiesCount;
 
       if (colorTypes.size === 1) {
-        summaryColor.textContent = colorTypes.has('bw') ? 'B&W' : 'Color';
+        summaryColor.textContent = colorTypes.has('Black and White') ? 'Black and White' : 'Color';
       } else {
         summaryColor.textContent = 'Mixed';
       }
@@ -3847,7 +3907,7 @@
             <div class="completed-job-details">
               <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${job.pages || 'N/A'}</span></div>
               <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${job.copies || '1'}</span></div>
-              <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'bw' ? 'B&W' : 'Color'}</span></div>
+              <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</span></div>
               <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
             </div>
           </div>

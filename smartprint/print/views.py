@@ -168,7 +168,7 @@ def get_user_jobs_from_r2(user_email):
                     "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
                     "priority": metadata.get('priority', 'Medium'),
                     "copies": metadata.get('copies', '1'),
-                    "color": metadata.get('color', 'bw'),
+                    "color": metadata.get('color', 'Black and White'),
                     "orientation": metadata.get('orientation', 'portrait'),
                     "pageRange": metadata.get('pagerange', 'all'),
                     "specificPages": metadata.get('specificpages', ''),
@@ -303,7 +303,7 @@ def get_vendor_print_jobs(request):
 
             # Convert vendor_id to string to ensure consistency
             vendor_id = str(vendor_id).strip()
-            
+
             s3 = boto3.client(
                 's3',
                 aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -316,33 +316,33 @@ def get_vendor_print_jobs(request):
             prefix = f'vendor_print_jobs/{vendor_id}/'
             print(f"🔍 HARDCODED PATH - Searching for jobs in: {prefix}")
             print(f"🔑 Vendor ID: '{vendor_id}' (type: {type(vendor_id)})")
-            
+
             # First, let's list all objects under vendor_print_jobs/ to debug
             debug_prefix = 'vendor_print_jobs/'
             debug_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=debug_prefix)
             print(f"🔍 DEBUG - All vendor folders under {debug_prefix}:")
             for obj in debug_response.get('Contents', []):
                 print(f"   📁 {obj['Key']}")
-            
+
             response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
             jobs = []
-            
+
             print(f"📊 Response details:")
             print(f"   - IsTruncated: {response.get('IsTruncated', False)}")
             print(f"   - KeyCount: {response.get('KeyCount', 0)}")
             print(f"   - Contents count: {len(response.get('Contents', []))}")
-            
+
             if 'Contents' not in response or len(response.get('Contents', [])) == 0:
                 print(f"📭 No objects found in {prefix}")
                 print(f"📊 Available vendors in vendor_print_jobs/:")
-                
+
                 # List all vendor folders for debugging
                 vendor_prefix = 'vendor_print_jobs/'
                 vendor_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_prefix, Delimiter='/')
                 for prefix_info in vendor_response.get('CommonPrefixes', []):
                     folder_name = prefix_info['Prefix'].replace('vendor_print_jobs/', '').rstrip('/')
                     print(f"   📂 Found vendor folder: '{folder_name}'")
-                
+
                 return JsonResponse({
                     'success': True, 
                     'jobs': [],
@@ -353,23 +353,23 @@ def get_vendor_print_jobs(request):
                                             for p in vendor_response.get('CommonPrefixes', [])]
                     }
                 })
-            
+
             print(f"🎯 Found {len(response.get('Contents', []))} objects in {prefix}")
-            
+
             for obj in response.get('Contents', []):
                 key = obj['Key']
                 filename = key.split('/')[-1]
-                
+
                 print(f"🔍 Processing object: {key}")
                 print(f"   📄 Filename: '{filename}'")
                 print(f"   📏 Size: {obj.get('Size', 0)} bytes")
                 print(f"   📅 LastModified: {obj.get('LastModified', 'Unknown')}")
-                
+
                 # Skip folder itself but include all files (even without extensions)
                 if not filename or filename == '':
                     print(f"   ⏭️ Skipping empty filename")
                     continue
-                
+
                 try:
                     # Generate download URL first (always works)
                     download_url = s3.generate_presigned_url(
@@ -377,7 +377,7 @@ def get_vendor_print_jobs(request):
                         Params={'Bucket': settings.R2_BUCKET, 'Key': key},
                         ExpiresIn=3600
                     )
-                    
+
                     # Try to get object metadata (might fail for some objects)
                     metadata = {}
                     try:
@@ -387,7 +387,7 @@ def get_vendor_print_jobs(request):
                     except Exception as meta_error:
                         print(f"   ⚠️ Could not get metadata: {meta_error}")
                         metadata = {}
-                    
+
                     # Create default metadata if none exists
                     if not metadata:
                         print(f"   🔧 Creating default metadata for {filename}")
@@ -395,7 +395,7 @@ def get_vendor_print_jobs(request):
                             'job_completed': 'NO',
                             'status': 'pending',
                             'copies': '1',
-                            'color': 'bw',
+                            'color': 'Black and White',
                             'orientation': 'portrait',
                             'pagesize': 'A4',
                             'service_type': 'regular print',
@@ -403,7 +403,7 @@ def get_vendor_print_jobs(request):
                             'user': 'Unknown',
                             'timestamp': obj["LastModified"].isoformat()
                         }
-                    
+
                     # Force job to be pending for processing
                     job_info = {
                         'filename': filename,
@@ -413,7 +413,7 @@ def get_vendor_print_jobs(request):
                             'status': 'no',  # Force status to 'no' for pending jobs
                             'job_completed': 'NO',  # Force to pending
                             'copies': metadata.get('copies', '1'),
-                            'color': metadata.get('color', 'bw'),
+                            'color': metadata.get('color', 'Black and White'),
                             'orientation': metadata.get('orientation', 'portrait'),
                             'page_size': metadata.get('pagesize', 'A4'),
                             'pages': metadata.get('pages', '1'),
@@ -426,10 +426,10 @@ def get_vendor_print_jobs(request):
                             'vendor_id': vendor_id
                         }
                     }
-                    
+
                     jobs.append(job_info)
                     print(f"   ✅ Added job: {filename}")
-                        
+
                 except Exception as e:
                     print(f"   ❌ Error processing file {key}: {str(e)}")
                     # Add file anyway with minimal metadata
@@ -439,7 +439,7 @@ def get_vendor_print_jobs(request):
                             Params={'Bucket': settings.R2_BUCKET, 'Key': key},
                             ExpiresIn=3600
                         )
-                        
+
                         job_info = {
                             'filename': filename,
                             'download_url': download_url,
@@ -448,7 +448,7 @@ def get_vendor_print_jobs(request):
                                 'status': 'no',
                                 'job_completed': 'NO',
                                 'copies': '1',
-                                'color': 'bw',
+                                'color': 'Black and White',
                                 'orientation': 'portrait',
                                 'page_size': 'A4',
                                 'pages': '1',
@@ -466,13 +466,13 @@ def get_vendor_print_jobs(request):
                     except Exception as e2:
                         print(f"   ❌ Failed to create job entry: {e2}")
                         continue
-            
+
             print(f"📋 FINAL RESULT: Found {len(jobs)} jobs for vendor {vendor_id}")
             for job in jobs:
                 print(f"   📄 {job['filename']} - {job['r2_path']}")
-            
+
             return JsonResponse({'success': True, 'jobs': jobs})
-            
+
         except Exception as e:
             print(f"❌ Error fetching vendor jobs: {str(e)}")
             import traceback
@@ -492,7 +492,7 @@ def get_vendor_specific_print_jobs(vendor_id):
 
         pending_jobs = []
         vendor_folder_path = f'vendor_print_jobs/{vendor_id}'
-        
+
         # Check vendor-specific folder for documents in vendor bucket
         try:
             vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_folder_path)
@@ -535,7 +535,7 @@ def get_vendor_specific_print_jobs(vendor_id):
                                 'status': 'no',  # Set to 'no' for pending jobs
                                 'job_completed': job_completed,
                                 'copies': metadata.get('copies', '1'),
-                                'color': metadata.get('color', 'bw'),
+                                'color': metadata.get('color', 'Black and White'),
                                 'orientation': metadata.get('orientation', 'portrait'),
                                 'page_size': metadata.get('pagesize', 'A4'),
                                 'pages': metadata.get('pages', '1'),
@@ -671,7 +671,7 @@ def get_pending_print_jobs():
                                     'status': 'no',  # Set to 'no' for pending jobs
                                     'job_completed': job_completed,
                                     'copies': metadata.get('copies', '1'),
-                                    'color': metadata.get('color', 'bw'),
+                                    'color': metadata.get('color', 'Black and White'),
                                     'orientation': metadata.get('orientation', 'portrait'),
                                     'page_size': metadata.get('pagesize', 'A4'),
                                     'pages': metadata.get('pages', '1'),
@@ -895,7 +895,7 @@ def upload_to_r2(request):
                     # Build file metadata
                     file_metadata = {
                         'copies': str(print_settings.get("copies", "1")),
-                        'color': print_settings.get("color", "bw"),
+                        'color': print_settings.get("color", "Black and White"),
                         'orientation': print_settings.get("orientation", "portrait"),
                         'pageRange': str(print_settings.get("pageRange", "")),
                         'specificPages': str(print_settings.get("specificPages", "")),
@@ -1029,7 +1029,7 @@ def list_r2_files():
                         "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
                         "priority": metadata.get('priority', 'Medium'),
                         "copies": metadata.get('copies', '1'),
-                        "color": metadata.get('color', 'bw'),
+                        "color": metadata.get('color', 'Black and White'),
                         "orientation": metadata.get('orientation', 'portrait'),
                         "pageRange": metadata.get('pagerange', 'all'),
                         "specificPages": metadata.get('specificpages', ''),
@@ -1081,21 +1081,42 @@ def get_file_type(extension):
     }
     return file_types.get(extension, 'Document')
 
-def estimate_pages_from_size(size_bytes, extension):
-    """Estimate page count based on file size and type"""
-    if extension in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'svg']:
-        return '1'
-    elif extension == 'pdf':
-        # Rough estimate: 100KB per page for PDF
-        return str(max(1, size_bytes // 100000))
-    elif extension in ['doc', 'docx']:
-        # Rough estimate: 50KB per page for Word docs
-        return str(max(1, size_bytes // 50000))
-    elif extension in ['ppt', 'pptx']:
-        # Rough estimate: 200KB per slide
-        return str(max(1, size_bytes // 200000))
+def estimate_pages_from_size(file_size, file_extension):
+    """Estimate number of pages based on file size and type with improved accuracy"""
+    # Convert bytes to KB
+    size_kb = file_size / 1024
+
+    # Different estimation for different file types
+    if file_extension.lower() in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'svg']:
+        return 1  # Images are typically 1 page
+    elif file_extension.lower() == 'pdf':
+        # PDFs: More accurate estimation based on typical PDF compression
+        if size_kb < 50:
+            return 1
+        elif size_kb < 200:
+            return max(1, round(size_kb / 50))  # Small PDFs have less compression
+        elif size_kb < 1000:
+            return max(1, round(size_kb / 80))  # Medium PDFs
+        else:
+            return max(1, round(size_kb / 120))  # Large PDFs have better compression
+    elif file_extension.lower() in ['doc', 'docx']:
+        # Word docs: More accurate estimation
+        if size_kb < 100:
+            return max(1, round(size_kb / 30))
+        else:
+            return max(1, round(size_kb / 60))
+    elif file_extension.lower() in ['ppt', 'pptx']:
+        # PowerPoint: More conservative estimation
+        return max(1, round(size_kb / 150))
+    elif file_extension.lower() in ['xls', 'xlsx']:
+        # Excel: Better estimation based on typical spreadsheet size
+        return max(1, round(size_kb / 60))
+    elif file_extension.lower() == 'txt':
+        # Text files: Very accurate estimation
+        return max(1, round(size_kb / 3))  # Assuming ~3KB per page of text
     else:
-        return '1'
+        # Other files: conservative estimate
+        return max(1, round(size_kb / 50))
 
 def format_file_size(size_bytes):
     """Format file size in human readable format"""
@@ -1152,7 +1173,7 @@ def process_print_request(request):
                                   ContentType=file.content_type,
                                   Metadata={
                                       'copies': str(print_settings.get("copies", "1")),
-                                      'color': print_settings.get("color", "bw"),
+                                      'color': print_settings.get("color", "Black and White"),
                                       'orientation': print_settings.get("orientation", "portrait"),
                                       'pageRange': str(print_settings.get("pageRange", "")),
                                       'specificPages': str(print_settings.get("specificPages", "")),
@@ -1380,7 +1401,7 @@ def vendor_login(request):
             # Search for vendor by email in the new R2 structure
             found_vendor = None
             vendor_id = None
-            
+
             try:
                 objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
                 for obj in objects.get("Contents", []):
@@ -1396,20 +1417,20 @@ def vendor_login(request):
                         except Exception as e:
                             print(f"Error reading login details from {obj['Key']}: {str(e)}")
                             continue
-                
+
                 if not found_vendor:
                     return JsonResponse({
                         'success': False,
                         'message': 'Vendor not found with this email address'
                     })
-                
+
                 # Check password
                 if check_password(password, found_vendor['hashed_password']):
                     # Update last login timestamp
                     found_vendor['last_login'] = timezone.now().isoformat()
                     login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
                     s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(found_vendor), ContentType='application/json')
-                    
+
                     # Get vendor registration details for additional info
                     try:
                         reg_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=f'vendor_register_details/{sanitize_email(email)}/registration_details.json')
@@ -1433,21 +1454,21 @@ def vendor_login(request):
                         'success': False,
                         'message': 'Invalid password'
                     })
-                    
+
             except Exception as e:
                 print(f"Error searching for vendor: {str(e)}")
                 return JsonResponse({
                     'success': False,
                     'message': 'Error finding vendor account'
                 })
-                
+
         except Exception as e:
             print(f"Error during vendor login: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Login error: {str(e)}'
             })
-    
+
     return JsonResponse({
         'success': False,
         'message': 'Invalid request method'
@@ -1561,7 +1582,7 @@ def vendor_register_api(request):
             # Create shop folder with vendor name
             shop_folder_name = sanitize_shop_name(vendor_name)
             shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
-            
+
             # Create shop info file with hashed vendor ID and token
             s3.put_object(
                 Bucket=settings.R2_BUCKET,
@@ -1722,7 +1743,7 @@ def get_vendor_email_by_shop_folder(shop_folder):
                           aws_secret_access_key=settings.R2_SECRET_KEY,
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
-        
+
         # Search through vendor registration details to find matching shop folder
         objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
         for obj in objects.get("Contents", []):
@@ -1732,17 +1753,17 @@ def get_vendor_email_by_shop_folder(shop_folder):
                     vendor_data = json.loads(response['Body'].read().decode('utf-8'))
                     vendor_name = vendor_data.get('vendor_name', '')
                     vendor_email = vendor_data.get('vendor_email', '')
-                    
+
                     # Check if this vendor's sanitized shop name matches
                     if sanitize_shop_name(vendor_name) == shop_folder:
                         return vendor_email
                 except Exception as e:
                     print(f"Error reading vendor data from {obj['Key']}: {str(e)}")
                     continue
-        
+
         # Fallback for firozshop or unknown shops
         return 'firozshop@example.com'
-        
+
     except Exception as e:
         print(f"Error finding vendor email for shop {shop_folder}: {str(e)}")
         return 'firozshop@example.com'
@@ -1755,7 +1776,7 @@ def get_vendor_id_by_shop_folder(shop_folder):
                           aws_secret_access_key=settings.R2_SECRET_KEY,
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
-        
+
         # Search through vendor registration details to find matching shop folder
         objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
         for obj in objects.get("Contents", []):
@@ -1765,17 +1786,17 @@ def get_vendor_id_by_shop_folder(shop_folder):
                     vendor_data = json.loads(response['Body'].read().decode('utf-8'))
                     vendor_name = vendor_data.get('vendor_name', '')
                     vendor_id = vendor_data.get('vendor_id', '')
-                    
+
                     # Check if this vendor's sanitized shop name matches
                     if sanitize_shop_name(vendor_name) == shop_folder:
                         return vendor_id
                 except Exception as e:
                     print(f"Error reading vendor data from {obj['Key']}: {str(e)}")
                     continue
-        
+
         # Fallback for firozshop or unknown shops
         return 'vendor1'
-        
+
     except Exception as e:
         print(f"Error finding vendor_id for shop {shop_folder}: {str(e)}")
         return 'vendor1'
