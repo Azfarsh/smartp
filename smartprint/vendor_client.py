@@ -355,128 +355,95 @@ def find_working_printer():
         print(f"❌ Error finding printers: {e}")
         return None
 
-def create_passport_photo_layout(input_image_path, output_path):
+def create_passport_photo_layout(input_image_path, output_path, total_prints=8):
     """
-    Create a passport photo layout with 8 copies (2x4 grid) on a single page
-
+    Create a passport photo layout with a dynamic grid (2x4, 4x4, 5x6) on a single A4 page.
     Args:
         input_image_path (str): Path to the input image
         output_path (str): Path to save the output layout
-
+        total_prints (int): Number of passport photos (8, 16, 30)
     Returns:
         bool: True if successful, False otherwise
     """
     try:
         print("📸 Creating passport photo layout...")
-
-        # Standard passport photo dimensions (in pixels at 300 DPI)
         PASSPORT_WIDTH = 413   # 35mm at 300 DPI
         PASSPORT_HEIGHT = 531  # 45mm at 300 DPI
-
-        # A4 page dimensions at 300 DPI
         A4_WIDTH = 2480   # 210mm at 300 DPI
         A4_HEIGHT = 3508  # 297mm at 300 DPI
-
-        # Margins and spacing
         MARGIN = 118      # 10mm margins
         SPACING = 59      # 5mm spacing between photos
-
+        # Determine grid
+        if total_prints == 8:
+            cols, rows = 2, 4
+        elif total_prints == 16:
+            cols, rows = 4, 4
+        elif total_prints == 30:
+            cols, rows = 5, 6
+        else:
+            print(f"❌ Unsupported total_prints: {total_prints}")
+            return False
         # Load and process the input image
         print(f"📂 Loading image: {input_image_path}")
         original_image = Image.open(input_image_path)
-
-        # Convert to RGB if needed
         if original_image.mode != 'RGB':
             original_image = original_image.convert('RGB')
-
         # Resize to passport photo dimensions while maintaining aspect ratio
         print("🔄 Resizing to passport photo dimensions...")
-
-        # Calculate scaling to fit passport dimensions
         original_width, original_height = original_image.size
         scale_width = PASSPORT_WIDTH / original_width
         scale_height = PASSPORT_HEIGHT / original_height
         scale = min(scale_width, scale_height)
-
-        # Calculate new dimensions
         new_width = int(original_width * scale)
         new_height = int(original_height * scale)
-
-        # Resize the image
         resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-        # Create passport photo with white background if needed
         passport_photo = Image.new('RGB', (PASSPORT_WIDTH, PASSPORT_HEIGHT), 'white')
-
-        # Center the resized image on the passport photo
         x_offset = (PASSPORT_WIDTH - new_width) // 2
         y_offset = (PASSPORT_HEIGHT - new_height) // 2
         passport_photo.paste(resized_image, (x_offset, y_offset))
-
         # Create the A4 layout
-        print("📄 Creating A4 layout with 8 passport photos...")
+        print(f"📄 Creating A4 layout with {total_prints} passport photos...")
         layout = Image.new('RGB', (A4_WIDTH, A4_HEIGHT), 'white')
-
-        # Calculate positions for 2x4 grid (2 columns, 4 rows)
-        cols = 2
-        rows = 4
-
-        # Calculate starting positions to center the grid
         total_width = cols * PASSPORT_WIDTH + (cols - 1) * SPACING
         total_height = rows * PASSPORT_HEIGHT + (rows - 1) * SPACING
-
         start_x = (A4_WIDTH - total_width) // 2
         start_y = (A4_HEIGHT - total_height) // 2
-
-        # Place 8 passport photos in a 2x4 grid
         photo_count = 0
         for row in range(rows):
             for col in range(cols):
+                if photo_count >= total_prints:
+                    break
                 x = start_x + col * (PASSPORT_WIDTH + SPACING)
                 y = start_y + row * (PASSPORT_HEIGHT + SPACING)
-
                 layout.paste(passport_photo, (x, y))
                 photo_count += 1
-                print(f"  ✓ Placed photo {photo_count}/8 at position ({col+1}, {row+1})")
-
         # Add corner marks for cutting guidance
         draw = ImageDraw.Draw(layout)
         mark_length = 20
         mark_color = 'black'
-
-        # Add cutting guides around each photo
         for row in range(rows):
             for col in range(cols):
+                if (row * cols + col) >= total_prints:
+                    break
                 x = start_x + col * (PASSPORT_WIDTH + SPACING)
                 y = start_y + row * (PASSPORT_HEIGHT + SPACING)
-
-                # Top-left corner
+                # Top-left
                 draw.line([(x-5, y-5), (x-5+mark_length, y-5)], fill=mark_color, width=1)
                 draw.line([(x-5, y-5), (x-5, y-5+mark_length)], fill=mark_color, width=1)
-
-                # Top-right corner
+                # Top-right
                 draw.line([(x+PASSPORT_WIDTH+5-mark_length, y-5), (x+PASSPORT_WIDTH+5, y-5)], fill=mark_color, width=1)
                 draw.line([(x+PASSPORT_WIDTH+5, y-5), (x+PASSPORT_WIDTH+5, y-5+mark_length)], fill=mark_color, width=1)
-
-                # Bottom-left corner
+                # Bottom-left
                 draw.line([(x-5, y+PASSPORT_HEIGHT+5-mark_length), (x-5, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
                 draw.line([(x-5, y+PASSPORT_HEIGHT+5), (x-5+mark_length, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
-
-                # Bottom-right corner
+                # Bottom-right
                 draw.line([(x+PASSPORT_WIDTH+5, y+PASSPORT_HEIGHT+5-mark_length), (x+PASSPORT_WIDTH+5, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
                 draw.line([(x+PASSPORT_WIDTH+5-mark_length, y+PASSPORT_HEIGHT+5), (x+PASSPORT_WIDTH+5, y+PASSPORT_HEIGHT+5)], fill=mark_color, width=1)
-
-        # Save the layout
         print(f"💾 Saving passport photo layout...")
         layout.save(output_path, 'JPEG', quality=95, dpi=(300, 300))
-
         print(f"✅ Passport photo layout created successfully!")
         print(f"   📁 Output file: {output_path}")
-        print(f"   📏 Layout: 8 passport photos (35x45mm each) on A4 page")
-        print(f"   🎯 Resolution: 300 DPI for high-quality printing")
-
         return True
-
     except Exception as e:
         print(f"❌ Error creating passport photo layout: {e}")
         return False
@@ -1241,17 +1208,11 @@ class AutomatedVendorPrintClient:
         """Handle passport photo printing by creating layout and printing."""
         try:
             self.log("📸 Processing passport photo service...")
-
-            # Create temporary files
             input_temp_fd, input_temp_path = tempfile.mkstemp(suffix='.jpg', prefix='passport_input_')
             output_temp_fd, output_temp_path = tempfile.mkstemp(suffix='.jpg', prefix='passport_layout_')
-
             try:
-                # Save input image
                 with os.fdopen(input_temp_fd, 'wb') as input_file:
                     input_file.write(document_data)
-
-                # Auto-select printer if not available
                 if not printer_name or not self.is_specific_printer_available(printer_name):
                     self.log(f"🔍 Printer '{printer_name}' not available, auto-selecting working printer...")
                     printer_name = find_working_printer()
@@ -1259,45 +1220,31 @@ class AutomatedVendorPrintClient:
                         self.log("❌ No working printer found!")
                         return False
                     self.log(f"🎯 Using printer: {printer_name}")
-
-                # Create passport photo layout
-                self.log("🔄 Creating passport photo layout...")
-                layout_success = create_passport_photo_layout(input_temp_path, output_temp_path)
-
+                # Get number of photos for layout
+                total_prints = print_settings.get('copies', 8)
+                if total_prints not in (8, 16, 30):
+                    self.log(f"❌ Unsupported number of passport photos: {total_prints}. Only 8, 16, or 30 allowed.")
+                    return False
+                self.log(f"🔄 Creating passport photo layout for {total_prints} photos...")
+                layout_success = create_passport_photo_layout(input_temp_path, output_temp_path, total_prints=total_prints)
                 if not layout_success:
                     self.log("❌ Failed to create passport photo layout")
                     return False
-
-                # Print the layout
-                copies = print_settings.get('copies', 1)
-                self.log(f"🖨️ Printing passport photo layout ({copies} copies)...")
-
-                success = True
-                for i in range(copies):
-                    if not print_image_automatically(output_temp_path, printer_name):
-                        self.log(f"❌ Failed to print passport photo copy {i+1}")
-                        success = False
-                        break
-                    if i < copies - 1:  # Not the last copy
-                        time.sleep(2)  # Small delay between copies
-
+                self.log(f"🖨️ Printing passport photo layout (1 copy)...")
+                success = print_image_automatically(output_temp_path, printer_name)
                 if success:
                     self.log("✅ Passport photos printed successfully!")
-                    self.log("📄 8 passport-size photos (35x45mm each) on one A4 page")
+                    self.log(f"📄 {total_prints} passport-size photos (35x45mm each) on one A4 page")
                     self.log("✂️ Cut along the corner marks for individual photos")
                     self.log("🎨 Printed in high quality with color settings")
-
                 return success
-
             finally:
-                # Clean up temporary files
                 for temp_path in [input_temp_path, output_temp_path]:
                     if temp_path and os.path.exists(temp_path):
                         try:
                             os.remove(temp_path)
                         except Exception:
                             pass
-
         except Exception as e:
             self.log(f"❌ Passport photo printing error: {str(e)}")
             return False
@@ -2473,9 +2420,8 @@ def polling_main():
         try:
             jobs = poll_print_jobs()
             for job in jobs:
-                # Only process regular print jobs with job_completed == NO
-                if job['metadata'].get('job_completed', 'NO').upper() == 'NO' and \
-                   job['metadata'].get('service_type', '').lower() == 'regular print':
+                # Only process jobs with job_completed == NO (remove service_type and file type filtering)
+                if job['metadata'].get('job_completed', 'NO').upper() == 'NO':
                     save_job_and_pdf(job)
             time.sleep(POLL_INTERVAL)
 
@@ -2899,136 +2845,123 @@ def print_image_windows(image_path, printer_name=None):
         return False
 
 def adobe_local_print_jobs():
-    """Process all jobs in local storage using Adobe Reader for PDFs, and Windows Photo Viewer for images."""
+    """Process all jobs in local storage using Adobe Reader for PDFs, and Windows Photo Viewer for images, with robust queue and retry logic."""
     print("🔄 Starting Adobe Local Print Jobs...")
     print("=" * 50)
-    
-    # Initialize print service
     print_service = AdobePrintService()
     if not print_service.adobe_exe:
         print("❌ Adobe Reader not found. Please install Adobe Reader.")
         print("   Download from: https://get.adobe.com/reader/")
         return
-    
-    # Create directories if they don't exist
+
     os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
     os.makedirs(FAILED_JOB_DIR, exist_ok=True)
-    
-    # Get working printer
     working_printer = find_working_printer()
     if not working_printer:
         print("❌ No working printer found!")
         return
-    
-    print(f"🖨️ Using printer: {working_printer}")
-    
-    # Look for JSON files in the job directory (both direct files and in subfolders)
-    json_files = []
-    
+
+    # Gather all jobs
+    job_queue = []
     # Check for JSON files directly in the main directory
     direct_json_files = [f for f in os.listdir(LOCAL_JOB_DIR) if f.endswith('.json')]
-    json_files.extend([(os.path.join(LOCAL_JOB_DIR, f), f) for f in direct_json_files])
-    
-    # Check for JSON files in subfolders (like the 293 folder structure)
+    job_queue.extend([(os.path.join(LOCAL_JOB_DIR, f), f) for f in direct_json_files])
+    # Check for JSON files in subfolders
     subfolders = [f for f in os.listdir(LOCAL_JOB_DIR) if os.path.isdir(os.path.join(LOCAL_JOB_DIR, f))]
     for subfolder in subfolders:
         subfolder_path = os.path.join(LOCAL_JOB_DIR, subfolder)
         subfolder_json_files = [f for f in os.listdir(subfolder_path) if f.endswith('.json')]
-        json_files.extend([(os.path.join(subfolder_path, f), f"{subfolder}/{f}") for f in subfolder_json_files])
-    
-    if not json_files:
+        job_queue.extend([(os.path.join(subfolder_path, f), f"{subfolder}/{f}") for f in subfolder_json_files])
+
+    if not job_queue:
         print("📭 No JSON job files found in local storage.")
         print(f"   Expected location: {LOCAL_JOB_DIR}")
         print("   Checked both main directory and subfolders")
         return
-    
-    print(f"📋 Found {len(json_files)} job files to process...")
-    
+
+    print(f"📋 Found {len(job_queue)} job files to process...")
+    max_retries = 3
+    failed_jobs = {}
     processed_count = 0
     success_count = 0
-    
-    for json_path, json_file in json_files:
+    total_jobs = len(job_queue)
+    # Use a queue system with retries
+    while job_queue:
+        json_path, json_file = job_queue.pop(0)
         try:
             processed_count += 1
-            print(f"\n📄 Processing job {processed_count}/{len(json_files)}: {json_file}")
-            
-            # json_path is already the full path
-            
-            # Read job data
+            print(f"\n📄 Processing job {processed_count}/{total_jobs}: {json_file}")
             with open(json_path, 'r', encoding='utf-8') as f:
                 job_data = json.load(f)
-            
-            # Extract filename and document URL
             filename = job_data.get('metadata', {}).get('filename', 'document.pdf')
             document_url = job_data.get('document_url', '')
-            
+            service_type = job_data.get('metadata', {}).get('service_type', '').lower()
+            copies = int(job_data.get('metadata', {}).get('copies', 8))
             print(f"   📄 File: {filename}")
-            
-            # Check if the PDF file already exists in the same folder as the JSON
             json_dir = os.path.dirname(json_path)
-            local_pdf_path = os.path.join(json_dir, filename)
-            
+            local_file_path = os.path.join(json_dir, filename)
             temp_file = None
-            
-            if os.path.exists(local_pdf_path):
-                print(f"   ✅ Found local file: {os.path.basename(local_pdf_path)}")
-                temp_file = local_pdf_path
+            if os.path.exists(local_file_path):
+                print(f"   ✅ Found local file: {os.path.basename(local_file_path)}")
+                temp_file = local_file_path
             elif document_url:
                 print(f"   🔗 URL: {document_url[:50]}...")
-                
-                # Download the document
                 print("   ⬇️ Downloading document...")
                 try:
                     response = requests.get(document_url, stream=True, timeout=30)
                     response.raise_for_status()
-                    
-                    # Create temporary file with correct extension
-                    file_ext = os.path.splitext(filename)[1] or '.pdf'
+                    file_ext = os.path.splitext(filename)[1] or '.jpg'
                     temp_fd, temp_path = tempfile.mkstemp(suffix=file_ext, prefix='print_job_')
                     temp_file = temp_path
-                    
                     with os.fdopen(temp_fd, 'wb') as f:
                         for chunk in response.iter_content(chunk_size=8192):
                             if chunk:
                                 f.write(chunk)
-                    
                     print(f"   ✅ Downloaded to: {os.path.basename(temp_path)}")
-                    
                 except Exception as e:
                     print(f"   ❌ Download failed: {e}")
                     continue
             else:
                 print(f"   ❌ No document URL found and no local file: {filename}")
                 continue
-            
-            # Print the document based on file type
             print("   🖨️ Printing document...")
             success = False
-            
             try:
                 file_ext = os.path.splitext(filename)[1].lower()
-                
-                if file_ext == '.pdf':
-                    # Use Adobe for PDFs
+                if service_type == 'passport_photo':
+                    # Generate A4 layout for passport photos
+                    layout_output_path = os.path.join(json_dir, f"passport_layout_{os.path.splitext(filename)[0]}.jpg")
+                    layout_success = create_passport_photo_layout(temp_file, layout_output_path, total_prints=copies)
+                    if not layout_success:
+                        print("❌ Failed to create passport photo layout")
+                        failed_jobs[json_path] = failed_jobs.get(json_path, 0) + 1
+                        if failed_jobs[json_path] < max_retries:
+                            print(f"   🔁 Retrying job ({failed_jobs[json_path]}/{max_retries})...")
+                            job_queue.append((json_path, json_file))
+                            time.sleep(5)
+                        else:
+                            print("   ❌ Max retries reached, moving to failed jobs.")
+                        continue
+                    print("   🖨️ Printing passport photo layout...")
+                    success = print_image_automatically(layout_output_path, working_printer)
+                    if os.path.exists(layout_output_path):
+                        os.remove(layout_output_path)
+                elif file_ext == '.pdf':
                     success = print_service.print_pdf_adobe(temp_file, job_data.get('metadata', {}), working_printer)
                     if success:
                         print("   ✅ PDF printed successfully using Adobe Reader")
                     else:
                         print("   ❌ PDF printing failed")
-                        
                 elif file_ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif']:
-                    # Use Windows Photo Viewer for images
                     success = print_image_windows(temp_file, working_printer)
                     if success:
                         print("   ✅ Image printed successfully using Windows Photo Viewer")
                     else:
                         print("   ❌ Image printing failed")
-                        
                 else:
-                    # Try generic printing for other file types
                     print(f"   ⚠️ Unknown file type: {file_ext}, trying generic print...")
                     try:
-                        result = win32api.ShellExecute(0, "print", temp_path, None, ".", 0)
+                        result = win32api.ShellExecute(0, "print", temp_file, None, ".", 0)
                         if result > 32:
                             success = True
                             print("   ✅ Generic print successful")
@@ -3036,31 +2969,37 @@ def adobe_local_print_jobs():
                             print("   ❌ Generic print failed")
                     except Exception as e:
                         print(f"   ❌ Generic print error: {e}")
-                
             except Exception as e:
                 print(f"   ❌ Printing error: {e}")
-            
-            # Clean up temporary file (only if it was downloaded, not if it was a local file)
-            if temp_file and os.path.exists(temp_file) and temp_file != local_pdf_path:
+            if temp_file and os.path.exists(temp_file) and temp_file != local_file_path:
                 try:
                     os.remove(temp_file)
                     print("   🗑️ Temporary file cleaned up")
                 except Exception as e:
                     print(f"   ⚠️ Could not clean up temp file: {e}")
-            elif temp_file == local_pdf_path:
+            elif temp_file == local_file_path:
                 print("   📁 Local file preserved")
-            
-            # Track success
             if success:
                 success_count += 1
                 print("   ✅ Job completed successfully!")
             else:
                 print("   ❌ Job failed")
-                
+                failed_jobs[json_path] = failed_jobs.get(json_path, 0) + 1
+                if failed_jobs[json_path] < max_retries:
+                    print(f"   🔁 Retrying job ({failed_jobs[json_path]}/{max_retries})...")
+                    job_queue.append((json_path, json_file))
+                    time.sleep(5)
+                else:
+                    print("   ❌ Max retries reached, moving to failed jobs.")
         except Exception as e:
             print(f"   ❌ Error processing {json_file}: {e}")
-            continue
-    
+            failed_jobs[json_path] = failed_jobs.get(json_path, 0) + 1
+            if failed_jobs[json_path] < max_retries:
+                print(f"   🔁 Retrying job ({failed_jobs[json_path]}/{max_retries})...")
+                job_queue.append((json_path, json_file))
+                time.sleep(5)
+            else:
+                print("   ❌ Max retries reached, moving to failed jobs.")
     print("\n" + "=" * 50)
     print(f"📊 PRINTING SUMMARY:")
     print(f"   📄 Total jobs processed: {processed_count}")

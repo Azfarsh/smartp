@@ -2369,28 +2369,57 @@
         if (!tmpl) return '';
         let fieldsHtml = '';
         tmpl.fields.forEach((f, idx) => {
+          // Classic, professional design for passport modal
+          let fieldLabel = '';
+          let icon = '';
+          let helper = '';
+          if (service === 'passport') {
+            if (f.label.toLowerCase().includes('upload')) {
+              icon = '<i class="fas fa-camera" style="color:#2563eb;font-size:1.1em;margin-right:0.6em;"></i>';
+              fieldLabel = `<div style="font-weight:600;font-size:1.08em;margin-bottom:0.25em;display:flex;align-items:center;gap:0.6em;">${icon}<span>Upload Photo <span style='color:#ef4444;'>*</span></span></div>`;
+              helper = '<div style="font-size:0.93em;color:#6b7280;margin:0.3em 0 0.7em 0;">Supported: JPG, PNG. Max 5MB.</div>';
+            }
+            if (f.label.toLowerCase().includes('total prints')) {
+              icon = '<i class="fas fa-th-large" style="color:#059669;font-size:1.1em;margin-right:0.6em;"></i>';
+              fieldLabel = `<div style="font-weight:600;font-size:1.08em;margin-bottom:0.25em;display:flex;align-items:center;gap:0.6em;">${icon}<span>Total Prints <span style='color:#ef4444;'>*</span></span></div>`;
+              helper = '<div style="font-size:0.93em;color:#6b7280;margin:0.3em 0 0.7em 0;">Choose how many passport photos you want.</div>';
+            }
+            if (f.label.toLowerCase().includes('paper size')) {
+              icon = '<i class="fas fa-file-alt" style="color:#f59e0b;font-size:1.1em;margin-right:0.6em;"></i>';
+              fieldLabel = `<div style="font-weight:600;font-size:1.08em;margin-bottom:0.25em;display:flex;align-items:center;gap:0.6em;">${icon}<span>Paper Size <span style='color:#ef4444;'>*</span></span></div>`;
+              helper = '';
+            }
+          }
           if (f.type === 'file') {
-            fieldsHtml += `<label>${f.label}${f.required ? ' *' : ''}</label>
-              <div class='file-upload' id='${service}-file-upload' onclick="document.getElementById('${service}-file-input').click()">
-                <span id='${service}-file-upload-label'>Click to select file</span>
+            fieldsHtml += `<div style="margin-bottom:1.2em;">
+              ${fieldLabel}
+              <div class='file-upload' id='${service}-file-upload' onclick="document.getElementById('${service}-file-input').click()" style="border:2px dashed #2563eb;background:#f8fafc;padding:1.2em 0.7em;border-radius:12px;transition:box-shadow 0.2s;box-shadow:0 1px 6px rgba(30,58,138,0.06);cursor:pointer;">
+                <span id='${service}-file-upload-label' style="color:#2563eb;font-weight:500;">Click to select file</span>
                 <input type='file' id='${service}-file-input' accept='${f.accept}' ${f.required ? 'required' : ''} />
               </div>
-              <div class='file-preview' id='${service}-file-preview'></div>`;
+              <div class='file-preview' id='${service}-file-preview' style="margin-top:0.7em;"></div>
+              ${helper}
+            </div>`;
           } else if (f.type === 'select') {
-            fieldsHtml += `<label>${f.label}${f.required ? ' *' : ''}</label>
-              <select id='${service}-field-${idx}' ${f.required ? 'required' : ''}>
+            fieldsHtml += `<div style="margin-bottom:1.2em;">
+              ${fieldLabel}
+              <select id='${service}-field-${idx}' ${f.required ? 'required' : ''} style="width:100%;padding:0.85em 1em;border-radius:10px;border:1.5px solid #e5e7eb;font-size:1.07em;background:#f9fafb;box-shadow:0 1px 6px rgba(30,58,138,0.06);margin-bottom:0.1em;outline:none;transition:border 0.2s;">
                 ${f.options.map(opt => `<option value='${opt}'>${opt}</option>`).join('')}
-              </select>`;
+              </select>
+              ${helper}
+            </div>`;
           } else if (f.type === 'number') {
-            fieldsHtml += `<label>${f.label}${f.required ? ' *' : ''}</label>
-              <input type='number' id='${service}-field-${idx}' min='${f.min||1}' max='${f.max||99}' value='${f.default||1}' ${f.required ? 'required' : ''} />`;
+            fieldsHtml += `<div style="margin-bottom:1.2em;">
+              ${fieldLabel}
+              <input type='number' id='${service}-field-${idx}' min='${f.min||1}' max='${f.max||99}' value='${f.default||1}' ${f.required ? 'required' : ''} style="width:100%;padding:0.85em 1em;border-radius:10px;border:1.5px solid #e5e7eb;font-size:1.07em;background:#f9fafb;box-shadow:0 1px 6px rgba(30,58,138,0.06);margin-bottom:0.1em;outline:none;transition:border 0.2s;" />
+            ${helper}
+          </div>`;
           }
         });
-        
-        // Add shop selection
-        const shopSelectionHtml = `
-          <div class='shop-selection'>
-            <label>Select Print Shop *</label>
+        // Add shop selection with icon and label for passport modal
+        let shopSelectionHtml = `
+          <div class='shop-selection' style='margin-bottom:1.2em;'>
+            ${(service === 'passport') ? "<div style='font-weight:600;font-size:1.08em;margin-bottom:0.25em;display:flex;align-items:center;gap:0.6em;'><i class='fas fa-store' style='color:#7c3aed;font-size:1.1em;margin-right:0.6em;'></i><span>Select Print Shop <span style='color:#ef4444;'>*</span></span></div>" : "<label>Select Print Shop *</label>"}
             <div id='${service}-shop-options'>
               <div style='text-align: center; padding: 1rem;'>
                 <i class='fas fa-spinner fa-spin'></i>
@@ -2399,15 +2428,14 @@
             </div>
           </div>
         `;
-        
         return `
-          <div class='service-modal'>
+          <div class='service-modal' style="box-shadow:0 8px 32px rgba(30,58,138,0.18);border-radius:20px;background:#f7f9fb;padding:2.2em 2em 2em 2em;max-width:420px;width:100%;max-height:90vh;overflow-y:auto;">
             <button class='close-btn' onclick="closeServiceModal('${service}')"><i class='fas fa-times'></i></button>
-            <h3>${tmpl.title}</h3>
+            <h3 style="color:#1e3a8a;font-weight:700;font-size:1.35em;margin-bottom:1.2em;">${tmpl.title}</h3>
             <form id='${service}-modal-form'>
               ${fieldsHtml}
               ${shopSelectionHtml}
-              <button class='submit-btn' type='submit'>Submit</button>
+              <button class='submit-btn' type='submit' style="margin-top:1.5em;width:100%;padding:0.95em 0;font-size:1.1em;font-weight:600;border-radius:10px;background:linear-gradient(90deg,#2563eb,#3b82f6);color:#fff;box-shadow:0 2px 8px rgba(30,58,138,0.10);border:none;transition:background 0.2s;">Submit</button>
             </form>
           </div>
         `;
@@ -2418,8 +2446,18 @@
         let fileObj = null;
         let selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : 'firozshop';
         
-        // Load shops for this modal
-        setTimeout(() => renderServiceModalShops(service), 100);
+        // Wait for availableShops to load before rendering shop dropdown
+        function waitForShopsAndRender(attempt = 0) {
+          if (availableShops.length > 0) {
+            renderServiceModalShops(service);
+          } else if (attempt < 20) { // Try for up to 2 seconds
+            setTimeout(() => waitForShopsAndRender(attempt + 1), 100);
+          } else {
+            // After timeout, show no shops
+            renderServiceModalShops(service);
+          }
+        }
+        waitForShopsAndRender();
         
         // File input and preview
         const fileInput = modal.querySelector(`#${service}-file-input`);
@@ -2484,33 +2522,46 @@
           if (!fileObj) { alert('Please upload a file.'); return; }
           const formData = new FormData();
           formData.append('file_0', fileObj);
-          // Collect field values
+          // Collect field values for passport modal and map to print modal structure
+          let copies = 8;
+          let pageSize = 'A4';
           tmpl.fields.forEach((f, idx) => {
             if (f.type === 'file') return;
             let val = form.querySelector(`#${service}-field-${idx}`)?.value;
+            if (f.label.toLowerCase().includes('total prints')) copies = val;
+            if (f.label.toLowerCase().includes('paper size')) pageSize = val;
             formData.append(`field_${idx}`, val);
           });
-          // Metadata
+          // Always get the latest selected shop and vendorId from the dropdown
+          const shopSelect = modal.querySelector(`#${service}-shop-select`);
+          let selectedShopValue = selectedShop;
+          if (shopSelect) {
+            selectedShopValue = shopSelect.value;
+          }
+          const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
+          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+          formData.append('selected_vendor', selectedShopValue);
+          formData.append('vendor_id', vendorId);
+          // Metadata: match print modal structure
           const settingsJson = {
-            service: service,
-            service_type: tmpl.service_type, // Use service_type from template
-            service_name: tmpl.title, // Add service name from template
-            service_manual: 'yes',
-            job_completed: 'no',
             filename: fileObj.name,
+            service_type: tmpl.service_type, // 'passport_photo'
+            service_name: tmpl.title,
+            copies: copies,
+            color: 'color', // Set to color by default
+            orientation: 'portrait',
+            pageRange: 'all',
+            specificPages: '',
+            pageSize: pageSize,
+            spiralBinding: 'No',
+            lamination: 'No',
+            timestamp: new Date().toISOString(),
+            status: 'pending',
+            job_completed: 'NO',
+            trash: 'NO'
           };
-          tmpl.fields.forEach((f, idx) => {
-            if (f.type === 'file') return;
-            let val = form.querySelector(`#${service}-field-${idx}`)?.value;
-            settingsJson[f.label.replace(/ /g,'_').toLowerCase()] = val;
-          });
           formData.append('settings_0', JSON.stringify(settingsJson));
           formData.append('file_count', 1);
-          // Get vendor_id for the selected shop
-          const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
-          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
-          formData.append('selected_vendor', selectedShop);
-          formData.append('vendor_id', vendorId);
           // Submit
           const submitBtn = form.querySelector('.submit-btn');
           submitBtn.disabled = true;
