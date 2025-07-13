@@ -199,6 +199,268 @@
       transform: translateY(-2px) scale(1.05);
     }
 
+    /* Notification System */
+    .notification-bell {
+      position: relative;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s infinite;
+      border: 2px solid var(--surface);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .notification-panel {
+      position: fixed;
+      top: 64px;
+      right: 1rem;
+      width: 400px;
+      max-height: 500px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--outline);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all var(--transition-fast);
+      overflow: hidden;
+    }
+
+    .notification-panel.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .notification-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--outline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface-variant);
+    }
+
+    .notification-title {
+      font-weight: 600;
+      color: var(--on-surface);
+      font-size: 1rem;
+    }
+
+    .notification-count {
+      background: var(--primary);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .notification-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .notification-item {
+      padding: 1rem 1.5rem 1rem 1.5rem;
+      border-bottom: 1px solid var(--outline-variant);
+      border-radius: var(--radius-md);
+      margin: 0.5rem 1rem;
+      background: var(--surface);
+      box-shadow: 0 2px 8px var(--shadow-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .notification-item:hover {
+      background: var(--surface-variant);
+      box-shadow: 0 4px 16px var(--shadow-md);
+    }
+    .notification-item.unread {
+      background: var(--surface-variant);
+      border-left: 4px solid var(--primary);
+    }
+    .notification-item .notification-close {
+      position: absolute;
+      top: 0.7rem;
+      right: 1.2rem;
+      background: none;
+      border: none;
+      color: var(--on-surface-variant);
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 50%;
+      padding: 0.2rem 0.4rem;
+      transition: background 0.2s, color 0.2s;
+      z-index: 2;
+    }
+    .notification-item .notification-close:hover {
+      background: var(--surface-variant);
+      color: var(--error);
+    }
+
+    .notification-content {
+      margin-left: 1rem;
+    }
+
+    .notification-title-text {
+      font-weight: 600;
+      color: var(--on-surface);
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .notification-message {
+      color: var(--on-surface-variant);
+      font-size: 0.85rem;
+      line-height: 1.4;
+      margin-bottom: 0.5rem;
+    }
+
+    .notification-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--on-surface-variant);
+    }
+
+    .notification-time {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .notification-type {
+      background: var(--primary);
+      color: white;
+      padding: 0.125rem 0.375rem;
+      border-radius: var(--radius-xs);
+      font-weight: 500;
+      font-size: 0.7rem;
+    }
+
+    .notification-empty {
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--on-surface-variant);
+    }
+
+    .notification-empty i {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.5;
+    }
+
+    /* Sliding Toast Notification */
+    .toast-notification {
+      position: fixed;
+      top: 80px;
+      right: -450px;
+      background: var(--surface);
+      color: var(--on-surface);
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--outline);
+      z-index: 2000;
+      transition: right var(--transition-standard);
+      max-width: 400px;
+      width: 400px;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .toast-notification.show {
+      right: 1rem;
+    }
+
+    .toast-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .toast-content {
+      flex: 1;
+    }
+
+    .toast-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .toast-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--on-surface);
+    }
+
+    .toast-close {
+      background: none;
+      border: none;
+      color: var(--on-surface-variant);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+      font-size: 14px;
+    }
+
+    .toast-close:hover {
+      background: var(--surface-variant);
+      color: var(--on-surface);
+    }
+
+    .toast-message {
+      font-size: 0.85rem;
+      color: var(--on-surface-variant);
+      line-height: 1.4;
+    }
+
+    .toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      transition: width linear;
+    }
+
     /* User Profile in Header */
     .user-profile-dropdown {
       position: relative;
@@ -1947,9 +2209,12 @@
         <button class="header-btn" id="themeToggle">
           <i class="fas fa-sun"></i>
         </button>
-        <button class="header-btn">
+        <div class="notification-bell">
+          <button class="header-btn" id="notificationToggle">
           <i class="fas fa-bell"></i>
+            <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
         </button>
+        </div>
         <div class="user-profile-dropdown">
           <button class="user-profile-trigger" id="userProfileTrigger">
             <div class="user-avatar-small">
@@ -2001,6 +2266,37 @@
       </div>
     </div>
   </header>
+
+  <!-- Notification Panel -->
+  <div class="notification-panel" id="notificationPanel">
+    <div class="notification-header">
+      <span class="notification-title">Notifications</span>
+      <span class="notification-count" id="notificationCount">0</span>
+    </div>
+    <div class="notification-list" id="notificationList">
+      <div class="notification-empty">
+        <i class="fas fa-bell-slash"></i>
+        <p>No notifications yet</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sliding Toast Notification -->
+  <div class="toast-notification" id="toastNotification">
+    <div class="toast-icon">
+      <i class="fas fa-print"></i>
+    </div>
+    <div class="toast-content">
+      <div class="toast-header">
+        <span class="toast-title" id="toastTitle">Print Job Ready!</span>
+        <button class="toast-close" id="toastClose" onclick="closeToast()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="toast-message" id="toastMessage">Token #123 - Digital Print completed</div>
+    </div>
+    <div class="toast-progress" id="toastProgress"></div>
+  </div>
 
   <!-- Main Content -->
   <main class="main-content">
@@ -3890,7 +4186,271 @@
     document.addEventListener('DOMContentLoaded', function() {
       loadUserJobs();
       loadAvailableShops();
+      initializeNotifications();
     });
+
+    // Notification System
+    let notifications = [];
+    let unreadCount = 0;
+
+    async function initializeNotifications() {
+      await loadNotifications();
+      setupNotificationListeners();
+      startNotificationPolling();
+    }
+
+    async function loadNotifications() {
+      try {
+        const userEmail = '{{ user.email }}';
+        if (!userEmail) return;
+
+        const response = await fetch('/get-user-notifications/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ user_email: userEmail })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          const newNotifications = data.notifications || [];
+          const newUnreadCount = data.unread_count || 0;
+          
+          // Check for new unread notifications
+          const previousUnreadCount = unreadCount;
+          const hasNewNotifications = newUnreadCount > previousUnreadCount;
+          
+          notifications = newNotifications;
+          unreadCount = newUnreadCount;
+          updateNotificationUI();
+          
+          // Show toast for new notifications
+          if (hasNewNotifications && newUnreadCount > 0) {
+            const latestUnread = notifications.find(n => !n.read);
+            if (latestUnread && latestUnread.type === 'job_completed') {
+              const tokenMatch = latestUnread.message.match(/Token #(\d+)/);
+              const token = tokenMatch ? tokenMatch[1] : '';
+              const serviceMatch = latestUnread.message.match(/- (.+) completed/);
+              const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job';
+              
+              const toastTitle = 'Print Job Ready!';
+              const toastMessage = `Token #${token} - ${serviceType} completed`;
+              
+              showToast(toastTitle, toastMessage);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    }
+
+    function updateNotificationUI() {
+      const badge = document.getElementById('notificationBadge');
+      const count = document.getElementById('notificationCount');
+      const list = document.getElementById('notificationList');
+
+      // Filter out hidden notifications
+      const hiddenIds = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');
+      const visibleNotifications = notifications.filter(n => !hiddenIds.includes(n.notification_id));
+
+      // Remove redundant notifications (same token and type)
+      const uniqueMap = {};
+      const uniqueNotifications = [];
+      for (const n of visibleNotifications) {
+        const key = `${n.type}_${n.token}`;
+        if (!uniqueMap[key]) {
+          uniqueMap[key] = true;
+          uniqueNotifications.push(n);
+        }
+      }
+
+      // Update badge
+      const visibleUnread = uniqueNotifications.filter(n => !n.read);
+      if (visibleUnread.length > 0) {
+        badge.style.display = 'flex';
+        badge.textContent = visibleUnread.length > 99 ? '99+' : visibleUnread.length;
+      } else {
+        badge.style.display = 'none';
+      }
+
+      // Update count
+      count.textContent = uniqueNotifications.length;
+
+      // Update list
+      if (uniqueNotifications.length === 0) {
+        list.innerHTML = `
+          <div class="notification-empty">
+            <i class="fas fa-bell-slash"></i>
+            <p>No notifications yet</p>
+          </div>
+        `;
+      } else {
+        list.innerHTML = uniqueNotifications.map(notification => createNotificationItem(notification)).join('');
+      }
+    }
+
+    function createNotificationItem(notification) {
+      const isUnread = !notification.read;
+      const timeAgo = formatTimeAgo(notification.created_at);
+      const typeClass = notification.type === 'job_completed' ? 'success' : 'info';
+      const tokenMatch = notification.message.match(/Token #(\d+)/);
+      const token = tokenMatch ? tokenMatch[1] : '';
+      const serviceMatch = notification.message.match(/- (.+) completed/);
+      const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job';
+      return `
+        <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${notification.notification_id}" onclick="handleNotificationClick('${notification.notification_id}')">
+          <button class="notification-close" onclick="event.stopPropagation(); hideNotification('${notification.notification_id}')" title="Dismiss notification">
+            <i class="fas fa-times"></i>
+          </button>
+          <div class="notification-content">
+            <div class="notification-title-text">${notification.title}</div>
+            <div class="notification-message">
+              <strong>Token #${token}</strong> - ${serviceType}
+            </div>
+            <div class="notification-meta">
+              <div class="notification-time">
+                <i class="fas fa-clock"></i>
+                <span>${timeAgo}</span>
+              </div>
+              <div class="notification-type ${typeClass}">COMPLETED</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function formatTimeAgo(dateString) {
+      const now = new Date();
+      const date = new Date(dateString);
+      const diffInSeconds = Math.floor((now - date) / 1000);
+
+      if (diffInSeconds < 60) return 'Just now';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+      
+      return date.toLocaleDateString();
+    }
+
+    async function handleNotificationClick(notificationId) {
+      try {
+        const userEmail = '{{ user.email }}';
+        if (!userEmail) return;
+
+        // Mark as read
+        await fetch('/mark-notification-read/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ 
+            notification_id: notificationId, 
+            user_email: userEmail 
+          })
+        });
+
+        // Update local state
+        const notification = notifications.find(n => n.notification_id === notificationId);
+        if (notification && !notification.read) {
+          notification.read = true;
+          unreadCount = Math.max(0, unreadCount - 1);
+          updateNotificationUI();
+        }
+
+        // Show toast for job completion notifications
+        if (notification && notification.type === 'job_completed') {
+          // Extract token and service type for toast
+          const tokenMatch = notification.message.match(/Token #(\d+)/);
+          const token = tokenMatch ? tokenMatch[1] : '';
+          const serviceMatch = notification.message.match(/- (.+) completed/);
+          const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job';
+          
+          const toastTitle = 'Print Job Ready!';
+          const toastMessage = `Token #${token} - ${serviceType} completed`;
+          
+          showToast(toastTitle, toastMessage);
+        }
+
+      } catch (error) {
+        console.error('Error handling notification click:', error);
+      }
+    }
+
+    function setupNotificationListeners() {
+      const notificationToggle = document.getElementById('notificationToggle');
+      const notificationPanel = document.getElementById('notificationPanel');
+
+      notificationToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        notificationPanel.classList.toggle('active');
+      });
+
+      // Close panel when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!notificationPanel.contains(e.target) && !notificationToggle.contains(e.target)) {
+          notificationPanel.classList.remove('active');
+        }
+      });
+    }
+
+    function startNotificationPolling() {
+      // Check for new notifications every 30 seconds
+      setInterval(async () => {
+        await loadNotifications();
+      }, 30000);
+    }
+
+    function showToast(title, message) {
+      const toast = document.getElementById('toastNotification');
+      const toastTitle = document.getElementById('toastTitle');
+      const toastMessage = document.getElementById('toastMessage');
+      const toastProgress = document.getElementById('toastProgress');
+
+      // Set content
+      toastTitle.textContent = title;
+      toastMessage.textContent = message;
+
+      // Reset progress bar
+      toastProgress.style.width = '100%';
+
+      // Show toast
+      toast.classList.add('show');
+
+      // Start progress bar animation (15 seconds)
+      const duration = 15000; // 15 seconds
+      const startTime = Date.now();
+      
+      const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.max(0, 100 - (elapsed / duration) * 100);
+        toastProgress.style.width = progress + '%';
+        
+        if (progress <= 0) {
+          clearInterval(progressInterval);
+          closeToast();
+        }
+      }, 100);
+
+      // Store the interval ID to clear it if user closes manually
+      toast.dataset.progressInterval = progressInterval;
+    }
+
+    function closeToast() {
+      const toast = document.getElementById('toastNotification');
+      const progressInterval = toast.dataset.progressInterval;
+      
+      // Clear the progress interval if it exists
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        delete toast.dataset.progressInterval;
+      }
+      
+      toast.classList.remove('show');
+    }
 
     // Function to load available shops from R2 storage
     async function loadAvailableShops() {
@@ -4879,6 +5439,15 @@
           </div>
         </div>
       `).join('');
+    }
+
+    function hideNotification(notificationId) {
+      let hidden = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');
+      if (!hidden.includes(notificationId)) {
+        hidden.push(notificationId);
+        localStorage.setItem('hiddenNotifications', JSON.stringify(hidden));
+      }
+      updateNotificationUI();
     }
   </script>
 
