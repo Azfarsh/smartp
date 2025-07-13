@@ -492,12 +492,21 @@ def get_vendor_specific_print_jobs(vendor_id):
 
         pending_jobs = []
         vendor_folder_path = f'vendor_print_jobs/{vendor_id}'
+        manual_vendor_folder_path = f'vendor_manual_print_jobs/{vendor_id}'
 
-        # Check vendor-specific folder for documents in vendor bucket
+        # Check both vendor print jobs and vendor manual print jobs folders for documents
         try:
             vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_folder_path)
+            manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=manual_vendor_folder_path)
+            
+            # Combine both object lists
+            all_objects = []
+            if vendor_objects.get("Contents"):
+                all_objects.extend(vendor_objects.get("Contents", []))
+            if manual_objects.get("Contents"):
+                all_objects.extend(manual_objects.get("Contents", []))
 
-            for obj in vendor_objects.get("Contents", []):
+            for obj in all_objects:
                 key = obj["Key"]
                 filename = key.split("/")[-1]
 
@@ -621,11 +630,19 @@ def get_pending_print_jobs():
 
         pending_jobs = []
 
-        # Only check vendor print jobs folders for documents
+        # Check both vendor print jobs and vendor manual print jobs folders for documents
         try:
             vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_print_jobs/')
+            manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_manual_print_jobs/')
+            
+            # Combine both object lists
+            all_objects = []
+            if vendor_objects.get("Contents"):
+                all_objects.extend(vendor_objects.get("Contents", []))
+            if manual_objects.get("Contents"):
+                all_objects.extend(manual_objects.get("Contents", []))
 
-            for obj in vendor_objects.get("Contents", []):
+            for obj in all_objects:
                 key = obj["Key"]
                 filename = key.split("/")[-1]
 
@@ -633,10 +650,10 @@ def get_pending_print_jobs():
                 if not filename or filename.lower().endswith('.json'):
                     continue
 
-                # Only process files that are in vendor_print_jobs folders
+                # Process files that are in either vendor_print_jobs or vendor_manual_print_jobs folders
                 path_parts = key.split('/')
-                # Expected structure: vendor_print_jobs/{vendor_id}/{filename}
-                if len(path_parts) >= 3 and path_parts[0] == 'vendor_print_jobs':
+                # Expected structure: vendor_print_jobs/{vendor_id}/{filename} or vendor_manual_print_jobs/{vendor_id}/{filename}
+                if len(path_parts) >= 3 and (path_parts[0] == 'vendor_print_jobs' or path_parts[0] == 'vendor_manual_print_jobs'):
                     try:
                         # Get object metadata
                         head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
@@ -913,8 +930,11 @@ def upload_to_r2(request):
                         'token': token
                     }
 
-                    # Store all files in vendor_print_jobs/<vendor_id>/<filename>
-                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
+                    # Check if this is a manual print job (from service modals)
+                    storage_folder = request.POST.get('storage_folder', 'vendor_print_jobs')
+                    
+                    # Store files in the appropriate folder based on job type
+                    vendor_file_key = f'{storage_folder}/{vendor_id}/{file.name}'
                     user_file_key = f'users/{user_email}/{file.name}'
 
                     # Upload to vendor folder (for vendor processing)
@@ -968,18 +988,27 @@ def list_r2_files():
 
     try:
         file_data = []
-        # Get files from vendor print jobs folders
+        # Get files from both vendor print jobs and vendor manual print jobs folders
         vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_print_jobs/')
-        for obj in vendor_objects.get("Contents", []):
+        manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_manual_print_jobs/')
+        
+        # Combine both object lists
+        all_objects = []
+        if vendor_objects.get("Contents"):
+            all_objects.extend(vendor_objects.get("Contents", []))
+        if manual_objects.get("Contents"):
+            all_objects.extend(manual_objects.get("Contents", []))
+            
+        for obj in all_objects:
             key = obj["Key"]
             filename = key.split("/")[-1]
             # Skip .json files (metadata, not print jobs) and folders
             if filename.lower().endswith('.json') or not filename:
                 continue
-            # Only process files that are in vendor_print_jobs folders
+            # Process files that are in either vendor_print_jobs or vendor_manual_print_jobs folders
             path_parts = key.split('/')
-            # Expected structure: vendor_print_jobs/{vendor_id}/{filename}
-            if len(path_parts) >= 3 and path_parts[0] == 'vendor_print_jobs':
+            # Expected structure: vendor_print_jobs/{vendor_id}/{filename} or vendor_manual_print_jobs/{vendor_id}/{filename}
+            if len(path_parts) >= 3 and (path_parts[0] == 'vendor_print_jobs' or path_parts[0] == 'vendor_manual_print_jobs'):
                 try:
                     # Get object metadata first
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
