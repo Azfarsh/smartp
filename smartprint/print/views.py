@@ -24,6 +24,29 @@ def home(request):
     return render(request, 'home.html')
 
 
+def get_vendor_details_by_email(email):
+    s3 = boto3.client('s3',
+        aws_access_key_id=settings.R2_ACCESS_KEY,
+        aws_secret_access_key=settings.R2_SECRET_KEY,
+        endpoint_url=settings.R2_ENDPOINT,
+        region_name='auto'
+    )
+    try:
+        reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+        return {
+            'vendor_name': vendor_data.get('vendor_name', ''),
+            'vendor_email': vendor_data.get('vendor_email', ''),
+            'phone_number': vendor_data.get('phone_number', ''),
+            'shop_address': vendor_data.get('shop_address', ''),
+            'city': vendor_data.get('city', ''),
+        }
+    except Exception as e:
+        print(f"Error fetching vendor details for {email}: {str(e)}")
+        return None
+
+
 def vendordashboard(request):
     try:
         files = list_r2_files()
@@ -43,10 +66,22 @@ def vendordashboard(request):
                     manual_print_jobs.append(job)
             elif job_completed == 'YES':
                 completed_jobs.append(job)
+
+        # Fetch vendor details from session
+        vendor_details = None
+        vendor_email = request.session.get('vendor_email')
+        if vendor_email:
+            vendor_details = get_vendor_details_by_email(vendor_email)
+
         context = {
             'manual_print_jobs': manual_print_jobs,
             'print_requests': print_requests,
             'completed_jobs': completed_jobs,
+            'vendor_details': vendor_details,
+            'total_jobs': len(files),
+            'manual_print_count': len(manual_print_jobs),
+            'print_requests_count': len(print_requests),
+            'completed_jobs_count': len(completed_jobs),
         }
         return render(request, 'vendordashboard.html', context)
     except Exception as e:
@@ -180,7 +215,11 @@ def get_user_jobs_from_r2(user_email):
                     "vendor": metadata.get('vendor', 'firozshop'),
                     "service_type": metadata.get('service_type', ''),
                     "job_id": metadata.get('job_id', ''),
-                    "token": metadata.get('token', '')
+                    "token": metadata.get('token', ''),
+                    "feedback": metadata.get('feedback', ''),
+                    "quality": metadata.get('quality', ''),
+                    "thickness": metadata.get('thickness', ''),
+                    "service_name": metadata.get('service_name', '')
                 }
 
                 # Create print options string
@@ -458,7 +497,11 @@ def get_vendor_print_jobs(request):
                                 'service_type': 'regular print',
                                 'job_id': filename.split('.')[0],
                                 'token': filename.split('.')[0],
-                                'vendor_id': vendor_id
+                                'vendor_id': vendor_id,
+                                'feedback': '',
+                                'quality': '',
+                                'thickness': '',
+                                'service_name': ''
                             }
                         }
                         jobs.append(job_info)
@@ -553,7 +596,11 @@ def get_vendor_specific_print_jobs(vendor_id):
                                 'user': metadata.get('user', 'Unknown'),
                                 'service_type': metadata.get('service_type', ''),
                                 'job_id': metadata.get('job_id', ''),
-                                'token': metadata.get('token', '')
+                                'token': metadata.get('token', ''),
+                                'feedback': metadata.get('feedback', ''),
+                                'quality': metadata.get('quality', ''),
+                                'thickness': metadata.get('thickness', ''),
+                                'service_name': metadata.get('service_name', '')
                             }
                         }
 
@@ -698,7 +745,11 @@ def get_pending_print_jobs():
                                     'service_type': metadata.get('service_type', ''),
                                     'job_id': metadata.get('job_id', ''),
                                     'token': metadata.get('token', ''),
-                                    'vendor_id': vendor_id
+                                    'vendor_id': vendor_id,
+                                    'feedback': metadata.get('feedback', ''),
+                                    'quality': metadata.get('quality', ''),
+                                    'thickness': metadata.get('thickness', ''),
+                                    'service_name': metadata.get('service_name', '')
                                 }
                             }
 
@@ -927,7 +978,11 @@ def upload_to_r2(request):
                         'vendor': vendor_id,
                         'job_id': job_id,
                         'service_type': print_settings.get('service_type', 'regular print'),
-                        'token': token
+                        'token': token,
+                        'feedback': print_settings.get('feedback', ''),
+                        'quality': print_settings.get('quality', ''),
+                        'thickness': print_settings.get('thickness', ''),
+                        'service_name': print_settings.get('service_name', '')
                     }
 
                     # Check if this is a manual print job (from service modals)
@@ -1071,7 +1126,10 @@ def list_r2_files():
                         "service_type": metadata.get('service_type', ''),
                         "service_name": metadata.get('service_name', ''),
                         "token": metadata.get('token', ''),
-                        "vendor_id": vendor_id
+                        "vendor_id": vendor_id,
+                        "feedback": metadata.get('feedback', ''),
+                        "quality": metadata.get('quality', ''),
+                        "thickness": metadata.get('thickness', '')
                     }
                     # Create print options string
                     file_info["print_options"] = f"{file_info['copies']} copies, {file_info['color']}, {file_info['orientation']}"

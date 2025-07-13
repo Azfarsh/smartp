@@ -382,19 +382,20 @@
         /* Statistics Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* was 250px */
+            gap: 12px; /* was 20px */
+            margin-bottom: 24px; /* was 32px */
         }
 
         .stat-card {
             background: var(--surface);
             border: 1px solid var(--outline);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 8px; /* was 12px */
+            padding: 10px 12px; /* was 16px */
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            min-height: 70px; /* new: ensure compactness */
         }
 
         .stat-card::before {
@@ -424,13 +425,13 @@
         }
 
         .stat-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 32px; /* was 40px */
+            height: 32px; /* was 40px */
+            border-radius: 8px; /* was 10px */
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 15px; /* was 18px */
             color: var(--on-primary);
         }
 
@@ -440,14 +441,14 @@
         .stat-icon.total { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
 
         .stat-number {
-            font-size: 24px;
+            font-size: 18px; /* was 24px */
             font-weight: 700;
             color: var(--on-surface);
-            margin-bottom: 4px;
+            margin-bottom: 2px; /* was 4px */
         }
 
         .stat-label {
-            font-size: 14px;
+            font-size: 12px; /* was 14px */
             color: var(--on-surface-variant);
             font-weight: 500;
         }
@@ -546,27 +547,31 @@
 
         /* Jobs Container */
         .jobs-container {
-            padding: 24px;
-            max-height: 400px;
+            padding: 12px; /* was 24px */
+            max-height: 340px; /* was 400px */
             overflow-y: auto;
         }
 
         .jobs-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* was 220px */
+            gap: 10px;
         }
 
         /* Streamlined Job Cards */
         .job-card {
             background: var(--surface);
             border: 1px solid var(--outline);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 8px;
+            padding: 8px 24px; /* less vertical, more horizontal */
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            min-height: 60px; /* was 90px, less tall */
+            min-width: 260px; /* new: ensure more width */
+            max-width: 600px; /* new: prevent too wide on large screens */
+            margin: 0 auto; /* center in grid cell */
         }
 
         .job-card::before {
@@ -592,7 +597,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 6px; /* was 12px */
         }
 
         .job-token {
@@ -628,10 +633,10 @@
         }
 
         .job-filename {
-            font-size: 16px;
+            font-size: 14px; /* was 16px */
             font-weight: 600;
             color: var(--on-surface);
-            margin-bottom: 8px;
+            margin-bottom: 4px; /* was 8px */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -639,10 +644,10 @@
 
         .job-meta {
             display: flex;
-            gap: 16px;
-            font-size: 13px;
+            gap: 8px; /* was 16px */
+            font-size: 12px; /* was 13px */
             color: var(--on-surface-variant);
-            margin-bottom: 12px;
+            margin-bottom: 6px; /* was 12px */
             flex-wrap: wrap;
         }
 
@@ -651,8 +656,8 @@
             align-items: center;
             gap: 6px;
             background: var(--surface-container);
-            padding: 4px 8px;
-            border-radius: 6px;
+            padding: 2px 6px; /* was 4px 8px */
+            border-radius: 4px; /* was 6px */
         }
 
         .job-meta-item i {
@@ -662,7 +667,7 @@
 
         .job-actions {
             display: flex;
-            gap: 8px;
+            gap: 4px; /* was 8px */
         }
 
         .service-type-badge {
@@ -698,10 +703,10 @@
         }
 
         .btn-small {
-            padding: 8px 12px;
+            padding: 6px 8px; /* was 8px 12px */
             border: none;
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 4px; /* was 6px */
+            font-size: 11px; /* was 12px */
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -1329,35 +1334,17 @@
             }
         }
 
-        // CSRF Token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
         // Data Loading
         async function loadJobs() {
             try {
-                const response = await fetch('/get-print-requests/', {
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                });
+                // The backend will automatically filter jobs based on the vendor's session
+                const response = await fetch('/get-print-requests/');
                 const data = await response.json();
 
                 if (data.print_requests) {
                     allJobs = data.print_requests;
                     categorizeJobs();
+                    showToast('Jobs refreshed successfully');
                 }
             } catch (error) {
                 console.error('Error loading jobs:', error);
@@ -1443,7 +1430,7 @@
             const statusClass = type === 'completed' ? 'status-completed' : 
                                type === 'manual' ? 'status-manual' : 'status-requests';
             const statusText = type === 'completed' ? 'Done' : 
-                              type === 'manual' ? 'Manual' : 'Pending';
+                              type === 'manual' ? '' : 'Pending'; // Remove 'Manual' text
             const cardClass = type === 'completed' ? 'completed' : 
                               type === 'manual' ? 'manual' : 'requests';
 
@@ -1452,7 +1439,6 @@
             // Get service type for badge
             const serviceType = (job.service_type || '').trim().toLowerCase();
             let serviceTypeBadge = '';
-            
             if (type === 'manual' && serviceType) {
                 const serviceTypeDisplay = {
                     'digital_print': 'DIGITAL PRINT',
@@ -1460,58 +1446,107 @@
                     'gloss_printing': 'GLOSS PRINTING',
                     'jumbo_printing': 'JUMBO PRINTING'
                 };
-                
                 const serviceTypeClass = {
                     'digital_print': 'digital-print',
                     'project_binding': 'project-binding',
                     'gloss_printing': 'gloss-printing', 
                     'jumbo_printing': 'jumbo-printing'
                 };
-                
                 if (serviceTypeDisplay[serviceType]) {
                     serviceTypeBadge = `<div class="service-type-badge ${serviceTypeClass[serviceType]}">${serviceTypeDisplay[serviceType]}</div>`;
                 }
             }
 
-            const actions = type === 'requests' ? 
-                `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
-                    <i class="fas fa-check"></i> Accept
-                </button>` : 
-                type === 'manual' ? 
+            // Feedback tooltip if present
+            let feedbackHtml = '';
+            if (job.feedback && job.feedback.trim().length > 0) {
+                feedbackHtml = `<div class="job-feedback-tooltip" title="${job.feedback.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"><i class='fas fa-comment-dots'></i></div>`;
+            }
+
+            // Actions: Print and Completed
+            const actions = type === 'manual' ? 
                 `<button class="btn-small btn-primary" onclick="event.stopPropagation(); sendPrintJob('${job.download_url || job.preview_url}', '${job.filename}')" title="Send to printer">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <button class="btn-small btn-secondary" onclick="event.stopPropagation(); processJob('${job.filename}')">
-                    <i class="fas fa-play"></i> Process
+                <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
+                    <i class="fas fa-check"></i> Completed
+                </button>` :
+                type === 'requests' ? 
+                `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
+                    <i class="fas fa-check"></i> Accept
                 </button>` : '';
 
+            // Main info block (compact)
             return `
-                <div class="job-card ${cardClass}" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
+                <div class="job-card ${cardClass} compact" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
                     ${serviceTypeBadge}
-                    <div class="job-header">
-                        <div class="job-token">${tokenNumber}</div>
+                    <div class="job-header compact">
+                        <div class="job-token" title="Job Token">${tokenNumber}</div>
                         <div class="job-status ${statusClass}">${statusText}</div>
+                        ${feedbackHtml}
                     </div>
-                    <div class="job-filename" title="${job.filename}">${job.filename}</div>
-                    <div class="job-meta">
-                        <div class="job-meta-item">
-                            <i class="fas fa-user"></i>
-                            <span>${job.user || 'User'}</span>
-                        </div>
-                        <div class="job-meta-item">
+                    <div class="job-filename main-info" title="${job.filename}">${job.filename}</div>
+                    <div class="job-meta compact">
+                        <div class="job-meta-item" title="Pages">
                             <i class="fas fa-file-alt"></i>
                             <span>${job.pages || 1} pages</span>
                         </div>
-                        <div class="job-meta-item">
+                        <div class="job-meta-item" title="Copies">
                             <i class="fas fa-copy"></i>
                             <span>${job.copies || 1} copies</span>
                         </div>
+                        <div class="job-meta-item" title="Type">
+                            <i class="fas fa-tags"></i>
+                            <span>${serviceType.replace('_', ' ').toUpperCase() || 'PRINT'}</span>
+                        </div>
                     </div>
-                    <div class="job-actions" onclick="event.stopPropagation()">
+                    <div class="job-actions compact" onclick="event.stopPropagation()">
                         ${actions}
                     </div>
                 </div>
             `;
+        }
+
+        // Mark job as completed (AJAX)
+        async function markJobCompleted(filename) {
+            try {
+                const response = await fetch('/update-job-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ filename: filename, status: 'completed' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Job marked as completed!');
+                    setTimeout(loadJobs, 800);
+                } else {
+                    showToast('Failed to mark as completed.');
+                }
+            } catch (err) {
+                showToast('Error completing job.');
+            }
+        }
+
+        // Helper: Get CSRF token
+        function getCookie(name) {
+            if (name === 'csrftoken') {
+                return window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+            }
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
 
         // Job Actions
