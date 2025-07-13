@@ -2289,6 +2289,13 @@
         margin-left: 0.25rem;
       }
 
+      .field-optional {
+        color: #6b7280;
+        font-weight: 500;
+        margin-left: 0.25rem;
+        font-size: 0.875rem;
+      }
+
       .field-description {
         font-size: 0.875rem;
         color: #6b7280;
@@ -2434,6 +2441,63 @@
       .number-input-wrapper input:hover {
         border-color: #3b82f6;
         transform: translateY(-1px);
+      }
+
+      .feedback-wrapper {
+        position: relative;
+      }
+
+      .feedback-textarea {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        background: white;
+        font-size: 1rem;
+        color: #1f2937;
+        transition: all 0.3s;
+        font-weight: 500;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 100px;
+        line-height: 1.5;
+      }
+
+      .feedback-textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .feedback-textarea:hover {
+        border-color: #3b82f6;
+        transform: translateY(-1px);
+      }
+
+      .feedback-textarea::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
+      }
+
+      .feedback-counter {
+        position: absolute;
+        bottom: 0.75rem;
+        right: 1rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+      }
+
+      .feedback-counter.warning {
+        color: #f59e0b;
+      }
+
+      .feedback-counter.danger {
+        color: #ef4444;
       }
 
       .shop-options {
@@ -2799,6 +2863,26 @@
               icon: 'fas fa-ruler-combined'
             },
             { 
+              label: 'Paper Thickness', 
+              type: 'select', 
+              options: [
+                { value: '70gsm', label: '70 GSM (Light)', price: 'Included' },
+                { value: '80gsm', label: '80 GSM (Thin)', price: '+₹1/page' },
+                { value: '90gsm', label: '90 GSM (Light Standard)', price: '+₹2/page' },
+                { value: '100gsm', label: '100 GSM (Standard)', price: '+₹3/page' },
+                { value: '110gsm', label: '110 GSM (Medium Light)', price: '+₹4/page' },
+                { value: '120gsm', label: '120 GSM (Medium)', price: '+₹5/page' },
+                { value: '130gsm', label: '130 GSM (Medium Heavy)', price: '+₹6/page' },
+                { value: '140gsm', label: '140 GSM (Heavy)', price: '+₹7/page' },
+                { value: '150gsm', label: '150 GSM (Extra Heavy)', price: '+₹8/page' },
+                { value: '160gsm', label: '160 GSM (Premium)', price: '+₹9/page' },
+                { value: '170gsm', label: '170 GSM (Ultra Premium)', price: '+₹10/page' }
+              ], 
+              required: true,
+              description: 'Select the paper thickness for your large format prints (70-170 GSM range)',
+              icon: 'fas fa-weight-hanging'
+            },
+            { 
               label: 'Print Quantity', 
               type: 'number', 
               min: 1, 
@@ -2965,6 +3049,17 @@
             shopSelect.selectedIndex = 0;
           }
 
+          // Reset feedback textarea
+          const feedbackTextarea = modal.querySelector(`#${service}-feedback`);
+          const feedbackCounter = modal.querySelector(`#${service}-feedback-count`);
+          if (feedbackTextarea) {
+            feedbackTextarea.value = '';
+          }
+          if (feedbackCounter) {
+            feedbackCounter.textContent = '0';
+            feedbackCounter.parentElement.classList.remove('warning', 'danger');
+          }
+
           // Reset submit button
           if (submitBtn) {
             submitBtn.disabled = false;
@@ -2999,7 +3094,7 @@
                 <div class="field-header">
                   <div class="field-icon">
                     <i class="${fieldIcon}"></i>
-                  </div>
+              </div>
                   <div class="field-label">
                     <span class="field-title">${fieldLabel}</span>
                     <span class="field-required">*</span>
@@ -3041,7 +3136,7 @@
                 <div class="select-wrapper">
                   <select id="${service}-field-${idx}" ${f.required ? 'required' : ''}>
                     ${optionsHtml}
-                  </select>
+              </select>
                   <i class="fas fa-chevron-down select-arrow"></i>
                 </div>
               </div>
@@ -3089,6 +3184,34 @@
           </div>
         `;
 
+        // Feedback section
+        const feedbackHtml = `
+          <div class="modal-field-group">
+            <div class="field-header">
+              <div class="field-icon">
+                <i class="fas fa-comment-alt"></i>
+              </div>
+              <div class="field-label">
+                <span class="field-title">Additional Instructions</span>
+                <span class="field-optional">(Optional)</span>
+              </div>
+            </div>
+            <div class="field-description">Add any special instructions, notes, or feedback for your print job</div>
+            <div class="feedback-wrapper">
+              <textarea 
+                id="${service}-feedback" 
+                class="feedback-textarea" 
+                placeholder="E.g., Please ensure high quality printing, special handling required, specific color matching needed, or any other instructions..."
+                rows="3"
+                maxlength="500"
+              ></textarea>
+              <div class="feedback-counter">
+                <span id="${service}-feedback-count">0</span>/500 characters
+              </div>
+            </div>
+          </div>
+        `;
+
         return `
           <div class="service-modal">
             <div class="modal-header">
@@ -3105,10 +3228,11 @@
                 <i class="fas fa-times"></i>
               </button>
             </div>
-            <div class="modal-body">
+                        <div class="modal-body">
               <form id="${service}-modal-form">
-                ${fieldsHtml}
-                ${shopSelectionHtml}
+              ${fieldsHtml}
+              ${shopSelectionHtml}
+                ${feedbackHtml}
                 <div class="modal-actions">
                   <button type="button" class="btn-cancel" onclick="closeServiceModal('${service}')">
                     <i class="fas fa-times"></i>
@@ -3119,7 +3243,7 @@
                     Submit Request
                   </button>
                 </div>
-              </form>
+            </form>
             </div>
           </div>
         `;
@@ -3149,8 +3273,8 @@
         const filePreview = modal.querySelector(`#${service}-file-preview`);
         
         if (fileInput && fileUploadLabel && filePreview) {
-          fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
+        fileInput.addEventListener('change', async (e) => {
+          const file = e.target.files[0];
             await processFile(file, fileUploadLabel, filePreview);
           });
           
@@ -3223,6 +3347,26 @@
           }
         }
         
+        // Feedback textarea character counter
+        const feedbackTextarea = modal.querySelector(`#${service}-feedback`);
+        const feedbackCounter = modal.querySelector(`#${service}-feedback-count`);
+        if (feedbackTextarea && feedbackCounter) {
+          feedbackTextarea.addEventListener('input', function() {
+            const length = this.value.length;
+            const maxLength = 500;
+            feedbackCounter.textContent = length;
+            
+            // Update counter color based on length
+            feedbackCounter.parentElement.classList.remove('warning', 'danger');
+            if (length > maxLength * 0.8) {
+              feedbackCounter.parentElement.classList.add('warning');
+            }
+            if (length > maxLength * 0.95) {
+              feedbackCounter.parentElement.classList.add('danger');
+            }
+          });
+        }
+        
         // Shop selection handler for dropdown
         setTimeout(() => {
           const shopSelect = modal.querySelector(`#${service}-shop-select`);
@@ -3236,26 +3380,27 @@
         // Form submit
         const form = modal.querySelector(`#${service}-modal-form`);
         if (form) {
-          form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
             if (!fileObj) { 
               alert('Please upload a file.'); 
               return; 
             }
             
-            const formData = new FormData();
-            formData.append('file_0', fileObj);
+          const formData = new FormData();
+          formData.append('file_0', fileObj);
             
-            // Collect field values for service modals and map to print modal structure
+                                    // Collect field values for service modals and map to print modal structure
             let copies = 1;
-            let pageSize = 'A4';
+          let pageSize = 'A4';
             let color = 'Black and White';
             let orientation = 'portrait';
             let quality = 'standard';
+            let thickness = '120gsm';
             
-            tmpl.fields.forEach((f, idx) => {
-              if (f.type === 'file') return;
-              let val = form.querySelector(`#${service}-field-${idx}`)?.value;
+          tmpl.fields.forEach((f, idx) => {
+            if (f.type === 'file') return;
+            let val = form.querySelector(`#${service}-field-${idx}`)?.value;
               
               if (f.label.toLowerCase().includes('quantity') || f.label.toLowerCase().includes('copies')) copies = parseInt(val) || 1;
               if (f.label.toLowerCase().includes('paper size') || f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('photo size')) pageSize = val;
@@ -3263,78 +3408,86 @@
               if (f.label.toLowerCase().includes('orientation')) orientation = val;
               if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('total prints')) copies = parseInt(val) || 8;
               if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
+              if (f.label.toLowerCase().includes('thickness')) thickness = val;
               
-              formData.append(`field_${idx}`, val);
-            });
+            formData.append(`field_${idx}`, val);
+          });
             
-            // Always get the latest selected shop and vendorId from the dropdown
-            const shopSelect = modal.querySelector(`#${service}-shop-select`);
-            let selectedShopValue = selectedShop;
-            if (shopSelect) {
-              selectedShopValue = shopSelect.value;
-            }
-            const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
-            const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+            // Get feedback text
+            const feedbackTextarea = form.querySelector(`#${service}-feedback`);
+            const feedback = feedbackTextarea ? feedbackTextarea.value.trim() : '';
+            formData.append('feedback', feedback);
             
-            formData.append('selected_vendor', selectedShopValue);
-            formData.append('vendor_id', vendorId);
+          // Always get the latest selected shop and vendorId from the dropdown
+          const shopSelect = modal.querySelector(`#${service}-shop-select`);
+          let selectedShopValue = selectedShop;
+          if (shopSelect) {
+            selectedShopValue = shopSelect.value;
+          }
+          const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
+          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+            
+          formData.append('selected_vendor', selectedShopValue);
+          formData.append('vendor_id', vendorId);
             formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
             
-            // Metadata: match print modal structure but for manual jobs
-            const settingsJson = {
-              filename: fileObj.name,
+                                    // Metadata: match print modal structure but for manual jobs
+          const settingsJson = {
+            filename: fileObj.name,
               service_type: tmpl.service_type,
-              service_name: tmpl.title,
-              copies: copies,
+            service_name: tmpl.title,
+            copies: copies,
               color: color,
               orientation: orientation,
-              pageRange: 'all',
-              specificPages: '',
-              pageSize: pageSize,
+            pageRange: 'all',
+            specificPages: '',
+            pageSize: pageSize,
               quality: quality,
-              spiralBinding: 'No',
-              lamination: 'No',
-              timestamp: new Date().toISOString(),
-              status: 'pending',
-              job_completed: 'NO',
+              thickness: thickness,
+              feedback: feedback,
+            spiralBinding: 'No',
+            lamination: 'No',
+            timestamp: new Date().toISOString(),
+            status: 'pending',
+            job_completed: 'NO',
               trash: 'NO',
               is_manual_job: 'YES' // Flag to identify manual jobs
-            };
+          };
             
-            formData.append('settings_0', JSON.stringify(settingsJson));
-            formData.append('file_count', 1);
+          formData.append('settings_0', JSON.stringify(settingsJson));
+          formData.append('file_count', 1);
             
             // Submit - Updated to use new button class
             const submitBtn = form.querySelector('.btn-submit');
             if (submitBtn) {
-              submitBtn.disabled = true;
-              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             }
             
-            try {
-              const resp = await fetch('/upload/', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRFToken': getCookie('csrftoken') }
-              });
-              const data = await resp.json();
-              if (data.success) {
-                alert('Request submitted successfully!');
-                closeServiceModal(service);
+          try {
+            const resp = await fetch('/upload/', {
+              method: 'POST',
+              body: formData,
+              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await resp.json();
+            if (data.success) {
+              alert('Request submitted successfully!');
+              closeServiceModal(service);
                 // Reset modal immediately after successful submission
                 resetServiceModal(service);
-              } else {
-                alert('Error: ' + (data.error || 'Failed to submit.'));
-              }
-            } catch (err) {
-              alert('Error: ' + err.message);
-            } finally {
+            } else {
+              alert('Error: ' + (data.error || 'Failed to submit.'));
+            }
+          } catch (err) {
+            alert('Error: ' + err.message);
+          } finally {
               if (submitBtn) {
-                submitBtn.disabled = false;
+            submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request';
               }
-            }
-          });
+          }
+        });
         }
         // Close modal on overlay click
         modal.addEventListener('click', (e) => {
