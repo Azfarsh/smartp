@@ -1733,12 +1733,16 @@
             align-items: center;
             justify-content: center;
             height: 100%;
+            min-height: 300px;
         }
 
         .hero-video {
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            max-width: 100%;
+            height: auto;
+            background: #f8f9fa;
         }
 
         .hero-video:hover {
@@ -1748,10 +1752,35 @@
 
         [data-bs-theme="dark"] .hero-video {
             box-shadow: 0 8px 32px rgba(255, 255, 255, 0.1);
+            background: #2d3748;
         }
 
         [data-bs-theme="dark"] .hero-video:hover {
             box-shadow: 0 12px 40px rgba(255, 255, 255, 0.15);
+        }
+
+        .video-fallback {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 60px 20px;
+            border-radius: 12px;
+            text-align: center;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        [data-bs-theme="dark"] .video-fallback {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        }
+
+        .video-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
         }
 
         /* Mobile-First Responsive Design */
@@ -3006,10 +3035,16 @@
                                 muted 
                                 loop 
                                 playsinline
+                                preload="metadata"
+                                controls="false"
                                 style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);"
                             >
-                                <source src="{% static 'images/download.mp4' %}" type="video/mp4">
-                                Your browser does not support the video tag.
+                                <source src="{% static 'images/hero-video.mp4' %}" type="video/mp4">
+                                <div class="video-fallback" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 60px 20px; border-radius: 12px; text-align: center;">
+                                    <i class="bi bi-play-circle display-1 text-primary mb-3"></i>
+                                    <h5>Video Preview</h5>
+                                    <p class="text-muted">Your browser doesn't support video playback. Please upgrade to view the demo.</p>
+                                </div>
                             </video>
                         </div>
                     </div>
@@ -4082,6 +4117,39 @@
 
         // Call preload function
         preloadCriticalResources();
+
+        // Video handling
+        function initializeVideo() {
+            const video = document.querySelector('.hero-video');
+            if (!video) return;
+
+            // Show loading state
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'video-loading';
+            loadingDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+            video.parentElement.appendChild(loadingDiv);
+
+            // Handle video load
+            video.addEventListener('loadeddata', function() {
+                loadingDiv.remove();
+            });
+
+            // Handle video error
+            video.addEventListener('error', function() {
+                loadingDiv.remove();
+                console.error('Video failed to load');
+            });
+
+            // Handle video play
+            video.addEventListener('play', function() {
+                loadingDiv.remove();
+            });
+        }
+
+        // Initialize video when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeVideo();
+        });
     </script>
 </body>
 </html>
