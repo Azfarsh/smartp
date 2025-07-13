@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script>
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1458,6 +1459,55 @@
     /* File List */
     .file-list {
       margin-bottom: 1.5rem;
+    }
+
+    /* Image Preview */
+    .image-preview-container {
+      margin-top: 1rem;
+      border: 2px solid var(--outline);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      background: var(--surface-variant);
+      display: none;
+    }
+
+    .image-preview-container.active {
+      display: block;
+    }
+
+    .preview-title {
+      font-weight: 600;
+      color: var(--on-surface);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .preview-canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+      background: white;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--outline-variant);
+      overflow: hidden;
+    }
+
+    .preview-canvas {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: var(--radius-sm);
+    }
+
+    .preview-info {
+      margin-top: 0.75rem;
+      font-size: 0.875rem;
+      color: var(--on-surface-variant);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .file-item {
@@ -3222,7 +3272,7 @@
               options: [
                 { value: '8', label: '8 Photos (Standard)', price: '₹40' },
                 { value: '16', label: '16 Photos (Family)', price: '₹70' },
-                { value: '32', label: '32 Photos (Bulk)', price: '₹120' }
+                { value: '30', label: '30 Photos (Bulk)', price: '₹120' }
               ], 
               required: true,
               description: 'Choose the number of passport photos you need',
@@ -3614,29 +3664,44 @@
           fileUploadLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing file...';
           
           try {
-            // Get accurate page count
-            const pages = await getPageCount(file);
-            fileUploadLabel.textContent = `${file.name} (${pages} pages)`;
+            let pages;
             
-            // Store page count in file object
-            fileObj.pageCount = pages;
-            
-            // Preview logic
+            // Handle images specially - convert to PDF and count as 1 page
             if (file.type.startsWith('image/')) {
+              pages = 1; // Images always count as 1 page
+              
+              // Store original image for PDF conversion later
+              fileObj.originalImageFile = file;
+              fileObj.isImage = true;
+              
+              // Create preview
               const reader = new FileReader();
               reader.onload = (ev) => {
                 filePreview.innerHTML = `<img src='${ev.target.result}' alt='Preview' />`;
               };
               reader.readAsDataURL(file);
-            } else if (file.type === 'application/pdf') {
-              const reader = new FileReader();
-              reader.onload = (ev) => {
-                filePreview.innerHTML = `<embed src='${ev.target.result}' type='application/pdf' width='100%' height='180px' />`;
-              };
-              reader.readAsDataURL(file);
             } else {
-              filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}<br><small>${pages} pages</small></div>`;
+              // Get accurate page count for non-image files
+              pages = await getPageCount(file);
+              fileObj.isImage = false;
+              
+              // Preview logic for non-images
+              if (file.type === 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  filePreview.innerHTML = `<embed src='${ev.target.result}' type='application/pdf' width='100%' height='180px' />`;
+                };
+                reader.readAsDataURL(file);
+              } else {
+                filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}<br><small>${pages} pages</small></div>`;
+              }
             }
+            
+            fileUploadLabel.textContent = `${file.name} (${pages} pages)`;
+            
+            // Store page count in file object
+            fileObj.pageCount = pages;
+            
           } catch (error) {
             console.error('Error processing file:', error);
             fileUploadLabel.textContent = file.name;
@@ -3702,7 +3767,7 @@
               if (f.label.toLowerCase().includes('paper size') || f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('photo size')) pageSize = val;
               if (f.label.toLowerCase().includes('color') || f.label.toLowerCase().includes('print color')) color = val;
               if (f.label.toLowerCase().includes('orientation')) orientation = val;
-              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('total prints')) copies = parseInt(val) || 8;
+              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) copies = parseInt(val) || 8;
               if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
               if (f.label.toLowerCase().includes('thickness')) thickness = val;
               
@@ -3868,6 +3933,21 @@
         <div class="file-list" id="fileList">
           <div class="no-files-message" id="noFilesMessage">
             No files selected yet
+          </div>
+        </div>
+
+        <!-- Image Preview -->
+        <div class="image-preview-container" id="imagePreviewContainer">
+          <div class="preview-title">
+            <i class="fas fa-eye"></i>
+            Live Preview
+          </div>
+          <div class="preview-canvas-container">
+            <canvas id="previewCanvas" class="preview-canvas"></canvas>
+          </div>
+          <div class="preview-info">
+            <span id="previewDimensions">Dimensions: -</span>
+            <span id="previewOrientation">Orientation: Portrait</span>
           </div>
         </div>
 
@@ -4853,7 +4933,9 @@
               file: file,
               name: file.name,
               size: file.size,
-              pages: pages
+              pages: pages,
+              isImage: file.type.startsWith('image/'),
+              originalImageFile: file.type.startsWith('image/') ? file : null
             };
 
             uploadedFiles.push(fileObj);
@@ -5016,6 +5098,7 @@
       if (selectedFileIndex === -1 || uploadedFiles.length === 0) {
         settingsSubtitle.textContent = 'Select a file to configure its settings';
         fileSettingsInfo.style.display = 'block';
+        document.getElementById('imagePreviewContainer').classList.remove('active');
         return;
       }
 
@@ -5046,6 +5129,14 @@
 
       spiralBindingCheckbox.checked = settings.spiralBinding;
       laminationCheckbox.checked = settings.lamination;
+
+      // Show image preview if current file is an image
+      if (selectedFile.isImage) {
+        updateImagePreview(selectedFile, settings);
+        document.getElementById('imagePreviewContainer').classList.add('active');
+      } else {
+        document.getElementById('imagePreviewContainer').classList.remove('active');
+      }
     }
 
     function updateOrderSummary() {
@@ -5128,7 +5219,189 @@
 
       const selectedFile = uploadedFiles[selectedFileIndex];
       fileSettings[selectedFile.id][key] = value;
+      
+      // Update image preview if it's an image and orientation/pageSize changed
+      if (selectedFile.isImage && (key === 'orientation' || key === 'pageSize')) {
+        updateImagePreview(selectedFile, fileSettings[selectedFile.id]);
+      }
+      
       updateOrderSummary();
+    }
+
+    // Function to update image preview based on settings
+    async function updateImagePreview(fileObj, settings) {
+      if (!fileObj.isImage || !fileObj.originalImageFile) return;
+
+      try {
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        img.onload = function() {
+          // Get page dimensions based on settings
+          const pageDimensions = getPageDimensions(settings.pageSize, settings.orientation);
+          
+          // Set canvas size
+          canvas.width = pageDimensions.width;
+          canvas.height = pageDimensions.height;
+          
+          // Clear canvas with white background
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Calculate image scaling to fit within page while maintaining aspect ratio
+          const imgAspect = img.width / img.height;
+          const pageAspect = canvas.width / canvas.height;
+          
+          let drawWidth, drawHeight, drawX, drawY;
+          
+          if (imgAspect > pageAspect) {
+            // Image is wider than page aspect ratio
+            drawWidth = canvas.width * 0.9; // 90% of page width with margin
+            drawHeight = drawWidth / imgAspect;
+          } else {
+            // Image is taller than page aspect ratio
+            drawHeight = canvas.height * 0.9; // 90% of page height with margin
+            drawWidth = drawHeight * imgAspect;
+          }
+          
+          // Center the image
+          drawX = (canvas.width - drawWidth) / 2;
+          drawY = (canvas.height - drawHeight) / 2;
+          
+          // Draw the image
+          ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+          
+          // Update preview info
+          document.getElementById('previewDimensions').textContent = 
+            `Dimensions: ${Math.round(drawWidth)}x${Math.round(drawHeight)}px`;
+          document.getElementById('previewOrientation').textContent = 
+            `Orientation: ${settings.orientation.charAt(0).toUpperCase() + settings.orientation.slice(1)}`;
+        };
+
+        // Load the image
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(fileObj.originalImageFile);
+
+      } catch (error) {
+        console.error('Error updating image preview:', error);
+      }
+    }
+
+    // Function to get page dimensions based on paper size and orientation
+    function getPageDimensions(pageSize, orientation) {
+      // Standard page sizes in pixels (at 72 DPI)
+      const sizes = {
+        'a4': { width: 595, height: 842 },
+        'a3': { width: 842, height: 1191 },
+        'letter': { width: 612, height: 792 }
+      };
+      
+      let dimensions = sizes[pageSize] || sizes['a4'];
+      
+      // Swap dimensions for landscape
+      if (orientation === 'landscape') {
+        return { width: dimensions.height, height: dimensions.width };
+      }
+      
+      return dimensions;
+    }
+
+    // Function to convert image to PDF based on settings
+    async function convertImageToPDF(imageFile, settings) {
+      try {
+        const { PDFDocument, rgb } = PDFLib;
+        
+        // Create a new PDF document
+        const pdfDoc = await PDFDocument.create();
+        
+        // Read the image file
+        const imageBytes = await imageFile.arrayBuffer();
+        let image;
+        
+        // Embed the image based on its type
+        if (imageFile.type === 'image/jpeg' || imageFile.type === 'image/jpg') {
+          image = await pdfDoc.embedJpg(imageBytes);
+        } else if (imageFile.type === 'image/png') {
+          image = await pdfDoc.embedPng(imageBytes);
+        } else {
+          // For other formats, we'll need to convert to PNG first via canvas
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.src = URL.createObjectURL(imageFile);
+          });
+          
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          const pngBytes = await pngBlob.arrayBuffer();
+          image = await pdfDoc.embedPng(pngBytes);
+          
+          URL.revokeObjectURL(img.src);
+        }
+        
+        // Get page dimensions
+        const pageDimensions = getPageDimensions(settings.pageSize, settings.orientation);
+        
+        // Add a page with the specified dimensions
+        const page = pdfDoc.addPage([pageDimensions.width, pageDimensions.height]);
+        
+        // Calculate image scaling to fit within page while maintaining aspect ratio
+        const imgDims = image.scale(1);
+        const pageWidth = page.getWidth();
+        const pageHeight = page.getHeight();
+        
+        const imgAspect = imgDims.width / imgDims.height;
+        const pageAspect = pageWidth / pageHeight;
+        
+        let drawWidth, drawHeight;
+        
+        if (imgAspect > pageAspect) {
+          // Image is wider than page aspect ratio
+          drawWidth = pageWidth * 0.9; // 90% of page width with margin
+          drawHeight = drawWidth / imgAspect;
+        } else {
+          // Image is taller than page aspect ratio
+          drawHeight = pageHeight * 0.9; // 90% of page height with margin
+          drawWidth = drawHeight * imgAspect;
+        }
+        
+        // Center the image on the page
+        const x = (pageWidth - drawWidth) / 2;
+        const y = (pageHeight - drawHeight) / 2;
+        
+        // Draw the image
+        page.drawImage(image, {
+          x: x,
+          y: y,
+          width: drawWidth,
+          height: drawHeight,
+        });
+        
+        // Serialize the PDF to bytes
+        const pdfBytes = await pdfDoc.save();
+        
+        // Create a new File object with the PDF data
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const pdfFile = new File([pdfBlob], imageFile.name.replace(/\.[^/.]+$/, ".pdf"), {
+          type: 'application/pdf'
+        });
+        
+        return pdfFile;
+        
+      } catch (error) {
+        console.error('Error converting image to PDF:', error);
+        throw new Error('Failed to convert image to PDF');
+      }
     }
 
     // Event listeners (Complete R2 Integration)
@@ -5287,10 +5560,28 @@
           const fileObj = uploadedFiles[i];
           const settings = fileSettings[fileObj.id];
 
-          formData.append(`file_${i}`, fileObj.file);
+          let fileToUpload = fileObj.file;
+          let finalFilename = fileObj.name;
+
+          // Convert images to PDF based on settings
+          if (fileObj.isImage && fileObj.originalImageFile) {
+            try {
+              proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
+              fileToUpload = await convertImageToPDF(fileObj.originalImageFile, settings);
+              finalFilename = fileObj.name.replace(/\.[^/.]+$/, ".pdf");
+            } catch (error) {
+              console.error('Error converting image to PDF:', error);
+              alert(`Error converting ${fileObj.name} to PDF. Uploading original image instead.`);
+              // Fallback to original image if conversion fails
+              fileToUpload = fileObj.originalImageFile;
+            }
+          }
+
+          formData.append(`file_${i}`, fileToUpload);
 
           const settingsJson = {
-            filename: fileObj.name,
+            filename: finalFilename,
+            original_filename: fileObj.name, // Keep track of original filename
             service_type: 'regular print', // Default service type for regular print modal
             service_name: 'Regular Print', // Default service name for regular print modal
             copies: settings.copies,
@@ -5304,7 +5595,8 @@
             timestamp: new Date().toISOString(),
             status: "pending",
             job_completed: "NO",
-            trash: "NO"
+            trash: "NO",
+            was_image: fileObj.isImage || false // Track if this was originally an image
           };
 
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
