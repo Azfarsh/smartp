@@ -78,7 +78,7 @@ def vendordashboard(request):
             'print_requests': print_requests,
             'completed_jobs': completed_jobs,
             'vendor_details': vendor_details,
-            'total_jobs': len(files),
+            'total_jobs': len(manual_print_jobs) + len(print_requests) + len(completed_jobs),
             'manual_print_count': len(manual_print_jobs),
             'print_requests_count': len(print_requests),
             'completed_jobs_count': len(completed_jobs),
@@ -638,6 +638,30 @@ def update_job_status(request):
             if not filename:
                 return JsonResponse({'success': False, 'error': 'Filename required'})
 
+            # If vendor_id not provided in request, try to get it from session
+            if not vendor_id:
+                vendor_email = request.session.get('vendor_email')
+                if vendor_email:
+                    # Get vendor_id from vendor details
+                    vendor_details = get_vendor_details_by_email(vendor_email)
+                    if vendor_details:
+                        # Try to find vendor_id in registration details
+                        try:
+                            s3 = boto3.client('s3',
+                                            aws_access_key_id=settings.R2_ACCESS_KEY,
+                                            aws_secret_access_key=settings.R2_SECRET_KEY,
+                                            endpoint_url=settings.R2_ENDPOINT,
+                                            region_name='auto')
+                            
+                            reg_key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
+                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                            vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                            vendor_id = vendor_data.get('vendor_id', 'vendor1')
+                        except:
+                            vendor_id = 'vendor1'
+                else:
+                    vendor_id = 'vendor1'
+
             # Convert status to job_completed format
             job_completed_status = 'YES' if status.lower() in ['completed', 'yes'] else 'NO'
 
@@ -854,7 +878,7 @@ def update_printer_status(vendor_id, printer_stats):
 
 def update_file_job_status(filename, status='YES', vendor_id=None, completion_time=None):
     """
-    Update the job_completed metadata for a specific file
+    Update the job_completed metadata for a specific file in both vendor and user folders
     """
     s3 = boto3.client('s3',
                       aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -862,49 +886,131 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
                       endpoint_url=settings.R2_ENDPOINT,
                       region_name='auto')
 
+    updated_files = []
+    
     try:
-        # Get current object metadata
-        head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=filename)
-        current_metadata = head_response.get('Metadata', {})
-
-        # Update job_completed status
-        current_metadata['job_completed'] = status.upper()
-        current_metadata['completion_time'] = datetime.datetime.now().isoformat()
-
-        # Add vendor information if provided
-        if vendor_id:
-            current_metadata['completed_by_vendor'] = vendor_id
-
-        # Use provided completion time if available
-        if completion_time:
+        # Search for the file in vendor folders and user folders
+        prefixes_to_search = [
+            'vendor_print_jobs/',
+            'vendor_manual_print_jobs/',
+            'users/'
+        ]
+        
+        for prefix in prefixes_to_search:
             try:
-                # Convert timestamp to ISO format
-                completion_dt = datetime.datetime.fromtimestamp(float(completion_time))
-                current_metadata['completion_time'] = completion_dt.isoformat()
-            except (ValueError, TypeError):
-                pass  # Use default timestamp if conversion fails
+                # List objects with the prefix
+                response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
+                
+                for obj in response.get('Contents', []):
+                    key = obj['Key']
+                    # Check if this is the file we're looking for
+                    if key.endswith(filename):
+                        try:
+                            # Get current object metadata
+                            head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                            current_metadata = head_response.get('Metadata', {})
 
-        # Update status for better tracking
-        if status.upper() == 'YES':
-            current_metadata['status'] = 'completed'
+                            # Update job_completed status
+                            current_metadata['job_completed'] = status.upper()
+                            current_metadata['completion_time'] = datetime.datetime.now().isoformat()
+
+                            # Add vendor information if provided
+                            if vendor_id:
+                                current_metadata['completed_by_vendor'] = vendor_id
+
+                            # Use provided completion time if available
+                            if completion_time:
+                                try:
+                                    # Convert timestamp to ISO format
+                                    completion_dt = datetime.datetime.fromtimestamp(float(completion_time))
+                                    current_metadata['completion_time'] = completion_dt.isoformat()
+                                except (ValueError, TypeError):
+                                    pass  # Use default timestamp if conversion fails
+
+                            # Update status for better tracking
+                            if status.upper() == 'YES':
+                                current_metadata['status'] = 'completed'
+                                
+                                # Create notification for job completion
+                                user_email = current_metadata.get('user', '')
+                                token = current_metadata.get('token', '')
+                                service_type = current_metadata.get('service_type', '')
+                                
+                                if user_email and token:
+                                    # Get vendor name
+                                    vendor_name = 'PrintMax Vendor'
+                                    if vendor_id:
+                                        try:
+                                            # Try to get vendor details by vendor_id first
+                                            vendor_details = get_vendor_details_by_email(vendor_id)
+                                            if vendor_details:
+                                                vendor_name = vendor_details.get('vendor_name', 'PrintMax Vendor')
+                                            else:
+                                                # If vendor_id is not an email, try to find vendor by vendor_id
+                                                s3 = boto3.client('s3',
+                                                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                                                  endpoint_url=settings.R2_ENDPOINT,
+                                                                  region_name='auto')
+                                                
+                                                # Search for vendor registration with this vendor_id
+                                                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+                                                for obj in objects.get("Contents", []):
+                                                    if obj["Key"].endswith('/registration_details.json'):
+                                                        try:
+                                                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                                                            vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                                                            if vendor_data.get('vendor_id') == vendor_id:
+                                                                vendor_name = vendor_data.get('vendor_name', 'PrintMax Vendor')
+                                                                break
+                                                        except:
+                                                            continue
+                                        except:
+                                            pass
+                                    
+                                    # Create notification
+                                    create_job_completion_notification(
+                                        user_email=user_email,
+                                        filename=filename,
+                                        token=token,
+                                        vendor_name=vendor_name,
+                                        service_type=service_type,
+                                        completion_time=current_metadata.get('completion_time', datetime.datetime.now().isoformat())
+                                    )
+                            else:
+                                current_metadata['status'] = current_metadata.get('status', 'pending')
+
+                            # Copy object with updated metadata
+                            copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
+
+                            s3.copy_object(
+                                CopySource=copy_source,
+                                Bucket=settings.R2_BUCKET,
+                                Key=key,
+                                Metadata=current_metadata,
+                                MetadataDirective='REPLACE'
+                            )
+
+                            updated_files.append(key)
+                            print(f"✅ Updated job status for {key}: {status}")
+
+                        except Exception as e:
+                            print(f"❌ Error updating file {key}: {str(e)}")
+                            continue
+                            
+            except Exception as e:
+                print(f"❌ Error searching in {prefix}: {str(e)}")
+                continue
+
+        if updated_files:
+            print(f"📋 Successfully updated {len(updated_files)} file(s) in R2 storage")
+            return True
         else:
-            current_metadata['status'] = current_metadata.get('status', 'pending')
-
-        # Copy object with updated metadata
-        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': filename}
-
-        s3.copy_object(
-            CopySource=copy_source,
-            Bucket=settings.R2_BUCKET,
-            Key=filename,
-            Metadata=current_metadata,
-            MetadataDirective='REPLACE'
-        )
-
-        return True
+            print(f"⚠️ No files found with filename: {filename}")
+            return False
 
     except Exception as e:
-        print(f"Error updating job status for {filename}: {str(e)}")
+        print(f"❌ Error updating job status for {filename}: {str(e)}")
         return False
 
 
@@ -1889,3 +1995,189 @@ def get_vendor_id_by_shop_folder(shop_folder):
         return 'vendor1'
 
 # This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.
+
+# ─────────────────────────────────────────────────────────────
+# NOTIFICATION SYSTEM
+# ─────────────────────────────────────────────────────────────
+
+def create_job_completion_notification(user_email, filename, token, vendor_name, service_type, completion_time):
+    """
+    Create a notification for job completion and store it in R2
+    """
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        # Create notification data
+        notification_id = str(uuid.uuid4())
+        
+        # Format service type for display
+        service_display = service_type.replace('_', ' ').title() if service_type else 'Print Job'
+        
+        notification_data = {
+            'notification_id': notification_id,
+            'type': 'job_completed',
+            'user_email': user_email,
+            'filename': filename,
+            'token': token,
+            'vendor_name': vendor_name,
+            'service_type': service_type,
+            'completion_time': completion_time,
+            'created_at': datetime.datetime.now().isoformat(),
+            'read': False,
+            'message': f"Token #{token} - {service_display} completed",
+            'title': 'Print Job Ready!',
+            'details': {
+                'filename': filename,
+                'token': token,
+                'vendor_name': vendor_name,
+                'service_type': service_type,
+                'completion_time': completion_time
+            }
+        }
+
+        # Store notification in user's notification folder
+        notification_key = f'notifications/{sanitize_email(user_email)}/{notification_id}.json'
+        
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=notification_key,
+            Body=json.dumps(notification_data, indent=2),
+            ContentType='application/json'
+        )
+
+        print(f"✅ Created notification for user {user_email}: {filename}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error creating notification: {str(e)}")
+        return False
+
+
+def get_user_notifications(user_email):
+    """
+    Get all notifications for a specific user
+    """
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        notifications = []
+        prefix = f'notifications/{sanitize_email(user_email)}/'
+        
+        try:
+            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
+            
+            for obj in response.get('Contents', []):
+                key = obj['Key']
+                if key.endswith('.json'):
+                    try:
+                        # Get notification data
+                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                        notification_data = json.loads(response['Body'].read().decode('utf-8'))
+                        notifications.append(notification_data)
+                    except Exception as e:
+                        print(f"Error reading notification {key}: {str(e)}")
+                        continue
+
+        except Exception as e:
+            print(f"Error listing notifications: {str(e)}")
+
+        # Sort by creation time (newest first)
+        notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        return notifications
+
+    except Exception as e:
+        print(f"Error getting user notifications: {str(e)}")
+        return []
+
+
+@csrf_exempt
+def mark_notification_read(request):
+    """
+    Mark a notification as read
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            notification_id = data.get('notification_id')
+            user_email = data.get('user_email')
+
+            if not notification_id or not user_email:
+                return JsonResponse({'success': False, 'error': 'Missing notification_id or user_email'})
+
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+
+            notification_key = f'notifications/{sanitize_email(user_email)}/{notification_id}.json'
+            
+            try:
+                # Get current notification data
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=notification_key)
+                notification_data = json.loads(response['Body'].read().decode('utf-8'))
+                
+                # Mark as read
+                notification_data['read'] = True
+                notification_data['read_at'] = datetime.datetime.now().isoformat()
+
+                # Update the notification
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=notification_key,
+                    Body=json.dumps(notification_data, indent=2),
+                    ContentType='application/json'
+                )
+
+                return JsonResponse({'success': True, 'message': 'Notification marked as read'})
+
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'Error updating notification: {str(e)}'})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@csrf_exempt
+def get_user_notifications_api(request):
+    """
+    API endpoint to get user notifications
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user_email = data.get('user_email')
+
+            if not user_email:
+                return JsonResponse({'success': False, 'error': 'Missing user_email'})
+
+            notifications = get_user_notifications(user_email)
+            
+            # Count unread notifications
+            unread_count = len([n for n in notifications if not n.get('read', False)])
+
+            return JsonResponse({
+                'success': True,
+                'notifications': notifications,
+                'unread_count': unread_count
+            })
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# ─────────────────────────────────────────────────────────────
+# FILE UPLOAD TO CLOUDFLARE R2
+# ─────────────────────────────────────────────────────────────

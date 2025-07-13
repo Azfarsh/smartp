@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -525,6 +524,19 @@
             box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
         }
 
+        .search-input.searching {
+            border-color: var(--primary);
+            background: var(--surface-container);
+        }
+
+        .search-results-info {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            margin-top: 8px;
+            text-align: center;
+            font-style: italic;
+        }
+
         .search-icon {
             position: absolute;
             left: 14px;
@@ -558,20 +570,41 @@
             gap: 10px;
         }
 
-        /* Streamlined Job Cards */
+        /* Enhanced Job Cards - Classic & Impressive */
         .job-card {
             background: var(--surface);
             border: 1px solid var(--outline);
-            border-radius: 8px;
-            padding: 8px 24px; /* less vertical, more horizontal */
+            border-radius: 12px;
+            padding: 16px 20px;
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            min-height: 60px; /* was 90px, less tall */
-            min-width: 260px; /* new: ensure more width */
-            max-width: 600px; /* new: prevent too wide on large screens */
-            margin: 0 auto; /* center in grid cell */
+            min-height: 80px;
+            min-width: 280px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 2px 8px var(--shadow-light);
+        }
+
+        .job-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .job-card.manual::before { 
+            background: linear-gradient(90deg, var(--manual-color), #9c27b0); 
+        }
+        .job-card.requests::before { 
+            background: linear-gradient(90deg, var(--requests-color), #2196f3); 
+        }
+        .job-card.completed::before { 
+            background: linear-gradient(90deg, var(--completed-color), #4caf50); 
         }
 
         .job-card::before {
@@ -588,25 +621,34 @@
         .job-card.completed::before { background: var(--completed-color); }
 
         .job-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px var(--shadow);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px var(--shadow);
             border-color: var(--primary);
+        }
+
+        .job-card:active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--shadow);
         }
 
         .job-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 6px; /* was 12px */
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--outline-variant);
         }
 
         .job-token {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: var(--on-primary);
             font-size: 12px;
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 6px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 0.5px;
         }
 
         .job-status {
@@ -633,21 +675,22 @@
         }
 
         .job-filename {
-            font-size: 14px; /* was 16px */
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
             color: var(--on-surface);
-            margin-bottom: 4px; /* was 8px */
+            margin-bottom: 8px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            line-height: 1.3;
         }
 
         .job-meta {
             display: flex;
-            gap: 8px; /* was 16px */
-            font-size: 12px; /* was 13px */
+            gap: 10px;
+            font-size: 12px;
             color: var(--on-surface-variant);
-            margin-bottom: 6px; /* was 12px */
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
 
@@ -656,8 +699,10 @@
             align-items: center;
             gap: 6px;
             background: var(--surface-container);
-            padding: 2px 6px; /* was 4px 8px */
-            border-radius: 4px; /* was 6px */
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--outline-variant);
+            font-weight: 500;
         }
 
         .job-meta-item i {
@@ -738,6 +783,12 @@
             box-shadow: 0 2px 8px var(--shadow);
         }
 
+        .btn-small:active {
+            transform: scale(0.96);
+            filter: brightness(0.92);
+            box-shadow: 0 1px 2px var(--shadow-light);
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -787,6 +838,252 @@
             border: 1px solid var(--outline);
         }
 
+        .print-info-modal {
+            width: 600px;
+            max-width: 95%;
+            max-height: 80vh;
+        }
+
+        .print-info-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin: 20px 0;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .print-info-section {
+            background: var(--surface-container);
+            border: 1px solid var(--outline);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .print-info-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--on-surface);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .print-info-title i {
+            color: var(--primary);
+        }
+
+        .print-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--outline-variant);
+        }
+
+        .print-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .print-info-label {
+            font-size: 14px;
+            color: var(--on-surface-variant);
+            font-weight: 500;
+        }
+
+        .print-info-value {
+            font-size: 14px;
+            color: var(--on-surface);
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .print-info-value.highlight {
+            color: var(--primary);
+            background: var(--primary-bg);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .print-preview-section {
+            background: var(--surface-container);
+            border: 1px solid var(--outline);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .print-preview-container {
+            width: 100%;
+            height: 180px;
+            border: 1px solid var(--outline);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        .print-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--outline);
+        }
+
+        .btn-print-large {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--on-primary);
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+            min-width: 200px;
+            justify-content: center;
+        }
+
+        .btn-print-large:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(21, 101, 192, 0.4);
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+        }
+
+        .btn-print-large:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 16px rgba(21, 101, 192, 0.4);
+        }
+
+        .btn-print-large i {
+            font-size: 18px;
+        }
+
+        .btn-print-modal {
+            background: var(--primary);
+            color: var(--on-primary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 160px;
+            justify-content: center;
+        }
+
+        .btn-print-modal:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+        }
+
+        .btn-print-modal:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(21, 101, 192, 0.3);
+        }
+
+        .btn-print-modal i {
+            font-size: 16px;
+        }
+
+        .job-hide-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            z-index: 5;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        .job-card.completed:hover .job-hide-btn {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .job-hide-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+            background: #c0392b;
+        }
+
+        .job-hide-btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-print-info {
+            background: var(--surface-container);
+            color: var(--on-surface);
+            border: 1px solid var(--outline);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-print-info:hover {
+            background: var(--surface-container-high);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .btn-print-info:active {
+            transform: scale(0.98);
+        }
+
+        .btn-print-info i {
+            font-size: 12px;
+        }
+
+        /* Scrollbar styling for print info modal */
+        .print-info-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .print-info-grid::-webkit-scrollbar-track {
+            background: var(--surface-variant);
+            border-radius: 3px;
+        }
+
+        .print-info-grid::-webkit-scrollbar-thumb {
+            background: var(--outline);
+            border-radius: 3px;
+        }
+
+        .print-info-grid::-webkit-scrollbar-thumb:hover {
+            background: var(--on-surface-variant);
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -794,6 +1091,31 @@
             margin-bottom: 20px;
             padding-bottom: 16px;
             border-bottom: 1px solid var(--outline);
+            position: relative;
+        }
+
+        .modal-close-top {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: var(--manual-color);
+            color: var(--on-primary);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .modal-close-top:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
         }
 
         .modal-title {
@@ -1126,8 +1448,9 @@
                         <input 
                             type="text" 
                             class="search-input" 
-                            placeholder="Search manual jobs..."
+                            placeholder="Search by token, filename, user..."
                             oninput="searchJobs('manual', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
                         >
                     </div>
                     <div class="job-count" id="manualCount">0</div>
@@ -1159,8 +1482,9 @@
                         <input 
                             type="text" 
                             class="search-input" 
-                            placeholder="Search requests..."
+                            placeholder="Search by token, filename, user..."
                             oninput="searchJobs('requests', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
                         >
                     </div>
                     <div class="job-count" id="requestsCount">0</div>
@@ -1192,8 +1516,9 @@
                         <input 
                             type="text" 
                             class="search-input" 
-                            placeholder="Search completed..."
+                            placeholder="Search by token, filename, user..."
                             oninput="searchJobs('completed', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
                         >
                     </div>
                     <div class="job-count" id="completedCount">0</div>
@@ -1227,6 +1552,87 @@
         </div>
     </div>
 
+    <!-- Print Info Modal -->
+    <div class="modal" id="printInfoModal">
+        <div class="modal-content print-info-modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="printInfoTitle">Print Job Information</h3>
+                <button class="modal-close-top" onclick="closePrintInfoModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="print-info-grid">
+                <!-- Document Preview Section -->
+                <div class="print-preview-section">
+                    <div class="print-info-title">
+                        <i class="fas fa-eye"></i>
+                        Document Preview
+                    </div>
+                    <div class="print-preview-container">
+                        <iframe id="printInfoPreviewFrame" class="preview-frame"></iframe>
+                        <img id="printInfoPreviewImage" class="preview-frame" style="display: none; object-fit: contain;" alt="Preview">
+                    </div>
+                </div>
+
+                <!-- Print Settings Section -->
+                <div class="print-info-section">
+                    <div class="print-info-title">
+                        <i class="fas fa-print"></i>
+                        Print Settings
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Filename:</span>
+                        <span class="print-info-value" id="printInfoFilename">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Token:</span>
+                        <span class="print-info-value highlight" id="printInfoToken">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Copies:</span>
+                        <span class="print-info-value" id="printInfoCopies">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Color:</span>
+                        <span class="print-info-value" id="printInfoColor">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Orientation:</span>
+                        <span class="print-info-value" id="printInfoOrientation">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Page Size:</span>
+                        <span class="print-info-value" id="printInfoPageSize">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Pages:</span>
+                        <span class="print-info-value" id="printInfoPages">-</span>
+                    </div>
+                    <div class="print-info-item" id="printInfoThicknessItem" style="display: none;">
+                        <span class="print-info-label">Thickness:</span>
+                        <span class="print-info-value" id="printInfoThickness">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Service Type:</span>
+                        <span class="print-info-value" id="printInfoServiceType">-</span>
+                    </div>
+                    <div class="print-info-item" id="printInfoFeedbackItem" style="display: none;">
+                        <span class="print-info-label">Feedback:</span>
+                        <span class="print-info-value" id="printInfoFeedback">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print Actions -->
+            <div class="print-actions">
+                <button class="btn-print-modal" id="printInfoPrintBtn" onclick="printFromInfoModal()">
+                    <i class="fas fa-print"></i> Send to Printer
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
@@ -1235,6 +1641,7 @@
         let allJobs = [];
         let filteredJobs = { manual: [], completed: [], requests: [] };
         let sidebarCollapsed = false;
+        let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1368,8 +1775,13 @@
                 return serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
             });
 
-            // Completed Jobs: job_completed = 'YES'
-            const completed = allJobs.filter(job => job.job_completed === 'YES');
+            // Completed Jobs: job_completed = 'YES' AND not hidden
+            const completed = allJobs.filter(job => {
+                if (job.job_completed !== 'YES') return false;
+                // Check if job is hidden
+                const jobKey = `${job.filename}_${job.token || 'no_token'}`;
+                return !hiddenCompletedJobs.has(jobKey);
+            });
 
             filteredJobs = { manual, completed, requests };
 
@@ -1470,15 +1882,25 @@
                 </button>
                 <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
                     <i class="fas fa-check"></i> Completed
+                </button>
+                <button class="btn-print-info" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="View print information">
+                    <i class="fas fa-info-circle"></i> Print Info
                 </button>` :
                 type === 'requests' ? 
                 `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
                     <i class="fas fa-check"></i> Accept
                 </button>` : '';
 
+            // Add hide button for completed jobs
+            const hideButton = type === 'completed' ? 
+                `<button class="job-hide-btn" onclick="event.stopPropagation(); hideCompletedJob('${job.filename}', '${job.token || ''}')" title="Hide from completed jobs">
+                    <i class="fas fa-times"></i>
+                </button>` : '';
+
             // Main info block (compact)
             return `
                 <div class="job-card ${cardClass} compact" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
+                    ${hideButton}
                     ${serviceTypeBadge}
                     <div class="job-header compact">
                         <div class="job-token" title="Job Token">${tokenNumber}</div>
@@ -1516,17 +1938,21 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({ filename: filename, status: 'completed' })
+                    body: JSON.stringify({ 
+                        filename: filename, 
+                        status: 'completed',
+                        completion_time: Date.now() / 1000
+                    })
                 });
                 const data = await response.json();
                 if (data.success) {
                     showToast('Job marked as completed!');
-                    setTimeout(loadJobs, 800);
+                    setTimeout(() => { loadJobs(); }, 800);
                 } else {
-                    showToast('Failed to mark as completed.');
+                    showToast('Failed to mark as completed: ' + (data.error || 'Unknown error'));
                 }
             } catch (err) {
-                showToast('Error completing job.');
+                showToast('Error completing job: ' + err.message);
             }
         }
 
@@ -1613,19 +2039,246 @@
             document.getElementById('previewModal').classList.remove('show');
         }
 
+        // Print Info Modal Functions
+        function showPrintInfo(filename, previewUrl, jobData) {
+            const modal = document.getElementById('printInfoModal');
+            const title = document.getElementById('printInfoTitle');
+            
+            // Set modal title
+            title.textContent = `Print Settings - ${filename}`;
+            
+            // Populate print settings
+            document.getElementById('printInfoFilename').textContent = jobData.filename || '-';
+            document.getElementById('printInfoToken').textContent = jobData.token ? `#${jobData.token}` : '-';
+            document.getElementById('printInfoCopies').textContent = jobData.copies || '1';
+            document.getElementById('printInfoColor').textContent = jobData.color || 'Black and White';
+            document.getElementById('printInfoOrientation').textContent = formatOrientation(jobData.orientation || 'portrait');
+            document.getElementById('printInfoPageSize').textContent = jobData.pageSize || jobData.page_size || 'A4';
+            document.getElementById('printInfoPages').textContent = jobData.pages || '1';
+            document.getElementById('printInfoServiceType').textContent = formatServiceType(jobData.service_type || '');
+            
+            // Show thickness if available (for jumbo printing)
+            const thicknessItem = document.getElementById('printInfoThicknessItem');
+            const thicknessValue = document.getElementById('printInfoThickness');
+            if (jobData.thickness && jobData.thickness.trim()) {
+                thicknessItem.style.display = 'flex';
+                thicknessValue.textContent = jobData.thickness;
+            } else {
+                thicknessItem.style.display = 'none';
+            }
+            
+            // Show feedback if available
+            const feedbackItem = document.getElementById('printInfoFeedbackItem');
+            const feedbackValue = document.getElementById('printInfoFeedback');
+            if (jobData.feedback && jobData.feedback.trim()) {
+                feedbackItem.style.display = 'flex';
+                feedbackValue.textContent = jobData.feedback;
+            } else {
+                feedbackItem.style.display = 'none';
+            }
+            
+            // Load document preview
+            loadPrintInfoPreview(previewUrl, filename);
+            
+            // Store job data for print action
+            modal.dataset.jobData = JSON.stringify(jobData);
+            modal.dataset.previewUrl = previewUrl;
+            
+            // Show modal
+            modal.classList.add('show');
+        }
+
+        function closePrintInfoModal() {
+            document.getElementById('printInfoModal').classList.remove('show');
+        }
+
+        function loadPrintInfoPreview(url, filename) {
+            const frame = document.getElementById('printInfoPreviewFrame');
+            const image = document.getElementById('printInfoPreviewImage');
+            const ext = filename.split('.').pop().toLowerCase();
+
+            if (ext === 'pdf') {
+                frame.style.display = 'block';
+                image.style.display = 'none';
+                frame.src = url;
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                frame.style.display = 'none';
+                image.style.display = 'block';
+                image.src = url;
+            } else {
+                frame.style.display = 'block';
+                image.style.display = 'none';
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+            }
+        }
+
+        function printFromInfoModal() {
+            const modal = document.getElementById('printInfoModal');
+            const previewUrl = modal.dataset.previewUrl;
+            
+            if (previewUrl) {
+                sendPrintJob(previewUrl, 'Document from Print Info');
+                showToast('Print job sent to printer!');
+            } else {
+                showToast('No document available to print.');
+            }
+        }
+
+        function formatServiceType(serviceType) {
+            if (!serviceType) return 'Regular Print';
+            
+            const serviceMap = {
+                'digital_print': 'Digital Print',
+                'project_binding': 'Project Binding',
+                'gloss_printing': 'Gloss Paper Printing',
+                'jumbo_printing': 'Jumbo Paper Printing',
+                'regular_print': 'Regular Print',
+                'photo_print': 'Photo Print',
+                'passport_print': 'Passport Print'
+            };
+            
+            return serviceMap[serviceType.toLowerCase()] || serviceType.replace('_', ' ').toUpperCase();
+        }
+
+        function formatOrientation(orientation) {
+            return orientation.charAt(0).toUpperCase() + orientation.slice(1);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // Hide completed job function
+        function hideCompletedJob(filename, token) {
+            const jobKey = `${filename}_${token || 'no_token'}`;
+            
+            // Add to hidden set
+            hiddenCompletedJobs.add(jobKey);
+            
+            // Save to localStorage
+            localStorage.setItem('hiddenCompletedJobs', JSON.stringify([...hiddenCompletedJobs]));
+            
+            // Remove from UI immediately
+            const jobCard = document.querySelector(`[data-filename="${filename}"]`);
+            if (jobCard) {
+                jobCard.style.opacity = '0';
+                jobCard.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    jobCard.remove();
+                    // Re-categorize jobs to update counts
+                    categorizeJobs();
+                }, 300);
+            }
+            
+            showToast('Job hidden from completed section');
+        }
+
         // Search Functionality
         function searchJobs(type, term) {
             const jobs = filteredJobs[type];
+            const searchInput = document.querySelector(`input[placeholder*="${type === 'manual' ? 'manual' : type === 'completed' ? 'completed' : 'requests'}"]`);
+            
             if (!term.trim()) {
+                // Clear search - restore original jobs
                 renderJobs(type, jobs);
+                if (searchInput) {
+                    searchInput.classList.remove('searching');
+                }
                 return;
             }
 
-            const filtered = jobs.filter(job => 
-                job.filename.toLowerCase().includes(term.toLowerCase()) ||
-                (job.user && job.user.toLowerCase().includes(term.toLowerCase()))
-            );
+            const searchTerm = term.toLowerCase().trim();
+            
+            // Add visual feedback that search is active
+            if (searchInput) {
+                searchInput.classList.add('searching');
+            }
+            
+            const filtered = jobs.filter(job => {
+                // Search by filename (PDF name)
+                if (job.filename && job.filename.toLowerCase().includes(searchTerm)) {
+                    return true;
+                }
+                
+                // Search by token (with or without #)
+                if (job.token) {
+                    const tokenStr = job.token.toString();
+                    if (tokenStr.includes(searchTerm) || 
+                        `#${tokenStr}`.includes(searchTerm) ||
+                        searchTerm.includes(tokenStr)) {
+                        return true;
+                    }
+                }
+                
+                // Search by user email/name
+                if (job.user && job.user.toLowerCase().includes(searchTerm)) {
+                    return true;
+                }
+                
+                // Search by service type
+                if (job.service_type && job.service_type.toLowerCase().includes(searchTerm)) {
+                    return true;
+                }
+                
+                // Search by service name
+                if (job.service_name && job.service_name.toLowerCase().includes(searchTerm)) {
+                    return true;
+                }
+                
+                // Search by job ID
+                if (job.job_id && job.job_id.toLowerCase().includes(searchTerm)) {
+                    return true;
+                }
+                
+                return false;
+            });
+            
             renderJobs(type, filtered);
+            
+            // Show search results count and feedback
+            const containerId = type === 'manual' ? 'manualJobs' : 
+                               type === 'completed' ? 'completedJobs' : 'printRequests';
+            const container = document.getElementById(containerId);
+            
+            if (filtered.length === 0 && searchTerm) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <h3>No results found</h3>
+                        <p>No jobs found matching "${term}"</p>
+                        <div class="search-results-info">
+                            Try searching by: filename, token number, user email, or service type
+                        </div>
+                    </div>
+                `;
+            } else if (searchTerm) {
+                // Add search results info
+                const existingInfo = container.querySelector('.search-results-info');
+                if (!existingInfo) {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'search-results-info';
+                    infoDiv.textContent = `Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${term}"`;
+                    container.appendChild(infoDiv);
+                }
+            }
+            
+            // Show toast for search feedback
+            if (searchTerm && filtered.length > 0) {
+                showToast(`Found ${filtered.length} job${filtered.length !== 1 ? 's' : ''} matching "${term}"`);
+            }
         }
 
         // Toast Notification
@@ -1639,8 +2292,14 @@
         // Event Listeners
         window.addEventListener('click', function(event) {
             const modal = document.getElementById('previewModal');
+            const printInfoModal = document.getElementById('printInfoModal');
+            
             if (event.target === modal) {
                 closeModal();
+            }
+            
+            if (event.target === printInfoModal) {
+                closePrintInfoModal();
             }
         });
 
