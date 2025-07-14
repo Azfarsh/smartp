@@ -1095,34 +1095,61 @@ def upload_to_r2(request):
                         'service_name': print_settings.get('service_name', '')
                     }
 
-                    # Check if this is a passport photo service
+                    # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
                     storage_folder = request.POST.get('storage_folder', 'vendor_print_jobs')
                     
-                    if service_type == 'passport_photo':
-                        # Get number of photos from copies or print_settings (define before use)
-                        total_prints = int(print_settings.get("copies", 8))
-                        if total_prints not in [8, 16, 30]:
-                            total_prints = 8  # Default to 8 if invalid
+                    if service_type in ['photo_print', 'passport_photo']:
+                        # Handle photo print processing
+                        print(f"📸 Processing {service_type} service...")
                         
-                        # Handle passport photo processing
-                        print(f"📸 Processing passport photo service for {total_prints} photos...")
+                        # Collect all image files for this job
+                        image_files_data = []
+                        for j in range(file_count):
+                            if f'file_{j}' in request.FILES:
+                                temp_file = request.FILES[f'file_{j}']
+                                if temp_file.content_type and temp_file.content_type.startswith('image/'):
+                                    image_files_data.append(temp_file.read())
                         
-                        # Create passport photo layout
-                        pdf_data = create_passport_photo_layout(file_content, total_prints)
+                        if not image_files_data:
+                            image_files_data = [file_content]  # Use current file if no other images
+                        
+                        # Create layout configuration
+                        layout_config = {
+                            'photo_count': int(print_settings.get('photo_count', 1)),
+                            'layout': print_settings.get('layout', '1x1'),
+                            'image_mode': print_settings.get('image_mode', 'same'),
+                            'color': print_settings.get('color', 'Color'),
+                            'paper_size': print_settings.get('paper_size', 'A4')
+                        }
+                        
+                        # Create photo layout PDF
+                        if service_type == 'passport_photo':
+                            # Legacy passport photo handling
+                            total_prints = int(print_settings.get("copies", 8))
+                            pdf_data = create_passport_photo_layout(file_content, total_prints)
+                        else:
+                            # New photo print layout
+                            pdf_data = create_photo_print_layout(image_files_data, layout_config)
                         
                         if pdf_data:
-                            # Update file metadata for passport photo
+                            # Update file metadata for photo service
                             file_metadata.update({
-                                'service_type': 'passport_photo',
-                                'total_photos': str(total_prints),
+                                'service_type': service_type,
+                                'photo_count': str(layout_config['photo_count']),
+                                'layout': layout_config['layout'],
+                                'image_mode': layout_config['image_mode'],
                                 'layout_created': 'YES',
-                                'original_filename': file.name
+                                'original_filename': file.name,
+                                'paper_size': layout_config['paper_size']
                             })
                             
                             # Generate new filename for the PDF layout
                             base_name = os.path.splitext(file.name)[0]
-                            pdf_filename = f"passport_layout_{base_name}_{total_prints}photos.pdf"
+                            if service_type == 'passport_photo':
+                                pdf_filename = f"passport_layout_{base_name}_{layout_config['photo_count']}photos.pdf"
+                            else:
+                                pdf_filename = f"photo_layout_{base_name}_{layout_config['layout']}_{layout_config['photo_count']}photos.pdf"
                             
                             # Store the PDF layout in vendor and user folders
                             vendor_file_key = f'{storage_folder}/{vendor_id}/{pdf_filename}'
@@ -1146,10 +1173,10 @@ def upload_to_r2(request):
                                 Metadata=file_metadata
                             )
                             
-                            print(f"✅ Passport photo layout saved as PDF: {pdf_filename}")
+                            print(f"✅ Photo layout saved as PDF: {pdf_filename}")
                         else:
-                            print("❌ Failed to create passport photo layout")
-                            return JsonResponse({'success': False, 'error': 'Failed to create passport photo layout'}, status=500)
+                            print(f"❌ Failed to create {service_type} layout")
+                            return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
                     else:
                         # Regular file upload for non-passport services
                         vendor_file_key = f'{storage_folder}/{vendor_id}/{file.name}'
@@ -1380,121 +1407,140 @@ def format_file_size(size_bytes):
     return f"{size_bytes:.1f} {size_names[i]}"
 
 
-def create_passport_photo_layout(input_image_data, total_prints=8):
+def create_photo_print_layout(input_images_data, layout_config):
     """
-    Create a passport photo layout with a dynamic grid (2x4, 4x4, 5x6) on a single A4 page as PDF.
+    Create a photo print layout with dynamic grid arrangements on A4 page as PDF.
     Args:
-        input_image_data (bytes): Input image data
-        total_prints (int): Number of passport photos (8, 16, 30)
+        input_images_data (list): List of input image data (bytes)
+        layout_config (dict): Layout configuration with grid info and settings
     Returns:
         bytes: PDF data of the layout, None if failed
     """
     try:
-        print(f"📸 Creating passport photo layout for {total_prints} photos...")
+        total_prints = layout_config.get('photo_count', 1)
+        layout_type = layout_config.get('layout', '1x1')
+        image_mode = layout_config.get('image_mode', 'same')
         
-        # Standard passport photo dimensions at 300 DPI for high quality printing
-        PASSPORT_WIDTH = 413   # 35mm at 300 DPI
-        PASSPORT_HEIGHT = 531  # 45mm at 300 DPI
+        print(f"📸 Creating photo print layout for {total_prints} photos in {layout_type} arrangement...")
+        
+        # A4 dimensions at 300 DPI for high quality printing
         A4_WIDTH = 2480   # 210mm at 300 DPI
         A4_HEIGHT = 3508  # 297mm at 300 DPI
         MARGIN = 118      # 10mm margins
         SPACING = 59      # 5mm spacing between photos
         
-        # Determine grid layout based on total prints
-        if total_prints == 8:
-            cols, rows = 2, 4
-        elif total_prints == 16:
-            cols, rows = 4, 4
-        elif total_prints == 30:
-            cols, rows = 5, 6
-        else:
-            print(f"❌ Unsupported total_prints: {total_prints}. Using default 8 photos.")
-            total_prints = 8
-            cols, rows = 2, 4
+        # Determine grid layout based on layout type
+        layout_grids = {
+            '1x1': (1, 1),
+            '2x1': (2, 1),
+            '2x2': (2, 2),
+            '3x2': (3, 2),
+            '3x3': (3, 3)
+        }
         
-        # Load and process the input image
-        print("📂 Loading image from data...")
-        original_image = Image.open(io.BytesIO(input_image_data))
-        if original_image.mode != 'RGB':
-            original_image = original_image.convert('RGB')
+        cols, rows = layout_grids.get(layout_type, (1, 1))
+        actual_photos = min(total_prints, cols * rows)
         
-        # Resize to passport photo dimensions while maintaining aspect ratio
-        print("🔄 Resizing to passport photo dimensions...")
-        original_width, original_height = original_image.size
-        scale_width = PASSPORT_WIDTH / original_width
-        scale_height = PASSPORT_HEIGHT / original_height
-        scale = min(scale_width, scale_height)
+        # Calculate photo dimensions based on grid layout
+        available_width = A4_WIDTH - (2 * MARGIN) - ((cols - 1) * SPACING)
+        available_height = A4_HEIGHT - (2 * MARGIN) - ((rows - 1) * SPACING)
+        photo_width = available_width // cols
+        photo_height = available_height // rows
         
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-        resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        # Load and process images
+        print("📂 Loading and processing images...")
+        processed_images = []
         
-        # Create passport photo with white background and centered image
-        passport_photo = Image.new('RGB', (PASSPORT_WIDTH, PASSPORT_HEIGHT), 'white')
-        x_offset = (PASSPORT_WIDTH - new_width) // 2
-        y_offset = (PASSPORT_HEIGHT - new_height) // 2
-        passport_photo.paste(resized_image, (x_offset, y_offset))
+        for i, image_data in enumerate(input_images_data):
+            if i >= actual_photos:
+                break
+                
+            original_image = Image.open(io.BytesIO(image_data))
+            if original_image.mode != 'RGB':
+                original_image = original_image.convert('RGB')
+            
+            # Resize image to fit photo dimensions while maintaining aspect ratio
+            original_width, original_height = original_image.size
+            scale_width = photo_width / original_width
+            scale_height = photo_height / original_height
+            scale = min(scale_width, scale_height)
+            
+            new_width = int(original_width * scale)
+            new_height = int(original_height * scale)
+            resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Create photo with white background and centered image
+            photo = Image.new('RGB', (photo_width, photo_height), 'white')
+            x_offset = (photo_width - new_width) // 2
+            y_offset = (photo_height - new_height) // 2
+            photo.paste(resized_image, (x_offset, y_offset))
+            processed_images.append(photo)
+        
+        # If same image mode and we have only one image, replicate it
+        if image_mode == 'same' and len(processed_images) == 1:
+            single_image = processed_images[0]
+            processed_images = [single_image.copy() for _ in range(actual_photos)]
         
         # Create the A4 layout with white background
-        print(f"📄 Creating A4 layout with {total_prints} passport photos...")
+        print(f"📄 Creating A4 layout with {actual_photos} photos in {layout_type} grid...")
         layout = Image.new('RGB', (A4_WIDTH, A4_HEIGHT), 'white')
         
         # Calculate positioning to center the grid on the page
-        total_width = cols * PASSPORT_WIDTH + (cols - 1) * SPACING
-        total_height = rows * PASSPORT_HEIGHT + (rows - 1) * SPACING
+        total_width = cols * photo_width + (cols - 1) * SPACING
+        total_height = rows * photo_height + (rows - 1) * SPACING
         start_x = max(MARGIN, (A4_WIDTH - total_width) // 2)
         start_y = max(MARGIN, (A4_HEIGHT - total_height) // 2)
         
         # Place photos on the layout
-        photo_count = 0
+        photo_index = 0
         for row in range(rows):
             for col in range(cols):
-                if photo_count >= total_prints:
+                if photo_index >= actual_photos or photo_index >= len(processed_images):
                     break
-                x = start_x + col * (PASSPORT_WIDTH + SPACING)
-                y = start_y + row * (PASSPORT_HEIGHT + SPACING)
-                layout.paste(passport_photo, (x, y))
-                photo_count += 1
+                x = start_x + col * (photo_width + SPACING)
+                y = start_y + row * (photo_height + SPACING)
+                layout.paste(processed_images[photo_index], (x, y))
+                photo_index += 1
         
-        # Add cutting guides for easy separation
+        # Add subtle corner marks for cutting guidance
         draw = ImageDraw.Draw(layout)
-        mark_length = 30  # Longer marks for better visibility
-        mark_color = 'gray'  # Gray color for subtle cutting guides
-        mark_width = 2  # Thicker lines for better visibility
+        mark_length = 20  # Corner mark length
+        mark_color = 'lightgray'  # Light gray for subtle guides
+        mark_width = 1  # Thin lines
         
         for row in range(rows):
             for col in range(cols):
-                if (row * cols + col) >= total_prints:
+                if (row * cols + col) >= actual_photos:
                     break
-                x = start_x + col * (PASSPORT_WIDTH + SPACING)
-                y = start_y + row * (PASSPORT_HEIGHT + SPACING)
+                x = start_x + col * (photo_width + SPACING)
+                y = start_y + row * (photo_height + SPACING)
                 
                 # Corner marks for cutting guidance
-                offset = 8  # Distance from photo edge
+                offset = 4  # Distance from photo edge
                 
                 # Top-left corner
                 draw.line([(x-offset, y-offset), (x-offset+mark_length, y-offset)], fill=mark_color, width=mark_width)
                 draw.line([(x-offset, y-offset), (x-offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
                 
                 # Top-right corner
-                draw.line([(x+PASSPORT_WIDTH+offset-mark_length, y-offset), (x+PASSPORT_WIDTH+offset, y-offset)], fill=mark_color, width=mark_width)
-                draw.line([(x+PASSPORT_WIDTH+offset, y-offset), (x+PASSPORT_WIDTH+offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
+                draw.line([(x+photo_width+offset-mark_length, y-offset), (x+photo_width+offset, y-offset)], fill=mark_color, width=mark_width)
+                draw.line([(x+photo_width+offset, y-offset), (x+photo_width+offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
                 
                 # Bottom-left corner
-                draw.line([(x-offset, y+PASSPORT_HEIGHT+offset-mark_length), (x-offset, y+PASSPORT_HEIGHT+offset)], fill=mark_color, width=mark_width)
-                draw.line([(x-offset, y+PASSPORT_HEIGHT+offset), (x-offset+mark_length, y+PASSPORT_HEIGHT+offset)], fill=mark_color, width=mark_width)
+                draw.line([(x-offset, y+photo_height+offset-mark_length), (x-offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
+                draw.line([(x-offset, y+photo_height+offset), (x-offset+mark_length, y+photo_height+offset)], fill=mark_color, width=mark_width)
                 
                 # Bottom-right corner
-                draw.line([(x+PASSPORT_WIDTH+offset, y+PASSPORT_HEIGHT+offset-mark_length), (x+PASSPORT_WIDTH+offset, y+PASSPORT_HEIGHT+offset)], fill=mark_color, width=mark_width)
-                draw.line([(x+PASSPORT_WIDTH+offset-mark_length, y+PASSPORT_HEIGHT+offset), (x+PASSPORT_WIDTH+offset, y+PASSPORT_HEIGHT+offset)], fill=mark_color, width=mark_width)
+                draw.line([(x+photo_width+offset, y+photo_height+offset-mark_length), (x+photo_width+offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
+                draw.line([(x+photo_width+offset-mark_length, y+photo_height+offset), (x+photo_width+offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
         
         # Add title and info text at the bottom
         try:
             from PIL import ImageFont
             try:
                 # Try to use a system font
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
-                small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
+                small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
             except:
                 # Fallback to default font
                 font = ImageFont.load_default()
@@ -1505,21 +1551,21 @@ def create_passport_photo_layout(input_image_data, total_prints=8):
         
         if font:
             # Add title
-            title_text = f"Passport Photos ({total_prints} photos)"
+            title_text = f"Photo Print Layout ({actual_photos} photos - {layout_type})"
             title_bbox = draw.textbbox((0, 0), title_text, font=font)
             title_width = title_bbox[2] - title_bbox[0]
             title_x = (A4_WIDTH - title_width) // 2
-            title_y = A4_HEIGHT - 200
+            title_y = A4_HEIGHT - 150
             draw.text((title_x, title_y), title_text, fill='black', font=font)
             
-            # Add cutting instructions
+            # Add layout information
             if small_font:
-                instruction_text = "Cut along the gray corner marks for individual photos"
-                inst_bbox = draw.textbbox((0, 0), instruction_text, font=small_font)
-                inst_width = inst_bbox[2] - inst_bbox[0]
-                inst_x = (A4_WIDTH - inst_width) // 2
-                inst_y = title_y + 60
-                draw.text((inst_x, inst_y), instruction_text, fill='gray', font=small_font)
+                info_text = f"A4 Paper • {cols}x{rows} Grid Layout • High Quality Print Ready"
+                info_bbox = draw.textbbox((0, 0), info_text, font=small_font)
+                info_width = info_bbox[2] - info_bbox[0]
+                info_x = (A4_WIDTH - info_width) // 2
+                info_y = title_y + 50
+                draw.text((info_x, info_y), info_text, fill='gray', font=small_font)
         
         # Convert to high-quality PDF with proper settings
         print("💾 Converting layout to PDF...")
@@ -1537,19 +1583,31 @@ def create_passport_photo_layout(input_image_data, total_prints=8):
         pdf_data = pdf_buffer.getvalue()
         pdf_buffer.close()
         
-        print(f"✅ Passport photo layout created successfully!")
-        print(f"   📄 {total_prints} passport photos arranged on A4 page")
-        print(f"   📐 Grid layout: {cols}x{rows}")
-        print(f"   📏 Photo size: 35x45mm each")
+        print(f"✅ Photo print layout created successfully!")
+        print(f"   📄 {actual_photos} photos arranged on A4 page")
+        print(f"   📐 Grid layout: {cols}x{rows} ({layout_type})")
+        print(f"   🖼️ Image mode: {image_mode}")
         print(f"   🎨 High quality 300 DPI PDF ready for printing")
         
         return pdf_data
         
     except Exception as e:
-        print(f"❌ Error creating passport photo layout: {e}")
+        print(f"❌ Error creating photo print layout: {e}")
         import traceback
         traceback.print_exc()
         return None
+
+
+def create_passport_photo_layout(input_image_data, total_prints=8):
+    """
+    Legacy function for passport photos - redirects to new photo layout function
+    """
+    layout_config = {
+        'photo_count': total_prints,
+        'layout': '2x4' if total_prints == 8 else '4x4' if total_prints == 16 else '5x6',
+        'image_mode': 'same'
+    }
+    return create_photo_print_layout([input_image_data], layout_config)
 
 
 # ─────────────────────────────────────────────────────────────

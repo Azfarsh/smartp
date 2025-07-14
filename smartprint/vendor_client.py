@@ -30,6 +30,7 @@ import glob
 from pathlib import Path
 import logging
 from queue import Queue
+import psutil
 
 # Additional imports for Windows printing
 try:
@@ -768,33 +769,122 @@ class AutomatedVendorPrintClient:
             self.debug_log("📭 No new print jobs to process")
 
     def process_print_queue(self):
-        """Main queue processor that handles jobs efficiently"""
+        """Main queue processor with strict sequential printing (single-threaded)"""
         self.queue_processor_running = True
-        self.log("🔄 Starting print queue processor")
+        self.log("🔄 Starting SEQUENTIAL print queue processor")
 
         try:
             while self.is_running and (not self.print_queue.is_empty() or not self.failed_jobs_queue.is_empty()):
+                job_node = None
+                
                 # Process failed jobs first (priority)
                 if not self.failed_jobs_queue.is_empty():
                     job_node = self.failed_jobs_queue.dequeue()
                     if job_node:
-                        self.debug_log(f"🔄 Processing priority failed job: {job_node.filename}")
-                        self.process_single_job_async(job_node, priority=True)
-
+                        self.log(f"🔄 Processing priority failed job: {job_node.filename}")
+                
                 # Process regular jobs
                 elif not self.print_queue.is_empty():
                     job_node = self.print_queue.dequeue()
                     if job_node:
-                        self.process_single_job_async(job_node)
+                        self.log(f"🔄 Processing job: {job_node.filename}")
 
-                # Small delay to prevent overwhelming
-                time.sleep(0.1)
+                if job_node:
+                    # Process job SYNCHRONOUSLY (single-threaded)
+                    success = self.process_single_job_sequential(job_node)
+                    self.handle_job_completion(job_node, success)
+                    
+                    # STRICT DELAY between jobs (30-60 seconds)
+                    if self.is_running:
+                        delay_time = 45  # 45 seconds between jobs
+                        self.log(f"⏰ Waiting {delay_time} seconds before next job...")
+                        time.sleep(delay_time)
+
+                # Small delay if no jobs to process
+                else:
+                    time.sleep(5)
 
         except Exception as e:
-            self.log(f"❌ Error in queue processor: {str(e)}")
+            self.log(f"❌ Error in sequential queue processor: {str(e)}")
         finally:
             self.queue_processor_running = False
-            self.log("⏹️ Print queue processor stopped")
+            self.log("⏹️ Sequential print queue processor stopped")
+
+    def process_single_job_sequential(self, job_node: PrintJobNode) -> bool:
+        """Process a single job sequentially (synchronous) with strict controls"""
+        start_time = time.time()
+        
+        try:
+            # Always get a working printer dynamically
+            printer_name = self.printer_manager.get_available_printer()
+            if not printer_name:
+                self.log(f"❌ No available printer for job: {job_node.filename}")
+                return False
+
+            # Find the token (json file) for this job
+            token = None
+            for file in glob.glob(os.path.join(self.job_dir, 'vendor_jobs', '*.json')):
+                if job_node.filename in file or Path(file).stem == job_node.filename.split('.')[0]:
+                    token = Path(file).stem
+                    break
+
+            self.log(f"🖨️ SEQUENTIAL Processing: {job_node.filename} (token: {token}) on {printer_name}")
+            
+            # Set job status
+            job_node.status = "processing"
+            job_node.assigned_printer = printer_name
+            job_node.attempts += 1
+
+            # Download document
+            document_path = os.path.join(self.job_dir, 'vendor_jobs', job_node.filename)
+            try:
+                response = requests.get(job_node.download_url, stream=True, timeout=30)
+                response.raise_for_status()
+                with open(document_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                self.log(f"✅ Downloaded document to {document_path}")
+            except Exception as e:
+                self.log(f"❌ Failed to download document: {e}")
+                return False
+
+            # Prepare print settings
+            print_settings = self.prepare_print_settings(job_node.metadata)
+            
+            # Print the document SEQUENTIALLY
+            print_success = self.print_document_sequential(
+                document_path, printer_name, job_node.filename, print_settings
+            )
+
+            # Clean up downloaded file
+            try:
+                os.remove(document_path)
+            except Exception:
+                pass
+
+            if print_success:
+                processing_time = time.time() - start_time
+                self.log(f"✅ Successfully completed job: {job_node.filename} ({processing_time:.2f}s)")
+                
+                # Delete the JSON file after successful print
+                if token:
+                    json_file = os.path.join(self.job_dir, 'vendor_jobs', f'{token}.json')
+                    try:
+                        os.remove(json_file)
+                        self.log(f"🗑️ Deleted job file: {json_file}")
+                        self.seen_tokens.discard(token)
+                    except Exception as e:
+                        self.log(f"❌ Failed to delete job file {json_file}: {e}")
+                
+                return True
+            else:
+                self.log(f"❌ Printing failed for job: {job_node.filename}")
+                return False
+
+        except Exception as e:
+            self.log(f"❌ Error in sequential job processing: {e}")
+            return False
 
     def process_single_job_async(self, job_node: PrintJobNode, priority: bool = False):
         try:
@@ -1158,6 +1248,44 @@ class AutomatedVendorPrintClient:
             self.log(f"❌ Error downloading document: {str(e)}")
             return None
 
+    def print_document_sequential(self, file_path: str, printer_name: str, 
+                                filename: str, print_settings: Dict) -> bool:
+        """Print document sequentially with SumatraPDF priority and strict process management"""
+        try:
+            copies = print_settings.get('copies', 1)
+            service_type = print_settings.get('service_type', 'unknown')
+            
+            self.log(f"🖨️ SEQUENTIAL Printing: {filename} ({copies} copies) to {printer_name}")
+            self.log(f"📋 Settings: {print_settings}")
+            
+            # Handle passport photos
+            if service_type == 'passport_photo':
+                return self._handle_passport_photo_printing_sequential(file_path, printer_name, filename, print_settings)
+            
+            # Determine file type
+            file_extension = filename.lower().split('.')[-1]
+            
+            # Validate printer availability
+            if not printer_name or not self.is_specific_printer_available(printer_name):
+                self.log(f"🔍 Printer '{printer_name}' not available, auto-selecting working printer...")
+                printer_name = find_working_printer()
+                if not printer_name:
+                    self.log("❌ No working printer found!")
+                    return False
+                self.log(f"🎯 Using printer: {printer_name}")
+            
+            # Route to appropriate printing method
+            if file_extension == 'pdf':
+                return self._print_pdf_sequential(file_path, printer_name, copies, print_settings)
+            elif file_extension in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff']:
+                return self._print_image_sequential(file_path, printer_name, copies)
+            else:
+                return self._print_generic_sequential(file_path, printer_name, copies)
+                
+        except Exception as e:
+            self.log(f"❌ Sequential printing failed: {str(e)}")
+            return False
+
     def print_document_with_settings(self, document_data: bytes, printer_name: str, 
                                    filename: str, print_settings: Dict) -> bool:
         """Print document with specific settings using secure printing and queue monitoring."""
@@ -1249,12 +1377,299 @@ class AutomatedVendorPrintClient:
             self.log(f"❌ Passport photo printing error: {str(e)}")
             return False
 
-    def _secure_print_pdf(self, file_path: str, printer_name: str, copies: int, color: bool) -> bool:
-        """SumatraPDF-focused PDF printing with enhanced reliability."""
+    def _print_pdf_sequential(self, file_path: str, printer_name: str, copies: int, print_settings: Dict) -> bool:
+        """Sequential PDF printing with SumatraPDF priority and strict process management"""
         try:
-            self.log(f"🔍 Starting SumatraPDF-focused PDF printing ({copies} copies)")
+            self.log(f"🔍 Starting SEQUENTIAL PDF printing ({copies} copies)")
+            
+            # PRIORITIZE SumatraPDF over Adobe Reader
+            if self._try_sumatra_sequential(file_path, printer_name, copies):
+                self.log("✅ PDF printed using SumatraPDF (PREFERRED)")
+                return True
+            
+            # Fallback to Adobe Reader with strict process management
+            self.log("🔄 SumatraPDF failed, trying Adobe Reader with strict controls...")
+            if self._try_adobe_sequential(file_path, printer_name, copies):
+                self.log("✅ PDF printed using Adobe Reader")
+                return True
+            
+            # Final fallback to Windows CMD methods
+            self.log("🔄 Adobe failed, trying Windows CMD methods...")
+            if self._try_windows_pdf_sequential(file_path, printer_name, copies):
+                self.log("✅ PDF printed using Windows CMD")
+                return True
+            
+            self.log("❌ All PDF printing methods failed")
+            return False
+            
+        except Exception as e:
+            self.log(f"❌ Sequential PDF print error: {str(e)}")
+            return False
 
-            # 1. Try SumatraPDF first (most reliable for automation)
+    def _try_sumatra_sequential(self, file_path: str, printer_name: str, copies: int) -> bool:
+        """Try printing with SumatraPDF - PREFERRED METHOD"""
+        try:
+            self.log("🔍 Trying SumatraPDF (PRIORITY METHOD)...")
+            
+            # Find SumatraPDF installation
+            sumatra_paths = [
+                r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
+                r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
+                r"C:\Users\Public\SumatraPDF\SumatraPDF.exe"
+            ]
+            
+            sumatra_exe = None
+            for path in sumatra_paths:
+                if os.path.exists(path):
+                    sumatra_exe = path
+                    self.log(f"✅ Found SumatraPDF at: {path}")
+                    break
+            
+            if not sumatra_exe:
+                self.log("❌ SumatraPDF not found")
+                return False
+            
+            # Print each copy with queue monitoring
+            success_count = 0
+            for copy_num in range(copies):
+                self.log(f"🖨️ SumatraPDF printing copy {copy_num + 1}/{copies}")
+                
+                try:
+                    # Create unique job name for queue monitoring
+                    job_name = f"Sumatra_{os.path.basename(file_path)}_{copy_num + 1}_{int(time.time())}"
+                    
+                    # Execute SumatraPDF command
+                    cmd = [sumatra_exe, "-print-to", printer_name, "-silent", file_path]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                    
+                    if result.returncode == 0:
+                        self.log(f"✅ SumatraPDF command successful for copy {copy_num + 1}")
+                        
+                        # Wait for job to appear and complete in queue
+                        if self._monitor_print_queue_completion(printer_name, os.path.basename(file_path), timeout=120):
+                            success_count += 1
+                            self.log(f"✅ Copy {copy_num + 1} completed successfully")
+                        else:
+                            self.log(f"❌ Copy {copy_num + 1} failed queue monitoring")
+                    else:
+                        self.log(f"❌ SumatraPDF command failed for copy {copy_num + 1}: {result.stderr}")
+                    
+                    # Delay between copies
+                    if copy_num < copies - 1:
+                        time.sleep(10)
+                        
+                except Exception as e:
+                    self.log(f"❌ Error with SumatraPDF copy {copy_num + 1}: {e}")
+            
+            # Consider successful if most copies printed
+            if success_count >= max(1, copies // 2):
+                self.log(f"✅ SumatraPDF successful: {success_count}/{copies} copies")
+                return True
+            else:
+                self.log(f"❌ SumatraPDF insufficient success: {success_count}/{copies} copies")
+                return False
+                
+        except Exception as e:
+            self.log(f"❌ SumatraPDF error: {e}")
+            return False
+
+    def _try_adobe_sequential(self, file_path: str, printer_name: str, copies: int) -> bool:
+        """Try Adobe Reader with STRICT process management and cleanup"""
+        try:
+            self.log("🔍 Trying Adobe Reader with strict process management...")
+            
+            # Find Adobe Reader
+            adobe_paths = [
+                r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+                r"C:\Program Files (x86)\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+                r"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+                r"C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
+            ]
+            
+            adobe_exe = None
+            for path in adobe_paths:
+                if os.path.exists(path):
+                    adobe_exe = path
+                    self.log(f"✅ Found Adobe Reader at: {path}")
+                    break
+            
+            if not adobe_exe:
+                self.log("❌ Adobe Reader not found")
+                return False
+            
+            success_count = 0
+            
+            for copy_num in range(copies):
+                self.log(f"🖨️ Adobe Reader printing copy {copy_num + 1}/{copies}")
+                
+                try:
+                    # 1. TERMINATE any existing Adobe processes
+                    self._terminate_adobe_processes()
+                    time.sleep(2)
+                    
+                    # 2. Create unique temporary file to avoid conflicts
+                    temp_fd, temp_path = tempfile.mkstemp(suffix='.pdf', prefix=f'adobe_print_{copy_num}_')
+                    try:
+                        # Copy file to unique temp location
+                        with open(file_path, 'rb') as src, os.fdopen(temp_fd, 'wb') as dst:
+                            dst.write(src.read())
+                        
+                        # 3. Execute Adobe command
+                        cmd = [adobe_exe, "/t", temp_path, printer_name]
+                        self.log(f"🔧 Adobe command: {' '.join(cmd)}")
+                        
+                        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        
+                        # 4. Wait for process completion with timeout
+                        try:
+                            stdout, stderr = process.communicate(timeout=90)
+                            
+                            if process.returncode == 0:
+                                self.log(f"✅ Adobe command successful for copy {copy_num + 1}")
+                                
+                                # 5. Monitor print queue
+                                if self._monitor_print_queue_completion(printer_name, os.path.basename(temp_path), timeout=120):
+                                    success_count += 1
+                                    self.log(f"✅ Copy {copy_num + 1} completed in queue")
+                                else:
+                                    self.log(f"❌ Copy {copy_num + 1} failed queue monitoring")
+                            else:
+                                self.log(f"❌ Adobe command failed for copy {copy_num + 1}: {stderr}")
+                                
+                        except subprocess.TimeoutExpired:
+                            self.log(f"⏰ Adobe process timed out for copy {copy_num + 1}")
+                            process.kill()
+                    
+                    finally:
+                        # 6. Clean up temp file
+                        try:
+                            os.remove(temp_path)
+                        except:
+                            pass
+                    
+                    # 7. FORCE terminate Adobe processes after each job
+                    time.sleep(3)
+                    self._terminate_adobe_processes()
+                    
+                    # 8. Strict delay between copies
+                    if copy_num < copies - 1:
+                        self.log("⏰ Waiting 15 seconds between Adobe jobs...")
+                        time.sleep(15)
+                        
+                except Exception as e:
+                    self.log(f"❌ Error with Adobe copy {copy_num + 1}: {e}")
+                    self._terminate_adobe_processes()
+            
+            # Final cleanup
+            self._terminate_adobe_processes()
+            
+            if success_count >= max(1, copies // 2):
+                self.log(f"✅ Adobe Reader successful: {success_count}/{copies} copies")
+                return True
+            else:
+                self.log(f"❌ Adobe Reader insufficient success: {success_count}/{copies} copies")
+                return False
+                
+        except Exception as e:
+            self.log(f"❌ Adobe Reader error: {e}")
+            self._terminate_adobe_processes()
+            return False
+
+    def _terminate_adobe_processes(self):
+        """FORCEFULLY terminate all Adobe Reader processes"""
+        try:
+            adobe_processes = [
+                "AcroRd32.exe", 
+                "Acrobat.exe", 
+                "AdobeARM.exe",
+                "armsvc.exe",
+                "AdobeCollabSync.exe"
+            ]
+            
+            for process_name in adobe_processes:
+                try:
+                    # Use taskkill with force flag
+                    result = subprocess.run(
+                        ["taskkill", "/f", "/im", process_name], 
+                        capture_output=True, text=True, timeout=10
+                    )
+                    if result.returncode == 0:
+                        self.log(f"🔪 Terminated {process_name}")
+                except Exception as e:
+                    self.debug_log(f"Could not terminate {process_name}: {e}")
+                    
+        except Exception as e:
+            self.log(f"❌ Error terminating Adobe processes: {e}")
+
+    def _monitor_print_queue_completion(self, printer_name: str, filename_part: str, timeout: int = 120) -> bool:
+        """Monitor printer queue until job completes or timeout"""
+        try:
+            start_time = time.time()
+            job_appeared = False
+            
+            self.log(f"👀 Monitoring print queue for '{filename_part}' (timeout: {timeout}s)")
+            
+            while (time.time() - start_time) < timeout:
+                try:
+                    handle = win32print.OpenPrinter(printer_name)
+                    jobs = win32print.EnumJobs(handle, 0, -1, 1)
+                    win32print.ClosePrinter(handle)
+                    
+                    # Check if our job is in queue
+                    found_job = False
+                    for job in jobs:
+                        if filename_part in job['pDocument'] or os.path.basename(filename_part) in job['pDocument']:
+                            found_job = True
+                            job_appeared = True
+                            self.debug_log(f"📄 Job found in queue: {job['pDocument']} (Status: {job['Status']})")
+                            break
+                    
+                    # If job appeared and now disappeared, it's complete
+                    if job_appeared and not found_job:
+                        self.log("✅ Job completed (disappeared from queue)")
+                        return True
+                    
+                    # If no jobs in queue and we've waited a bit, assume complete
+                    if not jobs and job_appeared:
+                        self.log("✅ Queue empty, job completed")
+                        return True
+                        
+                except Exception as e:
+                    self.debug_log(f"Error checking print queue: {e}")
+                
+                time.sleep(3)
+            
+            # Timeout - check if queue is empty (might indicate completion)
+            try:
+                handle = win32print.OpenPrinter(printer_name)
+                jobs = win32print.EnumJobs(handle, 0, -1, 1)
+                win32print.ClosePrinter(handle)
+                
+                if not jobs:
+                    self.log("⏰ Timeout reached but queue is empty - assuming success")
+                    return True
+            except:
+                pass
+            
+            self.log(f"⏰ Queue monitoring timed out after {timeout} seconds")
+            return False
+            
+        except Exception as e:
+            self.log(f"❌ Error monitoring print queue: {e}")
+            return False
+
+    def _secure_print_pdf(self, file_path: str, printer_name: str, copies: int, color: bool) -> bool:
+        """Enhanced PDF printing with multiple fallback methods."""
+        try:
+            self.log(f"🔍 Starting enhanced PDF printing ({copies} copies)")
+
+            # 1. Try Windows CMD-based printing first (most reliable)
+            self.log("🔄 Trying Windows CMD-based printing...")
+            if self._try_adobe_print(file_path, printer_name, copies):
+                self.log("✅ PDF printed using Windows CMD methods")
+                return True
+
+            # 2. Try SumatraPDF if available
             sumatra_paths = [
                 r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
                 r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe"
@@ -1278,38 +1693,27 @@ class AutomatedVendorPrintClient:
                         self.log(f"❌ SumatraPDF copy {i+1} failed with return code: {result.returncode}")
                     time.sleep(1)
 
-                if success_count == copies:
-                    self.log("✅ All copies printed successfully using SumatraPDF")
+                if success_count >= (copies // 2):  # Accept partial success
+                    self.log(f"✅ SumatraPDF printed {success_count}/{copies} copies")
                     return True
-                elif success_count > 0:
-                    self.log(f"⚠️ Partial success: {success_count}/{copies} copies printed via SumatraPDF")
-                    return True
-            else:
-                self.log("⚠️ SumatraPDF not found. For best results, install SumatraPDF from https://www.sumatrapdfreader.org/download-free-pdf-viewer.html")
 
-            # 2. Fallback: PowerShell PDF printing
-            self.log("🔄 SumatraPDF failed or not found, trying PowerShell fallback...")
+            # 3. Fallback: PowerShell PDF printing
+            self.log("🔄 Trying PowerShell fallback...")
             if self._try_powershell_pdf_print(file_path, printer_name, copies, color):
                 self.log("✅ PDF printed using PowerShell fallback")
                 return True
 
-            # 3. Fallback: Windows default PDF handler
-            self.log("🔄 PowerShell failed, trying Windows default fallback...")
+            # 4. Fallback: Windows default PDF handler
+            self.log("🔄 Trying Windows default fallback...")
             if self._try_windows_pdf_print(file_path, printer_name, copies):
                 self.log("✅ PDF printed using Windows default fallback")
-                return True
-
-            # 4. Last resort: Adobe Acrobat (only if other methods fail)
-            self.log("🔄 All other methods failed, trying Adobe as last resort...")
-            if self._try_adobe_print(file_path, printer_name, copies):
-                self.log("✅ PDF printed using Adobe fallback")
                 return True
 
             self.log("❌ All PDF printing methods failed")
             return False
 
         except Exception as e:
-            self.log(f"❌ SumatraPDF-focused PDF print error: {str(e)}")
+            self.log(f"❌ Enhanced PDF print error: {str(e)}")
             return False
 
     def _try_sumatra_print(self, file_path: str, printer_name: str, copies: int) -> bool:
@@ -1340,148 +1744,98 @@ class AutomatedVendorPrintClient:
             return False
 
     def _try_adobe_print(self, file_path: str, printer_name: str, copies: int) -> bool:
-        """Enhanced Adobe printing with synchronous operation and automatic cleanup."""
-        adobe_process = None
-        temp_status_file = None
-
+        """Enhanced PDF printing using Windows CMD commands for better reliability."""
         try:
-            self.log(f"🖨️ Starting Adobe print job: {copies} copies to {printer_name}")
+            self.log(f"🖨️ Starting Windows CMD print job: {copies} copies to {printer_name}")
 
-            # Adobe paths in priority order
-            adobe_paths = [
-                r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
-                r"C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe", 
-                r"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
-                r"C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe",
-                r"C:\Program Files\Adobe\Reader 11.0\Reader\AcroRd32.exe"
-            ]
-
-            adobe_exe = None
-            for path in adobe_paths:
-                if os.path.exists(path):
-                    adobe_exe = path
-                    self.log(f"✅ Found Adobe at: {path}")
-                    break
-
-            if not adobe_exe:
-                self.log("❌ Adobe Reader/Acrobat not found")
+            # Ensure file path is absolute and exists
+            if not os.path.isabs(file_path):
+                file_path = os.path.abspath(file_path)
+            
+            if not os.path.exists(file_path):
+                self.log(f"❌ File not found: {file_path}")
                 return False
 
-            # Create status tracking file
-            temp_status_file = tempfile.mktemp(suffix='.status')
+            self.log(f"📄 Printing file: {file_path}")
+            self.log(f"🖨️ Using printer: {printer_name}")
 
-            # Enhanced printing with job monitoring
             success_count = 0
 
             for copy_num in range(copies):
-                self.log(f"🖨️ Printing copy {copy_num + 1}/{copies}")
-
-                # Start Adobe with print command
-                cmd = [adobe_exe, "/t", file_path, f'"{printer_name}"']
+                self.log(f"🖨️ Processing copy {copy_num + 1}/{copies}")
 
                 try:
-                    # Start Adobe process
-                    adobe_process = subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        creationflags=subprocess.CREATE_NO_WINDOW
-                    )
-
-                    # Monitor Adobe process with timeout
-                    start_time = time.time()
-                    timeout = 120  # 2 minutes per copy
-
-                    while adobe_process.poll() is None:
-                        if time.time() - start_time > timeout:
-                            self.log(f"⏰ Adobe process timeout for copy {copy_num + 1}")
-                            adobe_process.terminate()
-                            time.sleep(2)
-                            if adobe_process.poll() is None:
-                                adobe_process.kill()
-                            break
-                        time.sleep(1)
-
-                    # Check if process completed successfully
-                    return_code = adobe_process.returncode
-
-                    if return_code == 0:
+                    # Method 1: Try PowerShell with Start-Process
+                    ps_cmd = f'''
+Start-Process -FilePath "{file_path}" -ArgumentList "/t","{printer_name}" -Wait -WindowStyle Hidden
+'''
+                    result = subprocess.run(['powershell', '-Command', ps_cmd], 
+                                          capture_output=True, text=True, timeout=60)
+                    
+                    if result.returncode == 0:
                         success_count += 1
-                        self.log(f"✅ Copy {copy_num + 1} sent to printer successfully")
-
-                        # Wait for print job to be processed by printer
-                        self._wait_for_printer_processing(printer_name)
-
-                    else:
-                        self.log(f"❌ Copy {copy_num + 1} failed with return code: {return_code}")
-
-                        # Try to recover from error
-                        if copy_num < copies - 1:  # Not the last copy
-                            self.log("🔄 Attempting recovery for next copy...")
-                            self._cleanup_adobe_processes()
-                            time.sleep(3)
-
-                    # Small delay between copies
-                    if copy_num < copies - 1:
+                        self.log(f"✅ Copy {copy_num + 1} sent via PowerShell")
                         time.sleep(2)
+                        continue
 
-                except subprocess.TimeoutExpired:
-                    self.log(f"⏰ Adobe process timed out for copy {copy_num + 1}")
-                    if adobe_process:
-                        adobe_process.kill()
+                    # Method 2: Try direct CMD with rundll32
+                    cmd_command = [
+                        'rundll32.exe', 
+                        'mshtml.dll,PrintHTML', 
+                        f'"{file_path}"'
+                    ]
+                    
+                    result = subprocess.run(cmd_command, capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0:
+                        success_count += 1
+                        self.log(f"✅ Copy {copy_num + 1} sent via rundll32")
+                        time.sleep(2)
+                        continue
+
+                    # Method 3: Try Windows print command with ShellExecute
+                    try:
+                        import win32api
+                        result = win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                        if result > 32:
+                            success_count += 1
+                            self.log(f"✅ Copy {copy_num + 1} sent via ShellExecute")
+                            time.sleep(2)
+                            continue
+                    except Exception as e:
+                        self.log(f"⚠️ ShellExecute failed: {e}")
+
+                    # Method 4: Try generic print command
+                    try:
+                        import win32api
+                        result = win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                        if result > 32:
+                            success_count += 1
+                            self.log(f"✅ Copy {copy_num + 1} sent via generic print")
+                            time.sleep(2)
+                            continue
+                    except Exception as e:
+                        self.log(f"⚠️ Generic print failed: {e}")
+
+                    self.log(f"❌ All methods failed for copy {copy_num + 1}")
 
                 except Exception as copy_error:
                     self.log(f"❌ Error printing copy {copy_num + 1}: {str(copy_error)}")
 
-                finally:
-                    # Cleanup Adobe process for this copy
-                    if adobe_process and adobe_process.poll() is None:
-                        try:
-                            adobe_process.terminate()
-                            time.sleep(1)
-                            if adobe_process.poll() is None:
-                                adobe_process.kill()
-                        except:
-                            pass
-
-            # Final cleanup of all Adobe processes
-            self._cleanup_adobe_processes()
-
             # Check overall success
             if success_count == copies:
-                self.log(f"✅ All {copies} copies printed successfully via Adobe")
+                self.log(f"✅ All {copies} copies printed successfully")
                 return True
             elif success_count > 0:
                 self.log(f"⚠️ Partial success: {success_count}/{copies} copies printed")
-                return success_count >= (copies // 2)  # Consider success if more than half printed
+                return True
             else:
-                self.log(f"❌ Adobe printing failed for all copies")
+                self.log(f"❌ All printing methods failed")
                 return False
 
         except Exception as e:
-            self.log(f"❌ Adobe printing error: {str(e)}")
+            self.log(f"❌ Windows CMD printing error: {str(e)}")
             return False
-
-        finally:
-            # Final cleanup
-            if adobe_process and adobe_process.poll() is None:
-                try:
-                    adobe_process.terminate()
-                    time.sleep(1)
-                    if adobe_process.poll() is None:
-                        adobe_process.kill()
-                except:
-                    pass
-
-            # Cleanup status file
-            if temp_status_file and os.path.exists(temp_status_file):
-                try:
-                    os.remove(temp_status_file)
-                except:
-                    pass
-
-            # Final Adobe cleanup
-            self._cleanup_adobe_processes()
 
     def _cleanup_adobe_processes(self):
         """Clean up any hanging Adobe processes."""
@@ -1677,6 +2031,187 @@ try {{
 
         except Exception as e:
             self.debug_log(f"Windows PDF print failed: {e}")
+            return False
+
+    def _print_image_sequential(self, file_path: str, printer_name: str, copies: int) -> bool:
+        """Sequential image printing with queue monitoring"""
+        try:
+            self.log(f"🖼️ Sequential image printing ({copies} copies)")
+            
+            for copy_num in range(copies):
+                self.log(f"🖨️ Printing image copy {copy_num + 1}/{copies}")
+                
+                try:
+                    # Method 1: Windows Photo Viewer
+                    cmd = [
+                        'rundll32.exe',
+                        'C:\\Windows\\System32\\shimgvw.dll,ImageView_PrintTo',
+                        file_path,
+                        printer_name
+                    ]
+                    
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                    
+                    if result.returncode == 0:
+                        # Monitor queue completion
+                        if self._monitor_print_queue_completion(printer_name, os.path.basename(file_path), timeout=60):
+                            self.log(f"✅ Image copy {copy_num + 1} completed")
+                        else:
+                            self.log(f"❌ Image copy {copy_num + 1} failed queue monitoring")
+                            return False
+                    else:
+                        self.log(f"❌ Image copy {copy_num + 1} command failed")
+                        return False
+                    
+                    # Delay between copies
+                    if copy_num < copies - 1:
+                        time.sleep(5)
+                        
+                except Exception as e:
+                    self.log(f"❌ Error printing image copy {copy_num + 1}: {e}")
+                    return False
+            
+            self.log("✅ All image copies printed successfully")
+            return True
+            
+        except Exception as e:
+            self.log(f"❌ Sequential image print error: {e}")
+            return False
+
+    def _print_generic_sequential(self, file_path: str, printer_name: str, copies: int) -> bool:
+        """Sequential generic file printing with queue monitoring"""
+        try:
+            self.log(f"📄 Sequential generic file printing ({copies} copies)")
+            
+            for copy_num in range(copies):
+                self.log(f"🖨️ Printing generic file copy {copy_num + 1}/{copies}")
+                
+                try:
+                    import win32api
+                    result = win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                    
+                    if result > 32:
+                        # Monitor queue completion
+                        if self._monitor_print_queue_completion(printer_name, os.path.basename(file_path), timeout=60):
+                            self.log(f"✅ Generic file copy {copy_num + 1} completed")
+                        else:
+                            self.log(f"❌ Generic file copy {copy_num + 1} failed queue monitoring")
+                            return False
+                    else:
+                        self.log(f"❌ Generic file copy {copy_num + 1} command failed")
+                        return False
+                    
+                    # Delay between copies
+                    if copy_num < copies - 1:
+                        time.sleep(5)
+                        
+                except Exception as e:
+                    self.log(f"❌ Error printing generic file copy {copy_num + 1}: {e}")
+                    return False
+            
+            self.log("✅ All generic file copies printed successfully")
+            return True
+            
+        except Exception as e:
+            self.log(f"❌ Sequential generic file print error: {e}")
+            return False
+
+    def _try_windows_pdf_sequential(self, file_path: str, printer_name: str, copies: int) -> bool:
+        """Sequential Windows PDF printing with queue monitoring"""
+        try:
+            self.log(f"🪟 Sequential Windows PDF printing ({copies} copies)")
+            
+            for copy_num in range(copies):
+                self.log(f"🖨️ Windows PDF copy {copy_num + 1}/{copies}")
+                
+                success = False
+                
+                # Method 1: printto verb
+                try:
+                    import win32api
+                    result = win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                    if result > 32:
+                        success = True
+                        self.log(f"✅ Windows printto successful for copy {copy_num + 1}")
+                except Exception as e:
+                    self.log(f"⚠️ Windows printto failed: {e}")
+                
+                # Method 2: print verb fallback
+                if not success:
+                    try:
+                        import win32api
+                        result = win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                        if result > 32:
+                            success = True
+                            self.log(f"✅ Windows print successful for copy {copy_num + 1}")
+                    except Exception as e:
+                        self.log(f"⚠️ Windows print failed: {e}")
+                
+                if success:
+                    # Monitor queue completion
+                    if not self._monitor_print_queue_completion(printer_name, os.path.basename(file_path), timeout=60):
+                        self.log(f"❌ Copy {copy_num + 1} failed queue monitoring")
+                        return False
+                else:
+                    self.log(f"❌ All Windows methods failed for copy {copy_num + 1}")
+                    return False
+                
+                # Delay between copies
+                if copy_num < copies - 1:
+                    time.sleep(5)
+            
+            self.log("✅ All Windows PDF copies printed successfully")
+            return True
+            
+        except Exception as e:
+            self.log(f"❌ Sequential Windows PDF print error: {e}")
+            return False
+
+    def _handle_passport_photo_printing_sequential(self, file_path: str, printer_name: str, filename: str, print_settings: Dict) -> bool:
+        """Sequential passport photo printing with layout creation"""
+        try:
+            self.log("📸 Sequential passport photo processing...")
+            
+            # Get number of photos for layout
+            total_prints = print_settings.get('copies', 8)
+            if total_prints not in (8, 16, 30):
+                self.log(f"❌ Unsupported number of passport photos: {total_prints}")
+                return False
+            
+            # Create unique output path
+            output_fd, output_path = tempfile.mkstemp(suffix='.jpg', prefix='passport_layout_')
+            os.close(output_fd)
+            
+            try:
+                # Create passport photo layout
+                self.log(f"🔄 Creating passport photo layout for {total_prints} photos...")
+                layout_success = create_passport_photo_layout(file_path, output_path, total_prints=total_prints)
+                
+                if not layout_success:
+                    self.log("❌ Failed to create passport photo layout")
+                    return False
+                
+                # Print the layout (only 1 copy since layout contains all photos)
+                self.log("🖨️ Printing passport photo layout...")
+                success = self._print_image_sequential(output_path, printer_name, 1)
+                
+                if success:
+                    self.log("✅ Passport photos printed successfully!")
+                    self.log(f"📄 {total_prints} passport-size photos on one A4 page")
+                    return True
+                else:
+                    self.log("❌ Failed to print passport photo layout")
+                    return False
+                    
+            finally:
+                # Clean up layout file
+                try:
+                    os.remove(output_path)
+                except:
+                    pass
+                    
+        except Exception as e:
+            self.log(f"❌ Sequential passport photo error: {e}")
             return False
 
     def _secure_print_image(self, file_path: str, printer_name: str, copies: int) -> bool:
@@ -2342,46 +2877,95 @@ def save_job_and_pdf(job):
     return False
 
 def process_print_queue():
-    """Process print jobs from local storage"""
+    """Robust sequential print job processor using Adobe Reader and queue monitoring."""
+    import psutil
+    os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
+    os.makedirs(FAILED_JOB_DIR, exist_ok=True)
+    processed_count = 0
+    success_count = 0
+    delay_between_jobs = 25  # seconds
+    max_retries = 3
     while True:
         try:
+            # Gather all jobs (JSON+PDF pairs) in LOCAL_JOB_DIR
             json_files = [f for f in os.listdir(LOCAL_JOB_DIR) if f.endswith('.json')]
             if not json_files:
                 time.sleep(5)
                 continue
-
             for json_file in json_files:
                 try:
                     token = os.path.splitext(json_file)[0]
                     json_path = os.path.join(LOCAL_JOB_DIR, json_file)
                     pdf_path = os.path.join(LOCAL_JOB_DIR, f"{token}.pdf")
-
-                    # Check if PDF exists
                     if not os.path.exists(pdf_path):
                         error_logger.error(f"PDF not found for job {token}")
                         continue
-
-                    # Read job info```python
+                    # Check PDF integrity
+                    with open(pdf_path, 'rb') as f:
+                        header = f.read(4)
+                        if header != b'%PDF':
+                            error_logger.error(f"File {pdf_path} is not a valid PDF")
+                            os.rename(json_path, os.path.join(FAILED_JOB_DIR, json_file))
+                            os.rename(pdf_path, os.path.join(FAILED_JOB_DIR, f"{token}.pdf"))
+                            continue
+                    # Read job info
                     with open(json_path, 'r', encoding='utf-8') as f:
                         job_data = json.load(f)
-
                     # Print PDF with retries
                     success = False
-                    for attempt in range(3):
-                        success = print_pdf_windows(pdf_path, PRINTER_NAME)
-                        if success:
+                    for attempt in range(1, max_retries+1):
+                        # Ensure no Adobe Reader process is running
+                        for proc in psutil.process_iter(['name']):
+                            if proc.info['name'] and 'AcroRd32' in proc.info['name']:
+                                try:
+                                    proc.terminate()
+                                except Exception:
+                                    pass
+                        time.sleep(2)
+                        # Build Adobe command
+                        adobe_paths = [
+                            r"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+                            r"C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+                            r"C:\Program Files\Adobe\Reader 11.0\Reader\AcroRd32.exe",
+                            r"C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe"
+                        ]
+                        adobe_exe = None
+                        for path in adobe_paths:
+                            if os.path.exists(path):
+                                adobe_exe = path
+                                break
+                        if not adobe_exe:
+                            error_logger.error("Adobe Reader not found. Please install Adobe Reader.")
+                            break
+                        printer_name = PRINTER_NAME
+                        # Start Adobe Reader print job
+                        proc = subprocess.Popen([adobe_exe, "/t", pdf_path, printer_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        # Wait a few seconds for job to enter queue
+                        time.sleep(5)
+                        # Monitor print queue
+                        queue_success = monitor_print_queue_for_job(printer_name, os.path.basename(pdf_path), timeout=300)
+                        # Terminate Adobe Reader after job
+                        for p in psutil.process_iter(['name']):
+                            if p.info['name'] and 'AcroRd32' in p.info['name']:
+                                try:
+                                    p.terminate()
+                                except Exception:
+                                    pass
+                        proc.wait(timeout=10)
+                        if queue_success:
                             logging.info(f"Printed job {token} successfully.")
+                            success = True
                             break
                         else:
-                            error_logger.error(f"Print failed for {token} (attempt {attempt+1})")
+                            error_logger.error(f"Print failed for {token} (attempt {attempt})")
                             time.sleep(10)
-
                     if success:
                         # Delete files on success
                         os.remove(json_path)
                         if os.path.exists(pdf_path):
                             os.remove(pdf_path)
                         logging.info(f"Cleaned up job {token}")
+                        success_count += 1
                     else:
                         # Move to failed_jobs
                         os.makedirs(FAILED_JOB_DIR, exist_ok=True)
@@ -2389,10 +2973,11 @@ def process_print_queue():
                         if os.path.exists(pdf_path):
                             os.rename(pdf_path, os.path.join(FAILED_JOB_DIR, f"{token}.pdf"))
                         error_logger.error(f"Moved failed job {token} to failed_jobs.")
-
+                    processed_count += 1
+                    # Wait between jobs
+                    time.sleep(delay_between_jobs)
                 except Exception as e:
                     error_logger.error(f"Error processing job {json_file}: {e}")
-
             time.sleep(2)
         except Exception as e:
             error_logger.error(f"Error in print queue processor: {e}")
@@ -2490,7 +3075,7 @@ def main():
     parser.add_argument("--adobe-local-print", action="store_true", help="Print all jobs from local storage using Adobe Reader (robust mode)")
     parser.add_argument("--adobe-monitor-print", action="store_true", help="Print all PDFs from local storage using Adobe, monitor queue, and notify website")
     parser.add_argument("--test", action="store_true", help="Test printing functionality")
-    args = parser.parse_args()
+    parser.add_argument("--cmd-local-print", action="store_true", help="Process all jobs from local storage using enhanced CMD methods")
 
     print("🔧 Parsed arguments:")
     print(f"   --test: {args.test}")
@@ -2499,9 +3084,24 @@ def main():
     print(f"   --print-local: {args.print_local}")
     print(f"   --http-poll: {args.http_poll}")
 
+    parser.add_argument("--cmd-local-print", action="store_true", help="Process all jobs from local storage using enhanced CMD methods")
+    args = parser.parse_args()
+
+    print("🔧 Parsed arguments:")
+    print(f"   --test: {args.test}")
+    print(f"   --cmd-local-print: {getattr(args, 'cmd_local_print', False)}")
+    print(f"   --adobe-monitor-print: {args.adobe_monitor_print}")
+    print(f"   --adobe-local-print: {args.adobe_local_print}")
+    print(f"   --print-local: {args.print_local}")
+    print(f"   --http-poll: {args.http_poll}")
+
     if args.test:
         print("🧪 Running test mode...")
         test_printing_functionality()
+        sys.exit(0)
+    elif getattr(args, 'cmd_local_print', False):
+        print("🖨️ Running CMD-based local print mode...")
+        process_all_local_jobs_cmd()
         sys.exit(0)
     elif args.adobe_monitor_print:
         print("🔄 Running adobe monitor print mode...")
@@ -2842,6 +3442,310 @@ def print_image_windows(image_path, printer_name=None):
                 
     except Exception as e:
         print(f"❌ Error printing image: {e}")
+        return False
+
+def process_all_local_jobs_cmd():
+    """
+    Process all jobs in local storage using Windows CMD commands for maximum reliability.
+    This method handles all file types and uses robust printing methods.
+    """
+    print("🔄 Starting CMD-based Local Print Jobs Processing...")
+    print("=" * 60)
+    
+    os.makedirs(LOCAL_JOB_DIR, exist_ok=True)
+    os.makedirs(FAILED_JOB_DIR, exist_ok=True)
+    
+    working_printer = find_working_printer()
+    if not working_printer:
+        print("❌ No working printer found!")
+        return
+
+    print(f"🖨️ Using printer: {working_printer}")
+
+    # Gather all jobs from different locations
+    job_queue = []
+    processed_count = 0
+    success_count = 0
+    
+    # Check vendor_jobs subfolder first
+    vendor_jobs_dir = os.path.join(LOCAL_JOB_DIR, 'vendor_jobs')
+    if os.path.exists(vendor_jobs_dir):
+        json_files = [f for f in os.listdir(vendor_jobs_dir) if f.endswith('.json')]
+        for json_file in json_files:
+            job_queue.append((os.path.join(vendor_jobs_dir, json_file), f"vendor_jobs/{json_file}"))
+    
+    # Check main directory for JSON files
+    direct_json_files = [f for f in os.listdir(LOCAL_JOB_DIR) if f.endswith('.json')]
+    job_queue.extend([(os.path.join(LOCAL_JOB_DIR, f), f) for f in direct_json_files])
+    
+    # Check for token subfolders with metadata.json
+    subfolders = [f for f in os.listdir(LOCAL_JOB_DIR) if os.path.isdir(os.path.join(LOCAL_JOB_DIR, f)) and f != 'vendor_jobs']
+    for subfolder in subfolders:
+        subfolder_path = os.path.join(LOCAL_JOB_DIR, subfolder)
+        metadata_file = os.path.join(subfolder_path, 'metadata.json')
+        if os.path.exists(metadata_file):
+            job_queue.append((metadata_file, f"{subfolder}/metadata.json"))
+
+    if not job_queue:
+        print("📭 No job files found in local storage.")
+        print(f"   Checked locations:")
+        print(f"   - {LOCAL_JOB_DIR}")
+        print(f"   - {vendor_jobs_dir}")
+        print(f"   - Token subfolders")
+        return
+
+    print(f"📋 Found {len(job_queue)} job files to process...")
+    
+    for json_path, json_file in job_queue:
+        try:
+            processed_count += 1
+            print(f"\n📄 Processing job {processed_count}/{len(job_queue)}: {json_file}")
+            
+            with open(json_path, 'r', encoding='utf-8') as f:
+                job_data = json.load(f)
+            
+            # Handle different job file formats
+            if 'metadata' in job_data and 'document_url' in job_data:
+                # New format from vendor dashboard
+                metadata = job_data['metadata']
+                document_url = job_data.get('document_url', '')
+                filename = metadata.get('filename', 'document.pdf')
+            elif 'metadata' in job_data and 'download_url' in job_data:
+                # WebSocket format
+                metadata = job_data['metadata']
+                document_url = job_data.get('download_url', '')
+                filename = metadata.get('filename', 'document.pdf')
+            else:
+                # Legacy format - job_data is the metadata
+                metadata = job_data
+                document_url = ''
+                filename = metadata.get('filename', 'document.pdf')
+            
+            # Skip if already completed
+            if metadata.get('job_completed', '').upper() == 'YES':
+                print(f"   ✅ Job already completed, skipping: {filename}")
+                continue
+            
+            service_type = metadata.get('service_type', '').lower()
+            copies = int(metadata.get('copies', 1))
+            
+            print(f"   📄 File: {filename}")
+            print(f"   🔧 Service: {service_type}")
+            print(f"   📑 Copies: {copies}")
+            
+            # Try to find local file first
+            json_dir = os.path.dirname(json_path)
+            local_file_path = os.path.join(json_dir, filename)
+            temp_file = None
+            
+            if os.path.exists(local_file_path):
+                print(f"   ✅ Found local file: {os.path.basename(local_file_path)}")
+                temp_file = local_file_path
+            elif document_url:
+                print(f"   ⬇️ Downloading from URL...")
+                try:
+                    response = requests.get(document_url, stream=True, timeout=30)
+                    response.raise_for_status()
+                    
+                    file_ext = os.path.splitext(filename)[1] or '.pdf'
+                    temp_fd, temp_path = tempfile.mkstemp(suffix=file_ext, prefix='print_job_')
+                    temp_file = temp_path
+                    
+                    with os.fdopen(temp_fd, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    print(f"   ✅ Downloaded to: {os.path.basename(temp_path)}")
+                except Exception as e:
+                    print(f"   ❌ Download failed: {e}")
+                    continue
+            else:
+                print(f"   ❌ No document URL and no local file found")
+                continue
+            
+            # Print the document using CMD methods
+            print("   🖨️ Sending to printer...")
+            success = False
+            
+            try:
+                file_ext = os.path.splitext(filename)[1].lower()
+                
+                if service_type == 'passport_photo':
+                    # Create passport photo layout
+                    layout_output_path = os.path.join(json_dir, f"passport_layout_{os.path.splitext(filename)[0]}.jpg")
+                    layout_success = create_passport_photo_layout(temp_file, layout_output_path, total_prints=copies)
+                    
+                    if layout_success:
+                        success = print_image_automatically(layout_output_path, working_printer)
+                        try:
+                            os.remove(layout_output_path)
+                        except:
+                            pass
+                    else:
+                        print("   ❌ Failed to create passport photo layout")
+                
+                elif file_ext == '.pdf':
+                    # Use enhanced CMD-based PDF printing
+                    success = print_pdf_cmd_enhanced(temp_file, working_printer, copies)
+                
+                elif file_ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif']:
+                    success = print_image_cmd_enhanced(temp_file, working_printer)
+                
+                else:
+                    print(f"   ⚠️ Unknown file type: {file_ext}, trying generic print...")
+                    success = print_generic_cmd_enhanced(temp_file, working_printer)
+                
+            except Exception as e:
+                print(f"   ❌ Printing error: {e}")
+            
+            # Cleanup temporary file
+            if temp_file and os.path.exists(temp_file) and temp_file != local_file_path:
+                try:
+                    os.remove(temp_file)
+                    print("   🗑️ Temporary file cleaned up")
+                except Exception as e:
+                    print(f"   ⚠️ Could not clean up temp file: {e}")
+            
+            if success:
+                success_count += 1
+                print("   ✅ Job completed successfully!")
+                
+                # Update job status to completed
+                try:
+                    metadata['job_completed'] = 'YES'
+                    if 'metadata' in job_data:
+                        job_data['metadata'] = metadata
+                    else:
+                        job_data = metadata
+                    
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(job_data, f, indent=2)
+                    print("   📝 Updated job status to completed")
+                except Exception as e:
+                    print(f"   ⚠️ Could not update job status: {e}")
+                
+            else:
+                print("   ❌ Job failed")
+                
+        except Exception as e:
+            print(f"   ❌ Error processing {json_file}: {e}")
+    
+    print("\n" + "=" * 60)
+    print(f"📊 PROCESSING SUMMARY:")
+    print(f"   📄 Total jobs processed: {processed_count}")
+    print(f"   ✅ Successful prints: {success_count}")
+    print(f"   ❌ Failed prints: {processed_count - success_count}")
+    print(f"   📈 Success rate: {(success_count/processed_count*100):.1f}%" if processed_count > 0 else "   📈 Success rate: 0%")
+    print("=" * 60)
+    print("✅ CMD-based Local Print Jobs Processing completed!")
+
+def print_pdf_cmd_enhanced(file_path, printer_name, copies=1):
+    """Enhanced PDF printing using multiple CMD methods."""
+    try:
+        print(f"   🔍 Printing PDF: {os.path.basename(file_path)} ({copies} copies)")
+        
+        for copy_num in range(copies):
+            success = False
+            
+            # Method 1: PowerShell with Start-Process
+            try:
+                ps_cmd = f'Start-Process -FilePath "{file_path}" -ArgumentList "/t","{printer_name}" -Wait -WindowStyle Hidden'
+                result = subprocess.run(['powershell', '-Command', ps_cmd], 
+                                      capture_output=True, text=True, timeout=60)
+                if result.returncode == 0:
+                    success = True
+                    print(f"   ✅ Copy {copy_num + 1} sent via PowerShell")
+            except Exception as e:
+                print(f"   ⚠️ PowerShell method failed: {e}")
+            
+            # Method 2: Try Windows print verb
+            if not success:
+                try:
+                    import win32api
+                    result = win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                    if result > 32:
+                        success = True
+                        print(f"   ✅ Copy {copy_num + 1} sent via printto")
+                except Exception as e:
+                    print(f"   ⚠️ Printto method failed: {e}")
+            
+            # Method 3: Generic print
+            if not success:
+                try:
+                    import win32api
+                    result = win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                    if result > 32:
+                        success = True
+                        print(f"   ✅ Copy {copy_num + 1} sent via generic print")
+                except Exception as e:
+                    print(f"   ⚠️ Generic print failed: {e}")
+            
+            if not success:
+                print(f"   ❌ All methods failed for copy {copy_num + 1}")
+                return False
+            
+            time.sleep(2)  # Small delay between copies
+        
+        return True
+        
+    except Exception as e:
+        print(f"   ❌ PDF printing error: {e}")
+        return False
+
+def print_image_cmd_enhanced(file_path, printer_name):
+    """Enhanced image printing using CMD methods."""
+    try:
+        print(f"   🖼️ Printing image: {os.path.basename(file_path)}")
+        
+        # Method 1: Windows Photo Viewer
+        try:
+            cmd = [
+                'rundll32.exe',
+                'C:\\Windows\\System32\\shimgvw.dll,ImageView_PrintTo',
+                file_path,
+                printer_name
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                print("   ✅ Image printed via Windows Photo Viewer")
+                return True
+        except Exception as e:
+            print(f"   ⚠️ Photo Viewer failed: {e}")
+        
+        # Method 2: Generic print
+        try:
+            import win32api
+            result = win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+            if result > 32:
+                print("   ✅ Image printed via generic print")
+                return True
+        except Exception as e:
+            print(f"   ⚠️ Generic print failed: {e}")
+        
+        return False
+        
+    except Exception as e:
+        print(f"   ❌ Image printing error: {e}")
+        return False
+
+def print_generic_cmd_enhanced(file_path, printer_name):
+    """Enhanced generic file printing using CMD methods."""
+    try:
+        print(f"   📄 Printing generic file: {os.path.basename(file_path)}")
+        
+        try:
+            import win32api
+            result = win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+            if result > 32:
+                print("   ✅ Generic file printed")
+                return True
+        except Exception as e:
+            print(f"   ⚠️ Generic print failed: {e}")
+        
+        return False
+        
+    except Exception as e:
+        print(f"   ❌ Generic file printing error: {e}")
         return False
 
 def adobe_local_print_jobs():
