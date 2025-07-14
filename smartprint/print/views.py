@@ -1097,92 +1097,89 @@ def upload_to_r2(request):
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
-                    storage_folder = request.POST.get('storage_folder', 'vendor_print_jobs')
+                    # Always use the same storage folders as the userdashboard print modal
+                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
+                    user_file_key = f'users/{user_email}/{file.name}'
                     
                     if service_type in ['photo_print', 'passport_photo']:
-                        # Handle photo print processing
-                        print(f"📸 Processing {service_type} service...")
-                        
-                        # Collect all image files for this job
-                        image_files_data = []
-                        for j in range(file_count):
-                            if f'file_{j}' in request.FILES:
-                                temp_file = request.FILES[f'file_{j}']
-                                if temp_file.content_type and temp_file.content_type.startswith('image/'):
-                                    image_files_data.append(temp_file.read())
-                        
-                        if not image_files_data:
-                            image_files_data = [file_content]  # Use current file if no other images
-                        
-                        # Create layout configuration
-                        layout_config = {
-                            'photo_count': int(print_settings.get('photo_count', 1)),
-                            'layout': print_settings.get('layout', '1x1'),
-                            'image_mode': print_settings.get('image_mode', 'same'),
-                            'color': print_settings.get('color', 'Color'),
-                            'paper_size': print_settings.get('paper_size', 'A4')
-                        }
-                        
-                        # Create photo layout PDF
-                        if service_type == 'passport_photo':
-                            # Legacy passport photo handling
-                            total_prints = int(print_settings.get("copies", 8))
-                            pdf_data = create_passport_photo_layout(file_content, total_prints)
-                        else:
-                            # New photo print layout
-                            pdf_data = create_photo_print_layout(image_files_data, layout_config)
-                        
-                        if pdf_data:
-                            # Update file metadata for photo service
-                            file_metadata.update({
-                                'service_type': service_type,
-                                'photo_count': str(layout_config['photo_count']),
-                                'layout': layout_config['layout'],
-                                'image_mode': layout_config['image_mode'],
-                                'layout_created': 'YES',
-                                'original_filename': file.name,
-                                'paper_size': layout_config['paper_size']
-                            })
-                            
-                            # Generate new filename for the PDF layout
-                            base_name = os.path.splitext(file.name)[0]
-                            if service_type == 'passport_photo':
-                                pdf_filename = f"passport_layout_{base_name}_{layout_config['photo_count']}photos.pdf"
-                            else:
-                                pdf_filename = f"photo_layout_{base_name}_{layout_config['layout']}_{layout_config['photo_count']}photos.pdf"
-                            
-                            # Store the PDF layout in vendor and user folders
-                            vendor_file_key = f'{storage_folder}/{vendor_id}/{pdf_filename}'
-                            user_file_key = f'users/{user_email}/{pdf_filename}'
-                            
-                            # Upload PDF to vendor folder
+                        # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
+                        if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
+                            # Use the same keys as above
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=vendor_file_key,
-                                Body=pdf_data,
+                                Body=file_content,
                                 ContentType='application/pdf',
                                 Metadata=file_metadata
                             )
-                            
-                            # Upload PDF to user folder
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=user_file_key,
-                                Body=pdf_data,
+                                Body=file_content,
                                 ContentType='application/pdf',
                                 Metadata=file_metadata
                             )
-                            
-                            print(f"✅ Photo layout saved as PDF: {pdf_filename}")
+                            print(f"✅ PDF uploaded directly: {file.name}")
                         else:
-                            print(f"❌ Failed to create {service_type} layout")
-                            return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
+                            # Handle photo print processing (backend layout generation)
+                            print(f"📸 Processing {service_type} service...")
+                            # Collect all image files for this job
+                            image_files_data = []
+                            for j in range(file_count):
+                                if f'file_{j}' in request.FILES:
+                                    temp_file = request.FILES[f'file_{j}']
+                                    if temp_file.content_type and temp_file.content_type.startswith('image/'):
+                                        image_files_data.append(temp_file.read())
+                            if not image_files_data:
+                                image_files_data = [file_content]  # Use current file if no other images
+                            # Create layout configuration
+                            layout_config = {
+                                'photo_count': int(print_settings.get('photo_count', 1)),
+                                'layout': print_settings.get('layout', '1x1'),
+                                'image_mode': print_settings.get('image_mode', 'same'),
+                                'color': print_settings.get('color', 'Color'),
+                                'paper_size': print_settings.get('paper_size', 'A4')
+                            }
+                            # Create photo layout PDF
+                            if service_type == 'passport_photo':
+                                # Legacy passport photo handling
+                                total_prints = int(print_settings.get("copies", 8))
+                                pdf_data = create_passport_photo_layout(file_content, total_prints)
+                            else:
+                                # New photo print layout
+                                pdf_data = create_photo_print_layout(image_files_data, layout_config)
+                            if pdf_data:
+                                # Update file metadata for photo service
+                                file_metadata.update({
+                                    'service_type': service_type,
+                                    'photo_count': str(layout_config['photo_count']),
+                                    'layout': layout_config['layout'],
+                                    'image_mode': layout_config['image_mode'],
+                                    'layout_created': 'YES',
+                                    'original_filename': file.name,
+                                    'paper_size': layout_config['paper_size']
+                                })
+                                # Use the same keys as above
+                                s3.put_object(
+                                    Bucket=settings.R2_BUCKET,
+                                    Key=vendor_file_key,
+                                    Body=pdf_data,
+                                    ContentType='application/pdf',
+                                    Metadata=file_metadata
+                                )
+                                s3.put_object(
+                                    Bucket=settings.R2_BUCKET,
+                                    Key=user_file_key,
+                                    Body=pdf_data,
+                                    ContentType='application/pdf',
+                                    Metadata=file_metadata
+                                )
+                                print(f"✅ Photo layout saved as PDF: {file.name}")
+                            else:
+                                print(f"❌ Failed to create {service_type} layout")
+                                return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
                     else:
                         # Regular file upload for non-passport services
-                        vendor_file_key = f'{storage_folder}/{vendor_id}/{file.name}'
-                        user_file_key = f'users/{user_email}/{file.name}'
-
-                        # Upload to vendor folder (for vendor processing)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=vendor_file_key,
@@ -1190,8 +1187,6 @@ def upload_to_r2(request):
                             ContentType=content_type,
                             Metadata=file_metadata
                         )
-
-                        # Upload to user folder (for user dashboard)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=user_file_key,
@@ -1418,7 +1413,7 @@ def create_photo_print_layout(input_images_data, layout_config):
     """
     try:
         total_prints = layout_config.get('photo_count', 1)
-        layout_type = layout_config.get('layout', '1x1')
+        layout_type = str(layout_config.get('layout', '1'))
         image_mode = layout_config.get('image_mode', 'same')
         
         print(f"📸 Creating photo print layout for {total_prints} photos in {layout_type} arrangement...")
@@ -1429,16 +1424,20 @@ def create_photo_print_layout(input_images_data, layout_config):
         MARGIN = 118      # 10mm margins
         SPACING = 59      # 5mm spacing between photos
         
-        # Determine grid layout based on layout type
-        layout_grids = {
-            '1x1': (1, 1),
-            '2x1': (2, 1),
-            '2x2': (2, 2),
-            '3x2': (3, 2),
-            '3x3': (3, 3)
-        }
+        # Determine grid layout based on photo count
+        if total_prints == 1:
+            cols, rows = 1, 1
+        elif total_prints == 2:
+            cols, rows = 1, 2
+        elif total_prints == 4:
+            cols, rows = 2, 2
+        elif total_prints == 6:
+            cols, rows = 2, 3
+        elif total_prints == 9:
+            cols, rows = 3, 3
+        else:
+            cols, rows = 1, 1
         
-        cols, rows = layout_grids.get(layout_type, (1, 1))
         actual_photos = min(total_prints, cols * rows)
         
         # Calculate photo dimensions based on grid layout
@@ -1481,8 +1480,17 @@ def create_photo_print_layout(input_images_data, layout_config):
             single_image = processed_images[0]
             processed_images = [single_image.copy() for _ in range(actual_photos)]
         
+        # Ensure we have enough images for the layout
+        while len(processed_images) < actual_photos:
+            if len(processed_images) > 0:
+                processed_images.append(processed_images[0].copy())
+            else:
+                # Create a placeholder image if no images available
+                placeholder = Image.new('RGB', (photo_width, photo_height), 'lightgray')
+                processed_images.append(placeholder)
+        
         # Create the A4 layout with white background
-        print(f"📄 Creating A4 layout with {actual_photos} photos in {layout_type} grid...")
+        print(f"📄 Creating A4 layout with {actual_photos} photos in {cols}x{rows} grid...")
         layout = Image.new('RGB', (A4_WIDTH, A4_HEIGHT), 'white')
         
         # Calculate positioning to center the grid on the page
@@ -1534,39 +1542,6 @@ def create_photo_print_layout(input_images_data, layout_config):
                 draw.line([(x+photo_width+offset, y+photo_height+offset-mark_length), (x+photo_width+offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
                 draw.line([(x+photo_width+offset-mark_length, y+photo_height+offset), (x+photo_width+offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
         
-        # Add title and info text at the bottom
-        try:
-            from PIL import ImageFont
-            try:
-                # Try to use a system font
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
-                small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-            except:
-                # Fallback to default font
-                font = ImageFont.load_default()
-                small_font = ImageFont.load_default()
-        except:
-            font = None
-            small_font = None
-        
-        if font:
-            # Add title
-            title_text = f"Photo Print Layout ({actual_photos} photos - {layout_type})"
-            title_bbox = draw.textbbox((0, 0), title_text, font=font)
-            title_width = title_bbox[2] - title_bbox[0]
-            title_x = (A4_WIDTH - title_width) // 2
-            title_y = A4_HEIGHT - 150
-            draw.text((title_x, title_y), title_text, fill='black', font=font)
-            
-            # Add layout information
-            if small_font:
-                info_text = f"A4 Paper • {cols}x{rows} Grid Layout • High Quality Print Ready"
-                info_bbox = draw.textbbox((0, 0), info_text, font=small_font)
-                info_width = info_bbox[2] - info_bbox[0]
-                info_x = (A4_WIDTH - info_width) // 2
-                info_y = title_y + 50
-                draw.text((info_x, info_y), info_text, fill='gray', font=small_font)
-        
         # Convert to high-quality PDF with proper settings
         print("💾 Converting layout to PDF...")
         pdf_buffer = io.BytesIO()
@@ -1585,7 +1560,7 @@ def create_photo_print_layout(input_images_data, layout_config):
         
         print(f"✅ Photo print layout created successfully!")
         print(f"   📄 {actual_photos} photos arranged on A4 page")
-        print(f"   📐 Grid layout: {cols}x{rows} ({layout_type})")
+        print(f"   📐 Grid layout: {cols}x{rows}")
         print(f"   🖼️ Image mode: {image_mode}")
         print(f"   🎨 High quality 300 DPI PDF ready for printing")
         
