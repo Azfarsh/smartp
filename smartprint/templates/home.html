@@ -225,7 +225,7 @@
         /* Theme Toggle Button */
         .theme-toggle {
             position: relative;
-            width: 50px;
+            width: 60px;
             height: 28px;
             background: var(--secondary-gradient);
             border-radius: 25px;
@@ -233,6 +233,38 @@
             cursor: pointer;
             transition: var(--transition-smooth);
             margin-left: 1rem;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .theme-toggle .toggle-thumb {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 28px;
+            height: 22px;
+            background: #3a86ff;
+            border-radius: 50%;
+            transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .theme-toggle .theme-icon {
+            font-size: 1.2rem;
+            color: #ffb300;
+            transition: color 0.4s;
+        }
+
+        [data-bs-theme="dark"] .theme-toggle .toggle-thumb {
+            left: 29px;
+        }
+
+        [data-bs-theme="dark"] .theme-toggle .theme-icon {
+            color: #6c63ff;
         }
 
         .theme-toggle::before {
@@ -240,7 +272,7 @@
             position: absolute;
             top: 3px;
             left: 3px;
-            width: 22px;
+            width: 28px;
             height: 22px;
             background: white;
             border-radius: 50%;
@@ -249,7 +281,7 @@
         }
 
         [data-bs-theme="dark"] .theme-toggle::before {
-            transform: translateX(22px);
+            transform: translateX(28px);
         }
 
         .theme-toggle:hover {
@@ -713,10 +745,7 @@
             </a>
 
             <div class="d-flex align-items-center">
-                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                    <i class="theme-icon bi bi-sun-fill"></i>
-                </button>
-
+                <!-- Removed theme toggle button from here -->
                 <button class="navbar-toggler ms-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
                         aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -749,6 +778,13 @@
                         <a href="/login" class="btn btn-gradient">
                             <i class="bi bi-rocket-takeoff-fill me-2"></i>Get Started
                         </a>
+                    </li>
+                    <li class="nav-item ms-3">
+                        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                            <span class="toggle-thumb">
+                                <i class="theme-icon bi bi-sun-fill"></i>
+                            </span>
+                        </button>
                     </li>
                 </ul>
             </div>
