@@ -1,1350 +1,1260 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrintMax - Your Smart Printing Solution</title>
-    
+    <meta name="description" content="Printmax - Revolutionary automated printing with AI. Upload, print, collect - the future of printing is here.">
+    <meta name="keywords" content="automated printing, AI printing, smart printing, instant printing, digital printing revolution">
+    <meta name="author" content="Printmax">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#6366f1">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Printmax - Revolutionary AI-Powered Printing">
+    <meta property="og:description" content="Experience the future of printing with our AI-powered automated system. Upload, customize, and collect your prints instantly.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://printmax.com">
+    <meta property="og:image" content="https://printmax.com/og-image.jpg">
+    <meta property="og:site_name" content="Printmax">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Printmax - Revolutionary AI-Powered Printing">
+    <meta name="twitter:description" content="The future of printing is here. AI-powered, instant, and revolutionary.">
+    <meta name="twitter:image" content="https://printmax.com/twitter-image.jpg">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://printmax.com">
+
+    <title>Printmax - Revolutionary AI-Powered Printing | The Future is Here</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            /* Light Mode Colors */
+            /* Revolutionary Color Palette */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            --neon-gradient: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
+            --cyber-gradient: linear-gradient(135deg, #00d4ff 0%, #090979 50%, #020024 100%);
+            --sunset-gradient: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            --ocean-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --fire-gradient: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%);
+            --forest-gradient: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+
+            /* Base Colors */
             --primary-bg: #ffffff;
             --secondary-bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text-primary: #1e293b;
+            --text-color: #1e293b;
             --text-secondary: #64748b;
-            --text-muted: #94a3b8;
+            --heading-color: #0f172a;
+            --card-bg: #ffffff;
+            --navbar-bg: rgba(255, 255, 255, 0.95);
+            --navbar-text: #1e293b;
             --border-color: #e2e8f0;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            
-            /* Vibrant Brand Colors */
-            --brand-blue: #3b82f6;
-            --brand-purple: #8b5cf6;
-            --brand-green: #10b981;
-            --brand-orange: #f59e0b;
-            --brand-red: #ef4444;
-            --brand-pink: #ec4899;
-            --brand-cyan: #06b6d4;
-            --brand-indigo: #6366f1;
-            --brand-teal: #14b8a6;
-            --brand-emerald: #059669;
-            --brand-lime: #84cc16;
-            --brand-amber: #f59e0b;
-            
-            /* Service Colors */
-            --service-document: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --service-photo: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --service-business: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --service-binding: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --service-bulk: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            --service-express: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-            
-            /* Gradients */
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --gradient-warning: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --gradient-hero: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            --shadow-neon: 0 0 20px rgba(102, 126, 234, 0.4);
+
+            /* Glass Effect */
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+            /* Animations */
+            --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --transition-elastic: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        [data-theme="dark"] {
-            /* Dark Mode Colors */
-            --primary-bg: #0f172a;
-            --secondary-bg: #1e293b;
-            --card-bg: #334155;
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --text-muted: #94a3b8;
-            --border-color: #475569;
+        [data-bs-theme="dark"] {
+            --primary-bg: #0f0f23;
+            --secondary-bg: #1a1a2e;
+            --text-color: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --heading-color: #f1f5f9;
+            --card-bg: rgba(26, 26, 46, 0.8);
+            --navbar-bg: rgba(15, 15, 35, 0.95);
+            --navbar-text: #e2e8f0;
+            --border-color: #334155;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+            --shadow-neon: 0 0 30px rgba(102, 126, 234, 0.6);
+
+            --glass-bg: rgba(26, 26, 46, 0.35);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
         }
 
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--primary-bg);
-            color: var(--text-primary);
+            color: var(--text-color);
             line-height: 1.6;
-            transition: all 0.3s ease;
+            transition: var(--transition-smooth);
             overflow-x: hidden;
+            padding-top: 80px;
         }
 
         /* Animated Background */
-        .animated-bg {
+        body::before {
+            content: '';
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
-            background: var(--primary-bg);
-            overflow: hidden;
-        }
-
-        .animated-bg::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
             background: 
-                radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 60%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
-            animation: float 20s ease-in-out infinite;
+                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(249, 147, 251, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(75, 172, 254, 0.1) 0%, transparent 50%);
+            animation: backgroundFloat 20s ease-in-out infinite;
+            z-index: -2;
         }
 
-        @keyframes float {
+        [data-bs-theme="dark"] body::before {
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(249, 147, 251, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(75, 172, 254, 0.15) 0%, transparent 50%);
+        }
+
+        @keyframes backgroundFloat {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
+            33% { transform: translateY(-20px) rotate(1deg); }
+            66% { transform: translateY(10px) rotate(-1deg); }
         }
 
-        /* Header */
-        .header {
-            background: rgba(255, 255, 255, 0.95);
+        /* Navigation */
+        .navbar {
+            background: var(--navbar-bg) !important;
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
-            position: fixed;
+            position: fixed !important;
             top: 0;
             left: 0;
             right: 0;
-            z-index: 1000;
-            transition: all 0.3s ease;
+            z-index: 1030;
+            transition: var(--transition-smooth);
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
         }
 
-        [data-theme="dark"] .header {
-            background: rgba(15, 23, 42, 0.95);
-        }
-
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 80px;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 800;
+        .navbar-brand {
+            font-family: 'Space Grotesk', sans-serif;
             font-size: 1.8rem;
-            color: var(--text-primary);
-            text-decoration: none;
-            transition: all 0.3s ease;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            transition: var(--transition-smooth);
         }
 
-        .logo:hover {
+        .navbar-brand:hover {
             transform: scale(1.05);
+            filter: brightness(1.2);
         }
 
-        .logo-icon {
-            width: 50px;
-            height: 50px;
-            background: var(--gradient-primary);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
+        .navbar-brand i {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-right: 0.5rem;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+            50% { transform: scale(1.1); }
         }
 
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 2.5rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            position: relative;
-            padding: 0.5rem 0;
-        }
-
-        .nav-links a:hover {
-            color: var(--brand-blue);
-            transform: translateY(-2px);
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 3px;
-            background: var(--gradient-primary);
-            transition: width 0.3s ease;
-            border-radius: 2px;
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .theme-toggle {
-            background: var(--secondary-bg);
-            border: 2px solid var(--border-color);
+        .nav-link {
+            color: var(--navbar-text) !important;
+            font-weight: 500;
+            padding: 0.75rem 1.25rem !important;
             border-radius: 12px;
-            padding: 0.75rem;
-            cursor: pointer;
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-            font-size: 1.2rem;
+            transition: var(--transition-smooth);
             position: relative;
             overflow: hidden;
         }
 
-        .theme-toggle:hover {
-            background: var(--brand-blue);
-            color: white;
-            transform: scale(1.1) rotate(15deg);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .cta-button {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 0.875rem 2rem;
-            border-radius: 16px;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-button::before {
+        .nav-link::before {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.6s ease;
+            background: var(--primary-gradient);
+            transition: var(--transition-smooth);
+            z-index: -1;
+            opacity: 0.1;
         }
 
-        .cta-button:hover::before {
-            left: 100%;
+        .nav-link:hover::before {
+            left: 0;
         }
 
-        .cta-button:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-xl);
+        .nav-link:hover {
+            color: var(--heading-color) !important;
+            transform: translateY(-2px);
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: var(--secondary-gradient);
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            margin-left: 1rem;
+        }
+
+        .theme-toggle::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: var(--transition-smooth);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        [data-bs-theme="dark"] .theme-toggle::before {
+            transform: translateX(22px);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-neon);
         }
 
         /* Hero Section */
         .hero {
-            padding: 140px 2rem 100px;
-            background: var(--primary-bg);
-            position: relative;
-            overflow: hidden;
             min-height: 100vh;
             display: flex;
             align-items: center;
-        }
-
-        .hero-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            text-align: center;
             position: relative;
-            z-index: 2;
+            overflow: hidden;
+            padding: 100px 0 50px;
         }
 
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            background: var(--card-bg);
-            border: 2px solid var(--border-color);
-            padding: 0.75rem 1.5rem;
-            border-radius: 50px;
-            margin-bottom: 2.5rem;
-            font-size: 1rem;
-            color: var(--text-secondary);
-            box-shadow: var(--shadow);
-            animation: slideInDown 1s ease-out;
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--cyber-gradient);
+            opacity: 0.05;
+            animation: heroGlow 8s ease-in-out infinite;
+            z-index: -1;
         }
 
-        @keyframes slideInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-badge i {
-            color: var(--brand-green);
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
+        @keyframes heroGlow {
+            0%, 100% { opacity: 0.05; transform: scale(1); }
+            50% { opacity: 0.1; transform: scale(1.02); }
         }
 
         .hero-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: clamp(3rem, 6vw, 5.5rem);
-            font-weight: 900;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
             margin-bottom: 2rem;
-            background: var(--gradient-hero);
+        }
+
+        .gradient-text {
+            background: var(--neon-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            line-height: 1.1;
-            animation: slideInUp 1s ease-out 0.3s both;
+            color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
         }
 
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
         .hero-subtitle {
-            font-size: 1.5rem;
-            color: var(--text-secondary);
-            margin-bottom: 3.5rem;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-            font-weight: 400;
-            animation: slideInUp 1s ease-out 0.6s both;
-        }
-
-        .hero-actions {
-            display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 5rem;
-            animation: slideInUp 1s ease-out 0.9s both;
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1.25rem 2.5rem;
-            border-radius: 16px;
-            text-decoration: none;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-            font-size: 1.1rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.6s ease;
-        }
-
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .btn-secondary {
-            background: var(--card-bg);
-            color: var(--text-primary);
-            padding: 1.25rem 2.5rem;
-            border: 2px solid var(--border-color);
-            border-radius: 16px;
-            text-decoration: none;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-            font-size: 1.1rem;
-        }
-
-        .btn-secondary:hover {
-            background: var(--secondary-bg);
-            transform: translateY(-3px);
-            border-color: var(--brand-blue);
-        }
-
-        /* Stats Section */
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2.5rem;
-            max-width: 1000px;
-            margin: 0 auto;
-            animation: slideInUp 1s ease-out 1.2s both;
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            padding: 2.5rem;
-            border-radius: 24px;
-            text-align: center;
-            border: 2px solid var(--border-color);
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .stat-card:nth-child(2)::before { background: var(--gradient-success); }
-        .stat-card:nth-child(3)::before { background: var(--gradient-warning); }
-        .stat-card:nth-child(4)::before { background: var(--gradient-secondary); }
-
-        .stat-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .stat-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1.5rem;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            animation: rotateIn 1s ease-out;
-        }
-
-        @keyframes rotateIn {
-            from {
-                opacity: 0;
-                transform: rotate(-180deg) scale(0.5);
-            }
-            to {
-                opacity: 1;
-                transform: rotate(0deg) scale(1);
-            }
-        }
-
-        .stat-icon.blue { background: var(--gradient-primary); }
-        .stat-icon.green { background: var(--gradient-success); }
-        .stat-icon.orange { background: var(--gradient-warning); }
-        .stat-icon.pink { background: var(--gradient-secondary); }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--text-primary);
-            margin-bottom: 0.75rem;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        /* Services Section */
-        .services {
-            padding: 120px 2rem;
-            background: var(--secondary-bg);
-        }
-
-        .services-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 5rem;
-        }
-
-        .section-badge {
-            display: inline-block;
-            background: var(--brand-blue);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 50px;
-            font-size: 1rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            animation: fadeInUp 1s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .section-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 3rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            color: var(--text-primary);
-            animation: fadeInUp 1s ease-out 0.2s both;
-        }
-
-        .section-subtitle {
-            font-size: 1.3rem;
-            color: var(--text-secondary);
-            max-width: 700px;
-            margin: 0 auto;
-            animation: fadeInUp 1s ease-out 0.4s both;
-        }
-
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-            gap: 2.5rem;
-        }
-
-        .service-card {
-            background: var(--card-bg);
-            padding: 3rem;
-            border-radius: 24px;
-            border: 2px solid var(--border-color);
-            box-shadow: var(--shadow);
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-            animation: fadeInUp 1s ease-out;
-        }
-
-        .service-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-        }
-
-        .service-card:nth-child(1)::before { background: var(--service-document); }
-        .service-card:nth-child(2)::before { background: var(--service-photo); }
-        .service-card:nth-child(3)::before { background: var(--service-business); }
-        .service-card:nth-child(4)::before { background: var(--service-binding); }
-        .service-card:nth-child(5)::before { background: var(--service-bulk); }
-        .service-card:nth-child(6)::before { background: var(--service-express); }
-
-        .service-card:hover {
-            transform: translateY(-12px) scale(1.02);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .service-icon {
-            width: 90px;
-            height: 90px;
-            border-radius: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.2rem;
-            color: white;
-            margin-bottom: 2rem;
-            transition: all 0.3s ease;
-        }
-
-        .service-card:nth-child(1) .service-icon { background: var(--service-document); }
-        .service-card:nth-child(2) .service-icon { background: var(--service-photo); }
-        .service-card:nth-child(3) .service-icon { background: var(--service-business); }
-        .service-card:nth-child(4) .service-icon { background: var(--service-binding); }
-        .service-card:nth-child(5) .service-icon { background: var(--service-bulk); }
-        .service-card:nth-child(6) .service-icon { background: var(--service-express); }
-
-        .service-card:hover .service-icon {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        .service-title {
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: var(--text-primary);
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .service-description {
-            color: var(--text-secondary);
-            line-height: 1.8;
-            margin-bottom: 2rem;
-            font-size: 1.05rem;
-        }
-
-        .service-features {
-            list-style: none;
-            margin-bottom: 2rem;
-        }
-
-        .service-features li {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .service-features li i {
-            color: var(--brand-green);
-            font-size: 1.1rem;
-        }
-
-        .service-link {
-            color: var(--brand-blue);
-            text-decoration: none;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s ease;
-            font-size: 1.05rem;
-        }
-
-        .service-link:hover {
-            gap: 1rem;
-            color: var(--brand-purple);
-        }
-
-        /* Features Section */
-        .features {
-            padding: 120px 2rem;
-            background: var(--primary-bg);
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 3rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .feature-card {
-            background: var(--card-bg);
-            padding: 3rem;
-            border-radius: 24px;
-            border: 2px solid var(--border-color);
-            box-shadow: var(--shadow);
-            transition: all 0.4s ease;
-            text-align: center;
-            animation: fadeInUp 1s ease-out;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-10px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .feature-icon {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 2rem;
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            color: white;
-            background: var(--gradient-primary);
-        }
-
-        .feature-card:nth-child(2) .feature-icon { background: var(--gradient-success); }
-        .feature-card:nth-child(3) .feature-icon { background: var(--gradient-warning); }
-        .feature-card:nth-child(4) .feature-icon { background: var(--gradient-secondary); }
-
-        .feature-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: var(--text-primary);
-        }
-
-        .feature-description {
-            color: var(--text-secondary);
-            line-height: 1.8;
-            font-size: 1.05rem;
-        }
-
-        /* CTA Section */
-        .cta-section {
-            padding: 120px 2rem;
-            background: var(--secondary-bg);
-            text-align: center;
-        }
-
-        .cta-container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            padding: 5rem 4rem;
-            border-radius: 32px;
-            border: 2px solid var(--border-color);
-            box-shadow: var(--shadow-xl);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
-        }
-
-        .cta-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .cta-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 3rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            color: var(--text-primary);
-        }
-
-        .cta-subtitle {
-            font-size: 1.3rem;
+            font-size: clamp(1.1rem, 2.5vw, 1.4rem);
             color: var(--text-secondary);
             margin-bottom: 3rem;
             line-height: 1.6;
         }
 
-        /* Footer */
-        .footer {
-            background: var(--card-bg);
-            border-top: 2px solid var(--border-color);
-            padding: 4rem 2rem 2rem;
-        }
-
-        .footer-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 3rem;
-        }
-
-        .footer-section h3 {
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            color: var(--text-primary);
-            font-size: 1.3rem;
-        }
-
-        .footer-section ul {
-            list-style: none;
-        }
-
-        .footer-section ul li {
-            margin-bottom: 0.75rem;
-        }
-
-        .footer-section ul li a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .footer-section ul li a:hover {
-            color: var(--brand-blue);
-            transform: translateX(5px);
-        }
-
-        .footer-bottom {
-            border-top: 2px solid var(--border-color);
-            margin-top: 3rem;
-            padding-top: 2rem;
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        .social-links {
-            display: flex;
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-        }
-
-        .social-links a {
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            transition: all 0.3s ease;
-            padding: 0.75rem;
-            border-radius: 12px;
-            background: var(--secondary-bg);
-        }
-
-        .social-links a:hover {
+        /* Buttons */
+        .btn-gradient {
+            background: var(--primary-gradient);
+            border: none;
             color: white;
-            background: var(--brand-blue);
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: var(--transition-bounce);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-gradient::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: var(--transition-smooth);
+        }
+
+        .btn-gradient:hover::before {
+            left: 100%;
+        }
+
+        .btn-gradient:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: var(--shadow-neon);
+            color: white;
+        }
+
+        .btn-outline-gradient {
+            background: transparent;
+            border: 2px solid;
+            border-image: var(--primary-gradient) 1;
+            color: var(--text-color);
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: var(--transition-bounce);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-outline-gradient:hover {
+            background: var(--primary-gradient);
+            color: white;
             transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-
-            .hero {
-                padding: 120px 1rem 80px;
-            }
-
-            .hero-actions {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .services-grid,
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .cta-container {
-                padding: 3rem 2rem;
-            }
-
-            .section-title {
-                font-size: 2.5rem;
-            }
-
-            .hero-title {
-                font-size: 2.5rem;
-            }
+        /* Cards */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--glass-shadow);
+            transition: var(--transition-smooth);
+            height: 100%;
         }
 
-        /* Scroll animations */
-        .scroll-animate {
-            opacity: 0;
-            transform: translateY(50px);
-            transition: all 0.8s ease;
+        .glass-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: var(--shadow-neon);
         }
 
-        .scroll-animate.animate {
-            opacity: 1;
-            transform: translateY(0);
+        /* Feature Icons */
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition-elastic);
         }
 
-        /* Loading animation */
-        .loading {
-            position: fixed;
+        .feature-icon i {
+            font-size: 2rem;
+            color: white;
+            z-index: 2;
+            position: relative;
+        }
+
+        .feature-icon::before {
+            content: '';
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: var(--primary-bg);
+            opacity: 0.9;
+            transition: var(--transition-smooth);
+        }
+
+        .feature-icon:hover {
+            transform: scale(1.15) rotate(10deg);
+        }
+
+        .feature-icon:hover::before {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* Service Specific Gradients */
+        .upload-icon::before { background: var(--accent-gradient); }
+        .payment-icon::before { background: var(--success-gradient); }
+        .print-icon::before { background: var(--warning-gradient); }
+        .collect-icon::before { background: var(--secondary-gradient); }
+        .speed-icon::before { background: var(--fire-gradient); }
+        .security-icon::before { background: var(--ocean-gradient); }
+        .price-icon::before { background: var(--forest-gradient); }
+        .available-icon::before { background: var(--sunset-gradient); }
+
+        /* Stats Section */
+        .stats-section {
+            background: var(--dark-gradient);
+            color: white;
+            padding: 4rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .stat-number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Pricing Cards */
+        .pricing-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            border: 1px solid var(--border-color);
+            height: 100%;
+        }
+
+        .pricing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            transition: var(--transition-smooth);
+        }
+
+        .pricing-card.basic::before { background: var(--accent-gradient); }
+        .pricing-card.popular::before { background: var(--warning-gradient); }
+        .pricing-card.premium::before { background: var(--secondary-gradient); }
+
+        .pricing-card:hover {
+            transform: translateY(-15px);
+            box-shadow: var(--shadow-neon);
+        }
+
+        .pricing-card.popular {
+            transform: scale(1.05);
+            border: 2px solid;
+            border-image: var(--warning-gradient) 1;
+        }
+
+        .price-badge {
+            position: absolute;
+            top: -15px;
+            right: 20px;
+            background: var(--warning-gradient);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Testimonials */
+        .testimonial-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: var(--transition-smooth);
+            height: 100%;
+        }
+
+        .testimonial-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .testimonial-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
+            font-weight: 700;
+            font-size: 1.2rem;
         }
 
-        .loading.hide {
-            opacity: 0;
-            pointer-events: none;
+        /* CTA Section */
+        .cta-section {
+            background: var(--cyber-gradient);
+            color: white;
+            padding: 5rem 0;
+            position: relative;
+            overflow: hidden;
         }
 
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--border-color);
-            border-top: 4px solid var(--brand-blue);
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 50px,
+                rgba(255, 255, 255, 0.03) 50px,
+                rgba(255, 255, 255, 0.03) 100px
+            );
+            animation: ctaPattern 20s linear infinite;
+        }
+
+        @keyframes ctaPattern {
+            0% { transform: translateX(-100px); }
+            100% { transform: translateX(100px); }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark-gradient);
+            color: white;
+            padding: 3rem 0 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: var(--transition-smooth);
+        }
+
+        .footer-link:hover {
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .social-icon {
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            background: var(--primary-gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-bounce);
+            text-decoration: none;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .social-icon:hover {
+            transform: scale(1.2) rotate(10deg);
+            box-shadow: var(--shadow-neon);
+            color: white;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            body { padding-top: 70px; }
+            .navbar { padding: 0.5rem 0; }
+            .navbar-brand { font-size: 1.5rem; }
+            .hero { padding: 50px 0 30px; }
+            .hero-title { font-size: 2.5rem; }
+            .btn-gradient, .btn-outline-gradient { 
+                padding: 0.8rem 2rem; 
+                font-size: 1rem; 
+            }
+            .glass-card { padding: 1.5rem; }
+            .feature-icon { width: 60px; height: 60px; }
+            .feature-icon i { font-size: 1.5rem; }
+            .stat-number { font-size: 2.5rem; }
+            .pricing-card { padding: 2rem; }
+            .stats-section { padding: 3rem 0; }
+            .cta-section { padding: 3rem 0; }
+        }
+
+        @media (max-width: 576px) {
+            .container { padding: 0 1rem; }
+            .hero-title { font-size: 2rem; }
+            .hero-subtitle { font-size: 1rem; }
+            .btn-gradient, .btn-outline-gradient { 
+                padding: 0.7rem 1.5rem; 
+                font-size: 0.9rem; 
+                display: block;
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+            .glass-card { padding: 1rem; }
+            .pricing-card { padding: 1.5rem; }
+            .testimonial-card { padding: 1.5rem; }
+        }
+
+        /* Scroll Animations */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: var(--transition-smooth);
+        }
+
+        .fade-in-up.animate {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Loading Animation */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: loadingDots 1.5s infinite;
+        }
+
+        @keyframes loadingDots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Hover Effects */
+        .hover-float:hover {
+            transform: translateY(-5px);
+            transition: var(--transition-smooth);
+        }
+
+        .hover-scale:hover {
+            transform: scale(1.05);
+            transition: var(--transition-smooth);
+        }
+
+        .hover-glow:hover {
+            box-shadow: var(--shadow-neon);
+            transition: var(--transition-smooth);
         }
     </style>
 </head>
+
 <body>
-    <!-- Loading Screen -->
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- Animated Background -->
-    <div class="animated-bg"></div>
-
-    <!-- Header -->
-    <header class="header">
-        <nav class="nav-container">
-            <a href="/" class="logo">
-                <div class="logo-icon">
-                    <i class="fas fa-print"></i>
-                </div>
-                PrintMax
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg" role="navigation">
+        <div class="container">
+            <a class="navbar-brand" href="#" aria-label="Printmax homepage">
+                <i class="bi bi-lightning-charge-fill"></i>
+                Printmax
             </a>
-            
-            <ul class="nav-links">
-                <li><a href="#services">Services</a></li>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#pricing">Pricing</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-            
-            <div class="nav-actions">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
-                    <i class="fas fa-moon" id="theme-icon"></i>
+
+            <div class="d-flex align-items-center">
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <i class="theme-icon bi bi-sun-fill"></i>
                 </button>
-                <a href="/login/" class="cta-button">Get Started</a>
-            </div>
-        </nav>
-    </header>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-container">
-            <div class="hero-badge">
-                <i class="fas fa-rocket"></i>
-                <span>Revolutionizing Print Services Worldwide</span>
+                <button class="navbar-toggler ms-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
             </div>
-            
-            <h1 class="hero-title">
-                Print Smarter,<br>
-                <span style="background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Print Faster</span>
-            </h1>
-            
-            <p class="hero-subtitle">
-                Experience the future of printing with PrintMax. Connect with local print shops instantly, upload your documents with ease, and get professional results in minutes. Your printing solution, reimagined.
-            </p>
-            
-            <div class="hero-actions">
-                <a href="/login/" class="btn-primary">
-                    <i class="fas fa-play"></i>
-                    Start Printing Now
-                </a>
-                <a href="#services" class="btn-secondary">
-                    <i class="fas fa-info-circle"></i>
-                    Explore Services
-                </a>
-            </div>
-            
-            <!-- Stats -->
-            <div class="stats">
-                <div class="stat-card">
-                    <div class="stat-icon blue">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-number">50K+</div>
-                    <div class="stat-label">Happy Customers</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon green">
-                        <i class="fas fa-store"></i>
-                    </div>
-                    <div class="stat-number">1,200+</div>
-                    <div class="stat-label">Partner Shops</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon orange">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div class="stat-number">5M+</div>
-                    <div class="stat-label">Documents Printed</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon pink">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stat-number">2 Min</div>
-                    <div class="stat-label">Average Processing</div>
-                </div>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works">
+                            <i class="bi bi-gear-fill me-2"></i>How It Works
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">
+                            <i class="bi bi-star-fill me-2"></i>Features
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#services">
+                            <i class="bi bi-grid-fill me-2"></i>Services
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">
+                            <i class="bi bi-chat-fill me-2"></i>Contact
+                        </a>
+                    </li>
+                    <li class="nav-item ms-3">
+                        <a href="/login" class="btn btn-gradient">
+                            <i class="bi bi-rocket-takeoff-fill me-2"></i>Get Started
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
-    </section>
+    </nav>
 
-    <!-- Services Section -->
-    <section class="services scroll-animate" id="services">
-        <div class="services-container">
-            <div class="section-header">
-                <span class="section-badge">Our Services</span>
-                <h2 class="section-title">Complete Printing Solutions</h2>
-                <p class="section-subtitle">
-                    From documents to photos, business cards to bulk orders - we've got all your printing needs covered with premium quality and lightning-fast delivery.
-                </p>
-            </div>
-            
-            <div class="services-grid">
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-file-text"></i>
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-6">
+                        <h1 class="hero-title">
+                            <span class="gradient-text">Revolutionary</span><br>
+                            AI-Powered Printing
+                        </h1>
+                        <p class="hero-subtitle">
+                            🚀 Experience the future of printing with our cutting-edge AI technology. 
+                            Upload, customize, and collect - all powered by intelligent automation that's 
+                            <strong>10x faster</strong> than traditional printing services.
+                        </p>
+                        <div class="d-flex flex-column flex-md-row gap-3">
+                            <a href="/login" class="btn btn-gradient hover-glow">
+                                <i class="bi bi-lightning-charge-fill me-2"></i>
+                                Start Printing Now
+                            </a>
+                            <button class="btn btn-outline-gradient hover-float" onclick="scrollToSection('#how-it-works')">
+                                <i class="bi bi-play-circle-fill me-2"></i>
+                                See How It Works
+                            </button>
+                        </div>
+                        <div class="mt-4">
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check-fill me-1"></i>
+                                🚀 Trusted by 10K+ users • ⚡ 99.9% uptime • 🎯 AI-optimized quality
+                            </small>
+                        </div>
                     </div>
-                    <h3 class="service-title">Document Printing</h3>
-                    <p class="service-description">
-                        Professional document printing with multiple paper sizes, binding options, and quality settings. Perfect for reports, presentations, and official documents.
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> Multiple paper sizes (A4, A3, Letter)</li>
-                        <li><i class="fas fa-check"></i> Color & Black/White options</li>
-                        <li><i class="fas fa-check"></i> Binding and lamination</li>
-                        <li><i class="fas fa-check"></i> Bulk discounts available</li>
-                    </ul>
-                    <a href="#" class="service-link">
-                        Learn more <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-camera"></i>
+                    <div class="col-lg-6">
+                        <div class="text-center">
+                            <video 
+                                class="img-fluid rounded-4 shadow-lg hover-float" 
+                                autoplay 
+                                muted 
+                                loop 
+                                playsinline
+                                style="max-width: 100%; border-radius: 24px;"
+                            >
+                                <source src="{% static 'images/hero-video.mp4' %}" type="video/mp4">
+                                <div class="glass-card text-center">
+                                    <i class="bi bi-play-circle display-1 text-primary mb-3"></i>
+                                    <h5>🎬 Revolutionary Demo</h5>
+                                    <p class="text-muted">See the magic happen in real-time</p>
+                                </div>
+                            </video>
+                        </div>
                     </div>
-                    <h3 class="service-title">Photo Printing</h3>
-                    <p class="service-description">
-                        High-quality photo printing with vibrant colors and professional finishes. From passport photos to large format prints, we deliver excellence.
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> Multiple photo sizes</li>
-                        <li><i class="fas fa-check"></i> Glossy & matte finishes</li>
-                        <li><i class="fas fa-check"></i> Instant passport photos</li>
-                        <li><i class="fas fa-check"></i> Canvas & poster prints</li>
-                    </ul>
-                    <a href="/photoprint/" class="service-link">
-                        Start printing <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-id-card"></i>
-                    </div>
-                    <h3 class="service-title">Business Cards</h3>
-                    <p class="service-description">
-                        Premium business cards that make lasting impressions. Choose from various materials, finishes, and designs to represent your brand perfectly.
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> Premium card stock</li>
-                        <li><i class="fas fa-check"></i> Custom designs available</li>
-                        <li><i class="fas fa-check"></i> UV coating & embossing</li>
-                        <li><i class="fas fa-check"></i> Quick turnaround time</li>
-                    </ul>
-                    <a href="#" class="service-link">
-                        Design now <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-book"></i>
-                    </div>
-                    <h3 class="service-title">Binding Services</h3>
-                    <p class="service-description">
-                        Professional binding solutions for your documents, reports, and presentations. Multiple binding styles to suit your specific needs.
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> Spiral & comb binding</li>
-                        <li><i class="fas fa-check"></i> Perfect binding</li>
-                        <li><i class="fas fa-check"></i> Hardcover binding</li>
-                        <li><i class="fas fa-check"></i> Custom cover designs</li>
-                    </ul>
-                    <a href="#" class="service-link">
-                        Explore options <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-boxes"></i>
-                    </div>
-                    <h3 class="service-title">Bulk Orders</h3>
-                    <p class="service-description">
-                        Special pricing and dedicated support for large volume printing. Perfect for businesses, schools, and organizations with high-volume needs.
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> Volume discounts</li>
-                        <li><i class="fas fa-check"></i> Dedicated account manager</li>
-                        <li><i class="fas fa-check"></i> Priority processing</li>
-                        <li><i class="fas fa-check"></i> Custom delivery options</li>
-                    </ul>
-                    <a href="#" class="service-link">
-                        Get quote <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-                
-                <div class="service-card">
-                    <div class="service-icon">
-                        <i class="fas fa-bolt"></i>
-                    </div>
-                    <h3 class="service-title">Express Service</h3>
-                    <p class="service-description">
-                        Need it fast? Our express service guarantees your prints ready in under 30 minutes. Perfect for urgent documents and last-minute needs.
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> 30-minute guarantee</li>
-                        <li><i class="fas fa-check"></i> Priority queue processing</li>
-                        <li><i class="fas fa-check"></i> Real-time tracking</li>
-                        <li><i class="fas fa-check"></i> SMS notifications</li>
-                    </ul>
-                    <a href="#" class="service-link">
-                        Rush order <i class="fas fa-arrow-right"></i>
-                    </a>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Features Section -->
-    <section class="features scroll-animate" id="features">
-        <div class="services-container">
-            <div class="section-header">
-                <span class="section-badge">Why Choose PrintMax</span>
-                <h2 class="section-title">Powerful Features</h2>
-                <p class="section-subtitle">
-                    Experience the next generation of printing services with our innovative platform designed for modern needs and seamless user experience.
-                </p>
-            </div>
-            
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <div class="container">
+                <div class="row text-center">
+                    <div class="col-md-3 col-6 mb-4 fade-in-up">
+                        <div class="stat-number">50K+</div>
+                        <div class="stat-label">🔥 Documents Printed</div>
                     </div>
-                    <h3 class="feature-title">Instant Upload</h3>
-                    <p class="feature-description">
-                        Upload your documents instantly from any device. Support for PDF, Word, PowerPoint, images, and more. Cloud storage integration for seamless access across all your devices.
-                    </p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-map-marker-alt"></i>
+                    <div class="col-md-3 col-6 mb-4 fade-in-up">
+                        <div class="stat-number">30s</div>
+                        <div class="stat-label">⚡ Average Processing</div>
                     </div>
-                    <h3 class="feature-title">Find Nearby Shops</h3>
-                    <p class="feature-description">
-                        Discover verified print shops near you with real-time availability, competitive pricing, and authentic customer reviews. GPS-powered location services for maximum accuracy.
-                    </p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt"></i>
+                    <div class="col-md-3 col-6 mb-4 fade-in-up">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">🎯 Success Rate</div>
                     </div>
-                    <h3 class="feature-title">Secure & Reliable</h3>
-                    <p class="feature-description">
-                        Bank-level security for all your documents and payments. End-to-end encryption, secure file handling, and complete privacy protection for your sensitive information.
-                    </p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-mobile-alt"></i>
+                    <div class="col-md-3 col-6 mb-4 fade-in-up">
+                        <div class="stat-number">24/7</div>
+                        <div class="stat-label">🚀 AI Available</div>
                     </div>
-                    <h3 class="feature-title">Mobile Optimized</h3>
-                    <p class="feature-description">
-                        Full mobile experience with responsive design. Print from anywhere using your smartphone or tablet. Native mobile apps coming soon for iOS and Android.
-                    </p>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- CTA Section -->
-    <section class="cta-section scroll-animate">
-        <div class="cta-container">
-            <div class="cta-content">
-                <h2 class="cta-title">Ready to Transform Your Printing Experience?</h2>
-                <p class="cta-subtitle">
-                    Join thousands of satisfied customers who have made the smart switch to PrintMax. Start printing smarter, faster, and more conveniently today with our revolutionary platform.
-                </p>
-                <div class="hero-actions">
-                    <a href="/login/" class="btn-primary">
-                        <i class="fas fa-rocket"></i>
-                        Get Started Free
-                    </a>
-                    <a href="/vendor-register/" class="btn-secondary">
-                        <i class="fas fa-store"></i>
-                        Join as Partner
-                    </a>
+        <!-- How It Works Section -->
+        <section id="how-it-works" class="py-5">
+            <div class="container">
+                <div class="text-center mb-5 fade-in-up">
+                    <h2 class="display-4 fw-bold mb-4">
+                        <span class="gradient-text">How It Works</span>
+                    </h2>
+                    <p class="lead">
+                        🎯 <strong>4 Simple Steps</strong> to Revolutionary Printing Experience
+                    </p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-float">
+                            <div class="feature-icon upload-icon mx-auto">
+                                <i class="bi bi-cloud-upload-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">📤 Smart Upload</h3>
+                            <p class="text-muted">
+                                <strong>Drag, drop, done!</strong> Our AI instantly optimizes your files 
+                                for perfect printing quality.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-float">
+                            <div class="feature-icon payment-icon mx-auto">
+                                <i class="bi bi-credit-card-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">💳 Instant Payment</h3>
+                            <p class="text-muted">
+                                <strong>Secure & Fast!</strong> Multiple payment options with 
+                                military-grade encryption.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-float">
+                            <div class="feature-icon print-icon mx-auto">
+                                <i class="bi bi-printer-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">🤖 AI Printing</h3>
+                            <p class="text-muted">
+                                <strong>Hands-free magic!</strong> Our robots handle everything 
+                                with precision and speed.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-float">
+                            <div class="feature-icon collect-icon mx-auto">
+                                <i class="bi bi-gift-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">🎁 Smart Collection</h3>
+                            <p class="text-muted">
+                                <strong>Token-based pickup!</strong> Get notified and collect 
+                                your prints hassle-free.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-5" style="background: var(--secondary-bg);">
+            <div class="container">
+                <div class="text-center mb-5 fade-in-up">
+                    <h2 class="display-4 fw-bold mb-4">
+                        <span class="gradient-text">Why Choose Printmax?</span>
+                    </h2>
+                    <p class="lead">
+                        🚀 <strong>Next-Gen Features</strong> That Make Us The Future of Printing
+                    </p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon speed-icon mx-auto">
+                                <i class="bi bi-lightning-charge-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">⚡ Lightning Fast</h3>
+                            <p class="text-muted">
+                                <strong>30-second processing!</strong> Our AI works at warp speed 
+                                to get your prints ready instantly.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon security-icon mx-auto">
+                                <i class="bi bi-shield-lock-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">🔒 Fort Knox Security</h3>
+                            <p class="text-muted">
+                                <strong>Bank-level protection!</strong> Files auto-delete after printing. 
+                                Your privacy is our obsession.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon price-icon mx-auto">
+                                <i class="bi bi-currency-dollar"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">💰 Smart Pricing</h3>
+                            <p class="text-muted">
+                                <strong>AI-optimized costs!</strong> Pay only for what you need. 
+                                No hidden fees, no surprises.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon available-icon mx-auto">
+                                <i class="bi bi-clock-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3">🌙 Always On</h3>
+                            <p class="text-muted">
+                                <strong>24/7 AI service!</strong> Print at 3AM? No problem. 
+                                Our robots never sleep.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="py-5">
+            <div class="container">
+                <div class="text-center mb-5 fade-in-up">
+                    <h2 class="display-4 fw-bold mb-4">
+                        <span class="gradient-text">What Can You Print?</span>
+                    </h2>
+                    <p class="lead">
+                        🎨 <strong>Unlimited Possibilities</strong> with Our AI-Powered Platform
+                    </p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-glow">
+                            <i class="bi bi-file-text-fill display-4 mb-3" style="background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                            <h5 class="fw-bold mb-3">📄 Smart Documents</h5>
+                            <p class="text-muted">Reports, assignments, contracts - AI-enhanced for perfect clarity</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-glow">
+                            <i class="bi bi-image-fill display-4 mb-3" style="background: var(--success-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                            <h5 class="fw-bold mb-3">🖼️ Photo Magic</h5>
+                            <p class="text-muted">Professional photos, posters - AI color correction included</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-glow">
+                            <i class="bi bi-easel-fill display-4 mb-3" style="background: var(--warning-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                            <h5 class="fw-bold mb-3">🎨 Creative Designs</h5>
+                            <p class="text-muted">Presentations, flyers, art - optimized for stunning results</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-glow">
+                            <i class="bi bi-receipt-fill display-4 mb-3" style="background: var(--secondary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                            <h5 class="fw-bold mb-3">📋 Official Forms</h5>
+                            <p class="text-muted">Government forms, certificates - precision guaranteed</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section -->
+        <section class="py-5" style="background: var(--secondary-bg);">
+            <div class="container">
+                <div class="text-center mb-5 fade-in-up">
+                    <h2 class="display-4 fw-bold mb-4">
+                        <span class="gradient-text">Users Love Us</span>
+                    </h2>
+                    <p class="lead">
+                        💝 <strong>Real Stories</strong> from Happy Customers
+                    </p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-4 fade-in-up">
+                        <div class="testimonial-card">
+                            <p class="mb-4">
+                                "🤯 <strong>Mind-blowing!</strong> Uploaded my thesis at midnight, 
+                                collected perfect prints in the morning. This is the future!"
+                            </p>
+                            <div class="d-flex align-items-center">
+                                <div class="testimonial-avatar me-3">AK</div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Arjun Kumar</h6>
+                                    <small class="text-muted">PhD Student</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 fade-in-up">
+                        <div class="testimonial-card">
+                            <p class="mb-4">
+                                "⚡ <strong>Lightning fast!</strong> Needed urgent job documents. 
+                                Printmax delivered in 2 minutes. Literally saved my career!"
+                            </p>
+                            <div class="d-flex align-items-center">
+                                <div class="testimonial-avatar me-3">RP</div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Riya Patel</h6>
+                                    <small class="text-muted">Software Engineer</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 fade-in-up">
+                        <div class="testimonial-card">
+                            <p class="mb-4">
+                                "🚀 <strong>Game changer!</strong> Print reports from office, 
+                                collect on my way home. The AI quality is insane!"
+                            </p>
+                            <div class="d-flex align-items-center">
+                                <div class="testimonial-avatar me-3">MS</div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Mohit Sharma</h6>
+                                    <small class="text-muted">Marketing Director</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <div class="container text-center">
+                <div class="row">
+                    <div class="col-lg-8 mx-auto fade-in-up">
+                        <h2 class="display-5 fw-bold mb-4">
+                            🚀 Ready to Experience the Future?
+                        </h2>
+                        <p class="lead mb-5">
+                            Join <strong>50,000+ users</strong> who've already upgraded to AI-powered printing. 
+                            Your documents deserve the best!
+                        </p>
+                        <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                            <a href="/login" class="btn btn-gradient btn-lg hover-glow">
+                                <i class="bi bi-rocket-takeoff-fill me-2"></i>
+                                Start Your Journey
+                            </a>
+                        </div>
+                        <div class="mt-4">
+                            <small class="text-white-50">
+                                <i class="bi bi-shield-check me-1"></i>
+                                🔒 Secure • ⚡ Instant • 🎯 AI-Optimized • 💎 Premium Quality
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-section">
-                <h3>PrintMax</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
-                    Revolutionizing the way you print. Connect, print, and collect with ease. Your trusted partner for all printing needs.
-                </p>
-                <div class="social-links">
-                    <a href="#" title="Twitter"><i class="fab fa-twitter"></i></a>
-                    <a href="#" title="Facebook"><i class="fab fa-facebook"></i></a>
-                    <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
-                    <a href="#" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+    <footer class="footer" id="contact">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-lightning-charge-fill me-2" style="color: #667eea;"></i>
+                        Printmax
+                    </h5>
+                    <p class="text-white-50 mb-4">
+                        Revolutionary AI-powered printing that's changing the world, 
+                        one document at a time. The future is here, and it's automated.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-twitter"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-linkedin"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-instagram"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-github"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Platform</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Upload Files</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">AI Optimization</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Smart Printing</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Token System</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Support</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Help Center</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">AI Chat</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Track Order</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Status</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Company</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">About Us</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Careers</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Press</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Legal</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Privacy</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Terms</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Security</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Compliance</a></li>
+                    </ul>
                 </div>
             </div>
-            
-            <div class="footer-section">
-                <h3>Services</h3>
-                <ul>
-                    <li><a href="#">Document Printing</a></li>
-                    <li><a href="/photoprint/">Photo Printing</a></li>
-                    <li><a href="#">Business Cards</a></li>
-                    <li><a href="#">Binding Services</a></li>
-                    <li><a href="#">Bulk Orders</a></li>
-                    <li><a href="#">Express Service</a></li>
-                </ul>
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-white-50">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0 text-white-50">
+                        <i class="bi bi-envelope-fill me-2"></i>
+                        <a href="mailto:hello@printmax.com" class="footer-link">hello@printmax.com</a>
+                    </p>
+                </div>
             </div>
-            
-            <div class="footer-section">
-                <h3>Company</h3>
-                <ul>
-                    <li><a href="#">About Us</a></li>
-                    <li><a href="#">Careers</a></li>
-                    <li><a href="#">Press</a></li>
-                    <li><a href="#">Blog</a></li>
-                    <li><a href="#">Contact</a></li>
-                    <li><a href="#">Partnerships</a></li>
-                </ul>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Support</h3>
-                <ul>
-                    <li><a href="#">Help Center</a></li>
-                    <li><a href="#">Privacy Policy</a></li>
-                    <li><a href="#">Terms of Service</a></li>
-                    <li><a href="#">API Documentation</a></li>
-                    <li><a href="#">System Status</a></li>
-                    <li><a href="#">Contact Support</a></li>
-                </ul>
-            </div>
-        </div>
-        
-        <div class="footer-bottom">
-            <p>&copy; 2025 PrintMax. All rights reserved. Made with ❤️ for better printing experiences worldwide.</p>
         </div>
     </footer>
 
-    <script>
-        // Loading screen
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                document.getElementById('loading').classList.add('hide');
-            }, 1000);
-        });
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 
+    <script>
         // Theme Toggle Functionality
         function toggleTheme() {
-            const body = document.body;
-            const themeIcon = document.getElementById('theme-icon');
-            
-            if (body.getAttribute('data-theme') === 'dark') {
-                body.removeAttribute('data-theme');
-                themeIcon.className = 'fas fa-moon';
-                localStorage.setItem('theme', 'light');
-            } else {
-                body.setAttribute('data-theme', 'dark');
-                themeIcon.className = 'fas fa-sun';
-                localStorage.setItem('theme', 'dark');
-            }
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-bs-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            html.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            // Update theme icon
+            const themeIcon = document.querySelector('.theme-icon');
+            themeIcon.className = newTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
         }
 
-        // Load saved theme
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedTheme = localStorage.getItem('theme');
-            const themeIcon = document.getElementById('theme-icon');
-            
-            if (savedTheme === 'dark') {
-                document.body.setAttribute('data-theme', 'dark');
-                themeIcon.className = 'fas fa-sun';
-            }
-        });
+        // Initialize theme
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
 
-        // Smooth scrolling for navigation links
+            const themeIcon = document.querySelector('.theme-icon');
+            themeIcon.className = savedTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+        }
+
+        // Smooth scrolling
+        function scrollToSection(target) {
+            document.querySelector(target).scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+
+        // Scroll animations
+        function initializeScrollAnimations() {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.fade-in-up').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // Smooth navbar behavior
+        function initializeNavbar() {
+            let lastScrollTop = 0;
+            const navbar = document.querySelector('.navbar');
+
+            window.addEventListener('scroll', () => {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+                if (scrollTop > 100) {
+                    navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+                    if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
+                        navbar.style.background = 'rgba(15, 15, 35, 0.98)';
+                    }
+                } else {
+                    navbar.style.background = 'var(--navbar-bg)';
+                }
+
+                lastScrollTop = scrollTop;
+            });
+        }
+
+        // Navigation link clicks
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -1358,138 +1268,70 @@
             });
         });
 
-        // Header scroll effect
-        window.addEventListener('scroll', function() {
-            const header = document.querySelector('.header');
-            if (window.scrollY > 100) {
-                header.style.background = 'rgba(255, 255, 255, 0.98)';
-                header.style.backdropFilter = 'blur(20px)';
-                header.style.boxShadow = 'var(--shadow-lg)';
-            } else {
-                header.style.background = 'rgba(255, 255, 255, 0.95)';
-                header.style.backdropFilter = 'blur(20px)';
-                header.style.boxShadow = 'none';
-            }
-        });
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTheme();
+            initializeScrollAnimations();
+            initializeNavbar();
 
-        // Scroll animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver(function(entries) {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate');
-                }
+            // Close mobile menu when clicking on a link
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    const navbarCollapse = document.querySelector('.navbar-collapse');
+                    if (navbarCollapse.classList.contains('show')) {
+                        bootstrap.Collapse.getInstance(navbarCollapse).hide();
+                    }
+                });
             });
-        }, observerOptions);
 
-        // Observe all scroll-animate elements
-        document.querySelectorAll('.scroll-animate').forEach(el => {
-            observer.observe(el);
+            // Add loading animation to buttons
+            document.querySelectorAll('.btn-gradient').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>Loading<span class="loading-dots"></span>';
+
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                    }, 2000);
+                });
+            });
         });
 
-        // Parallax effect for hero section
-        window.addEventListener('scroll', function() {
-            const scrolled = window.pageYOffset;
-            const parallax = document.querySelector('.hero');
-            const speed = scrolled * 0.5;
-            
-            if (parallax) {
-                parallax.style.transform = `translateY(${speed}px)`;
-            }
-        });
-
-        // Counter animation for stats
-        function animateCounter(element, target) {
-            let current = 0;
-            const increment = target / 100;
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    current = target;
-                    clearInterval(timer);
-                }
-                element.textContent = Math.floor(current).toLocaleString() + (target >= 1000 ? (target >= 1000000 ? 'M+' : 'K+') : '');
-            }, 20);
+        // Performance optimization: Reduce motion for users who prefer it
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.style.setProperty('--transition-smooth', 'all 0.1s ease');
+            document.documentElement.style.setProperty('--transition-bounce', 'all 0.1s ease');
+            document.documentElement.style.setProperty('--transition-elastic', 'all 0.1s ease');
         }
 
-        // Trigger counter animation when stats come into view
-        const statsObserver = new IntersectionObserver(function(entries) {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const numbers = entry.target.querySelectorAll('.stat-number');
-                    numbers.forEach(number => {
-                        const text = number.textContent;
-                        const value = parseInt(text.replace(/[^\d]/g, ''));
-                        const multiplier = text.includes('M') ? 1000000 : text.includes('K') ? 1000 : 1;
-                        animateCounter(number, value * multiplier);
-                    });
-                    statsObserver.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.5 });
-
-        const statsSection = document.querySelector('.stats');
-        if (statsSection) {
-            statsObserver.observe(statsSection);
-        }
-
-        // Add hover effects to service cards
-        document.querySelectorAll('.service-card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-12px) scale(1.02)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-
-        // Add click ripple effect to buttons
-        document.querySelectorAll('.btn-primary, .btn-secondary, .cta-button').forEach(button => {
-            button.addEventListener('click', function(e) {
-                const ripple = document.createElement('span');
-                const rect = this.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height);
-                const x = e.clientX - rect.left - size / 2;
-                const y = e.clientY - rect.top - size / 2;
-                
-                ripple.style.width = ripple.style.height = size + 'px';
-                ripple.style.left = x + 'px';
-                ripple.style.top = y + 'px';
-                ripple.classList.add('ripple');
-                
-                this.appendChild(ripple);
-                
-                setTimeout(() => {
-                    ripple.remove();
-                }, 600);
-            });
-        });
-
-        // Add CSS for ripple effect
-        const style = document.createElement('style');
-        style.textContent = `
-            .ripple {
-                position: absolute;
-                border-radius: 50%;
-                background: rgba(255, 255, 255, 0.3);
-                transform: scale(0);
-                animation: ripple-animation 0.6s linear;
-                pointer-events: none;
-            }
-            
-            @keyframes ripple-animation {
-                to {
-                    transform: scale(4);
-                    opacity: 0;
+        // Add keyboard navigation support
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const navbarCollapse = document.querySelector('.navbar-collapse');
+                if (navbarCollapse.classList.contains('show')) {
+                    bootstrap.Collapse.getInstance(navbarCollapse).hide();
                 }
             }
-        `;
-        document.head.appendChild(style);
+        });
+
+        // Add focus indicators for accessibility
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                document.body.classList.add('keyboard-navigation');
+            }
+        });
+
+        document.addEventListener('mousedown', function() {
+            document.body.classList.remove('keyboard-navigation');
+        });
     </script>
+
+    <style>
+        /* Keyboard navigation focus styles */
+        .keyboard-navigation *:focus {
+            outline: 3px solid var(--primary-gradient) !important;
+            outline-offset: 2px !important;
+        }
+    </style>
 </body>
 </html>

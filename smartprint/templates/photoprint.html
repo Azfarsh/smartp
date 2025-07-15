@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="user-email" content="{{ user.email|default:'anonymous' }}">
     <title>Photo Print Service</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -471,8 +472,8 @@ function updatePreview() {
     ctx.clearRect(0,0,dims.canvasW,dims.canvasH);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0,0,dims.canvasW,dims.canvasH);
+    
     // Draw grid slots
-    const slots = layoutSlotSizes[currentOrientation][currentLayout];
     let cols, rows;
     switch(currentLayout) {
         case 1: cols=1; rows=1; break;
@@ -484,16 +485,20 @@ function updatePreview() {
     }
     const slotW = dims.canvasW/cols;
     const slotH = dims.canvasH/rows;
-    for(let i=0;i<currentLayout;i++){
-        if(uploadedImages.length === 0) break;
-        const img = uploadedImages[i % uploadedImages.length];
+    
+    for(let i=0; i<currentLayout; i++){
         const x = (i%cols)*slotW;
         const y = Math.floor(i/cols)*slotH;
+        
         ctx.save();
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 1.2;
-        ctx.strokeRect(x+2,y+2,slotW-4,slotH-4);
-        if(img){
+        
+        if(i < uploadedImages.length && uploadedImages[i]){
+            // Draw filled slot with actual image
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(x+2,y+2,slotW-4,slotH-4);
+            
+            const img = uploadedImages[i];
             const image = new window.Image();
             image.src = img.data;
             image.onload = function() {
@@ -512,7 +517,20 @@ function updatePreview() {
                 dy = y+((slotH-drawH)/2);
                 ctx.drawImage(image,dx,dy,drawW,drawH);
             }
+        } else {
+            // Draw empty slot with dashed border
+            ctx.strokeStyle = '#d1d5db';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(x+2,y+2,slotW-4,slotH-4);
+            
+            // Add "Empty" text
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Empty', x + slotW/2, y + slotH/2);
         }
+        
         ctx.restore();
     }
 }
@@ -520,7 +538,11 @@ async function createPDF() {
     const { jsPDF } = window.jspdf;
     const dims = a4Dims[currentOrientation];
     const pdf = new jsPDF(currentOrientation==='portrait'?'p':'l', 'pt', [dims.w, dims.h]);
-    const slots = layoutSlotSizes[currentOrientation][currentLayout];
+    
+    // Set white background
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, dims.w, dims.h, 'F');
+    
     let cols, rows;
     switch(currentLayout) {
         case 1: cols=1; rows=1; break;
@@ -530,41 +552,112 @@ async function createPDF() {
         case 9: cols=3; rows=3; break;
         default: cols=1; rows=1;
     }
-    const slotW = dims.w/cols;
-    const slotH = dims.h/rows;
-    for(let i=0;i<currentLayout;i++){
-        if(uploadedImages.length === 0) break;
-        const img = uploadedImages[i % uploadedImages.length];
-        const x = (i%cols)*slotW;
-        const y = Math.floor(i/cols)*slotH;
-        if(img){
-            await new Promise(resolve=>{
-                const image = new window.Image();
-                image.src = img.data;
+    
+    const margin = 20;
+    const spacing = 10;
+    const totalWidth = dims.w - (2 * margin);
+    const totalHeight = dims.h - (2 * margin);
+    const slotW = (totalWidth - ((cols - 1) * spacing)) / cols;
+    const slotH = (totalHeight - ((rows - 1) * spacing)) / rows;
+    
+    // Process only available uploaded images, don't replicate
+    const availableImages = uploadedImages.length;
+    
+    for(let i = 0; i < currentLayout; i++){
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = margin + col * (slotW + spacing);
+        const y = margin + row * (slotH + spacing);
+        
+        if(i < availableImages && uploadedImages[i]){
+            // Add actual image to slot
+            const img = uploadedImages[i];
+            await new Promise(resolve => {
+                const image = new Image();
                 image.onload = function() {
-                    // Fit image in slot, keep aspect ratio
-                    const aspect = image.width/image.height;
-                    const slotAspect = slotW/slotH;
-                    let drawW, drawH, dx, dy;
-                    if(aspect>slotAspect){
-                        drawW = slotW-8;
-                        drawH = drawW/aspect;
-                    }else{
-                        drawH = slotH-8;
-                        drawW = drawH*aspect;
+                    try {
+                        // Calculate dimensions to fit image in slot while maintaining aspect ratio
+                        const imgAspect = image.width / image.height;
+                        const slotAspect = slotW / slotH;
+                        let drawW, drawH, dx, dy;
+                        
+                        if(imgAspect > slotAspect){
+                            drawW = slotW - 8;
+                            drawH = drawW / imgAspect;
+                        } else {
+                            drawH = slotH - 8;
+                            drawW = drawH * imgAspect;
+                        }
+                        
+                        dx = x + ((slotW - drawW) / 2);
+                        dy = y + ((slotH - drawH) / 2);
+                        
+                        // Add image to PDF
+                        pdf.addImage(image, 'JPEG', dx, dy, drawW, drawH);
+                        
+                        // Add border around image
+                        pdf.setDrawColor(100, 100, 100);
+                        pdf.setLineWidth(0.5);
+                        pdf.rect(x, y, slotW, slotH);
+                        
+                        resolve();
+                    } catch (error) {
+                        console.error('Error adding image to PDF:', error);
+                        resolve();
                     }
-                    dx = x+((slotW-drawW)/2);
-                    dy = y+((slotH-drawH)/2);
-                    pdf.addImage(image, 'JPEG', dx, dy, drawW, drawH);
+                };
+                image.onerror = function() {
+                    console.error('Error loading image for PDF');
                     resolve();
-                }
+                };
+                image.src = img.data;
             });
+        } else {
+            // Draw empty slot with dashed border
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(1);
+            pdf.setLineDashPattern([3, 3], 0);
+            pdf.rect(x, y, slotW, slotH);
+            pdf.setLineDashPattern([], 0); // Reset dash pattern
+            
+            // Add "Empty Slot" text in light gray
+            pdf.setFontSize(10);
+            pdf.setTextColor(180, 180, 180);
+            pdf.text('Empty Slot', x + slotW/2, y + slotH/2, { align: 'center' });
         }
     }
+    
+    // Add title and info
+    pdf.setFontSize(14);
+    pdf.setTextColor(0, 0, 0);
+    const title = `Photo Print Layout (${availableImages} photos in ${currentLayout} slots)`;
+    pdf.text(title, dims.w/2, 30, { align: 'center' });
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    const info = `A4 ${currentOrientation.charAt(0).toUpperCase() + currentOrientation.slice(1)} • ${cols}x${rows} Grid Layout • Print Ready`;
+    pdf.text(info, dims.w/2, dims.h - 20, { align: 'center' });
+    
     return pdf.output('blob');
 }
 printBtn.addEventListener('click', handlePrint);
-cancelBtn.addEventListener('click', () => window.location.href = '/userdashboard/');
+function resetPhotoPrintModal() {
+    uploadedImages = [];
+    currentLayout = 1;
+    currentOrientation = 'portrait';
+    selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : 'firozshop';
+    document.getElementById('color').value = 'Color';
+    document.getElementById('copies').value = 1;
+    document.getElementById('orientation').value = 'portrait';
+    if (shopSelect.options.length > 0) shopSelect.selectedIndex = 0;
+    layoutBtns.forEach(b => b.classList.remove('active'));
+    layoutBtns[0].classList.add('active');
+    updateUI();
+}
+cancelBtn.addEventListener('click', () => {
+    // window.location.href = '/userdashboard/'; // Remove redirect
+    resetPhotoPrintModal();
+});
 layoutBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         layoutBtns.forEach(b => b.classList.remove('active'));
@@ -600,57 +693,83 @@ async function handlePrint() {
         alert('Please select a shop');
         return;
     }
+    
     printBtn.disabled = true;
     printBtn.textContent = 'Creating PDF...';
+    
     try {
         const pdfBlob = await createPDF();
         const formData = new FormData();
         const jobId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const token = String(Math.floor(Math.random() * 900) + 100);
+        
         const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
         const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
-        // Use the first image's name for filename fields
+        
+        // Use the first image's name for filename reference
         const firstImg = uploadedImages[0];
+        const pdfFileName = `photo_layout_${jobId}.pdf`;
+        
+        // Create comprehensive metadata similar to other modals
         const metadata = {
-            filename: `photo_layout_${jobId}.pdf`,
-            original_filename: firstImg ? firstImg.name : '',
+            filename: pdfFileName,
+            original_filename: firstImg ? firstImg.name : 'photo_layout.pdf',
             service_type: 'photo_print',
             service_name: 'Photo Print Service',
             job_id: jobId,
+            token: token,
             layout: `${currentLayout}`,
             orientation: currentOrientation,
-            photo_count: currentLayout,
-            paper_size: currentOrientation==='portrait'?'A4 Portrait':'A4 Landscape',
+            photo_count: String(uploadedImages.length),
+            total_slots: String(currentLayout),
+            empty_slots: String(Math.max(0, currentLayout - uploadedImages.length)),
+            paper_size: currentOrientation === 'portrait' ? 'A4' : 'A4 Landscape',
+            pageSize: currentOrientation === 'portrait' ? 'A4' : 'A4 Landscape',
             color: document.getElementById('color').value,
-            copies: parseInt(document.getElementById('copies').value),
+            copies: String(document.getElementById('copies').value),
             pageRange: 'all',
             specificPages: '',
-            pageSize: currentOrientation==='portrait'?'A4 Portrait':'A4 Landscape',
-            quality: 'standard',
+            priority: 'Medium',
+            quality: 'High',
             thickness: '120gsm',
             feedback: '',
             spiralBinding: 'No',
             lamination: 'No',
             timestamp: new Date().toISOString(),
-            status: "pending",
-            job_completed: "NO",
-            trash: "NO",
-            is_manual_job: "YES"
+            status: 'pending',
+            job_completed: 'NO',
+            trash: 'NO',
+            is_manual_job: 'YES',
+            vendor: vendorId,
+            user: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
+            pages: '1',
+            layout_created: 'YES',
+            image_mode: 'individual_placement',
+            total_images: String(uploadedImages.length),
+            grid_layout: getGridLayoutString(currentLayout, currentOrientation),
+            layout_description: `${uploadedImages.length} images in ${currentLayout} slots (${Math.max(0, currentLayout - uploadedImages.length)} empty)`
         };
-        const pdfFile = new File([pdfBlob], `photo_layout_${jobId}.pdf`, { type: 'application/pdf' });
+        
+        const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
         formData.append('file_0', pdfFile);
         formData.append('file_count', '1');
         formData.append('settings_0', JSON.stringify(metadata));
         formData.append('selected_vendor', selectedShop);
         formData.append('vendor_id', vendorId);
-        formData.append('storage_folder', 'vendor_manual_print_jobs');
+        // Always use vendor_print_jobs for storage to match dashboard
+        // formData.append('storage_folder', 'vendor_manual_print_jobs'); // Remove this line if present
+        
         const response = await fetch('/upload/', {
             method: 'POST',
             body: formData,
             headers: { 'X-CSRFToken': getCookie('csrftoken') }
         });
+        
         if (response.ok) {
-            alert('Photo print job submitted successfully!');
-            window.location.href = '/userdashboard/';
+            const result = await response.json();
+            alert(`Photo print job submitted successfully! Token: ${token}`);
+            // window.location.href = '/userdashboard/'; // Remove redirect
+            resetPhotoPrintModal();
         } else {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to submit print job');
@@ -662,6 +781,19 @@ async function handlePrint() {
         printBtn.disabled = false;
         printBtn.textContent = 'Print';
     }
+}
+
+function getGridLayoutString(layout, orientation) {
+    let cols, rows;
+    switch(layout) {
+        case 1: cols=1; rows=1; break;
+        case 2: cols=(orientation==='portrait'?1:2); rows=(orientation==='portrait'?2:1); break;
+        case 4: cols=2; rows=2; break;
+        case 6: cols=(orientation==='portrait'?2:3); rows=(orientation==='portrait'?3:2); break;
+        case 9: cols=3; rows=3; break;
+        default: cols=1; rows=1;
+    }
+    return `${cols}x${rows}`;
 }
 loadShops();
 updatePreview();
