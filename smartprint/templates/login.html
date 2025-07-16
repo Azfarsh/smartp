@@ -4,46 +4,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login - PrintMe</title>
+  <title>PrintMax - Revolutionary AI-Powered Printing Login</title>
 
   <!-- Material Design Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Google Sign-In -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
+    :root {
+      --brand-gradient: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
+      --primary-bg: #f3f6fa;
+      --secondary-bg: #f7f7fa;
+      --modal-bg: #eaf4fb;
+      --text-color: #181a1b;
+      --text-secondary: #444;
+      --heading-color: #181a1b;
+      --card-bg: #fff;
+      --border-color: #e0e0e0;
+      --modal-border: #b6d0e2;
+      --shadow: 0 4px 24px 0 rgba(50, 50, 93, 0.07);
+      --shadow-lg: 0 20px 25px -5px rgba(50, 50, 93, 0.10);
+      --shadow-neon: 0 0 20px rgba(131, 56, 236, 0.10);
+      --glass-bg: #eaf4fb;
+      --glass-border: var(--modal-border);
+      --glass-shadow: 0 8px 32px 0 rgba(50, 50, 93, 0.07);
+      --toggle-bg: #e0e0e0;
+      --toggle-knob: #fff;
+      --toggle-icon: #181a1b;
+    }
+
+    [data-bs-theme="dark"] {
+      --primary-bg: linear-gradient(135deg, #23272f 0%, #181a1b 100%);
+      --secondary-bg: #232526;
+      --modal-bg: linear-gradient(90deg, #35363a 0%, #181a1b 100%);
+      --text-color: #fff;
+      --text-secondary: #bfc9d1;
+      --heading-color: #fff;
+      --card-bg: #23272f;
+      --border-color: #35363a;
+      --modal-border: #44474f;
+      --shadow: 0 4px 12px 0 rgba(30, 34, 45, 0.18);
+      --shadow-lg: 0 20px 25px -5px rgba(30, 34, 45, 0.22);
+      --shadow-neon: 0 0 20px rgba(181, 194, 231, 0.10);
+      --glass-bg: linear-gradient(90deg, #35363a 0%, #181a1b 100%);
+      --glass-border: var(--modal-border);
+      --glass-shadow: 0 8px 32px 0 rgba(30, 34, 45, 0.18);
+      --toggle-bg: #35363a;
+      --toggle-knob: #fff;
+      --toggle-icon: #fff;
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    :root {
-      --primary-blue: #1976D2;
-      --primary-blue-dark: #1565C0;
-      --primary-blue-light: #42A5F5;
-      --secondary-teal: #00ACC1;
-      --secondary-teal-light: #26C6DA;
-      --accent-orange: #FF9800;
-      --accent-orange-light: #FFB74D;
-      --success-green: #4CAF50;
-      --error-red: #F44336;
-      --warning-amber: #FFC107;
-      --text-primary: #212121;
-      --text-secondary: #757575;
-      --text-hint: #9E9E9E;
-      --surface: #FFFFFF;
-      --background: #F5F5F5;
-      --divider: #E0E0E0;
-      --shadow: rgba(0, 0, 0, 0.1);
-      --shadow-hover: rgba(0, 0, 0, 0.15);
-    }
-
     body {
-      font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #E3F2FD 0%, #E8F5E8 30%, #FFF3E0 60%, #F3E5F5 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--primary-bg);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -62,44 +84,114 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: 
-        radial-gradient(circle at 20% 20%, rgba(25, 118, 210, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(0, 172, 193, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 40% 60%, rgba(255, 152, 0, 0.05) 0%, transparent 50%);
-      animation: backgroundShift 15s ease-in-out infinite;
+      background: var(--secondary-gradient);
       pointer-events: none;
+      opacity: 0.5;
+      z-index: 0;
     }
 
     @keyframes backgroundShift {
-      0%, 100% { transform: translateX(0) translateY(0); }
-      25% { transform: translateX(-20px) translateY(-10px); }
-      50% { transform: translateX(10px) translateY(-20px); }
-      75% { transform: translateX(-10px) translateY(10px); }
+      0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
+      25% { transform: translateX(-20px) translateY(-10px) rotate(1deg); }
+      50% { transform: translateX(10px) translateY(-20px) rotate(-1deg); }
+      75% { transform: translateX(-10px) translateY(10px) rotate(0.5deg); }
+    }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 48px;
+      height: 28px;
+      background: var(--toggle-bg);
+      border-radius: 25px;
+      border: 1.5px solid var(--modal-border);
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .theme-toggle::before {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      background: var(--toggle-knob);
+      border-radius: 50%;
+      transition: var(--transition-smooth);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--modal-border);
+    }
+
+    [data-bs-theme="dark"] .theme-toggle::before {
+      transform: translateX(20px);
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 2px #8338ec33;
+    }
+
+    .theme-toggle::after {
+      content: '\1F319'; /* moon icon */
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      font-size: 1.1rem;
+      color: var(--toggle-icon);
+      opacity: 0.7;
+      transition: color 0.3s;
+    }
+
+    [data-bs-theme="dark"] .theme-toggle::after {
+      content: '\2600'; /* sun icon */
+      left: 8px;
+      right: auto;
+      color: var(--toggle-icon);
     }
 
     .login-container {
-      background: var(--surface);
-      border-radius: 24px;
-      box-shadow: 0 12px 48px var(--shadow);
-      max-width: 1000px;
+      background: var(--modal-bg);
+      border: 1.5px solid var(--modal-border);
+      border-radius: 28px;
+      box-shadow: var(--glass-shadow);
+      max-width: 950px;
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      min-height: 0;
+      min-height: 520px;
       overflow: hidden;
       position: relative;
       z-index: 1;
+      animation: containerSlideIn 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+      transform: translateY(30px);
+      opacity: 0;
+    }
+
+    @keyframes containerSlideIn {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     .login-left {
-      background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-teal) 100%);
-      color: white;
-      padding: 4rem 3rem;
+      background: transparent;
+      color: var(--text-color);
+      padding: 2.5rem 2rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
       position: relative;
       overflow: hidden;
+      border-right: 1px solid var(--border-color);
     }
 
     .login-left::before {
@@ -121,27 +213,57 @@
     .login-left-content {
       position: relative;
       z-index: 2;
+      text-align: center;
     }
 
-    .login-left h1 {
-      font-family: 'Poppins', sans-serif;
-      font-size: 3rem;
-      font-weight: 700;
+    .brand-logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.7rem;
+      font-weight: 800;
       margin-bottom: 1rem;
       display: flex;
       align-items: center;
-      gap: 16px;
+      justify-content: center;
+      gap: 10px;
+      background: var(--brand-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
-    .login-left .material-icons {
-      font-size: 3.5rem;
+    @keyframes logoGlow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.3); }
     }
 
-    .login-left p {
-      font-size: 1.2rem;
-      opacity: 0.9;
-      font-weight: 300;
+    .brand-logo .material-icons {
+      font-size: 2.5rem;
+      background: var(--brand-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: none;
+    }
+
+    @keyframes iconSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .tagline {
+      font-size: 1.3rem;
+      opacity: 0.95;
+      font-weight: 700;
       line-height: 1.6;
+      margin-bottom: 2rem;
+      color: #000000;
+      background: none;
+      -webkit-background-clip: initial;
+      -webkit-text-fill-color: initial;
+      background-clip: initial;
+    }
+    [data-bs-theme="dark"] .tagline {
+      color: #fff;
     }
 
     .feature-list {
@@ -153,21 +275,47 @@
       margin-bottom: 1rem;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: center;
+      gap: 10px;
       font-size: 1rem;
-      opacity: 0.9;
+      color: var(--text-color);
+      font-weight: 500;
+      opacity: 1;
+      animation: none;
+      transform: none;
+    }
+
+    .feature-list li:nth-child(1) { --animation-order: 1; }
+    .feature-list li:nth-child(2) { --animation-order: 2; }
+    .feature-list li:nth-child(3) { --animation-order: 3; }
+    .feature-list li:nth-child(4) { --animation-order: 4; }
+
+    @keyframes fadeInUp {
+      to {
+        transform: translateY(0);
+        opacity: 0.9;
+      }
     }
 
     .feature-list .material-icons {
       font-size: 1.2rem;
+      color: #8338ec;
+      filter: none;
+      opacity: 0.95;
+      /* For dark mode, ensure icons are visible */
+    }
+    [data-bs-theme="dark"] .feature-list .material-icons {
+      color: #a385ff;
+      opacity: 1;
     }
 
     .login-right {
-      padding: 4rem 3rem;
+      padding: 2.5rem 2rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      background: var(--surface);
+      background: transparent;
+      box-shadow: none;
     }
 
     .login-header {
@@ -176,40 +324,49 @@
     }
 
     .login-header h2 {
-      font-family: 'Poppins', sans-serif;
-      font-size: 2.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--heading-color);
       margin-bottom: 0.5rem;
+      background: var(--brand-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .login-header p {
       color: var(--text-secondary);
       font-size: 1.1rem;
+      font-weight: 500;
     }
 
     .login-tabs {
       display: flex;
-      background: var(--background);
+      background: var(--secondary-bg);
       border-radius: 16px;
       padding: 6px;
-      margin-bottom: 2.5rem;
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+      margin-bottom: 2rem;
+      box-shadow: none;
     }
 
     .tab-button {
       flex: 1;
-      padding: 16px 24px;
-      background: none;
+      padding: 14px 18px;
+      background: transparent;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       font-weight: 600;
       cursor: pointer;
       color: var(--text-secondary);
-      transition: all 0.3s ease;
+      transition: var(--transition-bounce);
       font-size: 1rem;
       position: relative;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .tab-button::before {
@@ -228,10 +385,14 @@
     }
 
     .tab-button.active {
-      background: linear-gradient(135deg, var(--primary-blue), var(--secondary-teal));
-      color: white;
-      box-shadow: 0 4px 16px rgba(25, 118, 210, 0.3);
+      background: var(--brand-gradient);
+      color: #fff;
+      box-shadow: var(--shadow-neon);
       transform: translateY(-2px);
+    }
+
+    .tab-button .material-icons {
+      font-size: 1.2rem;
     }
 
     .login-form {
@@ -240,16 +401,32 @@
 
     .login-form.active {
       display: block;
+      animation: formSlideIn 0.5s ease-out forwards;
+    }
+
+    @keyframes formSlideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     .google-signin-container {
       margin-bottom: 2rem;
-    }
-
-    .google-signin-container .g_id_signin {
-      width: 100%;
       display: flex;
       justify-content: center;
+      align-items: center;
+      height: 80px;
+    }
+    .google-signin-container #g_id_signin {
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .form-group {
@@ -258,8 +435,8 @@
 
     .form-label {
       display: block;
-      font-weight: 500;
-      color: var(--text-primary);
+      font-weight: 600;
+      color: var(--text-color);
       margin-bottom: 8px;
       font-size: 1rem;
     }
@@ -273,43 +450,50 @@
     .input-container .material-icons {
       position: absolute;
       left: 16px;
-      color: var(--text-hint);
+      color: var(--text-secondary);
       font-size: 20px;
       z-index: 2;
+      transition: var(--transition-smooth);
     }
 
     .form-control {
       width: 100%;
-      padding: 16px 16px 16px 52px;
-      border: 2px solid var(--divider);
+      padding: 18px 18px 18px 52px;
+      border: 2px solid var(--border-color);
       border-radius: 12px;
       font-size: 1rem;
-      background: var(--surface);
-      color: var(--text-primary);
-      transition: all 0.3s ease;
+      background: var(--card-bg);
+      color: var(--text-color);
       outline: none;
+      box-shadow: none !important;
+      transition: none !important;
     }
 
     .form-control:focus {
-      border-color: var(--primary-blue);
-      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+      border-color: var(--border-color);
+      background: var(--card-bg);
+      box-shadow: none;
     }
 
     .form-control:focus + .material-icons {
-      color: var(--primary-blue);
+      background: none;
+      -webkit-background-clip: initial;
+      -webkit-text-fill-color: initial;
+      background-clip: initial;
+      color: var(--text-secondary);
     }
 
     .btn-primary {
       width: 100%;
-      padding: 18px;
-      background: linear-gradient(135deg, var(--primary-blue), var(--secondary-teal));
-      color: white;
+      padding: 14px;
+      background: #181a1b;
+      color: #fff;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       font-size: 1.1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: var(--transition-bounce);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -325,7 +509,7 @@
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
       transition: left 0.5s ease;
     }
 
@@ -334,33 +518,34 @@
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(25, 118, 210, 0.3);
+      background: #3a86ff;
+      color: #fff;
     }
 
     .btn-outline-primary {
       width: 100%;
-      padding: 16px;
+      padding: 12px;
       background: transparent;
-      color: var(--primary-blue);
-      border: 2px solid var(--primary-blue);
-      border-radius: 12px;
+      color: #fff;
+      border: 2px solid #3a86ff;
+      border-radius: 10px;
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: var(--transition-bounce);
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       margin-top: 1rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: none;
     }
 
     .btn-outline-primary:hover {
-      background: var(--primary-blue);
-      color: white;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(25, 118, 210, 0.3);
+      background: #3a86ff;
+      color: #fff;
     }
 
     .forgot-password {
@@ -369,14 +554,18 @@
     }
 
     .forgot-password a {
-      color: var(--primary-blue);
+      color: transparent;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       text-decoration: none;
-      font-weight: 500;
-      transition: color 0.3s ease;
+      font-weight: 600;
+      transition: var(--transition-smooth);
     }
 
     .forgot-password a:hover {
-      color: var(--primary-blue-dark);
+      filter: brightness(1.2);
     }
 
     .text-muted {
@@ -385,14 +574,14 @@
       margin-bottom: 1rem;
     }
 
-    /* Advanced Black Transition Welcome Screen */
+    /* Advanced Welcome Screens */
     #welcomeScreen, #vendorLoadingScreen {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+      background: var(--cyber-gradient);
       display: none;
       align-items: center;
       justify-content: center;
@@ -403,7 +592,8 @@
       transition: all 1.5s cubic-bezier(0.23, 1, 0.32, 1);
     }
 
-    #welcomeScreen.show, #vendorLoadingScreen.show {
+    #welcomeScreen.show {
+      display: flex !important;
       opacity: 1;
     }
 
@@ -412,13 +602,11 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 20% 20%, rgba(25, 118, 210, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(0, 172, 193, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 40% 60%, rgba(255, 152, 0, 0.05) 0%, transparent 50%);
-      animation: welcomeParticles 20s ease-in-out infinite;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      opacity: 1;
+      z-index: 0;
     }
 
     @keyframes welcomeParticles {
@@ -428,12 +616,16 @@
 
     #welcomeMessage {
       font-size: clamp(2.5rem, 6vw, 4rem);
-      font-weight: 300;
-      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+      font-family: 'Space Grotesk', sans-serif;
       margin-bottom: 3rem;
       text-align: center;
       letter-spacing: -0.02em;
-      color: #ffffff;
+      color: #fff;
+      background: none;
+      -webkit-background-clip: initial;
+      -webkit-text-fill-color: initial;
+      background-clip: initial;
       animation: welcomeSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
       transform: translateY(60px);
       opacity: 0;
@@ -449,8 +641,8 @@
     }
 
     .spinner {
-      width: 60px;
-      height: 60px;
+      width: 80px;
+      height: 80px;
       position: relative;
       margin: 2rem 0;
     }
@@ -460,7 +652,7 @@
       content: '';
       position: absolute;
       border-radius: 50%;
-      border: 2px solid transparent;
+      border: 3px solid transparent;
     }
 
     .spinner::before {
@@ -487,9 +679,9 @@
     }
 
     .status-text {
-      font-size: 1.1rem;
-      font-weight: 300;
-      color: rgba(255,255,255,0.7);
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
       animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
       opacity: 0;
       transform: translateY(20px);
@@ -515,7 +707,7 @@
         text-align: center;
       }
 
-      .login-left h1 {
+      .brand-logo {
         font-size: 2.5rem;
       }
 
@@ -524,7 +716,7 @@
       }
 
       .login-header h2 {
-        font-size: 1.8rem;
+        font-size: 2rem;
       }
 
       .tab-button {
@@ -532,7 +724,7 @@
         font-size: 0.95rem;
       }
 
-      #welcomeMessage {
+      #welcomeMessage, #vendorWelcomeMessage {
         font-size: 2rem;
         margin-bottom: 2rem;
       }
@@ -543,8 +735,10 @@
         padding: 2rem 1.5rem;
       }
 
-      .login-left h1 {
+      .brand-logo {
         font-size: 2rem;
+        flex-direction: column;
+        gap: 8px;
       }
 
       .login-right {
@@ -552,7 +746,7 @@
       }
 
       .form-control {
-        padding: 14px 14px 14px 48px;
+        padding: 16px 16px 16px 48px;
       }
 
       .btn-primary {
@@ -560,80 +754,124 @@
         font-size: 1rem;
       }
     }
-    #vendorLoadingScreen #vendorWelcomeMessage {
-      font-size: clamp(2.5rem, 6vw, 4rem) !important;
-      font-weight: 700 !important;
-      font-family: 'Poppins', sans-serif !important;
-      margin-bottom: 2.5rem !important;
-      text-align: center !important;
-      letter-spacing: -0.01em !important;
+
+    /* Dark mode adjustments */
+    [data-bs-theme="dark"] .login-container {
+      background: var(--modal-bg);
+      border: 1.5px solid var(--modal-border);
+    }
+    [data-bs-theme="dark"] .login-left {
+      background: transparent;
+      color: #fff;
+    }
+    [data-bs-theme="dark"] .login-right {
+      background: transparent;
+    }
+    [data-bs-theme="dark"] .login-tabs {
+      background: #232526;
+    }
+    [data-bs-theme="dark"] .form-control {
+      background: #232526;
+      border-color: #414345;
+      color: #fff;
+    }
+    [data-bs-theme="dark"] .form-control:focus {
+      background: #232526;
+    }
+    /* Responsive Design */
+    @media (max-width: 900px) {
+      .login-container {
+        max-width: 98vw;
+        grid-template-columns: 1fr;
+        min-height: unset;
+      }
+      .login-left, .login-right {
+        border-right: none;
+        padding: 2rem 1.2rem;
+      }
+      .login-left {
+        border-bottom: 1px solid var(--border-color);
+      }
+    }
+    @media (max-width: 600px) {
+      .login-container {
+        max-width: 99vw;
+        border-radius: 12px;
+        margin: 8px;
+      }
+      .login-left, .login-right {
+        padding: 1.2rem 0.7rem;
+      }
+      .brand-logo {
+        font-size: 1.5rem;
+      }
+      .login-header h2 {
+        font-size: 1.2rem;
+      }
+      .tab-button {
+        padding: 10px 8px;
+        font-size: 0.95rem;
+      }
+      .btn-primary, .btn-outline-primary {
+        padding: 10px;
+        font-size: 0.95rem;
+      }
+    }
+    /* Add a custom class to the Register as vendor button for specific styling */
+    .btn-register-vendor {
       color: #fff !important;
-      animation: welcomeSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards !important;
-      transform: translateY(60px) !important;
-      opacity: 0 !important;
-      position: relative !important;
-      z-index: 2 !important;
+      font-weight: 700;
+      background: #3a86ff;
+      border: 2px solid #3a86ff;
     }
-    #vendorLoadingScreen.show #vendorWelcomeMessage {
-      opacity: 1 !important;
-      transform: translateY(0) !important;
-    }
-    #vendorLoadingScreen .status-text {
-      font-size: 1.7rem !important;
-      font-weight: 500 !important;
-      color: rgba(255,255,255,0.95) !important;
-      animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards !important;
-      opacity: 0 !important;
-      transform: translateY(20px) !important;
-    }
-    #vendorLoadingScreen.show .status-text {
-      opacity: 1 !important;
-      transform: translateY(0) !important;
+    .btn-register-vendor:hover {
+      background: #3a86ff;
+      color: #fff !important;
     }
   </style>
 </head>
-<body>
+<body data-bs-theme="light">
 
-<!-- Advanced Black Transition Welcome Screen -->
+<!-- Theme Toggle -->
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme"></button>
+
+<!-- Advanced Welcome Screen -->
 <div id="welcomeScreen">
-  <div id="welcomeMessage">Welcome</div>
+  <div id="welcomeMessage">🚀 Welcome to the Future!</div>
   <div class="spinner"></div>
-  <div class="status-text">Signing you in...</div>
+  <div class="status-text" id="welcomeStatusText">⚡ Initializing AI-powered experience...</div>
 </div>
 
-<!-- Vendor Loading Screen -->
-<div id="vendorLoadingScreen" style="display: none;">
-  <div id="vendorWelcomeMessage">Setting Up Your Dashboard</div>
-  <div class="spinner"></div>
-  <div class="status-text" id="vendorStatusText">Preparing your print shop interface...</div>
-</div>
+<!-- Remove the separate Vendor Loading Screen -->
 
 <div class="login-container">
   <!-- Left Panel -->
   <div class="login-left">
     <div class="login-left-content">
-      <h1>
-        <span class="material-icons">local_print_shop</span>
-        PrintMe
-      </h1>
-      <p>Your comprehensive printing solution. Upload, print, and manage your documents from anywhere with ease.</p>
+      <div class="brand-logo">
+        <span class="material-icons">bolt</span>
+        PrintMax
+      </div>
+      <div class="tagline" id="dynamic-tagline">
+        🚀 Where Innovation Meets Print Perfection
+      </div>
       
       <ul class="feature-list">
         <li>
-          <span class="material-icons">cloud_upload</span>
-          Easy file upload
+          <span class="material-icons">rocket_launch</span>
+          Lightning-Fast AI Processing
         </li>
         <li>
-          <span class="material-icons">print</span>
-          Quick printing
+          <span class="material-icons">security</span>
+          Military-Grade Security
         </li>
         <li>
-          <span class="material-icons">store</span>
-          Find nearby vendors
+          <span class="material-icons">auto_awesome</span>
+          Smart Quality Enhancement
         </li>
         <li>
-          <span class="material-icons">payment</span>
-          Secure payments
+          <span class="material-icons">schedule</span>
+          24/7 Automated Service
         </li>
       </ul>
     </div>
@@ -642,19 +880,19 @@
   <!-- Right Panel -->
   <div class="login-right">
     <div class="login-header">
-      <h2>Welcome Back</h2>
-      <p>Choose your preferred login method</p>
+      <h2>🚀 Launch Your Journey</h2>
+      <p>Choose your access level to the future</p>
     </div>
 
     <!-- Tab Navigation -->
     <div class="login-tabs">
       <button class="tab-button active" onclick="showTab('user')">
         <span class="material-icons">person</span>
-        User
+        User Login
       </button>
       <button class="tab-button" onclick="showTab('vendor')">
         <span class="material-icons">store</span>
-        Vendor
+        Vendor Login
       </button>
     </div>
 
@@ -666,7 +904,7 @@
            data-auto_prompt="false">
       </div>
       <div class="google-signin-container">
-        <!-- Google Sign-In Button (JS rendered for better compatibility) -->
+        <!-- Google Sign-In Button -->
         <div id="g_id_signin"></div>
       </div>
     </div>
@@ -676,34 +914,34 @@
       <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
         {% csrf_token %}
         <div class="form-group">
-          <label for="vendorEmail" class="form-label">Email Address</label>
+          <label for="vendorEmail" class="form-label"> Email</label>
           <div class="input-container">
-            <input type="email" class="form-control" id="vendorEmail" required />
+            <input type="email" class="form-control" id="vendorEmail" placeholder="Enter your command email" required />
             <span class="material-icons">email</span>
           </div>
         </div>
         <div class="form-group">
           <label for="vendorPassword" class="form-label">Password</label>
           <div class="input-container">
-            <input type="password" class="form-control" id="vendorPassword" required />
+            <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your secret code" required />
             <span class="material-icons">lock</span>
           </div>
         </div>
         <button type="submit" class="btn-primary" id="vendorSignInBtn">
-          <span class="material-icons" id="vendorBtnIcon">login</span>
-          <span id="vendorBtnText">Sign In as Vendor</span>
+          <span class="material-icons" id="vendorBtnIcon">rocket_launch</span>
+          <span id="vendorBtnText">🚀 Vendor login</span>
         </button>
         <div class="forgot-password">
-          <a href="#" onclick="resetVendorPassword()">Forgot your password?</a>
+          <a href="#" onclick="resetVendorPassword()">🔐 Forgot your access code?</a>
         </div>
       </form>
       
       <!-- Register Button -->
       <div class="text-center mt-3">
-        <p class="text-muted">Don't have a vendor account?</p>
-        <button type="button" class="btn-outline-primary" onclick="window.location.href='/vendor-register/'">
-          <span class="material-icons">person_add</span>
-          Register as Vendor
+        <p class="text-muted">Ready to build your print empire?</p>
+        <button type="button" class="btn-outline-primary btn-register-vendor" onclick="window.location.href='/vendor-register/'">
+          <span class="material-icons">business</span>
+          🏪 Register as vendor
         </button>
       </div>
     </div>
@@ -712,16 +950,78 @@
 
 <!-- Scripts -->
 <script>
+  // Dynamic taglines
+  const userTaglines = [
+    "🚀 Where Innovation Meets Print Perfection",
+    "⚡ Your Documents, Supercharged by AI",
+    "🎯 Precision Printing, Lightning Speed",
+    "🌟 The Future of Printing is Here"
+  ];
+
+  const vendorTaglines = [
+    "🏪 Command Your Print Empire",
+    "💼 Master the Art of Print Business",
+    "🚀 Scale Your Print Operations",
+    "👑 Reign Over the Print Kingdom"
+  ];
+
+  let currentTaglineIndex = 0;
+  let isVendorTab = false;
+
+  function rotateTagline() {
+    const taglineElement = document.getElementById('dynamic-tagline');
+    const taglines = isVendorTab ? vendorTaglines : userTaglines;
+    
+    taglineElement.style.opacity = '0';
+    setTimeout(() => {
+      currentTaglineIndex = (currentTaglineIndex + 1) % taglines.length;
+      taglineElement.textContent = taglines[currentTaglineIndex];
+      taglineElement.style.opacity = '1';
+    }, 300);
+  }
+
+  // Start tagline rotation
+  setInterval(rotateTagline, 4000);
+
   function showTab(tab) {
+    isVendorTab = (tab === 'vendor');
+    
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
 
     document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
     document.getElementById(`${tab}-form`).classList.add('active');
+
+    // Update tagline immediately
+    const taglineElement = document.getElementById('dynamic-tagline');
+    const taglines = isVendorTab ? vendorTaglines : userTaglines;
+    taglineElement.style.opacity = '0';
+    setTimeout(() => {
+      taglineElement.textContent = taglines[0];
+      taglineElement.style.opacity = '1';
+      currentTaglineIndex = 0;
+    }, 300);
   }
 
-  // Google Sign-In Button Render (JS-based, fixes width issue)
+  // Theme Toggle
+  function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-bs-theme') || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-bs-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+  }
+
+  // Initialize theme
+  function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-bs-theme', savedTheme);
+  }
+
+  // Google Sign-In
   window.onload = function() {
+    initializeTheme();
+    
     if (window.google && google.accounts && google.accounts.id) {
       google.accounts.id.initialize({
         client_id: '{{ client_id }}',
@@ -733,30 +1033,42 @@
         {
           theme: 'outline',
           size: 'large',
-          width: 300 // must be a number
+          width: 300
         }
       );
     }
   };
 
-  function showWelcome(name) {
+  function showWelcome(name, isVendor = false) {
     const welcomeMessage = document.getElementById('welcomeMessage');
-    welcomeMessage.textContent = `Welcome, ${name}`;
-    
+    const welcomeStatusText = document.getElementById('welcomeStatusText');
+    if (isVendor) {
+      welcomeMessage.innerHTML = `👑 Welcome Back, <span style='color:#3a86ff'>${name}</span>!`;
+      welcomeStatusText.innerHTML = '🚀 Launching your print command center...';
+      setTimeout(() => {
+        welcomeStatusText.innerHTML = '💼 Loading your business empire...';
+      }, 1500);
+      setTimeout(() => {
+        welcomeStatusText.innerHTML = '⚡ Optimizing your dashboard...';
+      }, 3000);
+      setTimeout(() => {
+        welcomeStatusText.innerHTML = '🎯 Ready to dominate!';
+      }, 4000);
+    } else {
+      welcomeMessage.innerHTML = `🎉 Welcome, <span style='color:#3a86ff'>${name}</span>!`;
+      welcomeStatusText.innerHTML = '⚡ Initializing AI-powered experience...';
+    }
     const welcomeScreen = document.getElementById('welcomeScreen');
     welcomeScreen.style.display = 'flex';
-    
-    setTimeout(() => {
-      welcomeScreen.classList.add('show');
-    }, 50);
+    welcomeScreen.classList.add('show');
+    document.querySelector('.login-container').style.display = 'none';
+    document.querySelector('.theme-toggle').style.display = 'none';
   }
 
   function handleCredentialResponse(response) {
     const payload = JSON.parse(atob(response.credential.split('.')[1]));
-    const userName = payload.name || "User";
-
+    const userName = payload.name || "User login";
     showWelcome(userName);
-
     fetch('/auth-receiver/', {
       method: 'POST',
       headers: {
@@ -768,41 +1080,17 @@
     .then(res => res.json())
     .then(data => {
       if (data.status === 'success') {
-        setTimeout(() => window.location.href = '/userdashboard/', 2000);
+        setTimeout(() => window.location.href = '/userdashboard/', 2500);
       } else {
-        alert('Login failed: ' + data.message);
+        alert('🚫 Access denied: ' + data.message);
         document.getElementById('welcomeScreen').style.display = 'none';
       }
     })
     .catch(err => {
       console.error('Auth error:', err);
-      alert('Login failed. Please try again.');
+      alert('🚫 Connection failed. Please try again.');
       document.getElementById('welcomeScreen').style.display = 'none';
     });
-  }
-
-  function showVendorLoading(vendorName) {
-    const vendorLoadingScreen = document.getElementById('vendorLoadingScreen');
-    const vendorWelcomeMessage = document.getElementById('vendorWelcomeMessage');
-    const vendorStatusText = document.getElementById('vendorStatusText');
-    
-    vendorWelcomeMessage.textContent = vendorName ? `Welcome Back, ${vendorName}!` : 'Setting Up Your Dashboard';
-    vendorStatusText.textContent = 'Preparing your print shop interface...';
-    
-    vendorLoadingScreen.style.display = 'flex';
-    
-    setTimeout(() => {
-      vendorLoadingScreen.classList.add('show');
-    }, 50);
-
-    // Update status messages during loading
-    setTimeout(() => {
-      vendorStatusText.textContent = 'Loading your print jobs...';
-    }, 1500);
-
-    setTimeout(() => {
-      vendorStatusText.textContent = 'Organizing your dashboard...';
-    }, 3000);
   }
 
   async function vendorLogin(event) {
@@ -812,13 +1100,10 @@
     const submitBtn = document.getElementById('vendorSignInBtn');
     const btnIcon = document.getElementById('vendorBtnIcon');
     const btnText = document.getElementById('vendorBtnText');
-
-    // Show loading state on button
     submitBtn.disabled = true;
     btnIcon.textContent = 'hourglass_empty';
     btnIcon.style.animation = 'spin 1s linear infinite';
-    btnText.textContent = 'Signing In...';
-
+    btnText.innerHTML = '🚀 loging in Successfully...';
     try {
       const response = await fetch('/vendor-login/', {
         method: 'POST',
@@ -828,39 +1113,33 @@
         },
         body: JSON.stringify({ email: email, password: password })
       });
-
       const data = await response.json();
       if (data.success) {
-        // Show vendor loading screen
-        showVendorLoading(data.vendor?.vendor_name);
-        
-        // Redirect after showing loading screen
+        showWelcome(data.vendor?.vendor_name || 'Vendor', true);
         setTimeout(() => {
           window.location.href = '/vendordashboard/';
-        }, 4500);
+        }, 5000);
       } else {
-        // Reset button state on error
         submitBtn.disabled = false;
-        btnIcon.textContent = 'login';
+        btnIcon.textContent = 'rocket_launch';
         btnIcon.style.animation = 'none';
-        btnText.textContent = 'Sign In as Vendor';
-        alert(data.message || 'Login failed');
+        btnText.innerHTML = '🚀 Vendor Login ';
+        alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
       }
     } catch (err) {
       console.error(err);
-      // Reset button state on error
       submitBtn.disabled = false;
-      btnIcon.textContent = 'login';
+      btnIcon.textContent = 'rocket_launch';
       btnIcon.style.animation = 'none';
-      btnText.textContent = 'Sign In as Vendor';
-      alert('Login failed. Please try again.');
+      btnText.innerHTML = '🚀 Launch Control Panel';
+      alert('🚫 Connection failed. Please try again.');
     }
   }
 
   function resetVendorPassword() {
-    const email = prompt('Enter your registered email address:');
+    const email = prompt('🔐 Enter your registered email for password reset:');
     if (email) {
-      alert('Password reset instructions will be sent to your registered email.');
+      alert('📧 Reset instructions sent to your email!');
     }
   }
 
@@ -878,6 +1157,24 @@
     }
     return cookieValue;
   }
+
+  // Add some interactive effects
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add floating animation to feature list items
+    const featureItems = document.querySelectorAll('.feature-list li');
+    featureItems.forEach((item, index) => {
+      item.style.animationDelay = `${index * 0.2}s`;
+    });
+
+    // Add pulse effect to brand logo
+    const brandLogo = document.querySelector('.brand-logo');
+    setInterval(() => {
+      brandLogo.style.transform = 'scale(1.05)';
+      setTimeout(() => {
+        brandLogo.style.transform = 'scale(1)';
+      }, 200);
+    }, 3000);
+  });
 </script>
 </body>
 </html>
