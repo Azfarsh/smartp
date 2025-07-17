@@ -1,15 +1,12 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Registration - PrintMe</title>
-
-    <!-- Material Design Icons -->
+    <title>Join PrintMe - Partner Registration</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -17,330 +14,260 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --primary-blue: #1976D2;
-            --primary-blue-dark: #1565C0;
-            --primary-blue-light: #42A5F5;
-            --secondary-teal: #00ACC1;
-            --secondary-teal-light: #26C6DA;
-            --accent-orange: #FF9800;
-            --accent-orange-light: #FFB74D;
-            --success-green: #4CAF50;
-            --error-red: #F44336;
-            --warning-amber: #FFC107;
-            --text-primary: #212121;
-            --text-secondary: #757575;
-            --text-hint: #9E9E9E;
-            --surface: #FFFFFF;
-            --background: #F5F5F5;
-            --divider: #E0E0E0;
-            --shadow: rgba(0, 0, 0, 0.1);
-            --shadow-hover: rgba(0, 0, 0, 0.15);
-        }
-
-        html {
-            scroll-behavior: smooth;
-            overflow-x: hidden;
-        }
-
         body {
-            font-family: 'Roboto', sans-serif;
-            background: var(--background);
+            font-family: 'Inter', sans-serif;
+            background: #eaf3fb;
+            color: #1e293b;
             min-height: 100vh;
-            padding: 20px 10px;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 32px;
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.15),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-            position: relative;
-            z-index: 2;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .header {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-teal) 50%, var(--accent-orange) 100%);
-            color: white;
-            padding: 50px 40px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: 
-                radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 60%);
-            animation: headerPulse 8s ease-in-out infinite;
-        }
-
-        @keyframes headerPulse {
-            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
-            50% { transform: scale(1.1) rotate(180deg); opacity: 0.2; }
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .header h1 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            padding: 1rem;
         }
 
-        .header .material-icons {
-            font-size: 3rem;
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+        .modal-container {
+            display: flex;
+            max-width: 900px;
+            width: 100%;
+            min-height: 340px;
+            border-radius: 1.2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.13);
+            background: #ffffff;
+            overflow: hidden;
+            animation: modalPop 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
 
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.95;
-            font-weight: 300;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        @keyframes modalPop {
+            0% { transform: scale(0.95) translateY(50px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
         }
 
-        .form-container {
-            padding: 50px 40px;
-            background: rgba(255, 255, 255, 0.98);
-        }
-
-        .success-message {
-            display: none;
-            background: linear-gradient(135deg, var(--success-green), #66BB6A);
-            color: white;
-            padding: 25px;
-            border-radius: 16px;
+        .modal-left {
+            background: #2563eb;
+            color: #ffffff;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.2rem 1.5rem;
             text-align: center;
-            margin-bottom: 35px;
-            animation: slideIn 0.6s ease;
-            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+            position: relative;
+            overflow: hidden;
         }
 
-        @keyframes slideIn {
-            from { transform: translateY(-30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .modal-left::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 70%);
+            opacity: 0.5;
         }
 
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 35px;
+        .modal-left .logo {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.3rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            margin-bottom: 1.1rem;
+            color: #ffffff;
+            position: relative;
+            z-index: 1;
+        }
+
+        .modal-left .tagline {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1.1rem;
+            color: #dbeafe;
+            position: relative;
+            z-index: 1;
+        }
+
+        .modal-left .welcome-msg {
+            font-size: 1.08rem;
+            color: #e0e7ef;
+            margin-bottom: 1.2rem;
+            line-height: 1.5;
+            max-width: 95%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .modal-left .material-icons {
+            font-size: 2.7rem;
+            color: #a5b4fc;
+            margin-bottom: 1.2rem;
+            animation: pulse 2s infinite;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .modal-right {
+            background: #f8fafc;
+            flex: 1;
+            padding: 2.2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .form-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 0.4rem;
+        }
+
+        .form-subtitle {
+            color: #64748b;
+            font-size: 1.05rem;
+            margin-bottom: 1.2rem;
+            font-weight: 400;
         }
 
         .form-group {
+            margin-bottom: 1.1rem;
             position: relative;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
         }
 
         .form-group label {
             display: block;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 10px;
-            font-size: 1rem;
-            letter-spacing: 0.5px;
-        }
-
-        .input-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-container .material-icons {
-            position: absolute;
-            left: 18px;
-            color: var(--text-hint);
-            font-size: 22px;
-            z-index: 3;
-            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 0.4rem;
+            font-size: 0.93rem;
         }
 
         .form-control {
             width: 100%;
-            padding: 18px 18px 18px 58px;
-            border: 2px solid var(--divider);
-            border-radius: 16px;
-            font-size: 1.1rem;
-            background: rgba(255, 255, 255, 0.9);
-            color: var(--text-primary);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            outline: none;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            padding: 0.7rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.98rem;
+            background: #ffffff;
+            color: #1e293b;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
         }
 
         .form-control:focus {
-            border-color: var(--primary-blue);
-            box-shadow: 
-                0 0 0 4px rgba(25, 118, 210, 0.15),
-                0 4px 12px rgba(25, 118, 210, 0.1);
-            background: rgba(255, 255, 255, 1);
-            transform: translateY(-2px);
-        }
-
-        .form-control:focus + .material-icons {
-            color: var(--primary-blue);
-            transform: scale(1.1);
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.09);
         }
 
         .form-control.error {
-            border-color: var(--error-red);
-            animation: shake 0.6s ease;
-            box-shadow: 0 0 0 4px rgba(244, 67, 54, 0.15);
+            border-color: #ef4444;
         }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            75% { transform: translateX(8px); }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
         }
 
         .error-message {
-            color: var(--error-red);
-            font-size: 0.9rem;
-            margin-top: 10px;
+            color: #ef4444;
+            font-size: 0.82rem;
+            margin-top: 0.3rem;
             display: none;
-            animation: fadeIn 0.4s ease;
-            font-weight: 500;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
         }
 
         .password-strength {
-            margin-top: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            margin-top: 0.4rem;
         }
 
         .strength-bar {
-            height: 6px;
-            background: var(--divider);
-            border-radius: 3px;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
             overflow: hidden;
-            margin-bottom: 10px;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-            width: 100%;
+            margin-bottom: 0.3rem;
         }
 
         .strength-fill {
             height: 100%;
-            border-radius: 3px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #ef4444;
+            transition: all 0.3s ease;
             width: 0%;
         }
 
-        .strength-weak { 
-            background: linear-gradient(90deg, var(--error-red), #FF6B6B);
+        .strength-fill.medium {
+            background: #f59e0b;
         }
-        .strength-medium { 
-            background: linear-gradient(90deg, var(--warning-amber), #FFD93D);
-        }
-        .strength-strong { 
-            background: linear-gradient(90deg, var(--success-green), #6BCF7F);
+
+        .strength-fill.strong {
+            background: #10b981;
         }
 
         .strength-text {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            font-weight: 500;
-            word-break: break-word;
-            max-width: 100%;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 1rem;
+            top: 2.3rem;
+            cursor: pointer;
+            color: #6b7280;
+            font-size: 1.1rem;
+            z-index: 2;
+            transition: color 0.2s;
+        }
+
+        .toggle-password:hover {
+            color: #2563eb;
         }
 
         .submit-btn {
             width: 100%;
-            padding: 22px;
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-teal) 50%, var(--accent-orange) 100%);
-            color: white;
+            padding: 1rem;
+            background: #2563eb;
+            color: #ffffff;
             border: none;
-            border-radius: 16px;
-            font-size: 1.2rem;
+            border-radius: 8px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
+            margin-top: 1.1rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin-top: 30px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .submit-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.6s ease;
-        }
-
-        .submit-btn:hover::before {
-            left: 100%;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
         }
 
         .submit-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(25, 118, 210, 0.4);
-        }
-
-        .submit-btn:active {
+            background: #3b82f6;
             transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.13);
         }
 
         .submit-btn:disabled {
-            opacity: 0.7;
+            background: #9ca3af;
             cursor: not-allowed;
             transform: none;
         }
 
         .loading-spinner {
             display: none;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -350,202 +277,145 @@
             100% { transform: rotate(360deg); }
         }
 
-        .pricing-btn {
-            width: 100%;
-            padding: 20px;
-            background: linear-gradient(135deg, var(--success-green), #66BB6A);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 25px;
+        .success-message {
             display: none;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: all 0.4s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+            background: #10b981;
+            color: #ffffff;
+            padding: 1.2rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 1.2rem;
+            animation: slideIn 0.5s ease;
         }
 
-        .pricing-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(76, 175, 80, 0.4);
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .back-link {
             text-align: center;
-            margin-top: 40px;
-            padding-top: 25px;
-            border-top: 2px solid var(--divider);
+            margin-top: 1.2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
         }
 
         .back-link a {
-            color: var(--primary-blue);
+            color: #3b82f6;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            padding: 12px 20px;
-            border-radius: 12px;
-            background: rgba(25, 118, 210, 0.1);
+            gap: 0.5rem;
+            transition: color 0.3s ease;
         }
 
         .back-link a:hover {
-            color: var(--primary-blue-dark);
-            background: rgba(25, 118, 210, 0.2);
-            transform: translateY(-2px);
+            color: #1e3a8a;
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 15px 8px;
-            }
+        .progress-bar {
+            background: #e2e8f0;
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 1.2rem;
+        }
 
-            .container {
-                margin: 10px;
-                border-radius: 24px;
-                max-width: none;
-            }
+        .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
 
-            .header {
-                padding: 35px 25px;
-            }
-
-            .header h1 {
-                font-size: 2.2rem;
+        @media (max-width: 900px) {
+            .modal-container {
                 flex-direction: column;
-                gap: 8px;
+                max-width: 98%;
+                min-height: unset;
+                border-radius: 1rem;
             }
 
-            .form-container {
-                padding: 35px 25px;
+            .modal-left, .modal-right {
+                padding: 1.2rem 1rem;
             }
 
-            .form-grid {
-                grid-template-columns: 1fr;
-                gap: 25px;
+            .modal-left .logo {
+                font-size: 1.5rem;
             }
 
-            .form-control {
-                padding: 16px 16px 16px 52px;
-                font-size: 1rem;
-            }
-
-            .submit-btn, .pricing-btn {
-                padding: 18px;
+            .modal-left .tagline {
                 font-size: 1.1rem;
             }
+
+            .modal-left .welcome-msg {
+                font-size: 0.95rem;
+            }
         }
 
-        @media (max-width: 480px) {
-            body {
-                padding: 10px 5px;
+        @media (max-width: 600px) {
+            .modal-container {
+                max-width: 99%;
             }
 
-            .header h1 {
-                font-size: 1.9rem;
+            .modal-left, .modal-right {
+                padding: 1rem 0.5rem;
             }
 
-            .header p {
-                font-size: 1rem;
+            .form-row {
+                grid-template-columns: 1fr;
             }
 
-            .form-container {
-                padding: 30px 20px;
+            .form-title {
+                font-size: 1.1rem;
+            }
+
+            .form-subtitle {
+                font-size: 0.95rem;
             }
 
             .form-control {
-                padding: 14px 14px 14px 48px;
+                padding: 0.7rem 0.7rem;
             }
-
-            .submit-btn, .pricing-btn {
-                font-size: 1rem;
-            }
-            .password-strength {
-                font-size: 0.85rem;
-            }
-            .strength-bar {
-                height: 5px;
-            }
-            .strength-text {
-                font-size: 0.8rem;
-            }
-        }
-
-        /* Improved scrolling */
-        html, body {
-            scroll-behavior: smooth;
-            overflow-x: hidden;
-        }
-
-        /* Enhanced focus states for accessibility */
-        .form-control:focus-visible {
-            outline: 3px solid rgba(25, 118, 210, 0.5);
-            outline-offset: 2px;
-        }
-
-        .submit-btn:focus-visible,
-        .pricing-btn:focus-visible {
-            outline: 3px solid rgba(255, 255, 255, 0.5);
-            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="header-content">
-                <h1>
-                    <span class="material-icons">store</span>
-                    Join PrintMe
-                </h1>
-                <p>Register your printing shop with us and reach more customers</p>
-            </div>
+    <div class="modal-container">
+        <div class="modal-left">
+            <span class="material-icons">print</span>
+            <div class="logo">PrintMax</div>
+            <div class="tagline">Empower Your Print Business</div>
+            <div class="welcome-msg">Join PrintMax to streamline your operations, connect with new customers, and grow your shop with cutting-edge tools and a vibrant network!</div>
         </div>
-
-        <div class="form-container">
+        <div class="modal-right">
+            <h2 class="form-title">Create Your PrintMax Account</h2>
+            <p class="form-subtitle">Start your journey as a PrintMax partner today</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
             <div class="success-message" id="successMessage">
                 <span class="material-icons">check_circle</span>
-                Registration successful! Redirecting to pricing setup...
+                Registration successful! Setting up your dashboard...
             </div>
-
             <form id="vendorRegisterForm" onsubmit="handleRegistration(event)">
                 {% csrf_token %}
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="email">Email Address *</label>
-                        <div class="input-container">
-                            <input type="email" class="form-control" id="email" name="email" required>
-                            <span class="material-icons">email</span>
-                        </div>
-                        <div class="error-message" id="emailError"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="vendorName">Shop Name *</label>
-                        <div class="input-container">
-                            <input type="text" class="form-control" id="vendorName" name="vendorName" required>
-                            <span class="material-icons">store</span>
-                        </div>
-                        <div class="error-message" id="vendorNameError"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                    <div class="error-message" id="emailError"></div>
                 </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
+                <div class="form-group">
+                    <label for="vendorName">Shop Name *</label>
+                    <input type="text" class="form-control" id="vendorName" name="vendorName" required>
+                    <div class="error-message" id="vendorNameError"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="position:relative;">
                         <label for="password">Password *</label>
-                        <div class="input-container">
-                            <input type="password" class="form-control" id="password" name="password" required>
-                            <span class="material-icons">lock</span>
-                        </div>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <span class="material-icons toggle-password" id="togglePassword">visibility_off</span>
                         <div class="password-strength">
                             <div class="strength-bar">
                                 <div class="strength-fill" id="strengthFill"></div>
@@ -554,64 +424,41 @@
                         </div>
                         <div class="error-message" id="passwordError"></div>
                     </div>
-
-                    <div class="form-group">
+                    <div class="form-group" style="position:relative;">
                         <label for="confirmPassword">Confirm Password *</label>
-                        <div class="input-container">
-                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
-                            <span class="material-icons">lock_outline</span>
-                        </div>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        <span class="material-icons toggle-password" id="toggleConfirmPassword">visibility_off</span>
                         <div class="error-message" id="confirmPasswordError"></div>
                     </div>
                 </div>
-
-                <div class="form-grid">
+                <div class="form-row">
                     <div class="form-group">
                         <label for="phoneNumber">Phone Number *</label>
-                        <div class="input-container">
-                            <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required>
-                            <span class="material-icons">phone</span>
-                        </div>
+                        <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required>
                         <div class="error-message" id="phoneNumberError"></div>
                     </div>
-
                     <div class="form-group">
                         <label for="city">City *</label>
-                        <div class="input-container">
-                            <input type="text" class="form-control" id="city" name="city" required>
-                            <span class="material-icons">location_city</span>
-                        </div>
+                        <input type="text" class="form-control" id="city" name="city" required>
                         <div class="error-message" id="cityError"></div>
                     </div>
                 </div>
-
-                <div class="form-group full-width">
+                <div class="form-group">
                     <label for="shopAddress">Shop Address *</label>
-                    <div class="input-container">
-                        <input type="text" class="form-control" id="shopAddress" name="shopAddress" required placeholder="Enter your shop's complete address with landmark">
-                        <span class="material-icons">location_on</span>
-                    </div>
+                    <input type="text" class="form-control" id="shopAddress" name="shopAddress" required placeholder="Enter your complete shop address">
                     <div class="error-message" id="shopAddressError"></div>
                 </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="pincode">PIN Code *</label>
-                        <div class="input-container">
-                            <input type="text" class="form-control" id="pincode" name="pincode" required maxlength="6">
-                            <span class="material-icons">my_location</span>
-                        </div>
-                        <div class="error-message" id="pincodeError"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="pincode">PIN Code *</label>
+                    <input type="text" class="form-control" id="pincode" name="pincode" required maxlength="6">
+                    <div class="error-message" id="pincodeError"></div>
                 </div>
-
                 <button type="submit" class="submit-btn" id="submitBtn">
                     <span class="loading-spinner" id="loadingSpinner"></span>
-                    <span class="material-icons">person_add</span>
-                    Register Shop
+                    <span class="material-icons">rocket_launch</span>
+                    Join PrintMax Now
                 </button>
             </form>
-
             <div class="back-link">
                 <a href="/login/">
                     <span class="material-icons">arrow_back</span>
@@ -620,8 +467,20 @@
             </div>
         </div>
     </div>
-
     <script>
+        // Progress tracking
+        function updateProgress() {
+            const inputs = document.querySelectorAll('.form-control');
+            let filled = 0;
+            inputs.forEach(input => {
+                if (input.value.trim()) filled++;
+            });
+            const progress = (filled / inputs.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+        }
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('input', updateProgress);
+        });
         // Get CSRF token
         function getCookie(name) {
             let cookieValue = null;
@@ -637,7 +496,6 @@
             }
             return cookieValue;
         }
-
         // Password strength checker
         function checkPasswordStrength(password) {
             let strength = 0;
@@ -647,54 +505,50 @@
             if (/[^A-Za-z0-9]/.test(password)) strength += 1;
             return strength;
         }
-
         function updatePasswordStrength(password) {
             const strength = checkPasswordStrength(password);
             const strengthFill = document.getElementById('strengthFill');
             const strengthText = document.getElementById('strengthText');
-
             strengthFill.className = 'strength-fill';
-
             if (strength <= 1) {
                 strengthFill.style.width = '25%';
-                strengthFill.classList.add('strength-weak');
                 strengthText.textContent = 'Password strength: Weak';
             } else if (strength <= 2) {
                 strengthFill.style.width = '50%';
-                strengthFill.classList.add('strength-medium');
-                strengthText.textContent = 'Password strength: Medium';
+                strengthFill.classList.add('medium');
+                strengthText.textContent = 'Password strength: Fair';
             } else if (strength <= 3) {
                 strengthFill.style.width = '75%';
-                strengthFill.classList.add('strength-medium');
+                strengthFill.classList.add('medium');
                 strengthText.textContent = 'Password strength: Good';
             } else {
                 strengthFill.style.width = '100%';
-                strengthFill.classList.add('strength-strong');
+                strengthFill.classList.add('strong');
                 strengthText.textContent = 'Password strength: Strong';
             }
         }
-
-        // Real-time validation
-        document.getElementById('password').addEventListener('input', function() {
-            updatePasswordStrength(this.value);
-            validatePassword();
-        });
-
-        document.getElementById('confirmPassword').addEventListener('input', validateConfirmPassword);
-        document.getElementById('email').addEventListener('input', validateEmail);
-        document.getElementById('vendorName').addEventListener('input', validateVendorName);
-        document.getElementById('phoneNumber').addEventListener('input', validatePhoneNumber);
-        document.getElementById('shopAddress').addEventListener('input', validateShopAddress);
-        document.getElementById('city').addEventListener('input', validateCity);
-        document.getElementById('pincode').addEventListener('input', validatePincode);
-
+        // Password eye toggle
+        function setupPasswordToggle(inputId, toggleId) {
+            const input = document.getElementById(inputId);
+            const toggle = document.getElementById(toggleId);
+            toggle.addEventListener('click', function() {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    toggle.textContent = 'visibility';
+                } else {
+                    input.type = 'password';
+                    toggle.textContent = 'visibility_off';
+                }
+            });
+        }
+        setupPasswordToggle('password', 'togglePassword');
+        setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
+        // Validation functions
         function validateEmail() {
             const email = document.getElementById('email').value;
             const emailError = document.getElementById('emailError');
             const emailField = document.getElementById('email');
-
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
             if (!email) {
                 showError(emailField, emailError, 'Email is required');
                 return false;
@@ -706,13 +560,11 @@
                 return true;
             }
         }
-
         function validatePassword() {
             const password = document.getElementById('password').value;
             const passwordError = document.getElementById('passwordError');
             const passwordField = document.getElementById('password');
             const strength = checkPasswordStrength(password);
-
             if (!password) {
                 showError(passwordField, passwordError, 'Password is required');
                 return false;
@@ -724,13 +576,11 @@
                 return true;
             }
         }
-
         function validateConfirmPassword() {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const confirmPasswordError = document.getElementById('confirmPasswordError');
             const confirmPasswordField = document.getElementById('confirmPassword');
-
             if (!confirmPassword) {
                 showError(confirmPasswordField, confirmPasswordError, 'Please confirm your password');
                 return false;
@@ -742,12 +592,10 @@
                 return true;
             }
         }
-
         function validateVendorName() {
             const vendorName = document.getElementById('vendorName').value;
             const vendorNameError = document.getElementById('vendorNameError');
             const vendorNameField = document.getElementById('vendorName');
-
             if (!vendorName.trim()) {
                 showError(vendorNameField, vendorNameError, 'Shop name is required');
                 return false;
@@ -759,14 +607,11 @@
                 return true;
             }
         }
-
         function validatePhoneNumber() {
             const phoneNumber = document.getElementById('phoneNumber').value;
             const phoneNumberError = document.getElementById('phoneNumberError');
             const phoneNumberField = document.getElementById('phoneNumber');
-
             const phoneRegex = /^\d{10}$/;
-
             if (!phoneNumber) {
                 showError(phoneNumberField, phoneNumberError, 'Phone number is required');
                 return false;
@@ -778,48 +623,35 @@
                 return true;
             }
         }
-
-        function validateShopAddress() {
-            const shopAddress = document.getElementById('shopAddress').value;
-            const shopAddressError = document.getElementById('shopAddressError');
-            const shopAddressField = document.getElementById('shopAddress');
-
-            if (!shopAddress.trim()) {
-                showError(shopAddressField, shopAddressError, 'Shop address is required');
-                return false;
-            } else if (shopAddress.trim().length < 10) {
-                showError(shopAddressField, shopAddressError, 'Please enter a complete address');
-                return false;
-            } else {
-                hideError(shopAddressField, shopAddressError);
-                return true;
-            }
-        }
-
         function validateCity() {
             const city = document.getElementById('city').value;
             const cityError = document.getElementById('cityError');
             const cityField = document.getElementById('city');
-
             if (!city.trim()) {
                 showError(cityField, cityError, 'City is required');
-                return false;
-            } else if (city.trim().length < 2) {
-                showError(cityField, cityError, 'Please enter a valid city name');
                 return false;
             } else {
                 hideError(cityField, cityError);
                 return true;
             }
         }
-
+        function validateShopAddress() {
+            const shopAddress = document.getElementById('shopAddress').value;
+            const shopAddressError = document.getElementById('shopAddressError');
+            const shopAddressField = document.getElementById('shopAddress');
+            if (!shopAddress.trim()) {
+                showError(shopAddressField, shopAddressError, 'Shop address is required');
+                return false;
+            } else {
+                hideError(shopAddressField, shopAddressError);
+                return true;
+            }
+        }
         function validatePincode() {
             const pincode = document.getElementById('pincode').value;
             const pincodeError = document.getElementById('pincodeError');
             const pincodeField = document.getElementById('pincode');
-
             const pincodeRegex = /^\d{6}$/;
-
             if (!pincode) {
                 showError(pincodeField, pincodeError, 'PIN code is required');
                 return false;
@@ -831,46 +663,40 @@
                 return true;
             }
         }
-
         function showError(field, errorElement, message) {
             field.classList.add('error');
             errorElement.textContent = message;
             errorElement.style.display = 'block';
         }
-
         function hideError(field, errorElement) {
             field.classList.remove('error');
             errorElement.style.display = 'none';
         }
-
-
-        let lastVendorEmail = null;
-
+        document.getElementById('password').addEventListener('input', function() {
+            updatePasswordStrength(this.value);
+            validatePassword();
+        });
+        document.getElementById('confirmPassword').addEventListener('input', validateConfirmPassword);
+        document.getElementById('email').addEventListener('input', validateEmail);
+        document.getElementById('vendorName').addEventListener('input', validateVendorName);
+        document.getElementById('phoneNumber').addEventListener('input', validatePhoneNumber);
+        document.getElementById('city').addEventListener('input', validateCity);
+        document.getElementById('shopAddress').addEventListener('input', validateShopAddress);
+        document.getElementById('pincode').addEventListener('input', validatePincode);
         async function handleRegistration(event) {
             event.preventDefault();
-            // Validate all fields
-            const isEmailValid = validateEmail();
-            const isPasswordValid = validatePassword();
-            const isConfirmPasswordValid = validateConfirmPassword();
-            const isVendorNameValid = validateVendorName();
-            const isPhoneNumberValid = validatePhoneNumber();
-            const isShopAddressValid = validateShopAddress();
-            const isCityValid = validateCity();
-            const isPincodeValid = validatePincode();
-
-            if (!isEmailValid || !isPasswordValid || !isConfirmPasswordValid || 
-                !isVendorNameValid || !isPhoneNumberValid || !isShopAddressValid || 
-                !isCityValid || !isPincodeValid) {
+            const validations = [
+                validateVendorName(), validateEmail(), validatePassword(), 
+                validateConfirmPassword(), validatePhoneNumber(), validateCity(), 
+                validateShopAddress(), validatePincode()
+            ];
+            if (!validations.every(v => v)) {
                 return;
             }
-
-            // Show loading state
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
             submitBtn.disabled = true;
             loadingSpinner.style.display = 'inline-block';
-
-            // Prepare form data
             const formData = {
                 email: document.getElementById('email').value,
                 password: document.getElementById('password').value,
@@ -880,7 +706,6 @@
                 city: document.getElementById('city').value,
                 pincode: document.getElementById('pincode').value
             };
-
             try {
                 const response = await fetch('/vendor-register-api/', {
                     method: 'POST',
@@ -890,31 +715,33 @@
                     },
                     body: JSON.stringify(formData)
                 });
-
                 const data = await response.json();
-
                 if (data.success && data.vendor_email) {
-                    // Display vendor credentials
                     const successMessage = document.getElementById('successMessage');
                     successMessage.innerHTML = `
-                        <span class="material-icons">check_circle</span>
-                        <div style="margin-top: 15px;">
-                            <strong>Registration successful!</strong><br>
-                            <div style="margin: 15px 0; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px; text-align: left;">
-                                <strong>Your Vendor Credentials:</strong><br>
-                                <strong>Vendor ID:</strong> ${data.vendor_id}<br>
-                                <strong>Vendor Token:</strong> ${data.vendor_token}<br>
-                                <small style="opacity: 0.9;">Please save these credentials securely. You'll need them for accessing your vendor dashboard.</small>
-                            </div>
-                            Redirecting to pricing setup...
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                            <span class="material-icons">check_circle</span>
+                            <strong>Welcome to PrintMe!</strong>
+                        </div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">
+                            Your account has been created successfully.<br>
+                            Redirecting to setup your pricing in <span id="countdown">3</span> seconds...
                         </div>
                     `;
                     successMessage.style.display = 'block';
                     document.getElementById('vendorRegisterForm').style.display = 'none';
-                    
-                    setTimeout(() => {
-                        window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(data.vendor_email)}`;
-                    }, 5000);
+                    let countdown = 3;
+                    const countdownElement = document.getElementById('countdown');
+                    const timer = setInterval(() => {
+                        countdown--;
+                        if (countdownElement) {
+                            countdownElement.textContent = countdown;
+                        }
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(data.vendor_email)}`;
+                        }
+                    }, 1000);
                 } else {
                     throw new Error(data.message || 'Registration failed');
                 }
@@ -925,8 +752,6 @@
                 loadingSpinner.style.display = 'none';
             }
         }
-
-
     </script>
 </body>
 </html>

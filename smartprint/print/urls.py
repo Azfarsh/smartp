@@ -31,4 +31,5 @@ urlpatterns = [
     path('get-available-shops/', views.get_available_shops, name='get_available_shops'),
     path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
     path('mark-notification-read/', mark_notification_read, name='mark_notification_read'),
+    path('get-vendor-details/', views.get_vendor_details, name='get_vendor_details'),
 ]
