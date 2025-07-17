@@ -569,19 +569,32 @@
 </head>
 <body>
     <!-- Pricing Reference Image at the very top -->
-    <div class="pricing-reference" style="padding-top: 30px;">
-        <img src="{% static 'images/priceimage.png' %}" alt="Pricing Reference Guide" class="pricing-image">
-        <p class="reference-note">Use this reference to set competitive and fair pricing for your services</p>
-    </div>
+    <!-- Removed the pricing-reference image section as per user request -->
 
     <div class="container">
         <!-- Vendor Information -->
-        <div class="vendor-info">
-            <h3>
-                <span class="material-icons">store</span>
-                Shop Information
-            </h3>
-            <div id="vendorInfo">Loading shop details...</div>
+        <div class="vendor-info" style="display: flex; flex-direction: row; align-items: stretch; justify-content: center; gap: 0; min-height: 320px; padding: 0; overflow: hidden;">
+            <!-- Left: Large Image -->
+            <div style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 20px 0 0 20px; min-width: 0; min-height: 320px;">
+                <img src="{% static 'images/priceimage.png' %}" alt="Vendor" style="width: 90%; max-width: 350px; height: 90%; max-height: 320px; object-fit: contain; border-radius: 16px; box-shadow: 0 4px 24px rgba(25, 118, 210, 0.13); background: #fff;">
+            </div>
+            <!-- Right: Vendor Details -->
+            <div style="flex: 1 1 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 40px 32px; background: linear-gradient(135deg, var(--secondary-teal), var(--secondary-emerald)); border-radius: 0 20px 20px 0; min-width: 0; min-height: 320px;">
+                <h3 style="color: #fff; font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 12px;">
+                    <span class="material-icons">store</span>
+                    Shop Information
+                </h3>
+                <div id="vendorDetails" style="text-align: left; min-width: 220px;">
+                    <div style="font-size: 1.08rem; font-weight: 500; color: #fff; margin-bottom: 2px;">Your Vendor Details</div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Name:</strong> <span id="vendorName">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Email:</strong> <span id="vendorEmail">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Shop Address:</strong> <span id="shopAddress">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>City:</strong> <span id="city">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>PIN Code:</strong> <span id="pincode">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Vendor ID:</strong> <span id="vendorId">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6;"><strong>Vendor Token:</strong> <span id="vendorToken">-</span></div>
+                </div>
+            </div>
         </div>
 
         <!-- Pricing Form -->
@@ -1366,5 +1379,26 @@
         // Load vendor info when page loads
         document.addEventListener('DOMContentLoaded', loadVendorInfo);
     </script>
+    <script>
+window.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const vendorEmail = params.get('vendorEmail');
+    if (!vendorEmail) return;
+    fetch(`/get-vendor-details/?email=${encodeURIComponent(vendorEmail)}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('vendorName').textContent = data.vendor_name || '-';
+            document.getElementById('vendorEmail').textContent = data.vendor_email || '-';
+            document.getElementById('shopAddress').textContent = data.shop_address || '-';
+            document.getElementById('city').textContent = data.city || '-';
+            document.getElementById('pincode').textContent = data.pincode || '-';
+            document.getElementById('vendorId').textContent = data.vendor_id || '-';
+            document.getElementById('vendorToken').textContent = data.vendor_token || '-';
+        })
+        .catch(() => {
+            document.getElementById('vendorDetails').innerHTML = '<span style="color:#fff">Could not load vendor details.</span>';
+        });
+});
+</script>
 </body>
 </html>

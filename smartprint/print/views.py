@@ -18,6 +18,7 @@ import tempfile
 import io
 from PIL import Image, ImageDraw
 import math
+from django.views.decorators.http import require_GET
 
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
@@ -2444,3 +2445,36 @@ def vendor_about(request):
 # ─────────────────────────────────────────────────────────────
 # FILE UPLOAD TO CLOUDFLARE R2
 # ─────────────────────────────────────────────────────────────
+
+@require_GET
+def get_vendor_details(request):
+    """
+    API endpoint to fetch vendor details by email from S3 for the pricing page.
+    """
+    import boto3, json
+    from django.conf import settings
+    email = request.GET.get('email')
+    if not email:
+        return JsonResponse({'error': 'Email required'}, status=400)
+    def sanitize_email(email):
+        return email.replace('@', '_at_').replace('.', '_dot_')
+    s3 = boto3.client('s3',
+        aws_access_key_id=settings.R2_ACCESS_KEY,
+        aws_secret_access_key=settings.R2_SECRET_KEY,
+        endpoint_url=settings.R2_ENDPOINT,
+        region_name='auto')
+    key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+    try:
+        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+        return JsonResponse({
+            'vendor_name': vendor_data.get('vendor_name', ''),
+            'vendor_email': vendor_data.get('vendor_email', ''),
+            'shop_address': vendor_data.get('shop_address', ''),
+            'city': vendor_data.get('city', ''),
+            'pincode': vendor_data.get('pincode', ''),
+            'vendor_id': vendor_data.get('vendor_id', ''),
+            'vendor_token': vendor_data.get('vendor_token', ''),
+        })
+    except Exception as e:
+        return JsonResponse({'error': f'Not found: {str(e)}'}, status=404)
