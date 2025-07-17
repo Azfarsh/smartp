@@ -3576,12 +3576,40 @@
               icon: 'fas fa-camera'
             },
             { 
+              label: 'Select Country', 
+              type: 'select', 
+              options: [
+                { value: 'india', label: 'India (35x45mm)', price: 'Standard' },
+                { value: 'uae', label: 'United Arab Emirates (51x51mm)', price: 'Standard' },
+                { value: 'saudi_arabia', label: 'Saudi Arabia (51x51mm)', price: 'Standard' },
+                { value: 'united_states', label: 'United States (51x51mm)', price: 'Standard' },
+                { value: 'singapore', label: 'Singapore (35x45mm)', price: 'Standard' },
+                { value: 'thailand', label: 'Thailand (35x45mm)', price: 'Standard' },
+                { value: 'united_kingdom', label: 'United Kingdom (35x45mm)', price: 'Standard' },
+                { value: 'qatar', label: 'Qatar (51x51mm)', price: 'Standard' },
+                { value: 'kuwait', label: 'Kuwait (51x51mm)', price: 'Standard' },
+                { value: 'canada', label: 'Canada (50x70mm)', price: 'Standard' },
+                { value: 'australia', label: 'Australia (35x45mm)', price: 'Standard' },
+                { value: 'maldives', label: 'Maldives (35x45mm)', price: 'Standard' },
+                { value: 'nepal', label: 'Nepal (35x45mm)', price: 'Standard' },
+                { value: 'sri_lanka', label: 'Sri Lanka (35x45mm)', price: 'Standard' },
+                { value: 'malaysia', label: 'Malaysia (35x45mm)', price: 'Standard' },
+                { value: 'indonesia', label: 'Indonesia (51x51mm)', price: 'Standard' },
+                { value: 'switzerland', label: 'Switzerland (35x45mm)', price: 'Standard' },
+                { value: 'bhutan', label: 'Bhutan (35x45mm)', price: 'Standard' },
+                { value: 'mauritius', label: 'Mauritius (35x45mm)', price: 'Standard' },
+                { value: 'france', label: 'France (35x45mm)', price: 'Standard' },
+                { value: 'germany', label: 'Germany (35x45mm)', price: 'Standard' }
+              ], 
+              required: true,
+              description: 'Select the country for which you need passport photos',
+              icon: 'fas fa-globe'
+            },
+            { 
               label: 'Photo Package', 
               type: 'select', 
               options: [
-                { value: '8', label: '8 Photos (Standard)', price: '₹40' },
-                { value: '16', label: '16 Photos (Family)', price: '₹70' },
-                { value: '30', label: '30 Photos (Bulk)', price: '₹120' }
+                { value: '8', label: '8 Photos (Standard)', price: '₹40' }
               ], 
               required: true,
               description: 'Choose the number of passport photos you need',
@@ -3909,15 +3937,56 @@
         let fileObj = null;
         let selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : 'firozshop';
         
+        // Country-specific photo package options
+        const countryPhotoPackages = {
+          'india': [
+            { value: '8', label: '8 Photos (Standard)', price: '₹40' },
+            { value: '16', label: '16 Photos (Family)', price: '₹70' },
+            { value: '30', label: '30 Photos (Bulk)', price: '₹120' }
+          ],
+          'default': [
+            { value: '8', label: '8 Photos (Standard)', price: '₹40' }
+          ]
+        };
+        
+        // Country-specific photo dimensions (in mm at 300 DPI)
+        const countryDimensions = {
+          'india': { width: 413, height: 531 }, // 35x45mm
+          'uae': { width: 602, height: 602 }, // 51x51mm
+          'saudi_arabia': { width: 602, height: 602 }, // 51x51mm
+          'united_states': { width: 602, height: 602 }, // 51x51mm
+          'singapore': { width: 413, height: 531 }, // 35x45mm
+          'thailand': { width: 413, height: 531 }, // 35x45mm
+          'united_kingdom': { width: 413, height: 531 }, // 35x45mm
+          'qatar': { width: 602, height: 602 }, // 51x51mm
+          'kuwait': { width: 602, height: 602 }, // 51x51mm
+          'canada': { width: 590, height: 826 }, // 50x70mm
+          'australia': { width: 413, height: 531 }, // 35x45mm
+          'maldives': { width: 413, height: 531 }, // 35x45mm
+          'nepal': { width: 413, height: 531 }, // 35x45mm
+          'sri_lanka': { width: 413, height: 531 }, // 35x45mm
+          'malaysia': { width: 413, height: 531 }, // 35x45mm
+          'indonesia': { width: 602, height: 602 }, // 51x51mm
+          'switzerland': { width: 413, height: 531 }, // 35x45mm
+          'bhutan': { width: 413, height: 531 }, // 35x45mm
+          'mauritius': { width: 413, height: 531 }, // 35x45mm
+          'france': { width: 413, height: 531 }, // 35x45mm
+          'germany': { width: 413, height: 531 } // 35x45mm
+        };
+        
         // Wait for availableShops to load before rendering shop dropdown
         function waitForShopsAndRender(attempt = 0) {
           if (availableShops.length > 0) {
             renderServiceModalShops(service);
-          } else if (attempt < 20) { // Try for up to 2 seconds
+          } else if (attempt < 50) { // Try for up to 5 seconds
             setTimeout(() => waitForShopsAndRender(attempt + 1), 100);
           } else {
-            // After timeout, show no shops
-            renderServiceModalShops(service);
+            // After timeout, try to reload shops one more time
+            loadAvailableShops().then(() => {
+              renderServiceModalShops(service);
+            }).catch(() => {
+              renderServiceModalShops(service);
+            });
           }
         }
         waitForShopsAndRender();
@@ -4047,6 +4116,46 @@
             });
           }
         }, 500);
+        
+        // Country selection handler for passport photos
+        if (service === 'passport') {
+          setTimeout(() => {
+            const countrySelect = modal.querySelector(`#${service}-field-1`); // Country is second field (index 1)
+            const packageSelect = modal.querySelector(`#${service}-field-2`); // Package is third field (index 2)
+            
+            if (countrySelect && packageSelect) {
+              // Handle country change
+              countrySelect.addEventListener('change', function() {
+                const selectedCountry = this.value;
+                const packages = countryPhotoPackages[selectedCountry] || countryPhotoPackages['default'];
+                
+                // Clear existing options
+                packageSelect.innerHTML = '';
+                
+                // Add new options based on selected country
+                packages.forEach(pkg => {
+                  const option = document.createElement('option');
+                  option.value = pkg.value;
+                  option.textContent = `${pkg.label} - ${pkg.price}`;
+                  packageSelect.appendChild(option);
+                });
+                
+                // Update description based on country
+                const countryName = this.options[this.selectedIndex].text.split(' (')[0];
+                const sizeInfo = this.options[this.selectedIndex].text.match(/\(([^)]+)\)/);
+                const size = sizeInfo ? sizeInfo[1] : '';
+                
+                const description = packageSelect.parentNode.parentNode.querySelector('.field-description');
+                if (description) {
+                  description.textContent = `Choose the number of ${countryName} passport photos (${size}) you need`;
+                }
+              });
+              
+              // Trigger initial update
+              countrySelect.dispatchEvent(new Event('change'));
+            }
+          }, 600);
+        }
         // Form submit
         const form = modal.querySelector(`#${service}-modal-form`);
         if (form) {
@@ -4067,6 +4176,7 @@
             let orientation = 'portrait';
             let quality = 'standard';
             let thickness = '120gsm';
+            let country = 'india';
             
           tmpl.fields.forEach((f, idx) => {
             if (f.type === 'file') return;
@@ -4079,6 +4189,7 @@
               if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) copies = parseInt(val) || 8;
               if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
               if (f.label.toLowerCase().includes('thickness')) thickness = val;
+              if (f.label.toLowerCase().includes('country')) country = val;
               
             formData.append(`field_${idx}`, val);
           });
@@ -4115,6 +4226,7 @@
               quality: quality,
               thickness: thickness,
               feedback: feedback,
+              country: country,
             spiralBinding: 'No',
             lamination: 'No',
             timestamp: new Date().toISOString(),
@@ -4167,6 +4279,10 @@
 
       document.getElementById('passportPhotoBtn').addEventListener('click', function(e) {
         e.preventDefault();
+        // Ensure shops are loaded before opening modal
+        if (availableShops.length === 0) {
+          loadAvailableShops();
+        }
         openServiceModal('passport');
       });
     </script>
@@ -4927,6 +5043,9 @@
           <div class="no-shops-message">
             <i class="fas fa-store-slash"></i>
             <span>No print shops available at the moment</span>
+            <button onclick="loadAvailableShops().then(() => renderServiceModalShops('${service}'))" style="margin-top: 8px; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+              <i class="fas fa-sync-alt"></i> Retry
+            </button>
           </div>
         `;
         return;

@@ -546,7 +546,7 @@ def get_vendor_specific_print_jobs(vendor_id):
         try:
             vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_folder_path)
             manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=manual_vendor_folder_path)
-            
+
             # Combine both object lists
             all_objects = []
             if vendor_objects.get("Contents"):
@@ -657,7 +657,7 @@ def update_job_status(request):
                                             aws_secret_access_key=settings.R2_SECRET_KEY,
                                             endpoint_url=settings.R2_ENDPOINT,
                                             region_name='auto')
-                            
+
                             reg_key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
                             response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
                             vendor_data = json.loads(response['Body'].read().decode('utf-8'))
@@ -710,7 +710,7 @@ def get_pending_print_jobs():
         try:
             vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_print_jobs/')
             manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_manual_print_jobs/')
-            
+
             # Combine both object lists
             all_objects = []
             if vendor_objects.get("Contents"):
@@ -892,7 +892,7 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
                       region_name='auto')
 
     updated_files = []
-    
+
     try:
         # Search for the file in vendor folders and user folders
         prefixes_to_search = [
@@ -900,12 +900,12 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
             'vendor_manual_print_jobs/',
             'users/'
         ]
-        
+
         for prefix in prefixes_to_search:
             try:
                 # List objects with the prefix
                 response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-                
+
                 for obj in response.get('Contents', []):
                     key = obj['Key']
                     # Check if this is the file we're looking for
@@ -935,12 +935,12 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
                             # Update status for better tracking
                             if status.upper() == 'YES':
                                 current_metadata['status'] = 'completed'
-                                
+
                                 # Create notification for job completion
                                 user_email = current_metadata.get('user', '')
                                 token = current_metadata.get('token', '')
                                 service_type = current_metadata.get('service_type', '')
-                                
+
                                 if user_email and token:
                                     # Get vendor name
                                     vendor_name = 'PrintMax Vendor'
@@ -957,7 +957,7 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
                                                                   aws_secret_access_key=settings.R2_SECRET_KEY,
                                                                   endpoint_url=settings.R2_ENDPOINT,
                                                                   region_name='auto')
-                                                
+
                                                 # Search for vendor registration with this vendor_id
                                                 objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
                                                 for obj in objects.get("Contents", []):
@@ -972,7 +972,7 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
                                                             continue
                                         except:
                                             pass
-                                    
+
                                     # Create notification
                                     create_job_completion_notification(
                                         user_email=user_email,
@@ -1002,7 +1002,7 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
                         except Exception as e:
                             print(f"❌ Error updating file {key}: {str(e)}")
                             continue
-                            
+
             except Exception as e:
                 print(f"❌ Error searching in {prefix}: {str(e)}")
                 continue
@@ -1101,7 +1101,7 @@ def upload_to_r2(request):
                     # Always use the same storage folders as the userdashboard print modal
                     vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
                     user_file_key = f'users/{user_email}/{file.name}'
-                    
+
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
                         if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
@@ -1143,23 +1143,39 @@ def upload_to_r2(request):
                             }
                             # Create photo layout PDF
                             if service_type == 'passport_photo':
-                                # Legacy passport photo handling
+                                # Get country and package from settings
+                                country = print_settings.get('country', 'India')
                                 total_prints = int(print_settings.get("copies", 8))
-                                pdf_data = create_passport_photo_layout(file_content, total_prints)
+                                
+                                print(f"🔍 Processing passport photo: Country={country}, Prints={total_prints}")
+
+                                # Country-specific passport photo processing
+                                pdf_data = create_passport_photo_layout(file_content, total_prints, country)
                             else:
                                 # New photo print layout
                                 pdf_data = create_photo_print_layout(image_files_data, layout_config)
                             if pdf_data:
                                 # Update file metadata for photo service
-                                file_metadata.update({
-                                    'service_type': service_type,
-                                    'photo_count': str(layout_config['photo_count']),
-                                    'layout': layout_config['layout'],
-                                    'image_mode': layout_config['image_mode'],
-                                    'layout_created': 'YES',
-                                    'original_filename': file.name,
-                                    'paper_size': layout_config['paper_size']
-                                })
+                                if service_type == 'passport_photo':
+                                    file_metadata.update({
+                                        'service_type': service_type,
+                                        'photo_count': str(total_prints),
+                                        'country': country,
+                                        'layout_created': 'YES',
+                                        'original_filename': file.name,
+                                        'paper_size': 'A4',
+                                        'photo_dimensions': get_passport_photo_dimensions(country)
+                                    })
+                                else:
+                                    file_metadata.update({
+                                        'service_type': service_type,
+                                        'photo_count': str(layout_config['photo_count']),
+                                        'layout': layout_config['layout'],
+                                        'image_mode': layout_config['image_mode'],
+                                        'layout_created': 'YES',
+                                        'original_filename': file.name,
+                                        'paper_size': layout_config['paper_size']
+                                    })
                                 # Use the same keys as above
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
@@ -1232,14 +1248,14 @@ def list_r2_files():
         # Get files from both vendor print jobs and vendor manual print jobs folders
         vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_print_jobs/')
         manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_manual_print_jobs/')
-        
+
         # Combine both object lists
         all_objects = []
         if vendor_objects.get("Contents"):
             all_objects.extend(vendor_objects.get("Contents", []))
         if manual_objects.get("Contents"):
             all_objects.extend(manual_objects.get("Contents", []))
-            
+
         for obj in all_objects:
             key = obj["Key"]
             filename = key.split("/")[-1]
@@ -1416,15 +1432,15 @@ def create_photo_print_layout(input_images_data, layout_config):
         total_prints = layout_config.get('photo_count', 1)
         layout_type = str(layout_config.get('layout', '1'))
         image_mode = layout_config.get('image_mode', 'same')
-        
+
         print(f"📸 Creating photo print layout for {total_prints} photos in {layout_type} arrangement...")
-        
+
         # A4 dimensions at 300 DPI for high quality printing
         A4_WIDTH = 2480   # 210mm at 300 DPI
         A4_HEIGHT = 3508  # 297mm at 300 DPI
         MARGIN = 118      # 10mm margins
         SPACING = 59      # 5mm spacing between photos
-        
+
         # Determine grid layout based on photo count
         if total_prints == 1:
             cols, rows = 1, 1
@@ -1438,49 +1454,49 @@ def create_photo_print_layout(input_images_data, layout_config):
             cols, rows = 3, 3
         else:
             cols, rows = 1, 1
-        
+
         actual_photos = min(total_prints, cols * rows)
-        
+
         # Calculate photo dimensions based on grid layout
         available_width = A4_WIDTH - (2 * MARGIN) - ((cols - 1) * SPACING)
         available_height = A4_HEIGHT - (2 * MARGIN) - ((rows - 1) * SPACING)
         photo_width = available_width // cols
         photo_height = available_height // rows
-        
+
         # Load and process images
         print("📂 Loading and processing images...")
         processed_images = []
-        
+
         for i, image_data in enumerate(input_images_data):
             if i >= actual_photos:
                 break
-                
+
             original_image = Image.open(io.BytesIO(image_data))
             if original_image.mode != 'RGB':
                 original_image = original_image.convert('RGB')
-            
+
             # Resize image to fit photo dimensions while maintaining aspect ratio
             original_width, original_height = original_image.size
             scale_width = photo_width / original_width
             scale_height = photo_height / original_height
             scale = min(scale_width, scale_height)
-            
+
             new_width = int(original_width * scale)
             new_height = int(original_height * scale)
             resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+
             # Create photo with white background and centered image
             photo = Image.new('RGB', (photo_width, photo_height), 'white')
             x_offset = (photo_width - new_width) // 2
             y_offset = (photo_height - new_height) // 2
             photo.paste(resized_image, (x_offset, y_offset))
             processed_images.append(photo)
-        
+
         # If same image mode and we have only one image, replicate it
         if image_mode == 'same' and len(processed_images) == 1:
             single_image = processed_images[0]
             processed_images = [single_image.copy() for _ in range(actual_photos)]
-        
+
         # Ensure we have enough images for the layout
         while len(processed_images) < actual_photos:
             if len(processed_images) > 0:
@@ -1489,17 +1505,17 @@ def create_photo_print_layout(input_images_data, layout_config):
                 # Create a placeholder image if no images available
                 placeholder = Image.new('RGB', (photo_width, photo_height), 'lightgray')
                 processed_images.append(placeholder)
-        
+
         # Create the A4 layout with white background
         print(f"📄 Creating A4 layout with {actual_photos} photos in {cols}x{rows} grid...")
         layout = Image.new('RGB', (A4_WIDTH, A4_HEIGHT), 'white')
-        
+
         # Calculate positioning to center the grid on the page
         total_width = cols * photo_width + (cols - 1) * SPACING
         total_height = rows * photo_height + (rows - 1) * SPACING
         start_x = max(MARGIN, (A4_WIDTH - total_width) // 2)
         start_y = max(MARGIN, (A4_HEIGHT - total_height) // 2)
-        
+
         # Place photos on the layout
         photo_index = 0
         for row in range(rows):
@@ -1510,43 +1526,43 @@ def create_photo_print_layout(input_images_data, layout_config):
                 y = start_y + row * (photo_height + SPACING)
                 layout.paste(processed_images[photo_index], (x, y))
                 photo_index += 1
-        
+
         # Add subtle corner marks for cutting guidance
         draw = ImageDraw.Draw(layout)
         mark_length = 20  # Corner mark length
         mark_color = 'lightgray'  # Light gray for subtle guides
         mark_width = 1  # Thin lines
-        
+
         for row in range(rows):
             for col in range(cols):
                 if (row * cols + col) >= actual_photos:
                     break
                 x = start_x + col * (photo_width + SPACING)
                 y = start_y + row * (photo_height + SPACING)
-                
+
                 # Corner marks for cutting guidance
                 offset = 4  # Distance from photo edge
-                
+
                 # Top-left corner
                 draw.line([(x-offset, y-offset), (x-offset+mark_length, y-offset)], fill=mark_color, width=mark_width)
                 draw.line([(x-offset, y-offset), (x-offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
-                
+
                 # Top-right corner
                 draw.line([(x+photo_width+offset-mark_length, y-offset), (x+photo_width+offset, y-offset)], fill=mark_color, width=mark_width)
                 draw.line([(x+photo_width+offset, y-offset), (x+photo_width+offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
-                
+
                 # Bottom-left corner
                 draw.line([(x-offset, y+photo_height+offset-mark_length), (x-offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
                 draw.line([(x-offset, y+photo_height+offset), (x-offset+mark_length, y+photo_height+offset)], fill=mark_color, width=mark_width)
-                
+
                 # Bottom-right corner
                 draw.line([(x+photo_width+offset, y+photo_height+offset-mark_length), (x+photo_width+offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
                 draw.line([(x+photo_width+offset-mark_length, y+photo_height+offset), (x+photo_width+offset, y+photo_height+offset)], fill=mark_color, width=mark_width)
-        
+
         # Convert to high-quality PDF with proper settings
         print("💾 Converting layout to PDF...")
         pdf_buffer = io.BytesIO()
-        
+
         # Save as PDF with high quality settings for printing
         layout.save(
             pdf_buffer, 
@@ -1555,18 +1571,18 @@ def create_photo_print_layout(input_images_data, layout_config):
             resolution=300.0,  # 300 DPI for print quality
             optimize=False  # Don't optimize to maintain quality
         )
-        
+
         pdf_data = pdf_buffer.getvalue()
         pdf_buffer.close()
-        
+
         print(f"✅ Photo print layout created successfully!")
         print(f"   📄 {actual_photos} photos arranged on A4 page")
         print(f"   📐 Grid layout: {cols}x{rows}")
         print(f"   🖼️ Image mode: {image_mode}")
         print(f"   🎨 High quality 300 DPI PDF ready for printing")
-        
+
         return pdf_data
-        
+
     except Exception as e:
         print(f"❌ Error creating photo print layout: {e}")
         import traceback
@@ -1574,16 +1590,164 @@ def create_photo_print_layout(input_images_data, layout_config):
         return None
 
 
-def create_passport_photo_layout(input_image_data, total_prints=8):
+def create_passport_photo_layout(input_image_data, total_prints=8, country='India'):
     """
-    Legacy function for passport photos - redirects to new photo layout function
+    Creates passport photo layout based on selected country and specified print count
     """
-    layout_config = {
-        'photo_count': total_prints,
-        'layout': '2x4' if total_prints == 8 else '4x4' if total_prints == 16 else '5x6',
-        'image_mode': 'same'
-    }
-    return create_photo_print_layout([input_image_data], layout_config)
+    try:
+        # Country-specific configurations with exact dimensions
+        country_config = {
+            'India': {'size': (35, 45), 'unit': 'mm', 'prints': [8, 16, 30]},
+            'United Arab Emirates (UAE)': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'Saudi Arabia': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'United States': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'Singapore': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Thailand': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'United Kingdom': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Qatar': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'Kuwait': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'Canada': {'size': (50, 70), 'unit': 'mm', 'prints': [8]},
+            'Australia': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Maldives': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'Nepal': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Sri Lanka': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Malaysia': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Indonesia': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'Switzerland': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Bhutan': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Mauritius': {'size': (51, 51), 'unit': 'mm', 'prints': [8]},
+            'France': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+            'Germany': {'size': (35, 45), 'unit': 'mm', 'prints': [8]},
+        }
+
+        selected_config = country_config.get(country, country_config['India'])
+        photo_width_mm, photo_height_mm = selected_config['size']
+
+        # Validate print count based on country
+        if country == 'India':
+            if total_prints not in selected_config['prints']:
+                total_prints = 8
+        else:
+            total_prints = 8
+
+        print(f"📸 Creating passport photo layout for {country}")
+        print(f"   📏 Photo size: {photo_width_mm}x{photo_height_mm}mm")
+        print(f"   📊 Total prints: {total_prints}")
+
+        # Convert mm to pixels at 300 DPI (11.811 pixels per mm)
+        DPI_CONVERSION = 11.811
+        photo_width_px = int(photo_width_mm * DPI_CONVERSION)
+        photo_height_px = int(photo_height_mm * DPI_CONVERSION)
+
+        # A4 dimensions at 300 DPI
+        A4_WIDTH = 2480   # 210mm at 300 DPI
+        A4_HEIGHT = 3508  # 297mm at 300 DPI
+        MARGIN = 118      # 10mm margins
+        SPACING = 59      # 5mm spacing between photos
+
+        # Calculate optimal grid layout for 8 photos (always 2x4 for consistent layout)
+        cols, rows = 2, 4
+
+        print(f"📄 Creating {cols}x{rows} grid layout")
+
+        # Load and process the input image
+        original_image = Image.open(io.BytesIO(input_image_data))
+        if original_image.mode != 'RGB':
+            original_image = original_image.convert('RGB')
+
+        # Resize image to passport photo dimensions while maintaining aspect ratio
+        original_width, original_height = original_image.size
+        scale_width = photo_width_px / original_width
+        scale_height = photo_height_px / original_height
+        scale = min(scale_width, scale_height)
+
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+        resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        # Create passport photo with white background and centered image
+        passport_photo = Image.new('RGB', (photo_width_px, photo_height_px), 'white')
+        x_offset = (photo_width_px - new_width) // 2
+        y_offset = (photo_height_px - new_height) // 2
+        passport_photo.paste(resized_image, (x_offset, y_offset))
+
+        # Create the A4 layout with white background
+        layout = Image.new('RGB', (A4_WIDTH, A4_HEIGHT), 'white')
+
+        # Calculate positioning to center the grid on the page
+        total_width = cols * photo_width_px + (cols - 1) * SPACING
+        total_height = rows * photo_height_px + (rows - 1) * SPACING
+        start_x = max(MARGIN, (A4_WIDTH - total_width) // 2)
+        start_y = max(MARGIN, (A4_HEIGHT - total_height) // 2)
+
+        # Place photos on the layout
+        photo_count = 0
+        for row in range(rows):
+            for col in range(cols):
+                if photo_count >= total_prints:
+                    break
+                x = start_x + col * (photo_width_px + SPACING)
+                y = start_y + row * (photo_height_px + SPACING)
+                layout.paste(passport_photo, (x, y))
+                photo_count += 1
+
+        # Add cutting guides (corner marks)
+        draw = ImageDraw.Draw(layout)
+        mark_length = 20
+        mark_color = 'lightgray'
+        mark_width = 1
+
+        for row in range(rows):
+            for col in range(cols):
+                if (row * cols + col) >= total_prints:
+                    break
+                x = start_x + col * (photo_width_px + SPACING)
+                y = start_y + row * (photo_height_px + SPACING)
+
+                # Corner marks for cutting guidance
+                offset = 4
+
+                # Top-left corner
+                draw.line([(x-offset, y-offset), (x-offset+mark_length, y-offset)], fill=mark_color, width=mark_width)
+                draw.line([(x-offset, y-offset), (x-offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
+
+                # Top-right corner
+                draw.line([(x+photo_width_px+offset-mark_length, y-offset), (x+photo_width_px+offset, y-offset)], fill=mark_color, width=mark_width)
+                draw.line([(x+photo_width_px+offset, y-offset), (x+photo_width_px+offset, y-offset+mark_length)], fill=mark_color, width=mark_width)
+
+                # Bottom-left corner
+                draw.line([(x-offset, y+photo_height_px+offset-mark_length), (x-offset, y+photo_height_px+offset)], fill=mark_color, width=mark_width)
+                draw.line([(x-offset, y+photo_height_px+offset), (x-offset+mark_length, y+photo_height_px+offset)], fill=mark_color, width=mark_width)
+
+                # Bottom-right corner
+                draw.line([(x+photo_width_px+offset, y+photo_height_px+offset-mark_length), (x+photo_width_px+offset, y+photo_height_px+offset)], fill=mark_color, width=mark_width)
+                draw.line([(x+photo_width_px+offset-mark_length, y+photo_height_px+offset), (x+photo_width_px+offset, y+photo_height_px+offset)], fill=mark_color, width=mark_width)
+
+        # Convert to PDF
+        pdf_buffer = io.BytesIO()
+        layout.save(
+            pdf_buffer, 
+            'PDF', 
+            quality=95,
+            resolution=300.0,
+            optimize=False
+        )
+
+        pdf_data = pdf_buffer.getvalue()
+        pdf_buffer.close()
+
+        print(f"✅ Passport photo layout created successfully!")
+        print(f"   📄 {total_prints} photos of {photo_width_mm}x{photo_height_mm}mm each")
+        print(f"   🏁 Country: {country}")
+        print(f"   🎨 High quality 300 DPI PDF ready for printing")
+
+        return pdf_data
+
+    except Exception as e:
+        print(f"❌ Error creating passport photo layout: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1707,6 +1871,34 @@ def auth_receiver(request):
             return JsonResponse({'status': 'success', 'email': email})
         return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+def get_passport_photo_dimensions(country):
+    """Get passport photo dimensions for a specific country"""
+    country_config = {
+        'India': '35x45mm',
+        'United Arab Emirates (UAE)': '51x51mm',
+        'Saudi Arabia': '51x51mm',
+        'United States': '51x51mm',
+        'Singapore': '35x45mm',
+        'Thailand': '35x45mm',
+        'United Kingdom': '35x45mm',
+        'Qatar': '51x51mm',
+        'Kuwait': '51x51mm',
+        'Canada': '50x70mm',
+        'Australia': '35x45mm',
+        'Maldives': '51x51mm',
+        'Nepal': '35x45mm',
+        'Sri Lanka': '35x45mm',
+        'Malaysia': '35x45mm',
+        'Indonesia': '51x51mm',
+        'Switzerland': '35x45mm',
+        'Bhutan': '35x45mm',
+        'Mauritius': '51x51mm',
+        'France': '35x45mm',
+        'Germany': '35x45mm',
+    }
+    return country_config.get(country, '35x45mm')
 
 
 def photoprint(request):
@@ -2205,7 +2397,7 @@ def get_vendor_email_by_shop_folder(shop_folder):
         for obj in objects.get("Contents", []):
             if obj["Key"].endswith('/registration_details.json'):
                 try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    response = s3.get_object(Bucket=settings.R2_BUCKet, Key=obj["Key"])
                     vendor_data = json.loads(response['Body'].read().decode('utf-8'))
                     vendor_name = vendor_data.get('vendor_name', '')
                     vendor_email = vendor_data.get('vendor_email', '')
@@ -2276,10 +2468,10 @@ def create_job_completion_notification(user_email, filename, token, vendor_name,
 
         # Create notification data
         notification_id = str(uuid.uuid4())
-        
+
         # Format service type for display
         service_display = service_type.replace('_', ' ').title() if service_type else 'Print Job'
-        
+
         notification_data = {
             'notification_id': notification_id,
             'type': 'job_completed',
@@ -2304,7 +2496,7 @@ def create_job_completion_notification(user_email, filename, token, vendor_name,
 
         # Store notification in user's notification folder
         notification_key = f'notifications/{sanitize_email(user_email)}/{notification_id}.json'
-        
+
         s3.put_object(
             Bucket=settings.R2_BUCKET,
             Key=notification_key,
@@ -2333,10 +2525,10 @@ def get_user_notifications(user_email):
 
         notifications = []
         prefix = f'notifications/{sanitize_email(user_email)}/'
-        
+
         try:
             response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-            
+
             for obj in response.get('Contents', []):
                 key = obj['Key']
                 if key.endswith('.json'):
@@ -2382,12 +2574,12 @@ def mark_notification_read(request):
                               region_name='auto')
 
             notification_key = f'notifications/{sanitize_email(user_email)}/{notification_id}.json'
-            
+
             try:
                 # Get current notification data
                 response = s3.get_object(Bucket=settings.R2_BUCKET, Key=notification_key)
                 notification_data = json.loads(response['Body'].read().decode('utf-8'))
-                
+
                 # Mark as read
                 notification_data['read'] = True
                 notification_data['read_at'] = datetime.datetime.now().isoformat()
@@ -2425,7 +2617,7 @@ def get_user_notifications_api(request):
                 return JsonResponse({'success': False, 'error': 'Missing user_email'})
 
             notifications = get_user_notifications(user_email)
-            
+
             # Count unread notifications
             unread_count = len([n for n in notifications if not n.get('read', False)])
 
