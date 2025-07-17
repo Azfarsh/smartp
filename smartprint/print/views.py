@@ -2439,7 +2439,8 @@ def get_user_notifications_api(request):
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
-
+def vendor_about(request):
+    return render(request, 'vendor_about.html')
 # ─────────────────────────────────────────────────────────────
 # FILE UPLOAD TO CLOUDFLARE R2
 # ─────────────────────────────────────────────────────────────

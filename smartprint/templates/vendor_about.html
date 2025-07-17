@@ -1,0 +1,840 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Printmax - Empowering Print Businesses</title>
+    <!-- Bootstrap CSS for classic look and footer consistency -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #3f51b5;
+            --primary-blue-light: #5c6bc0;
+            --primary-blue-dark: #283593;
+            --accent-gradient: linear-gradient(135deg, #3f51b5 0%, #7c4dff 100%);
+            --accent-gradient-light: linear-gradient(135deg, #5c6bc0 0%, #b388ff 100%);
+            --accent-gradient-dark: linear-gradient(135deg, #283593 0%, #512da8 100%);
+            --success-green: #4CAF50;
+            --surface-white: #FFFFFF;
+            --surface-grey: #F5F5F5;
+            --surface-grey-light: #FAFAFA;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --text-white: #FFFFFF;
+            --divider: #E0E0E0;
+            --shadow-light: 0 2px 8px rgba(63,81,181,0.08);
+            --shadow-medium: 0 4px 16px rgba(63,81,181,0.13);
+            --shadow-heavy: 0 8px 32px rgba(63,81,181,0.18);
+            --border-radius: 16px;
+            --border-radius-large: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--surface-grey-light);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
+            color: var(--text-white);
+            padding: 80px 0 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 167, 38, 0.15);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: var(--accent-gradient);
+            color: var(--text-primary);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hero-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 1.4rem;
+            font-weight: 400;
+            margin-bottom: 32px;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--accent-gradient);
+            color: var(--text-primary);
+            padding: 16px 32px;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-medium);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-cta::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .hero-cta:hover::before {
+            left: 100%;
+        }
+
+        .hero-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        /* Section Styles */
+        .section {
+            padding: 80px 0;
+            background: var(--surface-white);
+        }
+
+        .section-alt {
+            background: linear-gradient(135deg, #e3e6f3 0%, #f8f9fa 100%);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 16px;
+        }
+
+        .section-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* How It Works */
+        .workflow-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .workflow-step {
+            background: var(--surface-white);
+            padding: 40px 30px;
+            border-radius: var(--border-radius-large);
+            text-align: center;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .workflow-step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-gradient));
+        }
+
+        .workflow-step:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: var(--primary-blue);
+            color: var(--text-white);
+            border-radius: 50%;
+            line-height: 40px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .step-icon {
+            font-size: 3rem;
+            color: var(--accent-gradient);
+            margin-bottom: 20px;
+        }
+
+        .step-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 16px;
+        }
+
+        .step-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Benefits Grid */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .benefit-card {
+            background: var(--surface-white);
+            padding: 40px 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--accent-gradient);
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-medium);
+            border-left-color: var(--primary-blue);
+        }
+
+        .benefit-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
+            color: var(--text-white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+
+        .benefit-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 12px;
+        }
+
+        .benefit-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Trust Section */
+        .trust-section {
+            background: linear-gradient(135deg, var(--primary-blue-dark) 0%, var(--primary-blue) 100%);
+            color: var(--text-white);
+            padding: 80px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trust-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -20%;
+            width: 500px;
+            height: 500px;
+            background: rgba(255, 167, 38, 0.1);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .trust-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .trust-point {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .trust-point:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-5px);
+        }
+
+        .trust-icon {
+            font-size: 2.5rem;
+            color: var(--accent-gradient);
+            margin-bottom: 16px;
+        }
+
+        .trust-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .trust-quote {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: var(--border-radius-large);
+            text-align: center;
+            margin-top: 60px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .trust-quote-text {
+            font-size: 1.3rem;
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .trust-quote-author {
+            font-size: 1rem;
+            color: var(--accent-gradient);
+            font-weight: 600;
+        }
+
+        /* Call to Action Section */
+        .cta-section {
+            background: var(--accent-gradient);
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .cta-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .cta-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--primary-blue);
+            color: var(--text-white);
+            padding: 16px 32px;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-medium);
+            transition: all 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background: var(--primary-blue-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .workflow-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .trust-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section {
+                padding: 60px 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero {
+                padding: 60px 0 40px;
+            }
+            
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .section-title {
+                font-size: 1.8rem;
+            }
+            
+            .container {
+                padding: 0 16px;
+            }
+        }
+        .workflow-step, .benefit-card, .trust-point {
+            padding: 24px 16px !important;
+            font-size: 1rem;
+            max-width: 340px;
+            margin: 0 auto;
+            background: var(--surface-white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            transition: box-shadow 0.3s, transform 0.3s, background 0.3s;
+            opacity: 0;
+            transform: translateY(40px);
+            animation: fadeInUp 1s forwards;
+        }
+        .workflow-step:hover, .benefit-card:hover, .trust-point:hover {
+            box-shadow: var(--shadow-medium);
+            background: #f3f6fd;
+            transform: translateY(-6px) scale(1.03);
+        }
+        .workflow-step .step-title, .benefit-card .benefit-title, .trust-point .trust-text {
+            font-size: 1.1rem;
+        }
+        .workflow-step .step-icon, .benefit-card .benefit-icon, .trust-point .trust-icon {
+            margin-bottom: 10px;
+        }
+        .benefits-grid, .workflow-container, .trust-grid {
+            gap: 24px;
+        }
+        .section-header {
+            margin-bottom: 40px;
+        }
+        @media (max-width: 768px) {
+            .workflow-step, .benefit-card, .trust-point {
+                max-width: 100%;
+                padding: 18px 8px !important;
+            }
+        }
+        /* Fade-in-up animation */
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* Classic section backgrounds */
+        .section {
+            background: var(--surface-white);
+            border-radius: var(--border-radius-large);
+            box-shadow: var(--shadow-light);
+            margin-bottom: 32px;
+        }
+        .section-alt {
+            background: linear-gradient(135deg, #e3e6f3 0%, #f8f9fa 100%);
+        }
+        /* Footer consistency */
+        .footer {
+            background: #23272b;
+            color: white;
+            padding: 3rem 0 1rem;
+            border-top: 1px solid var(--divider);
+        }
+        .footer-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .footer-link:hover {
+            color: #fff;
+            transform: translateX(5px);
+        }
+        .social-icon {
+            color: #fff;
+            font-size: 1.3rem;
+            margin-right: 10px;
+            transition: color 0.3s;
+        }
+        .social-icon:hover {
+            color: #b388ff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">Trusted by Print Businesses</div>
+                <h1 class="hero-title">Empowering Print Businesses for the Digital Era</h1>
+                <p class="hero-subtitle">Transform your print shop with modern technology, streamlined operations, and enhanced customer experiences</p>
+                <a href="/vendor-register/" class="hero-cta">
+                    <span class="material-icons">rocket_launch</span>
+                    Start Your Journey Today
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Image Section -->
+    <section class="section section-alt" style="padding: 40px 0 0 0; background: transparent;">
+        <div class="container" style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
+            <img src="{% static 'images/aboutimage.png' %}" alt="About PrintMe Partner" style="max-width: 420px; width: 100%; border-radius: 32px; box-shadow: 0 8px 32px rgba(0,150,136,0.18); margin-bottom: 24px;">
+            <div style="font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; text-align: center;">Our platform is designed to empower print businesses with the latest technology and a human touch.</div>
+        </div>
+    </section>
+
+    <!-- SVG Workflow Diagram -->
+    <div class="container" style="margin: 0 auto; text-align: center; margin-bottom: 32px;">
+        <svg width="320" height="60" viewBox="0 0 320 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="20" width="60" height="20" rx="10" fill="#009688"/>
+            <text x="40" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Order</text>
+            <polygon points="70,30 90,30 80,40" fill="#009688"/>
+            <rect x="90" y="20" width="60" height="20" rx="10" fill="#009688"/>
+            <text x="120" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Notify</text>
+            <polygon points="150,30 170,30 160,40" fill="#009688"/>
+            <rect x="170" y="20" width="60" height="20" rx="10" fill="#009688"/>
+            <text x="200" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Print</text>
+            <polygon points="230,30 250,30 240,40" fill="#009688"/>
+            <rect x="250" y="20" width="60" height="20" rx="10" fill="#009688"/>
+            <text x="280" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Update</text>
+        </svg>
+    </div>
+
+    <!-- How It Works Section -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">How Printmax Works</h2>
+                <p class="section-subtitle">A seamless, automated workflow that transforms how you manage print jobs and serve customers</p>
+            </div>
+            <div class="workflow-container">
+                <div class="row g-4 justify-content-center">
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">1</div>
+                            <div class="step-icon">
+                                <!-- 3D-style SVG icon -->
+                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" fill="#009688"/><path d="M20 10v14m0 0l-6-6m6 6l6-6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <h3 class="step-title">Order Placement</h3>
+                            <p class="step-description">Customers easily upload documents and specify print requirements through our intuitive platform, available anytime</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">2</div>
+                            <div class="step-icon">
+                                <!-- 3D-style SVG icon -->
+                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="6" y="10" width="28" height="20" rx="6" fill="#009688"/><circle cx="20" cy="20" r="6" fill="#fff"/><circle cx="20" cy="20" r="3" fill="#009688"/></svg>
+                            </div>
+                            <h3 class="step-title">Instant Notifications</h3>
+                            <p class="step-description">Receive immediate alerts with complete job details, file previews, and customer specifications in your dashboard</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">3</div>
+                            <div class="step-icon">
+                                <!-- 3D-style SVG icon -->
+                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="8" y="12" width="24" height="16" rx="4" fill="#009688"/><rect x="14" y="18" width="12" height="4" rx="2" fill="#fff"/></svg>
+                            </div>
+                            <h3 class="step-title">One-Click Processing</h3>
+                            <p class="step-description">Accept jobs instantly and send them directly to your printer with our streamlined workflow system</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">4</div>
+                            <div class="step-icon">
+                                <!-- 3D-style SVG icon -->
+                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" fill="#009688"/><path d="M20 12v8l6 4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </div>
+                            <h3 class="step-title">Customer Updates</h3>
+                            <p class="step-description">Automated notifications keep customers informed about their order status, ensuring smooth communication</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Why Choose Printmax?</h2>
+                <p class="section-subtitle">Discover the advantages that make us the preferred choice for modern print businesses</p>
+            </div>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <!-- 3D-style SVG icon -->
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" fill="#009688"/><path d="M12 24l6-6 6 6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3 class="benefit-title">Business Growth</h3>
+                    <p class="benefit-description">Expand your customer base and increase revenue with our digital-first approach that attracts modern consumers</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="8" y="12" width="20" height="12" rx="6" fill="#009688"/><rect x="14" y="18" width="8" height="4" rx="2" fill="#fff"/></svg>
+                    </div>
+                    <h3 class="benefit-title">Always Open</h3>
+                    <p class="benefit-description">Accept orders around the clock with our automated system, ensuring your business never misses an opportunity</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" fill="#009688"/><rect x="12" y="12" width="12" height="12" rx="6" fill="#fff"/></svg>
+                    </div>
+                    <h3 class="benefit-title">Enterprise Security</h3>
+                    <p class="benefit-description">Protect your business and customer data with bank-level security protocols and encrypted transactions</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="8" y="8" width="20" height="20" rx="10" fill="#009688"/><circle cx="18" cy="18" r="6" fill="#fff"/></svg>
+                    </div>
+                    <h3 class="benefit-title">Modern Experience</h3>
+                    <p class="benefit-description">Offer customers a premium, digital-first experience that sets your business apart from competitors</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="8" y="8" width="20" height="20" rx="10" fill="#009688"/><rect x="14" y="14" width="8" height="8" rx="4" fill="#fff"/></svg>
+                    </div>
+                    <h3 class="benefit-title">Smart Analytics</h3>
+                    <p class="benefit-description">Make data-driven decisions with detailed insights into your business performance and customer behavior</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" fill="#009688"/><rect x="14" y="14" width="8" height="8" rx="4" fill="#fff"/></svg>
+                    </div>
+                    <h3 class="benefit-title">Dedicated Support</h3>
+                    <p class="benefit-description">Access expert assistance whenever you need it, with our committed support team ready to help you succeed</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- People Reviews Section -->
+    <section class="trust-section" style="background: linear-gradient(135deg, #f5f6fa 0%, #e3e6f3 100%); color: #23272b;">
+        <div class="container">
+            <div class="trust-content">
+                <div class="section-header">
+                    <h2 class="section-title" style="color: #3f51b5;">People Reviews</h2>
+                    <p class="section-subtitle" style="color: #757575;">See what real users say about Printmax</p>
+                </div>
+                <div class="trust-grid">
+                    <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
+                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Ayesha K.</div>
+                        <div style="color:#FFD600; margin-bottom:8px;">★★★★★</div>
+                        <p class="trust-text">"Super easy to use and the print quality is always top-notch. Customer support is very responsive!"</p>
+                    </div>
+                    <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
+                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Rahul S.</div>
+                        <div style="color:#FFD600; margin-bottom:8px;">★★★★★</div>
+                        <p class="trust-text">"Printmax helped me grow my business. The analytics and instant notifications are game changers."</p>
+                    </div>
+                    <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
+                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Sneha P.</div>
+                        <div style="color:#FFD600; margin-bottom:8px;">★★★★☆</div>
+                        <p class="trust-text">"Love the modern interface and how fast I can process orders. Would recommend to any print shop owner!"</p>
+                    </div>
+                    <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
+                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Vikram D.</div>
+                        <div style="color:#FFD600; margin-bottom:8px;">★★★★★</div>
+                        <p class="trust-text">"The automation and customer updates save me so much time. My customers are happier too!"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2 class="cta-title">Ready to Transform Your Print Business?</h2>
+            <p class="cta-subtitle">Join successful print businesses who have already made the switch to PrintMe Partner</p>
+            <a href="/vendor-register/" class="cta-button">
+                <span class="material-icons">arrow_forward</span>
+                Get Started Now
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer (from home page) -->
+    <footer class="footer" id="contact">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-lightning-charge-fill me-2" style="color: #667eea;"></i>
+                        Printmax
+                    </h5>
+                    <p class="text-white-50 mb-4">
+                        Revolutionary AI-powered printing that's changing the world, 
+                        one document at a time. The future is here, and it's automated.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-twitter"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-linkedin"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-instagram"></i>
+                        </a>
+                        <a href="#" class="social-icon">
+                            <i class="bi bi-github"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Platform</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Upload Files</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">AI Optimization</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Smart Printing</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Token System</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Support</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Help Center</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">AI Chat</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Track Order</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Status</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Company</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">About Us</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Careers</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Press</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Legal</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Privacy</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Terms</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Security</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Compliance</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-white-50">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0 text-white-50">
+                        <i class="bi bi-envelope-fill me-2"></i>
+                        <a href="mailto:hello@printmax.com" class="footer-link">hello@printmax.com</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
