@@ -3999,8 +3999,18 @@
         if (fileInput && fileUploadLabel && filePreview) {
         fileInput.addEventListener('change', async (e) => {
           const file = e.target.files[0];
+          // For passport, skip the default image preview in processFile
+          if (service === 'passport' && file && file.type.startsWith('image/')) {
+            await processFile(file, fileUploadLabel, null); // Don't update preview here
+            if (typeof enhancePassportPhotoWithPicWish === 'function') {
+              enhancePassportPhotoWithPicWish(file, filePreview);
+            } else {
+              filePreview.innerHTML += '<div style="color:#ef4444;">Enhancement function missing!</div>';
+            }
+          } else {
             await processFile(file, fileUploadLabel, filePreview);
-          });
+          }
+        });
           
           // Add drag and drop functionality
           const fileUploadArea = modal.querySelector(`#${service}-file-upload`);
@@ -4167,7 +4177,36 @@
             }
             
           const formData = new FormData();
-          formData.append('file_0', fileObj);
+          // --- Passport photo selection logic ---
+          if (service === 'passport') {
+            // Find the preview container
+            const filePreview = modal.querySelector(`#${service}-file-preview`);
+            let selectedVersion = filePreview?.dataset.selectedVersion || 'original';
+            let enhancedUrl = filePreview?.dataset.enhancedUrl || null;
+            let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
+            if (selectedVersion === 'enhanced') {
+              if (!enhancedReady || !enhancedUrl) {
+                alert('Enhanced image is not ready yet. Please wait for enhancement to complete.');
+                return;
+              }
+              // Fetch the enhanced image as a blob
+              try {
+                const resp = await fetch(enhancedUrl);
+                const blob = await resp.blob();
+                const enhancedFile = new File([blob], 'enhanced_' + fileObj.name, { type: blob.type });
+                formData.set('file_0', enhancedFile);
+              } catch (err) {
+                alert('Failed to fetch enhanced image. Please try again.');
+                return;
+              }
+            } else {
+              // Use the original file
+              formData.set('file_0', fileObj);
+            }
+          } else {
+            // For other services, just use the original file
+            formData.set('file_0', fileObj);
+          }
             
                                     // Collect field values for service modals and map to print modal structure
             let copies = 1;
@@ -6195,6 +6234,186 @@
     // Add a JS function to display the token when called
     function showUserToken(token) {
       alert('Your Print Job Token: ' + token);
+    }
+  </script>
+
+  <script>
+    // PicWish enhancement for passport photo
+    async function enhancePassportPhotoWithPicWish(file, previewContainer) {
+      // Remove all old data and properties
+      delete previewContainer.getEnhancedUrl;
+      delete previewContainer.isEnhancedReady;
+      delete previewContainer.getSelectedPassportVersion;
+      previewContainer.removeAttribute('data-enhanced-url');
+      previewContainer.removeAttribute('data-enhanced-ready');
+      previewContainer.removeAttribute('data-selected-version');
+      previewContainer.dataset.selectedVersion = 'original';
+      const enhancementToken = Date.now() + '_' + Math.random();
+      previewContainer.dataset.enhancementToken = enhancementToken;
+      
+      // Track selection
+      let selectedVersion = 'original';
+      let enhancedUrl = null;
+      let enhancedReady = false;
+
+      // Helper to update selection highlight and data attribute
+      function updateSelectionUI() {
+        const origBox = previewContainer.querySelector('.selectable-image.original');
+        const enhBox = previewContainer.querySelector('.selectable-image.enhanced');
+        if (origBox) origBox.classList.toggle('selected', selectedVersion === 'original');
+        if (enhBox) enhBox.classList.toggle('selected', selectedVersion === 'enhanced');
+        // Update radio buttons
+        const origRadio = previewContainer.querySelector('#select-original');
+        const enhRadio = previewContainer.querySelector('#select-enhanced');
+        if (origRadio) origRadio.checked = selectedVersion === 'original';
+        if (enhRadio) enhRadio.checked = selectedVersion === 'enhanced';
+        // Always update data-selected-version
+        previewContainer.dataset.selectedVersion = selectedVersion;
+      }
+
+      // Initial render
+      previewContainer.innerHTML = `
+        <style>
+          .passport-preview-flex { width: 100%; display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1.5rem 0; flex-wrap: wrap; box-sizing: border-box; }
+          .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
+          .selectable-image.selected { border: 2.5px solid #2563eb; box-shadow: 0 4px 18px #2563eb22; }
+          .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
+          .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
+          .select-radio { position: absolute; top: 16px; right: 18px; z-index: 2; width: 22px; height: 22px; }
+          .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
+          .enhanced-extra { margin-top: 0.7em; color: #10b981; font-size: 1.08em; font-weight: 600; text-align: center; }
+          .enhanced-cost { margin-top: 0.3em; color: #888; font-size: 1em; text-align: center; }
+          @media (max-width: 700px) { .passport-preview-flex { flex-direction: column; gap: 2.5rem; } }
+        </style>
+        <div class="passport-preview-flex">
+          <div class="selectable-image original selected" tabindex="0">
+            <div class="selectable-label">Original</div>
+            <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original" checked></span>
+            <img src="${URL.createObjectURL(file)}" alt="Original" />
+          </div>
+          <div class="selectable-image enhanced" tabindex="0">
+            <div class="selectable-label">Enhanced</div>
+            <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
+            <div id="enhance-spinner" style="padding: 40px 0; color: #3b82f6; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+              <i class="fas fa-spinner fa-spin" style="font-size:2.2em;"></i><br/>
+              <span style="font-size:1.05em;">Enhancing…</span>
+            </div>
+          </div>
+        </div>
+      `;
+      updateSelectionUI();
+
+      // Selection logic
+      const origBox = previewContainer.querySelector('.selectable-image.original');
+      const enhBox = previewContainer.querySelector('.selectable-image.enhanced');
+      const origRadio = previewContainer.querySelector('#select-original');
+      const enhRadio = previewContainer.querySelector('#select-enhanced');
+      if (origBox) {
+        origBox.addEventListener('click', () => { selectedVersion = 'original'; updateSelectionUI(); });
+        origBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'original'; updateSelectionUI(); }});
+      }
+      if (enhBox) {
+        enhBox.addEventListener('click', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+        enhBox.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+      }
+      if (origRadio) origRadio.addEventListener('change', () => { selectedVersion = 'original'; updateSelectionUI(); });
+      if (enhRadio) enhRadio.addEventListener('change', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+
+      // Enhancement logic
+      const apiKey = 'wx1rwv2nti07a0yb4';
+      const formData = new FormData();
+      formData.append('image_file', file);
+      formData.append('sync', 0);
+      formData.append('type', 'face');
+      formData.append('return_type', 1);
+
+      let taskId = null;
+      let errorMsg = null;
+      try {
+        const resp = await fetch('https://techhk.aoscdn.com/api/tasks/visual/scale', {
+          method: 'POST',
+          headers: { 'X-API-KEY': apiKey },
+          body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.data || !data.data.task_id) {
+          throw new Error(data?.msg || 'Failed to create enhancement task.');
+        }
+        taskId = data.data.task_id;
+      } catch (err) {
+        errorMsg = err.message || 'Failed to contact enhancement API.';
+      }
+      if (!taskId) {
+        if (enhBox) enhBox.innerHTML += `<div style='color:#ef4444;'>${errorMsg || 'Could not start enhancement.'}</div>`;
+        return;
+      }
+      let pollCount = 0;
+      let pollError = null;
+      while (pollCount < 30 && !enhancedUrl) {
+        try {
+          await new Promise(r => setTimeout(r, 1000));
+          pollCount++;
+          const pollResp = await fetch(`https://techhk.aoscdn.com/api/tasks/visual/scale/${taskId}`, {
+            method: 'GET',
+            headers: { 'X-API-KEY': apiKey }
+          });
+          const pollData = await pollResp.json();
+          if (pollResp.status === 429) {
+            pollError = 'Rate limit reached. Please try again later.';
+            break;
+          }
+          if (!pollResp.ok || !pollData || !pollData.data) {
+            pollError = pollData?.msg || 'Enhancement failed.';
+            break;
+          }
+          if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
+            enhancedUrl = pollData.data.image;
+            enhancedReady = true;
+            break;
+          }
+          if (pollData.data.state === 2) {
+            pollError = 'Enhancement failed.';
+            break;
+          }
+        } catch (err) {
+          pollError = err.message || 'Error polling enhancement API.';
+          break;
+        }
+      }
+      if (enhancedUrl) {
+        // Only update if this is the latest enhancement
+        if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
+        if (enhBox) {
+          enhBox.innerHTML = `
+            <div class="selectable-label">Enhanced</div>
+            <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
+            <img src="${enhancedUrl}" alt="Enhanced" />
+            <div class='enhanced-extra'>Ready!</div>
+            <div class='enhanced-cost'>+₹10 extra for enhancement</div>
+          `;
+          // Re-attach selection logic after replacing innerHTML
+          const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+          const newEnhRadio = previewContainer.querySelector('#select-enhanced');
+          if (newEnhBox) {
+            newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+            newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+          }
+          if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+          updateSelectionUI();
+        }
+        // Set data attributes for enhanced image
+        previewContainer.dataset.enhancedUrl = enhancedUrl;
+        previewContainer.dataset.enhancedReady = 'true';
+      } else {
+        // Only update if this is the latest enhancement
+        if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
+        if (enhBox) {
+          enhBox.innerHTML += `<div style='color:#ef4444;'>${pollError || 'Enhancement timed out. Please try again.'}</div>`;
+        }
+        // Set not ready
+        previewContainer.dataset.enhancedUrl = '';
+        previewContainer.dataset.enhancedReady = 'false';
+      }
     }
   </script>
 </body>

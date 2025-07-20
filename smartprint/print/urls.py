@@ -3,7 +3,8 @@ from . import views
 from .views import (home, userdashboard, vendordashboard, upload_to_r2,
                     get_print_requests, process_print_request, auto_print_documents, update_job_status,
                     auth_receiver, sign_in, photoprint, vendor_register, vendor_pricing, vendor_info,
-                    vendor_login, vendor_register_api, get_user_notifications_api, mark_notification_read)
+                    vendor_login, vendor_register_api, get_user_notifications_api, mark_notification_read,
+                    enhance_passport_photo)
 
 
 urlpatterns = [
@@ -32,4 +33,5 @@ urlpatterns = [
     path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
     path('mark-notification-read/', mark_notification_read, name='mark_notification_read'),
     path('get-vendor-details/', views.get_vendor_details, name='get_vendor_details'),
+    path('enhance-passport-photo/', enhance_passport_photo, name='enhance_passport_photo'),
 ]

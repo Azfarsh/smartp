@@ -19,6 +19,7 @@ import io
 from PIL import Image, ImageDraw
 import math
 from django.views.decorators.http import require_GET
+import base64
 
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
@@ -2670,3 +2671,48 @@ def get_vendor_details(request):
         })
     except Exception as e:
         return JsonResponse({'error': f'Not found: {str(e)}'}, status=404)
+
+# ─────────────────────────────────────────────────────────────
+# ENHANCED PHOTO SERVICE
+# ─────────────────────────────────────────────────────────────
+
+@csrf_exempt
+def enhance_passport_photo(request):
+    """
+    Accepts an image file, sends it to PicWish API, downloads the enhanced image, and returns it as base64.
+    """
+    if request.method != 'POST' or 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'error': 'No image uploaded.'}, status=400)
+
+    image_file = request.FILES['file']
+    api_key = 'wxvzd1pi3lnd7t015'
+    url = 'https://techhk.aoscdn.com/api/tasks/visual/scale'
+    headers = {'X-API-KEY': api_key}
+    files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+    data = {
+        'sync': '1',  # Synchronous
+        'type': 'face',  # For passport/portrait
+        'scale_factor': '2',  # 2x enhancement
+        'return_type': '1'  # Return image URL
+    }
+    try:
+        response = requests.post(url, headers=headers, files=files, data=data, timeout=60)
+        result = response.json()
+        if result.get('status') == 200 and 'image' in result.get('data', {}):
+            enhanced_url = result['data']['image']
+            # Download the enhanced image immediately
+            img_resp = requests.get(enhanced_url, timeout=60)
+            if img_resp.status_code == 200:
+                img_b64 = base64.b64encode(img_resp.content).decode('utf-8')
+                return JsonResponse({'success': True, 'enhanced_image_b64': img_b64})
+            else:
+                return JsonResponse({'success': False, 'error': 'Failed to download enhanced image.'}, status=500)
+        else:
+            return JsonResponse({'success': False, 'error': result.get('error', 'Enhancement failed.')}, status=500)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────
+# FILE UPLOAD TO CLOUDFLARE R2
+# ─────────────────────────────────────────────────────────────
