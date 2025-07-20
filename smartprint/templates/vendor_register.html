@@ -58,112 +58,214 @@
         .modal-left::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 70%);
-            opacity: 0.5;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 60%);
+            animation: headerPulse 8s ease-in-out infinite;
         }
 
-        .modal-left .logo {
+        @keyframes headerPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 0.2; }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
             font-family: 'Poppins', sans-serif;
-            font-size: 2.3rem;
+            font-size: 2.8rem;
             font-weight: 700;
-            letter-spacing: 1.2px;
-            margin-bottom: 1.1rem;
-            color: #ffffff;
-            position: relative;
-            z-index: 1;
-        }
-
-        .modal-left .tagline {
-            font-size: 1.4rem;
-            font-weight: 600;
-            margin-bottom: 1.1rem;
-            color: #dbeafe;
-            position: relative;
-            z-index: 1;
-        }
-
-        .modal-left .welcome-msg {
-            font-size: 1.08rem;
-            color: #e0e7ef;
-            margin-bottom: 1.2rem;
-            line-height: 1.5;
-            max-width: 95%;
-            position: relative;
-            z-index: 1;
-        }
-
-        .modal-left .material-icons {
-            font-size: 2.7rem;
-            color: #a5b4fc;
-            margin-bottom: 1.2rem;
-            animation: pulse 2s infinite;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        .modal-right {
-            background: #f8fafc;
-            flex: 1;
-            padding: 2.2rem 2rem;
+            margin-bottom: 12px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            gap: 16px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
-        .form-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2563eb;
-            margin-bottom: 0.4rem;
+        .header .material-icons {
+            font-size: 3rem;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
         }
 
-        .form-subtitle {
-            color: #64748b;
-            font-size: 1.05rem;
-            margin-bottom: 1.2rem;
-            font-weight: 400;
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            font-weight: 300;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-container {
+            padding: 50px 40px;
+            background: rgba(255, 255, 255, 0.98);
+        }
+
+        .success-message {
+            display: none;
+            background: linear-gradient(135deg, var(--success-green), #66BB6A);
+            color: white;
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 35px;
+            animation: slideIn 0.6s ease;
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 35px;
         }
 
         .form-group {
-            margin-bottom: 1.1rem;
             position: relative;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
         }
 
         .form-group label {
             display: block;
-            font-weight: 500;
-            color: #1e293b;
-            margin-bottom: 0.4rem;
-            font-size: 0.93rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-container .material-icons {
+            position: absolute;
+            left: 18px;
+            color: var(--text-hint);
+            font-size: 22px;
+            z-index: 3;
+            transition: all 0.3s ease;
         }
 
         .form-control {
             width: 100%;
-            padding: 0.7rem 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.98rem;
-            background: #ffffff;
-            color: #1e293b;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            padding: 18px 18px 18px 58px;
+            border: 2px solid var(--divider);
+            border-radius: 16px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--text-primary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         .form-control:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.09);
+            border-color: var(--primary-blue);
+            box-shadow: 
+                0 0 0 4px rgba(25, 118, 210, 0.15),
+                0 4px 12px rgba(25, 118, 210, 0.1);
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+
+        .form-control:focus + .material-icons {
+            color: var(--primary-blue);
+            transform: scale(1.1);
+        }
+
+        /* Location icon specific styles */
+        .location-icon {
+            cursor: pointer !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        .location-icon:hover {
+            color: var(--primary-blue) !important;
+            transform: scale(1.2) !important;
+        }
+
+        .location-icon:active {
+            transform: scale(0.95) !important;
+        }
+
+        /* Loading state for location icon */
+        .location-icon[style*="opacity: 0.7"] {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        /* Notification styles */
+        .location-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            color: var(--text-primary);
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            animation: slideInRight 0.4s ease;
+            max-width: 350px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .location-notification.success {
+            border-left-color: var(--success-green);
+            background: linear-gradient(135deg, #E8F5E8, #F1F8E9);
+        }
+
+        .location-notification.error {
+            border-left-color: var(--error-red);
+            background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+        }
+
+        .location-notification .material-icons {
+            font-size: 20px;
+        }
+
+        .location-notification.success .material-icons {
+            color: var(--success-green);
+        }
+
+        .location-notification.error .material-icons {
+            color: var(--error-red);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         .form-control.error {
@@ -347,71 +449,104 @@
             .modal-left .tagline {
                 font-size: 1.1rem;
             }
-
-            .modal-left .welcome-msg {
-                font-size: 0.95rem;
-            }
         }
 
-        @media (max-width: 600px) {
-            .modal-container {
-                max-width: 99%;
+        @media (max-width: 480px) {
+            body {
+                padding: 10px 5px;
             }
 
-            .modal-left, .modal-right {
-                padding: 1rem 0.5rem;
+            .header h1 {
+                font-size: 1.9rem;
             }
 
-            .form-row {
-                grid-template-columns: 1fr;
+            .header p {
+                font-size: 1rem;
             }
 
-            .form-title {
-                font-size: 1.1rem;
-            }
-
-            .form-subtitle {
-                font-size: 0.95rem;
+            .form-container {
+                padding: 30px 20px;
             }
 
             .form-control {
-                padding: 0.7rem 0.7rem;
+                padding: 14px 14px 14px 48px;
             }
+
+            .submit-btn, .pricing-btn {
+                font-size: 1rem;
+            }
+            .password-strength {
+                font-size: 0.85rem;
+            }
+            .strength-bar {
+                height: 5px;
+            }
+            .strength-text {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Improved scrolling */
+        html, body {
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+        }
+
+        /* Enhanced focus states for accessibility */
+        .form-control:focus-visible {
+            outline: 3px solid rgba(25, 118, 210, 0.5);
+            outline-offset: 2px;
+        }
+
+        .submit-btn:focus-visible,
+        .pricing-btn:focus-visible {
+            outline: 3px solid rgba(255, 255, 255, 0.5);
+            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
-    <div class="modal-container">
-        <div class="modal-left">
-            <span class="material-icons">print</span>
-            <div class="logo">PrintMax</div>
-            <div class="tagline">Empower Your Print Business</div>
-            <div class="welcome-msg">Join PrintMax to streamline your operations, connect with new customers, and grow your shop with cutting-edge tools and a vibrant network!</div>
-        </div>
-        <div class="modal-right">
-            <h2 class="form-title">Create Your PrintMax Account</h2>
-            <p class="form-subtitle">Start your journey as a PrintMax partner today</p>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>
+                    <span class="material-icons">store</span>
+                    Join PrintMe
+                </h1>
+                <p>Register your printing shop with us and reach more customers</p>
             </div>
+        </div>
+
+        <div class="form-container">
             <div class="success-message" id="successMessage">
                 <span class="material-icons">check_circle</span>
                 Registration successful! Setting up your dashboard...
             </div>
             <form id="vendorRegisterForm" onsubmit="handleRegistration(event)">
                 {% csrf_token %}
-                <div class="form-group">
-                    <label for="email">Email Address *</label>
-                    <input type="email" class="form-control" id="email" name="email" required>
-                    <div class="error-message" id="emailError"></div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="email">Email Address *</label>
+                        <div class="input-container">
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <span class="material-icons">email</span>
+                        </div>
+                        <div class="error-message" id="emailError"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vendorName">Shop Name *</label>
+                        <div class="input-container">
+                            <input type="text" class="form-control" id="vendorName" name="vendorName" required>
+                            <span class="material-icons">store</span>
+                        </div>
+                        <div class="error-message" id="vendorNameError"></div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="vendorName">Shop Name *</label>
-                    <input type="text" class="form-control" id="vendorName" name="vendorName" required>
-                    <div class="error-message" id="vendorNameError"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group" style="position:relative;">
+
+                <div class="form-grid">
+                    <div class="form-group">
                         <label for="password">Password *</label>
                         <input type="password" class="form-control" id="password" name="password" required>
                         <span class="material-icons toggle-password" id="togglePassword">visibility_off</span>
@@ -444,7 +579,10 @@
                 </div>
                 <div class="form-group">
                     <label for="shopAddress">Shop Address *</label>
-                    <input type="text" class="form-control" id="shopAddress" name="shopAddress" required placeholder="Enter your complete shop address">
+                    <div class="input-container">
+                        <input type="text" class="form-control" id="shopAddress" name="shopAddress" required placeholder="Click the location icon to get your address automatically, or type manually">
+                        <span class="material-icons location-icon" id="locationIcon" style="cursor: pointer;" title="Click to get current location">location_on</span>
+                    </div>
                     <div class="error-message" id="shopAddressError"></div>
                 </div>
                 <div class="form-group">
@@ -452,6 +590,10 @@
                     <input type="text" class="form-control" id="pincode" name="pincode" required maxlength="6">
                     <div class="error-message" id="pincodeError"></div>
                 </div>
+
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+
                 <button type="submit" class="submit-btn" id="submitBtn">
                     <span class="loading-spinner" id="loadingSpinner"></span>
                     <span class="material-icons">rocket_launch</span>
@@ -622,30 +764,41 @@
                 return true;
             }
         }
-        function validateCity() {
-            const city = document.getElementById('city').value;
-            const cityError = document.getElementById('cityError');
-            const cityField = document.getElementById('city');
-            if (!city.trim()) {
-                showError(cityField, cityError, 'City is required');
-                return false;
-            } else {
-                hideError(cityField, cityError);
-                return true;
-            }
-        }
+
         function validateShopAddress() {
             const shopAddress = document.getElementById('shopAddress').value;
             const shopAddressError = document.getElementById('shopAddressError');
             const shopAddressField = document.getElementById('shopAddress');
+
             if (!shopAddress.trim()) {
                 showError(shopAddressField, shopAddressError, 'Shop address is required');
+                return false;
+            } else if (shopAddress.trim().length < 10) {
+                showError(shopAddressField, shopAddressError, 'Please enter a complete address');
                 return false;
             } else {
                 hideError(shopAddressField, shopAddressError);
                 return true;
             }
         }
+
+        function validateCity() {
+            const city = document.getElementById('city').value;
+            const cityError = document.getElementById('cityError');
+            const cityField = document.getElementById('city');
+
+            if (!city.trim()) {
+                showError(cityField, cityError, 'City is required');
+                return false;
+            } else if (city.trim().length < 2) {
+                showError(cityField, cityError, 'Please enter a valid city name');
+                return false;
+            } else {
+                hideError(cityField, cityError);
+                return true;
+            }
+        }
+
         function validatePincode() {
             const pincode = document.getElementById('pincode').value;
             const pincodeError = document.getElementById('pincodeError');
@@ -671,17 +824,342 @@
             field.classList.remove('error');
             errorElement.style.display = 'none';
         }
-        document.getElementById('password').addEventListener('input', function() {
-            updatePasswordStrength(this.value);
-            validatePassword();
+
+
+        let lastVendorEmail = null;
+        let locationStatus = 'pending'; // 'pending', 'success', 'error'
+
+        // Geolocation logic
+        function setLocationFields(lat, lng) {
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+            locationStatus = 'success';
+        }
+
+        // Alternative geocoding service (BigDataCloud - free, no API key required)
+        async function getAddressFromBigDataCloud(lat, lng) {
+            try {
+                const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en&key=`);
+                const data = await response.json();
+                console.log('BigDataCloud response:', data);
+                
+                if (data && data.locality) {
+                    let addressParts = [];
+                    
+                    // Build address from available components (English only)
+                    if (data.locality) addressParts.push(data.locality);
+                    if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
+                    if (data.countryName) addressParts.push(data.countryName);
+                    if (data.postcode) addressParts.push(data.postcode);
+                    
+                    return {
+                        address: addressParts.join(', '),
+                        city: data.locality || data.principalSubdivision || '',
+                        pincode: data.postcode || ''
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.log('BigDataCloud failed:', error);
+                return null;
+            }
+        }
+
+        // Reverse geocoding function to get address from coordinates
+        async function getAddressFromCoordinates(lat, lng) {
+            try {
+                // Try multiple approaches to get the most detailed address
+                let bestAddress = null;
+                let bestCity = '';
+                let bestPincode = '';
+                
+                // Approach 1: Try with maximum zoom level for street-level detail (English only)
+                try {
+                    const response1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=20&extratags=1&namedetails=1&accept-language=en&addressdetails=1`);
+                    const data1 = await response1.json();
+                    console.log('High zoom response:', data1);
+                    
+                    if (data1 && data1.display_name) {
+                        // Force English language by checking if address contains non-English characters
+                        const displayName = data1.display_name;
+                        const hasNonEnglish = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0D80-\u0DFF\u0E00-\u0E7F\u0E80-\u0EFF\u0F00-\u0FFF]/.test(displayName);
+                        
+                        if (!hasNonEnglish) {
+                            bestAddress = displayName;
+                            bestCity = data1.address?.city || data1.address?.town || data1.address?.village || data1.address?.state || '';
+                            bestPincode = data1.address?.postcode || '';
+                        }
+                    }
+                } catch (e) {
+                    console.log('High zoom failed:', e);
+                }
+                
+                // Approach 2: If first approach didn't work well, try with different parameters (English only)
+                if (!bestAddress || bestAddress.split(',').length < 4) {
+                    try {
+                        const response2 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18&extratags=1&namedetails=1&accept-language=en`);
+                        const data2 = await response2.json();
+                        console.log('Medium zoom response:', data2);
+                        
+                        if (data2 && data2.display_name) {
+                            const displayName = data2.display_name;
+                            const hasNonEnglish = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0D80-\u0DFF\u0E00-\u0E7F\u0E80-\u0EFF\u0F00-\u0FFF]/.test(displayName);
+                            
+                            if (!hasNonEnglish && displayName.split(',').length > (bestAddress ? bestAddress.split(',').length : 0)) {
+                                bestAddress = displayName;
+                                bestCity = data2.address?.city || data2.address?.town || data2.address?.village || data2.address?.state || '';
+                                bestPincode = data2.address?.postcode || '';
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Medium zoom failed:', e);
+                    }
+                }
+                
+                // Approach 3: Try with different service (English only)
+                if (!bestAddress || bestAddress.split(',').length < 4) {
+                    try {
+                        const response3 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=16&extratags=1&namedetails=1&accept-language=en`);
+                        const data3 = await response3.json();
+                        console.log('Low zoom response:', data3);
+                        
+                        if (data3 && data3.display_name) {
+                            const displayName = data3.display_name;
+                            const hasNonEnglish = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0D80-\u0DFF\u0E00-\u0E7F\u0E80-\u0EFF\u0F00-\u0FFF]/.test(displayName);
+                            
+                            if (!hasNonEnglish) {
+                                bestAddress = displayName;
+                                bestCity = data3.address?.city || data3.address?.town || data3.address?.village || data3.address?.state || '';
+                                bestPincode = data3.address?.postcode || '';
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Low zoom failed:', e);
+                    }
+                }
+                
+                // If we still don't have a good address, try alternative service
+                if (!bestAddress || bestAddress.split(',').length < 3) {
+                    try {
+                        const bigDataResult = await getAddressFromBigDataCloud(lat, lng);
+                        if (bigDataResult && bigDataResult.address) {
+                            bestAddress = bigDataResult.address;
+                            bestCity = bigDataResult.city;
+                            bestPincode = bigDataResult.pincode;
+                        }
+                    } catch (e) {
+                        console.log('BigDataCloud fallback failed:', e);
+                    }
+                }
+                
+                // Final fallback: construct manually from Nominatim
+                if (!bestAddress || bestAddress.split(',').length < 3) {
+                    try {
+                        const response4 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=14`);
+                        const data4 = await response4.json();
+                        console.log('Final fallback response:', data4);
+                        
+                        if (data4 && data4.address) {
+                            const addr = data4.address;
+                            let parts = [];
+                            
+                            // Try to build a detailed address
+                            if (addr.house_number) parts.push(addr.house_number);
+                            if (addr.road) parts.push(addr.road);
+                            if (addr.suburb) parts.push(addr.suburb);
+                            if (addr.neighbourhood) parts.push(addr.neighbourhood);
+                            if (addr.district) parts.push(addr.district);
+                            if (addr.city) parts.push(addr.city);
+                            else if (addr.town) parts.push(addr.town);
+                            else if (addr.village) parts.push(addr.village);
+                            if (addr.state) parts.push(addr.state);
+                            if (addr.postcode) parts.push(addr.postcode);
+                            
+                            if (parts.length > 0) {
+                                bestAddress = parts.join(', ');
+                                bestCity = addr.city || addr.town || addr.village || addr.state || '';
+                                bestPincode = addr.postcode || '';
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Final fallback failed:', e);
+                    }
+                }
+                
+                // If we have an address, populate the fields
+                if (bestAddress) {
+                    console.log('Final address:', bestAddress);
+                    console.log('Final city:', bestCity);
+                    console.log('Final pincode:', bestPincode);
+                    
+                    // Check if we have a detailed enough address
+                    const addressParts = bestAddress.split(',');
+                    const hasStreetLevel = addressParts.length >= 4;
+                    
+                    if (hasStreetLevel) {
+                        document.getElementById('shopAddress').value = bestAddress;
+                        document.getElementById('city').value = bestCity;
+                        document.getElementById('pincode').value = bestPincode;
+                        
+                        // Trigger validation
+                        validateShopAddress();
+                        validateCity();
+                        validatePincode();
+                        
+                        return true;
+                    } else {
+                        // If we don't have street-level detail, show a more informative message
+                        showNotification('Location detected! Found: ' + bestAddress + '. Please add street details manually.', 'info');
+                        
+                        // Still populate what we have
+                        document.getElementById('shopAddress').value = bestAddress;
+                        document.getElementById('city').value = bestCity;
+                        document.getElementById('pincode').value = bestPincode;
+                        
+                        // Trigger validation
+                        validateShopAddress();
+                        validateCity();
+                        validatePincode();
+                        
+                        return true;
+                    }
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error getting address:', error);
+                return false;
+            }
+        }
+
+        // Function to show notification
+        function showNotification(message, type = 'info') {
+            // Remove existing notification
+            const existingNotification = document.querySelector('.location-notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+
+            const notification = document.createElement('div');
+            notification.className = `location-notification ${type}`;
+            notification.innerHTML = `
+                <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}</span>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 4000);
+        }
+
+        // Function to get current location and populate address
+        async function getCurrentLocationAndAddress() {
+            const locationIcon = document.getElementById('locationIcon');
+            const originalText = locationIcon.textContent;
+            
+            // Show loading state
+            locationIcon.textContent = 'location_searching';
+            locationIcon.style.opacity = '0.7';
+            
+            if (!navigator.geolocation) {
+                showNotification('Geolocation is not supported by your browser.', 'error');
+                locationIcon.textContent = originalText;
+                locationIcon.style.opacity = '1';
+                return;
+            }
+
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+
+                const { latitude, longitude } = position.coords;
+                setLocationFields(latitude, longitude);
+                
+                // Get address from coordinates
+                const success = await getAddressFromCoordinates(latitude, longitude);
+                
+                if (success) {
+                    // Show success feedback
+                    locationIcon.textContent = 'check_circle';
+                    locationIcon.style.color = '#4CAF50';
+                    showNotification('Location detected and address filled automatically!', 'success');
+                    setTimeout(() => {
+                        locationIcon.textContent = originalText;
+                        locationIcon.style.color = '';
+                        locationIcon.style.opacity = '1';
+                    }, 2000);
+                } else {
+                    showNotification('Location detected but could not get address details. Please enter manually.', 'error');
+                    locationIcon.textContent = originalText;
+                    locationIcon.style.opacity = '1';
+                }
+                
+            } catch (error) {
+                console.error('Geolocation error:', error);
+                let errorMessage = 'Could not get your location. ';
+                
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Please allow location access in your browser settings.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out.';
+                        break;
+                    default:
+                        errorMessage += 'An unknown error occurred.';
+                }
+                
+                showNotification(errorMessage, 'error');
+                locationIcon.textContent = originalText;
+                locationIcon.style.opacity = '1';
+            }
+        }
+
+        // Add click event listener to location icon
+        document.addEventListener('DOMContentLoaded', function() {
+            const locationIcon = document.getElementById('locationIcon');
+            if (locationIcon) {
+                locationIcon.addEventListener('click', getCurrentLocationAndAddress);
+            }
         });
-        document.getElementById('confirmPassword').addEventListener('input', validateConfirmPassword);
-        document.getElementById('email').addEventListener('input', validateEmail);
-        document.getElementById('vendorName').addEventListener('input', validateVendorName);
-        document.getElementById('phoneNumber').addEventListener('input', validatePhoneNumber);
-        document.getElementById('city').addEventListener('input', validateCity);
-        document.getElementById('shopAddress').addEventListener('input', validateShopAddress);
-        document.getElementById('pincode').addEventListener('input', validatePincode);
+
+        function promptForLocation(onSuccess, onError) {
+            if (!navigator.geolocation) {
+                locationStatus = 'error';
+                if (onError) onError('Geolocation is not supported by your browser.');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    setLocationFields(position.coords.latitude, position.coords.longitude);
+                    if (onSuccess) onSuccess();
+                },
+                function(error) {
+                    locationStatus = 'error';
+                    if (onError) onError('We couldn\'t detect your location. Please ensure location services are enabled and permission is granted.');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        // Prompt for location on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            promptForLocation();
+        });
+
         async function handleRegistration(event) {
             event.preventDefault();
             const validations = [
@@ -692,6 +1170,21 @@
             if (!validations.every(v => v)) {
                 return;
             }
+
+            // Check if location is set or denied
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            if (locationStatus === 'pending') {
+                // Still waiting for user to respond to location prompt
+                alert('Please allow location access to continue registration.');
+                return;
+            }
+            if (locationStatus === 'error' || !latitude || !longitude) {
+                alert('We couldn\'t detect your location. Please ensure location services are enabled and permission is granted.');
+                return;
+            }
+
+            // Show loading state
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
             submitBtn.disabled = true;
@@ -703,7 +1196,9 @@
                 phone_number: document.getElementById('phoneNumber').value,
                 shop_address: document.getElementById('shopAddress').value,
                 city: document.getElementById('city').value,
-                pincode: document.getElementById('pincode').value
+                pincode: document.getElementById('pincode').value,
+                latitude: latitude,
+                longitude: longitude
             };
             try {
                 const response = await fetch('/vendor-register-api/', {

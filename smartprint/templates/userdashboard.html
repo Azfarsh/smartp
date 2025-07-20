@@ -283,7 +283,6 @@
     .header-btn:hover {
       background: rgba(255, 255, 255, 0.25);
       transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
     /* Notification System */
@@ -295,7 +294,7 @@
       position: absolute;
       top: -4px;
       right: -4px;
-      background: var(--notification-gradient);
+      background: var(--primary);
       color: white;
       border-radius: 50%;
       width: 18px;
@@ -307,7 +306,6 @@
       justify-content: center;
       animation: pulse 2s infinite;
       border: 2px solid var(--surface);
-      box-shadow: var(--shadow-neon);
     }
 
     @keyframes pulse {
@@ -490,7 +488,7 @@
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: var(--toast-gradient);
+      background: var(--primary);
       color: white;
       display: flex;
       align-items: center;
@@ -498,24 +496,6 @@
       font-size: 12px;
       flex-shrink: 0;
       margin-top: 2px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .toast-icon::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(45deg, rgba(255,255,255,0.3) 0%, transparent 100%);
-      z-index: 1;
-    }
-
-    .toast-icon i {
-      position: relative;
-      z-index: 2;
     }
 
     .toast-content {
@@ -562,7 +542,7 @@
       bottom: 0;
       left: 0;
       height: 3px;
-      background: var(--toast-gradient);
+      background: var(--primary);
       border-radius: 0 0 var(--radius-lg) var(--radius-lg);
       transition: width linear;
     }
@@ -3609,7 +3589,9 @@
               label: 'Photo Package', 
               type: 'select', 
               options: [
-                { value: '8', label: '8 Photos (Standard)', price: '₹40' }
+                { value: '8', label: '8 Photos (Standard)', price: '₹40' },
+                { value: '16', label: '16 Photos (Family)', price: '₹70' },
+                { value: '30', label: '30 Photos (Bulk)', price: '₹120' }
               ], 
               required: true,
               description: 'Choose the number of passport photos you need',
@@ -3997,20 +3979,20 @@
         const filePreview = modal.querySelector(`#${service}-file-preview`);
         
         if (fileInput && fileUploadLabel && filePreview) {
-        fileInput.addEventListener('change', async (e) => {
-          const file = e.target.files[0];
-          // For passport, skip the default image preview in processFile
-          if (service === 'passport' && file && file.type.startsWith('image/')) {
-            await processFile(file, fileUploadLabel, null); // Don't update preview here
-            if (typeof enhancePassportPhotoWithPicWish === 'function') {
-              enhancePassportPhotoWithPicWish(file, filePreview);
+          fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            // For passport, skip the default image preview in processFile
+            if (service === 'passport' && file && file.type.startsWith('image/')) {
+              await processFile(file, fileUploadLabel, null); // Don't update preview here
+              if (typeof enhancePassportPhotoWithPicWish === 'function') {
+                enhancePassportPhotoWithPicWish(file, filePreview);
+              } else {
+                filePreview.innerHTML += '<div style="color:#ef4444;">Enhancement function missing!</div>';
+              }
             } else {
-              filePreview.innerHTML += '<div style="color:#ef4444;">Enhancement function missing!</div>';
+              await processFile(file, fileUploadLabel, filePreview);
             }
-          } else {
-            await processFile(file, fileUploadLabel, filePreview);
-          }
-        });
+          });
           
           // Add drag and drop functionality
           const fileUploadArea = modal.querySelector(`#${service}-file-upload`);
@@ -4037,6 +4019,10 @@
               }
             });
           }
+        } else {
+          if (!fileInput) console.warn('File input not found for service modal:', service);
+          if (!fileUploadLabel) console.warn('File upload label not found for service modal:', service);
+          if (!filePreview) console.warn('File preview not found for service modal:', service);
         }
         
         // Helper function to process files
@@ -4044,7 +4030,7 @@
           fileObj = file;
           if (!file) {
             fileUploadLabel.textContent = 'Click to select file';
-            filePreview.innerHTML = '';
+            if (filePreview) filePreview.innerHTML = '';
             return;
           }
           
@@ -4755,7 +4741,6 @@
       try {
         const userEmail = '{{ user.email }}';
         if (!userEmail) return;
-
         const response = await fetch('/get-user-notifications/', {
           method: 'POST',
           headers: {
@@ -4764,7 +4749,10 @@
           },
           body: JSON.stringify({ user_email: userEmail })
         });
-
+        if (response.status === 404) {
+          console.warn('The /get-user-notifications/ endpoint is missing. Please add it to your Django backend.');
+          return;
+        }
         const data = await response.json();
         if (data.success) {
           const newNotifications = data.notifications || [];
@@ -5284,7 +5272,11 @@
             <button class="job-btn" onclick="viewJobDetails('${job.filename}')">
               <i class="fas fa-eye"></i> View
             </button>
-            <button class="job-btn primary" onclick="trackJob('${job.filename}')">
+            <button class="job-btn primary track-vendor-btn" 
+                    data-lat="${job.vendor_lat || ''}" 
+                    data-lng="${job.vendor_lng || ''}"
+                    data-vendor="${job.vendor || ''}"
+                    onclick="trackVendorLocation('${job.filename}')">
               <i class="fas fa-map-marker-alt"></i> Track
             </button>
           </div>
@@ -5325,11 +5317,88 @@
       }
     }
 
-    // Function to track job
-    function trackJob(filename) {
+    // Function to track vendor location and open Google Maps navigation
+    window.trackVendorLocation = function(filename) {
+      console.log('trackVendorLocation called with filename:', filename);
+      console.log('userJobs:', userJobs);
+      
       const job = userJobs.find(j => j.filename === filename);
-      if (job) {
-        alert(`Job Status: ${job.status}\nVendor: ${job.vendor}\nUploaded: ${job.uploaded_at}\n\nYour print job is being processed. You will be notified when it's ready for pickup.`);
+      console.log('Found job:', job);
+      
+      if (!job) {
+        alert('Job not found.');
+        return;
+      }
+
+      const vendorLat = job.vendor_lat;
+      const vendorLng = job.vendor_lng;
+      const vendorName = job.vendor;
+
+      console.log('Vendor coordinates:', { vendorLat, vendorLng, vendorName });
+      console.log('Vendor email (raw):', job.vendor);
+      console.log('Vendor email type:', typeof job.vendor);
+
+      // Check if vendor coordinates are available
+      if (!vendorLat || !vendorLng || vendorLat === '' || vendorLng === '') {
+        alert(`Location not available for vendor: ${vendorName || 'Unknown'}\n\nYour print job is being processed. You will be notified when it's ready for pickup.`);
+        return;
+      }
+
+      // Get user's current location
+      if (navigator.geolocation) {
+        console.log('Getting user location...');
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            
+            console.log('User location:', { userLat, userLng });
+            
+            // Construct Google Maps navigation URL
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${vendorLat},${vendorLng}&travelmode=driving`;
+            
+            console.log('Opening maps URL:', mapsUrl);
+            
+            // Open Google Maps in a new tab
+            window.open(mapsUrl, '_blank');
+          },
+          function(error) {
+            console.error('Geolocation error:', error);
+            // Handle location permission denied or other errors
+            if (error.code === error.PERMISSION_DENIED) {
+              alert('Please enable location to track the shop.');
+            } else {
+              alert('Unable to get your location. Please check your location settings.');
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      } else {
+        alert('Geolocation is not supported by this browser.');
+      }
+    }
+
+    // Test function to verify the implementation
+    window.testTrackFunction = function() {
+      console.log('Testing track function...');
+      console.log('userJobs available:', typeof userJobs !== 'undefined');
+      console.log('userJobs length:', userJobs ? userJobs.length : 'undefined');
+      console.log('trackVendorLocation available:', typeof window.trackVendorLocation === 'function');
+      
+      if (userJobs && userJobs.length > 0) {
+        console.log('All jobs vendor info:');
+        userJobs.forEach((job, index) => {
+          console.log(`Job ${index + 1}:`, {
+            filename: job.filename,
+            vendor: job.vendor,
+            vendor_lat: job.vendor_lat,
+            vendor_lng: job.vendor_lng
+          });
+        });
       }
     }
 
@@ -6202,7 +6271,11 @@
           </div>
           <div class="completed-job-actions">
             <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
-            <button class="completed-job-btn" onclick="trackJob('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
+            <button class="completed-job-btn track-vendor-btn" 
+                    data-lat="${job.vendor_lat || ''}" 
+                    data-lng="${job.vendor_lng || ''}"
+                    data-vendor="${job.vendor || ''}"
+                    onclick="trackVendorLocation('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
           </div>
         </div>
       `).join('');
@@ -6235,186 +6308,199 @@
     function showUserToken(token) {
       alert('Your Print Job Token: ' + token);
     }
-  </script>
-
-  <script>
-    // PicWish enhancement for passport photo
-    async function enhancePassportPhotoWithPicWish(file, previewContainer) {
-      // Remove all old data and properties
-      delete previewContainer.getEnhancedUrl;
-      delete previewContainer.isEnhancedReady;
-      delete previewContainer.getSelectedPassportVersion;
-      previewContainer.removeAttribute('data-enhanced-url');
-      previewContainer.removeAttribute('data-enhanced-ready');
-      previewContainer.removeAttribute('data-selected-version');
-      previewContainer.dataset.selectedVersion = 'original';
-      const enhancementToken = Date.now() + '_' + Math.random();
-      previewContainer.dataset.enhancementToken = enhancementToken;
-      
-      // Track selection
-      let selectedVersion = 'original';
-      let enhancedUrl = null;
-      let enhancedReady = false;
-
-      // Helper to update selection highlight and data attribute
-      function updateSelectionUI() {
-        const origBox = previewContainer.querySelector('.selectable-image.original');
-        const enhBox = previewContainer.querySelector('.selectable-image.enhanced');
-        if (origBox) origBox.classList.toggle('selected', selectedVersion === 'original');
-        if (enhBox) enhBox.classList.toggle('selected', selectedVersion === 'enhanced');
-        // Update radio buttons
-        const origRadio = previewContainer.querySelector('#select-original');
-        const enhRadio = previewContainer.querySelector('#select-enhanced');
-        if (origRadio) origRadio.checked = selectedVersion === 'original';
-        if (enhRadio) enhRadio.checked = selectedVersion === 'enhanced';
-        // Always update data-selected-version
-        previewContainer.dataset.selectedVersion = selectedVersion;
-      }
-
-      // Initial render
-      previewContainer.innerHTML = `
-        <style>
-          .passport-preview-flex { width: 100%; display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1.5rem 0; flex-wrap: wrap; box-sizing: border-box; }
-          .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
-          .selectable-image.selected { border: 2.5px solid #2563eb; box-shadow: 0 4px 18px #2563eb22; }
-          .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
-          .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
-          .select-radio { position: absolute; top: 16px; right: 18px; z-index: 2; width: 22px; height: 22px; }
-          .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
-          .enhanced-extra { margin-top: 0.7em; color: #10b981; font-size: 1.08em; font-weight: 600; text-align: center; }
-          .enhanced-cost { margin-top: 0.3em; color: #888; font-size: 1em; text-align: center; }
-          @media (max-width: 700px) { .passport-preview-flex { flex-direction: column; gap: 2.5rem; } }
-        </style>
-        <div class="passport-preview-flex">
-          <div class="selectable-image original selected" tabindex="0">
-            <div class="selectable-label">Original</div>
-            <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original" checked></span>
-            <img src="${URL.createObjectURL(file)}" alt="Original" />
-          </div>
-          <div class="selectable-image enhanced" tabindex="0">
-            <div class="selectable-label">Enhanced</div>
-            <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
-            <div id="enhance-spinner" style="padding: 40px 0; color: #3b82f6; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-              <i class="fas fa-spinner fa-spin" style="font-size:2.2em;"></i><br/>
-              <span style="font-size:1.05em;">Enhancing…</span>
-            </div>
-          </div>
-        </div>
-      `;
-      updateSelectionUI();
-
-      // Selection logic
-      const origBox = previewContainer.querySelector('.selectable-image.original');
-      const enhBox = previewContainer.querySelector('.selectable-image.enhanced');
-      const origRadio = previewContainer.querySelector('#select-original');
-      const enhRadio = previewContainer.querySelector('#select-enhanced');
-      if (origBox) {
-        origBox.addEventListener('click', () => { selectedVersion = 'original'; updateSelectionUI(); });
-        origBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'original'; updateSelectionUI(); }});
-      }
-      if (enhBox) {
-        enhBox.addEventListener('click', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
-        enhBox.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
-      }
-      if (origRadio) origRadio.addEventListener('change', () => { selectedVersion = 'original'; updateSelectionUI(); });
-      if (enhRadio) enhRadio.addEventListener('change', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
-
-      // Enhancement logic
-      const apiKey = 'wx1rwv2nti07a0yb4';
-      const formData = new FormData();
-      formData.append('image_file', file);
-      formData.append('sync', 0);
-      formData.append('type', 'face');
-      formData.append('return_type', 1);
-
-      let taskId = null;
-      let errorMsg = null;
-      try {
-        const resp = await fetch('https://techhk.aoscdn.com/api/tasks/visual/scale', {
-          method: 'POST',
-          headers: { 'X-API-KEY': apiKey },
-          body: formData
-        });
-        const data = await resp.json();
-        if (!resp.ok || !data || !data.data || !data.data.task_id) {
-          throw new Error(data?.msg || 'Failed to create enhancement task.');
-        }
-        taskId = data.data.task_id;
-      } catch (err) {
-        errorMsg = err.message || 'Failed to contact enhancement API.';
-      }
-      if (!taskId) {
-        if (enhBox) enhBox.innerHTML += `<div style='color:#ef4444;'>${errorMsg || 'Could not start enhancement.'}</div>`;
-        return;
-      }
-      let pollCount = 0;
-      let pollError = null;
-      while (pollCount < 30 && !enhancedUrl) {
-        try {
-          await new Promise(r => setTimeout(r, 1000));
-          pollCount++;
-          const pollResp = await fetch(`https://techhk.aoscdn.com/api/tasks/visual/scale/${taskId}`, {
-            method: 'GET',
-            headers: { 'X-API-KEY': apiKey }
-          });
-          const pollData = await pollResp.json();
-          if (pollResp.status === 429) {
-            pollError = 'Rate limit reached. Please try again later.';
-            break;
-          }
-          if (!pollResp.ok || !pollData || !pollData.data) {
-            pollError = pollData?.msg || 'Enhancement failed.';
-            break;
-          }
-          if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
-            enhancedUrl = pollData.data.image;
-            enhancedReady = true;
-            break;
-          }
-          if (pollData.data.state === 2) {
-            pollError = 'Enhancement failed.';
-            break;
-          }
-        } catch (err) {
-          pollError = err.message || 'Error polling enhancement API.';
-          break;
-        }
-      }
-      if (enhancedUrl) {
-        // Only update if this is the latest enhancement
-        if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
-        if (enhBox) {
-          enhBox.innerHTML = `
-            <div class="selectable-label">Enhanced</div>
-            <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
-            <img src="${enhancedUrl}" alt="Enhanced" />
-            <div class='enhanced-extra'>Ready!</div>
-            <div class='enhanced-cost'>+₹10 extra for enhancement</div>
-          `;
-          // Re-attach selection logic after replacing innerHTML
-          const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
-          const newEnhRadio = previewContainer.querySelector('#select-enhanced');
-          if (newEnhBox) {
-            newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
-            newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
-          }
-          if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
-          updateSelectionUI();
-        }
-        // Set data attributes for enhanced image
-        previewContainer.dataset.enhancedUrl = enhancedUrl;
-        previewContainer.dataset.enhancedReady = 'true';
+    
+    // Test function for debugging
+    function testTrackImplementation() {
+      if (typeof window.testTrackFunction === 'function') {
+        window.testTrackFunction();
       } else {
-        // Only update if this is the latest enhancement
-        if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
-        if (enhBox) {
-          enhBox.innerHTML += `<div style='color:#ef4444;'>${pollError || 'Enhancement timed out. Please try again.'}</div>`;
-        }
-        // Set not ready
-        previewContainer.dataset.enhancedUrl = '';
-        previewContainer.dataset.enhancedReady = 'false';
+        console.log('Test function not available');
       }
     }
   </script>
+
+  <script>
+    
+  // PicWish enhancement for passport photo
+  async function enhancePassportPhotoWithPicWish(file, previewContainer) {
+    // Remove all old data and properties
+    delete previewContainer.getEnhancedUrl;
+    delete previewContainer.isEnhancedReady;
+    delete previewContainer.getSelectedPassportVersion;
+    previewContainer.removeAttribute('data-enhanced-url');
+    previewContainer.removeAttribute('data-enhanced-ready');
+    previewContainer.removeAttribute('data-selected-version');
+    previewContainer.dataset.selectedVersion = 'original';
+    const enhancementToken = Date.now() + '_' + Math.random();
+    previewContainer.dataset.enhancementToken = enhancementToken;
+    
+    // Track selection
+    let selectedVersion = 'original';
+    let enhancedUrl = null;
+    let enhancedReady = false;
+
+    // Helper to update selection highlight and data attribute
+    function updateSelectionUI() {
+      const origBox = previewContainer.querySelector('.selectable-image.original');
+      const enhBox = previewContainer.querySelector('.selectable-image.enhanced');
+      if (origBox) origBox.classList.toggle('selected', selectedVersion === 'original');
+      if (enhBox) enhBox.classList.toggle('selected', selectedVersion === 'enhanced');
+      // Update radio buttons
+      const origRadio = previewContainer.querySelector('#select-original');
+      const enhRadio = previewContainer.querySelector('#select-enhanced');
+      if (origRadio) origRadio.checked = selectedVersion === 'original';
+      if (enhRadio) enhRadio.checked = selectedVersion === 'enhanced';
+      // Always update data-selected-version
+      previewContainer.dataset.selectedVersion = selectedVersion;
+    }
+
+    // Initial render
+    previewContainer.innerHTML = `
+      <style>
+        .passport-preview-flex { width: 100%; display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1.5rem 0; flex-wrap: wrap; box-sizing: border-box; }
+        .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
+        .selectable-image.selected { border: 2.5px solid #2563eb; box-shadow: 0 4px 18px #2563eb22; }
+        .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
+        .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
+        .select-radio { position: absolute; top: 16px; right: 18px; z-index: 2; width: 22px; height: 22px; }
+        .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
+        .enhanced-extra { margin-top: 0.7em; color: #10b981; font-size: 1.08em; font-weight: 600; text-align: center; }
+        .enhanced-cost { margin-top: 0.3em; color: #888; font-size: 1em; text-align: center; }
+        @media (max-width: 700px) { .passport-preview-flex { flex-direction: column; gap: 2.5rem; } }
+      </style>
+      <div class="passport-preview-flex">
+        <div class="selectable-image original selected" tabindex="0">
+          <div class="selectable-label">Original</div>
+          <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original" checked></span>
+          <img src="${URL.createObjectURL(file)}" alt="Original" />
+        </div>
+        <div class="selectable-image enhanced" tabindex="0">
+          <div class="selectable-label">Enhanced</div>
+          <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
+          <div id="enhance-spinner" style="padding: 40px 0; color: #3b82f6; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <i class="fas fa-spinner fa-spin" style="font-size:2.2em;"></i><br/>
+            <span style="font-size:1.05em;">Enhancing…</span>
+          </div>
+        </div>
+      </div>
+    `;
+    updateSelectionUI();
+
+    // Selection logic
+    const origBox = previewContainer.querySelector('.selectable-image.original');
+    const enhBox = previewContainer.querySelector('.selectable-image.enhanced');
+    const origRadio = previewContainer.querySelector('#select-original');
+    const enhRadio = previewContainer.querySelector('#select-enhanced');
+    if (origBox) {
+      origBox.addEventListener('click', () => { selectedVersion = 'original'; updateSelectionUI(); });
+      origBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'original'; updateSelectionUI(); }});
+    }
+    if (enhBox) {
+      enhBox.addEventListener('click', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+      enhBox.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+    }
+    if (origRadio) origRadio.addEventListener('change', () => { selectedVersion = 'original'; updateSelectionUI(); });
+    if (enhRadio) enhRadio.addEventListener('change', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+
+    // Enhancement logic
+    const apiKey = 'wx1rwv2nti07a0yb4';
+    const formData = new FormData();
+    formData.append('image_file', file);
+    formData.append('sync', 0);
+    formData.append('type', 'face');
+    formData.append('return_type', 1);
+
+    let taskId = null;
+    let errorMsg = null;
+    try {
+      const resp = await fetch('https://techhk.aoscdn.com/api/tasks/visual/scale', {
+        method: 'POST',
+        headers: { 'X-API-KEY': apiKey },
+        body: formData
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data || !data.data || !data.data.task_id) {
+        throw new Error(data?.msg || 'Failed to create enhancement task.');
+      }
+      taskId = data.data.task_id;
+    } catch (err) {
+      errorMsg = err.message || 'Failed to contact enhancement API.';
+    }
+    if (!taskId) {
+      if (enhBox) enhBox.innerHTML += `<div style='color:#ef4444;'>${errorMsg || 'Could not start enhancement.'}</div>`;
+      return;
+    }
+    let pollCount = 0;
+    let pollError = null;
+    while (pollCount < 30 && !enhancedUrl) {
+      try {
+        await new Promise(r => setTimeout(r, 1000));
+        pollCount++;
+        const pollResp = await fetch(`https://techhk.aoscdn.com/api/tasks/visual/scale/${taskId}`, {
+          method: 'GET',
+          headers: { 'X-API-KEY': apiKey }
+        });
+        const pollData = await pollResp.json();
+        if (pollResp.status === 429) {
+          pollError = 'Rate limit reached. Please try again later.';
+          break;
+        }
+        if (!pollResp.ok || !pollData || !pollData.data) {
+          pollError = pollData?.msg || 'Enhancement failed.';
+          break;
+        }
+        if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
+          enhancedUrl = pollData.data.image;
+          enhancedReady = true;
+          break;
+        }
+        if (pollData.data.state === 2) {
+          pollError = 'Enhancement failed.';
+          break;
+        }
+      } catch (err) {
+        pollError = err.message || 'Error polling enhancement API.';
+        break;
+      }
+    }
+    if (enhancedUrl) {
+      // Only update if this is the latest enhancement
+      if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
+      if (enhBox) {
+        enhBox.innerHTML = `
+          <div class="selectable-label">Enhanced</div>
+          <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
+          <img src="${enhancedUrl}" alt="Enhanced" />
+          <div class='enhanced-extra'>Ready!</div>
+          <div class='enhanced-cost'>+₹10 extra for enhancement</div>
+        `;
+        // Re-attach selection logic after replacing innerHTML
+        const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+        const newEnhRadio = previewContainer.querySelector('#select-enhanced');
+        if (newEnhBox) {
+          newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+          newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+        }
+        if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+        updateSelectionUI();
+      }
+      // Set data attributes for enhanced image
+      previewContainer.dataset.enhancedUrl = enhancedUrl;
+      previewContainer.dataset.enhancedReady = 'true';
+    } else {
+      // Only update if this is the latest enhancement
+      if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
+      if (enhBox) {
+        enhBox.innerHTML += `<div style='color:#ef4444;'>${pollError || 'Enhancement timed out. Please try again.'}</div>`;
+      }
+      // Set not ready
+      previewContainer.dataset.enhancedUrl = '';
+      previewContainer.dataset.enhancedReady = 'false';
+    }
+  }
+  </script>
+
+
+
 </body>
 </html>

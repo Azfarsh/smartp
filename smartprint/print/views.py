@@ -14,11 +14,6 @@ import re
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 import os
-import tempfile
-import io
-from PIL import Image, ImageDraw
-import math
-from django.views.decorators.http import require_GET
 import base64
 
 # ─────────────────────────────────────────────────────────────
@@ -227,6 +222,33 @@ def get_user_jobs_from_r2(user_email):
                     "thickness": metadata.get('thickness', ''),
                     "service_name": metadata.get('service_name', '')
                 }
+
+                # Fetch vendor coordinates if vendor is assigned
+                vendor_id = job_info.get('vendor')
+                if vendor_id and vendor_id != 'firozshop':
+                    try:
+                        # Get vendor email from vendor ID
+                        vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                        print(f"Vendor ID {vendor_id} maps to email: {vendor_email}")
+                        
+                        if vendor_email and vendor_email != 'firozshop@example.com':
+                            reg_key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
+                            vendor_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                            vendor_data = json.loads(vendor_response['Body'].read().decode('utf-8'))
+                            job_info['vendor_lat'] = vendor_data.get('latitude', '')
+                            job_info['vendor_lng'] = vendor_data.get('longitude', '')
+                            print(f"Found coordinates for vendor {vendor_id}: lat={job_info['vendor_lat']}, lng={job_info['vendor_lng']}")
+                        else:
+                            print(f"No vendor email found for vendor ID: {vendor_id}")
+                            job_info['vendor_lat'] = ''
+                            job_info['vendor_lng'] = ''
+                    except Exception as e:
+                        print(f"Error fetching vendor coordinates for vendor ID {vendor_id}: {str(e)}")
+                        job_info['vendor_lat'] = ''
+                        job_info['vendor_lng'] = ''
+                else:
+                    job_info['vendor_lat'] = ''
+                    job_info['vendor_lng'] = ''
 
                 # Create print options string
                 job_info["print_options"] = f"{job_info['copies']} copies, {job_info['color']}, {job_info['orientation']}"
@@ -2140,6 +2162,8 @@ def vendor_register_api(request):
             shop_address = data.get('shop_address')
             city = data.get('city')
             pincode = data.get('pincode')
+            latitude = data.get('latitude')
+            longitude = data.get('longitude')
 
             # Validate required fields
             if not all([email, password, vendor_name, phone_number, shop_address, city, pincode]):
@@ -2213,6 +2237,8 @@ def vendor_register_api(request):
                 'shop_address': shop_address,
                 'city': city,
                 'pincode': pincode,
+                'latitude': latitude,
+                'longitude': longitude,
                 'registration_date': timezone.now().isoformat(),
                 'hashed_password': password_hash
             }
@@ -2450,15 +2476,46 @@ def get_vendor_id_by_shop_folder(shop_folder):
         print(f"Error finding vendor_id for shop {shop_folder}: {str(e)}")
         return 'vendor1'
 
+def get_vendor_email_by_vendor_id(vendor_id):
+    """Get vendor email by vendor_id from R2 storage"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        # Search through vendor registration details to find matching vendor_id
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in objects.get("Contents", []):
+            if obj["Key"].endswith('/registration_details.json'):
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                    stored_vendor_id = vendor_data.get('vendor_id', '')
+                    vendor_email = vendor_data.get('vendor_email', '')
+
+                    # Check if this vendor's ID matches
+                    if stored_vendor_id == vendor_id:
+                        return vendor_email
+                except Exception as e:
+                    print(f"Error reading vendor data from {obj['Key']}: {str(e)}")
+                    continue
+
+        # Fallback for firozshop or unknown vendors
+        return 'firozshop@example.com'
+
+    except Exception as e:
+        print(f"Error finding vendor email for vendor_id {vendor_id}: {str(e)}")
+        return 'firozshop@example.com'
+
 # This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.
 
-# ─────────────────────────────────────────────────────────────
-# NOTIFICATION SYSTEM
-# ─────────────────────────────────────────────────────────────
-
-def create_job_completion_notification(user_email, filename, token, vendor_name, service_type, completion_time):
+# --- PicWish Passport Photo Enhancement API ---
+@csrf_exempt
+def debug_vendor_registrations(request):
     """
-    Create a notification for job completion and store it in R2
+    Debug endpoint to list all vendor registrations
     """
     try:
         s3 = boto3.client('s3',
@@ -2466,215 +2523,42 @@ def create_job_completion_notification(user_email, filename, token, vendor_name,
                           aws_secret_access_key=settings.R2_SECRET_KEY,
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
-
-        # Create notification data
-        notification_id = str(uuid.uuid4())
-
-        # Format service type for display
-        service_display = service_type.replace('_', ' ').title() if service_type else 'Print Job'
-
-        notification_data = {
-            'notification_id': notification_id,
-            'type': 'job_completed',
-            'user_email': user_email,
-            'filename': filename,
-            'token': token,
-            'vendor_name': vendor_name,
-            'service_type': service_type,
-            'completion_time': completion_time,
-            'created_at': datetime.datetime.now().isoformat(),
-            'read': False,
-            'message': f"Token #{token} - {service_display} completed",
-            'title': 'Print Job Ready!',
-            'details': {
-                'filename': filename,
-                'token': token,
-                'vendor_name': vendor_name,
-                'service_type': service_type,
-                'completion_time': completion_time
-            }
-        }
-
-        # Store notification in user's notification folder
-        notification_key = f'notifications/{sanitize_email(user_email)}/{notification_id}.json'
-
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=notification_key,
-            Body=json.dumps(notification_data, indent=2),
-            ContentType='application/json'
-        )
-
-        print(f"✅ Created notification for user {user_email}: {filename}")
-        return True
-
-    except Exception as e:
-        print(f"❌ Error creating notification: {str(e)}")
-        return False
-
-
-def get_user_notifications(user_email):
-    """
-    Get all notifications for a specific user
-    """
-    try:
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-
-        notifications = []
-        prefix = f'notifications/{sanitize_email(user_email)}/'
-
+        
+        vendors = []
         try:
-            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-
-            for obj in response.get('Contents', []):
-                key = obj['Key']
-                if key.endswith('.json'):
+            objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+            for obj in objects.get("Contents", []):
+                key = obj["Key"]
+                if key.endswith('/registration_details.json'):
                     try:
-                        # Get notification data
                         response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                        notification_data = json.loads(response['Body'].read().decode('utf-8'))
-                        notifications.append(notification_data)
+                        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                        vendors.append({
+                            'vendor_id': vendor_data.get('vendor_id', ''),
+                            'vendor_email': vendor_data.get('vendor_email', ''),
+                            'vendor_name': vendor_data.get('vendor_name', ''),
+                            'latitude': vendor_data.get('latitude', ''),
+                            'longitude': vendor_data.get('longitude', ''),
+                            'file_path': key
+                        })
                     except Exception as e:
-                        print(f"Error reading notification {key}: {str(e)}")
+                        print(f"Error reading vendor data from {key}: {str(e)}")
                         continue
-
         except Exception as e:
-            print(f"Error listing notifications: {str(e)}")
-
-        # Sort by creation time (newest first)
-        notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-        return notifications
-
-    except Exception as e:
-        print(f"Error getting user notifications: {str(e)}")
-        return []
-
-
-@csrf_exempt
-def mark_notification_read(request):
-    """
-    Mark a notification as read
-    """
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            notification_id = data.get('notification_id')
-            user_email = data.get('user_email')
-
-            if not notification_id or not user_email:
-                return JsonResponse({'success': False, 'error': 'Missing notification_id or user_email'})
-
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-
-            notification_key = f'notifications/{sanitize_email(user_email)}/{notification_id}.json'
-
-            try:
-                # Get current notification data
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=notification_key)
-                notification_data = json.loads(response['Body'].read().decode('utf-8'))
-
-                # Mark as read
-                notification_data['read'] = True
-                notification_data['read_at'] = datetime.datetime.now().isoformat()
-
-                # Update the notification
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=notification_key,
-                    Body=json.dumps(notification_data, indent=2),
-                    ContentType='application/json'
-                )
-
-                return JsonResponse({'success': True, 'message': 'Notification marked as read'})
-
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': f'Error updating notification: {str(e)}'})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-
-@csrf_exempt
-def get_user_notifications_api(request):
-    """
-    API endpoint to get user notifications
-    """
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            user_email = data.get('user_email')
-
-            if not user_email:
-                return JsonResponse({'success': False, 'error': 'Missing user_email'})
-
-            notifications = get_user_notifications(user_email)
-
-            # Count unread notifications
-            unread_count = len([n for n in notifications if not n.get('read', False)])
-
-            return JsonResponse({
-                'success': True,
-                'notifications': notifications,
-                'unread_count': unread_count
-            })
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-def vendor_about(request):
-    return render(request, 'vendor_about.html')
-# ─────────────────────────────────────────────────────────────
-# FILE UPLOAD TO CLOUDFLARE R2
-# ─────────────────────────────────────────────────────────────
-
-@require_GET
-def get_vendor_details(request):
-    """
-    API endpoint to fetch vendor details by email from S3 for the pricing page.
-    """
-    import boto3, json
-    from django.conf import settings
-    email = request.GET.get('email')
-    if not email:
-        return JsonResponse({'error': 'Email required'}, status=400)
-    def sanitize_email(email):
-        return email.replace('@', '_at_').replace('.', '_dot_')
-    s3 = boto3.client('s3',
-        aws_access_key_id=settings.R2_ACCESS_KEY,
-        aws_secret_access_key=settings.R2_SECRET_KEY,
-        endpoint_url=settings.R2_ENDPOINT,
-        region_name='auto')
-    key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
-    try:
-        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+            print(f"Error listing vendor folders: {str(e)}")
+        
         return JsonResponse({
-            'vendor_name': vendor_data.get('vendor_name', ''),
-            'vendor_email': vendor_data.get('vendor_email', ''),
-            'shop_address': vendor_data.get('shop_address', ''),
-            'city': vendor_data.get('city', ''),
-            'pincode': vendor_data.get('pincode', ''),
-            'vendor_id': vendor_data.get('vendor_id', ''),
-            'vendor_token': vendor_data.get('vendor_token', ''),
+            'success': True,
+            'vendors': vendors,
+            'total_vendors': len(vendors)
         })
     except Exception as e:
-        return JsonResponse({'error': f'Not found: {str(e)}'}, status=404)
-
-# ─────────────────────────────────────────────────────────────
-# ENHANCED PHOTO SERVICE
-# ─────────────────────────────────────────────────────────────
+        print(f"Error getting vendor registrations: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'vendors': []
+        })
 
 @csrf_exempt
 def enhance_passport_photo(request):
@@ -2711,8 +2595,3 @@ def enhance_passport_photo(request):
             return JsonResponse({'success': False, 'error': result.get('error', 'Enhancement failed.')}, status=500)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-# ─────────────────────────────────────────────────────────────
-# FILE UPLOAD TO CLOUDFLARE R2
-# ─────────────────────────────────────────────────────────────
