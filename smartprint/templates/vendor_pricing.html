@@ -565,6 +565,14 @@
                 padding: 15px;
             }
         }
+
+        .compact-input {
+            width: 70px !important;
+            min-width: 60px !important;
+            height: 32px !important;
+            font-size: 1rem !important;
+            padding: 4px 8px !important;
+        }
     </style>
 </head>
 <body>
@@ -586,19 +594,24 @@
                 </h3>
                 <div id="vendorDetails" style="text-align: left; min-width: 220px;">
                     <div style="font-size: 1.08rem; font-weight: 500; color: #fff; margin-bottom: 2px;">Your Vendor Details</div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Name:</strong> <span id="vendorName">-</span></div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Email:</strong> <span id="vendorEmail">-</span></div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Shop Address:</strong> <span id="shopAddress">-</span></div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>City:</strong> <span id="city">-</span></div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>PIN Code:</strong> <span id="pincode">-</span></div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Vendor ID:</strong> <span id="vendorId">-</span></div>
-                    <div style="font-size: 0.98rem; color: #f3f4f6;"><strong>Vendor Token:</strong> <span id="vendorToken">-</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Name:</strong> <span id="vendorName">{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}-{% endif %}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Email:</strong> <span id="vendorEmail">{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}-{% endif %}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Shop Address:</strong> <span id="shopAddress">{% if vendor_details %}{{ vendor_details.shop_address }}{% else %}-{% endif %}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>City:</strong> <span id="city">{% if vendor_details %}{{ vendor_details.city }}{% else %}-{% endif %}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>PIN Code:</strong> <span id="pincode">{% if vendor_details %}{{ vendor_details.pincode }}{% else %}-{% endif %}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Vendor ID:</strong> <span id="vendorId">{% if vendor_details %}{{ vendor_details.vendor_id }}{% else %}-{% endif %}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6;"><strong>Vendor Token:</strong> <span id="vendorToken">{% if vendor_details %}{{ vendor_details.vendor_token }}{% else %}-{% endif %}</span></div>
                 </div>
             </div>
         </div>
 
         <!-- Pricing Form -->
         <div class="form-container">
+            <!-- Update legend at the top of the form -->
+            <div style="margin-bottom: 18px; padding: 12px 18px; background: #f3f4f6; border-radius: 10px; font-size: 1.08rem; color: #1e2937; display: flex; flex-direction: column; gap: 6px;">
+              <div><strong>NA</strong> = Not Applicable (This service is <u>not available</u> at your shop. Leave as NA if you do not offer this service.)</div>
+              <div><span style="font-size:1.2em;">✔️</span> Click checkbox for available service</div>
+            </div>
             <div class="success-message" id="successMessage">
                 <span class="material-icons">check_circle</span>
                 Pricing saved successfully! Redirecting to login...
@@ -620,79 +633,103 @@
                                 <!-- A4 -->
                                 <div class="form-group">
                                     <label>A4 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a4_single" step="0.50" min="0" placeholder="2.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a4_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a4_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a4_single" id="xerox_black_and_white_a4_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A4 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a4_double" step="0.50" min="0" placeholder="3.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a4_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a4_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a4_double" id="xerox_black_and_white_a4_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A3 -->
                                 <div class="form-group">
                                     <label>A3 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a3_single" step="0.50" min="0" placeholder="4.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a3_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a3_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a3_single" id="xerox_black_and_white_a3_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A3 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a3_double" step="0.50" min="0" placeholder="6.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a3_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a3_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a3_double" id="xerox_black_and_white_a3_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- FS -->
                                 <div class="form-group">
                                     <label>FS Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_fs_single" step="0.50" min="0" placeholder="3.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_fs_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_fs_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_fs_single" id="xerox_black_and_white_fs_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>FS Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_fs_double" step="0.50" min="0" placeholder="4.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_fs_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_fs_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_fs_double" id="xerox_black_and_white_fs_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A2 -->
                                 <div class="form-group">
                                     <label>A2 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a2_single" step="0.50" min="0" placeholder="8.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a2_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a2_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a2_single" id="xerox_black_and_white_a2_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A2 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a2_double" step="0.50" min="0" placeholder="10.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a2_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a2_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a2_double" id="xerox_black_and_white_a2_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A1 -->
                                 <div class="form-group">
                                     <label>A1 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a1_single" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a1_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a1_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a1_single" id="xerox_black_and_white_a1_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A1 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a1_double" step="0.50" min="0" placeholder="18.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a1_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a1_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a1_double" id="xerox_black_and_white_a1_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A0 -->
                                 <div class="form-group">
                                     <label>A0 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a0_single" step="0.50" min="0" placeholder="30.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a0_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a0_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a0_single" id="xerox_black_and_white_a0_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A0 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_black_and_white_a0_double" step="0.50" min="0" placeholder="35.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_black_and_white_a0_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_black_and_white_a0_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_black_and_white_a0_double" id="xerox_black_and_white_a0_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -703,79 +740,103 @@
                                 <!-- A4 -->
                                 <div class="form-group">
                                     <label>A4 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a4_single" step="0.50" min="0" placeholder="8.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a4_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a4_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a4_single" id="xerox_color_a4_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A4 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a4_double" step="0.50" min="0" placeholder="12.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a4_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a4_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a4_double" id="xerox_color_a4_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A3 -->
                                 <div class="form-group">
                                     <label>A3 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a3_single" step="0.50" min="0" placeholder="16.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a3_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a3_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a3_single" id="xerox_color_a3_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A3 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a3_double" step="0.50" min="0" placeholder="20.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a3_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a3_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a3_double" id="xerox_color_a3_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- FS -->
                                 <div class="form-group">
                                     <label>FS Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_fs_single" step="0.50" min="0" placeholder="12.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_fs_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_fs_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_fs_single" id="xerox_color_fs_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>FS Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_fs_double" step="0.50" min="0" placeholder="16.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_fs_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_fs_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_fs_double" id="xerox_color_fs_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A2 -->
                                 <div class="form-group">
                                     <label>A2 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a2_single" step="0.50" min="0" placeholder="24.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a2_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a2_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a2_single" id="xerox_color_a2_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A2 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a2_double" step="0.50" min="0" placeholder="28.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a2_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a2_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a2_double" id="xerox_color_a2_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A1 -->
                                 <div class="form-group">
                                     <label>A1 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a1_single" step="0.50" min="0" placeholder="40.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a1_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a1_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a1_single" id="xerox_color_a1_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A1 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a1_double" step="0.50" min="0" placeholder="45.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a1_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a1_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a1_double" id="xerox_color_a1_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A0 -->
                                 <div class="form-group">
                                     <label>A0 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a0_single" step="0.50" min="0" placeholder="80.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a0_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a0_single')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a0_single" id="xerox_color_a0_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A0 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="xerox_color_a0_double" step="0.50" min="0" placeholder="90.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="xerox_color_a0_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'xerox_color_a0_double')">
+                                        <input type="text" class="form-control compact-input" name="xerox_color_a0_double" id="xerox_color_a0_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -796,79 +857,103 @@
                                 <!-- A4 -->
                                 <div class="form-group">
                                     <label>A4 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a4_single" step="0.50" min="0" placeholder="2.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a4_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a4_single')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a4_single" id="print_black_and_white_a4_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A4 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a4_double" step="0.50" min="0" placeholder="3.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a4_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a4_double')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a4_double" id="print_black_and_white_a4_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A3 -->
                                 <div class="form-group">
                                     <label>A3 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a3_single" step="0.50" min="0" placeholder="4.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a3_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a3_single')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a3_single" id="print_black_and_white_a3_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A3 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a3_double" step="0.50" min="0" placeholder="6.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a3_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a3_double')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a3_double" id="print_black_and_white_a3_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- FS -->
                                 <div class="form-group">
                                     <label>FS Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_fs_single" step="0.50" min="0" placeholder="3.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_fs_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_fs_single')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_fs_single" id="print_black_and_white_fs_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>FS Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_fs_double" step="0.50" min="0" placeholder="4.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_fs_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_fs_double')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_fs_double" id="print_black_and_white_fs_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A2 -->
                                 <div class="form-group">
                                     <label>A2 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a2_single" step="0.50" min="0" placeholder="8.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a2_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a2_single')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a2_single" id="print_black_and_white_a2_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A2 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a2_double" step="0.50" min="0" placeholder="10.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a2_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a2_double')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a2_double" id="print_black_and_white_a2_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A1 -->
                                 <div class="form-group">
                                     <label>A1 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a1_single" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a1_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a1_single')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a1_single" id="print_black_and_white_a1_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A1 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a1_double" step="0.50" min="0" placeholder="18.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a1_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a1_double')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a1_double" id="print_black_and_white_a1_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A0 -->
                                 <div class="form-group">
                                     <label>A0 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a0_single" step="0.50" min="0" placeholder="30.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a0_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a0_single')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a0_single" id="print_black_and_white_a0_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A0 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_black_and_white_a0_double" step="0.50" min="0" placeholder="35.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_black_and_white_a0_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_black_and_white_a0_double')">
+                                        <input type="text" class="form-control compact-input" name="print_black_and_white_a0_double" id="print_black_and_white_a0_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -879,79 +964,103 @@
                                 <!-- A4 -->
                                 <div class="form-group">
                                     <label>A4 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a4_single" step="0.50" min="0" placeholder="10.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a4_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a4_single')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a4_single" id="print_color_a4_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A4 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a4_double" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a4_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a4_double')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a4_double" id="print_color_a4_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A3 -->
                                 <div class="form-group">
                                     <label>A3 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a3_single" step="0.50" min="0" placeholder="20.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a3_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a3_single')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a3_single" id="print_color_a3_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A3 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a3_double" step="0.50" min="0" placeholder="25.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a3_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a3_double')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a3_double" id="print_color_a3_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- FS -->
                                 <div class="form-group">
                                     <label>FS Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_fs_single" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_fs_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_fs_single')">
+                                        <input type="text" class="form-control compact-input" name="print_color_fs_single" id="print_color_fs_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>FS Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_fs_double" step="0.50" min="0" placeholder="20.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_fs_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_fs_double')">
+                                        <input type="text" class="form-control compact-input" name="print_color_fs_double" id="print_color_fs_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A2 -->
                                 <div class="form-group">
                                     <label>A2 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a2_single" step="0.50" min="0" placeholder="30.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a2_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a2_single')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a2_single" id="print_color_a2_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A2 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a2_double" step="0.50" min="0" placeholder="35.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a2_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a2_double')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a2_double" id="print_color_a2_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A1 -->
                                 <div class="form-group">
                                     <label>A1 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a1_single" step="0.50" min="0" placeholder="50.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a1_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a1_single')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a1_single" id="print_color_a1_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A1 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a1_double" step="0.50" min="0" placeholder="60.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a1_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a1_double')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a1_double" id="print_color_a1_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A0 -->
                                 <div class="form-group">
                                     <label>A0 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a0_single" step="0.50" min="0" placeholder="100.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a0_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a0_single')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a0_single" id="print_color_a0_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A0 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="print_color_a0_double" step="0.50" min="0" placeholder="120.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="print_color_a0_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'print_color_a0_double')">
+                                        <input type="text" class="form-control compact-input" name="print_color_a0_double" id="print_color_a0_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -972,79 +1081,103 @@
                                 <!-- A4 -->
                                 <div class="form-group">
                                     <label>A4 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a4_single" step="0.50" min="0" placeholder="10.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a4_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a4_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a4_single" id="scan_color_a4_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A4 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a4_double" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a4_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a4_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a4_double" id="scan_color_a4_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A3 -->
                                 <div class="form-group">
                                     <label>A3 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a3_single" step="0.50" min="0" placeholder="20.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a3_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a3_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a3_single" id="scan_color_a3_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A3 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a3_double" step="0.50" min="0" placeholder="25.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a3_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a3_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a3_double" id="scan_color_a3_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- FS -->
                                 <div class="form-group">
                                     <label>FS Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_fs_single" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_fs_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_fs_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_fs_single" id="scan_color_fs_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>FS Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_fs_double" step="0.50" min="0" placeholder="20.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_fs_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_fs_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_fs_double" id="scan_color_fs_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A2 -->
                                 <div class="form-group">
                                     <label>A2 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a2_single" step="0.50" min="0" placeholder="30.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a2_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a2_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a2_single" id="scan_color_a2_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A2 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a2_double" step="0.50" min="0" placeholder="35.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a2_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a2_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a2_double" id="scan_color_a2_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A1 -->
                                 <div class="form-group">
                                     <label>A1 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a1_single" step="0.50" min="0" placeholder="50.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a1_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a1_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a1_single" id="scan_color_a1_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A1 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a1_double" step="0.50" min="0" placeholder="60.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a1_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a1_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a1_double" id="scan_color_a1_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A0 -->
                                 <div class="form-group">
                                     <label>A0 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a0_single" step="0.50" min="0" placeholder="100.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a0_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a0_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a0_single" id="scan_color_a0_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A0 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_color_a0_double" step="0.50" min="0" placeholder="120.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_color_a0_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_color_a0_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_color_a0_double" id="scan_color_a0_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -1055,79 +1188,103 @@
                                 <!-- A4 -->
                                 <div class="form-group">
                                     <label>A4 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a4_single" step="0.50" min="0" placeholder="5.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a4_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a4_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a4_single" id="scan_black_and_white_a4_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A4 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a4_double" step="0.50" min="0" placeholder="8.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a4_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a4_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a4_double" id="scan_black_and_white_a4_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A3 -->
                                 <div class="form-group">
                                     <label>A3 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a3_single" step="0.50" min="0" placeholder="10.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a3_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a3_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a3_single" id="scan_black_and_white_a3_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A3 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a3_double" step="0.50" min="0" placeholder="12.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a3_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a3_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a3_double" id="scan_black_and_white_a3_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- FS -->
                                 <div class="form-group">
                                     <label>FS Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_fs_single" step="0.50" min="0" placeholder="8.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_fs_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_fs_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_fs_single" id="scan_black_and_white_fs_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>FS Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_fs_double" step="0.50" min="0" placeholder="10.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_fs_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_fs_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_fs_double" id="scan_black_and_white_fs_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A2 -->
                                 <div class="form-group">
                                     <label>A2 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a2_single" step="0.50" min="0" placeholder="15.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a2_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a2_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a2_single" id="scan_black_and_white_a2_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A2 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a2_double" step="0.50" min="0" placeholder="18.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a2_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a2_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a2_double" id="scan_black_and_white_a2_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A1 -->
                                 <div class="form-group">
                                     <label>A1 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a1_single" step="0.50" min="0" placeholder="25.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a1_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a1_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a1_single" id="scan_black_and_white_a1_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A1 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a1_double" step="0.50" min="0" placeholder="28.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a1_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a1_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a1_double" id="scan_black_and_white_a1_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <!-- A0 -->
                                 <div class="form-group">
                                     <label>A0 Single-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a0_single" step="0.50" min="0" placeholder="50.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a0_single_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a0_single')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a0_single" id="scan_black_and_white_a0_single" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>A0 Double-sided (₹/page)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="scan_black_and_white_a0_double" step="0.50" min="0" placeholder="60.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="scan_black_and_white_a0_double_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'scan_black_and_white_a0_double')">
+                                        <input type="text" class="form-control compact-input" name="scan_black_and_white_a0_double" id="scan_black_and_white_a0_double" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -1147,32 +1304,42 @@
                             <div class="price-grid">
                                 <div class="form-group">
                                     <label>Spiral Binding (₹/book)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="binding_spiral" step="1.00" min="0" placeholder="20.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="binding_spiral_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'binding_spiral')">
+                                        <input type="text" class="form-control compact-input" name="binding_spiral" id="binding_spiral" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Comb Binding (₹/book)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="binding_comb" step="1.00" min="0" placeholder="25.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="binding_comb_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'binding_comb')">
+                                        <input type="text" class="form-control compact-input" name="binding_comb" id="binding_comb" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Hard Binding (₹/book)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="binding_hard" step="1.00" min="0" placeholder="50.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="binding_hard_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'binding_hard')">
+                                        <input type="text" class="form-control compact-input" name="binding_hard" id="binding_hard" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Project Binding (₹/book)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="binding_project" step="1.00" min="0" placeholder="35.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="binding_project_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'binding_project')">
+                                        <input type="text" class="form-control compact-input" name="binding_project" id="binding_project" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Other Binding (₹/book)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="binding_other" step="1.00" min="0" placeholder="0.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="binding_other_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'binding_other')">
+                                        <input type="text" class="form-control compact-input" name="binding_other" id="binding_other" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -1192,20 +1359,26 @@
                             <div class="price-grid">
                                 <div class="form-group">
                                     <label>8 Passport Photos (₹/sheet)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="passport_8" step="1.00" min="0" placeholder="40.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="passport_8_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'passport_8')">
+                                        <input type="text" class="form-control compact-input" name="passport_8" id="passport_8" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>16 Passport Photos (₹/sheet)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="passport_16" step="1.00" min="0" placeholder="70.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="passport_16_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'passport_16')">
+                                        <input type="text" class="form-control compact-input" name="passport_16" id="passport_16" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label>32 Passport Photos (₹/sheet)</label>
-                                    <div class="currency-input">
-                                        <input type="number" class="form-control" name="passport_32" step="1.00" min="0" placeholder="120.00">
+                                    <div class="currency-input" style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="rupee-icon" style="font-size: 1.3em; color: #1e40af; margin-right: 6px;">₹</span>
+                                        <input type="checkbox" class="service-available" id="passport_32_available" style="margin-right: 8px;" onchange="toggleServiceInput(this, 'passport_32')">
+                                        <input type="text" class="form-control compact-input" name="passport_32" id="passport_32" placeholder="NA" disabled pattern="\\d*" inputmode="numeric" oninput="this.value=this.value.replace(/[^\d]/g,'')">
                                     </div>
                                 </div>
                             </div>
@@ -1266,31 +1439,17 @@
         // Load vendor information
         async function loadVendorInfo() {
             if (!vendorEmail) {
-                alert('Vendor not found. Please complete registration first.');
-                window.location.href = '/vendor-register/';
-                return;
-            }
-
-            try {
-                const response = await fetch(`/vendor-info/${encodeURIComponent(vendorEmail)}/`);
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('vendorInfo').innerHTML = `
-                        <strong>Shop:</strong> ${data.vendor.vendor_name} |
-                        <strong>Email:</strong> ${data.vendor.email} |
-                        <strong>City:</strong> ${data.vendor.city || ''}
-                    `;
-                } else {
-                    document.getElementById('vendorInfo').innerHTML = `
-                        <strong>Vendor Email:</strong> ${vendorEmail}
-                    `;
+                // Try to get vendor email from Django template context
+                vendorEmail = '{{ vendor_email }}';
+                if (!vendorEmail) {
+                    alert('Vendor not found. Please complete registration first.');
+                    window.location.href = '/vendor-register/';
+                    return;
                 }
-            } catch (error) {
-                document.getElementById('vendorInfo').innerHTML = `
-                    <strong>Vendor Email:</strong> ${vendorEmail}
-                `;
             }
+
+            // Vendor details are now loaded server-side, so we don't need to fetch them again
+            console.log('Vendor email:', vendorEmail);
         }
 
         function getCookie(name) {
@@ -1306,6 +1465,22 @@
                 }
             }
             return cookieValue;
+        }
+
+        // Add this function to handle enabling/disabling price inputs
+        function toggleServiceInput(checkbox, inputId) {
+            const input = document.getElementById(inputId);
+            if (checkbox.checked) {
+                input.disabled = false;
+                input.value = '';
+                input.required = true;
+                input.placeholder = '';
+            } else {
+                input.disabled = true;
+                input.value = '';
+                input.required = false;
+                input.placeholder = 'NA';
+            }
         }
 
         async function handlePricingSubmit(event) {
@@ -1328,7 +1503,7 @@
             }
 
             const requestData = {
-                vendor_email: vendorEmail,
+                vendor_email: vendorEmail || '{{ vendor_email }}',
                 pricing_entries: Object.entries(pricingData).map(([service, price]) => ({
                     service_type: service,
                     price: price
@@ -1379,26 +1554,6 @@
         // Load vendor info when page loads
         document.addEventListener('DOMContentLoaded', loadVendorInfo);
     </script>
-    <script>
-window.addEventListener('DOMContentLoaded', function() {
-    const params = new URLSearchParams(window.location.search);
-    const vendorEmail = params.get('vendorEmail');
-    if (!vendorEmail) return;
-    fetch(`/get-vendor-details/?email=${encodeURIComponent(vendorEmail)}`)
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('vendorName').textContent = data.vendor_name || '-';
-            document.getElementById('vendorEmail').textContent = data.vendor_email || '-';
-            document.getElementById('shopAddress').textContent = data.shop_address || '-';
-            document.getElementById('city').textContent = data.city || '-';
-            document.getElementById('pincode').textContent = data.pincode || '-';
-            document.getElementById('vendorId').textContent = data.vendor_id || '-';
-            document.getElementById('vendorToken').textContent = data.vendor_token || '-';
-        })
-        .catch(() => {
-            document.getElementById('vendorDetails').innerHTML = '<span style="color:#fff">Could not load vendor details.</span>';
-        });
-});
-</script>
+
 </body>
 </html>

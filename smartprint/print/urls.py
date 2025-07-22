@@ -1,20 +1,20 @@
 from django.urls import path
 from . import views
-from .views import (home, userdashboard, vendordashboard, upload_to_r2,
-                    get_print_requests, process_print_request, auto_print_documents, update_job_status,
-                    auth_receiver, sign_in, photoprint, vendor_register, vendor_pricing, vendor_info,
-                    vendor_login, vendor_register_api, debug_vendor_registrations, get_user_notifications_api, mark_notification_read,
-                    enhance_passport_photo)
-
+from .views import (
+    home, userdashboard, vendordashboard, upload_to_r2,
+    get_print_requests, process_print_request, auto_print_documents, update_job_status,
+    auth_receiver, sign_in, photoprint, vendor_register, vendor_pricing, vendor_info,
+    vendor_login, vendor_register_api, get_user_notifications_api, mark_notification_read,
+    enhance_passport_photo, forgot_password_page, forgot_password, verify_reset_code, reset_password,
+    logout_view, get_vendor_coordinates
+)
 
 urlpatterns = [
     path('', views.home, name='home'),
     path('upload/', views.upload_to_r2, name='upload_to_r2'),
     path('userdashboard/', views.userdashboard, name='userdashboard'),
     path('vendordashboard/', views.vendordashboard, name='vendordashboard'),
-    path('get-print-requests/',
-         views.get_print_requests,
-         name='get-print-requests'),
+    path('get-print-requests/', views.get_print_requests, name='get-print-requests'),
     path('process_print/', process_print_request, name='process_print'),
     path('auto-print-documents/', views.auto_print_documents, name='auto-print-documents'),
     path('get-vendor-print-jobs/', views.get_vendor_print_jobs, name='get_vendor_print_jobs'),
@@ -30,6 +30,15 @@ urlpatterns = [
     path('vendor-register-api/', vendor_register_api, name='vendor_register_api'),
     path('vendor-authenticate/', views.vendor_authenticate, name='vendor_authenticate'),
     path('get-available-shops/', views.get_available_shops, name='get_available_shops'),
-    path('api/enhance-passport-photo/', views.enhance_passport_photo, name='enhance_passport_photo'),
     path('debug-vendor-registrations/', views.debug_vendor_registrations, name='debug_vendor_registrations'),
+    path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
+    path('mark-notification-read/', mark_notification_read, name='mark_notification_read'),
+    path('get-vendor-details/', views.get_vendor_details, name='get_vendor_details'),
+    path('enhance-passport-photo/', enhance_passport_photo, name='enhance_passport_photo'),
+    path('forgot-password/', forgot_password_page, name='forgot_password_page'),
+    path('forgot-password-api/', forgot_password, name='forgot_password_api'),
+    path('verify-reset-code/', verify_reset_code, name='verify_reset_code'),
+    path('reset-password/', reset_password, name='reset_password'),
+    path('logout/', logout_view, name='logout'),
+    path('get-vendor-coordinates/', get_vendor_coordinates, name='get_vendor_coordinates'),
 ]

@@ -2527,7 +2527,7 @@
         </a>
       </li>
       <li class="nav-item">
-        <a href="/admin/" class="nav-link">
+        <a href="/logout/" class="nav-link">
           <i class="fas fa-sign-out-alt"></i>
           Sign Out
         </a>
@@ -2595,7 +2595,7 @@
                 <i class="fas fa-question-circle"></i>
                 Help
               </a>
-              <a href="/admin/" class="dropdown-item">
+              <a href="/logout/" class="dropdown-item">
                 <i class="fas fa-sign-out-alt"></i>
                 Sign Out
               </a>
@@ -4725,6 +4725,22 @@
       loadUserJobs();
       loadAvailableShops();
       initializeNotifications();
+
+      // Fetch vendor coordinates for the map asynchronously
+      fetch('/get-vendor-coordinates/', {
+        method: 'GET',
+        headers: { 'X-CSRFToken': window.csrfToken }
+      })
+        .then(response => response.json())
+        .then(data => {
+          // Call your map update function here
+          if (data.coordinates) {
+            updateMapWithCoordinates(data.coordinates);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch vendor coordinates:', err);
+        });
     });
 
     // Notification System
@@ -6288,6 +6304,11 @@
         localStorage.setItem('hiddenNotifications', JSON.stringify(hidden));
       }
       updateNotificationUI();
+    }
+
+    function updateMapWithCoordinates(coords) {
+      // TODO: Implement your map update logic here
+      // Example: map.setMarkers(coords);
     }
   </script>
 

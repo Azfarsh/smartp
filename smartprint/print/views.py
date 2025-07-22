@@ -15,7 +15,12 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 import os
 import base64
-
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+import traceback
+from PIL import Image, ImageDraw
+import io
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -37,6 +42,7 @@ def get_vendor_details_by_email(email):
         response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
         vendor_data = json.loads(response['Body'].read().decode('utf-8'))
         return {
+            'vendor_id': vendor_data.get('vendor_id', ''),
             'vendor_name': vendor_data.get('vendor_name', ''),
             'vendor_email': vendor_data.get('vendor_email', ''),
             'phone_number': vendor_data.get('phone_number', ''),
@@ -48,31 +54,197 @@ def get_vendor_details_by_email(email):
         return None
 
 
+def get_vendor_specific_jobs(vendor_id):
+    """
+    Fetch jobs specifically for a given vendor from their folder in R2
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+
+    try:
+        file_data = []
+        # Get files from vendor's specific folders
+        vendor_print_prefix = f'vendor_print_jobs/{vendor_id}/'
+        vendor_manual_prefix = f'vendor_manual_print_jobs/{vendor_id}/'
+        
+        vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_print_prefix)
+        manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_manual_prefix)
+
+        # Combine both object lists
+        all_objects = []
+        if vendor_objects.get("Contents"):
+            all_objects.extend(vendor_objects.get("Contents", []))
+        if manual_objects.get("Contents"):
+            all_objects.extend(manual_objects.get("Contents", []))
+
+        print(f"🔍 Searching for jobs for vendor {vendor_id}")
+        print(f"📁 Vendor print jobs prefix: {vendor_print_prefix}")
+        print(f"📁 Vendor manual print jobs prefix: {vendor_manual_prefix}")
+
+        for obj in all_objects:
+            key = obj["Key"]
+            filename = key.split("/")[-1]
+            # Skip .json files (metadata, not print jobs) and folders
+            if filename.lower().endswith('.json') or not filename:
+                continue
+                
+            try:
+                # Get object metadata first
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                metadata = head_response.get('Metadata', {})
+                job_completed = metadata.get('job_completed', 'NO').upper()
+                
+                # Only include jobs with job_completed == 'NO' or 'YES'
+                if job_completed not in ['NO', 'YES']:
+                    continue
+                    
+                # Generate presigned URL for preview
+                url = s3.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params={
+                        'Bucket': settings.R2_BUCKET,
+                        'Key': key
+                    },
+                    ExpiresIn=3600
+                )
+                
+                # Generate download URL for direct file access
+                download_url = s3.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params={
+                        'Bucket': settings.R2_BUCKET,
+                        'Key': key,
+                        'ResponseContentDisposition': f'inline; filename="{filename}"'
+                    },
+                    ExpiresIn=3600
+                )
+                
+                # Determine file type and icon
+                file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
+                file_type = get_file_type(file_extension)
+                
+                # Calculate estimated pages if not in metadata
+                pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
+                
+                # Build file info
+                file_info = {
+                    "filename": filename,
+                    "job_id": metadata.get('job_id', ''),
+                    "preview_url": url,
+                    "download_url": download_url,
+                    "file_type": file_type,
+                    "file_extension": file_extension,
+                    "size": format_file_size(obj.get('Size', 0)),
+                    "user": metadata.get('user', 'Auto User'),
+                    "pages": pages,
+                    "status": metadata.get('status', 'pending').title(),
+                    "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
+                    "priority": metadata.get('priority', 'Medium'),
+                    "copies": metadata.get('copies', '1'),
+                    "color": metadata.get('color', 'Black and White'),
+                    "orientation": metadata.get('orientation', 'portrait'),
+                    "pageRange": metadata.get('pagerange', 'all'),
+                    "specificPages": metadata.get('specificpages', ''),
+                    "pageSize": metadata.get('pagesize', 'A4'),
+                    "spiralBinding": metadata.get('spiralbinding', 'No'),
+                    "lamination": metadata.get('lamination', 'No'),
+                    "job_completed": metadata.get('job_completed', 'NO'),
+                    "trash": metadata.get('trash', 'NO'),
+                    "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
+                    "service_type": metadata.get('service_type', ''),
+                    "service_name": metadata.get('service_name', ''),
+                    "token": metadata.get('token', ''),
+                    "vendor_id": vendor_id,
+                    "feedback": metadata.get('feedback', ''),
+                    "quality": metadata.get('quality', ''),
+                    "thickness": metadata.get('thickness', '')
+                }
+                
+                # Create print options string
+                file_info["print_options"] = f"{file_info['copies']} copies, {file_info['color']}, {file_info['orientation']}"
+                file_data.append(file_info)
+                print(f"✅ Found job for vendor {vendor_id}: {filename} (status: {metadata.get('status', 'pending')}, completed: {job_completed})")
+                
+            except Exception as e:
+                print(f"Error processing vendor file {key}: {str(e)}")
+                continue
+                
+        # Count jobs by status
+        pending_count = len([job for job in file_data if job['job_completed'] == 'NO'])
+        completed_count = len([job for job in file_data if job['job_completed'] == 'YES'])
+        print(f"📋 Total jobs found for vendor {vendor_id}: {len(file_data)} (Pending: {pending_count}, Completed: {completed_count})")
+        return file_data
+        
+    except Exception as e:
+        print(f"Error listing vendor-specific R2 files: {str(e)}")
+        return []
+
 def vendordashboard(request):
     try:
-        files = list_r2_files()
+        # Get vendor details from session
+        vendor_details = None
+        vendor_email = request.session.get('vendor_email')
+        vendor_id = request.session.get('vendor_id')  # Get vendor_id directly from session
+        
+        print(f"🔍 Session data - Email: {vendor_email}, Vendor ID: {vendor_id}")
+        
+        if vendor_email and vendor_id:
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if vendor_details:
+                # Ensure vendor_id matches
+                if vendor_details.get('vendor_id') != vendor_id:
+                    vendor_id = vendor_details.get('vendor_id')
+                    request.session['vendor_id'] = vendor_id  # Update session with correct vendor_id
+                print(f"🔍 Loading dashboard for vendor: {vendor_details.get('vendor_name')} (ID: {vendor_id})")
+            else:
+                print("❌ Could not fetch vendor details from R2")
+        elif vendor_email and not vendor_id:
+            # Try to get vendor_id from vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if vendor_details:
+                vendor_id = vendor_details.get('vendor_id')
+                request.session['vendor_id'] = vendor_id
+                print(f"🔍 Retrieved vendor ID from details: {vendor_id}")
+        
+        if not vendor_id:
+            print("❌ No vendor ID found in session or vendor details")
+            return render(request, 'vendordashboard.html', {
+                'manual_print_jobs': [],
+                'print_requests': [],
+                'completed_jobs': [],
+                'vendor_details': vendor_details,
+                'vendor_details_error': 'Vendor not authenticated. Please login again.',
+                'total_jobs': 0,
+                'manual_print_count': 0,
+                'print_requests_count': 0,
+                'completed_jobs_count': 0,
+            })
+
+        # Fetch vendor-specific jobs
+        files = get_vendor_specific_jobs(vendor_id)
+        
         manual_services = [
             'photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
         ]
         manual_print_jobs = []
         print_requests = []
         completed_jobs = []
+        
         for job in files:
             job_completed = job.get('job_completed', 'NO').upper()
             service_type = job.get('service_type', '').strip().lower()
+            
             if job_completed == 'NO':
-                if service_type == 'regular print':
-                    print_requests.append(job)
-                elif service_type in manual_services:
+                if service_type in manual_services:
                     manual_print_jobs.append(job)
+                else:
+                    # Regular print jobs, passport prints, photo prints, etc.
+                    print_requests.append(job)
             elif job_completed == 'YES':
                 completed_jobs.append(job)
-
-        # Fetch vendor details from session
-        vendor_details = None
-        vendor_email = request.session.get('vendor_email')
-        if vendor_email:
-            vendor_details = get_vendor_details_by_email(vendor_email)
 
         context = {
             'manual_print_jobs': manual_print_jobs,
@@ -85,6 +257,7 @@ def vendordashboard(request):
             'completed_jobs_count': len(completed_jobs),
         }
         return render(request, 'vendordashboard.html', context)
+        
     except Exception as e:
         print(f"Error loading vendor dashboard data: {str(e)}")
         return render(request, 'vendordashboard.html', {
@@ -309,7 +482,26 @@ def userdashboard(request):
 
 def get_print_requests(request):
     try:
-        files = list_r2_files()
+        # Get vendor details from session to filter jobs
+        vendor_email = request.session.get('vendor_email')
+        vendor_id = request.session.get('vendor_id')  # Get vendor_id directly from session
+        
+        print(f"🔍 get_print_requests - Session data - Email: {vendor_email}, Vendor ID: {vendor_id}")
+        
+        if not vendor_id and vendor_email:
+            # Try to get vendor_id from vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if vendor_details:
+                vendor_id = vendor_details.get('vendor_id')
+                request.session['vendor_id'] = vendor_id
+                print(f"🔍 Retrieved vendor ID from details: {vendor_id}")
+        
+        if not vendor_id:
+            print("❌ No vendor ID found in session - returning empty job list")
+            return JsonResponse({"print_requests": []}, status=200)
+        
+        # Get vendor-specific jobs instead of all jobs
+        files = get_vendor_specific_jobs(vendor_id)
         return JsonResponse({"print_requests": files}, status=200)
     except Exception as e:
         print(f"Error in get_print_requests: {str(e)}")
@@ -546,7 +738,6 @@ def get_vendor_print_jobs(request):
 
         except Exception as e:
             print(f"❌ Error fetching vendor jobs: {str(e)}")
-            import traceback
             traceback.print_exc()
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid method'})
@@ -859,6 +1050,7 @@ def update_job_status_in_r2(filename, status, vendor_id, user_email, r2_folder_s
         return len(updated_files) > 0
     except Exception as e:
         print(f"❌ Error updating R2 job status: {e}")
+        traceback.print_exc()
         return False
 
 def track_job_failure(filename, vendor_id, error_message, user_email):
@@ -873,6 +1065,7 @@ def track_job_failure(filename, vendor_id, error_message, user_email):
 
     except Exception as e:
         print(f"Error tracking job failure: {e}")
+        traceback.print_exc()
         return False
 
 def update_vendor_status(vendor_id, status, details):
@@ -887,6 +1080,7 @@ def update_vendor_status(vendor_id, status, details):
 
     except Exception as e:
         print(f"Error updating vendor status: {e}")
+        traceback.print_exc()
         return False
 
 def update_printer_status(vendor_id, printer_stats):
@@ -901,6 +1095,7 @@ def update_printer_status(vendor_id, printer_stats):
 
     except Exception as e:
         print(f"Error updating printer status: {e}")
+        traceback.print_exc()
         return False
 
 
@@ -1024,10 +1219,12 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 
                         except Exception as e:
                             print(f"❌ Error updating file {key}: {str(e)}")
+                            traceback.print_exc()
                             continue
 
             except Exception as e:
                 print(f"❌ Error searching in {prefix}: {str(e)}")
+                traceback.print_exc()
                 continue
 
         if updated_files:
@@ -1039,6 +1236,7 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 
     except Exception as e:
         print(f"❌ Error updating job status for {filename}: {str(e)}")
+        traceback.print_exc()
         return False
 
 
@@ -1249,6 +1447,7 @@ def upload_to_r2(request):
             return JsonResponse({'success': False, 'error': f'Invalid JSON in settings: {str(e)}'}, status=400)
         except Exception as e:
             print(f"Upload error: {str(e)}")
+            traceback.print_exc()
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
@@ -1362,6 +1561,7 @@ def list_r2_files():
                     print(f"✅ Found job for vendor {vendor_id}: {filename} (status: {metadata.get('status', 'pending')}, completed: {job_completed})")
                 except Exception as e:
                     print(f"Error processing vendor file {key}: {str(e)}")
+                    traceback.print_exc()
                     continue
         # Count jobs by status
         pending_count = len([job for job in file_data if job['job_completed'] == 'NO'])
@@ -1370,6 +1570,7 @@ def list_r2_files():
         return file_data
     except Exception as e:
         print(f"Error listing R2 files: {str(e)}")
+        traceback.print_exc()
         return []
 
 def get_file_type(extension):
@@ -1608,7 +1809,6 @@ def create_photo_print_layout(input_images_data, layout_config):
 
     except Exception as e:
         print(f"❌ Error creating photo print layout: {e}")
-        import traceback
         traceback.print_exc()
         return None
 
@@ -1768,7 +1968,6 @@ def create_passport_photo_layout(input_image_data, total_prints=8, country='Indi
 
     except Exception as e:
         print(f"❌ Error creating passport photo layout: {e}")
-        import traceback
         traceback.print_exc()
         return None
 
@@ -1833,6 +2032,7 @@ def process_print_request(request):
 
             return JsonResponse({'success': True})
         except Exception as e:
+            traceback.print_exc()
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
@@ -1884,6 +2084,7 @@ def auth_receiver(request):
 
             except Exception as e:
                 print(f"❌ Error storing signup details in R2: {str(e)}")
+                traceback.print_exc()
 
             # Find or create user
             user, created = User.objects.get_or_create(
@@ -1948,7 +2149,31 @@ def vendor_pricing(request):
     Render the pricing form on GET, handle pricing submission on POST.
     """
     if request.method == 'GET':
-        return render(request, 'vendor_pricing.html')
+        # Get vendor email from URL parameters
+        vendor_email = request.GET.get('vendorEmail')
+        
+        # If vendor email is provided, fetch vendor details
+        vendor_details = None
+        if vendor_email:
+            try:
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
+                
+                key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                vendor_details = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                print(f"❌ Error fetching vendor details: {str(e)}")
+                vendor_details = None
+        
+        context = {
+            'vendor_email': vendor_email,
+            'vendor_details': vendor_details
+        }
+        return render(request, 'vendor_pricing.html', context)
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -2074,20 +2299,37 @@ def vendor_login(request):
             vendor_id = None
 
             try:
-                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
-                for obj in objects.get("Contents", []):
-                    if obj["Key"].endswith('/login_details.json'):
-                        try:
-                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
-                            login_details = json.loads(response['Body'].read().decode('utf-8'))
-                            if login_details.get('email') == email:
-                                found_vendor = login_details
-                                # Extract vendor_id from the key path
-                                vendor_id = obj["Key"].split('/')[1].replace('vendor_', '')
-                                break
-                        except Exception as e:
-                            print(f"Error reading login details from {obj['Key']}: {str(e)}")
-                            continue
+                # First, try to get vendor registration details directly
+                reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+                try:
+                    reg_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                    reg_details = json.loads(reg_response['Body'].read().decode('utf-8'))
+                    vendor_id = reg_details.get('vendor_id')
+                    print(f"🔍 Found vendor ID from registration details: {vendor_id}")
+                except Exception as e:
+                    print(f"Could not get registration details: {str(e)}")
+                
+                # Get login details
+                login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
+                try:
+                    login_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=login_key)
+                    found_vendor = json.loads(login_response['Body'].read().decode('utf-8'))
+                    print(f"🔍 Found login details for: {email}")
+                except Exception as e:
+                    print(f"Could not get login details: {str(e)}")
+                    # Fallback: search through all login details
+                    objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+                    for obj in objects.get("Contents", []):
+                        if obj["Key"].endswith('/login_details.json'):
+                            try:
+                                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                                login_details = json.loads(response['Body'].read().decode('utf-8'))
+                                if login_details.get('email') == email:
+                                    found_vendor = login_details
+                                    break
+                            except Exception as e:
+                                print(f"Error reading login details from {obj['Key']}: {str(e)}")
+                                continue
 
                 if not found_vendor:
                     return JsonResponse({
@@ -2107,10 +2349,19 @@ def vendor_login(request):
                         reg_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=f'vendor_register_details/{sanitize_email(email)}/registration_details.json')
                         reg_details = json.loads(reg_response['Body'].read().decode('utf-8'))
                         vendor_name = reg_details.get('vendor_name', '')
-                    except:
+                        vendor_id = reg_details.get('vendor_id', vendor_id)  # Use vendor_id from registration details
+                        print(f"✅ Retrieved vendor details - Name: {vendor_name}, ID: {vendor_id}")
+                    except Exception as e:
                         vendor_name = ''
-                    # Set vendor email in session
+                        vendor_id = vendor_id  # Keep the extracted vendor_id
+                        print(f"⚠️ Could not get registration details: {str(e)}")
+                    
+                    # Set vendor email and vendor_id in session
                     request.session['vendor_email'] = email
+                    request.session['vendor_id'] = vendor_id
+                    
+                    print(f"✅ Vendor login successful: {email} (ID: {vendor_id})")
+                    
                     return JsonResponse({
                         'success': True,
                         'message': 'Login successful',
@@ -2280,6 +2531,12 @@ def vendor_register_api(request):
                 s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
 
             print(f"✅ Successfully registered vendor {email} with shop folder: {shop_folder_name}")
+            
+            # Send welcome email
+            try:
+                send_welcome_email(email, vendor_name)
+            except Exception as e:
+                print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
 
             return JsonResponse({
                 'success': True,
@@ -2424,7 +2681,7 @@ def get_vendor_email_by_shop_folder(shop_folder):
         for obj in objects.get("Contents", []):
             if obj["Key"].endswith('/registration_details.json'):
                 try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKet, Key=obj["Key"])
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
                     vendor_data = json.loads(response['Body'].read().decode('utf-8'))
                     vendor_name = vendor_data.get('vendor_name', '')
                     vendor_email = vendor_data.get('vendor_email', '')
@@ -2594,4 +2851,435 @@ def enhance_passport_photo(request):
         else:
             return JsonResponse({'success': False, 'error': result.get('error', 'Enhancement failed.')}, status=500)
     except Exception as e:
+
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+       
+
+
+# ─────────────────────────────────────────────────────────────
+# FILE UPLOAD TO CLOUDFLARE R2
+# ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# FORGOT PASSWORD SERVICE
+# ─────────────────────────────────────────────────────────────
+
+def forgot_password_page(request):
+    """Render the forgot password page"""
+    return render(request, 'forgot_password.html')
+
+@csrf_exempt
+def forgot_password(request):
+    """
+    Send verification code to vendor email for password reset
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email is required'})
+            
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+            
+            # Check if vendor exists
+            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': 'Vendor not found with this email'})
+            
+            # Generate 6-digit verification code
+            verification_code = str(random.randint(100000, 999999))
+            
+            # Store verification code with expiration (15 minutes)
+            reset_data = {
+                'email': email,
+                'code': verification_code,
+                'created_at': datetime.datetime.now().isoformat(),
+                'expires_at': (datetime.datetime.now() + datetime.timedelta(minutes=15)).isoformat(),
+                'used': False
+            }
+            
+            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=reset_key,
+                Body=json.dumps(reset_data),
+                ContentType='application/json'
+            )
+            
+            # Send email with verification code
+            vendor_name = vendor_data.get('vendor_name', 'Vendor')
+            email_sent = send_password_reset_email(email, verification_code, vendor_name)
+            
+            if email_sent:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Verification code sent to your email'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to send verification email. Please try again.'
+                })
+            
+        except Exception as e:
+            print(f"Error in forgot_password: {str(e)}")
+            return JsonResponse({'success': False, 'error': 'Internal server error'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@csrf_exempt
+def verify_reset_code(request):
+    """
+    Verify the reset code sent to vendor email
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            code = data.get('code')
+            
+            if not email or not code:
+                return JsonResponse({'success': False, 'error': 'Email and code are required'})
+            
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+            
+            # Get reset data
+            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reset_key)
+                reset_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': 'Invalid or expired reset code'})
+            
+            # Check if code is expired
+            expires_at = datetime.datetime.fromisoformat(reset_data['expires_at'])
+            if datetime.datetime.now() > expires_at:
+                return JsonResponse({'success': False, 'error': 'Reset code has expired'})
+            
+            # Check if code matches
+            if reset_data['code'] != code:
+                return JsonResponse({'success': False, 'error': 'Invalid verification code'})
+            
+            # Check if already used
+            if reset_data.get('used', False):
+                return JsonResponse({'success': False, 'error': 'Reset code already used'})
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Code verified successfully'
+            })
+            
+        except Exception as e:
+            print(f"Error in verify_reset_code: {str(e)}")
+            return JsonResponse({'success': False, 'error': 'Internal server error'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@csrf_exempt
+def reset_password(request):
+    """
+    Reset vendor password with verification code
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            code = data.get('code')
+            new_password = data.get('new_password')
+            
+            if not all([email, code, new_password]):
+                return JsonResponse({'success': False, 'error': 'All fields are required'})
+            
+            if len(new_password) < 8:
+                return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters long'})
+            
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+            
+            # Verify reset code first
+            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reset_key)
+                reset_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': 'Invalid or expired reset code'})
+            
+            # Check if code is expired
+            expires_at = datetime.datetime.fromisoformat(reset_data['expires_at'])
+            if datetime.datetime.now() > expires_at:
+                return JsonResponse({'success': False, 'error': 'Reset code has expired'})
+            
+            # Check if code matches
+            if reset_data['code'] != code:
+                return JsonResponse({'success': False, 'error': 'Invalid verification code'})
+            
+            # Check if already used
+            if reset_data.get('used', False):
+                return JsonResponse({'success': False, 'error': 'Reset code already used'})
+            
+            # Hash the new password
+            hashed_password = make_password(new_password)
+            
+            # Update vendor registration details
+            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                
+                # Update password
+                vendor_data['hashed_password'] = hashed_password
+                vendor_data['password_updated_at'] = datetime.datetime.now().isoformat()
+                
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=reg_key,
+                    Body=json.dumps(vendor_data),
+                    ContentType='application/json'
+                )
+                
+                # Update login details
+                login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
+                try:
+                    login_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=login_key)
+                    login_data = json.loads(login_response['Body'].read().decode('utf-8'))
+                except:
+                    login_data = {'email': email}
+                
+                login_data['hashed_password'] = hashed_password
+                login_data['last_password_reset'] = datetime.datetime.now().isoformat()
+                
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=login_key,
+                    Body=json.dumps(login_data),
+                    ContentType='application/json'
+                )
+                
+                # Mark reset code as used
+                reset_data['used'] = True
+                reset_data['used_at'] = datetime.datetime.now().isoformat()
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=reset_key,
+                    Body=json.dumps(reset_data),
+                    ContentType='application/json'
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Password reset successfully'
+                })
+                
+            except Exception as e:
+                print(f"Error updating vendor data: {str(e)}")
+                return JsonResponse({'success': False, 'error': 'Failed to update password'})
+            
+        except Exception as e:
+            print(f"Error in reset_password: {str(e)}")
+            return JsonResponse({'success': False, 'error': 'Internal server error'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# ─────────────────────────────────────────────────────────────
+# ENHANCED PHOTO SERVICE
+# ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# EMAIL UTILITIES
+# ─────────────────────────────────────────────────────────────
+
+def send_password_reset_email(email, verification_code, vendor_name):
+    """
+    Send password reset verification email to vendor
+    """
+    try:
+        subject = 'Password Reset Verification - PrintMax'
+        
+        # Render HTML email template
+        html_message = render_to_string('emails/password_reset.html', {
+            'vendor_name': vendor_name,
+            'verification_code': verification_code,
+            'email': email
+        })
+        
+        # Create plain text version
+        plain_message = strip_tags(html_message)
+        
+        # Send email
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        print(f"✅ Password reset email sent successfully to {email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error sending password reset email to {email}: {str(e)}")
+        return False
+
+def send_welcome_email(email, vendor_name):
+    """
+    Send welcome email to new vendors
+    """
+    try:
+        subject = 'Welcome to PrintMax - Your Vendor Account is Ready!'
+        
+        html_message = f"""
+        <html>
+        <body>
+            <h2>🚀 Welcome to PrintMax, {vendor_name}!</h2>
+            <p>Your vendor account has been successfully created and is ready to use.</p>
+            <p>You can now:</p>
+            <ul>
+                <li>Login to your vendor dashboard</li>
+                <li>Manage print jobs</li>
+                <li>Track your earnings</li>
+                <li>Update your shop information</li>
+            </ul>
+            <p>Thank you for choosing PrintMax!</p>
+        </body>
+        </html>
+        """
+        
+        plain_message = strip_tags(html_message)
+        
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        print(f"✅ Welcome email sent successfully to {email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error sending welcome email to {email}: {str(e)}")
+        return False
+
+
+# ─────────────────────────────────────────────────────────────
+# LOGOUT SERVICE
+# ─────────────────────────────────────────────────────────────
+
+def logout_view(request):
+    """
+    Handle logout for both users and vendors
+    """
+    try:
+        # Clear all session data
+        request.session.flush()
+        
+        # Clear any authentication cookies
+        response = redirect('home')
+        response.delete_cookie('sessionid')
+        response.delete_cookie('csrftoken')
+        
+        print("✅ User logged out successfully")
+        return response
+        
+    except Exception as e:
+        print(f"❌ Error during logout: {str(e)}")
+        # Even if there's an error, redirect to home
+        return redirect('home')
+
+
+# ─────────────────────────────────────────────────────────────
+# FORGOT PASSWORD SERVICE
+# ─────────────────────────────────────────────────────────────
+
+def get_vendor_email_by_vendor_id(vendor_id):
+    """
+    Given a vendor_id, search all vendor registration details in R2 and return the corresponding email.
+    """
+    import boto3, json
+    from django.conf import settings
+
+    s3 = boto3.client('s3',
+        aws_access_key_id=settings.R2_ACCESS_KEY,
+        aws_secret_access_key=settings.R2_SECRET_KEY,
+        endpoint_url=settings.R2_ENDPOINT,
+        region_name='auto'
+    )
+
+    try:
+        # List all registration details
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in objects.get("Contents", []):
+            if obj["Key"].endswith('/registration_details.json'):
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                if vendor_data.get('vendor_id') == vendor_id:
+                    return vendor_data.get('vendor_email')
+    except Exception as e:
+        print(f"Error finding vendor email for vendor_id {vendor_id}: {str(e)}")
+    return None
+
+def get_vendor_coordinates(request):
+    """
+    Return vendor coordinates as JSON for the map, non-blocking for dashboard load.
+    """
+    import boto3, json
+    from django.conf import settings
+    coordinates = []
+    try:
+        s3 = boto3.client('s3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=settings.R2_ENDPOINT,
+            region_name='auto')
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in objects.get("Contents", []):
+            if obj["Key"].endswith('/registration_details.json'):
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                    lat = vendor_data.get('latitude')
+                    lng = vendor_data.get('longitude')
+                    if lat and lng:
+                        coordinates.append({
+                            'vendor_id': vendor_data.get('vendor_id'),
+                            'vendor_email': vendor_data.get('vendor_email'),
+                            'latitude': lat,
+                            'longitude': lng,
+                            'shop_name': vendor_data.get('vendor_name'),
+                            'city': vendor_data.get('city')
+                        })
+                except Exception as e:
+                    continue
+        return JsonResponse({'coordinates': coordinates})
+    except Exception as e:
+        return JsonResponse({'coordinates': [], 'error': str(e)})
+
+def create_job_completion_notification(user_email, filename, token, vendor_name, service_type, completion_time):
+    # Stub: implement notification logic if needed
+    pass
+
