@@ -1464,39 +1464,28 @@ def list_r2_files():
                       aws_secret_access_key=settings.R2_SECRET_KEY,
                       endpoint_url=settings.R2_ENDPOINT,
                       region_name='auto')
-
     try:
         file_data = []
-        # Get files from both vendor print jobs and vendor manual print jobs folders
         vendor_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_print_jobs/')
         manual_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_manual_print_jobs/')
-
-        # Combine both object lists
         all_objects = []
         if vendor_objects.get("Contents"):
             all_objects.extend(vendor_objects.get("Contents", []))
         if manual_objects.get("Contents"):
             all_objects.extend(manual_objects.get("Contents", []))
-
         for obj in all_objects:
             key = obj["Key"]
             filename = key.split("/")[-1]
-            # Skip .json files (metadata, not print jobs) and folders
             if filename.lower().endswith('.json') or not filename:
                 continue
-            # Process files that are in either vendor_print_jobs or vendor_manual_print_jobs folders
             path_parts = key.split('/')
-            # Expected structure: vendor_print_jobs/{vendor_id}/{filename} or vendor_manual_print_jobs/{vendor_id}/{filename}
             if len(path_parts) >= 3 and (path_parts[0] == 'vendor_print_jobs' or path_parts[0] == 'vendor_manual_print_jobs'):
                 try:
-                    # Get object metadata first
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                     metadata = head_response.get('Metadata', {})
                     job_completed = metadata.get('job_completed', 'NO').upper()
-                    # Only include jobs with job_completed == 'NO' or 'YES'
                     if job_completed not in ['NO', 'YES']:
                         continue
-                    # Generate presigned URL for preview
                     url = s3.generate_presigned_url(
                         ClientMethod='get_object',
                         Params={
@@ -1505,7 +1494,6 @@ def list_r2_files():
                         },
                         ExpiresIn=3600
                     )
-                    # Generate download URL for direct file access
                     download_url = s3.generate_presigned_url(
                         ClientMethod='get_object',
                         Params={
@@ -1515,14 +1503,10 @@ def list_r2_files():
                         },
                         ExpiresIn=3600
                     )
-                    # Determine file type and icon
                     file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
                     file_type = get_file_type(file_extension)
-                    # Calculate estimated pages if not in metadata
                     pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
-                    # Extract vendor info from path
                     vendor_id = path_parts[1] if len(path_parts) > 1 else 'vendor1'
-                    # Build file info
                     file_info = {
                         "filename": filename,
                         "job_id": metadata.get('job_id', ''),
@@ -1555,22 +1539,14 @@ def list_r2_files():
                         "quality": metadata.get('quality', ''),
                         "thickness": metadata.get('thickness', '')
                     }
-                    # Create print options string
                     file_info["print_options"] = f"{file_info['copies']} copies, {file_info['color']}, {file_info['orientation']}"
                     file_data.append(file_info)
-                    print(f"✅ Found job for vendor {vendor_id}: {filename} (status: {metadata.get('status', 'pending')}, completed: {job_completed})")
                 except Exception as e:
                     print(f"Error processing vendor file {key}: {str(e)}")
-                    traceback.print_exc()
                     continue
-        # Count jobs by status
-        pending_count = len([job for job in file_data if job['job_completed'] == 'NO'])
-        completed_count = len([job for job in file_data if job['job_completed'] == 'YES'])
-        print(f"📋 Total jobs found: {len(file_data)} (Pending: {pending_count}, Completed: {completed_count})")
         return file_data
     except Exception as e:
         print(f"Error listing R2 files: {str(e)}")
-        traceback.print_exc()
         return []
 
 def get_file_type(extension):
@@ -2632,6 +2608,8 @@ def get_available_shops(request):
                         vendor_email = vendor_data.get('vendor_email', '')
                         shop_address = vendor_data.get('shop_address', '')
                         city = vendor_data.get('city', '')
+                        latitude = vendor_data.get('latitude', '')
+                        longitude = vendor_data.get('longitude', '')
                         if vendor_name and vendor_email:
                             shop_folder = sanitize_shop_name(vendor_name)
                             shop_info = {
@@ -2640,6 +2618,8 @@ def get_available_shops(request):
                                 'vendor_email': vendor_email,
                                 'shop_address': shop_address,
                                 'city': city,
+                                'latitude': latitude,
+                                'longitude': longitude,
                                 'status': 'Available',
                                 'vendor_id': vendor_data.get('vendor_id', ''),
                                 'vendor_token': vendor_data.get('vendor_token', '')
@@ -3282,4 +3262,55 @@ def get_vendor_coordinates(request):
 def create_job_completion_notification(user_email, filename, token, vendor_name, service_type, completion_time):
     # Stub: implement notification logic if needed
     pass
+
+@csrf_exempt
+def mark_notification_read(request):
+    # Stub: Mark a notification as read (expand as needed)
+    if request.method == 'POST':
+        return JsonResponse({'success': True, 'message': 'Notification marked as read'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def get_user_notifications(request):
+    # Stub: Return user notifications (expand as needed)
+    if request.method == 'POST':
+        notifications = [
+            {'id': 1, 'message': 'Your print job is ready!', 'read': False}
+        ]
+        return JsonResponse({'success': True, 'notifications': notifications})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+def vendor_about(request):
+    return render(request, 'vendor_about.html')
+
+def get_vendor_details(request):
+    """
+    API endpoint to get vendor details by email (expects 'email' as GET or POST param)
+    """
+    email = request.GET.get('email') or request.POST.get('email')
+    if not email:
+        return JsonResponse({'success': False, 'error': 'Email parameter is required'}, status=400)
+    s3 = boto3.client('s3',
+        aws_access_key_id=settings.R2_ACCESS_KEY,
+        aws_secret_access_key=settings.R2_SECRET_KEY,
+        endpoint_url=settings.R2_ENDPOINT,
+        region_name='auto'
+    )
+    try:
+        reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+        return JsonResponse({
+            'success': True,
+            'vendor_details': {
+                'vendor_name': vendor_data.get('vendor_name', ''),
+                'vendor_email': vendor_data.get('vendor_email', ''),
+                'phone_number': vendor_data.get('phone_number', ''),
+                'shop_address': vendor_data.get('shop_address', ''),
+                'city': vendor_data.get('city', ''),
+            }
+        })
+    except Exception as e:
+        print(f"Error fetching vendor details for {email}: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

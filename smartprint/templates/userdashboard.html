@@ -2718,6 +2718,9 @@
         </h2>
       </div>
 
+      <!-- Location Display for Real-time Debugging -->
+      <div id="locationDisplay" style="margin: 10px auto; max-width: 600px;"></div>
+
       <div class="services-grid">
         <!-- Photo Print -->
         <div class="service-card" onclick="window.location.href='/photoprint/'">
@@ -2743,6 +2746,21 @@
               <div class="service-name">Digital Print</div>
               <div class="service-description">Fast digital printing for documents and presentations</div>
               <div class="service-price">Starting from ₹2/page</div>
+            </div>
+          </div>
+          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <!-- Golden Embossing Black Book -->
+        <div class="service-card" onclick="openServiceModal('goldenemboss')">
+          <div class="service-header">
+            <div class="service-icon">
+              <i class="fas fa-book"></i>
+            </div>
+            <div class="service-info">
+              <div class="service-name">Golden Embossing Black Book</div>
+              <div class="service-description">Premium black book with golden embossing for projects and theses</div>
+              <div class="service-price">Custom pricing</div>
             </div>
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
@@ -2776,6 +2794,8 @@
           </div>
           <i class="fas fa-arrow-right service-arrow"></i>
         </div>
+
+
       </div>
     </section>
 
@@ -3076,6 +3096,39 @@
       .number-input-wrapper input:hover {
         border-color: #3b82f6;
         transform: translateY(-1px);
+      }
+
+      .text-input-wrapper {
+        position: relative;
+      }
+
+      .text-input-wrapper input {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        background: white;
+        font-size: 1rem;
+        color: #1f2937;
+        transition: all 0.3s;
+        font-weight: 500;
+      }
+
+      .text-input-wrapper input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .text-input-wrapper input:hover {
+        border-color: #3b82f6;
+        transform: translateY(-1px);
+      }
+
+      .text-input-wrapper input::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
       }
 
       .feedback-wrapper {
@@ -3416,6 +3469,87 @@
               ], 
               required: true,
               description: 'Choose the print quality for your documents',
+              icon: 'fas fa-star'
+            }
+          ]
+        },
+        goldenemboss: {
+          title: 'Golden Embossing Black Book',
+          subtitle: 'Premium black book with golden embossing for projects and theses',
+          service_type: 'golden_embossing',
+          icon: 'fas fa-book',
+          fields: [
+            { 
+              label: 'Upload Document', 
+              type: 'file', 
+              accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx', 
+              required: true,
+              description: 'Upload your document in PDF, Word, PowerPoint, Excel, or Text format',
+              icon: 'fas fa-file-alt'
+            },
+            { 
+              label: 'Print Quantity', 
+              type: 'number', 
+              min: 1, 
+              max: 100, 
+              default: 1, 
+              required: true,
+              description: 'Number of copies you need',
+              icon: 'fas fa-copy'
+            },
+            { 
+              label: 'Print Color', 
+              type: 'select', 
+              options: [
+                { value: 'Black & White', label: 'Black & White', price: '₹2/page' },
+                { value: 'Color', label: 'Full Color', price: '₹5/page' }
+              ], 
+              required: true,
+              description: 'Choose between black & white or color printing',
+              icon: 'fas fa-palette'
+            },
+            { 
+              label: 'Paper Type', 
+              type: 'select', 
+              options: [
+                { value: 'A4', label: 'A4 Paper', price: 'Included' },
+                { value: 'Bond', label: 'Bond Paper', price: '+₹2/page' }
+              ], 
+              required: true,
+              description: 'Select the paper type for your golden embossing',
+              icon: 'fas fa-file'
+            },
+            { 
+              label: 'Course', 
+              type: 'text', 
+              required: true,
+              description: 'Enter your course name (e.g., Computer Science, Engineering)',
+              icon: 'fas fa-graduation-cap'
+            },
+            { 
+              label: 'Branch', 
+              type: 'text', 
+              required: true,
+              description: 'Enter your branch/specialization (e.g., Information Technology, Mechanical)',
+              icon: 'fas fa-code-branch'
+            },
+            { 
+              label: 'College', 
+              type: 'text', 
+              required: true,
+              description: 'Enter your college/university name',
+              icon: 'fas fa-university'
+            },
+            { 
+              label: 'Print Quality', 
+              type: 'select', 
+              options: [
+                { value: 'standard', label: 'Standard Quality', price: 'Included' },
+                { value: 'high', label: 'High Quality', price: '+₹3/page' },
+                { value: 'premium', label: 'Premium Quality', price: '+₹5/page' }
+              ], 
+              required: true,
+              description: 'Choose the print quality for your golden embossed documents',
               icon: 'fas fa-star'
             }
           ]
@@ -3824,6 +3958,24 @@
                 </div>
               </div>
             `;
+          } else if (f.type === 'text') {
+            fieldsHtml += `
+              <div class="modal-field-group">
+                <div class="field-header">
+                  <div class="field-icon">
+                    <i class="${fieldIcon}"></i>
+                  </div>
+                  <div class="field-label">
+                    <span class="field-title">${fieldLabel}</span>
+                    <span class="field-required">*</span>
+                  </div>
+                </div>
+                <div class="field-description">${fieldDescription}</div>
+                <div class="text-input-wrapper">
+                  <input type="text" id="${service}-field-${idx}" placeholder="${f.placeholder || 'Enter ' + fieldLabel.toLowerCase()}" ${f.required ? 'required' : ''} />
+                </div>
+              </div>
+            `;
           }
         });
 
@@ -3956,15 +4108,16 @@
           'germany': { width: 413, height: 531 } // 35x45mm
         };
         
-        // Wait for availableShops to load before rendering shop dropdown
+        // Wait for location-based shops to load before rendering shop dropdown
         function waitForShopsAndRender(attempt = 0) {
-          if (availableShops.length > 0) {
+          const shopsToCheck = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+          if (shopsToCheck.length > 0) {
             renderServiceModalShops(service);
           } else if (attempt < 50) { // Try for up to 5 seconds
             setTimeout(() => waitForShopsAndRender(attempt + 1), 100);
           } else {
             // After timeout, try to reload shops one more time
-            loadAvailableShops().then(() => {
+            loadLocationBasedShops().then(() => {
               renderServiceModalShops(service);
             }).catch(() => {
               renderServiceModalShops(service);
@@ -4305,8 +4458,8 @@
       document.getElementById('passportPhotoBtn').addEventListener('click', function(e) {
         e.preventDefault();
         // Ensure shops are loaded before opening modal
-        if (availableShops.length === 0) {
-          loadAvailableShops();
+        if (availableShops.length === 0 && locationBasedShops.length === 0) {
+          loadLocationBasedShops();
         }
         openServiceModal('passport');
       });
@@ -4620,6 +4773,8 @@
     let selectedVendor = '';
     let userJobs = [];
     let availableShops = [];
+    let userLocation = null;
+    let locationBasedShops = [];
 
     // Initialize user jobs data from backend
     try {
@@ -4723,7 +4878,7 @@
     // Load user jobs and shops on page load
     document.addEventListener('DOMContentLoaded', function() {
       loadUserJobs();
-      loadAvailableShops();
+      loadLocationBasedShops();
       initializeNotifications();
 
       // Fetch vendor coordinates for the map asynchronously
@@ -5039,12 +5194,14 @@
       }
     }
 
-    // Function to render vendor options in main print modal
+    // Function to render vendor options in main print modal (with location support)
     function renderVendorOptions() {
       const vendorOptionsContainer = document.getElementById('vendorOptions');
       if (!vendorOptionsContainer) return;
 
-      if (availableShops.length === 0) {
+      const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+
+      if (shopsToRender.length === 0) {
         vendorOptionsContainer.innerHTML = `
           <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
             <i class="fas fa-store-slash"></i>
@@ -5054,8 +5211,9 @@
         return;
       }
 
-      const optionsHtml = availableShops.map((shop, index) => {
-        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}</option>`;
+      const optionsHtml = shopsToRender.map((shop, index) => {
+        const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
+        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}${distanceText}</option>`;
       }).join('');
 
       vendorOptionsContainer.innerHTML = `
@@ -5076,17 +5234,24 @@
       }
     }
 
-    // Function to render shops in service modals
+    // Location-based vendor options renderer
+    function renderLocationBasedVendorOptions() {
+      renderVendorOptions(); // Just call the updated function
+    }
+
+    // Function to render shops in service modals (with location support)
     function renderServiceModalShops(service) {
       const shopOptionsContainer = document.getElementById(`${service}-shop-options`);
       if (!shopOptionsContainer) return;
 
-      if (availableShops.length === 0) {
+      const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+
+      if (shopsToRender.length === 0) {
         shopOptionsContainer.innerHTML = `
           <div class="no-shops-message">
             <i class="fas fa-store-slash"></i>
             <span>No print shops available at the moment</span>
-            <button onclick="loadAvailableShops().then(() => renderServiceModalShops('${service}'))" style="margin-top: 8px; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            <button onclick="loadLocationBasedShops().then(() => renderServiceModalShops('${service}'))" style="margin-top: 8px; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
               <i class="fas fa-sync-alt"></i> Retry
             </button>
           </div>
@@ -5094,8 +5259,9 @@
         return;
       }
 
-      const optionsHtml = availableShops.map((shop, index) => {
-        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}</option>`;
+      const optionsHtml = shopsToRender.map((shop, index) => {
+        const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
+        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}${distanceText}</option>`;
       }).join('');
 
       shopOptionsContainer.innerHTML = `
@@ -6224,6 +6390,324 @@
         }
       }
       return cookieValue;
+    }
+
+    // Location-based shop filtering functions
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      // Haversine formula to calculate distance between two points
+      const R = 6371; // Radius of the Earth in kilometers
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c; // Distance in kilometers
+      return distance;
+    }
+
+    function formatDistance(distance) {
+      if (distance < 1) {
+        return Math.round(distance * 1000) + 'm';
+      } else {
+        return distance.toFixed(1) + 'km';
+      }
+    }
+
+    function getUserLocation(forceRefresh = false) {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation is not supported by this browser'));
+          return;
+        }
+
+        // Clear cached location if force refresh is requested
+        if (forceRefresh) {
+          userLocation = null;
+        }
+
+        // Enhanced geolocation options for maximum accuracy
+        const options = {
+          enableHighAccuracy: true,    // Use GPS if available
+          timeout: 15000,              // Wait up to 15 seconds
+          maximumAge: forceRefresh ? 0 : 60000  // Use cached location for 1 minute, or force fresh if requested
+        };
+
+        console.log('🌍 Requesting user location with options:', options);
+        console.log('🔄 Force refresh:', forceRefresh);
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const coords = position.coords;
+            userLocation = {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              accuracy: coords.accuracy,
+              timestamp: new Date().toISOString()
+            };
+            
+            console.log('✅ Location obtained successfully:');
+            console.log('📍 Latitude:', userLocation.latitude);
+            console.log('📍 Longitude:', userLocation.longitude);
+            console.log('🎯 Accuracy:', coords.accuracy, 'meters');
+            console.log('🕐 Timestamp:', userLocation.timestamp);
+            console.log('🌐 Full coordinates object:', coords);
+
+            // Show location info to user for debugging
+            showLocationInfo(userLocation, coords.accuracy);
+            
+            resolve(userLocation);
+          },
+          (error) => {
+            console.error('❌ Geolocation error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            
+            // Provide specific error messages
+            let errorMessage = 'Unable to get your location. ';
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage += 'Location access was denied. Please enable location services and allow this site to access your location.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage += 'Location information is unavailable. Please check your device\'s location settings.';
+                break;
+              case error.TIMEOUT:
+                errorMessage += 'Location request timed out. Please try again.';
+                break;
+              default:
+                errorMessage += 'An unknown error occurred while retrieving location.';
+                break;
+            }
+            
+            showLocationError(errorMessage);
+            reject(new Error(errorMessage));
+          },
+          options
+        );
+      });
+    }
+
+    // Function to show location information to user
+    function showLocationInfo(location, accuracy) {
+      const locationDisplay = document.getElementById('locationDisplay');
+      if (locationDisplay) {
+        locationDisplay.innerHTML = `
+          <div style="background: #e8f5e8; border: 1px solid #4caf50; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 12px;">
+            <strong>📍 Current Location:</strong><br>
+            Lat: ${location.latitude.toFixed(6)}<br>
+            Lng: ${location.longitude.toFixed(6)}<br>
+            Accuracy: ${accuracy ? Math.round(accuracy) + 'm' : 'Unknown'}
+            <button onclick="refreshLocation()" style="margin-left: 8px; padding: 2px 6px; background: #4caf50; color: white; border: none; border-radius: 2px; cursor: pointer; font-size: 10px;">
+              🔄 Refresh
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // Function to show location errors
+    function showLocationError(message) {
+      const locationDisplay = document.getElementById('locationDisplay');
+      if (locationDisplay) {
+        locationDisplay.innerHTML = `
+          <div style="background: #ffebee; border: 1px solid #f44336; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 12px; color: #c62828;">
+            <strong>⚠️ Location Error:</strong><br>
+            ${message}
+            <button onclick="refreshLocation()" style="margin-left: 8px; padding: 2px 6px; background: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer; font-size: 10px;">
+              🔄 Try Again
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // Function to manually refresh location
+    window.refreshLocation = async function() {
+      console.log('🔄 Manual location refresh requested');
+      try {
+        showLocationInfo({ latitude: 'Loading...', longitude: 'Loading...' }, 'Loading...');
+        await getUserLocation(true); // Force refresh
+        await loadLocationBasedShops(true); // Reload shops with new location
+        console.log('✅ Location and shops refreshed successfully');
+        
+        // Show success message
+        const locationDisplay = document.getElementById('locationDisplay');
+        if (locationDisplay && userLocation) {
+          const successDiv = document.createElement('div');
+          successDiv.style.cssText = 'background: #e8f5e8; border: 1px solid #4caf50; padding: 4px 8px; border-radius: 4px; margin: 4px 0; font-size: 10px; color: #2e7d32;';
+          successDiv.textContent = '✅ Location updated successfully!';
+          locationDisplay.appendChild(successDiv);
+          
+          // Remove success message after 3 seconds
+          setTimeout(() => {
+            if (successDiv.parentNode) {
+              successDiv.parentNode.removeChild(successDiv);
+            }
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('❌ Failed to refresh location:', error);
+      }
+    }
+
+    // Add a global function to compare with external location services
+    window.compareLocation = function(externalLat, externalLng) {
+      if (!userLocation) {
+        console.log('❌ No user location available for comparison');
+        return;
+      }
+      
+      const distance = calculateDistance(
+        userLocation.latitude, userLocation.longitude,
+        externalLat, externalLng
+      );
+      
+      console.log('🔍 Location Comparison:');
+      console.log('📱 Dashboard Location:', userLocation.latitude, userLocation.longitude);
+      console.log('🌐 External Location:', externalLat, externalLng);
+      console.log('📏 Distance Difference:', formatDistance(distance));
+      console.log('🕐 Dashboard Location Time:', userLocation.timestamp);
+      
+      if (distance > 0.1) { // More than 100 meters difference
+        console.log('⚠️ Significant location difference detected!');
+        return {
+          dashboardLocation: userLocation,
+          externalLocation: { lat: externalLat, lng: externalLng },
+          difference: distance,
+          formattedDifference: formatDistance(distance)
+        };
+      } else {
+        console.log('✅ Locations are very close, good accuracy');
+        return null;
+      }
+    }
+
+    function filterShopsByLocation(shops, userLat, userLng) {
+      console.log('🔍 Filtering shops by location:');
+      console.log('👤 User coordinates:', { lat: userLat, lng: userLng });
+      console.log('🏪 Total shops to filter:', shops.length);
+
+      if (!userLat || !userLng || !shops || shops.length === 0) {
+        console.log('⚠️ No location data or shops, returning all shops');
+        return shops; // Return all shops if no location data
+      }
+
+      const radiusRanges = [1, 2, 3, 4, 5]; // km ranges to check
+      let filteredShops = [];
+
+      // Calculate distance for all shops that have coordinates
+      const shopsWithDistance = shops
+        .filter(shop => {
+          const hasCoords = shop.latitude && shop.longitude && 
+                           shop.latitude !== '' && shop.longitude !== '';
+          if (!hasCoords) {
+            console.log(`🏪 ${shop.shop_name}: No coordinates available`);
+          }
+          return hasCoords;
+        })
+        .map(shop => {
+          const shopLat = parseFloat(shop.latitude);
+          const shopLng = parseFloat(shop.longitude);
+          const distance = calculateDistance(userLat, userLng, shopLat, shopLng);
+          
+          console.log(`📍 ${shop.shop_name}: (${shopLat}, ${shopLng}) = ${formatDistance(distance)}`);
+          
+          return {
+            ...shop,
+            distance: distance,
+            formattedDistance: formatDistance(distance)
+          };
+        })
+        .sort((a, b) => a.distance - b.distance); // Sort by distance
+
+      console.log('📊 Shops with coordinates and distances:', shopsWithDistance.length);
+
+      // Try each radius range starting from smallest
+      for (let radius of radiusRanges) {
+        filteredShops = shopsWithDistance.filter(shop => shop.distance <= radius);
+        console.log(`🎯 Within ${radius}km: ${filteredShops.length} shops`);
+        if (filteredShops.length > 0) {
+          console.log(`✅ Found ${filteredShops.length} shops within ${radius}km radius`);
+          console.log('🏆 Selected shops:', filteredShops.map(s => `${s.shop_name} (${s.formattedDistance})`));
+          break;
+        }
+      }
+
+      // If no shops found within 5km, include shops without coordinates at the end
+      if (filteredShops.length === 0) {
+        console.log('❌ No shops found within 5km, showing all shops');
+        const shopsWithoutCoords = shops
+          .filter(shop => !shop.latitude || !shop.longitude || 
+                         shop.latitude === '' || shop.longitude === '')
+          .map(shop => ({
+            ...shop,
+            distance: null,
+            formattedDistance: 'Location not available'
+          }));
+        
+        filteredShops = [...shopsWithDistance, ...shopsWithoutCoords];
+        console.log('📝 Final list includes all shops with and without coordinates');
+      }
+
+      console.log('🎯 Final filtered shops count:', filteredShops.length);
+      return filteredShops;
+    }
+
+    async function loadLocationBasedShops(forceLocationRefresh = false) {
+      try {
+        console.log('🏪 Loading location-based shops...');
+        
+        // First load all shops
+        await loadAvailableShops();
+        console.log('📦 Available shops loaded:', availableShops.length);
+        
+        // Try to get user location with enhanced accuracy
+        try {
+          console.log('📍 Getting user location...');
+          await getUserLocation(forceLocationRefresh);
+          console.log('✅ User location obtained:', userLocation);
+          
+          // Filter shops by location with detailed logging
+          console.log('🔍 Filtering shops by user location...');
+          locationBasedShops = filterShopsByLocation(
+            availableShops, 
+            userLocation.latitude, 
+            userLocation.longitude
+          );
+          
+          console.log('🎯 Location-based shops found:', locationBasedShops.length);
+          if (locationBasedShops.length > 0) {
+            console.log('📊 Closest shops:');
+            locationBasedShops.slice(0, 3).forEach((shop, index) => {
+              console.log(`${index + 1}. ${shop.shop_name} - ${shop.formattedDistance}`);
+            });
+          }
+          
+        } catch (locationError) {
+          console.log('⚠️ Location access denied or failed:', locationError.message);
+          // If location fails, use all shops without distance info
+          locationBasedShops = availableShops.map(shop => ({
+            ...shop,
+            distance: null,
+            formattedDistance: 'Enable location for distance'
+          }));
+        }
+        
+        // Update selected vendor to first available location-based shop
+        if (locationBasedShops.length > 0) {
+          selectedVendor = locationBasedShops[0].shop_folder;
+          console.log('🏆 Selected nearest shop:', selectedVendor);
+        }
+        
+        // Update UI with location-based shops
+        renderLocationBasedVendorOptions();
+        console.log('🔄 UI updated with location-based shops');
+        
+      } catch (error) {
+        console.error('❌ Error loading location-based shops:', error);
+        locationBasedShops = [];
+      }
     }
 
     // Initialize UI
