@@ -6,7 +6,7 @@ from .views import (
     auth_receiver, sign_in, photoprint, vendor_register, vendor_pricing, vendor_info,
     vendor_login, vendor_register_api, mark_notification_read,
     enhance_passport_photo, forgot_password_page, forgot_password, verify_reset_code, reset_password,
-    logout_view, get_vendor_coordinates
+    logout_view, get_vendor_coordinates,get_vendor_pricing,
 )
 
 urlpatterns = [
@@ -31,7 +31,8 @@ urlpatterns = [
     path('vendor-authenticate/', views.vendor_authenticate, name='vendor_authenticate'),
     path('get-available-shops/', views.get_available_shops, name='get_available_shops'),
     path('debug-vendor-registrations/', views.debug_vendor_registrations, name='debug_vendor_registrations'),
-    # path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
+    path('get-vendor-pricing/', get_vendor_pricing, name='get_vendor_pricing'),
+    #path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
     path('mark-notification-read/', mark_notification_read, name='mark_notification_read'),
     path('get-vendor-details/', views.get_vendor_details, name='get_vendor_details'),
     path('enhance-passport-photo/', enhance_passport_photo, name='enhance_passport_photo'),
