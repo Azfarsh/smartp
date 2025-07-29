@@ -2145,9 +2145,30 @@ def vendor_pricing(request):
                 print(f"❌ Error fetching vendor details: {str(e)}")
                 vendor_details = None
         
+        # Check if load_pricing parameter is present
+        load_pricing = request.GET.get('load_pricing')
+        pricing_data = None
+        
+        if load_pricing and vendor_email:
+            try:
+                # Try to load existing pricing data
+                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
+                
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                print(f"ℹ️ No existing pricing data found for {vendor_email}: {str(e)}")
+                pricing_data = None
+        
         context = {
             'vendor_email': vendor_email,
-            'vendor_details': vendor_details
+            'vendor_details': vendor_details,
+            'pricing_data': pricing_data
         }
         return render(request, 'vendor_pricing.html', context)
     elif request.method == 'POST':
@@ -2166,10 +2187,60 @@ def vendor_pricing(request):
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
 
-            # Prepare pricing data
+            # Categorize pricing data by service type
+            pricing_entries = data.get('pricing_entries', [])
+            categorized_pricing = {
+                'digital_print': {},
+                'jumbo_print': {},
+                'gloss_print': {},
+                'photo_print': {},
+                'golden_embossing': {},
+                'passport_photo': {},
+                'a4_print': {},
+                'lamination': {},
+                'binding': {}
+            }
+            
+            # Organize pricing entries by service category
+            for entry in pricing_entries:
+                service_type = entry.get('service_type', '')
+                price = entry.get('price', 0)
+                
+                # Categorize based on service type prefix
+                if service_type.startswith('digital_print'):
+                    categorized_pricing['digital_print'][service_type] = price
+                elif service_type.startswith('jumbo_print'):
+                    categorized_pricing['jumbo_print'][service_type] = price
+                elif service_type.startswith('gloss_print'):
+                    categorized_pricing['gloss_print'][service_type] = price
+                elif service_type.startswith('photo_print'):
+                    categorized_pricing['photo_print'][service_type] = price
+                elif service_type.startswith('emboss'):
+                    categorized_pricing['golden_embossing'][service_type] = price
+                elif service_type.startswith('passport_photo'):
+                    categorized_pricing['passport_photo'][service_type] = price
+                elif service_type.startswith('a4_print'):
+                    categorized_pricing['a4_print'][service_type] = price
+                elif service_type.startswith('lamination'):
+                    categorized_pricing['lamination'][service_type] = price
+                elif service_type.startswith('binding'):
+                    categorized_pricing['binding'][service_type] = price
+                else:
+                    # Fallback to general category
+                    if 'general' not in categorized_pricing:
+                        categorized_pricing['general'] = {}
+                    categorized_pricing['general'][service_type] = price
+            
+            # Prepare pricing data with categorized structure
             pricing_data = {
                 'vendor_email': vendor_email,
-                'pricing_data': data.get('pricing_data', {}),
+                'pricing_data': data.get('pricing_data', {}),  # Keep original for backward compatibility
+                'categorized_pricing': categorized_pricing,
+                'services_summary': {
+                    'total_services': len(pricing_entries),
+                    'available_services_count': len([e for e in pricing_entries if e.get('price', 0) > 0]),
+                    'not_available_services_count': len([e for e in pricing_entries if e.get('price', 0) == 0])
+                },
                 'created_at': datetime.datetime.now().isoformat(),
                 'updated_at': datetime.datetime.now().isoformat()
             }
@@ -2186,7 +2257,11 @@ def vendor_pricing(request):
 
             return JsonResponse({
                 'success': True,
-                'message': 'Pricing saved successfully'
+                'message': 'Pricing saved successfully',
+                'total_services': pricing_data['services_summary']['total_services'],
+                'available_services_count': pricing_data['services_summary']['available_services_count'],
+                'not_available_services_count': pricing_data['services_summary']['not_available_services_count'],
+                'categorized_pricing': categorized_pricing
             })
 
         except Exception as e:
@@ -2583,6 +2658,130 @@ def sanitize_shop_name(shop_name):
     sanitized = re.sub(r'[^a-zA-Z0-9_\s]', '', shop_name.lower())
     sanitized = re.sub(r'\s+', '_', sanitized.strip())
     return sanitized
+
+@csrf_exempt
+def get_vendor_pricing(request):
+    """
+    Get vendor pricing data from R2 storage
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor email required'})
+
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+
+            try:
+                # Get vendor pricing file
+                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                
+                # Return both old format (for backward compatibility) and new categorized format
+                return JsonResponse({
+                    'success': True,
+                    'pricing': pricing_data.get('pricing_data', {}),
+                    'categorized_pricing': pricing_data.get('categorized_pricing', {}),
+                    'services_summary': pricing_data.get('services_summary', {})
+                })
+                
+            except Exception as e:
+                print(f"Error fetching pricing for {vendor_email}: {str(e)}")
+                # Return default pricing if vendor pricing not found
+                default_pricing = {
+                    'digital_print_a4_single_bw': 2,
+                    'digital_print_a4_single_color': 5,
+                    'digital_print_a3_single_bw': 4,
+                    'digital_print_a3_single_color': 8,
+                    'gloss_print_a3_color': 12,
+                    'gloss_print_a2_color': 18,
+                    'gloss_print_a1_color': 24,
+                    'gloss_print_a0_color': 30,
+                    'jumbo_print_a3_single_bw': 6,
+                    'jumbo_print_a3_single_color': 12,
+                    'jumbo_print_a2_single_bw': 12,
+                    'jumbo_print_a2_single_color': 18,
+                    'jumbo_print_a1_single_bw': 18,
+                    'jumbo_print_a1_single_color': 24,
+                    'jumbo_print_a0_single_bw': 25,
+                    'jumbo_print_a0_single_color': 30,
+                    'photo_print_4_6_standard': 5,
+                    'photo_print_5_7_standard': 8,
+                    'photo_print_6_8_standard': 12,
+                    'photo_print_a4_standard': 15,
+                    'passport_photo_8_photos': 40,
+                    'passport_photo_16_photos': 70,
+                    'passport_photo_30_photos': 120,
+                    'golden_embossing_per_book': 50,
+                    'digital_print_quality_upgrade': 1,
+                    'golden_emboss_quality_upgrade': 3
+                }
+                
+                # Create categorized default pricing
+                default_categorized = {
+                    'digital_print': {
+                        'digital_print_a4_single_bw': 2,
+                        'digital_print_a4_single_color': 5,
+                        'digital_print_a3_single_bw': 4,
+                        'digital_print_a3_single_color': 8,
+                        'digital_print_quality_upgrade': 1
+                    },
+                    'gloss_print': {
+                        'gloss_print_a3_color': 12,
+                        'gloss_print_a2_color': 18,
+                        'gloss_print_a1_color': 24,
+                        'gloss_print_a0_color': 30
+                    },
+                    'jumbo_print': {
+                        'jumbo_print_a3_single_bw': 6,
+                        'jumbo_print_a3_single_color': 12,
+                        'jumbo_print_a2_single_bw': 12,
+                        'jumbo_print_a2_single_color': 18,
+                        'jumbo_print_a1_single_bw': 18,
+                        'jumbo_print_a1_single_color': 24,
+                        'jumbo_print_a0_single_bw': 25,
+                        'jumbo_print_a0_single_color': 30
+                    },
+                    'photo_print': {
+                        'photo_print_4_6_standard': 5,
+                        'photo_print_5_7_standard': 8,
+                        'photo_print_6_8_standard': 12,
+                        'photo_print_a4_standard': 15
+                    },
+                    'passport_photo': {
+                        'passport_photo_8_photos': 40,
+                        'passport_photo_16_photos': 70,
+                        'passport_photo_30_photos': 120
+                    },
+                    'golden_embossing': {
+                        'golden_embossing_per_book': 50,
+                        'golden_emboss_quality_upgrade': 3
+                    }
+                }
+                
+                return JsonResponse({
+                    'success': True,
+                    'pricing': default_pricing,
+                    'categorized_pricing': default_categorized,
+                    'services_summary': {
+                        'total_services': len(default_pricing),
+                        'available_services_count': len(default_pricing),
+                        'not_available_services_count': 0
+                    }
+                })
+                
+        except Exception as e:
+            print(f"Error in get_vendor_pricing: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @csrf_exempt
 def get_available_shops(request):

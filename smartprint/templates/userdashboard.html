@@ -3196,6 +3196,17 @@
         display: block;
       }
 
+      /* Range field styling */
+      .modal-field-group input[placeholder*="range"] {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+      }
+
+      .modal-field-group input[placeholder*="range"]::placeholder {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
       .shop-options {
         margin-top: 0.5rem;
       }
@@ -3249,6 +3260,89 @@
         border-color: #3b82f6;
         box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         transform: translateY(-1px);
+      }
+
+      /* Pricing Summary Section */
+      .pricing-summary {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        border: 2px solid #e2e8f0;
+        display: none;
+      }
+
+      .pricing-summary.active {
+        display: block;
+      }
+
+      .pricing-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .pricing-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1rem;
+      }
+
+      .pricing-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #1f2937;
+      }
+
+      .pricing-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .pricing-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .pricing-item:last-child {
+        border-bottom: none;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #1e3a8a;
+        border-top: 2px solid #3b82f6;
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+      }
+
+      .pricing-label {
+        font-weight: 500;
+        color: #4b5563;
+      }
+
+      .pricing-value {
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .loading-pricing {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        color: #6b7280;
+        font-style: italic;
       }
 
       .modal-actions {
@@ -3438,35 +3532,21 @@
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'Black & White', label: 'Black & White', price: '₹2/page' },
-                { value: 'Color', label: 'Full Color', price: '₹5/page' }
+                { value: 'Color', label: 'Full Color' }
               ], 
               required: true,
-              description: 'Choose between black & white or color printing',
+              description: 'Color printing service',
               icon: 'fas fa-palette'
-            },
-            { 
-              label: 'Color Range', 
-              type: 'text', 
-              required: false,
-              description: 'Specify page range for color printing (e.g., 1-5, 10-15, All)',
-              icon: 'fas fa-layer-group',
-              placeholder: 'e.g., 1-5, 10-15, All'
-            },
-            { 
-              label: 'Black & White Range', 
-              type: 'text', 
-              required: false,
-              description: 'Specify page range for black & white printing (e.g., 6-9, 16-20, All)',
-              icon: 'fas fa-layer-group',
-              placeholder: 'e.g., 6-9, 16-20, All'
             },
             { 
               label: 'Paper Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (Standard)', price: 'Included' },
-                { value: 'A3', label: 'A3 (Large)', price: '+₹3/page' }
+                { value: 'A4', label: 'A4 (Standard)' },
+                { value: 'A3', label: 'A3 (Large)' },
+                { value: 'A2', label: 'A2 (Extra Large)' },
+                { value: 'A1', label: 'A1 (Jumbo)' },
+                { value: '12x18', label: '12" x 18" (Custom)' }
               ], 
               required: true,
               description: 'Select the paper size for your documents',
@@ -3476,22 +3556,12 @@
               label: 'Print Quality', 
               type: 'select', 
               options: [
-                { value: 'standard', label: 'Standard Quality', price: 'Included' },
-                { value: 'high', label: 'High Quality', price: '+₹1/page' }
+                { value: 'standard', label: 'Standard Quality' },
+                { value: 'high', label: 'High Quality' }
               ], 
               required: true,
               description: 'Choose the print quality for your documents',
               icon: 'fas fa-star'
-            },
-            { 
-              label: 'Number of Print Copies', 
-              type: 'number', 
-              min: 1, 
-              max: 50, 
-              default: 1, 
-              required: true,
-              description: 'Number of copies you need',
-              icon: 'fas fa-copy'
             }
           ]
         },
@@ -3510,32 +3580,39 @@
               icon: 'fas fa-file-alt'
             },
             { 
-              label: 'Print Quantity', 
-              type: 'number', 
-              min: 1, 
-              max: 100, 
-              default: 1, 
-              required: true,
-              description: 'Number of copies you need',
-              icon: 'fas fa-copy'
-            },
-            { 
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'Black & White', label: 'Black & White', price: '₹2/page' },
-                { value: 'Color', label: 'Full Color', price: '₹5/page' }
+                { value: 'Black & White', label: 'Black & White' },
+                { value: 'Color', label: 'Full Color' },
+                { value: 'Mixed', label: 'Mixed Color & Black & White' }
               ], 
               required: true,
-              description: 'Choose between black & white or color printing',
+              description: 'Choose between black & white, color, or mixed printing',
               icon: 'fas fa-palette'
+            },
+            { 
+              label: 'Color Range', 
+              type: 'text', 
+              required: false,
+              placeholder: 'Enter color page range (e.g., 1-5, 10-15)',
+              description: 'Specify which pages should be printed in color (e.g., 1-5, 10-15)',
+              icon: 'fas fa-palette'
+            },
+            { 
+              label: 'Black & White Range', 
+              type: 'text', 
+              required: false,
+              placeholder: 'Enter black & white page range (e.g., 6-9, 16-20)',
+              description: 'Specify which pages should be printed in black & white (e.g., 6-9, 16-20)',
+              icon: 'fas fa-adjust'
             },
             { 
               label: 'Paper Type', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 Paper', price: 'Included' },
-                { value: 'Bond', label: 'Bond Paper', price: '+₹2/page' }
+                { value: 'A4', label: 'A4 Paper' },
+                { value: 'Bond', label: 'Bond Paper' }
               ], 
               required: true,
               description: 'Select the paper type for your golden embossing',
@@ -3566,9 +3643,9 @@
               label: 'Print Quality', 
               type: 'select', 
               options: [
-                { value: 'standard', label: 'Standard Quality', price: 'Included' },
-                { value: 'high', label: 'High Quality', price: '+₹3/page' },
-                { value: 'premium', label: 'Premium Quality', price: '+₹5/page' }
+                { value: 'standard', label: 'Standard Quality' },
+                { value: 'high', label: 'High Quality' },
+                { value: 'premium', label: 'Premium Quality' }
               ], 
               required: true,
               description: 'Choose the print quality for your golden embossed documents',
@@ -3591,33 +3668,33 @@
               icon: 'fas fa-file-upload'
             },
             { 
-              label: 'Print Quantity', 
-              type: 'number', 
-              min: 1, 
-              max: 50, 
-              default: 1, 
-              required: true,
-              description: 'Number of copies you want to print',
-              icon: 'fas fa-copy'
-            },
-            { 
               label: 'Print Size', 
               type: 'select', 
               options: [
-                { value: 'A3', label: 'A3 (297 x 420 mm)', price: '₹12/page' },
-                { value: 'A2', label: 'A2 (420 x 594 mm)', price: '₹18/page' },
-                { value: 'A1', label: 'A1 (594 x 841 mm)', price: '₹24/page' },
-                { value: 'A0', label: 'A0 (841 x 1189 mm)', price: '₹30/page' }
+                { value: 'A4', label: 'A4 (210 x 297 mm)' },
+                { value: 'A3', label: 'A3 (297 x 420 mm)' },
+                { value: 'A2', label: 'A2 (420 x 594 mm)' },
+                { value: 'A1', label: 'A1 (594 x 841 mm)' }
               ], 
               required: true,
-              description: 'Choose the size for your gloss print',
+              description: 'Choose the size for your gloss print (A1 to A4 only)',
               icon: 'fas fa-ruler-combined'
+            },
+            { 
+              label: 'Gloss Type', 
+              type: 'select', 
+              options: [
+                { value: 'standard_gloss', label: 'Standard Gloss' }
+              ], 
+              required: true,
+              description: 'Standard gloss finish for professional presentation',
+              icon: 'fas fa-star'
             },
             { 
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'Color', label: 'Color', price: '₹12/page' }
+                { value: 'Color', label: 'Color' }
               ], 
               required: true,
               description: 'Color printing service',
@@ -3643,10 +3720,10 @@
               label: 'Print Size', 
               type: 'select', 
               options: [
-                { value: 'A3', label: 'A3 (297 x 420 mm)', price: '₹6/page' },
-                { value: 'A2', label: 'A2 (420 x 594 mm)', price: '₹12/page' },
-                { value: 'A1', label: 'A1 (594 x 841 mm)', price: '₹18/page' },
-                { value: 'A0', label: 'A0 (841 x 1189 mm)', price: '₹25/page' }
+                { value: 'A3', label: 'A3 (297 x 420 mm)' },
+                { value: 'A2', label: 'A2 (420 x 594 mm)' },
+                { value: 'A1', label: 'A1 (594 x 841 mm)' },
+                { value: 'A0', label: 'A0 (841 x 1189 mm)' }
               ], 
               required: true,
               description: 'Choose the size for your large format print',
@@ -3656,29 +3733,35 @@
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'All Black & White', label: 'All Black & White', price: '₹6/page' },
-                { value: 'All Color', label: 'All Color', price: '₹12/page' }
+                { value: 'All Black & White', label: 'All Black & White' },
+                { value: 'All Color', label: 'All Color' },
+                { value: 'Mixed', label: 'Mixed Color & Black & White' }
               ], 
               required: true,
-              description: 'Choose between all black & white or all color printing',
+              description: 'Choose between all black & white, all color, or mixed printing',
               icon: 'fas fa-palette'
             },
-
             { 
-              label: 'Print Quantity', 
-              type: 'number', 
-              min: 1, 
-              max: 20, 
-              default: 1, 
-              required: true,
-              description: 'Number of copies you need',
-              icon: 'fas fa-copy'
+              label: 'Color Range', 
+              type: 'text', 
+              required: false,
+              placeholder: 'Enter color page range (e.g., 1-5, 10-15)',
+              description: 'Specify which pages should be printed in color (e.g., 1-5, 10-15)',
+              icon: 'fas fa-palette'
+            },
+            { 
+              label: 'Black & White Range', 
+              type: 'text', 
+              required: false,
+              placeholder: 'Enter black & white page range (e.g., 6-9, 16-20)',
+              description: 'Specify which pages should be printed in black & white (e.g., 6-9, 16-20)',
+              icon: 'fas fa-adjust'
             },
             { 
               label: 'Print Quality', 
               type: 'select', 
               options: [
-                { value: 'standard', label: 'Standard Quality', price: 'Included' }
+                { value: 'standard', label: 'Standard Quality' }
               ], 
               required: true,
               description: 'Standard quality printing for large format prints',
@@ -3849,13 +3932,28 @@
               const min = parseInt(input.min) || 1;
               input.value = min;
             });
+
+            // Reset text inputs (including range fields)
+            const textInputs = form.querySelectorAll('input[type="text"]');
+            textInputs.forEach(input => {
+              input.value = '';
+            });
+
+            // Hide range fields after reset
+            const rangeFields = form.querySelectorAll('input[placeholder*="range"]');
+            rangeFields.forEach(input => {
+              const fieldGroup = input.closest('.modal-field-group');
+              if (fieldGroup) {
+                fieldGroup.style.display = 'none';
+              }
+            });
           }
 
-          // Reset shop selection to first option
-          const shopSelect = modal.querySelector(`#${service}-shop-select`);
-          if (shopSelect && shopSelect.options.length > 0) {
-            shopSelect.selectedIndex = 0;
-          }
+                      // Reset shop selection to "None" option
+            const shopSelect = modal.querySelector(`#${service}-shop-select`);
+            if (shopSelect && shopSelect.options.length > 0) {
+              shopSelect.selectedIndex = 0; // This will select the "-- Select Shop --" option
+            }
 
           // Reset feedback textarea
           const feedbackTextarea = modal.querySelector(`#${service}-feedback`);
@@ -3970,8 +4068,10 @@
           } else if (f.type === 'text') {
             const isConditional = f.label.toLowerCase().includes('range') && f.label.toLowerCase().includes('mixed');
             const conditionalAttr = isConditional ? 'data-conditional="true"' : '';
+            const isRangeField = f.label.toLowerCase().includes('range');
+            const initialStyle = isRangeField ? 'style="display: none;"' : '';
             fieldsHtml += `
-              <div class="modal-field-group" ${conditionalAttr}>
+              <div class="modal-field-group" ${conditionalAttr} ${initialStyle}>
                 <div class="field-header">
                   <div class="field-icon">
                     <i class="${fieldIcon}"></i>
@@ -4061,6 +4161,23 @@
               ${fieldsHtml}
               ${shopSelectionHtml}
                 ${feedbackHtml}
+                
+                <!-- Pricing Summary -->
+                <div class="pricing-summary" id="${service}-pricing-summary">
+                  <div class="pricing-header">
+                    <div class="pricing-icon">
+                      <i class="fas fa-calculator"></i>
+                    </div>
+                    <div class="pricing-title">Pricing Summary</div>
+                  </div>
+                  <div class="pricing-details" id="${service}-pricing-details">
+                    <div class="loading-pricing">
+                      <i class="fas fa-spinner fa-spin"></i>
+                      <span>Select a vendor to view pricing</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <div class="modal-actions">
                   <button type="button" class="btn-cancel" onclick="closeServiceModal('${service}')">
                     <i class="fas fa-times"></i>
@@ -4189,26 +4306,7 @@
           if (!filePreview) console.warn('File preview not found for service modal:', service);
         }
         
-        // Add conditional field display logic for color range fields
-        const colorSelect = modal.querySelector('select[id*="field-"][id*="Print Color"], select[id*="field-"][id*="Color Set"]');
-        if (colorSelect) {
-          colorSelect.addEventListener('change', function() {
-            const selectedValue = this.value;
-            const colorRangeField = modal.querySelector('input[placeholder*="Color Range"]');
-            const bwRangeField = modal.querySelector('input[placeholder*="Black & White Range"]');
-            
-            if (selectedValue === 'Mixed') {
-              if (colorRangeField) colorRangeField.parentElement.parentElement.classList.add('show');
-              if (bwRangeField) bwRangeField.parentElement.parentElement.classList.add('show');
-            } else {
-              if (colorRangeField) colorRangeField.parentElement.parentElement.classList.remove('show');
-              if (bwRangeField) bwRangeField.parentElement.parentElement.classList.remove('show');
-            }
-          });
-          
-          // Trigger initial state
-          colorSelect.dispatchEvent(new Event('change'));
-        }
+        
         
         // Helper function to process files
         async function processFile(file, fileUploadLabel, filePreview) {
@@ -4287,16 +4385,26 @@
           });
         }
         
-        // Shop selection handler for dropdown
+        // Shop selection handler for dropdown with pricing calculation
         setTimeout(() => {
           const shopSelect = modal.querySelector(`#${service}-shop-select`);
           if (shopSelect) {
             selectedShop = shopSelect.value; // Set initial value
             shopSelect.addEventListener('change', function() {
               selectedShop = this.value;
+              calculatePricing(service); // Calculate pricing when vendor changes
             });
           }
         }, 500);
+
+        // Add event listeners for form fields to trigger pricing recalculation
+        setTimeout(() => {
+          const formInputs = modal.querySelectorAll('select, input[type="number"], input[type="text"]');
+          formInputs.forEach(input => {
+            input.addEventListener('change', () => calculatePricing(service));
+            input.addEventListener('input', () => calculatePricing(service));
+          });
+        }, 600);
         
         // Country selection handler for passport photos
         if (service === 'passport') {
@@ -4337,6 +4445,46 @@
             }
           }, 600);
         }
+        
+        // Color selection handler for range fields (jumbo and golden embossing)
+        if (service === 'jumbo' || service === 'goldenemboss') {
+          setTimeout(() => {
+            const colorSelect = modal.querySelector(`#${service}-field-1`); // Color is second field (index 1)
+            
+            if (colorSelect) {
+              // Handle color change
+              colorSelect.addEventListener('change', function() {
+                const selectedColor = this.value;
+                const colorRangeField = modal.querySelector('input[placeholder*="color page range"]');
+                const bwRangeField = modal.querySelector('input[placeholder*="black & white page range"]');
+                
+                if (selectedColor === 'Mixed') {
+                  // Show range fields
+                  if (colorRangeField) {
+                    colorRangeField.closest('.modal-field-group').style.display = 'block';
+                  }
+                  if (bwRangeField) {
+                    bwRangeField.closest('.modal-field-group').style.display = 'block';
+                  }
+                } else {
+                  // Hide range fields
+                  if (colorRangeField) {
+                    colorRangeField.closest('.modal-field-group').style.display = 'none';
+                    colorRangeField.value = '';
+                  }
+                  if (bwRangeField) {
+                    bwRangeField.closest('.modal-field-group').style.display = 'none';
+                    bwRangeField.value = '';
+                  }
+                }
+              });
+              
+              // Trigger initial update
+              colorSelect.dispatchEvent(new Event('change'));
+            }
+          }, 600);
+        }
+        
         // Form submit
         const form = modal.querySelector(`#${service}-modal-form`);
         if (form) {
@@ -4345,6 +4493,14 @@
             if (!fileObj) { 
               alert('Please upload a file.'); 
               return; 
+            }
+            
+            // Validate shop selection
+            const shopSelectValidation = modal.querySelector(`#${service}-shop-select`);
+            if (!shopSelectValidation || !shopSelectValidation.value || shopSelectValidation.value === '') {
+              alert('Please select a print shop.');
+              shopSelectValidation?.focus();
+              return;
             }
             
           const formData = new FormData();
@@ -4404,15 +4560,21 @@
               if (f.label.toLowerCase().includes('country')) country = val;
               if (f.label.toLowerCase().includes('number of print copies')) copies = parseInt(val) || 1;
               
+              // Handle range fields specifically
+              if (f.label.toLowerCase().includes('color range')) colorRange = val || '';
+              if (f.label.toLowerCase().includes('black & white range')) bwRange = val || '';
+              
             formData.append(`field_${idx}`, val);
           });
           
           // Collect range information if mixed color is selected
           if (color === 'Mixed') {
-            const colorRangeField = form.querySelector('input[placeholder*="Color Range"]');
-            const bwRangeField = form.querySelector('input[placeholder*="Black & White Range"]');
-            colorRange = colorRangeField ? colorRangeField.value : '';
-            bwRange = bwRangeField ? bwRangeField.value : '';
+            // Range values are already collected in the forEach loop above
+            // Additional validation can be added here if needed
+            if (!colorRange && !bwRange) {
+              alert('Please specify page ranges for mixed color printing.');
+              return;
+            }
           }
             
             // Get feedback text
@@ -4508,6 +4670,286 @@
         }
         openServiceModal('passport');
       });
+
+      // Pricing calculation functions
+      let vendorPricingData = {};
+
+      async function loadVendorPricing(vendorEmail) {
+        if (vendorPricingData[vendorEmail]) {
+          return vendorPricingData[vendorEmail];
+        }
+
+        try {
+          const response = await fetch('/get-vendor-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ vendor_email: vendorEmail })
+          });
+          
+          const data = await response.json();
+          if (data.success) {
+            vendorPricingData[vendorEmail] = data.pricing;
+            return data.pricing;
+          }
+        } catch (error) {
+          console.error('Error loading vendor pricing:', error);
+        }
+        
+        return null;
+      }
+
+      async function calculatePricing(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+        const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          pricingSummary.classList.remove('active');
+          return;
+        }
+
+        // Show loading state
+        pricingDetails.innerHTML = `
+          <div class="loading-pricing">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Calculating pricing...</span>
+          </div>
+        `;
+        pricingSummary.classList.add('active');
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          pricingDetails.innerHTML = `
+            <div class="loading-pricing">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>Unable to load vendor pricing</span>
+            </div>
+          `;
+          return;
+        }
+
+        // Load vendor pricing
+        const vendorPricing = await loadVendorPricing(selectedVendor.vendor_email);
+        if (!vendorPricing) {
+          pricingDetails.innerHTML = `
+            <div class="loading-pricing">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>Pricing not available for this vendor</span>
+            </div>
+          `;
+          return;
+        }
+
+        // Collect form data
+        const formData = collectFormData(service, modal);
+        
+        // Calculate pricing based on service type
+        const pricing = calculateServicePricing(service, formData, vendorPricing);
+        
+        // Display pricing
+        displayPricing(pricingDetails, pricing);
+      }
+
+      function collectFormData(service, modal) {
+        const formData = {};
+        const tmpl = serviceModalTemplates[service];
+        
+        tmpl.fields.forEach((field, idx) => {
+          if (field.type === 'file') return;
+          
+          const input = modal.querySelector(`#${service}-field-${idx}`);
+          if (input) {
+            if (field.type === 'number') {
+              formData[field.label] = parseInt(input.value) || 0;
+            } else {
+              formData[field.label] = input.value || '';
+            }
+          }
+        });
+        
+        // Get file page count if available
+        if (typeof fileObj !== 'undefined' && fileObj && fileObj.pageCount) {
+          formData.pageCount = fileObj.pageCount;
+        } else {
+          formData.pageCount = 1; // Default to 1 page
+        }
+        
+        return formData;
+      }
+
+      function calculateServicePricing(service, formData, vendorPricing) {
+        let totalPrice = 0;
+        const breakdown = [];
+        const pages = formData.pageCount || 1;
+        const copies = formData['Print Quantity'] || formData['Number of Print Copies'] || 1;
+
+        switch (service) {
+          case 'digital':
+            totalPrice = calculateDigitalPricing(formData, vendorPricing, pages, copies, breakdown);
+            break;
+          case 'gloss':
+            totalPrice = calculateGlossPricing(formData, vendorPricing, pages, copies, breakdown);
+            break;
+          case 'jumbo':
+            totalPrice = calculateJumboPricing(formData, vendorPricing, pages, copies, breakdown);
+            break;
+          case 'goldenemboss':
+            totalPrice = calculateGoldenEmbossPricing(formData, vendorPricing, pages, copies, breakdown);
+            break;
+          case 'photo':
+            totalPrice = calculatePhotoPricing(formData, vendorPricing, breakdown);
+            break;
+          case 'passport':
+            totalPrice = calculatePassportPricing(formData, vendorPricing, breakdown);
+            break;
+        }
+
+        return { total: totalPrice, breakdown };
+      }
+
+      function calculateDigitalPricing(formData, pricing, pages, copies, breakdown) {
+        let total = 0;
+        const color = formData['Print Color'] || 'Black & White';
+        const paperSize = formData['Paper Size'] || 'A4';
+        const quality = formData['Print Quality'] || 'standard';
+
+        // Base price calculation
+        let priceKey = `digital_print_${paperSize.toLowerCase()}_single_${color.toLowerCase().replace('&', 'and').replace(' ', '_')}`;
+        let basePrice = pricing[priceKey] || (color === 'Color' ? 5 : 2);
+
+        let subtotal = basePrice * pages * copies;
+        breakdown.push({ label: `${color} ${paperSize} (${pages} pages × ${copies} copies)`, value: `₹${subtotal}` });
+        total += subtotal;
+
+        // Quality upgrade
+        if (quality === 'high') {
+          let qualityPrice = pricing['digital_print_quality_upgrade'] || 1;
+          let qualityTotal = qualityPrice * pages * copies;
+          breakdown.push({ label: 'High Quality Upgrade', value: `₹${qualityTotal}` });
+          total += qualityTotal;
+        }
+
+        return total;
+      }
+
+      function calculateGlossPricing(formData, pricing, pages, copies, breakdown) {
+        let total = 0;
+        const size = formData['Print Size'] || 'A3';
+        
+        let priceKey = `gloss_print_${size.toLowerCase()}_color`;
+        let basePrice = pricing[priceKey] || 12;
+
+        let subtotal = basePrice * pages * copies;
+        breakdown.push({ label: `Gloss ${size} Color (${pages} pages × ${copies} copies)`, value: `₹${subtotal}` });
+        total += subtotal;
+
+        return total;
+      }
+
+      function calculateJumboPricing(formData, pricing, pages, copies, breakdown) {
+        let total = 0;
+        const size = formData['Print Size'] || 'A3';
+        const color = formData['Print Color'] || 'All Black & White';
+        
+        let colorType = color === 'All Color' ? 'color' : 'bw';
+        let priceKey = `jumbo_print_${size.toLowerCase()}_single_${colorType}`;
+        let basePrice = pricing[priceKey] || (color === 'All Color' ? 12 : 6);
+
+        let subtotal = basePrice * pages * copies;
+        breakdown.push({ label: `Jumbo ${size} ${color} (${pages} pages × ${copies} copies)`, value: `₹${subtotal}` });
+        total += subtotal;
+
+        return total;
+      }
+
+      function calculateGoldenEmbossPricing(formData, pricing, pages, copies, breakdown) {
+        let total = 0;
+        const color = formData['Print Color'] || 'Black & White';
+        const paperType = formData['Paper Type'] || 'A4';
+        const quality = formData['Print Quality'] || 'standard';
+
+        // Base printing cost
+        let colorType = color === 'Color' ? 'color' : 'bw';
+        let priceKey = `digital_print_${paperType.toLowerCase()}_single_${colorType}`;
+        let basePrice = pricing[priceKey] || (color === 'Color' ? 5 : 2);
+
+        let printingCost = basePrice * pages * copies;
+        breakdown.push({ label: `${color} Printing (${pages} pages × ${copies} copies)`, value: `₹${printingCost}` });
+        total += printingCost;
+
+        // Golden embossing cost
+        let embossPrice = pricing['golden_embossing_per_book'] || 50;
+        let embossCost = embossPrice * copies;
+        breakdown.push({ label: `Golden Embossing (${copies} books)`, value: `₹${embossCost}` });
+        total += embossCost;
+
+        // Quality upgrade
+        if (quality !== 'standard') {
+          let qualityPrice = pricing['golden_emboss_quality_upgrade'] || 3;
+          let qualityTotal = qualityPrice * pages * copies;
+          breakdown.push({ label: `${quality} Quality Upgrade`, value: `₹${qualityTotal}` });
+          total += qualityTotal;
+        }
+
+        return total;
+      }
+
+      function calculatePhotoPricing(formData, pricing, breakdown) {
+        let total = 0;
+        const quantity = formData['Print Quantity'] || 1;
+        const size = formData['Photo Size'] || '4x6';
+        const paperQuality = formData['Paper Quality'] || 'standard';
+
+        let priceKey = `photo_print_${size.replace('x', '_')}_${paperQuality}`;
+        let basePrice = pricing[priceKey] || 5;
+
+        let subtotal = basePrice * quantity;
+        breakdown.push({ label: `Photo Print ${size} ${paperQuality} (${quantity} photos)`, value: `₹${subtotal}` });
+        total += subtotal;
+
+        return total;
+      }
+
+      function calculatePassportPricing(formData, pricing, breakdown) {
+        let total = 0;
+        const country = formData['Select Country'] || 'india';
+        const photoCount = formData['Photo Package'] || '8';
+
+        let priceKey = `passport_photo_${photoCount}_photos`;
+        let basePrice = pricing[priceKey] || 40;
+
+        breakdown.push({ label: `Passport Photos (${photoCount} photos)`, value: `₹${basePrice}` });
+        total += basePrice;
+
+        return total;
+      }
+
+      function displayPricing(pricingDetails, pricing) {
+        let html = '';
+        
+        pricing.breakdown.forEach(item => {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">${item.label}</span>
+              <span class="pricing-value">${item.value}</span>
+            </div>
+          `;
+        });
+
+        html += `
+          <div class="pricing-item">
+            <span class="pricing-label">Total Amount</span>
+            <span class="pricing-value">₹${pricing.total}</span>
+          </div>
+        `;
+
+        pricingDetails.innerHTML = html;
+      }
     </script>
 
     <!-- Bottom Navigation -->
@@ -5256,9 +5698,9 @@
         return;
       }
 
-      const optionsHtml = shopsToRender.map((shop, index) => {
+      const optionsHtml = `<option value="">-- Select Shop --</option>` + shopsToRender.map((shop, index) => {
         const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
-        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}${distanceText}</option>`;
+        return `<option value="${shop.shop_folder}">${shop.shop_name} - ${shop.city}${distanceText}</option>`;
       }).join('');
 
       vendorOptionsContainer.innerHTML = `
@@ -5272,7 +5714,7 @@
       // Set up change event listener
       const vendorSelect = document.getElementById('vendorSelect');
       if (vendorSelect) {
-        selectedVendor = vendorSelect.value; // Set initial value
+        selectedVendor = vendorSelect.value; // Set initial value (will be empty string)
         vendorSelect.addEventListener('change', function() {
           selectedVendor = this.value;
         });
@@ -5304,9 +5746,9 @@
         return;
       }
 
-      const optionsHtml = shopsToRender.map((shop, index) => {
+      const optionsHtml = `<option value="">-- Select Shop --</option>` + shopsToRender.map((shop, index) => {
         const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
-        return `<option value="${shop.shop_folder}" ${index === 0 ? 'selected' : ''}>${shop.shop_name} - ${shop.city}${distanceText}</option>`;
+        return `<option value="${shop.shop_folder}">${shop.shop_name} - ${shop.city}${distanceText}</option>`;
       }).join('');
 
       shopOptionsContainer.innerHTML = `
