@@ -395,6 +395,101 @@ def get_user_jobs_from_r2(user_email):
                     "thickness": metadata.get('thickness', ''),
                     "service_name": metadata.get('service_name', '')
                 }
+                
+                # Parse pricing details from metadata if available
+                pricing_details_str = metadata.get('pricing_details')
+                if pricing_details_str:
+                    try:
+                        # Try to parse as compact JSON format first
+                        try:
+                            compact_pricing = json.loads(pricing_details_str)
+                            if isinstance(compact_pricing, dict) and 'total' in compact_pricing:
+                                # Parse compact JSON format
+                                total_price = compact_pricing.get('total', 0)
+                                price_per_page = compact_pricing.get('per_page', 0)
+                                page_count = compact_pricing.get('pages', 0)
+                                num_copies = compact_pricing.get('copies', 0)
+                                pricing_key = compact_pricing.get('key', '')
+                                quality_upgrade = compact_pricing.get('quality', 0)
+                                
+                                # Reconstruct full pricing details object
+                                pricing_details = {
+                                    'total_price': total_price,
+                                    'pricing_breakdown': {
+                                        'price_per_page': price_per_page,
+                                        'page_count': page_count,
+                                        'num_copies': num_copies,
+                                        'pricing_key_used': pricing_key,
+                                        'base_price': price_per_page,
+                                        'quality_upgrade': quality_upgrade
+                                    },
+                                    'calculation_timestamp': metadata.get('timestamp', ''),
+                                    'vendor_email': None
+                                }
+                                job_info['pricing_details'] = pricing_details
+                                print(f"💰 Pricing details loaded for {filename}: Rs{total_price}")
+                            else:
+                                # Try to parse as old full JSON format
+                                pricing_details = json.loads(pricing_details_str)
+                                job_info['pricing_details'] = pricing_details
+                                print(f"💰 Pricing details loaded for {filename}: Rs{pricing_details.get('total_price', 'N/A')}")
+                        except json.JSONDecodeError:
+                            # Try to parse as old pipe-separated format
+                            if '|' in pricing_details_str:
+                                parts = pricing_details_str.split('|')
+                                if len(parts) >= 5:
+                                    total_price = float(parts[0].replace('Rs', ''))
+                                    price_per_page = float(parts[1])
+                                    page_count = int(parts[2])
+                                    num_copies = int(parts[3])
+                                    pricing_key = parts[4]
+                                    
+                                    # Reconstruct pricing details object
+                                    pricing_details = {
+                                        'total_price': total_price,
+                                        'pricing_breakdown': {
+                                            'price_per_page': price_per_page,
+                                            'page_count': page_count,
+                                            'num_copies': num_copies,
+                                            'pricing_key_used': pricing_key,
+                                            'base_price': price_per_page,
+                                            'quality_upgrade': 0
+                                        },
+                                        'calculation_timestamp': metadata.get('timestamp', ''),
+                                        'vendor_email': None
+                                    }
+                                    job_info['pricing_details'] = pricing_details
+                                    print(f"💰 Pricing details loaded for {filename}: Rs{total_price}")
+                                else:
+                                    print(f"⚠️ Invalid pricing format for {filename}")
+                                    job_info['pricing_details'] = None
+                            else:
+                                print(f"⚠️ Unknown pricing format for {filename}")
+                                job_info['pricing_details'] = None
+                    except (json.JSONDecodeError, ValueError) as e:
+                        print(f"⚠️ Error parsing pricing details for {filename}: {e}")
+                        job_info['pricing_details'] = None
+                else:
+                    # Try to reconstruct from individual fields
+                    total_price = metadata.get('total_price')
+                    if total_price:
+                        pricing_details = {
+                            'total_price': float(total_price),
+                            'pricing_breakdown': {
+                                'price_per_page': float(metadata.get('price_per_page', 0)),
+                                'page_count': int(metadata.get('page_count', 0)),
+                                'num_copies': int(metadata.get('num_copies', 0)),
+                                'pricing_key_used': metadata.get('pricing_key', ''),
+                                'base_price': float(metadata.get('price_per_page', 0)),
+                                'quality_upgrade': 0
+                            },
+                            'calculation_timestamp': metadata.get('timestamp', ''),
+                            'vendor_email': None
+                        }
+                        job_info['pricing_details'] = pricing_details
+                        print(f"💰 Pricing details reconstructed for {filename}: ₹{total_price}")
+                    else:
+                        job_info['pricing_details'] = None
 
                 # Fetch vendor coordinates if vendor is assigned
                 vendor_id = job_info.get('vendor')
@@ -1276,6 +1371,12 @@ def upload_to_r2(request):
                     # Get and parse the settings JSON
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
+                    
+                    # Debug: Log the print settings to see what's being sent
+                    print(f"📋 Print settings for {file.name}:")
+                    print(f"   Service type: {print_settings.get('service_type')}")
+                    print(f"   Pricing details: {print_settings.get('pricing_details')}")
+                    print(f"   All settings keys: {list(print_settings.keys())}")
 
                     # Generate a unique 3-digit token for this job
                     token = str(random.randint(100, 999))
@@ -1316,6 +1417,55 @@ def upload_to_r2(request):
                         'thickness': print_settings.get('thickness', ''),
                         'service_name': print_settings.get('service_name', '')
                     }
+                    
+                    # Add pricing details to metadata if available
+                    pricing_details = print_settings.get('pricing_details')
+                    if pricing_details:
+                        # Create a compact summary for metadata display
+                        total_price = pricing_details.get('total_price', 0)
+                        breakdown = pricing_details.get('pricing_breakdown', {})
+                        price_per_page = breakdown.get('price_per_page', 0)
+                        page_count = breakdown.get('page_count', 0)
+                        num_copies = breakdown.get('num_copies', 0)
+                        pricing_key = breakdown.get('pricing_key_used', '')
+                        
+                        # Store pricing details as compact JSON (ASCII only)
+                        compact_pricing = {
+                            "total": total_price,
+                            "per_page": price_per_page,
+                            "pages": page_count,
+                            "copies": num_copies,
+                            "key": pricing_key,
+                            "quality": breakdown.get('quality_upgrade', 0)
+                        }
+                        file_metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
+                        
+                        # Also store individual fields for better visibility
+                        file_metadata['total_price'] = str(total_price)
+                        file_metadata['price_per_page'] = str(price_per_page)
+                        file_metadata['page_count'] = str(page_count)
+                        file_metadata['num_copies'] = str(num_copies)
+                        file_metadata['pricing_key'] = pricing_key
+                        
+                        # Validate that all metadata values are ASCII-compatible
+                        for key, value in file_metadata.items():
+                            try:
+                                value.encode('ascii')
+                            except UnicodeEncodeError:
+                                print(f"⚠️ Warning: Non-ASCII character found in metadata key '{key}': {value}")
+                                # Replace non-ASCII characters with ASCII equivalents
+                                file_metadata[key] = value.encode('ascii', errors='replace').decode('ascii')
+                        
+                        # Final validation - ensure all values are ASCII
+                        for key, value in file_metadata.items():
+                            if not isinstance(value, str):
+                                file_metadata[key] = str(value)
+                            # Ensure ASCII compatibility
+                            file_metadata[key] = value.encode('ascii', errors='replace').decode('ascii')
+                        
+                        print(f"💰 Pricing details added to metadata: Rs{total_price}")
+                    else:
+                        print("⚠️ No pricing details found in print settings")
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
@@ -2784,6 +2934,148 @@ def get_vendor_pricing(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @csrf_exempt
+def calculate_digital_print_pricing(request):
+    """
+    Calculate digital print pricing based on user selections and vendor pricing
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            paper_size = data.get('paper_size')
+            print_color = data.get('print_color')
+            num_copies = data.get('num_copies', 1)
+            print_quality = data.get('print_quality')
+            page_count = data.get('page_count', 1)
+            
+            print(f"Received data: vendor_email={vendor_email}, paper_size={paper_size}, print_color={print_color}, num_copies={num_copies}, print_quality={print_quality}, page_count={page_count}")
+            print(f"Page count type: {type(page_count)}, value: {page_count}")
+            
+            # Ensure page_count is an integer
+            try:
+                page_count = int(page_count)
+                print(f"Page count after conversion: {page_count}")
+            except (ValueError, TypeError):
+                print(f"Error converting page_count to int, using default: {page_count}")
+                page_count = 1
+            
+            # Ensure page_count is at least 1
+            if page_count < 1:
+                print(f"Page count was {page_count}, setting to 1")
+                page_count = 1
+            
+            if not all([vendor_email, paper_size, print_color, print_quality]):
+                return JsonResponse({'success': False, 'error': 'Missing required parameters'})
+
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+
+            try:
+                # Get vendor pricing file
+                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                
+                # Get digital print pricing from categorized pricing
+                digital_pricing = pricing_data.get('categorized_pricing', {}).get('digital_print', {})
+                
+                # Construct the pricing key based on user selections
+                # Handle special case for A1 (it's stored as 'al' in the pricing.json)
+                paper_size_key = paper_size.lower()
+                if paper_size_key == 'a1':
+                    paper_size_key = 'al'
+                
+                pricing_key_name = f"digital_print_{paper_size_key}_{print_color}"
+                
+                # Get base price for the selected options
+                base_price = digital_pricing.get(pricing_key_name, 0)
+                
+                # Apply quality upgrade if high quality is selected
+                quality_upgrade = 0
+                if print_quality == 'high_quality':
+                    quality_upgrade = digital_pricing.get('digital_print_high_quality', 0)
+                
+                # Calculate total price (price per page * number of pages * number of copies)
+                price_per_page = base_price + quality_upgrade
+                total_price = price_per_page * page_count * num_copies
+                
+                print(f"Calculation: base_price={base_price}, quality_upgrade={quality_upgrade}, price_per_page={price_per_page}, page_count={page_count}, num_copies={num_copies}, total_price={total_price}")
+                
+                # Prepare pricing breakdown
+                pricing_breakdown = {
+                    'base_price': base_price,
+                    'quality_upgrade': quality_upgrade,
+                    'price_per_page': price_per_page,
+                    'page_count': page_count,
+                    'num_copies': num_copies,
+                    'total_price': total_price,
+                    'pricing_key_used': pricing_key_name
+                }
+                
+                return JsonResponse({
+                    'success': True,
+                    'pricing_breakdown': pricing_breakdown,
+                    'total_price': total_price
+                })
+                
+            except Exception as e:
+                print(f"Error calculating pricing for {vendor_email}: {str(e)}")
+                # Return default pricing calculation based on actual pricing.json structure
+                default_pricing = {
+                    'digital_print_a4_single_color': 5,
+                    'digital_print_a3_single_color': 10,
+                    'digital_print_a2_single_color': 15,
+                    'digital_print_al_single_color': 20,  # Note: A1 is stored as 'al' in pricing.json
+                    'digital_print_12x18_single_color': 26,
+                    'digital_print_standard_quality': 22,
+                    'digital_print_high_quality': 19
+                }
+                
+                # Construct the pricing key
+                # Handle special case for A1 (it's stored as 'al' in the pricing.json)
+                paper_size_key = paper_size.lower()
+                if paper_size_key == 'a1':
+                    paper_size_key = 'al'
+                
+                pricing_key_name = f"digital_print_{paper_size_key}_{print_color}"
+                base_price = default_pricing.get(pricing_key_name, 5)
+                
+                quality_upgrade = 0
+                if print_quality == 'high_quality':
+                    quality_upgrade = default_pricing.get('digital_print_high_quality', 19)
+                
+                price_per_page = base_price + quality_upgrade
+                total_price = price_per_page * page_count * num_copies
+                
+                print(f"Default calculation: base_price={base_price}, quality_upgrade={quality_upgrade}, price_per_page={price_per_page}, page_count={page_count}, num_copies={num_copies}, total_price={total_price}")
+                
+                pricing_breakdown = {
+                    'base_price': base_price,
+                    'quality_upgrade': quality_upgrade,
+                    'price_per_page': price_per_page,
+                    'page_count': page_count,
+                    'num_copies': num_copies,
+                    'total_price': total_price,
+                    'pricing_key_used': pricing_key_name
+                }
+                
+                return JsonResponse({
+                    'success': True,
+                    'pricing_breakdown': pricing_breakdown,
+                    'total_price': total_price,
+                    'using_default_pricing': True
+                })
+                
+        except Exception as e:
+            print(f"Error in calculate_digital_print_pricing: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@csrf_exempt
 def get_available_shops(request):
     """
     Get all available shops from R2 storage vendor registration details
@@ -3512,4 +3804,3 @@ def get_vendor_details(request):
     except Exception as e:
         print(f"Error fetching vendor details for {email}: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
