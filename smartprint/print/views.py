@@ -1341,6 +1341,21 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 
 @csrf_exempt  # Use proper CSRF protection in production!
 def upload_to_r2(request):
+    """
+    Upload files to R2 storage with service-based folder routing:
+    
+    Manual Job Services (stored in vendor_manual_print_jobs/):
+    - digital_print: Digital Document Printing
+    - gloss_printing: Gloss Print  
+    - jumbo_printing: Jumbo Paper Printing
+    - golden_embossing: Golden Embossing
+    - project_binding: Project Binding
+    
+    Other Services (stored in vendor_print_jobs/):
+    - photo_print: Photo Print
+    - passport_photo: Passport Photo
+    - Any other services
+    """
     if request.method == 'POST':
         try:
             files_uploaded = 0
@@ -1469,9 +1484,33 @@ def upload_to_r2(request):
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
-                    # Always use the same storage folders as the userdashboard print modal
-                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
-                    user_file_key = f'users/{user_email}/{file.name}'
+                    
+                    # Determine storage folder based on service type
+                    # Specific services go to vendor_manual_print_jobs folder
+                    # These services require manual processing by vendors
+                    manual_job_services = [
+                        'digital_print',      # Digital Document Printing
+                        'gloss_printing',     # Gloss Print
+                        'jumbo_printing',     # Jumbo Paper Printing
+                        'golden_embossing',   # Golden Embossing
+                        'project_binding'     # Project Binding
+                    ]
+                    
+                    # All other services go to vendor_print_jobs folder
+                    # These include photo_print, passport_photo, and any other services
+                    
+                    if service_type in manual_job_services:
+                        # Store in vendor_manual_print_jobs folder
+                        vendor_file_key = f'vendor_manual_print_jobs/{vendor_id}/{file.name}'
+                        user_file_key = f'users/{user_email}/{file.name}'
+                        file_metadata['storage_folder'] = 'vendor_manual_print_jobs'
+                        print(f"📁 Storing {service_type} job in vendor_manual_print_jobs folder")
+                    else:
+                        # Store in regular vendor_print_jobs folder
+                        vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
+                        user_file_key = f'users/{user_email}/{file.name}'
+                        file_metadata['storage_folder'] = 'vendor_print_jobs'
+                        print(f"📁 Storing {service_type} job in vendor_print_jobs folder")
 
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
