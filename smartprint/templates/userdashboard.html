@@ -3335,6 +3335,28 @@
         color: #1f2937;
       }
 
+      .pricing-item.total {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #1e3a8a;
+        border-top: 2px solid #3b82f6;
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+      }
+
+      .pricing-note {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        color: #92400e;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+      }
+
       .loading-pricing {
         display: flex;
         align-items: center;
@@ -3400,6 +3422,36 @@
       }
 
       .btn-submit:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .btn-calculate {
+        flex: 1;
+        padding: 1rem 1.5rem;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+      }
+
+      .btn-calculate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(5, 150, 105, 0.4);
+      }
+
+      .btn-calculate:disabled {
         background: #9ca3af;
         cursor: not-allowed;
         transform: none;
@@ -3532,7 +3584,7 @@
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'Color', label: 'Full Color' }
+                { value: 'single_color', label: 'Color' }
               ], 
               required: true,
               description: 'Color printing service',
@@ -3553,11 +3605,21 @@
               icon: 'fas fa-file'
             },
             { 
+              label: 'Number of Copies', 
+              type: 'number', 
+              min: 1, 
+              max: 100, 
+              default: 1, 
+              required: true,
+              description: 'Number of copies you want to print',
+              icon: 'fas fa-copy'
+            },
+            { 
               label: 'Print Quality', 
               type: 'select', 
               options: [
-                { value: 'standard', label: 'Standard Quality' },
-                { value: 'high', label: 'High Quality' }
+                { value: 'standard_quality', label: 'Standard Quality' },
+                { value: 'high_quality', label: 'High Quality' }
               ], 
               required: true,
               description: 'Choose the print quality for your documents',
@@ -4183,6 +4245,12 @@
                     <i class="fas fa-times"></i>
                     Cancel
                   </button>
+                  ${service === 'digital' ? `
+                    <button type="button" class="btn-calculate" onclick="calculateDigitalPrintPrice('${service}')">
+                      <i class="fas fa-calculator"></i>
+                      Calculate Price
+                    </button>
+                  ` : ''}
                   <button type="submit" class="btn-submit">
                     <i class="fas fa-paper-plane"></i>
                     Submit Request
@@ -4311,6 +4379,7 @@
         // Helper function to process files
         async function processFile(file, fileUploadLabel, filePreview) {
           fileObj = file;
+          
           if (!file) {
             fileUploadLabel.textContent = 'Click to select file';
             if (filePreview) filePreview.innerHTML = '';
@@ -4358,6 +4427,25 @@
             
             // Store page count in file object
             fileObj.pageCount = pages;
+            
+            // Store file info in modal dataset for access by other functions
+            modal.dataset.filePageCount = pages;
+            modal.dataset.fileName = file.name;
+            
+            console.log('File processed:', {
+              name: file.name,
+              pages: pages,
+              fileObjPageCount: fileObj.pageCount,
+              modalDatasetPageCount: modal.dataset.filePageCount,
+              fileType: file.type
+            });
+            
+            // Test: Log the page count immediately after setting it
+            console.log('Immediate page count check:', {
+              modalDataset: modal.dataset.filePageCount,
+              fileObj: fileObj.pageCount,
+              pages: pages
+            });
             
           } catch (error) {
             console.error('Error processing file:', error);
@@ -4503,6 +4591,15 @@
               return;
             }
             
+            // For digital print, validate that pricing has been calculated
+            if (service === 'digital') {
+              const calculatedPrice = modal.dataset.calculatedPrice;
+              if (!calculatedPrice) {
+                alert('Please calculate the price before submitting your request.');
+                return;
+              }
+            }
+            
           const formData = new FormData();
           // --- Passport photo selection logic ---
           if (service === 'passport') {
@@ -4593,36 +4690,65 @@
             
           formData.append('selected_vendor', selectedShopValue);
           formData.append('vendor_id', vendorId);
-            formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
+          formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
+          
+          // Get pricing details from modal metadata if available
+          let pricingDetails = null;
+          if (service === 'digital') {
+            const calculatedPrice = modal.dataset.calculatedPrice;
+            const pricingBreakdown = modal.dataset.pricingBreakdown;
+            
+            if (calculatedPrice && pricingBreakdown) {
+              try {
+                pricingDetails = {
+                  total_price: parseFloat(calculatedPrice),
+                  pricing_breakdown: JSON.parse(pricingBreakdown),
+                  calculation_timestamp: new Date().toISOString(),
+                  vendor_email: selectedShopData ? selectedShopData.vendor_email : null
+                };
+                console.log('💰 Pricing details stored in job metadata:', pricingDetails);
+              } catch (error) {
+                console.error('Error parsing pricing breakdown:', error);
+              }
+            } else {
+              console.log('⚠️ No pricing details available for digital print job');
+            }
+          }
             
                                     // Metadata: match print modal structure but for manual jobs
           const settingsJson = {
             filename: fileObj.name,
-              service_type: tmpl.service_type,
+            service_type: tmpl.service_type,
             service_name: tmpl.title,
             copies: copies,
-              color: color,
-              orientation: orientation,
+            color: color,
+            orientation: orientation,
             pageRange: 'all',
             specificPages: '',
             pageSize: pageSize,
-              quality: quality,
-              thickness: thickness,
-              feedback: feedback,
-              country: country,
+            quality: quality,
+            thickness: thickness,
+            feedback: feedback,
+            country: country,
             spiralBinding: 'No',
             lamination: 'No',
             timestamp: new Date().toISOString(),
             status: 'pending',
             job_completed: 'NO',
-              trash: 'NO',
-              is_manual_job: 'YES', // Flag to identify manual jobs
+            trash: 'NO',
+            is_manual_job: 'YES', // Flag to identify manual jobs
             colorRange: colorRange,
-            bwRange: bwRange
+            bwRange: bwRange,
+            // Add pricing details if available
+            pricing_details: pricingDetails
           };
             
           formData.append('settings_0', JSON.stringify(settingsJson));
           formData.append('file_count', 1);
+          
+          // Debug: Log the settings being sent
+          console.log('📤 Settings being sent to server:', settingsJson);
+          console.log('💰 Pricing details in settings:', settingsJson.pricing_details);
             
             // Submit - Updated to use new button class
             const submitBtn = form.querySelector('.btn-submit');
@@ -4639,10 +4765,15 @@
             });
             const data = await resp.json();
             if (data.success) {
-              alert('Request submitted successfully!');
+              // Show success message with pricing details for digital print
+              if (service === 'digital' && pricingDetails) {
+                alert(`Request submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}`);
+              } else {
+                alert('Request submitted successfully!');
+              }
               closeServiceModal(service);
-                // Reset modal immediately after successful submission
-                resetServiceModal(service);
+              // Reset modal immediately after successful submission
+              resetServiceModal(service);
             } else {
               alert('Error: ' + (data.error || 'Failed to submit.'));
             }
@@ -4814,27 +4945,59 @@
 
       function calculateDigitalPricing(formData, pricing, pages, copies, breakdown) {
         let total = 0;
-        const color = formData['Print Color'] || 'Black & White';
+        const color = formData['Print Color'] || 'single_color';
         const paperSize = formData['Paper Size'] || 'A4';
-        const quality = formData['Print Quality'] || 'standard';
+        const quality = formData['Print Quality'] || 'standard_quality';
+        const numCopies = formData['Number of Copies'] || 1;
 
-        // Base price calculation
-        let priceKey = `digital_print_${paperSize.toLowerCase()}_single_${color.toLowerCase().replace('&', 'and').replace(' ', '_')}`;
-        let basePrice = pricing[priceKey] || (color === 'Color' ? 5 : 2);
-
-        let subtotal = basePrice * pages * copies;
-        breakdown.push({ label: `${color} ${paperSize} (${pages} pages × ${copies} copies)`, value: `₹${subtotal}` });
-        total += subtotal;
-
-        // Quality upgrade
-        if (quality === 'high') {
-          let qualityPrice = pricing['digital_print_quality_upgrade'] || 1;
-          let qualityTotal = qualityPrice * pages * copies;
-          breakdown.push({ label: 'High Quality Upgrade', value: `₹${qualityTotal}` });
-          total += qualityTotal;
+        // Construct the pricing key based on user selections
+        // Handle special case for A1 (it's stored as 'al' in the pricing.json)
+        let paperSizeKey = paperSize.toLowerCase();
+        if (paperSizeKey === 'a1') {
+          paperSizeKey = 'al';
         }
+        
+        const pricingKeyName = `digital_print_${paperSizeKey}_${color}`;
+        
+        // Get base price for the selected options
+        let basePrice = pricing[pricingKeyName] || 5; // Default fallback
+        
+        // Apply quality upgrade if high quality is selected
+        let qualityUpgrade = 0;
+        if (quality === 'high_quality') {
+          qualityUpgrade = pricing['digital_print_high_quality'] || 19;
+        }
+        
+        // Calculate price per page
+        const pricePerPage = basePrice + qualityUpgrade;
+        
+        // Calculate total price (price per page * number of pages * number of copies)
+        const totalPrice = pricePerPage * pages * numCopies;
+        
+        // Add breakdown items
+        breakdown.push({ 
+          label: `${paperSize} ${color.replace('_', ' ')} (Base Price)`, 
+          value: `₹${basePrice}` 
+        });
+        
+        if (qualityUpgrade > 0) {
+          breakdown.push({ 
+            label: 'High Quality Upgrade', 
+            value: `₹${qualityUpgrade}` 
+          });
+        }
+        
+        breakdown.push({ 
+          label: `Price per page`, 
+          value: `₹${pricePerPage}` 
+        });
+        
+        breakdown.push({ 
+          label: `Total (${pages} pages × ${numCopies} copies)`, 
+          value: `₹${totalPrice}` 
+        });
 
-        return total;
+        return totalPrice;
       }
 
       function calculateGlossPricing(formData, pricing, pages, copies, breakdown) {
@@ -4949,6 +5112,176 @@
         `;
 
         pricingDetails.innerHTML = html;
+      }
+
+      async function calculateDigitalPrintPrice(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          alert('Please select a vendor first');
+          return;
+        }
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          alert('Unable to get vendor information');
+          return;
+        }
+
+        // Get page count from uploaded file - try multiple methods
+        let pageCount = 1; // Default to 1 page
+        
+        // Method 1: Try to get from modal dataset (most reliable)
+        if (modal.dataset.filePageCount) {
+          pageCount = parseInt(modal.dataset.filePageCount);
+          console.log('Page count from modal dataset:', pageCount);
+        } else if (typeof fileObj !== 'undefined' && fileObj && fileObj.pageCount) {
+          // Method 2: Try to get from fileObj (global variable)
+          pageCount = fileObj.pageCount;
+          console.log('Page count from fileObj:', pageCount);
+        } else {
+          // Method 3: Try to get page count from the file preview or upload label
+          const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
+          if (fileUploadLabel && fileUploadLabel.textContent.includes('pages')) {
+            const pageMatch = fileUploadLabel.textContent.match(/\((\d+) pages?\)/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from upload label:', pageCount);
+            }
+          }
+          
+          // Method 4: Try to get from file preview content
+          const filePreview = modal.querySelector(`#${service}-file-preview`);
+          if (filePreview) {
+            const previewText = filePreview.textContent;
+            const pageMatch = previewText.match(/(\d+) pages?/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from file preview:', pageCount);
+            }
+          }
+        }
+        
+        // Ensure page count is at least 1
+        if (pageCount < 1) {
+          pageCount = 1;
+          console.log('Page count was less than 1, setting to 1');
+        }
+        
+        console.log('Final page count detected:', pageCount); // Debug log
+        console.log('Modal dataset:', {
+          filePageCount: modal.dataset.filePageCount,
+          fileName: modal.dataset.fileName
+        });
+
+        // Check if a file is uploaded
+        if (pageCount === 1 && !modal.dataset.fileName) {
+          alert('Please upload a document first');
+          return;
+        }
+
+        // Collect form data
+        const formData = {
+          vendor_email: selectedVendor.vendor_email,
+          paper_size: modal.querySelector(`#${service}-field-2`).value, // Paper Size
+          print_color: modal.querySelector(`#${service}-field-1`).value, // Print Color
+          num_copies: parseInt(modal.querySelector(`#${service}-field-3`).value) || 1, // Number of Copies
+          print_quality: modal.querySelector(`#${service}-field-4`).value, // Print Quality
+          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+        };
+        
+        console.log('Form data being sent:', formData); // Debug log
+
+        // Show loading state
+        const calculateBtn = modal.querySelector('.btn-calculate');
+        const originalText = calculateBtn.innerHTML;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+
+        try {
+          const response = await fetch('/calculate-digital-print-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Update pricing summary
+            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            
+            let html = '';
+            const breakdown = result.pricing_breakdown;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
+                <span class="pricing-value">₹${breakdown.base_price}</span>
+              </div>
+            `;
+            
+            if (breakdown.quality_upgrade > 0) {
+              html += `
+                <div class="pricing-item">
+                  <span class="pricing-label">High Quality Upgrade</span>
+                  <span class="pricing-value">₹${breakdown.quality_upgrade}</span>
+                </div>
+              `;
+            }
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Price per page</span>
+                <span class="pricing-value">₹${breakdown.price_per_page}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Number of pages</span>
+                <span class="pricing-value">${breakdown.page_count}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Number of copies</span>
+                <span class="pricing-value">${breakdown.num_copies}</span>
+              </div>
+              <div class="pricing-item total">
+                <span class="pricing-label">Total Amount</span>
+                <span class="pricing-value">₹${breakdown.total_price}</span>
+              </div>
+            `;
+            
+            if (result.using_default_pricing) {
+              html += `
+                <div class="pricing-note">
+                  <i class="fas fa-info-circle"></i>
+                  Using default pricing (vendor pricing not available)
+                </div>
+              `;
+            }
+            
+            pricingDetails.innerHTML = html;
+            pricingSummary.classList.add('active');
+            
+            // Store the calculated price in modal metadata
+            modal.dataset.calculatedPrice = breakdown.total_price;
+            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            
+          } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error calculating digital print price:', error);
+          alert('Error calculating price. Please try again.');
+        } finally {
+          // Restore button state
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
       }
     </script>
 
@@ -5700,7 +6033,10 @@
 
       const optionsHtml = `<option value="">-- Select Shop --</option>` + shopsToRender.map((shop, index) => {
         const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
-        return `<option value="${shop.shop_folder}">${shop.shop_name} - ${shop.city}${distanceText}</option>`;
+        const shopDisplay = shop.formattedDistance ? 
+          `${shop.shop_name} - ${shop.city}${distanceText}` : 
+          `${shop.shop_name} - ${shop.city}`;
+        return `<option value="${shop.shop_folder}">${shopDisplay}</option>`;
       }).join('');
 
       vendorOptionsContainer.innerHTML = `
@@ -5748,7 +6084,10 @@
 
       const optionsHtml = `<option value="">-- Select Shop --</option>` + shopsToRender.map((shop, index) => {
         const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
-        return `<option value="${shop.shop_folder}">${shop.shop_name} - ${shop.city}${distanceText}</option>`;
+        const shopDisplay = shop.formattedDistance ? 
+          `${shop.shop_name} - ${shop.city}${distanceText}` : 
+          `${shop.shop_name} - ${shop.city}`;
+        return `<option value="${shop.shop_folder}">${shopDisplay}</option>`;
       }).join('');
 
       shopOptionsContainer.innerHTML = `
@@ -5757,6 +6096,11 @@
             ${optionsHtml}
           </select>
           <i class="fas fa-chevron-down select-arrow"></i>
+        </div>
+        <div class="shop-location-controls" style="margin-top: 8px; text-align: center;">
+          <button onclick="refreshShopLocations('${service}')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            <i class="fas fa-location-arrow"></i> Update Distances
+          </button>
         </div>
       `;
     }
@@ -5769,6 +6113,36 @@
       const selectedOption = document.querySelector(`#${service}-shop-options .shop-option[data-shop="${shopFolder}"]`);
       if (selectedOption) {
         selectedOption.classList.add('selected');
+      }
+    }
+
+    // Function to refresh shop locations and distances
+    async function refreshShopLocations(service) {
+      try {
+        console.log('🔄 Refreshing shop locations for service:', service);
+        
+        // Show loading state
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        button.disabled = true;
+        
+        // Reload location-based shops
+        await loadLocationBasedShops(true); // Force location refresh
+        
+        // Re-render the specific service modal
+        renderServiceModalShops(service);
+        
+        console.log('✅ Shop locations refreshed successfully');
+        
+      } catch (error) {
+        console.error('❌ Error refreshing shop locations:', error);
+        alert('Failed to update shop distances. Please try again.');
+      } finally {
+        // Restore button state
+        const button = event.target;
+        button.innerHTML = '<i class="fas fa-location-arrow"></i> Update Distances';
+        button.disabled = false;
       }
     }
 
@@ -5871,6 +6245,12 @@
       };
 
       const calculateEstimatedCost = (job) => {
+        // Check if pricing details are stored in job metadata
+        if (job.pricing_details && job.pricing_details.total_price) {
+          return job.pricing_details.total_price;
+        }
+        
+        // Fallback to estimated calculation
         const pages = parseInt(job.pages) || 1;
         const copies = parseInt(job.copies) || 1;
         const basePrice = job.color === 'color' ? 5 : 3;
@@ -5941,6 +6321,11 @@
             <button class="job-btn" onclick="viewJobDetails('${job.filename}')">
               <i class="fas fa-eye"></i> View
             </button>
+            ${job.pricing_details ? `
+              <button class="job-btn" onclick="viewPricingDetails('${job.filename}')">
+                <i class="fas fa-calculator"></i> Pricing
+              </button>
+            ` : ''}
             <button class="job-btn primary track-vendor-btn" 
                     data-lat="${job.vendor_lat || ''}" 
                     data-lng="${job.vendor_lng || ''}"
@@ -5984,6 +6369,37 @@
       } else {
         alert('Preview not available for this file.');
       }
+    }
+
+    // Function to view pricing details
+    function viewPricingDetails(filename) {
+      const job = userJobs.find(j => j.filename === filename);
+      if (!job || !job.pricing_details) {
+        alert('Pricing details not available for this job.');
+        return;
+      }
+
+      const pricing = job.pricing_details;
+      const breakdown = pricing.pricing_breakdown;
+      
+      let pricingMessage = `💰 Pricing Details for ${job.filename}\n\n`;
+      pricingMessage += `Total Price: Rs${pricing.total_price}\n`;
+      pricingMessage += `Vendor: ${pricing.vendor_email || 'Unknown'}\n`;
+      pricingMessage += `Calculated: ${new Date(pricing.calculation_timestamp).toLocaleString()}\n\n`;
+      
+      if (breakdown) {
+        pricingMessage += `📊 Breakdown:\n`;
+        pricingMessage += `• Base Price: Rs${breakdown.base_price}\n`;
+        if (breakdown.quality_upgrade > 0) {
+          pricingMessage += `• Quality Upgrade: Rs${breakdown.quality_upgrade}\n`;
+        }
+        pricingMessage += `• Price per page: Rs${breakdown.price_per_page}\n`;
+        pricingMessage += `• Number of pages: ${breakdown.page_count}\n`;
+        pricingMessage += `• Number of copies: ${breakdown.num_copies}\n`;
+        pricingMessage += `• Pricing Key: ${breakdown.pricing_key_used}\n`;
+      }
+      
+      alert(pricingMessage);
     }
 
     // Function to track vendor location and open Google Maps navigation
@@ -7105,13 +7521,48 @@
           await getUserLocation(forceLocationRefresh);
           console.log('✅ User location obtained:', userLocation);
           
+          // Calculate distance for ALL shops when location is available
+          console.log('🔍 Calculating distances for all shops...');
+          const allShopsWithDistance = availableShops.map(shop => {
+            if (shop.latitude && shop.longitude && 
+                shop.latitude !== '' && shop.longitude !== '') {
+              const shopLat = parseFloat(shop.latitude);
+              const shopLng = parseFloat(shop.longitude);
+              const distance = calculateDistance(userLocation.latitude, userLocation.longitude, shopLat, shopLng);
+              
+              console.log(`📍 ${shop.shop_name}: (${shopLat}, ${shopLng}) = ${formatDistance(distance)}`);
+              
+              return {
+                ...shop,
+                distance: distance,
+                formattedDistance: formatDistance(distance)
+              };
+            } else {
+              console.log(`🏪 ${shop.shop_name}: No coordinates available`);
+              return {
+                ...shop,
+                distance: null,
+                formattedDistance: 'Location not available'
+              };
+            }
+          }).sort((a, b) => {
+            // Sort by distance (null distances go to the end)
+            if (a.distance === null && b.distance === null) return 0;
+            if (a.distance === null) return 1;
+            if (b.distance === null) return -1;
+            return a.distance - b.distance;
+          });
+          
           // Filter shops by location with detailed logging
           console.log('🔍 Filtering shops by user location...');
           locationBasedShops = filterShopsByLocation(
-            availableShops, 
+            allShopsWithDistance, 
             userLocation.latitude, 
             userLocation.longitude
           );
+          
+          // Also update availableShops with distance information
+          availableShops = allShopsWithDistance;
           
           console.log('🎯 Location-based shops found:', locationBasedShops.length);
           if (locationBasedShops.length > 0) {
@@ -7140,6 +7591,16 @@
         // Update UI with location-based shops
         renderLocationBasedVendorOptions();
         console.log('🔄 UI updated with location-based shops');
+        
+        // Also update any open service modals
+        const openModals = document.querySelectorAll('.service-modal-overlay.active');
+        openModals.forEach(modal => {
+          const modalId = modal.id;
+          const service = modalId.replace('service-modal-', '');
+          if (service) {
+            renderServiceModalShops(service);
+          }
+        });
         
       } catch (error) {
         console.error('❌ Error loading location-based shops:', error);

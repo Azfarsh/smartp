@@ -6,7 +6,7 @@ from .views import (
     auth_receiver, sign_in, photoprint, vendor_register, vendor_pricing, vendor_info,
     vendor_login, vendor_register_api, mark_notification_read,
     enhance_passport_photo, forgot_password_page, forgot_password, verify_reset_code, reset_password,
-    logout_view, get_vendor_coordinates,get_vendor_pricing,
+    logout_view, get_vendor_coordinates,get_vendor_pricing, calculate_digital_print_pricing,
 )
 
 urlpatterns = [
@@ -42,4 +42,5 @@ urlpatterns = [
     path('reset-password/', reset_password, name='reset_password'),
     path('logout/', logout_view, name='logout'),
     path('get-vendor-coordinates/', get_vendor_coordinates, name='get_vendor_coordinates'),
+    path('calculate-digital-print-pricing/', calculate_digital_print_pricing, name='calculate_digital_print_pricing'),
 ]
