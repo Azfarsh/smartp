@@ -7,6 +7,7 @@ from .views import (
     vendor_login, vendor_register_api, mark_notification_read,
     enhance_passport_photo, forgot_password_page, forgot_password, verify_reset_code, reset_password,
     logout_view, get_vendor_coordinates,get_vendor_pricing, calculate_digital_print_pricing,
+    calculate_gloss_print_pricing, calculate_photo_print_pricing, calculate_jumbo_print_pricing, calculate_passport_photo_pricing, calculate_a4_print_pricing,
 )
 
 urlpatterns = [
@@ -43,4 +44,9 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'),
     path('get-vendor-coordinates/', get_vendor_coordinates, name='get_vendor_coordinates'),
     path('calculate-digital-print-pricing/', calculate_digital_print_pricing, name='calculate_digital_print_pricing'),
+    path('calculate-gloss-print-pricing/', calculate_gloss_print_pricing, name='calculate_gloss_print_pricing'),
+    path('calculate-photo-print-pricing/', calculate_photo_print_pricing, name='calculate_photo_print_pricing'),
+    path('calculate-jumbo-print-pricing/', calculate_jumbo_print_pricing, name='calculate_jumbo_print_pricing'),
+    path('calculate-passport-photo-pricing/', calculate_passport_photo_pricing, name='calculate_passport_photo_pricing'),
+    path('calculate-a4-print-pricing/', calculate_a4_print_pricing, name='calculate_a4_print_pricing'),
 ]

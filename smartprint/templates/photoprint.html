@@ -272,6 +272,92 @@
         .cancel-btn:hover {
             background: #111;
         }
+        .calculate-btn {
+            background: #059669;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 18px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-right: 8px;
+            transition: background 0.2s;
+            min-width: 110px;
+        }
+        .calculate-btn:hover {
+            background: #047857;
+        }
+        .calculate-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .pricing-summary {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e0e7ef 100%);
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(80, 120, 200, 0.08);
+            padding: 24px 28px 18px 28px;
+            margin-top: 18px;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid #e2e8f0;
+            transition: box-shadow 0.2s;
+        }
+        .pricing-summary h3 {
+            margin: 0 0 18px 0;
+            color: #2563eb;
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pricing-summary h3 i {
+            color: #059669;
+            font-size: 1.2em;
+        }
+        .pricing-breakdown-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .pricing-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 1.05rem;
+        }
+        .pricing-item:last-child {
+            border-bottom: none;
+        }
+        .pricing-label {
+            color: #475569;
+            font-weight: 500;
+        }
+        .pricing-value {
+            color: #1e293b;
+            font-weight: 600;
+        }
+        .pricing-item.total {
+            font-size: 1.18rem;
+            color: #059669;
+            font-weight: 700;
+            background: #e0f7ef;
+            border-radius: 6px;
+            margin-top: 10px;
+            padding: 14px 0;
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pricing-item.total .fa-check-circle {
+            color: #059669;
+            font-size: 1.2em;
+        }
         @media (max-width: 800px) {
             .card-modal {
                 max-width: 99vw;
@@ -346,10 +432,15 @@
                     <label for="copies">Copies:</label>
                     <input type="number" id="copies" value="1" min="1" max="50" style="width:100%;">
                 </div>
+                <div class="pricing-summary" id="pricingSummary" style="display: none;">
+                    <h3><i class="fas fa-receipt"></i> Pricing Summary</h3>
+                    <ul class="pricing-breakdown-list" id="pricingDetails"></ul>
+                </div>
             </div>
         </div>
         <div class="footer-controls">
             <button class="cancel-btn" id="cancelBtn">Cancel</button>
+            <button class="calculate-btn" id="calculateBtn">Calculate Price</button>
             <button class="print-btn" id="printBtn" disabled>Print</button>
         </div>
     </div>
@@ -389,7 +480,10 @@ const a4Canvas = document.getElementById('a4Canvas');
 const layoutBtns = document.querySelectorAll('.layout-btn');
 const printBtn = document.getElementById('printBtn');
 const cancelBtn = document.getElementById('cancelBtn');
+const calculateBtn = document.getElementById('calculateBtn');
 const shopSelect = document.getElementById('shopSelect');
+const pricingSummary = document.getElementById('pricingSummary');
+const pricingDetails = document.getElementById('pricingDetails');
 const orientationSelect = document.getElementById('orientation');
 function loadShops() {
     fetch('/get-available-shops/', {headers: {'X-CSRFToken': getCookie('csrftoken')}})
@@ -640,6 +734,7 @@ async function createPDF() {
     return pdf.output('blob');
 }
 printBtn.addEventListener('click', handlePrint);
+calculateBtn.addEventListener('click', calculatePhotoPrintPrice);
 function resetPhotoPrintModal() {
     uploadedImages = [];
     currentLayout = 1;
@@ -654,7 +749,13 @@ function resetPhotoPrintModal() {
     updateUI();
 }
 cancelBtn.addEventListener('click', () => {
-    window.location.href = '/userdashboard/';
+    // Go back to previous page instead of redirecting to userdashboard
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        // Fallback to userdashboard if no history
+        window.location.href = '/userdashboard/';
+    }
 });
 layoutBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -682,6 +783,105 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+async function calculatePhotoPrintPrice() {
+    if (!selectedShop) {
+        alert('Please select a shop first');
+        return;
+    }
+
+    if (uploadedImages.length === 0) {
+        alert('Please upload at least one photo first');
+        return;
+    }
+
+    // Get selected vendor email
+    const selectedVendor = availableShops.find(shop => shop.shop_folder === selectedShop);
+    if (!selectedVendor || !selectedVendor.vendor_email) {
+        alert('Unable to get vendor information');
+        return;
+    }
+
+    // Collect form data for photo print
+    const formData = {
+        vendor_email: selectedVendor.vendor_email,
+        photo_count: uploadedImages.length,
+        layout_slots: currentLayout,
+        orientation: currentOrientation,
+        color: document.getElementById('color').value,
+        copies: parseInt(document.getElementById('copies').value) || 1
+    };
+
+    console.log('Photo print form data being sent:', formData);
+
+    // Show loading state
+    const originalText = calculateBtn.innerHTML;
+    calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+    calculateBtn.disabled = true;
+
+    try {
+        const response = await fetch('/calculate-photo-print-pricing/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Update pricing summary
+            let html = '';
+            const breakdown = result.pricing_breakdown;
+            
+            html += `
+                <li class="pricing-item">
+                    <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
+                    <span class="pricing-value">₹${breakdown.base_price}</span>
+                </li>
+            `;
+            
+            html += `
+                <li class="pricing-item">
+                    <span class="pricing-label">Number of photos</span>
+                    <span class="pricing-value">${breakdown.photo_count}</span>
+                </li>
+                <li class="pricing-item">
+                    <span class="pricing-label">Layout slots</span>
+                    <span class="pricing-value">${breakdown.layout_slots}</span>
+                </li>
+                <li class="pricing-item">
+                    <span class="pricing-label">Number of copies</span>
+                    <span class="pricing-value">${breakdown.copies}</span>
+                </li>
+                <li class="pricing-item total">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="pricing-label">Total Amount</span>
+                    <span class="pricing-value">₹${breakdown.total_price}</span>
+                </li>
+            `;
+            
+            pricingDetails.innerHTML = html;
+            pricingSummary.style.display = 'block';
+            
+            // Store the calculated price in modal metadata
+            document.body.dataset.calculatedPrice = breakdown.total_price;
+            document.body.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            
+        } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error calculating photo print price:', error);
+        alert('Error calculating price. Please try again.');
+    } finally {
+        // Restore button state
+        calculateBtn.innerHTML = originalText;
+        calculateBtn.disabled = false;
+    }
+}
 async function handlePrint() {
     if (uploadedImages.length === 0) {
         alert('Please upload at least one photo');
@@ -707,6 +907,24 @@ async function handlePrint() {
         // Use the first image's name for filename reference
         const firstImg = uploadedImages[0];
         const pdfFileName = `photo_layout_${jobId}.pdf`;
+        
+        // Get pricing details from modal metadata if available
+        let pricingDetails = null;
+        if (document.body.dataset.calculatedPrice && document.body.dataset.pricingBreakdown) {
+            try {
+                pricingDetails = {
+                    total_price: parseFloat(document.body.dataset.calculatedPrice),
+                    pricing_breakdown: JSON.parse(document.body.dataset.pricingBreakdown),
+                    calculation_timestamp: new Date().toISOString(),
+                    vendor_email: selectedShopData ? selectedShopData.vendor_email : null
+                };
+                console.log('💰 Pricing details stored in job metadata for photo print:', pricingDetails);
+            } catch (error) {
+                console.error('Error parsing pricing breakdown:', error);
+            }
+        } else {
+            console.log('⚠️ No pricing details available for photo print job');
+        }
         
         // Create comprehensive metadata similar to other modals
         const metadata = {
@@ -745,7 +963,9 @@ async function handlePrint() {
             image_mode: 'individual_placement',
             total_images: String(uploadedImages.length),
             grid_layout: getGridLayoutString(currentLayout, currentOrientation),
-            layout_description: `${uploadedImages.length} images in ${currentLayout} slots (${Math.max(0, currentLayout - uploadedImages.length)} empty)`
+            layout_description: `${uploadedImages.length} images in ${currentLayout} slots (${Math.max(0, currentLayout - uploadedImages.length)} empty)`,
+            // Add pricing details if available
+            pricing_details: pricingDetails
         };
         
         const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
@@ -765,7 +985,12 @@ async function handlePrint() {
         
         if (response.ok) {
             const result = await response.json();
-            alert(`Photo print job submitted successfully! Token: ${token}`);
+            // Show success message with pricing details if available
+            if (pricingDetails) {
+                alert(`Photo print job submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}\nToken: ${token}`);
+            } else {
+                alert(`Photo print job submitted successfully! Token: ${token}`);
+            }
             // window.location.href = '/userdashboard/'; // Remove redirect
             resetPhotoPrintModal();
         } else {
