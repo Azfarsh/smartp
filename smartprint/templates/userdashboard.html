@@ -2095,6 +2095,13 @@
       color: var(--primary);
     }
 
+    /* Style for Calculate Price text */
+    .summary-total .summary-value span {
+      color: #059669;
+      font-style: italic;
+      font-weight: 600;
+    }
+
     /* Action Buttons */
     .action-buttons {
       display: flex;
@@ -2136,6 +2143,38 @@
     .btn-primary:hover {
       transform: translateY(-1px);
       box-shadow: var(--elevation-2);
+    }
+
+    /* Calculate button in action buttons */
+    .action-buttons .btn-calculate {
+      flex: 1;
+      padding: 0.875rem 1.5rem;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 1px solid var(--outline);
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+      border-color: #059669;
+    }
+
+    .action-buttons .btn-calculate:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--elevation-2);
+      background: linear-gradient(135deg, #047857, #059669);
+    }
+
+    .action-buttons .btn-calculate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
 
     /* Page Range Settings */
@@ -3761,6 +3800,16 @@
               required: true,
               description: 'Color printing service',
               icon: 'fas fa-palette'
+            },
+            { 
+              label: 'Number of Copies', 
+              type: 'number', 
+              min: 1,
+              max: 100,
+              default: 1,
+              required: true,
+              description: 'Number of copies you want to print',
+              icon: 'fas fa-copy'
             }
           ]
         },
@@ -3795,29 +3844,12 @@
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'All Black & White', label: 'All Black & White' },
-                { value: 'All Color', label: 'All Color' },
-                { value: 'Mixed', label: 'Mixed Color & Black & White' }
+                { value: 'Black & White', label: 'Black & White' },
+                { value: 'Color', label: 'Color' }
               ], 
               required: true,
-              description: 'Choose between all black & white, all color, or mixed printing',
+              description: 'Choose between all black & white or  color printing',
               icon: 'fas fa-palette'
-            },
-            { 
-              label: 'Color Range', 
-              type: 'text', 
-              required: false,
-              placeholder: 'Enter color page range (e.g., 1-5, 10-15)',
-              description: 'Specify which pages should be printed in color (e.g., 1-5, 10-15)',
-              icon: 'fas fa-palette'
-            },
-            { 
-              label: 'Black & White Range', 
-              type: 'text', 
-              required: false,
-              placeholder: 'Enter black & white page range (e.g., 6-9, 16-20)',
-              description: 'Specify which pages should be printed in black & white (e.g., 6-9, 16-20)',
-              icon: 'fas fa-adjust'
             },
             { 
               label: 'Print Quality', 
@@ -3828,6 +3860,16 @@
               required: true,
               description: 'Standard quality printing for large format prints',
               icon: 'fas fa-star'
+            },
+            { 
+              label: 'Number of Copies', 
+              type: 'number', 
+              min: 1,
+              max: 100,
+              default: 1,
+              required: true,
+              description: 'Number of copies you want to print',
+              icon: 'fas fa-copy'
             }
           ]
         },
@@ -3879,9 +3921,9 @@
               label: 'Photo Package', 
               type: 'select', 
               options: [
-                { value: '8', label: '8 Photos (Standard)', price: '₹40' },
-                { value: '16', label: '16 Photos (Family)', price: '₹70' },
-                { value: '30', label: '30 Photos (Bulk)', price: '₹120' }
+                { value: '8', label: '8 Photos (Standard)' },
+                { value: '16', label: '16 Photos (Family)' },
+                { value: '30', label: '30 Photos (Bulk)' }
               ], 
               required: true,
               description: 'Choose the number of passport photos you need',
@@ -4251,6 +4293,24 @@
                       Calculate Price
                     </button>
                   ` : ''}
+                  ${service === 'gloss' ? `
+                    <button type="button" class="btn-calculate" onclick="calculateGlossPrintPrice('${service}')">
+                      <i class="fas fa-calculator"></i>
+                      Calculate Price
+                    </button>
+                  ` : ''}
+                  ${service === 'jumbo' ? `
+                    <button type="button" class="btn-calculate" onclick="calculateJumboPrintPrice('${service}')">
+                      <i class="fas fa-calculator"></i>
+                      Calculate Price
+                    </button>
+                  ` : ''}
+                  ${service === 'passport' ? `
+                    <button type="button" class="btn-calculate" onclick="calculatePassportPhotoPrice('${service}')">
+                      <i class="fas fa-calculator"></i>
+                      Calculate Price
+                    </button>
+                  ` : ''}
                   <button type="submit" class="btn-submit">
                     <i class="fas fa-paper-plane"></i>
                     Submit Request
@@ -4270,12 +4330,12 @@
         // Country-specific photo package options
         const countryPhotoPackages = {
           'india': [
-            { value: '8', label: '8 Photos (Standard)', price: '₹40' },
-            { value: '16', label: '16 Photos (Family)', price: '₹70' },
-            { value: '30', label: '30 Photos (Bulk)', price: '₹120' }
+            { value: '8', label: '8 Photos (Standard)' },
+            { value: '16', label: '16 Photos (Family)' },
+            { value: '30', label: '30 Photos (Bulk)' }
           ],
           'default': [
-            { value: '8', label: '8 Photos (Standard)', price: '₹40' }
+            { value: '8', label: '8 Photos (Standard)' }
           ]
         };
         
@@ -4591,8 +4651,8 @@
               return;
             }
             
-            // For digital print, validate that pricing has been calculated
-            if (service === 'digital') {
+            // For digital print, gloss print, jumbo print, and passport photo, validate that pricing has been calculated
+            if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'passport') {
               const calculatedPrice = modal.dataset.calculatedPrice;
               if (!calculatedPrice) {
                 alert('Please calculate the price before submitting your request.');
@@ -4610,9 +4670,10 @@
             let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
             if (selectedVersion === 'enhanced') {
               if (!enhancedReady || !enhancedUrl) {
-                alert('Enhanced image is not ready yet. Please wait for enhancement to complete.');
-                return;
-              }
+                console.log('Enhanced image not ready, using original image for passport photo');
+                // Use the original file if enhanced image is not available
+                formData.set('file_0', fileObj);
+              } else {
               // Fetch the enhanced image as a blob
               try {
                 const resp = await fetch(enhancedUrl);
@@ -4620,8 +4681,10 @@
                 const enhancedFile = new File([blob], 'enhanced_' + fileObj.name, { type: blob.type });
                 formData.set('file_0', enhancedFile);
               } catch (err) {
-                alert('Failed to fetch enhanced image. Please try again.');
-                return;
+                  console.log('Failed to fetch enhanced image, using original image for passport photo');
+                  // Use the original file if enhanced image fetch fails
+                  formData.set('file_0', fileObj);
+                }
               }
             } else {
               // Use the original file
@@ -4690,11 +4753,11 @@
             
           formData.append('selected_vendor', selectedShopValue);
           formData.append('vendor_id', vendorId);
-          formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
+            formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
           
           // Get pricing details from modal metadata if available
           let pricingDetails = null;
-          if (service === 'digital') {
+          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'passport') {
             const calculatedPrice = modal.dataset.calculatedPrice;
             const pricingBreakdown = modal.dataset.pricingBreakdown;
             
@@ -4706,37 +4769,37 @@
                   calculation_timestamp: new Date().toISOString(),
                   vendor_email: selectedShopData ? selectedShopData.vendor_email : null
                 };
-                console.log('💰 Pricing details stored in job metadata:', pricingDetails);
+                console.log(`💰 Pricing details stored in job metadata for ${service}:`, pricingDetails);
               } catch (error) {
                 console.error('Error parsing pricing breakdown:', error);
               }
             } else {
-              console.log('⚠️ No pricing details available for digital print job');
+              console.log(`⚠️ No pricing details available for ${service} job`);
             }
           }
             
                                     // Metadata: match print modal structure but for manual jobs
           const settingsJson = {
             filename: fileObj.name,
-            service_type: tmpl.service_type,
+              service_type: tmpl.service_type,
             service_name: tmpl.title,
             copies: copies,
-            color: color,
-            orientation: orientation,
+              color: color,
+              orientation: orientation,
             pageRange: 'all',
             specificPages: '',
             pageSize: pageSize,
-            quality: quality,
-            thickness: thickness,
-            feedback: feedback,
-            country: country,
+              quality: quality,
+              thickness: thickness,
+              feedback: feedback,
+              country: country,
             spiralBinding: 'No',
             lamination: 'No',
             timestamp: new Date().toISOString(),
             status: 'pending',
             job_completed: 'NO',
-            trash: 'NO',
-            is_manual_job: 'YES', // Flag to identify manual jobs
+              trash: 'NO',
+              is_manual_job: 'YES', // Flag to identify manual jobs
             colorRange: colorRange,
             bwRange: bwRange,
             // Add pricing details if available
@@ -4765,15 +4828,15 @@
             });
             const data = await resp.json();
             if (data.success) {
-              // Show success message with pricing details for digital print
-              if (service === 'digital' && pricingDetails) {
+              // Show success message with pricing details for digital print, gloss print, jumbo print, and passport photo
+              if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'passport') && pricingDetails) {
                 alert(`Request submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}`);
               } else {
-                alert('Request submitted successfully!');
+              alert('Request submitted successfully!');
               }
               closeServiceModal(service);
-              // Reset modal immediately after successful submission
-              resetServiceModal(service);
+                // Reset modal immediately after successful submission
+                resetServiceModal(service);
             } else {
               alert('Error: ' + (data.error || 'Failed to submit.'));
             }
@@ -5002,26 +5065,69 @@
 
       function calculateGlossPricing(formData, pricing, pages, copies, breakdown) {
         let total = 0;
-        const size = formData['Print Size'] || 'A3';
+        const size = formData['Print Size'] || 'A4';
+        const glossType = formData['Gloss Type'] || 'standard_gloss';
+        const color = formData['Print Color'] || 'Color';
+        const numCopies = formData['Number of Copies'] || 1;
+
+        // Construct the pricing key based on user selections
+        // Handle special case for A1 (it's stored as 'al' in the pricing.json)
+        let sizeKey = size.toLowerCase();
+        if (sizeKey === 'a1') {
+          sizeKey = 'al';
+        }
         
-        let priceKey = `gloss_print_${size.toLowerCase()}_color`;
-        let basePrice = pricing[priceKey] || 12;
+        // For gloss printing, the pricing is nested under "categorized_pricing.gloss_print" object
+        // Access the nested gloss_print pricing data
+        const categorizedPricing = pricing['categorized_pricing'] || {};
+        const glossPricing = categorizedPricing['gloss_print'] || {};
+        
+        // Construct the pricing key format: gloss_print_{size}_{gloss_type}
+        const pricingKeyName = `gloss_print_${sizeKey}_${glossType}`;
+        
+        // Get base price from the nested gloss_print object
+        let basePrice = glossPricing[pricingKeyName];
+        
+        // Check if pricing is available
+        if (basePrice === undefined || basePrice === null) {
+          console.error(`Pricing not found for key: ${pricingKeyName}`);
+          console.log('Available gloss pricing keys:', Object.keys(glossPricing));
+          throw new Error(`Pricing not available for ${size} ${glossType}. Please contact the vendor.`);
+        }
+        
+        // Calculate price per page
+        const pricePerPage = basePrice;
+        
+        // Calculate total price (price per page * number of pages * number of copies)
+        const totalPrice = pricePerPage * pages * numCopies;
+        
+        // Add breakdown items
+        breakdown.push({ 
+          label: `${size} ${glossType.replace('_', ' ')} (Base Price)`, 
+          value: `₹${basePrice}` 
+        });
+        
+        breakdown.push({ 
+          label: `Price per page`, 
+          value: `₹${pricePerPage}` 
+        });
+        
+        breakdown.push({ 
+          label: `Total (${pages} pages × ${numCopies} copies)`, 
+          value: `₹${totalPrice}` 
+        });
 
-        let subtotal = basePrice * pages * copies;
-        breakdown.push({ label: `Gloss ${size} Color (${pages} pages × ${copies} copies)`, value: `₹${subtotal}` });
-        total += subtotal;
-
-        return total;
+        return totalPrice;
       }
 
       function calculateJumboPricing(formData, pricing, pages, copies, breakdown) {
         let total = 0;
         const size = formData['Print Size'] || 'A3';
-        const color = formData['Print Color'] || 'All Black & White';
+        const color = formData['Print Color'] || 'Black & White';
         
-        let colorType = color === 'All Color' ? 'color' : 'bw';
+        let colorType = color === 'Color' ? 'color' : 'bw';
         let priceKey = `jumbo_print_${size.toLowerCase()}_single_${colorType}`;
-        let basePrice = pricing[priceKey] || (color === 'All Color' ? 12 : 6);
+        let basePrice = pricing[priceKey] || (color === 'Color' ? 12 : 6);
 
         let subtotal = basePrice * pages * copies;
         breakdown.push({ label: `Jumbo ${size} ${color} (${pages} pages × ${copies} copies)`, value: `₹${subtotal}` });
@@ -5283,6 +5389,422 @@
           calculateBtn.disabled = false;
         }
       }
+
+      async function calculateGlossPrintPrice(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          alert('Please select a vendor first');
+          return;
+        }
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          alert('Unable to get vendor information');
+          return;
+        }
+
+        // Get page count from uploaded file - try multiple methods
+        let pageCount = 1; // Default to 1 page
+        
+        // Method 1: Try to get from modal dataset (most reliable)
+        if (modal.dataset.filePageCount) {
+          pageCount = parseInt(modal.dataset.filePageCount);
+          console.log('Page count from modal dataset:', pageCount);
+        } else if (typeof fileObj !== 'undefined' && fileObj && fileObj.pageCount) {
+          // Method 2: Try to get from fileObj (global variable)
+          pageCount = fileObj.pageCount;
+          console.log('Page count from fileObj:', pageCount);
+        } else {
+          // Method 3: Try to get page count from the file preview or upload label
+          const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
+          if (fileUploadLabel && fileUploadLabel.textContent.includes('pages')) {
+            const pageMatch = fileUploadLabel.textContent.match(/\((\d+) pages?\)/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from upload label:', pageCount);
+            }
+          }
+          
+          // Method 4: Try to get from file preview content
+          const filePreview = modal.querySelector(`#${service}-file-preview`);
+          if (filePreview) {
+            const previewText = filePreview.textContent;
+            const pageMatch = previewText.match(/(\d+) pages?/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from file preview:', pageCount);
+            }
+          }
+        }
+        
+        // Ensure page count is at least 1
+        if (pageCount < 1) {
+          pageCount = 1;
+          console.log('Page count was less than 1, setting to 1');
+        }
+        
+        console.log('Final page count detected:', pageCount); // Debug log
+        console.log('Modal dataset:', {
+          filePageCount: modal.dataset.filePageCount,
+          fileName: modal.dataset.fileName
+        });
+
+        // Check if a file is uploaded
+        if (pageCount === 1 && !modal.dataset.fileName) {
+          alert('Please upload a document first');
+          return;
+        }
+
+        // Collect form data for gloss print
+        const formData = {
+          vendor_email: selectedVendor.vendor_email,
+          print_size: modal.querySelector(`#${service}-field-1`).value, // Print Size
+          gloss_type: modal.querySelector(`#${service}-field-2`).value, // Gloss Type
+          print_color: modal.querySelector(`#${service}-field-3`).value, // Print Color
+          num_copies: parseInt(modal.querySelector(`#${service}-field-4`).value) || 1, // Number of Copies
+          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+        };
+        
+        console.log('Gloss print form data being sent:', formData); // Debug log
+
+        // Show loading state
+        const calculateBtn = modal.querySelector('.btn-calculate');
+        const originalText = calculateBtn.innerHTML;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+
+        try {
+          // Use the same pricing calculation endpoint but with gloss-specific data
+          const response = await fetch('/calculate-gloss-print-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Update pricing summary
+            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            
+            let html = '';
+            const breakdown = result.pricing_breakdown;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
+                <span class="pricing-value">₹${breakdown.base_price}</span>
+              </div>
+            `;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Price per page</span>
+                <span class="pricing-value">₹${breakdown.price_per_page}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Number of pages</span>
+                <span class="pricing-value">${breakdown.page_count}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Number of copies</span>
+                <span class="pricing-value">${breakdown.num_copies}</span>
+              </div>
+              <div class="pricing-item total">
+                <span class="pricing-label">Total Amount</span>
+                <span class="pricing-value">₹${breakdown.total_price}</span>
+              </div>
+            `;
+            
+            pricingDetails.innerHTML = html;
+            pricingSummary.classList.add('active');
+            
+            // Store the calculated price in modal metadata
+            modal.dataset.calculatedPrice = breakdown.total_price;
+            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            
+          } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error calculating gloss print price:', error);
+          alert('Error calculating price. Please try again.');
+        } finally {
+          // Restore button state
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
+      }
+
+      async function calculateJumboPrintPrice(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          alert('Please select a vendor first');
+          return;
+        }
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          alert('Unable to get vendor information');
+          return;
+        }
+
+        // Get page count from uploaded file - try multiple methods
+        let pageCount = 1; // Default to 1 page
+        
+        // Method 1: Try to get from modal dataset (most reliable)
+        if (modal.dataset.filePageCount) {
+          pageCount = parseInt(modal.dataset.filePageCount);
+          console.log('Page count from modal dataset:', pageCount);
+        } else if (typeof fileObj !== 'undefined' && fileObj && fileObj.pageCount) {
+          // Method 2: Try to get from fileObj (global variable)
+          pageCount = fileObj.pageCount;
+          console.log('Page count from fileObj:', pageCount);
+        } else {
+          // Method 3: Try to get page count from the file preview or upload label
+          const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
+          if (fileUploadLabel && fileUploadLabel.textContent.includes('pages')) {
+            const pageMatch = fileUploadLabel.textContent.match(/\((\d+) pages?\)/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from upload label:', pageCount);
+            }
+          }
+          
+          // Method 4: Try to get from file preview content
+          const filePreview = modal.querySelector(`#${service}-file-preview`);
+          if (filePreview) {
+            const previewText = filePreview.textContent;
+            const pageMatch = previewText.match(/(\d+) pages?/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from file preview:', pageCount);
+            }
+          }
+        }
+        
+        // Ensure page count is at least 1
+        if (pageCount < 1) {
+          pageCount = 1;
+          console.log('Page count was less than 1, setting to 1');
+        }
+        
+        console.log('Final page count detected:', pageCount); // Debug log
+        console.log('Modal dataset:', {
+          filePageCount: modal.dataset.filePageCount,
+          fileName: modal.dataset.fileName
+        });
+
+        // Check if a file is uploaded
+        if (pageCount === 1 && !modal.dataset.fileName) {
+          alert('Please upload a document first');
+          return;
+        }
+
+        // Collect form data for jumbo print
+        const formData = {
+          vendor_email: selectedVendor.vendor_email,
+          print_size: modal.querySelector(`#${service}-field-1`).value, // Print Size
+          print_color: modal.querySelector(`#${service}-field-2`).value, // Print Color
+          print_quality: modal.querySelector(`#${service}-field-3`).value, // Print Quality
+          num_copies: parseInt(modal.querySelector(`#${service}-field-4`).value) || 1, // Number of Copies
+          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+        };
+        
+        console.log('Jumbo print form data being sent:', formData); // Debug log
+
+        // Show loading state
+        const calculateBtn = modal.querySelector('.btn-calculate');
+        const originalText = calculateBtn.innerHTML;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+
+        try {
+          // Use the jumbo print pricing calculation endpoint
+          const response = await fetch('/calculate-jumbo-print-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Update pricing summary
+            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            
+            let html = '';
+            const breakdown = result.pricing_breakdown;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
+                <span class="pricing-value">₹${breakdown.base_price}</span>
+              </div>
+            `;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Price per page</span>
+                <span class="pricing-value">₹${breakdown.price_per_page}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Number of pages</span>
+                <span class="pricing-value">${breakdown.page_count}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Number of copies</span>
+                <span class="pricing-value">${breakdown.num_copies}</span>
+              </div>
+              <div class="pricing-item total">
+                <span class="pricing-label">Total Amount</span>
+                <span class="pricing-value">₹${breakdown.total_price}</span>
+              </div>
+            `;
+            
+            pricingDetails.innerHTML = html;
+            pricingSummary.classList.add('active');
+            
+            // Store the calculated price in modal metadata
+            modal.dataset.calculatedPrice = breakdown.total_price;
+            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            
+          } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error calculating jumbo print price:', error);
+          alert('Error calculating price. Please try again.');
+        } finally {
+          // Restore button state
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
+      }
+
+      async function calculatePassportPhotoPrice(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          alert('Please select a vendor first');
+          return;
+        }
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          alert('Unable to get vendor information');
+          return;
+        }
+
+        // Check if a file is uploaded
+        if (!modal.dataset.fileName) {
+          alert('Please upload a photo first');
+          return;
+        }
+
+        // Collect form data for passport photo
+        const formData = {
+          vendor_email: selectedVendor.vendor_email,
+          country: modal.querySelector(`#${service}-field-1`).value, // Select Country
+          photo_package: modal.querySelector(`#${service}-field-2`).value, // Photo Package
+          color_photo: modal.querySelector(`#${service}-field-3`).value, // Color Photo
+          paper_size: modal.querySelector(`#${service}-field-4`).value // Paper Size
+        };
+        
+        console.log('Passport photo form data being sent:', formData); // Debug log
+
+        // Show loading state
+        const calculateBtn = modal.querySelector('.btn-calculate');
+        const originalText = calculateBtn.innerHTML;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+
+        try {
+          // Use the passport photo pricing calculation endpoint
+          const response = await fetch('/calculate-passport-photo-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Update pricing summary
+            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            
+            let html = '';
+            const breakdown = result.pricing_breakdown;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
+                <span class="pricing-value">₹${breakdown.base_price}</span>
+              </div>
+            `;
+            
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Country</span>
+                <span class="pricing-value">${breakdown.country}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Photo Package</span>
+                <span class="pricing-value">${breakdown.photo_package} Photos</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Color Photo</span>
+                <span class="pricing-value">${breakdown.color_photo}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Paper Size</span>
+                <span class="pricing-value">${breakdown.paper_size}</span>
+              </div>
+              <div class="pricing-item total">
+                <span class="pricing-label">Total Amount</span>
+                <span class="pricing-value">₹${breakdown.total_price}</span>
+              </div>
+            `;
+            
+            pricingDetails.innerHTML = html;
+            pricingSummary.classList.add('active');
+            
+            // Store the calculated price in modal metadata
+            modal.dataset.calculatedPrice = breakdown.total_price;
+            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            
+          } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error calculating passport photo price:', error);
+          alert('Error calculating price. Please try again.');
+        } finally {
+          // Restore button state
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
+      }
     </script>
 
     <!-- Bottom Navigation -->
@@ -5483,18 +6005,6 @@
                 </div>
                 <div class="page-size-label">A4</div>
               </div>
-              <div class="page-size-option" data-size="a3">
-                <div class="page-size-icon">
-                  <i class="fas fa-file"></i>
-                </div>
-                <div class="page-size-label">A3</div>
-              </div>
-              <div class="page-size-option" data-size="letter">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">Letter</div>
-              </div>
             </div>
           </div>
 
@@ -5552,13 +6062,19 @@
 
           <div class="summary-item summary-total">
             <span class="summary-label">Total:</span>
-            <span class="summary-value">₹<span id="totalAmount">0</span></span>
+            <span class="summary-value"><span id="totalAmount">Calculate Price</span></span>
           </div>
         </div>
+
+
 
         <!-- Action Buttons -->
         <div class="action-buttons" id="actionButtons" style="display: none;">
           <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          <button class="btn-calculate" id="calculatePriceBtn" style="display: none;">
+            <i class="fas fa-calculator"></i>
+            Calculate Price
+          </button>
           <button class="btn btn-primary" id="proceedBtn">
             <i class="fas fa-print"></i>
             Proceed to print
@@ -6053,6 +6569,16 @@
         selectedVendor = vendorSelect.value; // Set initial value (will be empty string)
         vendorSelect.addEventListener('change', function() {
           selectedVendor = this.value;
+          
+          // Show/hide calculate price button based on vendor selection
+          const calculatePriceBtn = document.getElementById('calculatePriceBtn');
+          if (calculatePriceBtn) {
+            if (selectedVendor && uploadedFiles.length > 0) {
+              calculatePriceBtn.style.display = 'inline-block';
+            } else {
+              calculatePriceBtn.style.display = 'none';
+            }
+          }
         });
       }
     }
@@ -6714,6 +7240,16 @@
       orderSummary.style.display = hasFiles ? 'block' : 'none';
       actionButtons.style.display = hasFiles ? 'flex' : 'none';
 
+      // Update calculate button visibility
+      const calculatePriceBtn = document.getElementById('calculatePriceBtn');
+      if (calculatePriceBtn) {
+        if (hasFiles && selectedVendor) {
+          calculatePriceBtn.style.display = 'inline-block';
+        } else {
+          calculatePriceBtn.style.display = 'none';
+        }
+      }
+
       if (hasFiles && selectedFileIndex === -1) {
         selectedFileIndex = 0;
         updateFileList();
@@ -6774,13 +7310,12 @@
         summaryPages.textContent = '0';
         summaryCopies.textContent = '0';
         summaryColor.textContent = 'Mixed';
-        totalAmount.textContent = '0';
+        totalAmount.textContent = 'Calculate Price';
         return;
       }
 
       let totalPagesCount = 0;
       let totalCopiesCount = 0;
-      let totalCost = 0;
       let colorTypes = new Set();
 
       uploadedFiles.forEach(fileObj => {
@@ -6790,18 +7325,6 @@
 
         totalPagesCount += pages;
         totalCopiesCount += copies;
-
-        let cost = pages * copies * pricePerPage[settings.color];
-
-        if (settings.lamination) {
-          cost += pages * copies * servicePrices.lamination;
-        }
-
-        if (settings.spiralBinding) {
-          cost += servicePrices.spiralBinding;
-        }
-
-        totalCost += cost;
         colorTypes.add(settings.color);
       });
 
@@ -6815,7 +7338,8 @@
         summaryColor.textContent = 'Mixed';
       }
 
-      totalAmount.textContent = totalCost;
+      // Remove fake price calculation - show "Calculate Price" instead
+      totalAmount.textContent = 'Calculate Price';
     }
 
     function calculatePages(fileObj, settings) {
@@ -7171,6 +7695,117 @@
     // Action buttons
     document.getElementById('cancelBtn').addEventListener('click', closeModalFunc);
 
+    // Calculate price button event listener
+    document.getElementById('calculatePriceBtn').addEventListener('click', async () => {
+      await calculateA4PrintPrice();
+    });
+
+    // A4 Print Pricing Calculation Function
+    async function calculateA4PrintPrice() {
+      const calculateBtn = document.getElementById('calculatePriceBtn');
+      
+      if (!selectedVendor) {
+        alert('Please select a vendor first');
+        return;
+      }
+
+      if (uploadedFiles.length === 0) {
+        alert('Please upload at least one file first');
+        return;
+      }
+
+      // Get selected vendor email
+      const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+      if (!selectedVendorData || !selectedVendorData.vendor_email) {
+        alert('Unable to get vendor information');
+        return;
+      }
+
+      // Calculate total pages and copies
+      let totalPages = 0;
+      let totalCopies = 0;
+      let colorType = 'Black and White'; // Default
+      
+      for (const fileObj of uploadedFiles) {
+        const settings = fileSettings[fileObj.id];
+        totalPages += fileObj.pages;
+        totalCopies += settings.copies;
+        
+        // If any file has color, mark as color
+        if (settings.color === 'color') {
+          colorType = 'Color';
+        }
+      }
+
+      // Determine print type based on color
+      let printType = 'single_bw'; // Default
+      if (colorType === 'Color') {
+        printType = 'single_color';
+      }
+      
+      // For A4 print, we use single-sided printing by default
+      // The pricing structure supports: single_bw, single_color, double_bw, double_color
+      // We'll use single-sided for now, but this can be enhanced later if needed
+      
+      console.log(`🎨 Color type: ${colorType}, Print type: ${printType}`);
+      
+      // Collect form data for A4 print
+      // Pricing structure supports: a4_print_single_bw, a4_print_single_color, a4_print_double_bw, a4_print_double_color
+      const formData = {
+        vendor_email: selectedVendorData.vendor_email,
+        print_type: printType,
+        total_pages: totalPages,
+        total_copies: totalCopies
+      };
+      
+      console.log('📊 A4 print form data being sent:', formData);
+      console.log(`💰 Expected pricing key: a4_print_${printType}`);
+
+      // Show loading state
+      const originalText = calculateBtn.innerHTML;
+      calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+      calculateBtn.disabled = true;
+
+      try {
+        // Use the A4 print pricing calculation endpoint
+        const response = await fetch('/calculate-a4-print-pricing/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Pricing calculation successful - just update the order summary total
+          const breakdown = result.pricing_breakdown;
+          
+          // Store the calculated price in modal metadata
+          document.getElementById('printModal').dataset.calculatedPrice = breakdown.total_price;
+          document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify(breakdown);
+          
+          // Update the order summary total amount with the real calculated price
+          const totalAmountElement = document.getElementById('totalAmount');
+          if (totalAmountElement) {
+            totalAmountElement.textContent = `₹${breakdown.total_price}`;
+          }
+          
+        } else {
+          alert('Error calculating price: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error calculating A4 print price:', error);
+        alert('Error calculating price. Please try again.');
+      } finally {
+        // Restore button state
+        calculateBtn.innerHTML = originalText;
+        calculateBtn.disabled = false;
+      }
+    }
+
     // Complete R2 upload integration
     document.getElementById('proceedBtn').addEventListener('click', async () => {
       const proceedBtn = document.getElementById('proceedBtn');
@@ -7180,6 +7815,13 @@
       try {
         if (uploadedFiles.length === 0) {
           alert('Please add at least one file to print.');
+          return;
+        }
+        
+        // Check if pricing has been calculated
+        const hasCalculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
+        if (!hasCalculatedPrice) {
+          alert('Please calculate the price before submitting the print job.');
           return;
         }
 
@@ -7225,7 +7867,9 @@
             status: "pending",
             job_completed: "NO",
             trash: "NO",
-            was_image: fileObj.isImage || false // Track if this was originally an image
+            was_image: fileObj.isImage || false, // Track if this was originally an image
+            // Add pricing details if available (will be populated after pricing calculation)
+            pricing_details: null
           };
 
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
@@ -7238,6 +7882,38 @@
         const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
         const vendorId = selectedVendorData ? selectedVendorData.vendor_id : 'vendor1';
         formData.append('vendor_id', vendorId);
+        
+        // Get pricing details from modal metadata if available
+        let pricingDetails = null;
+        const calculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
+        const pricingBreakdown = document.getElementById('printModal').dataset.pricingBreakdown;
+        
+        if (calculatedPrice && pricingBreakdown) {
+          try {
+            pricingDetails = {
+              total_price: parseFloat(calculatedPrice),
+              pricing_breakdown: JSON.parse(pricingBreakdown),
+              calculation_timestamp: new Date().toISOString(),
+              vendor_email: selectedVendorData ? selectedVendorData.vendor_email : null
+            };
+            console.log('💰 Pricing details stored in job metadata for A4 print:', pricingDetails);
+            
+            // Update all settingsJson objects to include pricing details
+            for (let i = 0; i < uploadedFiles.length; i++) {
+              const existingSettings = formData.get(`settings_${i}`);
+              if (existingSettings) {
+                const settingsObj = JSON.parse(existingSettings);
+                settingsObj.pricing_details = pricingDetails;
+                formData.set(`settings_${i}`, JSON.stringify(settingsObj));
+                console.log(`💰 Updated settings_${i} with pricing details`);
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing pricing breakdown:', error);
+          }
+        } else {
+          console.log('⚠️ No pricing details available for A4 print job');
+        }
 
         const response = await fetch('/upload/', {
           method: 'POST',
@@ -7249,7 +7925,12 @@
 
         if (response.ok) {
           const result = await response.json();
+          // Show success message with pricing details if available
+          if (pricingDetails) {
+            alert(`Print job submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedVendorData?.shop_name || 'Unknown'}`);
+          } else {
           alert(result.message || 'Print job submitted successfully!');
+          }
           closeModalFunc();
 
           uploadedFiles = [];

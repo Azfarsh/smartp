@@ -1341,6 +1341,21 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 
 @csrf_exempt  # Use proper CSRF protection in production!
 def upload_to_r2(request):
+    """
+    Upload files to R2 storage with service-based folder routing:
+    
+    Manual Job Services (stored in vendor_manual_print_jobs/):
+    - digital_print: Digital Document Printing
+    - gloss_printing: Gloss Print  
+    - jumbo_printing: Jumbo Paper Printing
+    - golden_embossing: Golden Embossing
+    - project_binding: Project Binding
+    
+    Other Services (stored in vendor_print_jobs/):
+    - photo_print: Photo Print
+    - passport_photo: Passport Photo
+    - Any other services
+    """
     if request.method == 'POST':
         try:
             files_uploaded = 0
@@ -1469,9 +1484,33 @@ def upload_to_r2(request):
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
-                    # Always use the same storage folders as the userdashboard print modal
-                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
-                    user_file_key = f'users/{user_email}/{file.name}'
+                    
+                    # Determine storage folder based on service type
+                    # Specific services go to vendor_manual_print_jobs folder
+                    # These services require manual processing by vendors
+                    manual_job_services = [
+                        'digital_print',      # Digital Document Printing
+                        'gloss_printing',     # Gloss Print
+                        'jumbo_printing',     # Jumbo Paper Printing
+                        'golden_embossing',   # Golden Embossing
+                        'project_binding'     # Project Binding
+                    ]
+                    
+                    # All other services go to vendor_print_jobs folder
+                    # These include photo_print, passport_photo, and any other services
+                    
+                    if service_type in manual_job_services:
+                        # Store in vendor_manual_print_jobs folder
+                        vendor_file_key = f'vendor_manual_print_jobs/{vendor_id}/{file.name}'
+                        user_file_key = f'users/{user_email}/{file.name}'
+                        file_metadata['storage_folder'] = 'vendor_manual_print_jobs'
+                        print(f"📁 Storing {service_type} job in vendor_manual_print_jobs folder")
+                    else:
+                        # Store in regular vendor_print_jobs folder
+                        vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
+                        user_file_key = f'users/{user_email}/{file.name}'
+                        file_metadata['storage_folder'] = 'vendor_print_jobs'
+                        print(f"📁 Storing {service_type} job in vendor_print_jobs folder")
 
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
@@ -2934,6 +2973,286 @@ def get_vendor_pricing(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @csrf_exempt
+def calculate_gloss_print_pricing(request):
+    """Calculate pricing for gloss print service based on vendor pricing.json"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            print_size = data.get('print_size', 'A4')
+            gloss_type = data.get('gloss_type', 'standard_gloss')
+            print_color = data.get('print_color', 'Color')
+            page_count = data.get('page_count', 1)
+            num_copies = data.get('num_copies', 1)
+            
+            print(f"Received gloss print data: vendor_email={vendor_email}, print_size={print_size}, gloss_type={gloss_type}, print_color={print_color}, page_count={page_count}, num_copies={num_copies}")
+            print(f"Page count type: {type(page_count)}, value: {page_count}")
+            print(f"Num copies type: {type(num_copies)}, value: {num_copies}")
+            
+            # Convert page_count to int
+            try:
+                page_count = int(page_count)
+                print(f"Page count after conversion: {page_count}")
+            except (ValueError, TypeError):
+                page_count = 1
+                print("Invalid page count, using default: 1")
+            
+            # Ensure page_count is at least 1
+            if page_count < 1:
+                page_count = 1
+            
+            # Convert num_copies to int
+            try:
+                num_copies = int(num_copies)
+                print(f"Num copies after conversion: {num_copies}")
+            except (ValueError, TypeError):
+                num_copies = 1
+                print("Invalid num copies, using default: 1")
+            
+            # Ensure num_copies is at least 1
+            if num_copies < 1:
+                num_copies = 1
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            print(f"🔍 Gloss print - Vendor email: {vendor_email}")
+            print(f"🔍 Gloss print - Sanitized folder: {vendor_folder}")
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            print(f"🔍 Gloss print - Trying pricing keys: {possible_pricing_keys}")
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
+                })
+            
+            # Construct pricing key based on user selections
+            # Handle special case for A1 (it's stored as 'al' in the pricing.json)
+            size_key = print_size.lower()
+            if size_key == 'a1':
+                size_key = 'al'
+            
+            # For gloss printing, the pricing is nested under "categorized_pricing.gloss_print" object
+            # Access the nested gloss_print pricing data
+            categorized_pricing = pricing_data.get('categorized_pricing', {})
+            print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
+            
+            gloss_pricing = categorized_pricing.get('gloss_print', {})
+            print(f"📊 Gloss pricing keys: {list(gloss_pricing.keys())}")
+            
+            # Construct the pricing key format: gloss_print_{size}_{gloss_type}
+            pricing_key_name = f'gloss_print_{size_key}_{gloss_type}'
+            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            
+            # Get base price from the nested gloss_print object
+            base_price = gloss_pricing.get(pricing_key_name)
+            
+            # Check if pricing is available
+            if base_price is None:
+                print(f"❌ Pricing not found for key: {pricing_key_name}")
+                print(f"Available gloss pricing keys: {list(gloss_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for {print_size} {gloss_type}. Please contact the vendor.'
+                })
+            
+            # Calculate price per page
+            price_per_page = base_price
+            
+            # Calculate total price (price per page * number of pages * number of copies)
+            total_price = price_per_page * page_count * num_copies
+            
+            print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, page_count={page_count}, num_copies={num_copies}, total_price={total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = {
+                'base_price': base_price,
+                'price_per_page': price_per_page,
+                'page_count': page_count,
+                'num_copies': num_copies,
+                'total_price': total_price,
+                'pricing_key_used': pricing_key_name
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price
+            })
+            
+        except Exception as e:
+            print(f"Error calculating gloss print pricing: {e}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    })
+
+@csrf_exempt
+def calculate_photo_print_pricing(request):
+    """Calculate pricing for photo print service based on vendor pricing.json"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            photo_count = data.get('photo_count', 1)
+            layout_slots = data.get('layout_slots', 1)
+            orientation = data.get('orientation', 'portrait')
+            color = data.get('color', 'Color')
+            copies = data.get('copies', 1)
+            
+            print(f"Received photo print data: vendor_email={vendor_email}, photo_count={photo_count}, layout_slots={layout_slots}, orientation={orientation}, color={color}, copies={copies}")
+            
+            # Convert values to int
+            try:
+                photo_count = int(photo_count)
+                layout_slots = int(layout_slots)
+                copies = int(copies)
+            except (ValueError, TypeError):
+                photo_count = 1
+                layout_slots = 1
+                copies = 1
+            
+            # Ensure values are at least 1
+            if photo_count < 1: photo_count = 1
+            if layout_slots < 1: layout_slots = 1
+            if copies < 1: copies = 1
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            print(f"🔍 Photo print - Vendor email: {vendor_email}")
+            print(f"🔍 Photo print - Sanitized folder: {vendor_folder}")
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            print(f"🔍 Photo print - Trying pricing keys: {possible_pricing_keys}")
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
+                })
+            
+            # For photo printing, the pricing is nested under "categorized_pricing.photo_print" object
+            # Access the nested photo_print pricing data
+            categorized_pricing = pricing_data.get('categorized_pricing', {})
+            print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
+            
+            photo_pricing = categorized_pricing.get('photo_print', {})
+            print(f"📊 Photo pricing keys: {list(photo_pricing.keys())}")
+            
+            # Construct the pricing key format: photo_print_a4_single_color
+            pricing_key_name = 'photo_print_a4_single_color'
+            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            
+            # Get base price from the nested photo_print object
+            base_price = photo_pricing.get(pricing_key_name)
+            
+            # Check if pricing is available
+            if base_price is None:
+                print(f"❌ Pricing not found for key: {pricing_key_name}")
+                print(f"Available photo pricing keys: {list(photo_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for photo print. Please contact the vendor.'
+                })
+            
+            # Calculate price per layout (1 layout = 1 A4 page)
+            price_per_layout = base_price
+            
+            # Calculate total price (price per layout * number of copies)
+            total_price = price_per_layout * copies
+            
+            print(f"Calculation: base_price={base_price}, price_per_layout={price_per_layout}, copies={copies}, total_price={total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = {
+                'base_price': base_price,
+                'price_per_layout': price_per_layout,
+                'photo_count': photo_count,
+                'layout_slots': layout_slots,
+                'copies': copies,
+                'total_price': total_price,
+                'pricing_key_used': pricing_key_name
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price
+            })
+            
+        except Exception as e:
+            print(f"Error calculating photo print pricing: {e}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    })
+
+@csrf_exempt
 def calculate_digital_print_pricing(request):
     """
     Calculate digital print pricing based on user selections and vendor pricing
@@ -2973,55 +3292,77 @@ def calculate_digital_print_pricing(request):
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
 
-            try:
-                # Get vendor pricing file
-                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                
-                # Get digital print pricing from categorized pricing
-                digital_pricing = pricing_data.get('categorized_pricing', {}).get('digital_print', {})
-                
-                # Construct the pricing key based on user selections
-                # Handle special case for A1 (it's stored as 'al' in the pricing.json)
-                paper_size_key = paper_size.lower()
-                if paper_size_key == 'a1':
-                    paper_size_key = 'al'
-                
-                pricing_key_name = f"digital_print_{paper_size_key}_{print_color}"
-                
-                # Get base price for the selected options
-                base_price = digital_pricing.get(pricing_key_name, 0)
-                
-                # Apply quality upgrade if high quality is selected
-                quality_upgrade = 0
-                if print_quality == 'high_quality':
-                    quality_upgrade = digital_pricing.get('digital_print_high_quality', 0)
-                
-                # Calculate total price (price per page * number of pages * number of copies)
-                price_per_page = base_price + quality_upgrade
-                total_price = price_per_page * page_count * num_copies
-                
-                print(f"Calculation: base_price={base_price}, quality_upgrade={quality_upgrade}, price_per_page={price_per_page}, page_count={page_count}, num_copies={num_copies}, total_price={total_price}")
-                
-                # Prepare pricing breakdown
-                pricing_breakdown = {
-                    'base_price': base_price,
-                    'quality_upgrade': quality_upgrade,
-                    'price_per_page': price_per_page,
-                    'page_count': page_count,
-                    'num_copies': num_copies,
-                    'total_price': total_price,
-                    'pricing_key_used': pricing_key_name
-                }
-                
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
                 return JsonResponse({
-                    'success': True,
-                    'pricing_breakdown': pricing_breakdown,
-                    'total_price': total_price
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
                 })
-                
-            except Exception as e:
+            
+            # Get digital print pricing from categorized pricing
+            digital_pricing = pricing_data.get('categorized_pricing', {}).get('digital_print', {})
+            
+            # Construct the pricing key based on user selections
+            # Handle special case for A1 (it's stored as 'al' in the pricing.json)
+            paper_size_key = paper_size.lower()
+            if paper_size_key == 'a1':
+                paper_size_key = 'al'
+            
+            pricing_key_name = f"digital_print_{paper_size_key}_{print_color}"
+            
+            # Get base price for the selected options
+            base_price = digital_pricing.get(pricing_key_name, 0)
+            
+            # Apply quality upgrade if high quality is selected
+            quality_upgrade = 0
+            if print_quality == 'high_quality':
+                quality_upgrade = digital_pricing.get('digital_print_high_quality', 0)
+            
+            # Calculate total price (price per page * number of pages * number of copies)
+            price_per_page = base_price + quality_upgrade
+            total_price = price_per_page * page_count * num_copies
+            
+            print(f"Calculation: base_price={base_price}, quality_upgrade={quality_upgrade}, price_per_page={price_per_page}, page_count={page_count}, num_copies={num_copies}, total_price={total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = {
+                'base_price': base_price,
+                'quality_upgrade': quality_upgrade,
+                'price_per_page': price_per_page,
+                'page_count': page_count,
+                'num_copies': num_copies,
+                'total_price': total_price,
+                'pricing_key_used': pricing_key_name
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price
+            })
+            
+        except Exception as e:
                 print(f"Error calculating pricing for {vendor_email}: {str(e)}")
                 # Return default pricing calculation based on actual pricing.json structure
                 default_pricing = {
@@ -3074,6 +3415,409 @@ def calculate_digital_print_pricing(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@csrf_exempt
+def calculate_jumbo_print_pricing(request):
+    """Calculate pricing for jumbo print service based on vendor pricing.json"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            print_size = data.get('print_size', 'A3')
+            print_color = data.get('print_color', 'Color')
+            print_quality = data.get('print_quality', 'standard')
+            page_count = data.get('page_count', 1)
+            num_copies = data.get('num_copies', 1)
+            
+            print(f"Received jumbo print data: vendor_email={vendor_email}, print_size={print_size}, print_color={print_color}, print_quality={print_quality}, page_count={page_count}, num_copies={num_copies}")
+            print(f"Page count type: {type(page_count)}, value: {page_count}")
+            print(f"Num copies type: {type(num_copies)}, value: {num_copies}")
+            
+            # Convert page_count to int
+            try:
+                page_count = int(page_count)
+                print(f"Page count after conversion: {page_count}")
+            except (ValueError, TypeError):
+                page_count = 1
+                print("Invalid page count, using default: 1")
+            
+            # Ensure page_count is at least 1
+            if page_count < 1:
+                page_count = 1
+            
+            # Convert num_copies to int
+            try:
+                num_copies = int(num_copies)
+                print(f"Num copies after conversion: {num_copies}")
+            except (ValueError, TypeError):
+                num_copies = 1
+                print("Invalid num copies, using default: 1")
+            
+            # Ensure num_copies is at least 1
+            if num_copies < 1:
+                num_copies = 1
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            print(f"🔍 Jumbo print - Vendor email: {vendor_email}")
+            print(f"🔍 Jumbo print - Sanitized folder: {vendor_folder}")
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            print(f"🔍 Jumbo print - Trying pricing keys: {possible_pricing_keys}")
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
+                })
+            
+            # Construct pricing key based on user selections
+            # Handle special case for A1 (it's stored as 'al' in the pricing.json)
+            size_key = print_size.lower()
+            if size_key == 'a1':
+                size_key = 'al'
+            
+            # For jumbo printing, the pricing is nested under "categorized_pricing.jumbo_print" object
+            # Access the nested jumbo_print pricing data
+            categorized_pricing = pricing_data.get('categorized_pricing', {})
+            print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
+            
+            jumbo_pricing = categorized_pricing.get('jumbo_print', {})
+            print(f"📊 Jumbo pricing keys: {list(jumbo_pricing.keys())}")
+            
+            # Map print color to pricing key format
+            color_key = 'single_color' if print_color == 'Color' else 'single_bw'
+            
+            # Construct the pricing key format: jumbo_print_{size}_{color_key}
+            pricing_key_name = f'jumbo_print_{size_key}_{color_key}'
+            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            
+            # Get base price from the nested jumbo_print object
+            base_price = jumbo_pricing.get(pricing_key_name)
+            
+            # Check if pricing is available
+            if base_price is None:
+                print(f"❌ Pricing not found for key: {pricing_key_name}")
+                print(f"Available jumbo pricing keys: {list(jumbo_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for {print_size} {print_color}. Please contact the vendor.'
+                })
+            
+            # Calculate price per page
+            price_per_page = base_price
+            
+            # Calculate total price (price per page * number of pages * number of copies)
+            total_price = price_per_page * page_count * num_copies
+            
+            print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, page_count={page_count}, num_copies={num_copies}, total_price={total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = {
+                'base_price': base_price,
+                'price_per_page': price_per_page,
+                'page_count': page_count,
+                'num_copies': num_copies,
+                'total_price': total_price,
+                'pricing_key_used': pricing_key_name
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price
+            })
+            
+        except Exception as e:
+            print(f"Error calculating jumbo print pricing: {e}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    })
+
+@csrf_exempt
+def calculate_passport_photo_pricing(request):
+    """Calculate pricing for passport photo service based on vendor pricing.json"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            country = data.get('country', 'india')
+            photo_package = data.get('photo_package', '8')
+            color_photo = data.get('color_photo', 'color_photo')
+            paper_size = data.get('paper_size', 'A4')
+            
+            print(f"Received passport photo data: vendor_email={vendor_email}, country={country}, photo_package={photo_package}, color_photo={color_photo}, paper_size={paper_size}")
+            
+            # Convert photo_package to int
+            try:
+                photo_package = int(photo_package)
+                print(f"Photo package after conversion: {photo_package}")
+            except (ValueError, TypeError):
+                photo_package = 8
+                print("Invalid photo package, using default: 8")
+            
+            # Ensure photo_package is valid
+            if photo_package not in [8, 16, 30]:
+                photo_package = 8
+                print(f"Invalid photo package {photo_package}, using default: 8")
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            print(f"🔍 Passport photo - Vendor email: {vendor_email}")
+            print(f"🔍 Passport photo - Sanitized folder: {vendor_folder}")
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            print(f"🔍 Passport photo - Trying pricing keys: {possible_pricing_keys}")
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
+                })
+            
+            # For passport photo, the pricing is nested under "categorized_pricing.passport_photo" object
+            # Access the nested passport_photo pricing data
+            categorized_pricing = pricing_data.get('categorized_pricing', {})
+            print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
+            
+            passport_pricing = categorized_pricing.get('passport_photo', {})
+            print(f"📊 Passport photo pricing keys: {list(passport_pricing.keys())}")
+            
+            # Construct the pricing key format: passport_photo_{photo_package}
+            pricing_key_name = f'passport_photo_{photo_package}'
+            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            
+            # Get base price from the nested passport_photo object
+            base_price = passport_pricing.get(pricing_key_name)
+            
+            # Check if pricing is available
+            if base_price is None:
+                print(f"❌ Pricing not found for key: {pricing_key_name}")
+                print(f"Available passport photo pricing keys: {list(passport_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for {photo_package} photos. Please contact the vendor.'
+                })
+            
+            # Calculate total price (base price for the package)
+            total_price = base_price
+            
+            print(f"Calculation: base_price={base_price}, total_price={total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = {
+                'base_price': base_price,
+                'total_price': total_price,
+                'pricing_key_used': pricing_key_name,
+                'country': country,
+                'photo_package': photo_package,
+                'color_photo': color_photo,
+                'paper_size': paper_size
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price
+            })
+            
+        except Exception as e:
+            print(f"Error calculating passport photo pricing: {e}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    })
+
+@csrf_exempt
+def calculate_a4_print_pricing(request):
+    """Calculate pricing for A4 print service based on vendor pricing.json"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            print_type = data.get('print_type', 'single_bw')
+            total_pages = data.get('total_pages', 1)
+            total_copies = data.get('total_copies', 1)
+            
+            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}")
+            
+            # Convert values to int
+            try:
+                total_pages = int(total_pages)
+                total_copies = int(total_copies)
+            except (ValueError, TypeError):
+                total_pages = 1
+                total_copies = 1
+            
+            # Ensure values are at least 1
+            if total_pages < 1: total_pages = 1
+            if total_copies < 1: total_copies = 1
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            print(f"🔍 A4 print - Vendor email: {vendor_email}")
+            print(f"🔍 A4 print - Sanitized folder: {vendor_folder}")
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            print(f"🔍 A4 print - Trying pricing keys: {possible_pricing_keys}")
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
+                })
+            
+            # For A4 print, the pricing is nested under "categorized_pricing.a4_print" object
+            # Access the nested a4_print pricing data
+            categorized_pricing = pricing_data.get('categorized_pricing', {})
+            print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
+            
+            a4_pricing = categorized_pricing.get('a4_print', {})
+            print(f"📊 A4 print pricing keys: {list(a4_pricing.keys())}")
+            
+            # Construct the pricing key format: a4_print_{print_type}
+            pricing_key_name = f'a4_print_{print_type}'
+            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            
+            # Get base price from the nested a4_print object
+            base_price = a4_pricing.get(pricing_key_name)
+            
+            # Check if pricing is available
+            if base_price is None:
+                print(f"❌ Pricing not found for key: {pricing_key_name}")
+                print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for {print_type}. Please contact the vendor.'
+                })
+            
+            # Calculate price per page
+            price_per_page = base_price
+            
+            # Calculate total price (price per page * total pages * total copies)
+            total_price = price_per_page * total_pages * total_copies
+            
+            print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, total_pages={total_pages}, total_copies={total_copies}, total_price={total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = {
+                'base_price': base_price,
+                'price_per_page': price_per_page,
+                'total_pages': total_pages,
+                'total_copies': total_copies,
+                'total_price': total_price,
+                'pricing_key_used': pricing_key_name
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price
+            })
+            
+        except Exception as e:
+            print(f"Error calculating A4 print pricing: {e}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    })
 
 @csrf_exempt
 def get_available_shops(request):
