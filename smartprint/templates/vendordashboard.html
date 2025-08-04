@@ -183,7 +183,7 @@
             margin-left: auto;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .theme-toggle {
@@ -207,6 +207,94 @@
             transform: scale(1.1);
         }
 
+        .availability-toggle {
+            position: relative;
+            width: 120px;
+            height: 40px;
+            background: #10B981;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .availability-toggle:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .availability-toggle::before {
+            content: '';
+            position: absolute;
+            right: 4px;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        .availability-toggle.offline {
+            background: #e74c3c;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+
+        .availability-toggle.offline:hover {
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+        }
+
+        .availability-toggle.offline::before {
+            right: calc(100% - 36px);
+            animation: pulse-red 2s infinite;
+        }
+
+        .availability-toggle .toggle-text {
+            position: relative;
+            z-index: 3;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .availability-toggle .toggle-text.online-text {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .availability-toggle .toggle-text.offline-text {
+            opacity: 0;
+            transform: translateX(20px);
+            position: absolute;
+            right: 12px;
+        }
+
+        .availability-toggle.offline .toggle-text.online-text {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        .availability-toggle.offline .toggle-text.offline-text {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
         /* Sidebar */
         .sidebar {
             position: fixed;
@@ -219,7 +307,8 @@
             z-index: 999;
             transform: translateX(0);
             transition: transform 0.3s ease;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar.collapsed {
@@ -229,19 +318,13 @@
         .vendor-profile {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
+            gap: 16px;
             padding: 20px;
             background: var(--surface-container);
             margin: 20px;
             border-radius: 12px;
             border: 1px solid var(--outline);
-            min-height: 80px;
-        }
-
-        .vendor-info {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
+            position: relative;
         }
 
         .vendor-avatar {
@@ -255,39 +338,47 @@
             color: var(--on-primary);
             font-weight: 600;
             font-size: 18px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(21, 101, 192, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .vendor-avatar i {
+            font-size: 20px;
+            color: var(--on-primary);
+        }
+
+        .vendor-info {
+            flex: 1;
+            min-width: 0;
         }
 
         .vendor-info h3 {
             font-size: 16px;
             font-weight: 600;
             color: var(--on-surface);
-            margin-bottom: 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            margin-bottom: 4px;
+            line-height: 1.2;
+            word-wrap: break-word;
         }
 
         .vendor-info p {
             font-size: 14px;
             color: var(--on-surface-variant);
-            word-wrap: break-word;
-            word-break: break-all;
+            margin-bottom: 8px;
             line-height: 1.3;
-            max-height: 2.6em;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .vendor-status {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 6px;
             font-size: 12px;
             color: var(--secondary);
+            font-weight: 500;
         }
 
         .status-dot {
@@ -304,11 +395,15 @@
         }
 
         .nav-menu {
-            padding: 20px 0;
+            padding: 20px 0 40px 0;
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
         }
 
         .nav-item {
             margin: 4px 16px;
+            
         }
 
         .nav-link {
@@ -351,6 +446,24 @@
             white-space: nowrap;
         }
 
+        /* Navigation scrollbar styling */
+        .nav-menu::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .nav-menu::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .nav-menu::-webkit-scrollbar-thumb {
+            background: var(--outline);
+            border-radius: 2px;
+        }
+
+        .nav-menu::-webkit-scrollbar-thumb:hover {
+            background: var(--on-surface-variant);
+        }
+
         .nav-badge {
             background: var(--primary);
             color: var(--on-primary);
@@ -364,13 +477,11 @@
         }
 
         .sidebar-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 24px;
+            padding: 16px;
             border-top: 1px solid var(--outline);
             background: var(--surface-variant);
+            box-shadow: 0 -2px 8px var(--shadow-light);
+            flex-shrink: 0;
         }
 
         .logout-btn {
@@ -387,6 +498,7 @@
             transition: all 0.3s ease;
             font-weight: 600;
             text-decoration: none;
+            box-shadow: 0 2px 4px rgba(186, 85, 211, 0.1);
         }
 
         .logout-btn:hover {
@@ -527,6 +639,14 @@
             color: var(--on-surface);
         }
 
+        .section-title.offline {
+            color: #e74c3c;
+        }
+
+        .section-title.offline i {
+            animation: pulse-red 2s infinite;
+        }
+
         .section-controls {
             display: flex;
             align-items: center;
@@ -592,6 +712,24 @@
             padding: 12px; /* was 24px */
             max-height: 340px; /* was 400px */
             overflow-y: auto;
+            position: relative;
+        }
+
+        .jobs-container.offline::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(231, 76, 60, 0.1);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .jobs-container.offline .job-card {
+            opacity: 0.3;
+            pointer-events: none;
         }
 
         .jobs-grid {
@@ -1352,6 +1490,316 @@
                 display: block;
             }
         }
+
+        /* Profile Modal Styles */
+        .profile-modal-content {
+            max-width: 480px;
+            width: 95%;
+            padding: 32px 24px 24px 24px;
+        }
+        
+        .profile-form {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .profile-avatar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: var(--surface-container);
+            border-radius: 12px;
+            border: 1px solid var(--outline);
+        }
+        
+        .profile-avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--on-primary);
+            font-size: 32px;
+            border: 3px solid var(--surface);
+            box-shadow: 0 4px 12px var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .profile-avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .profile-avatar-preview i {
+            font-size: 32px;
+        }
+        
+        .profile-avatar-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .profile-upload-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--primary);
+            color: var(--on-primary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 14px;
+        }
+        
+        .profile-upload-label:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+        }
+        
+        .profile-upload-label i {
+            font-size: 16px;
+        }
+        
+        .profile-avatar-actions {
+            margin-top: 12px;
+            text-align: center;
+        }
+        
+        .btn-remove-profile {
+            background: var(--error);
+            color: var(--on-error);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 auto;
+        }
+        
+        .btn-remove-profile:hover {
+            background: var(--error-dark);
+            transform: translateY(-1px);
+        }
+        
+        #profileImage {
+            display: none;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+        
+        .form-input {
+            padding: 12px 16px;
+            border: 1px solid var(--outline);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--on-surface);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
+        }
+        
+        .form-input:read-only {
+            background: var(--surface-container);
+            color: var(--on-surface-variant);
+            cursor: not-allowed;
+        }
+        
+        .form-help {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            font-style: italic;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding-top: 16px;
+            border-top: 1px solid var(--outline);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: var(--on-primary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--surface-container);
+            color: var(--on-surface);
+            border: 1px solid var(--outline);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--surface-container-high);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        /* Settings Modal Styles */
+        .settings-modal-content {
+            max-width: 420px;
+            width: 95%;
+            padding: 32px 24px 24px 24px;
+        }
+        .services-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 12px;
+        }
+        .service-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--outline-variant);
+        }
+        .service-item:last-child {
+            border-bottom: none;
+        }
+        .service-label {
+            font-size: 16px;
+            color: var(--on-surface);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+        /* Toggle Switch Styles - Modern with Transitions */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #dc2626; /* Red background for off state */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 28px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background: #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .switch input:checked + .slider {
+            background: #16a34a; /* Bright green background for on state */
+        }
+        .switch input:checked + .slider:before {
+            transform: translateX(24px);
+            background: #ffffff;
+        }
+        .slider.round {
+            border-radius: 28px;
+        }
+        .slider.round:before {
+            border-radius: 50%;
+        }
+        
+        /* Hover effects for better UX */
+        .switch:hover .slider {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+        .switch:hover .slider:before {
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Focus states for accessibility */
+        .switch input:focus + .slider {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        /* Responsive for modal */
+        @media (max-width: 600px) {
+            .settings-modal-content {
+                max-width: 98vw;
+                padding: 18px 6px;
+            }
+            .service-label {
+                font-size: 15px;
+            }
+            .profile-modal-content {
+                max-width: 98vw;
+                padding: 18px 6px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1369,6 +1817,10 @@
         </div>
         
         <div class="header-actions">
+            <button class="availability-toggle" id="availabilityToggle" onclick="toggleAvailability()" aria-label="Toggle availability">
+                <span class="toggle-text online-text">Online</span>
+                <span class="toggle-text offline-text">Offline</span>
+            </button>
             <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
                 <i class="fas fa-moon"></i>
             </button>
@@ -1383,7 +1835,11 @@
         <!-- Vendor Profile -->
         <div class="vendor-profile">
             <div class="vendor-avatar">
-                {% if vendor_details %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}
+                {% if vendor_details and vendor_details.profile_image_url %}
+                    <img src="{{ vendor_details.profile_image_url }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                {% else %}
+                    {% if vendor_details and vendor_details.vendor_name %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% else %}<i class="fas fa-user"></i>{% endif %}
+                {% endif %}
             </div>
             <div class="vendor-info">
                 <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
@@ -1424,6 +1880,14 @@
                     <span class="nav-badge" id="completedNavBadge">0</span>
                 </a>
             </div>
+
+            <div class="nav-item">
+                <a href="/vendor-pricing/?from_dashboard=1&vendorEmail={{ vendor_details.vendor_email }}" class="nav-link" onclick="setActiveNav(this)">
+                    <span style="font-size: 18px; font-weight: bold; margin-right: 8px;">₹</span>
+                    <span>Pricing</span>
+                </a>
+            </div>
+         
             <div class="nav-item">
                 <a href="#profile" class="nav-link" onclick="setActiveNav(this); showProfile()">
                     <i class="fas fa-user-circle"></i>
@@ -1431,7 +1895,7 @@
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#settings" class="nav-link" onclick="setActiveNav(this)">
+                <a href="#settings" class="nav-link" onclick="setActiveNav(this); openSettingsModal(); return false;">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
                 </a>
@@ -1698,19 +2162,162 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <!-- Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content profile-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Update Profile</h3>
+                <button class="modal-close" onclick="closeProfileModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="profileForm" class="profile-form">
+                <div class="profile-section">
+                    <div class="profile-avatar-section">
+                        <div class="profile-avatar-preview" id="profileAvatarPreview">
+                            <i class="fas fa-user"></i>
+                        </div>
+                                                         <div class="profile-avatar-upload">
+                                     <label for="profileImage" class="profile-upload-label">
+                                         <i class="fas fa-camera"></i>
+                                         <span>Upload Photo</span>
+                                     </label>
+                                     <input type="file" id="profileImage" name="profile_image" accept="image/*" onchange="previewProfileImage(this)">
+                                 </div>
+                                 <div class="profile-avatar-actions">
+                                     <button type="button" class="btn-remove-profile" onclick="removeProfileImage()" id="removeProfileBtn" style="display: none;">
+                                         <i class="fas fa-trash"></i>
+                                         <span>Remove Photo</span>
+                                     </button>
+                                 </div>
+                    </div>
+                </div>
+                
+                <div class="profile-section">
+                    <div class="form-group">
+                        <label for="vendorName" class="form-label">Name</label>
+                        <input type="text" id="vendorName" name="vendor_name" class="form-input" placeholder="Enter your name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vendorEmail" class="form-label">Email</label>
+                        <input type="email" id="vendorEmail" name="vendor_email" class="form-input" placeholder="Enter your email" readonly>
+                        <small class="form-help">Email cannot be changed</small>
+                    </div>
+                </div>
+                
+                                         <div class="profile-actions">
+                             <button type="button" class="btn-secondary" onclick="closeProfileModal()">Cancel</button>
+                             <button type="submit" class="btn-primary">Save Changes</button>
+                         </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content settings-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Service Availability</h3>
+                <button class="modal-close" onclick="closeSettingsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="services-list">
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-print"></i> Digital Print</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('digital_print', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-book"></i> Project Binding</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('project_binding', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-file-image"></i> Gloss Printing</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('gloss_printing', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-expand"></i> Jumbo Printing</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('jumbo_printing', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-file-alt"></i> Regular Print</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('regular_print', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-passport"></i> Passport Print</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('passport_print', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="service-item">
+                    <span class="service-label"><i class="fas fa-camera"></i> Photo Print</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleService('photo_print', this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let allJobs = [];
         let filteredJobs = { manual: [], completed: [], requests: [] };
         let sidebarCollapsed = false;
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
+        let vendorAvailability = 'online'; // Default to online
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();
+            loadVendorAvailability();
             loadJobs();
             setInterval(loadJobs, 30000);
             initResponsiveLayout();
+            
+            // Test profile image URL on page load
+            setTimeout(() => {
+                testProfileImageUrl();
+            }, 2000);
+            
+            // Ensure availability status is saved after page loads
+            setTimeout(async () => {
+                if (vendorAvailability) {
+                    console.log('🔍 DEBUG - Ensuring availability status is saved on page load:', vendorAvailability);
+                    await saveAvailabilityStatus(vendorAvailability);
+                }
+            }, 3000);
+            
+            // Debug: Check if availability toggle is working
+            setTimeout(() => {
+                const toggleBtn = document.getElementById('availabilityToggle');
+                const icon = toggleBtn?.querySelector('i');
+                console.log('Availability toggle debug:', {
+                    vendorAvailability,
+                    toggleBtn: !!toggleBtn,
+                    icon: !!icon,
+                    iconClass: icon?.className,
+                    iconVisible: icon?.offsetWidth > 0
+                });
+            }, 1000);
         });
 
         // Responsive Layout
@@ -1773,8 +2380,222 @@
         }
 
         function showProfile() {
-            showToast('Profile section - Coming soon!');
+            // Load current vendor data into the form
+            loadProfileData();
+            // Show the profile modal
+            document.getElementById('profileModal').classList.add('show');
         }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.remove('show');
+            
+            // Reset only the file input, not the entire form
+            const fileInput = document.getElementById('profileImage');
+            fileInput.value = '';
+            fileInput.removeAttribute('data-remove-image');
+            
+            // Reset avatar preview to default
+            const preview = document.getElementById('profileAvatarPreview');
+            preview.innerHTML = '<i class="fas fa-user"></i>';
+            
+            // Hide remove button
+            document.getElementById('removeProfileBtn').style.display = 'none';
+            
+            // Note: We don't reset the form completely to preserve vendor name and email
+            // The form will be properly loaded when the modal is opened again
+        }
+
+        function loadProfileData() {
+            // Get vendor details from the sidebar
+            const vendorNameElement = document.querySelector('.vendor-info h3');
+            const vendorEmailElement = document.querySelector('.vendor-info p');
+            
+            const vendorName = vendorNameElement ? vendorNameElement.textContent.trim() : '';
+            const vendorEmail = vendorEmailElement ? vendorEmailElement.textContent.trim() : '';
+            
+            // Populate form fields (this should always be the current vendor data)
+            document.getElementById('vendorName').value = vendorName;
+            document.getElementById('vendorEmail').value = vendorEmail;
+            
+            // Load current avatar if exists
+            const avatarElement = document.querySelector('.vendor-avatar');
+            const removeBtn = document.getElementById('removeProfileBtn');
+            
+            if (avatarElement) {
+                const preview = document.getElementById('profileAvatarPreview');
+                // Check if avatar has an image
+                const avatarImg = avatarElement.querySelector('img');
+                if (avatarImg && avatarImg.src) {
+                    preview.innerHTML = `<img src="${avatarImg.src}" alt="Profile">`;
+                    // Show remove button if there's an existing image
+                    removeBtn.style.display = 'flex';
+                } else if (avatarElement.style.backgroundImage) {
+                    preview.innerHTML = `<img src="${avatarElement.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/, '$1')}" alt="Profile">`;
+                    // Show remove button if there's an existing image
+                    removeBtn.style.display = 'flex';
+                } else {
+                    // No image, hide remove button
+                    removeBtn.style.display = 'none';
+                }
+            }
+            
+            // Clear any previous remove flag
+            document.getElementById('profileImage').removeAttribute('data-remove-image');
+        }
+
+                        function previewProfileImage(input) {
+                    const file = input.files[0];
+                    if (file) {
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const preview = document.getElementById('profileAvatarPreview');
+                                preview.innerHTML = `<img src="${e.target.result}" alt="Profile Preview">`;
+                                // Show remove button when image is selected
+                                document.getElementById('removeProfileBtn').style.display = 'flex';
+                                // Remove the remove flag since user selected a new image
+                                input.removeAttribute('data-remove-image');
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            showToast('Please select a valid image file');
+                            input.value = '';
+                        }
+                    }
+                }
+                
+                function removeProfileImage() {
+                    const preview = document.getElementById('profileAvatarPreview');
+                    const fileInput = document.getElementById('profileImage');
+                    const removeBtn = document.getElementById('removeProfileBtn');
+                    
+                    // Preserve the current vendor name and email BEFORE any changes
+                    const vendorName = document.getElementById('vendorName').value;
+                    const vendorEmail = document.getElementById('vendorEmail').value;
+                    
+                    // Reset preview to default avatar
+                    preview.innerHTML = '<i class="fas fa-user"></i>';
+                    
+                    // Clear file input
+                    fileInput.value = '';
+                    
+                    // Hide remove button
+                    removeBtn.style.display = 'none';
+                    
+                    // Add a flag to indicate image should be removed
+                    fileInput.setAttribute('data-remove-image', 'true');
+                    
+                    // Restore the vendor name and email immediately
+                    document.getElementById('vendorName').value = vendorName;
+                    document.getElementById('vendorEmail').value = vendorEmail;
+                    
+                    showToast('Profile image will be removed when you save changes');
+                }
+
+        // Test profile image URL accessibility
+        async function testProfileImageUrl() {
+            try {
+                const response = await fetch('/test-profile-image-url/');
+                const data = await response.json();
+                
+                if (data.success) {
+                                    console.log('🔍 Profile Image URL Test:', JSON.stringify({
+                    url: data.profile_image_url,
+                    is_accessible: data.is_accessible,
+                    status_code: data.status_code,
+                    error_message: data.error_message,
+                    file_exists_in_r2: data.file_exists_in_r2,
+                    extracted_key: data.extracted_key
+                }, null, 2));
+                    
+                    if (data.profile_image_url && !data.is_accessible) {
+                        showToast('Warning: Profile image URL is not accessible');
+                        console.log('❌ Profile image URL is not accessible:', data.profile_image_url);
+                        
+                        // Also test R2 URL generation
+                                        const r2Response = await fetch('/test-r2-url-generation/');
+                const r2Data = await r2Response.json();
+                console.log('🔍 R2 URL Generation Test:', JSON.stringify(r2Data, null, 2));
+                    }
+                }
+            } catch (error) {
+                console.error('Error testing profile image URL:', error);
+            }
+        }
+
+        // Profile form submission
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const vendorName = formData.get('vendor_name');
+            const profileImage = formData.get('profile_image');
+            const fileInput = document.getElementById('profileImage');
+            const shouldRemoveImage = fileInput.hasAttribute('data-remove-image');
+            
+            // Basic validation
+            if (!vendorName.trim()) {
+                showToast('Please enter your name');
+                return;
+            }
+            
+            // Add remove flag to form data if needed
+            if (shouldRemoveImage) {
+                formData.append('remove_profile_image', 'true');
+            }
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Saving...';
+            submitBtn.disabled = true;
+            
+            try {
+                // Send form data to backend
+                const response = await fetch('/update-vendor-profile/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update sidebar vendor info
+                    const vendorNameElement = document.querySelector('.vendor-info h3');
+                    if (vendorNameElement) {
+                        vendorNameElement.textContent = data.vendor_name;
+                    }
+                    
+                    // Update avatar display
+                    const avatarElement = document.querySelector('.vendor-avatar');
+                    if (avatarElement) {
+                        if (data.profile_image_url) {
+                            avatarElement.innerHTML = `<img src="${data.profile_image_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                        } else {
+                            // Show first letter of name if no image
+                            const firstLetter = vendorName.charAt(0).toUpperCase();
+                            avatarElement.innerHTML = `<span style="font-size: 24px; font-weight: bold; color: var(--on-surface);">${firstLetter}</span>`;
+                        }
+                    }
+                    
+                    // Reset form and close modal
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    closeProfileModal();
+                    showToast(data.message || 'Profile updated successfully!');
+                } else {
+                    throw new Error(data.error || 'Failed to update profile');
+                }
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                showToast('Error updating profile: ' + error.message);
+            }
+        });
 
         // Theme Management
         function initTheme() {
@@ -1801,6 +2622,163 @@
             } else {
                 icon.className = 'fas fa-moon';
             }
+        }
+
+        // Availability Management
+        async function loadVendorAvailability() {
+            try {
+                const response = await fetch('/get-vendor-service-availability/');
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    vendorAvailability = data.data.vendor_shop_avaliability || 'online';
+                    
+                    // If availability status is not in the data, save it automatically
+                    if (!data.data.vendor_shop_avaliability) {
+                        console.log('🔍 DEBUG - Availability status not found in data, saving automatically...');
+                        await saveAvailabilityStatus(vendorAvailability);
+                    }
+                } else {
+                    // Fallback to localStorage
+                    vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
+                    // Save the availability status to ensure it's stored
+                    await saveAvailabilityStatus(vendorAvailability);
+                }
+            } catch (error) {
+                console.error('Error loading vendor availability:', error);
+                // Fallback to localStorage
+                vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
+                // Save the availability status to ensure it's stored
+                await saveAvailabilityStatus(vendorAvailability);
+            }
+            
+            // Always update UI after loading availability
+            updateAvailabilityUI();
+        }
+
+        // Helper function to save availability status
+        async function saveAvailabilityStatus(status) {
+            try {
+                const response = await fetch('/update-vendor-availability/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        vendor_shop_avaliability: status
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ DEBUG - Availability status saved successfully:', status);
+                } else {
+                    console.error('❌ DEBUG - Failed to save availability status:', data.error);
+                }
+            } catch (error) {
+                console.error('❌ DEBUG - Error saving availability status:', error);
+            }
+        }
+
+        async function toggleAvailability() {
+            const newStatus = vendorAvailability === 'online' ? 'offline' : 'online';
+            
+            try {
+                const response = await fetch('/update-vendor-availability/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        vendor_shop_avaliability: newStatus
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    vendorAvailability = newStatus;
+                    localStorage.setItem('vendorAvailability', newStatus);
+                    updateAvailabilityUI();
+                    showToast(`Vendor is now ${newStatus}`);
+                } else {
+                    showToast('Error updating availability: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error updating availability:', error);
+                showToast('Error updating availability');
+            }
+        }
+
+        function updateAvailabilityUI() {
+            const toggleBtn = document.getElementById('availabilityToggle');
+            const sectionTitles = document.querySelectorAll('.section-title');
+            const jobContainers = document.querySelectorAll('.jobs-container');
+            
+            if (vendorAvailability === 'offline') {
+                // Update toggle button
+                toggleBtn.classList.add('offline');
+                toggleBtn.setAttribute('aria-label', 'Click to go online');
+                
+                // Update section titles
+                sectionTitles.forEach(title => {
+                    title.classList.add('offline');
+                    const titleIcon = title.querySelector('i');
+                    if (titleIcon) {
+                        titleIcon.className = 'fas fa-times-circle';
+                    }
+                });
+                
+                // Update job containers
+                jobContainers.forEach(container => {
+                    container.classList.add('offline');
+                });
+                
+                // Update vendor status in sidebar
+                const vendorStatus = document.querySelector('.vendor-status');
+                if (vendorStatus) {
+                    vendorStatus.innerHTML = '<div class="status-dot" style="background: #e74c3c;"></div>Offline';
+                }
+            } else {
+                // Update toggle button
+                toggleBtn.classList.remove('offline');
+                toggleBtn.setAttribute('aria-label', 'Click to go offline');
+                
+                // Update section titles
+                sectionTitles.forEach(title => {
+                    title.classList.remove('offline');
+                    const titleIcon = title.querySelector('i');
+                    if (titleIcon) {
+                        // Restore original icons based on section
+                        const section = title.closest('.job-section');
+                        if (section.id === 'manual-section') {
+                            titleIcon.className = 'fas fa-tools';
+                        } else if (section.id === 'requests-section') {
+                            titleIcon.className = 'fas fa-file-import';
+                        } else if (section.id === 'completed-section') {
+                            titleIcon.className = 'fas fa-check-circle';
+                        }
+                    }
+                });
+                
+                // Update job containers
+                jobContainers.forEach(container => {
+                    container.classList.remove('offline');
+                });
+                
+                // Update vendor status in sidebar
+                const vendorStatus = document.querySelector('.vendor-status');
+                if (vendorStatus) {
+                    vendorStatus.innerHTML = '<div class="status-dot"></div>Online';
+                }
+            }
+            
+            // Re-render jobs to show/hide based on availability
+            if (filteredJobs.manual) renderJobs('manual', filteredJobs.manual);
+            if (filteredJobs.requests) renderJobs('requests', filteredJobs.requests);
+            if (filteredJobs.completed) renderJobs('completed', filteredJobs.completed);
         }
 
         // Data Loading
@@ -1886,6 +2864,22 @@
             const containerId = type === 'manual' ? 'manualJobs' : 
                                type === 'completed' ? 'completedJobs' : 'printRequests';
             const container = document.getElementById(containerId);
+
+            // If vendor is offline, show offline message instead of jobs
+            if (vendorAvailability === 'offline') {
+                const offlineIcon = 'fa-times-circle';
+                const offlineTitle = 'Vendor Offline';
+                const offlineDesc = 'Jobs are hidden while vendor is offline. Toggle online to view jobs.';
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas ${offlineIcon}" style="color: #e74c3c; animation: pulse-red 2s infinite;"></i>
+                        <h3 style="color: #e74c3c;">${offlineTitle}</h3>
+                        <p>${offlineDesc}</p>
+                    </div>
+                `;
+                return;
+            }
 
             if (jobs.length === 0) {
                 const emptyIcon = type === 'manual' ? 'fa-tools' : 
@@ -2363,6 +3357,7 @@
         window.addEventListener('click', function(event) {
             const modal = document.getElementById('previewModal');
             const printInfoModal = document.getElementById('printInfoModal');
+            const profileModal = document.getElementById('profileModal');
             
             if (event.target === modal) {
                 closeModal();
@@ -2371,11 +3366,92 @@
             if (event.target === printInfoModal) {
                 closePrintInfoModal();
             }
+            
+            if (event.target === profileModal) {
+                closeProfileModal();
+            }
         });
 
         window.addEventListener('resize', function() {
             initResponsiveLayout();
         });
+
+        // Settings Modal JS
+        function openSettingsModal() {
+            // Load current service availability
+            loadServiceAvailability();
+            document.getElementById('settingsModal').classList.add('show');
+        }
+        
+        async function loadServiceAvailability() {
+            try {
+                const response = await fetch('/get-vendor-service-availability/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Set toggle states based on loaded data
+                    const toggles = document.querySelectorAll('#settingsModal input[type="checkbox"]');
+                    toggles.forEach(toggle => {
+                        const service = toggle.getAttribute('onchange').match(/toggleService\('([^']+)'/)[1];
+                        if (data.data[service] !== undefined) {
+                            toggle.checked = data.data[service];
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading service availability:', error);
+            }
+        }
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+        // Toggle service handler - updates backend
+        async function toggleService(serviceKey, isEnabled) {
+            try {
+                // Get all current toggle states
+                const toggles = document.querySelectorAll('#settingsModal input[type="checkbox"]');
+                const serviceAvailability = {};
+                
+                toggles.forEach(toggle => {
+                    const service = toggle.getAttribute('onchange').match(/toggleService\('([^']+)'/)[1];
+                    serviceAvailability[service] = toggle.checked;
+                });
+                
+                console.log('🔍 DEBUG - Sending service availability:', serviceAvailability);
+                
+                // Send to backend
+                const response = await fetch('/update-vendor-service-availability/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(serviceAvailability)
+                });
+                
+                console.log('🔍 DEBUG - Response status:', response.status);
+                const data = await response.json();
+                console.log('🔍 DEBUG - Response data:', data);
+                
+                if (data.success) {
+                    showToast(`${formatServiceType(serviceKey)} ${isEnabled ? 'enabled' : 'disabled'}`);
+                } else {
+                    showToast('Error updating service availability: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('❌ DEBUG - Error updating service availability:', error);
+                showToast('Error updating service availability');
+            }
+        }
+        // Close modal on outside click
+        window.addEventListener('click', function(event) {
+            const settingsModal = document.getElementById('settingsModal');
+            if (event.target === settingsModal) {
+                closeSettingsModal();
+            }
+        });
+
+
     </script>
 </body>
 </html>

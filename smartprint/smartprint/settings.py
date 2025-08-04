@@ -137,7 +137,7 @@ VENDOR_TOKEN = os.getenv('VENDOR_TOKEN')
 # ✅ R2 credentials from .env
 R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY')
 R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
-R2_ENDPOINT = os.getenv('R2_ENDPOINT')
+R2_ENDPOINT = os.getenv('R2_ENDPOINT', '').rstrip('/')  # Remove trailing slash
 R2_BUCKET = os.getenv('R2_BUCKET')
 
 # ✅ CORS setup
