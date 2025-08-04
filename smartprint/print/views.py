@@ -1485,10 +1485,47 @@ def upload_to_r2(request):
                         # Create a compact summary for metadata display
                         total_price = pricing_details.get('total_price', 0)
                         breakdown = pricing_details.get('pricing_breakdown', {})
-                        price_per_page = breakdown.get('price_per_page', 0)
-                        page_count = breakdown.get('page_count', 0)
-                        num_copies = breakdown.get('num_copies', 0)
-                        pricing_key = breakdown.get('pricing_key_used', '')
+                        
+                        # Handle different breakdown formats
+                        price_per_page = 0
+                        page_count = 0
+                        num_copies = 0
+                        pricing_key = ''
+                        
+                        # Check if breakdown is a dictionary (gloss print format)
+                        if isinstance(breakdown, dict):
+                            price_per_page = breakdown.get('price_per_page', 0)
+                            page_count = breakdown.get('page_count', 0)
+                            num_copies = breakdown.get('num_copies', 0)
+                            pricing_key = breakdown.get('pricing_key_used', '')
+                        # Check if breakdown is a list (golden embossing format)
+                        elif isinstance(breakdown, list):
+                            # Extract information from list format
+                            for item in breakdown:
+                                if isinstance(item, dict):
+                                    label = item.get('label', '')
+                                    value = item.get('value', '₹0')
+                                    # Extract numeric value from ₹ format
+                                    if value.startswith('₹'):
+                                        value = value[1:]
+                                    try:
+                                        numeric_value = int(value)
+                                        if 'page' in label.lower():
+                                            page_count = numeric_value
+                                        elif 'copy' in label.lower():
+                                            num_copies = numeric_value
+                                        elif 'per page' in label.lower():
+                                            price_per_page = numeric_value
+                                    except (ValueError, TypeError):
+                                        pass
+                            
+                            # Check if structured data is available for golden embossing
+                            if pricing_details.get('structured_data'):
+                                structured = pricing_details.get('structured_data', {})
+                                price_per_page = structured.get('price_per_page', price_per_page)
+                                page_count = structured.get('page_count', page_count)
+                                num_copies = structured.get('num_copies', num_copies)
+                                pricing_key = f"golden_emboss_{structured.get('paper_type', 'unknown')}"
                         
                         # Store pricing details as compact JSON (ASCII only)
                         compact_pricing = {
@@ -1497,7 +1534,7 @@ def upload_to_r2(request):
                             "pages": page_count,
                             "copies": num_copies,
                             "key": pricing_key,
-                            "quality": breakdown.get('quality_upgrade', 0)
+                            "quality": breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
                         }
                         file_metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
                         
@@ -3155,6 +3192,244 @@ def calculate_gloss_print_pricing(request):
             
         except Exception as e:
             print(f"Error calculating gloss print pricing: {e}")
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    })
+
+@csrf_exempt
+def calculate_golden_emboss_pricing(request):
+    """Calculate pricing for golden embossing service based on vendor pricing.json"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            print_color = data.get('print_color', 'Color')
+            paper_type = data.get('paper_type', 'A4')
+            course = data.get('course', '')
+            branch = data.get('branch', '')
+            college = data.get('college', '')
+            num_copies = data.get('num_copies', 1)
+            page_count = data.get('page_count', 1)
+            
+            print(f"Received golden emboss data: vendor_email={vendor_email}, print_color={print_color}, paper_type={paper_type}, course={course}, branch={branch}, college={college}, num_copies={num_copies}, page_count={page_count}")
+            
+            # Convert page_count to int
+            try:
+                page_count = int(page_count)
+                print(f"Page count after conversion: {page_count}")
+            except (ValueError, TypeError):
+                page_count = 1
+                print("Invalid page count, using default: 1")
+            
+            # Ensure page_count is at least 1
+            if page_count < 1:
+                page_count = 1
+            
+            # Convert num_copies to int
+            try:
+                num_copies = int(num_copies)
+                print(f"Num copies after conversion: {num_copies}")
+            except (ValueError, TypeError):
+                num_copies = 1
+                print("Invalid num copies, using default: 1")
+            
+            # Ensure num_copies is at least 1
+            if num_copies < 1:
+                num_copies = 1
+            
+            # Initialize S3 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get vendor pricing from R2 - try different possible locations
+            vendor_folder = sanitize_email(vendor_email)
+            print(f"🔍 Golden emboss - Vendor email: {vendor_email}")
+            print(f"🔍 Golden emboss - Sanitized folder: {vendor_folder}")
+            
+            # Try different possible pricing file locations
+            possible_pricing_keys = [
+                f'vendor_register_details/{vendor_folder}/pricing.json',
+                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
+                f'vendor_register_details/{vendor_folder}/pricing_data.json'
+            ]
+            
+            print(f"🔍 Golden emboss - Trying pricing keys: {possible_pricing_keys}")
+            
+            pricing_data = None
+            for pricing_key in possible_pricing_keys:
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                    print(f"✅ Loaded pricing data from: {pricing_key}")
+                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ Could not load from {pricing_key}: {e}")
+                    continue
+            
+            if pricing_data is None:
+                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
+                })
+            
+            # Get the categorized pricing for golden embossing
+            categorized_pricing = pricing_data.get('categorized_pricing', {})
+            print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
+            
+            golden_emboss_pricing = categorized_pricing.get('golden_embossing', {})
+            digital_print_pricing = categorized_pricing.get('digital_print', {})
+            
+            print(f"📊 Golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
+            print(f"📊 Digital print pricing keys: {list(digital_print_pricing.keys())}")
+            
+            # Base printing cost - use paper type pricing directly from golden embossing
+            paper_size_key = paper_type.lower()
+            if paper_size_key == 'a1':
+                paper_size_key = 'al'
+            
+            # Get paper pricing directly from golden embossing pricing
+            if paper_type == 'A4':
+                paper_price_key = 'emboss_a4_paper'
+                base_price = golden_emboss_pricing.get(paper_price_key, 0)
+                print(f"🔍 Looking for A4 paper pricing key: {paper_price_key}")
+            elif paper_type == 'Bond':
+                paper_price_key = 'emboss_bond_paper'
+                base_price = golden_emboss_pricing.get(paper_price_key, 0)
+                print(f"🔍 Looking for Bond paper pricing key: {paper_price_key}")
+            else:
+                # Fallback to A4 pricing for other paper types
+                paper_price_key = 'emboss_a4_paper'
+                base_price = golden_emboss_pricing.get(paper_price_key, 0)
+                print(f"🔍 Using A4 pricing as fallback for {paper_type}: {paper_price_key}")
+            
+            if base_price is None or base_price == "":
+                print(f"❌ Paper pricing not found or empty for key: {paper_price_key}")
+                print(f"Available golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for {paper_type} paper. Please contact the vendor to set their pricing.'
+                })
+            
+            # Convert string prices to integers
+            try:
+                base_price = int(base_price) if base_price else 0
+            except (ValueError, TypeError):
+                base_price = 0
+            
+            # Calculate paper cost
+            paper_cost = base_price * page_count
+            print(f"Paper cost: {base_price} * {page_count} = {paper_cost}")
+            
+            # Golden embossing cost - black cover
+            emboss_price_key = 'emboss_black_cover'
+            emboss_price = golden_emboss_pricing.get(emboss_price_key)
+            if emboss_price is None or emboss_price == "":
+                print(f"❌ Golden embossing pricing not found or empty for key: {emboss_price_key}")
+                print(f"Available golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Golden embossing pricing not available. Please contact the vendor to set their pricing.'
+                })
+            
+            # Convert emboss price to integer
+            try:
+                emboss_price = int(emboss_price) if emboss_price else 0
+            except (ValueError, TypeError):
+                emboss_price = 0
+            
+            emboss_cost = emboss_price
+            print(f"Golden embossing cost: {emboss_price}")
+            
+            # Paper type cost
+            paper_cost = 0
+            if paper_type == 'A4':
+                paper_price_key = 'emboss_a4_paper'
+                paper_price = golden_emboss_pricing.get(paper_price_key, 0)
+                if paper_price and paper_price != "":
+                    try:
+                        paper_price = int(paper_price)
+                        if paper_price > 0:
+                            paper_cost = paper_price * page_count
+                            print(f"A4 paper cost: {paper_price} * {page_count} = {paper_cost}")
+                    except (ValueError, TypeError):
+                        paper_price = 0
+            elif paper_type == 'Bond':
+                paper_price_key = 'emboss_bond_paper'
+                paper_price = golden_emboss_pricing.get(paper_price_key, 0)
+                if paper_price and paper_price != "":
+                    try:
+                        paper_price = int(paper_price)
+                        if paper_price > 0:
+                            paper_cost = paper_price * page_count
+                            print(f"Bond paper cost: {paper_price} * {page_count} = {paper_cost}")
+                    except (ValueError, TypeError):
+                        paper_price = 0
+            
+            # Calculate total price per book
+            total_price_per_book = paper_cost + emboss_cost
+            print(f"Total per book: paper_cost={paper_cost} + emboss_cost={emboss_cost} = {total_price_per_book}")
+            
+            # Calculate total price for all copies
+            total_price = total_price_per_book * num_copies
+            print(f"Total for {num_copies} copies: {total_price_per_book} * {num_copies} = {total_price}")
+            
+            # Prepare pricing breakdown
+            pricing_breakdown = [
+                {
+                    'label': f'{paper_type} Paper ({page_count} pages)',
+                    'value': f'₹{paper_cost}'
+                },
+                {
+                    'label': 'Golden Embossing Black Cover',
+                    'value': f'₹{emboss_cost}'
+                }
+            ]
+            
+            # Add copies information
+            if num_copies > 1:
+                pricing_breakdown.append({
+                    'label': f'Total per book',
+                    'value': f'₹{total_price_per_book}'
+                })
+                pricing_breakdown.append({
+                    'label': f'Number of copies',
+                    'value': f'{num_copies}'
+                })
+            
+            # Also provide structured data for metadata storage
+            structured_breakdown = {
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price,
+                'price_per_page': base_price,
+                'page_count': page_count,
+                'num_copies': num_copies,
+                'paper_type': paper_type,
+                'emboss_cost': emboss_cost,
+                'paper_cost': paper_cost,
+                'total_per_book': total_price_per_book
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing_breakdown': pricing_breakdown,
+                'total_price': total_price,
+                'structured_data': structured_breakdown
+            })
+            
+        except Exception as e:
+            print(f"Error calculating golden emboss pricing: {e}")
             traceback.print_exc()
             return JsonResponse({
                 'success': False,

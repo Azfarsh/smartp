@@ -796,7 +796,6 @@
     .stat-card:nth-child(4)::before {
       background: var(--earnings-gradient);
     }
-
     .stat-header {
       display: flex;
       align-items: center;
@@ -1579,7 +1578,6 @@
       font-size: 1.1rem;
       z-index: 1;
     }
-
     /* Modal Styles */
     .modal-overlay {
       position: fixed;
@@ -2675,7 +2673,6 @@
     </div>
     <div class="toast-progress" id="toastProgress"></div>
   </div>
-
   <!-- Main Content -->
   <main class="main-content">
     <!-- Quick Stats -->
@@ -3466,7 +3463,6 @@
         transform: none;
         box-shadow: none;
       }
-
       .btn-calculate {
         flex: 1;
         padding: 1rem 1.5rem;
@@ -3684,29 +3680,11 @@
               label: 'Print Color', 
               type: 'select', 
               options: [
-                { value: 'Black & White', label: 'Black & White' },
-                { value: 'Color', label: 'Full Color' },
-                { value: 'Mixed', label: 'Mixed Color & Black & White' }
+                { value: 'Color', label: 'Color' }
               ], 
               required: true,
-              description: 'Choose between black & white, color, or mixed printing',
+              description: 'Color printing only',
               icon: 'fas fa-palette'
-            },
-            { 
-              label: 'Color Range', 
-              type: 'text', 
-              required: false,
-              placeholder: 'Enter color page range (e.g., 1-5, 10-15)',
-              description: 'Specify which pages should be printed in color (e.g., 1-5, 10-15)',
-              icon: 'fas fa-palette'
-            },
-            { 
-              label: 'Black & White Range', 
-              type: 'text', 
-              required: false,
-              placeholder: 'Enter black & white page range (e.g., 6-9, 16-20)',
-              description: 'Specify which pages should be printed in black & white (e.g., 6-9, 16-20)',
-              icon: 'fas fa-adjust'
             },
             { 
               label: 'Paper Type', 
@@ -3741,16 +3719,14 @@
               icon: 'fas fa-university'
             },
             { 
-              label: 'Print Quality', 
-              type: 'select', 
-              options: [
-                { value: 'standard', label: 'Standard Quality' },
-                { value: 'high', label: 'High Quality' },
-                { value: 'premium', label: 'Premium Quality' }
-              ], 
+              label: 'Number of Copies', 
+              type: 'number', 
+              min: 1, 
+              max: 10, 
+              default: 1, 
               required: true,
-              description: 'Choose the print quality for your golden embossed documents',
-              icon: 'fas fa-star'
+              description: 'Number of copies you want to print',
+              icon: 'fas fa-copy'
             }
           ]
         },
@@ -4087,7 +4063,6 @@
           }
         }, 200);
       }
-
       function renderServiceModal(service) {
         const tmpl = serviceModalTemplates[service];
         if (!tmpl) return '';
@@ -4301,6 +4276,12 @@
                   ` : ''}
                   ${service === 'jumbo' ? `
                     <button type="button" class="btn-calculate" onclick="calculateJumboPrintPrice('${service}')">
+                      <i class="fas fa-calculator"></i>
+                      Calculate Price
+                    </button>
+                  ` : ''}
+                  ${service === 'goldenemboss' ? `
+                    <button type="button" class="btn-calculate" onclick="calculateGoldenEmbossPrice('${service}')">
                       <i class="fas fa-calculator"></i>
                       Calculate Price
                     </button>
@@ -4651,8 +4632,8 @@
               return;
             }
             
-            // For digital print, gloss print, jumbo print, and passport photo, validate that pricing has been calculated
-            if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'passport') {
+            // For digital print, gloss print, jumbo print, golden embossing, and passport photo, validate that pricing has been calculated
+            if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') {
               const calculatedPrice = modal.dataset.calculatedPrice;
               if (!calculatedPrice) {
                 alert('Please calculate the price before submitting your request.');
@@ -4757,9 +4738,10 @@
           
           // Get pricing details from modal metadata if available
           let pricingDetails = null;
-          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'passport') {
+          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') {
             const calculatedPrice = modal.dataset.calculatedPrice;
             const pricingBreakdown = modal.dataset.pricingBreakdown;
+            const structuredPricing = modal.dataset.structuredPricing;
             
             if (calculatedPrice && pricingBreakdown) {
               try {
@@ -4769,6 +4751,13 @@
                   calculation_timestamp: new Date().toISOString(),
                   vendor_email: selectedShopData ? selectedShopData.vendor_email : null
                 };
+                
+                // Add structured data for golden embossing if available
+                if (service === 'goldenemboss' && structuredPricing) {
+                  const structured = JSON.parse(structuredPricing);
+                  pricingDetails.structured_data = structured;
+                }
+                
                 console.log(`💰 Pricing details stored in job metadata for ${service}:`, pricingDetails);
               } catch (error) {
                 console.error('Error parsing pricing breakdown:', error);
@@ -4828,8 +4817,8 @@
             });
             const data = await resp.json();
             if (data.success) {
-              // Show success message with pricing details for digital print, gloss print, jumbo print, and passport photo
-              if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'passport') && pricingDetails) {
+              // Show success message with pricing details for digital print, gloss print, jumbo print, golden embossing, and passport photo
+              if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') && pricingDetails) {
                 alert(`Request submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}`);
               } else {
               alert('Request submitted successfully!');
@@ -4864,7 +4853,6 @@
         }
         openServiceModal('passport');
       });
-
       // Pricing calculation functions
       let vendorPricingData = {};
 
@@ -5138,31 +5126,45 @@
 
       function calculateGoldenEmbossPricing(formData, pricing, pages, copies, breakdown) {
         let total = 0;
-        const color = formData['Print Color'] || 'Black & White';
+        const color = formData['Print Color'] || 'Color';
         const paperType = formData['Paper Type'] || 'A4';
-        const quality = formData['Print Quality'] || 'standard';
 
-        // Base printing cost
-        let colorType = color === 'Color' ? 'color' : 'bw';
-        let priceKey = `digital_print_${paperType.toLowerCase()}_single_${colorType}`;
-        let basePrice = pricing[priceKey] || (color === 'Color' ? 5 : 2);
+        // Get the categorized pricing for golden embossing
+        const categorizedPricing = pricing['categorized_pricing'] || {};
+        const goldenEmbossPricing = categorizedPricing['golden_embossing'] || {};
+        const digitalPrintPricing = categorizedPricing['digital_print'] || {};
+
+        // Base printing cost - use digital print pricing for the paper type
+        let paperSizeKey = paperType.toLowerCase();
+        if (paperSizeKey === 'a1') {
+          paperSizeKey = 'al';
+        }
+        
+        const digitalPriceKey = `digital_print_${paperSizeKey}_single_color`;
+        let basePrice = digitalPrintPricing[digitalPriceKey] || 5; // Default fallback
 
         let printingCost = basePrice * pages * copies;
         breakdown.push({ label: `${color} Printing (${pages} pages × ${copies} copies)`, value: `₹${printingCost}` });
         total += printingCost;
 
-        // Golden embossing cost
-        let embossPrice = pricing['golden_embossing_per_book'] || 50;
+        // Golden embossing cost - black cover
+        let embossPrice = goldenEmbossPricing['emboss_black_cover'] || 50;
         let embossCost = embossPrice * copies;
-        breakdown.push({ label: `Golden Embossing (${copies} books)`, value: `₹${embossCost}` });
+        breakdown.push({ label: `Golden Embossing Black Cover (${copies} books)`, value: `₹${embossCost}` });
         total += embossCost;
 
-        // Quality upgrade
-        if (quality !== 'standard') {
-          let qualityPrice = pricing['golden_emboss_quality_upgrade'] || 3;
-          let qualityTotal = qualityPrice * pages * copies;
-          breakdown.push({ label: `${quality} Quality Upgrade`, value: `₹${qualityTotal}` });
-          total += qualityTotal;
+        // Paper type cost
+        let paperPrice = 0;
+        if (paperType === 'A4') {
+          paperPrice = goldenEmbossPricing['emboss_a4_paper'] || 0;
+        } else if (paperType === 'Bond') {
+          paperPrice = goldenEmbossPricing['emboss_bond_paper'] || 0;
+        }
+        
+        if (paperPrice > 0) {
+          let paperCost = paperPrice * pages * copies;
+          breakdown.push({ label: `${paperType} Paper (${pages} pages × ${copies} copies)`, value: `₹${paperCost}` });
+          total += paperCost;
         }
 
         return total;
@@ -5542,7 +5544,6 @@
           calculateBtn.disabled = false;
         }
       }
-
       async function calculateJumboPrintPrice(service) {
         const modal = document.getElementById(`service-modal-${service}`);
         const shopSelect = modal.querySelector(`#${service}-shop-select`);
@@ -5688,6 +5689,166 @@
           }
         } catch (error) {
           console.error('Error calculating jumbo print price:', error);
+          alert('Error calculating price. Please try again.');
+        } finally {
+          // Restore button state
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
+      }
+
+      async function calculateGoldenEmbossPrice(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          alert('Please select a vendor first');
+          return;
+        }
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          alert('Unable to get vendor information');
+          return;
+        }
+
+        // Get page count from uploaded file - try multiple methods
+        let pageCount = 1; // Default to 1 page
+        
+        // Method 1: Try to get from modal dataset (most reliable)
+        if (modal.dataset.filePageCount) {
+          pageCount = parseInt(modal.dataset.filePageCount);
+          console.log('Page count from modal dataset:', pageCount);
+        } else if (typeof fileObj !== 'undefined' && fileObj && fileObj.pageCount) {
+          // Method 2: Try to get from fileObj (global variable)
+          pageCount = fileObj.pageCount;
+          console.log('Page count from fileObj:', pageCount);
+        } else {
+          // Method 3: Try to get page count from the file preview or upload label
+          const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
+          if (fileUploadLabel && fileUploadLabel.textContent.includes('pages')) {
+            const pageMatch = fileUploadLabel.textContent.match(/\((\d+) pages?\)/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from upload label:', pageCount);
+            }
+          }
+          
+          // Method 4: Try to get from file preview content
+          const filePreview = modal.querySelector(`#${service}-file-preview`);
+          if (filePreview) {
+            const previewText = filePreview.textContent;
+            const pageMatch = previewText.match(/(\d+) pages?/);
+            if (pageMatch) {
+              pageCount = parseInt(pageMatch[1]);
+              console.log('Page count from file preview:', pageCount);
+            }
+          }
+        }
+        
+        // Ensure page count is at least 1
+        if (pageCount < 1) {
+          pageCount = 1;
+          console.log('Page count was less than 1, setting to 1');
+        }
+        
+        console.log('Final page count detected:', pageCount); // Debug log
+        console.log('Modal dataset:', {
+          filePageCount: modal.dataset.filePageCount,
+          fileName: modal.dataset.fileName
+        });
+
+        // Check if a file is uploaded
+        if (pageCount === 1 && !modal.dataset.fileName) {
+          alert('Please upload a document first');
+          return;
+        }
+
+        // Collect form data for golden embossing
+        const formData = {
+          vendor_email: selectedVendor.vendor_email,
+          print_color: modal.querySelector(`#${service}-field-1`).value, // Print Color
+          paper_type: modal.querySelector(`#${service}-field-2`).value, // Paper Type
+          course: modal.querySelector(`#${service}-field-3`).value, // Course
+          branch: modal.querySelector(`#${service}-field-4`).value, // Branch
+          college: modal.querySelector(`#${service}-field-5`).value, // College
+          num_copies: parseInt(modal.querySelector(`#${service}-field-6`).value) || 1, // Number of Copies
+          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+        };
+        
+        console.log('Golden embossing form data being sent:', formData); // Debug log
+
+        // Show loading state
+        const calculateBtn = modal.querySelector('.btn-calculate');
+        const originalText = calculateBtn.innerHTML;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+
+        try {
+          // Use the golden embossing pricing calculation endpoint
+          const response = await fetch('/calculate-golden-emboss-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Update pricing summary
+            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            
+            let html = '';
+            const breakdown = result.pricing_breakdown;
+            
+            // Add each breakdown item
+            breakdown.forEach(item => {
+              html += `
+                <div class="pricing-item">
+                  <span class="pricing-label">${item.label}</span>
+                  <span class="pricing-value">${item.value}</span>
+                </div>
+              `;
+            });
+            
+            html += `
+              <div class="pricing-item total">
+                <span class="pricing-label">Total Amount</span>
+                <span class="pricing-value">₹${result.total_price}</span>
+              </div>
+            `;
+            
+            if (result.using_default_pricing) {
+              html += `
+                <div class="pricing-note">
+                  <i class="fas fa-info-circle"></i>
+                  Using default pricing (vendor pricing not available)
+                </div>
+              `;
+            }
+            
+            pricingDetails.innerHTML = html;
+            pricingSummary.classList.add('active');
+            
+            // Store the calculated price in modal metadata
+            modal.dataset.calculatedPrice = result.total_price;
+            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            
+            // Store structured data for better metadata handling
+            if (result.structured_data) {
+              modal.dataset.structuredPricing = JSON.stringify(result.structured_data);
+            }
+            
+          } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error calculating golden emboss price:', error);
           alert('Error calculating price. Please try again.');
         } finally {
           // Restore button state
@@ -6100,7 +6261,6 @@
       </div>
     </div>
   </div>
-
   <script>
     // Global state management (Complete R2 Integration)
     let uploadedFiles = [];
@@ -6896,7 +7056,6 @@
         alert('Preview not available for this file.');
       }
     }
-
     // Function to view pricing details
     function viewPricingDetails(filename) {
       const job = userJobs.find(j => j.filename === filename);
@@ -7694,7 +7853,6 @@
 
     // Action buttons
     document.getElementById('cancelBtn').addEventListener('click', closeModalFunc);
-
     // Calculate price button event listener
     document.getElementById('calculatePriceBtn').addEventListener('click', async () => {
       await calculateA4PrintPrice();
@@ -8404,7 +8562,6 @@
   </script>
 
   <script>
-    
   // PicWish enhancement for passport photo
   async function enhancePassportPhotoWithPicWish(file, previewContainer) {
     // Remove all old data and properties
