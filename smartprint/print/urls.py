@@ -7,7 +7,7 @@ from .views import (
     vendor_login, vendor_register_api, mark_notification_read,
     enhance_passport_photo, forgot_password_page, forgot_password, verify_reset_code, reset_password,
     logout_view, get_vendor_coordinates, get_vendor_pricing, calculate_digital_print_pricing,
-    calculate_gloss_print_pricing, calculate_photo_print_pricing, calculate_jumbo_print_pricing, calculate_passport_photo_pricing, calculate_a4_print_pricing,
+    calculate_gloss_print_pricing, calculate_photo_print_pricing, calculate_jumbo_print_pricing, calculate_passport_photo_pricing, calculate_a4_print_pricing, calculate_golden_emboss_pricing,
     get_vendor_print_jobs, list_r2_files, debug_vendor_registrations,
     update_vendor_service_availability, get_vendor_service_availability, 
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout
@@ -55,6 +55,7 @@ urlpatterns = [
     path('calculate-jumbo-print-pricing/', calculate_jumbo_print_pricing, name='calculate_jumbo_print_pricing'),
     path('calculate-passport-photo-pricing/', calculate_passport_photo_pricing, name='calculate_passport_photo_pricing'),
     path('calculate-a4-print-pricing/', calculate_a4_print_pricing, name='calculate_a4_print_pricing'),
+    path('calculate-golden-emboss-pricing/', calculate_golden_emboss_pricing, name='calculate_golden_emboss_pricing'),
 ]
 
 urlpatterns += [
