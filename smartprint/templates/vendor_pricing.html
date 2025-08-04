@@ -999,29 +999,30 @@
     <script>
         let vendorId = '';
 
-        // Get vendor ID from URL parameters
-        function getVendorIdFromUrl() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('vendorId');
-        }
-
-        // Get vendorEmail from URL parameters
+        // Try to get vendorEmail from URL, else from Django context (session)
         function getVendorEmailFromUrl() {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('vendorEmail');
         }
-        let vendorEmail = getVendorEmailFromUrl();
+        function isFromDashboard() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('from_dashboard') === '1';
+        }
+        // This variable will be set by Django if available
+        var vendorEmailFromSession = "{{ vendor_email|default:''|escapejs }}";
+        let vendorEmail = getVendorEmailFromUrl() || vendorEmailFromSession;
 
         // Load vendor information and existing pricing
         async function loadVendorInfo() {
             if (!vendorEmail) {
                 // Try to get vendor email from Django template context
                 vendorEmail = '{{ vendor_email }}';
-                if (!vendorEmail) {
+                if (!vendorEmail && !isFromDashboard()) {
                     alert('Vendor not found. Please complete registration first.');
                     window.location.href = '/vendor-register/';
                     return;
                 }
+            }
             }
 
             // Vendor details are now loaded server-side, so we don't need to fetch them again
@@ -1316,5 +1317,32 @@
          });
     </script>
 
+    <script>
+window.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const vendorEmail = params.get('vendorEmail');
+    if (!vendorEmail) return;
+    fetch(`/get-vendor-details/?email=${encodeURIComponent(vendorEmail)}`)
+        .then(res => res.json())
+        .then(data => {
+            const vendorDetailsDiv = document.getElementById('vendorDetails');
+            if (vendorDetailsDiv) {
+                vendorDetailsDiv.innerHTML = `
+                    <div style="font-size: 1.08rem; font-weight: 500; color: #fff; margin-bottom: 2px;">Your Vendor Details</div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Name:</strong> <span id="vendorName">${data.vendor_name || '-'}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Email:</strong> <span id="vendorEmail">${data.vendor_email || '-'}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Shop Address:</strong> <span id="shopAddress">${data.shop_address || '-'}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>City:</strong> <span id="city">${data.city || '-'}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>PIN Code:</strong> <span id="pincode">${data.pincode || '-'}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Vendor ID:</strong> <span id="vendorId">${data.vendor_id || '-'}</span></div>
+                    <div style="font-size: 0.98rem; color: #f3f4f6;"><strong>Vendor Token:</strong> <span id="vendorToken">${data.vendor_token || '-'}</span></div>
+                `;
+            }
+        })
+        .catch(() => {
+            document.getElementById('vendorDetails').innerHTML = '<span style="color:#fff">Could not load vendor details.</span>';
+        });
+});
+</script>
 </body>
 </html>

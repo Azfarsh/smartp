@@ -34,6 +34,8 @@
       --toggle-bg: #e0e0e0;
       --toggle-knob: #fff;
       --toggle-icon: #181a1b;
+      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
 
     [data-bs-theme="dark"] {
@@ -70,7 +72,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: clamp(10px, 2vw, 20px);
       position: relative;
       overflow-x: hidden;
       overflow-y: auto;
@@ -100,8 +102,8 @@
     /* Theme Toggle */
     .theme-toggle {
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: clamp(15px, 3vw, 20px);
+      right: clamp(15px, 3vw, 20px);
       width: 48px;
       height: 28px;
       background: var(--toggle-bg);
@@ -160,13 +162,13 @@
     .login-container {
       background: var(--modal-bg);
       border: 1.5px solid var(--modal-border);
-      border-radius: 28px;
+      border-radius: clamp(16px, 3vw, 28px);
       box-shadow: var(--glass-shadow);
-      max-width: 950px;
+      max-width: min(950px, 95vw);
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      min-height: 520px;
+      min-height: clamp(480px, 60vh, 520px);
       overflow: hidden;
       position: relative;
       z-index: 1;
@@ -185,10 +187,11 @@
     .login-left {
       background: transparent;
       color: var(--text-color);
-      padding: 2.5rem 2rem;
+      padding: clamp(2rem, 4vw, 2.5rem) clamp(1.5rem, 3vw, 2rem);
       display: flex;
       flex-direction: column;
       justify-content: center;
+      align-items: center;
       position: relative;
       overflow: hidden;
       border-right: 1px solid var(--border-color);
@@ -214,21 +217,24 @@
       position: relative;
       z-index: 2;
       text-align: center;
+      width: 100%;
+      max-width: 400px;
     }
 
     .brand-logo {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 2.7rem;
+      font-size: clamp(2rem, 5vw, 2.7rem);
       font-weight: 800;
-      margin-bottom: 1rem;
+      margin-bottom: clamp(0.8rem, 2vw, 1rem);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: clamp(8px, 1.5vw, 10px);
       background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      flex-wrap: wrap;
     }
 
     @keyframes logoGlow {
@@ -237,7 +243,7 @@
     }
 
     .brand-logo .material-icons {
-      font-size: 2.5rem;
+      font-size: clamp(1.8rem, 4.5vw, 2.5rem);
       background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -251,38 +257,45 @@
     }
 
     .tagline {
-      font-size: 1.3rem;
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
       opacity: 0.95;
       font-weight: 700;
       line-height: 1.6;
-      margin-bottom: 2rem;
+      margin-bottom: clamp(1.5rem, 3vw, 2rem);
       color: #000000;
       background: none;
       -webkit-background-clip: initial;
       -webkit-text-fill-color: initial;
       background-clip: initial;
+      text-align: center;
     }
     [data-bs-theme="dark"] .tagline {
       color: #fff;
     }
 
     .feature-list {
-      margin-top: 2rem;
+      margin-top: clamp(1.5rem, 3vw, 2rem);
       list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.8rem, 2vw, 1rem);
+      align-items: center;
     }
 
     .feature-list li {
-      margin-bottom: 1rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      font-size: 1rem;
+      gap: clamp(8px, 1.5vw, 10px);
+      font-size: clamp(0.9rem, 2vw, 1rem);
       color: var(--text-color);
       font-weight: 500;
       opacity: 1;
       animation: none;
       transform: none;
+      text-align: center;
+      flex-wrap: wrap;
+      max-width: 100%;
     }
 
     .feature-list li:nth-child(1) { --animation-order: 1; }
@@ -298,11 +311,11 @@
     }
 
     .feature-list .material-icons {
-      font-size: 1.2rem;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
       color: #8338ec;
       filter: none;
       opacity: 0.95;
-      /* For dark mode, ensure icons are visible */
+      flex-shrink: 0;
     }
     [data-bs-theme="dark"] .feature-list .material-icons {
       color: #a385ff;
@@ -310,35 +323,40 @@
     }
 
     .login-right {
-      padding: 2.5rem 2rem;
+      padding: clamp(2rem, 4vw, 2.5rem) clamp(1.5rem, 3vw, 2rem);
       display: flex;
       flex-direction: column;
       justify-content: center;
+      align-items: center;
       background: transparent;
       box-shadow: none;
     }
 
     .login-header {
       text-align: center;
-      margin-bottom: 3rem;
+      margin-bottom: clamp(2rem, 4vw, 3rem);
+      width: 100%;
+      max-width: 400px;
     }
 
     .login-header h2 {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 2.1rem;
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
       font-weight: 700;
       color: var(--heading-color);
-      margin-bottom: 0.5rem;
+      margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
       background: var(--brand-gradient);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      line-height: 1.2;
     }
 
     .login-header p {
       color: var(--text-secondary);
-      font-size: 1.1rem;
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
       font-weight: 500;
+      line-height: 1.4;
     }
 
     .login-tabs {
@@ -397,6 +415,8 @@
 
     .login-form {
       display: none;
+      width: 100%;
+      max-width: 400px;
     }
 
     .login-form.active {
@@ -416,13 +436,33 @@
     }
 
     .google-signin-container {
-      margin-bottom: 2rem;
+      width: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 80px;
+      margin: 0;
+      padding: 0;
     }
-    .google-signin-container #g_id_signin {
+    .login-btns-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(18px, 3vw, 22px);
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .user-login-btn,
+    .google-signin-container > #g_id_signin {
+      width: min(340px, 100%);
+      max-width: 100%;
+      margin: 0 auto;
+      border-radius: 999px !important;
+      font-size: clamp(1rem, 2.5vw, 1.1rem);
+      font-weight: 600;
+      box-shadow: 0 4px 16px 0 rgba(58,134,255,0.08);
+    }
+    #g_id_signin {
       margin: 0 auto;
       display: flex;
       justify-content: center;
@@ -611,10 +651,10 @@
     }
 
     #welcomeMessage {
-      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-size: clamp(2rem, 8vw, 4rem);
       font-weight: 800;
       font-family: 'Space Grotesk', sans-serif;
-      margin-bottom: 3rem;
+      margin-bottom: clamp(2rem, 5vw, 3rem);
       text-align: center;
       letter-spacing: -0.02em;
       color: #fff;
@@ -627,6 +667,7 @@
       opacity: 0;
       position: relative;
       z-index: 2;
+      line-height: 1.2;
     }
 
     @keyframes welcomeSlideIn {
@@ -637,10 +678,10 @@
     }
 
     .spinner {
-      width: 80px;
-      height: 80px;
+      width: clamp(60px, 15vw, 80px);
+      height: clamp(60px, 15vw, 80px);
       position: relative;
-      margin: 2rem 0;
+      margin: clamp(1.5rem, 4vw, 2rem) 0;
     }
 
     .spinner::before,
@@ -675,12 +716,14 @@
     }
 
     .status-text {
-      font-size: 1.2rem;
+      font-size: clamp(1rem, 3vw, 1.2rem);
       font-weight: 500;
       color: rgba(255,255,255,0.9);
       animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
       opacity: 0;
       transform: translateY(20px);
+      text-align: center;
+      line-height: 1.4;
     }
 
     @keyframes statusFadeIn {
@@ -690,64 +733,425 @@
       }
     }
 
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
+    /* Enhanced Responsive Design */
+    @media (max-width: 1200px) {
       .login-container {
+        max-width: min(900px, 95vw);
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .login-container {
+        max-width: min(600px, 95vw);
         grid-template-columns: 1fr;
-        max-width: 480px;
-        margin: 10px;
+        min-height: auto;
+      }
+      .login-left, .login-right {
+        border-right: none;
+        padding: clamp(2rem, 5vw, 3rem) clamp(1.5rem, 4vw, 2rem);
+      }
+      .login-left {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: clamp(2rem, 5vw, 3rem);
+      }
+      .login-right {
+        padding-top: clamp(2rem, 5vw, 3rem);
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: clamp(8px, 2vw, 15px);
+      }
+      
+      .login-container {
+        max-width: min(500px, 98vw);
+        border-radius: clamp(12px, 3vw, 20px);
+        margin: 0 auto;
       }
 
       .login-left {
-        padding: 3rem 2rem;
-        text-align: center;
-      }
-
-      .brand-logo {
-        font-size: 2.5rem;
+        padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3vw, 1.5rem);
       }
 
       .login-right {
-        padding: 3rem 2rem;
+        padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3vw, 1.5rem);
       }
 
-      .login-header h2 {
-        font-size: 2rem;
+      .login-header {
+        margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
       }
 
-      .tab-button {
-        padding: 14px 20px;
-        font-size: 0.95rem;
+      .login-btns-group {
+        gap: clamp(15px, 3vw, 20px);
       }
 
-      #welcomeMessage, #vendorWelcomeMessage {
-        font-size: 2rem;
-        margin-bottom: 2rem;
+      /* Improve mobile button alignment */
+      .user-login-btn,
+      .google-signin-container > #g_id_signin {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      #g_id_signin > div {
+        width: 100% !important;
+        max-width: 100% !important;
       }
     }
 
     @media (max-width: 480px) {
-      .login-left {
-        padding: 2rem 1.5rem;
+      body {
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
-      .brand-logo {
-        font-size: 2rem;
+      .login-container {
+        max-width: 100vw;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        margin: 0;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+        display: flex;
         flex-direction: column;
-        gap: 8px;
+        overflow: hidden;
+        background: var(--modal-bg);
+        border: none;
+        box-shadow: none;
+      }
+
+      .login-left {
+        flex: 1;
+        padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid var(--border-color);
+        background: transparent;
       }
 
       .login-right {
-        padding: 2.5rem 1.5rem;
+        flex: 1;
+        padding: 1.5rem 1.5rem 2.5rem 1.5rem;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: transparent;
       }
 
-      .form-control {
-        padding: 16px 16px 16px 48px;
+      .login-left-content {
+        max-width: 100%;
+        width: 100%;
+        text-align: center;
       }
 
-      .btn-primary {
-        padding: 16px;
+      .brand-logo {
+        font-size: 2.2rem;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 1.2rem;
+      }
+
+      .brand-logo .material-icons {
+        font-size: 2rem;
+      }
+
+      .tagline {
         font-size: 1rem;
+        margin-bottom: 2rem;
+        width: 100%;
+        text-align: center;
+        line-height: 1.4;
+        opacity: 0.9;
+      }
+
+      .feature-list {
+        gap: 0.8rem;
+        width: 100%;
+        align-items: center;
+        margin-top: 1.5rem;
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        backdrop-filter: none;
+        border: none;
+      }
+
+      .feature-list li {
+        font-size: 0.9rem;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        padding: 0.5rem 0 !important;
+        margin: 0;
+        background: transparent;
+        border-radius: 0;
+        backdrop-filter: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-color);
+        opacity: 0.9;
+      }
+
+      .feature-list .material-icons {
+        font-size: 1.1rem;
+        color: #8338ec;
+        opacity: 0.9;
+      }
+
+      .login-header {
+        margin-bottom: 2rem;
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+      }
+
+      .login-header h2 {
+        font-size: 1.5rem;
+        text-align: center;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        line-height: 1.2;
+      }
+
+      .login-header p {
+        font-size: 0.9rem;
+        text-align: center;
+        width: 100%;
+        line-height: 1.4;
+        opacity: 0.8;
+      }
+
+      .login-form {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .login-btns-group {
+        width: 100%;
+        max-width: 100%;
+        gap: 16px;
+        align-items: center;
+        padding: 0 0.5rem;
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        backdrop-filter: none;
+        border: none;
+      }
+
+      .user-login-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 1rem;
+        padding: 16px;
+        border-radius: 12px !important;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-weight: 600;
+        background: #181a1b;
+        color: #fff;
+        border: 1px solid #35363a;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        letter-spacing: 0.5px;
+      }
+
+      .google-signin-container {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #g_id_signin {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      #g_id_signin > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 48px !important;
+      }
+
+      #g_id_signin > div > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      }
+
+      .theme-toggle {
+        top: 16px;
+        right: 16px;
+        width: 44px;
+        height: 28px;
+        z-index: 1001;
+      }
+
+      .theme-toggle::before {
+        width: 20px;
+        height: 20px;
+      }
+
+      [data-bs-theme="dark"] .theme-toggle::before {
+        transform: translateX(16px);
+      }
+
+      [data-bs-theme="dark"] .feature-list li {
+        background: transparent;
+        border: none;
+        color: #fff;
+        opacity: 0.9;
+      }
+
+      [data-bs-theme="dark"] .feature-list .material-icons {
+        color: #a385ff;
+        opacity: 0.9;
+      }
+
+      [data-bs-theme="dark"] .user-login-btn {
+        background: #181a1b;
+        color: #fff;
+        border: 1px solid #35363a;
+      }
+
+      [data-bs-theme="dark"] .login-btns-group {
+        background: transparent;
+        border: none;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .login-container {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        min-height: 100vh;
+      }
+
+      .login-left {
+        padding: 1.5rem 1rem 1rem 1rem;
+      }
+
+      .login-right {
+        padding: 1rem 1rem 1.5rem 1rem;
+      }
+
+      .brand-logo {
+        font-size: 1.8rem;
+        gap: 6px;
+      }
+
+      .brand-logo .material-icons {
+        font-size: 1.6rem;
+      }
+
+      .tagline {
+        font-size: 0.9rem;
+        margin-bottom: 1.2rem;
+      }
+
+      .feature-list {
+        gap: 0.6rem;
+      }
+
+      .feature-list li {
+        font-size: 0.8rem;
+        gap: 6px;
+        padding: 0.4rem 0;
+      }
+
+      .feature-list .material-icons {
+        font-size: 1rem;
+      }
+
+      .login-header h2 {
+        font-size: 1.3rem;
+      }
+
+      .login-header p {
+        font-size: 0.8rem;
+      }
+
+      .user-login-btn {
+        font-size: 0.9rem;
+        padding: 14px;
+        height: 44px;
+      }
+
+      #g_id_signin > div > div {
+        height: 44px !important;
+      }
+    }
+
+    /* Landscape orientation adjustments */
+    @media (max-height: 600px) and (orientation: landscape) {
+      .login-container {
+        min-height: auto;
+        max-height: 95vh;
+        overflow-y: auto;
+        flex-direction: row;
+      }
+
+      .login-left {
+        flex: 1;
+        padding: 1.5rem;
+        border-bottom: none;
+        border-right: 1px solid var(--border-color);
+      }
+
+      .login-right {
+        flex: 1;
+        padding: 1.5rem;
+      }
+
+      .brand-logo {
+        font-size: 1.8rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .tagline {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+      }
+
+      .feature-list {
+        gap: 0.5rem;
+      }
+
+      .feature-list li {
+        font-size: 0.8rem;
+        padding: 0.3rem 0;
+      }
+
+      .login-header {
+        margin-bottom: 1rem;
+      }
+
+      .login-header h2 {
+        font-size: 1.3rem;
+      }
+
+      .login-header p {
+        font-size: 0.8rem;
       }
     }
 
@@ -774,45 +1178,7 @@
     [data-bs-theme="dark"] .form-control:focus {
       background: #232526;
     }
-    /* Responsive Design */
-    @media (max-width: 900px) {
-      .login-container {
-        max-width: 98vw;
-        grid-template-columns: 1fr;
-        min-height: unset;
-      }
-      .login-left, .login-right {
-        border-right: none;
-        padding: 2rem 1.2rem;
-      }
-      .login-left {
-        border-bottom: 1px solid var(--border-color);
-      }
-    }
-    @media (max-width: 600px) {
-      .login-container {
-        max-width: 99vw;
-        border-radius: 12px;
-        margin: 8px;
-      }
-      .login-left, .login-right {
-        padding: 1.2rem 0.7rem;
-      }
-      .brand-logo {
-        font-size: 1.5rem;
-      }
-      .login-header h2 {
-        font-size: 1.2rem;
-      }
-      .tab-button {
-        padding: 10px 8px;
-        font-size: 0.95rem;
-      }
-      .btn-primary, .btn-outline-primary {
-        padding: 10px;
-        font-size: 0.95rem;
-      }
-    }
+
     /* Add a custom class to the Register as vendor button for specific styling */
     .btn-register-vendor {
       color: #fff !important;
@@ -823,6 +1189,274 @@
     .btn-register-vendor:hover {
       background: #3a86ff;
       color: #fff !important;
+    }
+    .user-login-btn {
+      background: #fff;
+      color: #181a1b;
+      border: none;
+      font-weight: 700;
+      transition: background 0.3s, color 0.3s;
+      padding: clamp(12px, 3vw, 16px);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    [data-bs-theme="dark"] .user-login-btn {
+      background: #181a1b;
+      color: #fff;
+      border: 1px solid #35363a;
+    }
+
+    .user-login-btn:hover {
+      background: #f8f9fa;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    [data-bs-theme="dark"] .user-login-btn:hover {
+      background: #2a2d2e;
+      border-color: #44474f;
+    }
+
+    /* Ensure Google Sign-In button is properly sized */
+    #g_id_signin > div {
+      width: 100% !important;
+      max-width: 340px !important;
+    }
+
+    /* Improve button alignment and spacing */
+    .login-btns-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(18px, 3vw, 22px);
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* Ensure proper text wrapping */
+    .feature-list li {
+      word-wrap: break-word;
+      hyphens: auto;
+    }
+
+    /* Improve accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Fix Google Sign-In button styling */
+    .google-signin-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Ensure Google button respects container width */
+    #g_id_signin {
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    /* Override Google's default button styling for better mobile experience */
+    #g_id_signin > div {
+      width: 100% !important;
+      max-width: 340px !important;
+    }
+
+    #g_id_signin > div > div {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    /* Style the fallback Google button */
+    .google-fallback-btn {
+      width: 100% !important;
+      max-width: 340px !important;
+      padding: 12px 16px !important;
+      background: #fff !important;
+      color: #000 !important;
+      border: 1px solid #dadce0 !important;
+      border-radius: 12px !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      cursor: pointer !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      transition: all 0.2s ease !important;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    }
+
+    .google-fallback-btn:hover {
+      background: #f8f9fa !important;
+      border-color: #dadce0 !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    [data-bs-theme="dark"] .google-fallback-btn {
+      background: #fff !important;
+      color: #000 !important;
+      border-color: #5f6368 !important;
+    }
+
+    [data-bs-theme="dark"] .google-fallback-btn:hover {
+      background: #f8f9fa !important;
+      border-color: #5f6368 !important;
+    }
+
+    /* Ensure consistent button sizing across all devices */
+    @media (max-width: 480px) {
+      .google-fallback-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 14px !important;
+        padding: 16px !important;
+        height: 48px !important;
+        border-radius: 12px !important;
+      }
+      
+      #g_id_signin > div {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      .user-login-btn {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      }
+
+      .user-login-btn:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+      }
+    }
+
+    /* Fix any potential overflow issues */
+    .google-signin-container {
+      overflow: hidden;
+      width: 100%;
+    }
+
+    #g_id_signin {
+      overflow: hidden;
+      width: 100%;
+    }
+
+    /* Improve mobile visual hierarchy */
+    @media (max-width: 480px) {
+      .brand-logo {
+        text-shadow: none;
+      }
+
+      .tagline {
+        text-shadow: none;
+      }
+
+      .feature-list {
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        backdrop-filter: none;
+        border: none;
+      }
+
+      .feature-list li {
+        background: transparent;
+        border-radius: 0;
+        padding: 0.5rem 0 !important;
+        margin: 0;
+        backdrop-filter: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.9;
+      }
+
+      .feature-list .material-icons {
+        font-size: 1.1rem;
+        color: #8338ec;
+        opacity: 0.9;
+      }
+
+      [data-bs-theme="dark"] .feature-list li {
+        background: transparent;
+        border: none;
+        color: #fff;
+        opacity: 0.9;
+      }
+
+      [data-bs-theme="dark"] .feature-list .material-icons {
+        color: #a385ff;
+        opacity: 0.9;
+      }
+
+      .login-header h2 {
+        text-shadow: none;
+      }
+
+      .login-btns-group {
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        backdrop-filter: none;
+        border: none;
+      }
+
+      [data-bs-theme="dark"] .login-btns-group {
+        background: transparent;
+        border: none;
+      }
+
+      /* Improve button styling */
+      .user-login-btn {
+        background: #181a1b;
+        color: #fff;
+        border: 1px solid #35363a;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+
+      [data-bs-theme="dark"] .user-login-btn {
+        background: #181a1b;
+        color: #fff;
+        border: 1px solid #35363a;
+      }
+
+      .user-login-btn:hover {
+        background: #2a2d2e;
+        border-color: #44474f;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+
+      /* Improve Google button */
+      #g_id_signin > div > div {
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      }
+
+      .google-fallback-btn {
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+      }
     }
   </style>
 </head>
@@ -881,27 +1515,18 @@
     </div>
 
     <!-- Tab Navigation -->
-    <div class="login-tabs">
-      <button class="tab-button active" onclick="showTab('user')">
-        <span class="material-icons">person</span>
-        User Login
-      </button>
-      <button class="tab-button" onclick="showTab('vendor')">
-        <span class="material-icons">store</span>
-        Vendor Login
-      </button>
-    </div>
+    <!-- Removed login-tabs div to eliminate the white strip above the User Login button -->
 
     <!-- User Login Form -->
     <div id="user-form" class="login-form active">
-      <div id="g_id_onload"
-           data-client_id="{{ client_id }}"
-           data-callback="handleCredentialResponse"
-           data-auto_prompt="false">
-      </div>
-      <div class="google-signin-container">
-        <!-- Google Sign-In Button -->
-        <div id="g_id_signin"></div>
+      <div class="login-btns-group">
+        <button class="btn-primary user-login-btn" type="button" disabled>
+          <span class="material-icons">person</span>
+          User Login
+        </button>
+        <div class="google-signin-container">
+          <div id="g_id_signin"></div>
+        </div>
       </div>
     </div>
 
@@ -1018,22 +1643,117 @@
   window.onload = function() {
     initializeTheme();
     
-    if (window.google && google.accounts && google.accounts.id) {
-      google.accounts.id.initialize({
-        client_id: '{{ client_id }}',
-        callback: handleCredentialResponse,
-        auto_select: false,
-      });
-      google.accounts.id.renderButton(
-        document.getElementById('g_id_signin'),
-        {
-          theme: 'outline',
-          size: 'large',
-          width: 300
+    function renderGoogleButton() {
+      const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+      const buttonContainer = document.getElementById('g_id_signin');
+      
+      // Clear existing content
+      buttonContainer.innerHTML = '';
+      
+      try {
+        if (window.google && google.accounts && google.accounts.id) {
+          google.accounts.id.renderButton(
+            buttonContainer,
+            {
+              theme: isDark ? 'filled_black' : 'outline',
+              size: 'large',
+              width: window.innerWidth <= 480 ? 280 : 340,
+              shape: 'pill',
+              logo_alignment: 'left',
+              text: 'signin_with',
+              type: 'standard'
+            }
+          );
+        } else {
+          // Fallback button if Google API fails to load
+          renderFallbackButton();
         }
-      );
+      } catch (error) {
+        console.warn('Google Sign-In failed to initialize:', error);
+        renderFallbackButton();
+      }
+    }
+
+    function renderFallbackButton() {
+      const buttonContainer = document.getElementById('g_id_signin');
+      const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+      
+      buttonContainer.innerHTML = `
+        <button class="google-fallback-btn" onclick="handleGoogleSignInFallback()" style="
+          width: 100%;
+          max-width: 340px;
+          padding: 12px 16px;
+          background: ${isDark ? '#fff' : '#fff'};
+          color: ${isDark ? '#000' : '#000'};
+          border: 1px solid ${isDark ? '#5f6368' : '#dadce0'};
+          border-radius: 999px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.2s ease;
+        ">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Sign in with Google
+        </button>
+      `;
+    }
+
+    // Initialize Google Sign-In with error handling
+    try {
+      if (window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({
+          client_id: '{{ client_id }}',
+          callback: handleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          prompt_parent_id: 'g_id_signin'
+        });
+        
+        // Add error handling for origin issues
+        google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.warn('Google Sign-In not displayed:', notification.getNotDisplayedReason());
+            renderFallbackButton();
+          }
+        });
+        
+        renderGoogleButton();
+        
+        // Re-render button on theme change
+        const observer = new MutationObserver(() => {
+          setTimeout(renderGoogleButton, 100);
+        });
+        observer.observe(document.documentElement, { 
+          attributes: true, 
+          attributeFilter: ['data-bs-theme'] 
+        });
+      } else {
+        // If Google API is not available, render fallback immediately
+        setTimeout(renderFallbackButton, 1000);
+      }
+    } catch (error) {
+      console.warn('Google Sign-In initialization failed:', error);
+      setTimeout(renderFallbackButton, 1000);
     }
   };
+
+  // Fallback Google Sign-In handler
+  function handleGoogleSignInFallback() {
+    // Show a message to the user
+    alert('Google Sign-In is currently unavailable. Please try again later or contact support.');
+    
+    // Optionally redirect to a manual login page or show alternative login options
+    // window.location.href = '/alternative-login/';
+  }
 
   function showWelcome(name, isVendor = false) {
     const welcomeMessage = document.getElementById('welcomeMessage');
@@ -1169,3 +1889,4 @@
 </script>
 </body>
 </html>
+

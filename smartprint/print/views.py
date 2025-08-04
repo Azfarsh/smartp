@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.models import User
+from django.contrib import messages
 import boto3
 import datetime
 import json
@@ -11,6 +12,7 @@ import requests
 import uuid
 import random
 import re
+import time
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 import os
@@ -21,6 +23,40 @@ from django.utils.html import strip_tags
 import traceback
 from PIL import Image, ImageDraw
 import io
+from django.views.decorators.http import require_POST
+
+# Token management for sequential token generation (100-300)
+_used_tokens = set()
+_current_token = 100
+
+def get_next_sequential_token():
+    """
+    Generate the next sequential token in the range 100-300.
+    Once all tokens are used, reset and start over.
+    """
+    global _used_tokens, _current_token
+    
+    # If all tokens are used, reset
+    if len(_used_tokens) >= 201:  # 201 tokens from 100-300 inclusive
+        _used_tokens.clear()
+        _current_token = 100
+    
+    # Find the next available token
+    while _current_token in _used_tokens:
+        _current_token += 1
+        if _current_token > 300:
+            _current_token = 100
+    
+    # Mark this token as used
+    _used_tokens.add(_current_token)
+    
+    # Return the token and increment for next use
+    token = _current_token
+    _current_token += 1
+    if _current_token > 300:
+        _current_token = 100
+    
+    return str(token)
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -41,6 +77,12 @@ def get_vendor_details_by_email(email):
         reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
         response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
         vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+        
+        # Debug: Print vendor data to see what's being loaded
+        print(f"🔍 DEBUG - Vendor data for {email}:")
+        print(f"   - vendor_name: {vendor_data.get('vendor_name', '')}")
+        print(f"   - profile_image_url: {vendor_data.get('profile_image_url', '')}")
+        
         return {
             'vendor_id': vendor_data.get('vendor_id', ''),
             'vendor_name': vendor_data.get('vendor_name', ''),
@@ -48,6 +90,10 @@ def get_vendor_details_by_email(email):
             'phone_number': vendor_data.get('phone_number', ''),
             'shop_address': vendor_data.get('shop_address', ''),
             'city': vendor_data.get('city', ''),
+            'pincode': vendor_data.get('pincode', ''),
+            'vendor_id': vendor_data.get('vendor_id', ''),
+            'vendor_token': vendor_data.get('vendor_token', ''),
+            'profile_image_url': vendor_data.get('profile_image_url', ''),
         }
     except Exception as e:
         print(f"Error fetching vendor details for {email}: {str(e)}")
@@ -1393,8 +1439,8 @@ def upload_to_r2(request):
                     print(f"   Pricing details: {print_settings.get('pricing_details')}")
                     print(f"   All settings keys: {list(print_settings.keys())}")
 
-                    # Generate a unique 3-digit token for this job
-                    token = str(random.randint(100, 999))
+                    # Generate a unique sequential token for this job (100-300)
+                    token = get_next_sequential_token()
 
                     # Generate a unique job_id for this file (use original_filename + timestamp for idempotency)
                     job_id = print_settings.get('job_id')
@@ -4066,10 +4112,7 @@ def enhance_passport_photo(request):
         else:
             return JsonResponse({'success': False, 'error': result.get('error', 'Enhancement failed.')}, status=500)
     except Exception as e:
-
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-       
 
 
 # ─────────────────────────────────────────────────────────────
@@ -4548,3 +4591,944 @@ def get_vendor_details(request):
     except Exception as e:
         print(f"Error fetching vendor details for {email}: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def vendor_about(request):
+    return render(request, 'vendor_about.html')
+
+
+@csrf_exempt
+def get_vendor_details(request):
+    email = request.GET.get('email')
+    if not email:
+        return JsonResponse({'error': 'Email required'}, status=400)
+    details = get_vendor_details_by_email(email)
+    if not details:
+        return JsonResponse({'error': 'Vendor not found'}, status=404)
+    return JsonResponse(details)
+
+@csrf_exempt
+@require_POST
+def update_vendor_service_availability(request):
+    """
+    Update the vendor's service availability JSON in Cloudflare R2 under:
+    vendor_register_details/{sanitized_email}/vendor_services_availability/services.json
+    """
+    try:
+        vendor_email = request.session.get('vendor_email') or request.POST.get('vendor_email')
+        if not vendor_email:
+            vendor_email = "prasadbhagyawant944@gmail.com"
+        
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+        except Exception as e:
+            return JsonResponse({"success": False, "error": "Invalid JSON."}, status=400)
+        
+        sanitized_email = sanitize_email(vendor_email)
+        file_path = f"vendor_register_details/{sanitized_email}/vendor_services_availability/services.json"
+        
+        # Try R2 with better error handling
+        try:
+            endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+            
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=endpoint_url,
+                region_name='auto',
+                config=boto3.session.Config(
+                    signature_version='s3v4',
+                    retries={'max_attempts': 3}
+                )
+            )
+            
+            # Test connection first
+            s3.head_bucket(Bucket=settings.R2_BUCKET)
+            
+            # Upload the file
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=file_path,
+                Body=json.dumps(data, indent=2),
+                ContentType='application/json'
+            )
+            
+            return JsonResponse({
+                "success": True,
+                "message": f"Service availability updated for {vendor_email}",
+                "file_path": file_path,
+                "data": data
+            })
+            
+        except Exception as r2_error:
+            # If R2 fails, try local storage as backup
+            try:
+                local_dir = os.path.join(os.path.dirname(__file__), '../../local_vendor_services_availability', sanitized_email)
+                os.makedirs(local_dir, exist_ok=True)
+                local_file = os.path.join(local_dir, 'services.json')
+                with open(local_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2)
+                return JsonResponse({
+                    "success": True,
+                    "message": f"Service availability updated locally for {vendor_email} (R2 failed)",
+                    "file_path": local_file,
+                    "data": data,
+                    "warning": "R2 connection failed, using local storage"
+                })
+            except Exception as local_error:
+                return JsonResponse({
+                    "success": False, 
+                    "error": f"Failed to save service availability: {str(local_error)}"
+                }, status=500)
+                
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+@csrf_exempt
+def get_vendor_service_availability(request):
+    """
+    Get the vendor's service availability from R2 storage or local fallback
+    """
+    try:
+        vendor_email = request.session.get('vendor_email') or request.GET.get('vendor_email')
+        if not vendor_email:
+            vendor_email = "prasadbhagyawant944@gmail.com"
+        
+        sanitized_email = sanitize_email(vendor_email)
+        file_path = f"vendor_register_details/{sanitized_email}/vendor_services_availability/services.json"
+        
+        # Try R2 first with better error handling
+        try:
+            endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+            
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=endpoint_url,
+                region_name='auto',
+                config=boto3.session.Config(
+                    signature_version='s3v4',
+                    retries={'max_attempts': 3}
+                )
+            )
+            
+            response = s3.get_object(
+                Bucket=settings.R2_BUCKET,
+                Key=file_path
+            )
+            data = json.loads(response['Body'].read().decode('utf-8'))
+            
+            return JsonResponse({
+                "success": True,
+                "data": data,
+                "file_path": file_path,
+                "source": "R2"
+            })
+            
+        except Exception:
+            # Fallback to local file storage
+            try:
+                local_file = os.path.join(os.path.dirname(__file__), '../../local_vendor_services_availability', sanitized_email, 'services.json')
+                if os.path.exists(local_file):
+                    with open(local_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    return JsonResponse({
+                        "success": True,
+                        "data": data,
+                        "file_path": local_file,
+                        "source": "local",
+                        "note": "Loaded from local fallback (R2 failed)"
+                    })
+            except Exception:
+                pass
+            
+            # File doesn't exist, return default values
+            default_data = {
+                "digital_print": True,
+                "project_binding": True,
+                "gloss_printing": True,
+                "jumbo_printing": True,
+                "regular_print": True,
+                "passport_print": True,
+                "photo_print": True,
+                "vendor_shop_avaliability": "online"  # Always include availability status
+            }
+            return JsonResponse({
+                "success": True,
+                "data": default_data,
+                "file_path": file_path,
+                "source": "defaults",
+                "note": "Using default values (file not found)"
+            })
+            
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+@csrf_exempt
+def test_r2_simple(request):
+    """
+    Simple R2 connection test
+    """
+    try:
+        endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+        
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=endpoint_url,
+            region_name='auto',
+        )
+        
+        # Test bucket access
+        s3.head_bucket(Bucket=settings.R2_BUCKET)
+        
+        # Test simple upload
+        test_key = "test_simple.json"
+        test_data = {"test": "data", "timestamp": datetime.datetime.now().isoformat()}
+        
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=test_key,
+            Body=json.dumps(test_data),
+            ContentType='application/json'
+        )
+        
+        return JsonResponse({
+            "success": True,
+            "message": "R2 connection successful",
+            "test_file": test_key
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e),
+            "endpoint": settings.R2_ENDPOINT,
+            "bucket": settings.R2_BUCKET
+        })
+
+@csrf_exempt
+def list_vendor_folder(request):
+    """
+    List contents of vendor folder in R2 to debug folder creation
+    """
+    try:
+        # Get vendor email from session or request parameters
+        vendor_email = request.session.get('vendor_email')
+        if not vendor_email:
+            vendor_email = request.GET.get('vendor_email')
+        if not vendor_email:
+            return JsonResponse({
+                "success": False,
+                "error": "No vendor email found in session or request parameters"
+            })
+        
+        sanitized_email = sanitize_email(vendor_email)
+        folder_prefix = f"printme/vendor_register_details/{sanitized_email}/"
+        
+        print(f"🔍 DEBUG - Listing folder: {folder_prefix}")
+        
+        endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+        
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=endpoint_url,
+            region_name='auto',
+        )
+        
+        # List objects in the vendor folder
+        response = s3.list_objects_v2(
+            Bucket=settings.R2_BUCKET,
+            Prefix=folder_prefix
+        )
+        
+        files = []
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                files.append({
+                    'key': obj['Key'],
+                    'size': obj['Size'],
+                    'last_modified': obj['LastModified'].isoformat()
+                })
+        
+        return JsonResponse({
+            "success": True,
+            "vendor_email": vendor_email,
+            "sanitized_email": sanitized_email,
+            "folder_prefix": folder_prefix,
+            "files": files,
+            "total_files": len(files)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        })
+
+@csrf_exempt
+def create_vendor_folder_structure(request):
+    """
+    Create visible folder structure in R2 by uploading placeholder files
+    """
+    try:
+        # Get vendor email from session or request parameters
+        vendor_email = request.session.get('vendor_email')
+        if not vendor_email:
+            vendor_email = request.GET.get('vendor_email')
+        if not vendor_email:
+            return JsonResponse({
+                "success": False,
+                "error": "No vendor email found in session or request parameters"
+            })
+        
+        sanitized_email = sanitize_email(vendor_email)
+        
+        endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+        
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=endpoint_url,
+            region_name='auto',
+        )
+        
+        # Create folder structure with placeholder files
+        folders_to_create = [
+            f"printme/vendor_register_details/{sanitized_email}/vendor_services_availability/.folder",
+            f"printme/vendor_register_details/{sanitized_email}/vendor_services_availability/README.md"
+        ]
+        
+        created_files = []
+        
+        for folder_path in folders_to_create:
+            try:
+                if folder_path.endswith('.folder'):
+                    # Create an empty folder marker
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=folder_path,
+                        Body='',
+                        ContentType='application/x-directory'
+                    )
+                elif folder_path.endswith('README.md'):
+                    # Create a README file to make the folder visible
+                    readme_content = f"""# Vendor Services Availability Folder
+
+This folder contains service availability settings for vendor: {vendor_email}
+
+## Files:
+- `services.json` - Service availability configuration
+- `.folder` - Folder marker file
+
+Created: {datetime.datetime.now().isoformat()}
+"""
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=folder_path,
+                        Body=readme_content,
+                        ContentType='text/markdown'
+                    )
+                
+                created_files.append(folder_path)
+                
+            except Exception as e:
+                print(f"Error creating {folder_path}: {str(e)}")
+        
+        return JsonResponse({
+            "success": True,
+            "message": f"Created folder structure for {vendor_email}",
+            "created_files": created_files,
+            "vendor_email": vendor_email,
+            "sanitized_email": sanitized_email
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        })
+
+@csrf_exempt
+def update_vendor_availability(request):
+    """
+    Update the vendor's availability status (online/offline) in Cloudflare R2 under:
+    vendor_register_details/{sanitized_email}/vendor_services_availability/services.json
+    """
+    if request.method == 'POST':
+        try:
+            vendor_email = request.session.get('vendor_email') or request.POST.get('vendor_email')
+            if not vendor_email:
+                vendor_email = "prasadbhagyawant944@gmail.com"
+            
+            try:
+                data = json.loads(request.body.decode('utf-8'))
+                availability_status = data.get('vendor_shop_avaliability', 'online')
+            except Exception as e:
+                return JsonResponse({"success": False, "error": "Invalid JSON."}, status=400)
+            
+            sanitized_email = sanitize_email(vendor_email)
+            file_path = f"vendor_register_details/{sanitized_email}/vendor_services_availability/services.json"
+            
+            # Try R2 with better error handling
+            try:
+                endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+                
+                s3 = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.R2_ACCESS_KEY,
+                    aws_secret_access_key=settings.R2_SECRET_KEY,
+                    endpoint_url=endpoint_url,
+                    region_name='auto',
+                    config=boto3.session.Config(
+                        signature_version='s3v4',
+                        retries={'max_attempts': 3}
+                    )
+                )
+                
+                # Try to get existing data first
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=file_path)
+                    existing_data = json.loads(response['Body'].read().decode('utf-8'))
+                except:
+                    # If file doesn't exist, create default structure
+                    existing_data = {
+                        "digital_print": True,
+                        "project_binding": True,
+                        "gloss_printing": True,
+                        "jumbo_printing": True,
+                        "regular_print": True,
+                        "passport_print": True,
+                        "photo_print": True,
+                        "vendor_shop_avaliability": "online"
+                    }
+                
+                # Update availability status
+                existing_data['vendor_shop_avaliability'] = availability_status
+                
+                # Upload the updated file
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=file_path,
+                    Body=json.dumps(existing_data, indent=2),
+                    ContentType='application/json'
+                )
+                
+                return JsonResponse({
+                    "success": True,
+                    "message": f"Vendor availability updated to {availability_status}",
+                    "file_path": file_path,
+                    "availability": availability_status
+                })
+                
+            except Exception as r2_error:
+                # If R2 fails, try local storage as backup
+                try:
+                    local_dir = os.path.join(os.path.dirname(__file__), '../../local_vendor_services_availability', sanitized_email)
+                    os.makedirs(local_dir, exist_ok=True)
+                    local_file = os.path.join(local_dir, 'services.json')
+                    
+                    # Try to read existing local data
+                    try:
+                        with open(local_file, 'r', encoding='utf-8') as f:
+                            existing_data = json.load(f)
+                    except:
+                        existing_data = {
+                            "digital_print": True,
+                            "project_binding": True,
+                            "gloss_printing": True,
+                            "jumbo_printing": True,
+                            "regular_print": True,
+                            "passport_print": True,
+                            "photo_print": True,
+                            "vendor_shop_avaliability": "online"
+                        }
+                    
+                    # Update availability status
+                    existing_data['vendor_shop_avaliability'] = availability_status
+                    
+                    with open(local_file, 'w', encoding='utf-8') as f:
+                        json.dump(existing_data, f, indent=2)
+                    
+                    return JsonResponse({
+                        "success": True,
+                        "message": f"Vendor availability updated locally to {availability_status} (R2 failed)",
+                        "file_path": local_file,
+                        "availability": availability_status,
+                        "warning": "R2 connection failed, using local storage"
+                    })
+                except Exception as local_error:
+                    return JsonResponse({
+                        "success": False, 
+                        "error": f"Failed to save vendor availability: {str(local_error)}"
+                    }, status=500)
+                    
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+    
+    return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+@csrf_exempt
+def test_profile_image_url(request):
+    """
+    Test if a profile image URL is accessible
+    """
+    if request.method == 'GET':
+        try:
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Vendor not authenticated"
+                }, status=401)
+            
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if vendor_details and vendor_details.get('profile_image_url'):
+                profile_url = vendor_details['profile_image_url']
+                
+                # Check if the file actually exists in R2
+                try:
+                    # Extract key from URL
+                    key = None
+                    if '?' in profile_url:
+                        base_url = profile_url.split('?')[0]
+                        if settings.R2_ENDPOINT in base_url:
+                            key = base_url.replace(settings.R2_ENDPOINT, '').lstrip('/')
+                            if key.startswith(settings.R2_BUCKET + '/'):
+                                key = key[len(settings.R2_BUCKET + '/'):]
+                    else:
+                        if settings.R2_ENDPOINT in profile_url:
+                            key = profile_url.replace(settings.R2_ENDPOINT, '').lstrip('/')
+                            if key.startswith(settings.R2_BUCKET + '/'):
+                                key = key[len(settings.R2_BUCKET + '/'):]
+                    
+                    file_exists = False
+                    if key:
+                        try:
+                            s3 = boto3.client(
+                                's3',
+                                aws_access_key_id=settings.R2_ACCESS_KEY,
+                                aws_secret_access_key=settings.R2_SECRET_KEY,
+                                endpoint_url=settings.R2_ENDPOINT.rstrip('/'),
+                                region_name='auto'
+                            )
+                            s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                            file_exists = True
+                            print(f"✅ Profile image file exists in R2: {key}")
+                        except Exception as e:
+                            print(f"❌ Profile image file does not exist in R2: {key} - {str(e)}")
+                            file_exists = False
+                except Exception as e:
+                    print(f"❌ Error checking file existence: {str(e)}")
+                    file_exists = False
+                
+                # Test if the URL is accessible
+                try:
+                    response = requests.head(profile_url, timeout=5)
+                    is_accessible = response.status_code == 200
+                    error_message = None
+                except Exception as e:
+                    is_accessible = False
+                    error_message = str(e)
+                
+                return JsonResponse({
+                    "success": True,
+                    "profile_image_url": profile_url,
+                    "is_accessible": is_accessible,
+                    "status_code": response.status_code if 'response' in locals() else None,
+                    "error_message": error_message,
+                    "file_exists_in_r2": file_exists if 'file_exists' in locals() else None,
+                    "extracted_key": key if 'key' in locals() else None
+                })
+            else:
+                return JsonResponse({
+                    "success": True,
+                    "profile_image_url": None,
+                    "is_accessible": False
+                })
+                
+        except Exception as e:
+            print(f"❌ Error testing profile image URL: {str(e)}")
+            return JsonResponse({
+                "success": False,
+                "error": f"Server error: {str(e)}"
+            }, status=500)
+    
+    return JsonResponse({
+        "success": False,
+        "error": "Invalid request method"
+    }, status=405)
+
+@csrf_exempt
+def get_vendor_profile_image(request):
+    """
+    Get vendor profile image URL from Cloudflare R2
+    """
+    if request.method == 'GET':
+        try:
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Vendor not authenticated"
+                }, status=401)
+            
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if vendor_details and vendor_details.get('profile_image_url'):
+                return JsonResponse({
+                    "success": True,
+                    "profile_image_url": vendor_details['profile_image_url']
+                })
+            else:
+                return JsonResponse({
+                    "success": True,
+                    "profile_image_url": None
+                })
+                
+        except Exception as e:
+            print(f"❌ Error getting profile image: {str(e)}")
+            return JsonResponse({
+                "success": False,
+                "error": f"Server error: {str(e)}"
+            }, status=500)
+    
+    return JsonResponse({
+        "success": False,
+        "error": "Invalid request method"
+    }, status=405)
+
+@csrf_exempt
+def update_vendor_profile(request):
+    """
+    Update vendor profile details and profile image in Cloudflare R2 under:
+    vendor_register_details/{sanitized_email}/profile/
+    """
+    if request.method == 'POST':
+        try:
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Vendor not authenticated"
+                }, status=401)
+            
+            sanitized_email = sanitize_email(vendor_email)
+            
+            # Initialize S3 client
+            endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=endpoint_url,
+                region_name='auto',
+                config=boto3.session.Config(
+                    signature_version='s3v4',
+                    retries={'max_attempts': 3}
+                )
+            )
+            
+            # Handle profile image upload
+            profile_image_url = None
+            if 'profile_image' in request.FILES:
+                image_file = request.FILES['profile_image']
+                
+                # Validate image file
+                if not image_file.content_type.startswith('image/'):
+                    return JsonResponse({
+                        "success": False,
+                        "error": "Invalid file type. Please upload an image."
+                    }, status=400)
+                
+                # Generate unique filename
+                file_extension = image_file.name.split('.')[-1].lower()
+                image_filename = f"profile_image_{int(time.time())}.{file_extension}"
+                image_key = f"vendor_register_details/{sanitized_email}/profile/{image_filename}"
+                
+                # Upload image to R2
+                try:
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=image_key,
+                        Body=image_file.read(),
+                        ContentType=image_file.content_type,
+                        Metadata={
+                            'uploaded_at': datetime.datetime.now().isoformat(),
+                            'original_filename': image_file.name,
+                            'file_size': str(image_file.size)
+                        }
+                    )
+                    
+                    # Generate public URL for the image (more reliable for R2)
+                    try:
+                        # Use public URL format with bucket name
+                        profile_image_url = f"{settings.R2_ENDPOINT.rstrip('/')}/{settings.R2_BUCKET}/{image_key}"
+                        print(f"✅ Generated public URL: {profile_image_url}")
+                        
+                        # Test if the public URL works
+                        try:
+                            test_response = requests.head(profile_image_url, timeout=5)
+                            if test_response.status_code == 200:
+                                print(f"✅ Public URL is accessible")
+                            else:
+                                print(f"⚠️ Public URL returned status {test_response.status_code}")
+                                # Fallback to presigned URL with shorter expiration
+                                presigned_url = s3.generate_presigned_url(
+                                    'get_object',
+                                    Params={'Bucket': settings.R2_BUCKET, 'Key': image_key},
+                                    ExpiresIn=3600 * 24 * 7  # 7 days expiration (shorter for testing)
+                                )
+                                profile_image_url = presigned_url
+                                print(f"✅ Fallback to presigned URL: {profile_image_url}")
+                        except Exception as test_error:
+                            print(f"⚠️ Public URL test failed: {test_error}")
+                            # Fallback to presigned URL with shorter expiration
+                            presigned_url = s3.generate_presigned_url(
+                                'get_object',
+                                Params={'Bucket': settings.R2_BUCKET, 'Key': image_key},
+                                ExpiresIn=3600 * 24 * 7  # 7 days expiration (shorter for testing)
+                            )
+                            profile_image_url = presigned_url
+                            print(f"✅ Fallback to presigned URL: {profile_image_url}")
+                            
+                    except Exception as url_error:
+                        print(f"❌ Failed to generate URL: {url_error}")
+                        # Final fallback
+                        profile_image_url = f"{settings.R2_ENDPOINT.rstrip('/')}/{settings.R2_BUCKET}/{image_key}"
+                    
+                    print(f"✅ Profile image uploaded: {image_key}")
+                    print(f"✅ Final profile image URL: {profile_image_url}")
+                    print(f"✅ R2_ENDPOINT: {settings.R2_ENDPOINT}")
+                    print(f"✅ R2_BUCKET: {settings.R2_BUCKET}")
+                    
+                except Exception as e:
+                    print(f"❌ Error uploading profile image: {str(e)}")
+                    return JsonResponse({
+                        "success": False,
+                        "error": f"Failed to upload profile image: {str(e)}"
+                    }, status=500)
+            
+            # Get form data
+            vendor_name = request.POST.get('vendor_name', '').strip()
+            remove_profile_image = request.POST.get('remove_profile_image', '').strip() == 'true'
+            
+            # Validate required fields
+            if not vendor_name:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Vendor name is required"
+                }, status=400)
+            
+            # Update registration details with new profile data
+            try:
+                reg_key = f'vendor_register_details/{sanitized_email}/registration_details.json'
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                
+                # Get old profile image URL for cleanup
+                old_profile_url = vendor_data.get('profile_image_url', '')
+                old_image_key = None
+                
+                # Extract old image key if exists
+                if old_profile_url:
+                    print(f"🔍 DEBUG - Extracting key from old URL: {old_profile_url}")
+                    if '?' in old_profile_url:
+                        base_url = old_profile_url.split('?')[0]
+                        print(f"🔍 DEBUG - Base URL (after removing query): {base_url}")
+                        if settings.R2_ENDPOINT in base_url:
+                            old_image_key = base_url.replace(settings.R2_ENDPOINT, '').lstrip('/')
+                            print(f"🔍 DEBUG - After removing endpoint: {old_image_key}")
+                            if old_image_key.startswith(settings.R2_BUCKET + '/'):
+                                old_image_key = old_image_key[len(settings.R2_BUCKET + '/'):]
+                                print(f"🔍 DEBUG - After removing bucket: {old_image_key}")
+                    else:
+                        if settings.R2_ENDPOINT in old_profile_url:
+                            old_image_key = old_profile_url.replace(settings.R2_ENDPOINT, '').lstrip('/')
+                            print(f"🔍 DEBUG - After removing endpoint (no query): {old_image_key}")
+                            if old_image_key.startswith(settings.R2_BUCKET + '/'):
+                                old_image_key = old_image_key[len(settings.R2_BUCKET + '/'):]
+                                print(f"🔍 DEBUG - After removing bucket (no query): {old_image_key}")
+                    
+                    print(f"🔍 DEBUG - Final extracted old_image_key: {old_image_key}")
+                else:
+                    print(f"🔍 DEBUG - No old profile URL found")
+                
+                # Update vendor data
+                vendor_data['vendor_name'] = vendor_name
+                
+                if remove_profile_image:
+                    # Remove profile image
+                    vendor_data['profile_image_url'] = ''
+                    vendor_data['profile_image_removed_at'] = datetime.datetime.now().isoformat()
+                    profile_image_url = None
+                    print(f"✅ Profile image removed for vendor {vendor_email}")
+                    
+                    # Delete the old image from R2 if it exists
+                    if old_image_key:
+                        try:
+                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=old_image_key)
+                            print(f"✅ Deleted old profile image from R2: {old_image_key}")
+                        except Exception as delete_error:
+                            print(f"⚠️ Failed to delete old profile image from R2 {old_image_key}: {delete_error}")
+                    else:
+                        print(f"⚠️ No old image key found to delete")
+                elif profile_image_url:
+                    # Update with new profile image
+                    vendor_data['profile_image_url'] = profile_image_url
+                    vendor_data['profile_image_updated_at'] = datetime.datetime.now().isoformat()
+                    
+                    # Clean up old image if it exists and is different from new one
+                    if old_image_key and old_image_key != image_key:
+                        try:
+                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=old_image_key)
+                            print(f"✅ Deleted old profile image: {old_image_key}")
+                        except Exception as delete_error:
+                            print(f"⚠️ Failed to delete old profile image {old_image_key}: {delete_error}")
+                else:
+                    # No new image uploaded, keep existing one if any
+                    if old_profile_url:
+                        profile_image_url = old_profile_url
+                        print(f"✅ Keeping existing profile image: {old_profile_url}")
+                
+                # Debug: Print the updated vendor data
+                print(f"🔍 DEBUG - Updated vendor data:")
+                print(f"   - vendor_name: {vendor_data['vendor_name']}")
+                print(f"   - profile_image_url: {vendor_data.get('profile_image_url', 'None')}")
+                
+                # Upload updated registration details
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=reg_key,
+                    Body=json.dumps(vendor_data, indent=2),
+                    ContentType='application/json'
+                )
+                
+                print(f"✅ Profile updated for vendor {vendor_email}")
+                
+                response_data = {
+                    "success": True,
+                    "message": "Profile updated successfully",
+                    "vendor_name": vendor_name,
+                    "updated_at": datetime.datetime.now().isoformat()
+                }
+                
+                if remove_profile_image:
+                    response_data["message"] = "Profile image removed successfully"
+                    response_data["profile_image_url"] = None
+                elif profile_image_url:
+                    response_data["profile_image_url"] = profile_image_url
+                
+                return JsonResponse(response_data)
+                
+            except Exception as e:
+                print(f"❌ Error updating registration details: {str(e)}")
+                return JsonResponse({
+                    "success": False,
+                    "error": f"Failed to update profile details: {str(e)}"
+                }, status=500)
+                
+        except Exception as e:
+            print(f"❌ Server error in update_vendor_profile: {str(e)}")
+            return JsonResponse({
+                "success": False,
+                "error": f"Server error: {str(e)}"
+            }, status=500)
+    
+    return JsonResponse({
+        "success": False,
+        "error": "Invalid request method"
+    }, status=405)
+
+@csrf_exempt
+def test_r2_url_generation(request):
+    """
+    Test R2 URL generation for debugging
+    """
+    if request.method == 'GET':
+        try:
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Vendor not authenticated"
+                }, status=401)
+            
+            sanitized_email = sanitize_email(vendor_email)
+            
+            # Initialize S3 client
+            endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=endpoint_url,
+                region_name='auto',
+                config=boto3.session.Config(
+                    signature_version='s3v4',
+                    retries={'max_attempts': 3}
+                )
+            )
+            
+            # Test different URL formats
+            test_key = f"vendor_register_details/{sanitized_email}/test_image.jpg"
+            
+            # Format 1: Presigned URL
+            try:
+                presigned_url = s3.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': settings.R2_BUCKET, 'Key': test_key},
+                    ExpiresIn=3600  # 1 hour
+                )
+                print(f"✅ Generated presigned URL: {presigned_url}")
+            except Exception as e:
+                presigned_url = f"Error: {str(e)}"
+                print(f"❌ Error generating presigned URL: {str(e)}")
+            
+            # Format 2: Public URL
+            public_url = f"{settings.R2_ENDPOINT.rstrip('/')}/{test_key}"
+            
+            # Format 3: Custom domain URL (if configured)
+            custom_url = None
+            if hasattr(settings, 'R2_PUBLIC_URL') and settings.R2_PUBLIC_URL:
+                custom_url = f"{settings.R2_PUBLIC_URL.rstrip('/')}/{test_key}"
+            
+            return JsonResponse({
+                "success": True,
+                "test_key": test_key,
+                "presigned_url": presigned_url,
+                "public_url": public_url,
+                "custom_url": custom_url,
+                "r2_endpoint": settings.R2_ENDPOINT,
+                "r2_bucket": settings.R2_BUCKET,
+                "has_custom_url": hasattr(settings, 'R2_PUBLIC_URL') and settings.R2_PUBLIC_URL
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                "success": False,
+                "error": str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        "success": False,
+        "error": "Invalid request method"
+    }, status=405)
+
+def logout(request):
+    """
+    Logout view that clears session data and redirects to home
+    """
+    # Add success message before clearing session
+    messages.success(request, 'You have been successfully logged out!')
+    
+    # Clear all session data
+    request.session.flush()
+    
+    # Redirect to home page
+    return redirect('home')

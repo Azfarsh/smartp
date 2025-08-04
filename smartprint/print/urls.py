@@ -6,8 +6,11 @@ from .views import (
     auth_receiver, sign_in, photoprint, vendor_register, vendor_pricing, vendor_info,
     vendor_login, vendor_register_api, mark_notification_read,
     enhance_passport_photo, forgot_password_page, forgot_password, verify_reset_code, reset_password,
-    logout_view, get_vendor_coordinates,get_vendor_pricing, calculate_digital_print_pricing,
+    logout_view, get_vendor_coordinates, get_vendor_pricing, calculate_digital_print_pricing,
     calculate_gloss_print_pricing, calculate_photo_print_pricing, calculate_jumbo_print_pricing, calculate_passport_photo_pricing, calculate_a4_print_pricing,
+    get_vendor_print_jobs, list_r2_files, debug_vendor_registrations,
+    update_vendor_service_availability, get_vendor_service_availability, 
+    update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout
 )
 
 urlpatterns = [
@@ -15,12 +18,15 @@ urlpatterns = [
     path('upload/', views.upload_to_r2, name='upload_to_r2'),
     path('userdashboard/', views.userdashboard, name='userdashboard'),
     path('vendordashboard/', views.vendordashboard, name='vendordashboard'),
-    path('get-print-requests/', views.get_print_requests, name='get-print-requests'),
+    path('get-print-requests/',
+         views.get_print_requests,
+         name='get-print-requests'),
     path('process_print/', process_print_request, name='process_print'),
     path('auto-print-documents/', views.auto_print_documents, name='auto-print-documents'),
     path('get-vendor-print-jobs/', views.get_vendor_print_jobs, name='get_vendor_print_jobs'),
     path('update-job-status/', update_job_status, name='update_job_status'),
     path('login/', sign_in, name='login'),
+    path('logout/', logout, name='logout'),
     path('auth-receiver/', auth_receiver, name='auth_receiver'),
     path('photoprint/', photoprint, name='photoprint'),
     path('vendor-register/', views.vendor_register, name='vendor_register'),
@@ -49,4 +55,16 @@ urlpatterns = [
     path('calculate-jumbo-print-pricing/', calculate_jumbo_print_pricing, name='calculate_jumbo_print_pricing'),
     path('calculate-passport-photo-pricing/', calculate_passport_photo_pricing, name='calculate_passport_photo_pricing'),
     path('calculate-a4-print-pricing/', calculate_a4_print_pricing, name='calculate_a4_print_pricing'),
+]
+
+urlpatterns += [
+    path('update-vendor-service-availability/', update_vendor_service_availability, name='update_vendor_service_availability'),
+    path('get-vendor-service-availability/', get_vendor_service_availability, name='get_vendor_service_availability'),
+    path('update-vendor-availability/', update_vendor_availability, name='update_vendor_availability'),
+    path('update-vendor-profile/', update_vendor_profile, name='update_vendor_profile'),
+    path('get-vendor-profile-image/', get_vendor_profile_image, name='get_vendor_profile_image'),
+    path('test-profile-image-url/', test_profile_image_url, name='test_profile_image_url'),
+    path('test-r2-url-generation/', test_r2_url_generation, name='test_r2_url_generation'),
+    path('test-r2-simple/', test_r2_simple, name='test_r2_simple'),
+    path('list-vendor-folder/', list_vendor_folder, name='list_vendor_folder'),
 ]

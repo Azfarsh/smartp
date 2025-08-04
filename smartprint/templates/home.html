@@ -37,6 +37,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Add Material Icons to <head> -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
         :root {
@@ -736,6 +738,30 @@
 </head>
 
 <body>
+    <!-- Django Messages -->
+    {% if messages %}
+    <div class="messages-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-lg" role="alert" 
+             style="margin-bottom: 10px; border: none; border-radius: 12px; background: {% if message.tags == 'success' %}linear-gradient(135deg, #43e97b 0%, #38f9d7 100%){% elif message.tags == 'error' %}linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%){% elif message.tags == 'warning' %}linear-gradient(135deg, #fa709a 0%, #fee140 100%){% else %}linear-gradient(135deg, #667eea 0%, #764ba2 100%){% endif %}; color: white; font-weight: 500;">
+            <i class="bi bi-{% if message.tags == 'success' %}check-circle-fill{% elif message.tags == 'error' %}exclamation-triangle-fill{% elif message.tags == 'warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    <script>
+        // Auto-hide messages after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+    {% endif %}
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg" role="navigation">
         <div class="container">
@@ -760,13 +786,13 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#features">
-                            <i class="bi bi-star-fill me-2"></i>Features
+                        <a class="nav-link" href="#services">
+                            <i class="bi bi-grid-fill me-2"></i>Services
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#services">
-                            <i class="bi bi-grid-fill me-2"></i>Services
+                        <a class="nav-link" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#vendorLoginModal" id="vendorLoginNav">
+                            <i class="bi bi-shop me-2"></i>Vendor
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1214,6 +1240,574 @@
         </div>
     </footer>
 
+    <!-- Vendor Login Modal (full two-column vendor-only layout) -->
+    <div class="modal fade" id="vendorLoginModal" tabindex="-1" aria-labelledby="vendorLoginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content vendor-modal-content">
+          <div class="row g-0">
+            <!-- Left: Brand, dynamic tagline, features -->
+            <div class="col-md-6 vendor-modal-left">
+              <div class="brand-logo">
+                <span class="material-icons">bolt</span>
+                PrintMax
+              </div>
+              <div class="tagline" id="vendor-modal-tagline">
+                🚀 Where Innovation Meets Print Perfection
+              </div>
+              <ul class="feature-list">
+                <li><span class="material-icons">rocket_launch</span> Lightning-Fast AI Processing</li>
+                <li><span class="material-icons">security</span> Military-Grade Security</li>
+                <li><span class="material-icons">auto_awesome</span> Smart Quality Enhancement</li>
+                <li><span class="material-icons">schedule</span> 24/7 Automated Service</li>
+              </ul>
+            </div>
+            <!-- Right: Vendor login form only -->
+            <div class="col-md-6 vendor-modal-right">
+              <button type="button" class="btn-close vendor-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <!-- Welcome Screen (hidden by default) -->
+              <div id="welcomeScreen" style="display:none; flex-direction:column; align-items:center; justify-content:center; min-height:300px;">
+                <div id="welcomeMessage">🚀 Welcome to the Future!</div>
+                <div class="spinner" style="margin:2rem 0;"></div>
+                <div class="status-text" id="welcomeStatusText">⚡ Initializing AI-powered experience...</div>
+              </div>
+              <!-- Vendor Login Form -->
+              <div id="vendor-form-modal">
+                <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
+                  {% csrf_token %}
+                  <div class="form-group">
+                    <label for="vendorEmail" class="form-label"> Email</label>
+                    <div class="input-container">
+                      <input type="email" class="form-control" id="vendorEmail" placeholder="Enter your command email" required autocomplete="username" />
+                      <span class="material-icons">email</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="vendorPassword" class="form-label">Password</label>
+                    <div class="input-container">
+                      <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your secret code" required autocomplete="current-password" />
+                      <span class="material-icons">lock</span>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn-primary" id="vendorSignInBtn">
+                    <span class="material-icons" id="vendorBtnIcon">rocket_launch</span>
+                    <span id="vendorBtnText">🚀 Vendor login</span>
+                  </button>
+                  <div class="forgot-password">
+                    <a href="#" onclick="resetVendorPassword()">🔐 Forgot your access code?</a>
+                  </div>
+                </form>
+                <div class="text-center mt-3">
+                  <p class="text-muted">Ready to build your print empire?</p>
+                  <button type="button" class="btn-outline-primary btn-register-vendor" onclick="window.location.href='/vendor-about/'">
+                    <span class="material-icons">business</span>
+                    🏪 Learn About Vendor Benefits
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Dynamic vendor taglines for modal
+      const vendorModalTaglines = [
+        "🚀 Where Innovation Meets Print Perfection",
+        "⚡ Your Documents, Supercharged by AI",
+        "🎯 Precision Printing, Lightning Speed",
+        "🌟 The Future of Printing is Here",
+        "👑 Reign Over the Print Kingdom",
+        "🚀 Scale Your Print Operations"
+      ];
+      let vendorModalTaglineIndex = 0;
+      function rotateVendorModalTagline() {
+        const taglineElement = document.getElementById('vendor-modal-tagline');
+        taglineElement.style.opacity = '0';
+        setTimeout(() => {
+          vendorModalTaglineIndex = (vendorModalTaglineIndex + 1) % vendorModalTaglines.length;
+          taglineElement.textContent = vendorModalTaglines[vendorModalTaglineIndex];
+          taglineElement.style.opacity = '1';
+        }, 300);
+      }
+      let vendorModalTaglineInterval;
+      document.addEventListener('DOMContentLoaded', function() {
+        // Start tagline rotation when modal is shown
+        const vendorModal = document.getElementById('vendorLoginModal');
+        if (vendorModal) {
+          vendorModal.addEventListener('shown.bs.modal', function () {
+            vendorModalTaglineInterval = setInterval(rotateVendorModalTagline, 4000);
+          });
+          vendorModal.addEventListener('hidden.bs.modal', function () {
+            clearInterval(vendorModalTaglineInterval);
+            vendorModalTaglineIndex = 0;
+            document.getElementById('vendor-modal-tagline').textContent = vendorModalTaglines[0];
+          });
+        }
+      });
+    </script>
+    <style>
+      /* Vendor login modal two-column layout and styles */
+      #vendorLoginModal .vendor-modal-content {
+        background: #fff; /* Solid background for light mode */
+        border: 1.5px solid var(--modal-border);
+        border-radius: 28px;
+        box-shadow: var(--glass-shadow);
+        padding: 0;
+        overflow: hidden;
+        min-height: 520px;
+        max-width: 950px;
+      }
+      #vendorLoginModal .row { margin: 0; }
+      #vendorLoginModal .vendor-modal-left {
+        background: linear-gradient(135deg, #23272f 0%, #181a1b 100%);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 3rem 2.5rem;
+        min-height: 520px;
+        text-align: center;
+      }
+      #vendorLoginModal .brand-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 2.2rem;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        font-size: 2.7rem;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 800;
+        gap: 10px;
+      }
+      #vendorLoginModal .brand-logo .material-icons {
+        font-size: 2.5rem;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        margin-right: 8px;
+      }
+      #vendorLoginModal .printmax-logo-img {
+        max-width: 240px;
+        width: 100%;
+        height: auto;
+        display: none;
+      }
+      [data-bs-theme="dark"] #vendorLoginModal .printmax-logo-dark {
+        display: block;
+      }
+      [data-bs-theme="light"] #vendorLoginModal .printmax-logo-light {
+        display: block;
+      }
+      #vendorLoginModal .tagline {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 2.2rem;
+        color: #fff;
+        text-align: center;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+      }
+      #vendorLoginModal .feature-list {
+        margin-top: 1.5rem;
+        list-style: none;
+        padding-left: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+        align-items: center;
+      }
+      #vendorLoginModal .feature-list li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.15rem;
+        color: #fff;
+        font-weight: 500;
+        justify-content: center;
+      }
+      #vendorLoginModal .feature-list .material-icons {
+        font-family: 'Material Icons' !important;
+        font-size: 1.5rem;
+        color: #a385ff;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        margin-right: 2px;
+        vertical-align: middle;
+        display: inline-block;
+        line-height: 1;
+        font-weight: 700;
+      }
+      /* Fallback: show emoji if Material Icons font fails */
+      #vendorLoginModal .brand-logo .material-icons.logo-bolt:empty + .icon-fallback {
+        display: inline;
+      }
+      #vendorLoginModal .vendor-modal-right {
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 3rem 2.5rem 2.5rem 2.5rem;
+        position: relative;
+      }
+      #vendorLoginModal .vendor-modal-close {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 10;
+      }
+      #vendorLoginModal .login-header {
+        text-align: left;
+        margin-bottom: 2.5rem;
+      }
+      #vendorLoginModal .login-header h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: var(--heading-color);
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 0.5rem;
+      }
+      #vendorLoginModal .login-header p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 0;
+      }
+      #vendorLoginModal .form-group {
+        margin-bottom: 1.5rem;
+      }
+      #vendorLoginModal .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+      #vendorLoginModal .input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      #vendorLoginModal .input-container .material-icons {
+        position: absolute;
+        left: 16px;
+        color: var(--text-secondary);
+        font-size: 20px;
+        z-index: 2;
+        transition: var(--transition-smooth);
+      }
+      #vendorLoginModal .form-control {
+        width: 100%;
+        padding: 18px 18px 18px 52px;
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 1rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+        outline: none;
+        box-shadow: none !important;
+        transition: none !important;
+      }
+      #vendorLoginModal .form-control:focus {
+        border-color: var(--border-color);
+        background: var(--card-bg);
+        box-shadow: none;
+      }
+      #vendorLoginModal .form-control:focus + .material-icons {
+        background: none;
+        -webkit-background-clip: initial;
+        -webkit-text-fill-color: initial;
+        background-clip: initial;
+        color: var(--text-secondary);
+      }
+      #vendorLoginModal .btn-primary {
+        width: 100%;
+        padding: 14px;
+        background: #181a1b;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition-bounce);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+      #vendorLoginModal .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s ease;
+      }
+      #vendorLoginModal .btn-primary:hover::before {
+        left: 100%;
+      }
+      #vendorLoginModal .btn-primary:hover {
+        background: #3a86ff;
+        color: #fff;
+      }
+      #vendorLoginModal .btn-outline-primary {
+        width: 100%;
+        padding: 12px;
+        background: transparent;
+        color: #fff;
+        border: 2px solid #3a86ff;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: var(--transition-bounce);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 1rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: none;
+      }
+      #vendorLoginModal .btn-outline-primary:hover {
+        background: #3a86ff;
+        color: #fff;
+      }
+      #vendorLoginModal .forgot-password {
+        text-align: center;
+        margin-top: 1.5rem;
+      }
+      #vendorLoginModal .forgot-password a {
+        color: transparent;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-decoration: none;
+        font-weight: 600;
+        transition: var(--transition-smooth);
+      }
+      #vendorLoginModal .forgot-password a:hover {
+        filter: brightness(1.2);
+      }
+      #vendorLoginModal .text-muted {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+      }
+      #vendorLoginModal .btn-register-vendor {
+        color: #fff !important;
+        font-weight: 700;
+        background: #3a86ff;
+        border: 2px solid #3a86ff;
+      }
+      #vendorLoginModal .btn-register-vendor:hover {
+        background: #3a86ff;
+        color: #fff !important;
+      }
+      #vendorLoginModal .status-text {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.9);
+        animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      @keyframes statusFadeIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      #vendorLoginModal .spinner {
+        width: 80px;
+        height: 80px;
+        position: relative;
+        margin: 2rem 0;
+      }
+      #vendorLoginModal .spinner::before,
+      #vendorLoginModal .spinner::after {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        border: 3px solid transparent;
+      }
+      #vendorLoginModal .spinner::before {
+        width: 100%;
+        height: 100%;
+        border-top-color: rgba(255,255,255,0.8);
+        border-right-color: rgba(255,255,255,0.4);
+        animation: spin 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+      }
+      #vendorLoginModal .spinner::after {
+        width: 70%;
+        height: 70%;
+        top: 15%;
+        left: 15%;
+        border-top-color: rgba(255,255,255,0.6);
+        border-left-color: rgba(255,255,255,0.3);
+        animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      /* Dark mode adjustments for modal */
+      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-content {
+        background: linear-gradient(90deg, #35363a 0%, #181a1b 100%);
+        border: 1.5px solid #44474f;
+      }
+      [data-bs-theme="dark"] #vendorLoginModal .form-control {
+        background: #232526;
+        border-color: #414345;
+        color: #fff;
+      }
+      [data-bs-theme="dark"] #vendorLoginModal .form-control:focus {
+        background: #232526;
+      }
+      @media (max-width: 900px) {
+        #vendorLoginModal .vendor-modal-content {
+          max-width: 99vw;
+          border-radius: 12px;
+        }
+        #vendorLoginModal .vendor-modal-left, #vendorLoginModal .vendor-modal-right {
+          padding: 2rem 1.2rem;
+        }
+        #vendorLoginModal .brand-logo {
+          font-size: 2rem;
+        }
+        #vendorLoginModal .login-header h2 {
+          font-size: 1.5rem;
+        }
+      }
+      @media (max-width: 600px) {
+        #vendorLoginModal .vendor-modal-content {
+          flex-direction: column;
+          min-width: unset;
+        }
+        #vendorLoginModal .vendor-modal-left, #vendorLoginModal .vendor-modal-right {
+          padding: 1.2rem 0.7rem;
+        }
+        #vendorLoginModal .brand-logo {
+          font-size: 1.2rem;
+        }
+        #vendorLoginModal .login-header h2 {
+          font-size: 1.1rem;
+        }
+      }
+    </style>
+    <script>
+      function showWelcome(name, isVendor = false) {
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const welcomeStatusText = document.getElementById('welcomeStatusText');
+        if (isVendor) {
+          welcomeMessage.innerHTML = `👑 Welcome Back, <span style='color:#3a86ff'>${name}</span>!`;
+          welcomeStatusText.innerHTML = '🚀 Launching your print command center...';
+          setTimeout(() => { welcomeStatusText.innerHTML = '💼 Loading your business empire...'; }, 1500);
+          setTimeout(() => { welcomeStatusText.innerHTML = '⚡ Optimizing your dashboard...'; }, 3000);
+          setTimeout(() => { welcomeStatusText.innerHTML = '🎯 Ready to dominate!'; }, 4000);
+        } else {
+          welcomeMessage.innerHTML = `🎉 Welcome, <span style='color:#3a86ff'>${name}</span>!`;
+          welcomeStatusText.innerHTML = '⚡ Initializing AI-powered experience...';
+        }
+        document.getElementById('welcomeScreen').style.display = 'flex';
+        document.getElementById('vendor-form-modal').style.display = 'none';
+      }
+      async function vendorLogin(event) {
+        event.preventDefault();
+        const email = document.getElementById('vendorEmail').value;
+        const password = document.getElementById('vendorPassword').value;
+        const submitBtn = document.getElementById('vendorSignInBtn');
+        const btnIcon = document.getElementById('vendorBtnIcon');
+        const btnText = document.getElementById('vendorBtnText');
+        submitBtn.disabled = true;
+        btnIcon.textContent = 'hourglass_empty';
+        btnIcon.style.animation = 'spin 1s linear infinite';
+        btnText.innerHTML = '🚀 loging in Successfully...';
+        try {
+          const response = await fetch('/vendor-login/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ email: email, password: password })
+          });
+          const data = await response.json();
+          if (data.success) {
+            showWelcome(data.vendor?.vendor_name || 'Vendor', true);
+            setTimeout(() => {
+              window.location.href = '/vendordashboard/';
+            }, 5000);
+          } else {
+            submitBtn.disabled = false;
+            btnIcon.textContent = 'rocket_launch';
+            btnIcon.style.animation = 'none';
+            btnText.innerHTML = '🚀 Launch Control Panel';
+            alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
+          }
+        } catch (err) {
+          console.error(err);
+          submitBtn.disabled = false;
+          btnIcon.textContent = 'rocket_launch';
+          btnIcon.style.animation = 'none';
+          btnText.innerHTML = '🚀 Launch Control Panel';
+          alert('🚫 Connection failed. Please try again.');
+        }
+      }
+      function resetVendorPassword() {
+        const email = prompt('🔐 Enter your registered email for password reset:');
+        if (email) {
+          alert('📧 Reset instructions sent to your email!');
+        }
+      }
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      // Reset modal on close
+      document.addEventListener('DOMContentLoaded', function() {
+        var vendorModal = document.getElementById('vendorLoginModal');
+        if (vendorModal) {
+          vendorModal.addEventListener('hidden.bs.modal', function () {
+            document.getElementById('vendor-form-modal').style.display = '';
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('vendorSignInBtn').disabled = false;
+            document.getElementById('vendorBtnIcon').textContent = 'rocket_launch';
+            document.getElementById('vendorBtnIcon').style.animation = 'none';
+            document.getElementById('vendorBtnText').innerHTML = '🚀 Vendor login';
+            document.getElementById('vendorEmail').value = '';
+            document.getElementById('vendorPassword').value = '';
+          });
+        }
+      });
+    </script>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 
@@ -1229,7 +1823,9 @@
 
             // Update theme icon
             const themeIcon = document.querySelector('.theme-icon');
-            themeIcon.className = newTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+            if (themeIcon) {
+              themeIcon.className = newTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+            }
         }
 
         // Initialize theme
