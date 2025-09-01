@@ -1785,6 +1785,13 @@
     const payload = JSON.parse(atob(response.credential.split('.')[1]));
     const userName = payload.name || "User login";
     showWelcome(userName);
+    
+    // Show authentication progress
+    const welcomeTitle = document.querySelector('#welcomeTitle');
+    if (welcomeTitle) {
+      welcomeTitle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+    }
+    
     fetch('/auth-receiver/', {
       method: 'POST',
       headers: {
@@ -1796,7 +1803,13 @@
     .then(res => res.json())
     .then(data => {
       if (data.status === 'success') {
-        setTimeout(() => window.location.href = '/userdashboard/', 2500);
+        // Show instant redirect message
+        const welcomeTitle = document.querySelector('#welcomeTitle');
+        if (welcomeTitle) {
+          welcomeTitle.innerHTML = '<i class="fas fa-check-circle"></i> Redirecting to Dashboard...';
+        }
+        // INSTANT redirect - no delay
+        window.location.href = '/userdashboard/';
       } else {
         alert('🚫 Access denied: ' + data.message);
         document.getElementById('welcomeScreen').style.display = 'none';

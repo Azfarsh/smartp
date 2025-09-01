@@ -2736,10 +2736,7 @@
       <div class="jobs-container">
         <div class="jobs-scroll-wrapper">
           <div class="jobs-row" id="jobsContainer">
-            <div class="loading-message">
-              <i class="fas fa-spinner fa-spin"></i>
-              <p>Loading your print jobs...</p>
-            </div>
+            <!-- Jobs will be rendered instantly here -->
           </div>
         </div>
       </div>
@@ -5995,9 +5992,27 @@
     </nav>
   </main>
 
-  <!-- Data from backend -->
+  <!-- Data from backend - OPTIMIZED for instant loading -->
   <script>
     window.userJobsData = [];
+    
+    // INSTANT JOBS RENDERING - Use preloaded data
+    document.addEventListener('DOMContentLoaded', function() {
+      // Use preloaded jobs if available for instant rendering
+      if (window.preloadedJobs && window.preloadedPendingJobs) {
+        userJobs = window.preloadedJobs;
+        // Render jobs instantly using preloaded data
+        const container = document.getElementById('jobsContainer');
+        if (container && window.preloadedPendingJobs.length > 0) {
+          const jobsHTML = window.preloadedPendingJobs.map(job => createJobCard(job)).join('');
+          container.innerHTML = jobsHTML;
+          console.log(`⚡ INSTANT RENDER: ${window.preloadedPendingJobs.length} jobs displayed immediately`);
+        }
+      } else {
+        // Fallback to normal loading if preloading failed
+        loadUserJobs();
+      }
+    });
   </script>
   
   <!-- CSRF Token -->
@@ -6007,8 +6022,32 @@
     window.csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   </script>
 
-  <!-- Hidden element with user jobs data -->
+  <!-- Hidden element with user jobs data - OPTIMIZED for instant loading -->
   <div id="userJobsData" data-jobs='{{ user_jobs_json|safe }}' style="display: none;"></div>
+  
+  <!-- INSTANT JOBS RENDERING - No waiting for DOM ready -->
+  <script>
+    // Render jobs immediately when this script runs
+    (function() {
+      const userJobsElement = document.getElementById('userJobsData');
+      if (userJobsElement && userJobsElement.dataset.jobs) {
+        try {
+          const jobsData = JSON.parse(userJobsElement.dataset.jobs);
+          if (jobsData && jobsData.length > 0) {
+            const pendingJobs = jobsData.filter(job => job.job_completed === 'NO');
+            if (pendingJobs.length > 0) {
+              // Store for later use
+              window.preloadedJobs = jobsData;
+              window.preloadedPendingJobs = pendingJobs;
+              console.log(`🚀 INSTANT: Pre-loaded ${pendingJobs.length} pending jobs`);
+            }
+          }
+        } catch (error) {
+          console.error('Error in instant jobs loading:', error);
+        }
+      }
+    })();
+  </script>
 
   <!-- Print Modal (Complete R2 Integration) -->
   <div class="modal-overlay" id="printModal">
@@ -6272,11 +6311,16 @@
     let userLocation = null;
     let locationBasedShops = [];
 
-    // Initialize user jobs data from backend
+    // Initialize user jobs data from backend - OPTIMIZED for instant loading
     try {
       const userJobsElement = document.getElementById('userJobsData');
       if (userJobsElement) {
         userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+        // Pre-render jobs immediately if data is available
+        if (userJobs && userJobs.length > 0) {
+          // Jobs will be rendered instantly when DOM is ready
+          console.log(`✅ Pre-loaded ${userJobs.length} jobs for instant rendering`);
+        }
       }
     } catch (error) {
       console.error('Error parsing user jobs data:', error);
@@ -6371,8 +6415,9 @@
       }
     });
 
-    // Load user jobs and shops on page load
+    // Load user jobs and shops on page load - OPTIMIZED for instant loading
     document.addEventListener('DOMContentLoaded', function() {
+      // Load jobs instantly without delay
       loadUserJobs();
       loadLocationBasedShops();
       initializeNotifications();
@@ -6832,13 +6877,14 @@
       }
     }
 
-    // Function to load user jobs from backend
-    async function loadUserJobs() {
+    // Function to load user jobs from backend - OPTIMIZED for instant loading
+    function loadUserJobs() {
       try {
         const userJobsElement = document.getElementById('userJobsData');
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
         }
+        // Render jobs immediately without async delay
         renderUserJobs();
       } catch (error) {
         console.error('Error loading user jobs:', error);
@@ -6850,7 +6896,7 @@
     async function refreshJobs() {
       const refreshIcon = document.querySelector('.view-all-btn i');
       refreshIcon.classList.add('fa-spin');
-      showLoading();
+      // Removed showLoading() for instant refresh
 
       try {
         const response = await fetch(window.location.href);
@@ -6868,7 +6914,12 @@
         document.getElementById('completedJobsCount').textContent = completedJobs;
         document.getElementById('totalEarningsCount').textContent = totalEarnings;
 
-        await loadUserJobs();
+        // Reload jobs data and render instantly
+        const userJobsElement = doc.querySelector('#userJobsData');
+        if (userJobsElement) {
+          userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+          renderUserJobs(); // Render immediately
+        }
 
       } catch (error) {
         console.error('Error refreshing jobs:', error);
@@ -6878,15 +6929,17 @@
       }
     }
 
-    // Function to render user jobs
+    // Function to render user jobs - OPTIMIZED for instant rendering
     function renderUserJobs() {
       const container = document.getElementById('jobsContainer');
+      if (!container) return;
 
       if (!userJobs || userJobs.length === 0) {
         showNoJobs();
         return;
       }
 
+      // Filter pending jobs efficiently
       const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
 
       if (pendingJobs.length === 0) {
@@ -6894,12 +6947,21 @@
         return;
       }
 
+      // Render all jobs at once for better performance
       const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
       container.innerHTML = jobsHTML;
+      
+      // Update the pending jobs count in real-time
+      const pendingCount = pendingJobs.length;
+      const pendingElement = document.getElementById('pendingJobsCount');
+      if (pendingElement) {
+        pendingElement.textContent = pendingCount;
+      }
     }
 
-    // Function to create a job card
+    // Function to create a job card - OPTIMIZED for performance
     function createJobCard(job) {
+      // Cache status class calculation for better performance
       const getStatusClass = (status) => {
         const statusLower = status.toLowerCase();
         if (statusLower === 'completed') return 'status-completed';

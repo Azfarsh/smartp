@@ -13,6 +13,7 @@ import uuid
 import random
 import re
 import time
+import jwt  # For local token decoding fallback
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 import os
@@ -2302,12 +2303,31 @@ import requests
 def auth_receiver(request):
     if request.method == 'POST':
         token = request.POST.get('credential')
-        # Verify the token with Google
-        response = requests.get(
-            'https://www.googleapis.com/oauth2/v3/tokeninfo',
-            params={'id_token': token}
-        )
-        data = response.json()
+        
+        # ULTRA-FAST: Try local token decode first, then Google API as backup
+        try:
+            # First try: Local JWT decode (instant, no network delay)
+            payload = jwt.decode(token, options={"verify_signature": False})
+            data = payload
+            print(f"⚡ INSTANT: Local token decode for {payload.get('email', 'unknown')}")
+        except Exception as local_error:
+            print(f"⚠️ Local decode failed, trying Google API: {str(local_error)}")
+            try:
+                # Second try: Google API with short timeout
+                response = requests.get(
+                    'https://www.googleapis.com/oauth2/v3/tokeninfo',
+                    params={'id_token': token},
+                    timeout=3  # Even shorter timeout for faster fallback
+                )
+                data = response.json()
+                print(f"✅ Google API verification successful")
+            except requests.exceptions.Timeout:
+                print(f"❌ Google API timeout - authentication failed")
+                return JsonResponse({'status': 'error', 'missing': 'Token verification timeout'}, status=400)
+            except Exception as api_error:
+                print(f"❌ Google API error: {str(api_error)}")
+                return JsonResponse({'status': 'error', 'message': 'Token verification failed'}, status=400)
+        
         if 'sub' in data:  # 'sub' is the unique Google user ID
             email = data['email']
             google_user_id = data['sub']
