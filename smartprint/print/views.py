@@ -1468,6 +1468,7 @@ def upload_to_r2(request):
                         'timestamp': datetime.datetime.now().isoformat(),
                         'status': 'pending',
                         'job_completed': 'NO',
+                        'vendor_status': 'not sended',
                         'trash': 'NO',
                         'user': user_email,
                         'vendor': vendor_id,
@@ -2274,6 +2275,7 @@ def process_print_request(request):
                                       'timestamp': datetime.datetime.now().isoformat(),
                                       'status': 'pending',
                                       'job_completed': 'NO',
+                                      'vendor_status': 'not sended',
                                       'trash': 'NO'
                                   })
 

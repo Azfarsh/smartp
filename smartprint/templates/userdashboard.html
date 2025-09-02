@@ -1596,7 +1596,6 @@
       transition: all var(--transition-standard);
       backdrop-filter: blur(6px);
     }
-
     .modal-overlay.active {
       opacity: 1;
       visibility: visible;
@@ -2830,10 +2829,8 @@
 
       </div>
     </section>
-
     <!-- Service Modals (one for each service) -->
     <div id="serviceModalsContainer"></div>
-
     <style>
       .service-modal-overlay {
         position: fixed;
@@ -3543,7 +3540,6 @@
         }
       }
     </style>
-
     <script>
       // Service modal templates and logic
       const serviceModalTemplates = {
@@ -4299,7 +4295,6 @@
           </div>
         `;
       }
-
       function attachServiceModalEvents(service, modal) {
         const tmpl = serviceModalTemplates[service];
         let fileObj = null;
@@ -5047,7 +5042,6 @@
 
         return totalPrice;
       }
-
       function calculateGlossPricing(formData, pricing, pages, copies, breakdown) {
         let total = 0;
         const size = formData['Print Size'] || 'A4';
@@ -5693,7 +5687,6 @@
           calculateBtn.disabled = false;
         }
       }
-
       async function calculateGoldenEmbossPrice(service) {
         const modal = document.getElementById(`service-modal-${service}`);
         const shopSelect = modal.querySelector(`#${service}-shop-select`);
@@ -6093,6 +6086,12 @@
           <div class="preview-info">
             <span id="previewDimensions">Dimensions: -</span>
             <span id="previewOrientation">Orientation: Portrait</span>
+            <span id="previewPages">Pages: -</span>
+          </div>
+          <div class="preview-controls" style="display:flex;align-items:center;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
+            <button id="prevPageBtn" class="copies-btn" title="Previous page" disabled><i class="fas fa-chevron-left"></i></button>
+            <span id="pageCounter" style="min-width:64px;text-align:center">0 / 0</span>
+            <button id="nextPageBtn" class="copies-btn" title="Next page" disabled><i class="fas fa-chevron-right"></i></button>
           </div>
         </div>
 
@@ -6161,6 +6160,14 @@
                 <div class="page-range-option">
                   <input type="radio" id="allPages" name="pageRange" value="all" checked>
                   <label for="allPages">All pages</label>
+                </div>
+                <div class="page-range-option">
+                  <input type="radio" id="oddPages" name="pageRange" value="odd">
+                  <label for="oddPages">Odd pages only</label>
+                </div>
+                <div class="page-range-option">
+                  <input type="radio" id="evenPages" name="pageRange" value="even">
+                  <label for="evenPages">Even pages only</label>
                 </div>
                 <div class="page-range-option">
                   <input type="radio" id="specificPages" name="pageRange" value="specific">
@@ -6305,6 +6312,11 @@
     let uploadedFiles = [];
     let selectedFileIndex = -1;
     let fileSettings = {};
+    // PDF preview state
+    let pdfDocument = null;
+    let pdfLoadedForFileId = null;
+    let filteredPageNumbers = [];
+    let currentPreviewPageIdx = 0;
     let selectedVendor = '';
     let userJobs = [];
     let availableShops = [];
@@ -7096,7 +7108,6 @@
         </div>
       `;
     }
-
     // Function to show no jobs message
     function showNoJobs(message = 'No pending print jobs found.') {
       const container = document.getElementById('jobsContainer');
@@ -7303,6 +7314,12 @@
             // Get accurate page count
             const pages = await getPageCount(file);
             console.log(`File ${file.name} has ${pages} pages`);
+
+            // Enforce 100-page limit for PDFs/documents
+            if (pages > 100) {
+              alert(`${file.name} has ${pages} pages. Maximum allowed is 100 pages for printing.`);
+              continue;
+            }
             
             const fileObj = {
               id: fileId,
@@ -7361,6 +7378,107 @@
       const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
 
       return validTypes.includes(file.type) || hasValidExtension;
+    }
+
+    // Build filtered page list based on settings
+    function buildFilteredPages(totalPages, rangeType, rangeText) {
+      const pages = [];
+      if (rangeType === 'all') {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+        return pages;
+      }
+      if (rangeType === 'odd') {
+        for (let i = 1; i <= totalPages; i += 2) pages.push(i);
+        return pages;
+      }
+      if (rangeType === 'even') {
+        for (let i = 2; i <= totalPages; i += 2) pages.push(i);
+        return pages;
+      }
+      // specific ranges: e.g. 1-5,8,10-12
+      const tokens = (rangeText || '').split(',').map(s => s.trim()).filter(Boolean);
+      const set = new Set();
+      for (const token of tokens) {
+        if (token.includes('-')) {
+          const [a, b] = token.split('-').map(n => parseInt(n.trim(), 10));
+          if (!isNaN(a) && !isNaN(b) && a >= 1 && b >= a) {
+            for (let i = a; i <= Math.min(b, totalPages); i++) set.add(i);
+          }
+        } else {
+          const n = parseInt(token, 10);
+          if (!isNaN(n) && n >= 1 && n <= totalPages) set.add(n);
+        }
+      }
+      return Array.from(set).sort((x,y)=>x-y);
+    }
+
+    // Render PDF preview according to filters
+    async function updateDocumentPreview() {
+      const canvas = document.getElementById('previewCanvas');
+      const ctx = canvas.getContext('2d');
+      const pageCounter = document.getElementById('pageCounter');
+      const prevBtn = document.getElementById('prevPageBtn');
+      const nextBtn = document.getElementById('nextPageBtn');
+
+      // Clear when no file
+      if (selectedFileIndex === -1 || uploadedFiles.length === 0) {
+        canvas.width = 0; canvas.height = 0;
+        pageCounter.textContent = '0 / 0';
+        prevBtn.disabled = true; nextBtn.disabled = true;
+        return;
+      }
+
+      const fileObj = uploadedFiles[selectedFileIndex];
+      const settings = fileSettings[fileObj.id];
+
+      // Only handle non-images here
+      if (fileObj.isImage) {
+        pageCounter.textContent = '1 / 1';
+        prevBtn.disabled = true; nextBtn.disabled = true;
+        return;
+      }
+
+      // Load PDF if needed or file changed
+      if (!pdfDocument || pdfLoadedForFileId !== fileObj.id) {
+        const bytes = await fileObj.file.arrayBuffer();
+        const task = pdfjsLib.getDocument({ data: bytes });
+        pdfDocument = await task.promise;
+        pdfLoadedForFileId = fileObj.id;
+      }
+
+      // Build filtered pages based on selection
+      filteredPageNumbers = buildFilteredPages(pdfDocument.numPages, settings.pageRange, settings.specificPages);
+      if (filteredPageNumbers.length === 0) filteredPageNumbers = [1];
+      if (currentPreviewPageIdx >= filteredPageNumbers.length) currentPreviewPageIdx = 0;
+
+      async function renderCurrent() {
+        const pageNumber = filteredPageNumbers[currentPreviewPageIdx];
+        const page = await pdfDocument.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 1.2 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const renderCtx = { canvasContext: ctx, viewport };
+        await page.render(renderCtx).promise;
+        pageCounter.textContent = `${currentPreviewPageIdx + 1} / ${filteredPageNumbers.length}`;
+        prevBtn.disabled = currentPreviewPageIdx === 0;
+        nextBtn.disabled = currentPreviewPageIdx === filteredPageNumbers.length - 1;
+      }
+
+      // Attach once
+      if (!prevBtn._wired) {
+        prevBtn._wired = true;
+        prevBtn.addEventListener('click', () => {
+          if (currentPreviewPageIdx > 0) { currentPreviewPageIdx--; renderCurrent(); }
+        });
+      }
+      if (!nextBtn._wired) {
+        nextBtn._wired = true;
+        nextBtn.addEventListener('click', () => {
+          if (currentPreviewPageIdx < filteredPageNumbers.length - 1) { currentPreviewPageIdx++; renderCurrent(); }
+        });
+      }
+
+      await renderCurrent();
     }
 
     // Function to get accurate page count for files
@@ -7434,6 +7552,9 @@
       selectedFileIndex = index;
       updateFileList();
       updateSettingsDisplay();
+      // Reset PDF state when switching files
+      pdfDocument = null;
+      updateDocumentPreview();
     }
 
     function removeFile(index) {
@@ -7510,19 +7631,22 @@
       });
 
       document.querySelector(`input[value="${settings.pageRange}"]`).checked = true;
-      pageRangeInput.disabled = settings.pageRange === 'all';
+      pageRangeInput.disabled = settings.pageRange !== 'specific';
       pageRangeInput.value = settings.specificPages || '';
 
       spiralBindingCheckbox.checked = settings.spiralBinding;
       laminationCheckbox.checked = settings.lamination;
 
       // Show image preview if current file is an image
+      const previewEl = document.getElementById('imagePreviewContainer');
       if (selectedFile.isImage) {
         updateImagePreview(selectedFile, settings);
-        document.getElementById('imagePreviewContainer').classList.add('active');
       } else {
-        document.getElementById('imagePreviewContainer').classList.remove('active');
+        // non-image (e.g., PDF): render via pdf.js
+        updateDocumentPreview();
       }
+      // ensure footer preview is visible for both types
+      if (previewEl) previewEl.classList.add('active');
     }
 
     function updateOrderSummary() {
@@ -7647,10 +7771,8 @@
           ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
           
           // Update preview info
-          document.getElementById('previewDimensions').textContent = 
-            `Dimensions: ${Math.round(drawWidth)}x${Math.round(drawHeight)}px`;
-          document.getElementById('previewOrientation').textContent = 
-            `Orientation: ${settings.orientation.charAt(0).toUpperCase() + settings.orientation.slice(1)}`;
+          document.getElementById('previewDimensions').textContent = '';
+          document.getElementById('previewOrientation').textContent = '';
         };
 
         // Load the image
@@ -7876,21 +7998,24 @@
       radio.addEventListener('change', () => {
         if (selectedFileIndex === -1) return;
 
-        pageRangeInput.disabled = radio.value === 'all';
+        pageRangeInput.disabled = radio.value !== 'specific';
         updateCurrentFileSettings('pageRange', radio.value);
 
         if (radio.value === 'all') {
           updateCurrentFileSettings('specificPages', '');
           pageRangeInput.value = '';
         }
+
+        // reflect immediately in preview
+        updateDocumentPreview();
       });
     });
 
     pageRangeInput.addEventListener('input', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('specificPages', pageRangeInput.value);
+      updateDocumentPreview();
     });
-
     pageSizeOptions.forEach(option => {
       option.addEventListener('click', () => {
         if (selectedFileIndex === -1) return;
@@ -7900,7 +8025,6 @@
         updateCurrentFileSettings('pageSize', option.dataset.size);
       });
     });
-
     spiralBindingCheckbox.addEventListener('change', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('spiralBinding', spiralBindingCheckbox.checked);
@@ -8087,6 +8211,7 @@
             status: "pending",
             job_completed: "NO",
             trash: "NO",
+            vendor_status: "not sended",
             was_image: fileObj.isImage || false, // Track if this was originally an image
             // Add pricing details if available (will be populated after pricing calculation)
             pricing_details: null
@@ -8622,7 +8747,6 @@
       }
     }
   </script>
-
   <script>
   // PicWish enhancement for passport photo
   async function enhancePassportPhotoWithPicWish(file, previewContainer) {
