@@ -6130,8 +6130,18 @@
         // Render jobs instantly using preloaded data
         const container = document.getElementById('jobsContainer');
         if (container && window.preloadedPendingJobs.length > 0) {
+          // OPTIMIZED: Use DocumentFragment for faster rendering
+          const fragment = document.createDocumentFragment();
+          const tempDiv = document.createElement('div');
           const jobsHTML = window.preloadedPendingJobs.map(job => createJobCard(job)).join('');
-          container.innerHTML = jobsHTML;
+          tempDiv.innerHTML = jobsHTML;
+          
+          while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
+          }
+          
+          container.innerHTML = '';
+          container.appendChild(fragment);
           console.log(`⚡ INSTANT RENDER: ${window.preloadedPendingJobs.length} jobs displayed immediately`);
         }
       } else {
@@ -6153,7 +6163,7 @@
   
   <!-- INSTANT JOBS RENDERING - No waiting for DOM ready -->
   <script>
-    // Render jobs immediately when this script runs
+    // OPTIMIZED: Render jobs immediately when this script runs
     (function() {
       const userJobsElement = document.getElementById('userJobsData');
       if (userJobsElement && userJobsElement.dataset.jobs) {
@@ -6166,6 +6176,23 @@
               window.preloadedJobs = jobsData;
               window.preloadedPendingJobs = pendingJobs;
               console.log(`🚀 INSTANT: Pre-loaded ${pendingJobs.length} pending jobs`);
+              
+              // OPTIMIZED: Try to render immediately if container exists
+              const container = document.getElementById('jobsContainer');
+              if (container) {
+                const fragment = document.createDocumentFragment();
+                const tempDiv = document.createElement('div');
+                const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
+                tempDiv.innerHTML = jobsHTML;
+                
+                while (tempDiv.firstChild) {
+                  fragment.appendChild(tempDiv.firstChild);
+                }
+                
+                container.innerHTML = '';
+                container.appendChild(fragment);
+                console.log(`⚡ ULTRA-FAST: ${pendingJobs.length} jobs rendered before DOM ready`);
+              }
             }
           }
         } catch (error) {
@@ -6562,10 +6589,22 @@
 
     // Load user jobs and shops on page load - OPTIMIZED for instant loading
     document.addEventListener('DOMContentLoaded', function() {
-      // Load jobs instantly without delay
+      // OPTIMIZED: Load jobs instantly without any delay
       loadUserJobs();
-      loadLocationBasedShops();
-      initializeNotifications();
+      
+      // Load other components asynchronously to not block job rendering
+      // Use requestIdleCallback for better performance
+      if (window.requestIdleCallback) {
+        requestIdleCallback(() => {
+          loadLocationBasedShops();
+          initializeNotifications();
+        });
+      } else {
+        setTimeout(() => {
+          loadLocationBasedShops();
+          initializeNotifications();
+        }, 0);
+      }
 
       // Fetch vendor coordinates for the map asynchronously
       fetch('/get-vendor-coordinates/', {
@@ -7029,19 +7068,20 @@
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
         }
-        // Render jobs immediately without async delay
+        // Render jobs immediately without any delay
         renderUserJobs();
+        console.log(`⚡ INSTANT LOAD: ${userJobs.length} jobs loaded and rendered immediately`);
       } catch (error) {
         console.error('Error loading user jobs:', error);
         showNoJobs('Error loading print jobs. Please refresh the page.');
       }
     }
 
-    // Function to refresh jobs
+    // Function to refresh jobs - OPTIMIZED for instant refresh
     async function refreshJobs() {
       const refreshIcon = document.querySelector('.view-all-btn i');
       refreshIcon.classList.add('fa-spin');
-      // Removed showLoading() for instant refresh
+      // No loading state - instant refresh
 
       try {
         const response = await fetch(window.location.href);
@@ -7054,16 +7094,25 @@
         const completedJobs = doc.querySelector('#completedJobsCount')?.textContent || '0';
         const totalEarnings = doc.querySelector('#totalEarningsCount')?.textContent || '₹0';
 
-        document.getElementById('totalJobsCount').textContent = totalJobs;
-        document.getElementById('pendingJobsCount').textContent = pendingJobs;
-        document.getElementById('completedJobsCount').textContent = completedJobs;
-        document.getElementById('totalEarningsCount').textContent = totalEarnings;
+        // OPTIMIZED: Update counts in batch
+        const updates = [
+          { id: 'totalJobsCount', value: totalJobs },
+          { id: 'pendingJobsCount', value: pendingJobs },
+          { id: 'completedJobsCount', value: completedJobs },
+          { id: 'totalEarningsCount', value: totalEarnings }
+        ];
+        
+        updates.forEach(update => {
+          const element = document.getElementById(update.id);
+          if (element) element.textContent = update.value;
+        });
 
         // Reload jobs data and render instantly
         const userJobsElement = doc.querySelector('#userJobsData');
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
           renderUserJobs(); // Render immediately
+          console.log(`⚡ INSTANT REFRESH: ${userJobs.length} jobs refreshed immediately`);
         }
 
       } catch (error) {
@@ -7092,9 +7141,22 @@
         return;
       }
 
+      // OPTIMIZED: Use DocumentFragment for faster DOM manipulation
+      const fragment = document.createDocumentFragment();
+      const tempDiv = document.createElement('div');
+      
       // Render all jobs at once for better performance
       const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
-      container.innerHTML = jobsHTML;
+      tempDiv.innerHTML = jobsHTML;
+      
+      // Move all child nodes to fragment
+      while (tempDiv.firstChild) {
+        fragment.appendChild(tempDiv.firstChild);
+      }
+      
+      // Clear container and append fragment in one operation
+      container.innerHTML = '';
+      container.appendChild(fragment);
       
       // Update the pending jobs count in real-time
       const pendingCount = pendingJobs.length;
@@ -7102,6 +7164,8 @@
       if (pendingElement) {
         pendingElement.textContent = pendingCount;
       }
+      
+      console.log(`⚡ INSTANT RENDER: ${pendingCount} pending jobs rendered immediately`);
     }
 
     // Function to create a job card - OPTIMIZED for performance
@@ -7231,15 +7295,10 @@
       `;
     }
 
-    // Function to show loading state
+    // Function to show loading state - OPTIMIZED: Removed for instant rendering
     function showLoading() {
-      const container = document.getElementById('jobsContainer');
-      container.innerHTML = `
-        <div class="loading-message">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>Loading your print jobs...</p>
-        </div>
-      `;
+      // No loading state - render jobs instantly
+      return;
     }
     // Function to show no jobs message
     function showNoJobs(message = 'No pending print jobs found.') {
