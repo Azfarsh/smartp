@@ -805,6 +805,16 @@ def get_vendor_print_jobs(request):
                             'timestamp': obj["LastModified"].isoformat()
                         }
 
+                    # Filter only desired services and statuses
+                    service_type = (metadata.get('service_type') or '').strip().lower()
+                    job_completed = (metadata.get('job_completed') or 'NO').upper()
+                    vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
+                    allowed_services = {'regular print', 'passport_photo', 'photo_print'}
+
+                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'not sended'):
+                        print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
+                        continue
+
                     # Force job to be pending for processing
                     job_info = {
                         'filename': filename,
@@ -824,11 +834,28 @@ def get_vendor_print_jobs(request):
                             'service_type': metadata.get('service_type', 'regular print'),
                             'job_id': metadata.get('job_id', filename.split('.')[0]),
                             'token': metadata.get('token', filename.split('.')[0]),
-                            'vendor_id': vendor_id
+                            'vendor_id': vendor_id,
+                            'vendor_status': 'sended'
                         }
                     }
 
                     jobs.append(job_info)
+                    # Update metadata in R2 to mark vendor_status as sended
+                    try:
+                        current_metadata = metadata.copy()
+                        current_metadata['vendor_status'] = 'sended'
+                        # Keep original keys lowercase as in R2 metadata
+                        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
+                        s3.copy_object(
+                            CopySource=copy_source,
+                            Bucket=settings.R2_BUCKET,
+                            Key=key,
+                            Metadata=current_metadata,
+                            MetadataDirective='REPLACE'
+                        )
+                        print(f"   ✉️ Marked vendor_status=sended for {filename}")
+                    except Exception as mark_err:
+                        print(f"   ⚠️ Failed to mark vendor_status for {filename}: {mark_err}")
                     print(f"   ✅ Added job: {filename}")
 
                 except Exception as e:
@@ -3440,7 +3467,8 @@ def calculate_golden_emboss_pricing(request):
                 'paper_type': paper_type,
                 'emboss_cost': emboss_cost,
                 'paper_cost': paper_cost,
-                'total_per_book': total_price_per_book
+                'total_per_book': total_price_per_book,
+                'total_pages': page_count * num_copies  # Total pages across all copies
             }
             
             return JsonResponse({
@@ -3573,7 +3601,8 @@ def calculate_photo_print_pricing(request):
                 'layout_slots': layout_slots,
                 'copies': copies,
                 'total_price': total_price,
-                'pricing_key_used': pricing_key_name
+                'pricing_key_used': pricing_key_name,
+                'total_pages': copies  # For photo print, total pages = number of copies (layouts)
             }
             
             return JsonResponse({
@@ -4014,7 +4043,8 @@ def calculate_passport_photo_pricing(request):
                 'country': country,
                 'photo_package': photo_package,
                 'color_photo': color_photo,
-                'paper_size': paper_size
+                'paper_size': paper_size,
+                'total_pages': 1  # For passport photo, it's always 1 page (A4 sheet)
             }
             
             return JsonResponse({
@@ -4140,7 +4170,9 @@ def calculate_a4_print_pricing(request):
                 'total_pages': total_pages,
                 'total_copies': total_copies,
                 'total_price': total_price,
-                'pricing_key_used': pricing_key_name
+                'pricing_key_used': pricing_key_name,
+                'page_count': total_pages,  # Add page_count for consistency with other services
+                'num_copies': total_copies  # Add num_copies for consistency with other services
             }
             
             return JsonResponse({
