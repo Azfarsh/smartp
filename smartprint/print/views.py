@@ -588,34 +588,68 @@ def userdashboard(request):
     if not request.user.is_authenticated:
         return redirect('/login/')
 
-    # Fetch user details from R2 storage
-    user_details = get_user_details_from_r2(request.user.email)
+    try:
+        # OPTIMIZED: Fetch user details and jobs concurrently for faster loading
+        import concurrent.futures
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both tasks concurrently
+            user_details_future = executor.submit(get_user_details_from_r2, request.user.email)
+            user_jobs_future = executor.submit(get_user_jobs_from_r2, request.user.email)
+            
+            # Wait for both to complete
+            user_details = user_details_future.result()
+            user_jobs = user_jobs_future.result()
 
-    # Get user's recent jobs
-    user_jobs = get_user_jobs_from_r2(request.user.email)
+        # OPTIMIZED: Calculate statistics more efficiently
+        total_jobs = len(user_jobs)
+        pending_jobs = 0
+        completed_jobs = 0
+        current_month_jobs = 0
+        current_month = datetime.datetime.now().strftime("%Y-%m")
+        
+        # Single pass through jobs for all calculations
+        for job in user_jobs:
+            if job['job_completed'] == 'NO':
+                pending_jobs += 1
+            elif job['job_completed'] == 'YES':
+                completed_jobs += 1
+            
+            # Check if job is from current month
+            if job['uploaded_at'].startswith(current_month):
+                current_month_jobs += 1
 
-    # Calculate statistics
-    total_jobs = len(user_jobs)
-    pending_jobs = len([job for job in user_jobs if job['job_completed'] == 'NO'])
-    completed_jobs = len([job for job in user_jobs if job['job_completed'] == 'YES'])
+        total_earnings = current_month_jobs * 50  # Example: ₹50 per job
 
-    # Calculate total earnings this month (example calculation)
-    current_month_jobs = [job for job in user_jobs if job['uploaded_at'].startswith(datetime.datetime.now().strftime("%Y-%m"))]
-    total_earnings = len(current_month_jobs) * 50  # Example: ₹50 per job
-
-    context = {
-        'user': request.user,
-        'user_details': user_details,
-        'firebase_uid': request.session.get('firebase_uid'),
-        'auth_method': request.session.get('auth_method', 'unknown'),
-        'user_jobs': user_jobs,  # Show all jobs
-        'user_jobs_json': json.dumps(user_jobs),  # JSON serialized for JavaScript
-        'total_jobs': total_jobs,
-        'pending_jobs': pending_jobs,
-        'completed_jobs': completed_jobs,
-        'total_earnings': total_earnings
-    }
-    return render(request, 'userdashboard.html', context)
+        context = {
+            'user': request.user,
+            'user_details': user_details,
+            'firebase_uid': request.session.get('firebase_uid'),
+            'auth_method': request.session.get('auth_method', 'unknown'),
+            'user_jobs': user_jobs,  # Show all jobs
+            'user_jobs_json': json.dumps(user_jobs),  # JSON serialized for JavaScript
+            'total_jobs': total_jobs,
+            'pending_jobs': pending_jobs,
+            'completed_jobs': completed_jobs,
+            'total_earnings': total_earnings
+        }
+        return render(request, 'userdashboard.html', context)
+        
+    except Exception as e:
+        print(f"Error loading user dashboard data: {str(e)}")
+        # Return minimal context on error for faster fallback
+        return render(request, 'userdashboard.html', {
+            'user': request.user,
+            'user_details': None,
+            'firebase_uid': request.session.get('firebase_uid'),
+            'auth_method': request.session.get('auth_method', 'unknown'),
+            'user_jobs': [],
+            'user_jobs_json': json.dumps([]),
+            'total_jobs': 0,
+            'pending_jobs': 0,
+            'completed_jobs': 0,
+            'total_earnings': 0
+        })
 
 
 # ─────────────────────────────────────────────────────────────
