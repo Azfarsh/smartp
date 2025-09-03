@@ -3054,6 +3054,37 @@
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         border: 1px solid #e5e7eb;
       }
+      
+      .multiple-files-list {
+        width: 100%;
+        text-align: left;
+      }
+      
+      .file-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+      }
+      
+      .file-item i {
+        margin-right: 0.5rem;
+        color: #6b7280;
+      }
+      
+      .file-item span:first-of-type {
+        flex: 1;
+        margin-right: 0.5rem;
+      }
+      
+      .page-count {
+        color: #6b7280;
+        font-size: 0.75rem;
+      }
 
       .select-wrapper {
         position: relative;
@@ -3605,7 +3636,8 @@
               type: 'file', 
               accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx', 
               required: true,
-              description: 'Upload your document in PDF, Word, PowerPoint, Excel, or Text format',
+              multiple: true,
+              description: 'Upload your documents in PDF, Word, PowerPoint, Excel, or Text format (Multiple files supported)',
               icon: 'fas fa-file-alt'
             },
             { 
@@ -3666,7 +3698,8 @@
               type: 'file', 
               accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx', 
               required: true,
-              description: 'Upload your document in PDF, Word, PowerPoint, Excel, or Text format',
+              multiple: true,
+              description: 'Upload your documents in PDF, Word, PowerPoint, Excel, or Text format (Multiple files supported)',
               icon: 'fas fa-file-alt'
             },
             { 
@@ -3734,7 +3767,8 @@
               type: 'file', 
               accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png', 
               required: true,
-              description: 'Upload your document or image for glossy printing',
+              multiple: true,
+              description: 'Upload your documents or images for glossy printing (Multiple files supported)',
               icon: 'fas fa-file-upload'
             },
             { 
@@ -3793,7 +3827,8 @@
               type: 'file', 
               accept: '.pdf,.jpg,.jpeg,.png', 
               required: true,
-              description: 'Upload your document or image for large format printing',
+              multiple: true,
+              description: 'Upload your documents or images for large format printing (Multiple files supported)',
               icon: 'fas fa-file-upload'
             },
             { 
@@ -4085,7 +4120,7 @@
                     <span id="${service}-file-upload-label" class="upload-text">Click to select file</span>
                     <span class="upload-hint">or drag and drop here</span>
                   </div>
-                  <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} />
+                  <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} ${f.multiple ? 'multiple' : ''} />
                 </div>
                 <div class="file-preview" id="${service}-file-preview"></div>
               </div>
@@ -4362,17 +4397,61 @@
         
         if (fileInput && fileUploadLabel && filePreview) {
           fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            // For passport, skip the default image preview in processFile
-            if (service === 'passport' && file && file.type.startsWith('image/')) {
-              await processFile(file, fileUploadLabel, null); // Don't update preview here
-              if (typeof enhancePassportPhotoWithPicWish === 'function') {
-                enhancePassportPhotoWithPicWish(file, filePreview);
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            // Store all files in modal dataset for later use
+            modal.dataset.uploadedFiles = JSON.stringify(files.map(f => ({
+              name: f.name,
+              size: f.size,
+              type: f.type
+            })));
+            
+            if (files.length === 1) {
+              const file = files[0];
+              // For passport, skip the default image preview in processFile
+              if (service === 'passport' && file && file.type.startsWith('image/')) {
+                await processFile(file, fileUploadLabel, null); // Don't update preview here
+                if (typeof enhancePassportPhotoWithPicWish === 'function') {
+                  enhancePassportPhotoWithPicWish(file, filePreview);
+                } else {
+                  filePreview.innerHTML += '<div style="color:#ef4444;">Enhancement function missing!</div>';
+                }
               } else {
-                filePreview.innerHTML += '<div style="color:#ef4444;">Enhancement function missing!</div>';
+                await processFile(file, fileUploadLabel, filePreview);
               }
             } else {
-              await processFile(file, fileUploadLabel, filePreview);
+              // Handle multiple files
+              let totalPages = 0;
+              let fileListHtml = '<div class="multiple-files-list">';
+              
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                let pages = 1;
+                
+                if (file.type.startsWith('image/')) {
+                  pages = 1;
+                } else {
+                  pages = await getPageCount(file);
+                }
+                
+                totalPages += pages;
+                fileListHtml += `
+                  <div class="file-item">
+                    <i class="fas fa-file"></i>
+                    <span>${file.name}</span>
+                    <span class="page-count">(${pages} pages)</span>
+                  </div>
+                `;
+              }
+              
+              fileListHtml += '</div>';
+              filePreview.innerHTML = fileListHtml;
+              fileUploadLabel.textContent = `${files.length} files selected (${totalPages} total pages)`;
+              
+              // Store total page count in modal dataset
+              modal.dataset.filePageCount = totalPages;
+              modal.dataset.fileName = files.map(f => f.name).join(', ');
             }
           });
           
@@ -4391,13 +4470,15 @@
             fileUploadArea.addEventListener('drop', async (e) => {
               e.preventDefault();
               fileUploadArea.classList.remove('dragover');
-              const file = e.dataTransfer.files[0];
-              if (file) {
-                await processFile(file, fileUploadLabel, filePreview);
+              const files = Array.from(e.dataTransfer.files);
+              if (files.length > 0) {
                 // Update the file input value
                 const dt = new DataTransfer();
-                dt.items.add(file);
+                files.forEach(file => dt.items.add(file));
                 fileInput.files = dt.files;
+                
+                // Trigger the change event to process files
+                fileInput.dispatchEvent(new Event('change'));
               }
             });
           }
@@ -4611,61 +4692,75 @@
         if (form) {
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
-            if (!fileObj) { 
-              alert('Please upload a file.'); 
-              return; 
-            }
-            
-            // Validate shop selection
-            const shopSelectValidation = modal.querySelector(`#${service}-shop-select`);
-            if (!shopSelectValidation || !shopSelectValidation.value || shopSelectValidation.value === '') {
-              alert('Please select a print shop.');
-              shopSelectValidation?.focus();
+          
+          // Get files from file input
+          const fileInput = modal.querySelector(`#${service}-file-input`);
+          const files = Array.from(fileInput.files);
+          
+          if (files.length === 0) { 
+            alert('Please upload at least one file.'); 
+            return; 
+          }
+          
+          // Validate shop selection
+          const shopSelectValidation = modal.querySelector(`#${service}-shop-select`);
+          if (!shopSelectValidation || !shopSelectValidation.value || shopSelectValidation.value === '') {
+            alert('Please select a print shop.');
+            shopSelectValidation?.focus();
+            return;
+          }
+          
+          // For digital print, gloss print, jumbo print, golden embossing, and passport photo, validate that pricing has been calculated
+          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') {
+            const calculatedPrice = modal.dataset.calculatedPrice;
+            if (!calculatedPrice) {
+              alert('Please calculate the price before submitting your request.');
               return;
             }
-            
-            // For digital print, gloss print, jumbo print, golden embossing, and passport photo, validate that pricing has been calculated
-            if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') {
-              const calculatedPrice = modal.dataset.calculatedPrice;
-              if (!calculatedPrice) {
-                alert('Please calculate the price before submitting your request.');
-                return;
-              }
-            }
-            
+          }
+          
           const formData = new FormData();
-          // --- Passport photo selection logic ---
-          if (service === 'passport') {
-            // Find the preview container
-            const filePreview = modal.querySelector(`#${service}-file-preview`);
-            let selectedVersion = filePreview?.dataset.selectedVersion || 'original';
-            let enhancedUrl = filePreview?.dataset.enhancedUrl || null;
-            let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
-            if (selectedVersion === 'enhanced') {
-              if (!enhancedReady || !enhancedUrl) {
-                console.log('Enhanced image not ready, using original image for passport photo');
-                // Use the original file if enhanced image is not available
-                formData.set('file_0', fileObj);
-              } else {
-              // Fetch the enhanced image as a blob
-              try {
-                const resp = await fetch(enhancedUrl);
-                const blob = await resp.blob();
-                const enhancedFile = new File([blob], 'enhanced_' + fileObj.name, { type: blob.type });
-                formData.set('file_0', enhancedFile);
-              } catch (err) {
-                  console.log('Failed to fetch enhanced image, using original image for passport photo');
-                  // Use the original file if enhanced image fetch fails
-                  formData.set('file_0', fileObj);
+          
+          // Get all file names for metadata
+          const allFileNames = files.map(f => f.name);
+          
+          // Handle multiple files
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // --- Passport photo selection logic ---
+            if (service === 'passport') {
+              // Find the preview container
+              const filePreview = modal.querySelector(`#${service}-file-preview`);
+              let selectedVersion = filePreview?.dataset.selectedVersion || 'original';
+              let enhancedUrl = filePreview?.dataset.enhancedUrl || null;
+              let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
+              if (selectedVersion === 'enhanced') {
+                if (!enhancedReady || !enhancedUrl) {
+                  console.log('Enhanced image not ready, using original image for passport photo');
+                  // Use the original file if enhanced image is not available
+                  formData.set(`file_${i}`, file);
+                } else {
+                // Fetch the enhanced image as a blob
+                try {
+                  const resp = await fetch(enhancedUrl);
+                  const blob = await resp.blob();
+                  const enhancedFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
+                  formData.set(`file_${i}`, enhancedFile);
+                } catch (err) {
+                    console.log('Failed to fetch enhanced image, using original image for passport photo');
+                    // Use the original file if enhanced image fetch fails
+                    formData.set(`file_${i}`, file);
+                  }
                 }
+              } else {
+                // Use the original file
+                formData.set(`file_${i}`, file);
               }
             } else {
-              // Use the original file
-              formData.set('file_0', fileObj);
+              // For other services, just use the original file
+              formData.set(`file_${i}`, file);
             }
-          } else {
-            // For other services, just use the original file
-            formData.set('file_0', fileObj);
           }
             
                                     // Collect field values for service modals and map to print modal structure
@@ -4759,40 +4854,50 @@
             }
           }
             
-                                    // Metadata: match print modal structure but for manual jobs
-          const settingsJson = {
-            filename: fileObj.name,
+          // Create metadata for each file, including all document names
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Metadata: match print modal structure but for manual jobs
+            const settingsJson = {
+              filename: file.name,
               service_type: tmpl.service_type,
-            service_name: tmpl.title,
-            copies: copies,
+              service_name: tmpl.title,
+              copies: copies,
               color: color,
               orientation: orientation,
-            pageRange: 'all',
-            specificPages: '',
-            pageSize: pageSize,
+              pageRange: 'all',
+              specificPages: '',
+              pageSize: pageSize,
               quality: quality,
               thickness: thickness,
               feedback: feedback,
               country: country,
-            spiralBinding: 'No',
-            lamination: 'No',
-            timestamp: new Date().toISOString(),
-            status: 'pending',
-            job_completed: 'NO',
+              spiralBinding: 'No',
+              lamination: 'No',
+              timestamp: new Date().toISOString(),
+              status: 'pending',
+              job_completed: 'NO',
               trash: 'NO',
               is_manual_job: 'YES', // Flag to identify manual jobs
-            colorRange: colorRange,
-            bwRange: bwRange,
-            // Add pricing details if available
-            pricing_details: pricingDetails
-          };
+              colorRange: colorRange,
+              bwRange: bwRange,
+              // Add pricing details if available
+              pricing_details: pricingDetails,
+              // Store all document names in each document's metadata
+              all_document_names: allFileNames,
+              document_count: files.length
+            };
             
-          formData.append('settings_0', JSON.stringify(settingsJson));
-          formData.append('file_count', 1);
+            formData.append(`settings_${i}`, JSON.stringify(settingsJson));
+          }
+          
+          formData.append('file_count', files.length);
           
           // Debug: Log the settings being sent
-          console.log('📤 Settings being sent to server:', settingsJson);
-          console.log('💰 Pricing details in settings:', settingsJson.pricing_details);
+          console.log('📤 Settings being sent to server for', files.length, 'files');
+          console.log('📄 All document names:', allFileNames);
+          console.log('💰 Pricing details in settings:', pricingDetails);
             
             // Submit - Updated to use new button class
             const submitBtn = form.querySelector('.btn-submit');
@@ -5172,6 +5277,7 @@
 
         let subtotal = basePrice * quantity;
         breakdown.push({ label: `Photo Print ${size} ${paperQuality} (${quantity} photos)`, value: `₹${subtotal}` });
+        breakdown.push({ label: `Total pages`, value: `${quantity}` }); // For photo print, total pages = quantity
         total += subtotal;
 
         return total;
@@ -5186,6 +5292,7 @@
         let basePrice = pricing[priceKey] || 40;
 
         breakdown.push({ label: `Passport Photos (${photoCount} photos)`, value: `₹${basePrice}` });
+        breakdown.push({ label: `Total pages`, value: `1` }); // For passport photo, it's always 1 page (A4 sheet)
         total += basePrice;
 
         return total;
@@ -5347,6 +5454,10 @@
               <div class="pricing-item">
                 <span class="pricing-label">Number of copies</span>
                 <span class="pricing-value">${breakdown.num_copies}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Total pages</span>
+                <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
               </div>
               <div class="pricing-item total">
                 <span class="pricing-label">Total Amount</span>
@@ -5510,6 +5621,10 @@
                 <span class="pricing-label">Number of copies</span>
                 <span class="pricing-value">${breakdown.num_copies}</span>
               </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Total pages</span>
+                <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
+              </div>
               <div class="pricing-item total">
                 <span class="pricing-label">Total Amount</span>
                 <span class="pricing-value">₹${breakdown.total_price}</span>
@@ -5662,6 +5777,10 @@
                 <span class="pricing-label">Number of copies</span>
                 <span class="pricing-value">${breakdown.num_copies}</span>
               </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Total pages</span>
+                <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
+              </div>
               <div class="pricing-item total">
                 <span class="pricing-label">Total Amount</span>
                 <span class="pricing-value">₹${breakdown.total_price}</span>
@@ -5806,6 +5925,16 @@
               `;
             });
             
+            // Add total pages information if available
+            if (result.structured_data && result.structured_data.total_pages) {
+              html += `
+                <div class="pricing-item">
+                  <span class="pricing-label">Total pages</span>
+                  <span class="pricing-value">${result.structured_data.total_pages}</span>
+                </div>
+              `;
+            }
+            
             html += `
               <div class="pricing-item total">
                 <span class="pricing-label">Total Amount</span>
@@ -5930,6 +6059,10 @@
               <div class="pricing-item">
                 <span class="pricing-label">Paper Size</span>
                 <span class="pricing-value">${breakdown.paper_size}</span>
+              </div>
+              <div class="pricing-item">
+                <span class="pricing-label">Total pages</span>
+                <span class="pricing-value">${breakdown.total_pages || 1}</span>
               </div>
               <div class="pricing-item total">
                 <span class="pricing-label">Total Amount</span>
