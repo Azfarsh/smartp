@@ -368,7 +368,7 @@ def get_user_details_from_r2(user_email):
 
 def get_user_jobs_from_r2(user_email):
     """
-    Get all jobs uploaded by a specific user from R2 storage - OPTIMIZED for speed
+    Get all jobs uploaded by a specific user from R2 storage
     """
     s3 = boto3.client('s3',
                       aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -382,18 +382,15 @@ def get_user_jobs_from_r2(user_email):
         objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=user_prefix)
         user_jobs = []
 
-        # ULTRA-FAST: Process all jobs in parallel using ThreadPoolExecutor
-        import concurrent.futures
-        
-        def process_single_job(obj):
+        for obj in objects.get("Contents", []):
+            key = obj["Key"]
+            filename = key.split("/")[-1]
+
+            # Skip if it's just the folder itself
+            if filename == "":
+                continue
+
             try:
-                key = obj["Key"]
-                filename = key.split("/")[-1]
-
-                # Skip if it's just the folder itself
-                if filename == "":
-                    return None
-
                 # Generate presigned URL for preview
                 url = s3.generate_presigned_url(
                     ClientMethod='get_object',
@@ -446,7 +443,7 @@ def get_user_jobs_from_r2(user_email):
                     "service_name": metadata.get('service_name', '')
                 }
                 
-                # Parse pricing details from metadata if available (simplified for speed)
+                # Parse pricing details from metadata if available
                 pricing_details_str = metadata.get('pricing_details')
                 if pricing_details_str:
                     try:
@@ -477,12 +474,12 @@ def get_user_jobs_from_r2(user_email):
                                     'vendor_email': None
                                 }
                                 job_info['pricing_details'] = pricing_details
-                                # print(f"💰 Pricing details loaded for {filename}: Rs{total_price}")  # Removed for speed
+                                print(f"💰 Pricing details loaded for {filename}: Rs{total_price}")
                             else:
                                 # Try to parse as old full JSON format
                                 pricing_details = json.loads(pricing_details_str)
                                 job_info['pricing_details'] = pricing_details
-                                # print(f"💰 Pricing details loaded for {filename}: Rs{pricing_details.get('total_price', 'N/A')}")  # Removed for speed
+                                print(f"💰 Pricing details loaded for {filename}: Rs{pricing_details.get('total_price', 'N/A')}")
                         except json.JSONDecodeError:
                             # Try to parse as old pipe-separated format
                             if '|' in pricing_details_str:
@@ -509,37 +506,76 @@ def get_user_jobs_from_r2(user_email):
                                         'vendor_email': None
                                     }
                                     job_info['pricing_details'] = pricing_details
-                                    # print(f"💰 Pricing details loaded for {filename}: Rs{total_price}")  # Removed for speed
+                                    print(f"💰 Pricing details loaded for {filename}: Rs{total_price}")
                                 else:
-                                    # print(f"⚠️ Invalid pricing format for {filename}")
+                                    print(f"⚠️ Invalid pricing format for {filename}")
                                     job_info['pricing_details'] = None
                             else:
-                                # print(f"⚠️ Unknown pricing format for {filename}")
+                                print(f"⚠️ Unknown pricing format for {filename}")
                                 job_info['pricing_details'] = None
                     except (json.JSONDecodeError, ValueError) as e:
-                        # print(f"⚠️ Error parsing pricing details for {filename}: {e}")
+                        print(f"⚠️ Error parsing pricing details for {filename}: {e}")
                         job_info['pricing_details'] = None
                 else:
-                    job_info['pricing_details'] = None
+                    # Try to reconstruct from individual fields
+                    total_price = metadata.get('total_price')
+                    if total_price:
+                        pricing_details = {
+                            'total_price': float(total_price),
+                            'pricing_breakdown': {
+                                'price_per_page': float(metadata.get('price_per_page', 0)),
+                                'page_count': int(metadata.get('page_count', 0)),
+                                'num_copies': int(metadata.get('num_copies', 0)),
+                                'pricing_key_used': metadata.get('pricing_key', ''),
+                                'base_price': float(metadata.get('price_per_page', 0)),
+                                'quality_upgrade': 0
+                            },
+                            'calculation_timestamp': metadata.get('timestamp', ''),
+                            'vendor_email': None
+                        }
+                        job_info['pricing_details'] = pricing_details
+                        print(f"💰 Pricing details reconstructed for {filename}: ₹{total_price}")
+                    else:
+                        job_info['pricing_details'] = None
 
-                return job_info
+                # Fetch vendor coordinates if vendor is assigned
+                vendor_id = job_info.get('vendor')
+                if vendor_id and vendor_id != 'firozshop':
+                    try:
+                        # Get vendor email from vendor ID
+                        vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                        print(f"Vendor ID {vendor_id} maps to email: {vendor_email}")
+                        
+                        if vendor_email and vendor_email != 'firozshop@example.com':
+                            reg_key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
+                            vendor_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                            vendor_data = json.loads(vendor_response['Body'].read().decode('utf-8'))
+                            job_info['vendor_lat'] = vendor_data.get('latitude', '')
+                            job_info['vendor_lng'] = vendor_data.get('longitude', '')
+                            print(f"Found coordinates for vendor {vendor_id}: lat={job_info['vendor_lat']}, lng={job_info['vendor_lng']}")
+                        else:
+                            print(f"No vendor email found for vendor ID: {vendor_id}")
+                            job_info['vendor_lat'] = ''
+                            job_info['vendor_lng'] = ''
+                    except Exception as e:
+                        print(f"Error fetching vendor coordinates for vendor ID {vendor_id}: {str(e)}")
+                        job_info['vendor_lat'] = ''
+                        job_info['vendor_lng'] = ''
+                else:
+                    job_info['vendor_lat'] = ''
+                    job_info['vendor_lng'] = ''
+
+                # Create print options string
+                job_info["print_options"] = f"{job_info['copies']} copies, {job_info['color']}, {job_info['orientation']}"
+
+                user_jobs.append(job_info)
+
             except Exception as e:
-                # print(f"Error processing job {obj.get('Key', 'unknown')}: {str(e)}")
-                return None
+                print(f"Error processing user file {key}: {str(e)}")
+                continue
 
-        # Process all jobs in parallel with maximum workers
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_obj = {executor.submit(process_single_job, obj): obj for obj in objects.get("Contents", [])}
-            
-            for future in concurrent.futures.as_completed(future_to_obj):
-                result = future.result()
-                if result is not None:
-                    user_jobs.append(result)
-
-        # Sort by upload date (newest first)
-        user_jobs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
-        print(f"⚡ ULTRA-FAST: Loaded {len(user_jobs)} jobs in parallel for {user_email}")
+        # Sort by upload date (most recent first)
+        user_jobs.sort(key=lambda x: x['timestamp'], reverse=True)
         return user_jobs
 
     except Exception as e:
@@ -553,19 +589,26 @@ def userdashboard(request):
         return redirect('/login/')
 
     try:
-        # ULTRA-FAST: Load only essential data synchronously for instant display
-        user_details = get_user_details_from_r2(request.user.email)
-        user_jobs = get_user_jobs_from_r2(request.user.email)
+        # OPTIMIZED: Fetch user details and jobs concurrently for faster loading
+        import concurrent.futures
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both tasks concurrently
+            user_details_future = executor.submit(get_user_details_from_r2, request.user.email)
+            user_jobs_future = executor.submit(get_user_jobs_from_r2, request.user.email)
+            
+            # Wait for both to complete
+            user_details = user_details_future.result()
+            user_jobs = user_jobs_future.result()
 
         # OPTIMIZED: Calculate statistics more efficiently
         total_jobs = len(user_jobs)
         pending_jobs = 0
         completed_jobs = 0
-        
-        # Calculate statistics
         current_month_jobs = 0
         current_month = datetime.datetime.now().strftime("%Y-%m")
         
+        # Single pass through jobs for all calculations
         for job in user_jobs:
             if job['job_completed'] == 'NO':
                 pending_jobs += 1
@@ -593,7 +636,7 @@ def userdashboard(request):
         return render(request, 'userdashboard.html', context)
         
     except Exception as e:
-        print(f"Error loading user dashboard: {str(e)}")
+        print(f"Error loading user dashboard data: {str(e)}")
         # Return minimal context on error for faster fallback
         return render(request, 'userdashboard.html', {
             'user': request.user,
@@ -602,60 +645,6 @@ def userdashboard(request):
             'auth_method': request.session.get('auth_method', 'unknown'),
             'user_jobs': [],
             'user_jobs_json': json.dumps([]),
-            'total_jobs': 0,
-            'pending_jobs': 0,
-            'completed_jobs': 0,
-            'total_earnings': 0
-        })
-
-
-def userdashboard_data(request):
-    """
-    AJAX endpoint to load user dashboard data quickly
-    """
-    if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-    
-    try:
-        # Load user data quickly
-        user_details = get_user_details_from_r2(request.user.email)
-        user_jobs = get_user_jobs_from_r2(request.user.email)
-        
-        # Calculate statistics
-        total_jobs = len(user_jobs)
-        pending_jobs = 0
-        completed_jobs = 0
-        current_month_jobs = 0
-        current_month = datetime.datetime.now().strftime("%Y-%m")
-        
-        for job in user_jobs:
-            if job['job_completed'] == 'NO':
-                pending_jobs += 1
-            elif job['job_completed'] == 'YES':
-                completed_jobs += 1
-            
-            if job['uploaded_at'].startswith(current_month):
-                current_month_jobs += 1
-
-        total_earnings = current_month_jobs * 50
-
-        return JsonResponse({
-            'success': True,
-            'user_details': user_details,
-            'user_jobs': user_jobs,
-            'total_jobs': total_jobs,
-            'pending_jobs': pending_jobs,
-            'completed_jobs': completed_jobs,
-            'total_earnings': total_earnings
-        })
-        
-    except Exception as e:
-        print(f"Error loading user dashboard data: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e),
-            'user_details': None,
-            'user_jobs': [],
             'total_jobs': 0,
             'pending_jobs': 0,
             'completed_jobs': 0,
@@ -4242,25 +4231,8 @@ def calculate_a4_print_pricing(request):
 @csrf_exempt
 def get_available_shops(request):
     """
-    Get all available shops from R2 storage vendor registration details with caching
+    Get all available shops from R2 storage vendor registration details
     """
-    import time
-    
-    # Check cache first
-    cache_key = "available_shops_cache"
-    current_time = time.time()
-    
-    if (hasattr(get_available_shops, '_cache') and 
-        cache_key in get_available_shops._cache and 
-        cache_key in get_available_shops._cache_timestamps and 
-        current_time - get_available_shops._cache_timestamps[cache_key] < 300):  # 5 minutes
-        
-        print(f"⚡ CACHE HIT: Using cached available shops")
-        return JsonResponse({
-            'success': True,
-            'shops': get_available_shops._cache[cache_key]
-        })
-    
     try:
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -4303,14 +4275,6 @@ def get_available_shops(request):
                         continue
         except Exception as e:
             print(f"Error listing vendor folders: {str(e)}")
-        
-        # Cache the result
-        if not hasattr(get_available_shops, '_cache'):
-            get_available_shops._cache = {}
-            get_available_shops._cache_timestamps = {}
-        get_available_shops._cache[cache_key] = shops
-        get_available_shops._cache_timestamps[cache_key] = current_time
-        
         return JsonResponse({
             'success': True,
             'shops': shops,
@@ -4902,24 +4866,10 @@ def get_vendor_email_by_vendor_id(vendor_id):
 
 def get_vendor_coordinates(request):
     """
-    Return vendor coordinates as JSON for the map, non-blocking for dashboard load with caching.
+    Return vendor coordinates as JSON for the map, non-blocking for dashboard load.
     """
     import boto3, json
     from django.conf import settings
-    import time
-    
-    # Check cache first
-    cache_key = "vendor_coordinates_cache"
-    current_time = time.time()
-    
-    if (hasattr(get_vendor_coordinates, '_cache') and 
-        cache_key in get_vendor_coordinates._cache and 
-        cache_key in get_vendor_coordinates._cache_timestamps and 
-        current_time - get_vendor_coordinates._cache_timestamps[cache_key] < 300):  # 5 minutes
-        
-        print(f"⚡ CACHE HIT: Using cached vendor coordinates")
-        return JsonResponse({'coordinates': get_vendor_coordinates._cache[cache_key]})
-    
     coordinates = []
     try:
         s3 = boto3.client('s3',
@@ -4946,14 +4896,6 @@ def get_vendor_coordinates(request):
                         })
                 except Exception as e:
                     continue
-        
-        # Cache the result
-        if not hasattr(get_vendor_coordinates, '_cache'):
-            get_vendor_coordinates._cache = {}
-            get_vendor_coordinates._cache_timestamps = {}
-        get_vendor_coordinates._cache[cache_key] = coordinates
-        get_vendor_coordinates._cache_timestamps[cache_key] = current_time
-        
         return JsonResponse({'coordinates': coordinates})
     except Exception as e:
         return JsonResponse({'coordinates': [], 'error': str(e)})
