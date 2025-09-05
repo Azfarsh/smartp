@@ -1524,8 +1524,45 @@
     }
 
     .bottom-nav-item i {
-      font-size: 1rem;
+      font-size: 1.2rem;
       margin-bottom: 0.2rem;
+    }
+
+    /* Mobile footer icons - bigger for better touch targets */
+    @media (max-width: 768px) {
+      .bottom-nav-item i {
+        font-size: 1.4rem;
+        margin-bottom: 0.3rem;
+      }
+      
+      .bottom-nav-item {
+        font-size: 0.7rem;
+        padding: 0.4rem 0;
+        min-height: 50px;
+      }
+      
+      .bottom-nav {
+        height: 65px;
+        padding: 0.4rem 0.6rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .bottom-nav-item i {
+        font-size: 1.6rem;
+        margin-bottom: 0.4rem;
+      }
+      
+      .bottom-nav-item {
+        font-size: 0.75rem;
+        padding: 0.5rem 0;
+        min-height: 55px;
+      }
+      
+      .bottom-nav {
+        height: 70px;
+        padding: 0.5rem 0.8rem;
+      }
     }
 
     .print-btn {
@@ -6606,21 +6643,33 @@
         }, 0);
       }
 
-      // Fetch vendor coordinates for the map asynchronously
-      fetch('/get-vendor-coordinates/', {
-        method: 'GET',
-        headers: { 'X-CSRFToken': window.csrfToken }
-      })
-        .then(response => response.json())
-        .then(data => {
-          // Call your map update function here
-          if (data.coordinates) {
-            updateMapWithCoordinates(data.coordinates);
+      // ULTRA-FAST: Load all dashboard data in parallel
+      Promise.all([
+        fetch('/get-vendor-coordinates/', {
+          method: 'GET',
+          headers: { 'X-CSRFToken': window.csrfToken }
+        }).then(response => response.json()),
+        fetch('/get-available-shops/', {
+          method: 'GET',
+          headers: { 'X-CSRFToken': window.csrfToken }
+        }).then(response => response.json())
+      ]).then(([coordsData, shopsData]) => {
+        // Update map with coordinates
+        if (coordsData.coordinates) {
+          updateMapWithCoordinates(coordsData.coordinates);
+        }
+        
+        // Update shops data
+        if (shopsData.success) {
+          availableShops = shopsData.shops;
+          if (availableShops.length > 0) {
+            selectedVendor = availableShops[0].shop_folder;
           }
-        })
-        .catch(err => {
-          console.error('Failed to fetch vendor coordinates:', err);
-        });
+          renderVendorOptions();
+        }
+      }).catch(err => {
+        console.error('Failed to fetch dashboard data:', err);
+      });
     });
 
     // Notification System
@@ -6888,7 +6937,7 @@
       toast.classList.remove('show');
     }
 
-    // Function to load available shops from R2 storage
+    // Function to load available shops from R2 storage (optimized)
     async function loadAvailableShops() {
       try {
         const response = await fetch('/get-available-shops/', {
