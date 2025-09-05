@@ -17,7 +17,6 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('upload/', views.upload_to_r2, name='upload_to_r2'),
     path('userdashboard/', views.userdashboard, name='userdashboard'),
-    path('userdashboard-data/', views.userdashboard_data, name='userdashboard_data'),
     path('vendordashboard/', views.vendordashboard, name='vendordashboard'),
     path('get-print-requests/',
          views.get_print_requests,
