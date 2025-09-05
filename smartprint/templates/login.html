@@ -625,7 +625,7 @@
       color: white;
       z-index: 9999;
       opacity: 0;
-      transition: all 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+      transition: all 1s cubic-bezier(0.23, 1, 0.32, 1);
     }
 
     #welcomeScreen.show {
@@ -662,7 +662,7 @@
       -webkit-background-clip: initial;
       -webkit-text-fill-color: initial;
       background-clip: initial;
-      animation: welcomeSlideIn 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+      animation: welcomeSlideIn 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
       transform: translateY(60px);
       opacity: 0;
       position: relative;
@@ -719,7 +719,7 @@
       font-size: clamp(1rem, 3vw, 1.2rem);
       font-weight: 500;
       color: rgba(255,255,255,0.9);
-      animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
+      animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 0s forwards;
       opacity: 0;
       transform: translateY(20px);
       text-align: center;
@@ -1761,15 +1761,6 @@
     if (isVendor) {
       welcomeMessage.innerHTML = `👑 Welcome Back, <span style='color:#3a86ff'>${name}</span>!`;
       welcomeStatusText.innerHTML = '🚀 Launching your print command center...';
-      setTimeout(() => {
-        welcomeStatusText.innerHTML = '💼 Loading your business empire...';
-      }, 1500);
-      setTimeout(() => {
-        welcomeStatusText.innerHTML = '⚡ Optimizing your dashboard...';
-      }, 3000);
-      setTimeout(() => {
-        welcomeStatusText.innerHTML = '🎯 Ready to dominate!';
-      }, 4000);
     } else {
       welcomeMessage.innerHTML = `🎉 Welcome, <span style='color:#3a86ff'>${name}</span>!`;
       welcomeStatusText.innerHTML = '⚡ Initializing AI-powered experience...';
@@ -1808,8 +1799,10 @@
         if (welcomeTitle) {
           welcomeTitle.innerHTML = '<i class="fas fa-check-circle"></i> Redirecting to Dashboard...';
         }
-        // INSTANT redirect - no delay
-        window.location.href = '/userdashboard/';
+        // Smooth redirect with 2 second delay
+        setTimeout(() => {
+          window.location.href = '/userdashboard/';
+        }, 1000); // 1 second delay for smooth transition
       } else {
         alert('🚫 Access denied: ' + data.message);
         document.getElementById('welcomeScreen').style.display = 'none';
@@ -1847,7 +1840,7 @@
         showWelcome(data.vendor?.vendor_name || 'Vendor', true);
         setTimeout(() => {
           window.location.href = '/vendordashboard/';
-        }, 5000);
+        }, 1000); // 1 second delay for smooth vendor login transition
       } else {
         submitBtn.disabled = false;
         btnIcon.textContent = 'rocket_launch';
