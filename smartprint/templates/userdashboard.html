@@ -4923,7 +4923,15 @@
               if (f.label.toLowerCase().includes('paper size') || f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('photo size')) pageSize = val;
               if (f.label.toLowerCase().includes('color') || f.label.toLowerCase().includes('print color') || f.label.toLowerCase().includes('color set')) color = val;
               if (f.label.toLowerCase().includes('orientation')) orientation = val;
-              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) copies = parseInt(val) || 8;
+              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) {
+                // For passport photos, photo package is number of photos per page, not copies
+                // Copies should always be 1 for passport photos
+                if (service === 'passport') {
+                  copies = 1; // Always 1 copy for passport photos
+                } else {
+                  copies = parseInt(val) || 8;
+                }
+              }
               if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
               if (f.label.toLowerCase().includes('thickness')) thickness = val;
               if (f.label.toLowerCase().includes('country')) country = val;
@@ -5051,8 +5059,18 @@
             const resp = await fetch('/upload/', {
               method: 'POST',
               body: formData,
-              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              headers: { 
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              credentials: 'same-origin'
             });
+            
+            if (!resp.ok) {
+              throw new Error(`HTTP error! status: ${resp.status}`);
+            }
+            
             const data = await resp.json();
             if (data.success) {
               // Show success message with pricing details for digital print, gloss print, jumbo print, golden embossing, and passport photo
@@ -5068,7 +5086,18 @@
               alert('Error: ' + (data.error || 'Failed to submit.'));
             }
           } catch (err) {
-            alert('Error: ' + err.message);
+            console.error('Upload error:', err);
+            let errorMessage = 'Failed to submit print job. ';
+            
+            if (err.message.includes('Failed to fetch')) {
+              errorMessage += 'Network error - please check your internet connection and try again.';
+            } else if (err.message.includes('HTTP error')) {
+              errorMessage += `Server error: ${err.message}`;
+            } else {
+              errorMessage += err.message;
+            }
+            
+            alert(errorMessage);
           } finally {
               if (submitBtn) {
             submitBtn.disabled = false;
