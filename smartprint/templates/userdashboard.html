@@ -3352,6 +3352,8 @@
         appearance: none;
         transition: all 0.3s;
         font-weight: 500;
+        min-height: 48px; /* Touch-friendly height */
+        -webkit-tap-highlight-color: transparent;
       }
 
       .shop-dropdown select:focus {
@@ -3594,6 +3596,12 @@
         
         .modal-header {
           padding: 1.5rem 1.5rem 1rem 1.5rem;
+        }
+        
+        .shop-dropdown select {
+          font-size: 16px; /* Prevent zoom on iOS */
+          padding: 1.2rem 1rem 1.2rem 1.25rem;
+          min-height: 52px;
         }
         
         .modal-body {
@@ -4923,15 +4931,7 @@
               if (f.label.toLowerCase().includes('paper size') || f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('photo size')) pageSize = val;
               if (f.label.toLowerCase().includes('color') || f.label.toLowerCase().includes('print color') || f.label.toLowerCase().includes('color set')) color = val;
               if (f.label.toLowerCase().includes('orientation')) orientation = val;
-              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) {
-                // For passport photos, photo package is number of photos per page, not copies
-                // Copies should always be 1 for passport photos
-                if (service === 'passport') {
-                  copies = 1; // Always 1 copy for passport photos
-                } else {
-                  copies = parseInt(val) || 8;
-                }
-              }
+              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) copies = parseInt(val) || 8;
               if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
               if (f.label.toLowerCase().includes('thickness')) thickness = val;
               if (f.label.toLowerCase().includes('country')) country = val;
@@ -5012,7 +5012,7 @@
               filename: file.name,
               service_type: tmpl.service_type,
               service_name: tmpl.title,
-              copies: copies,
+              copies: service === 'passport' ? 1 : copies, // Always set copies to 1 for passport photos
               color: color,
               orientation: orientation,
               pageRange: 'all',
@@ -5061,16 +5061,11 @@
               body: formData,
               headers: { 
                 'X-CSRFToken': getCookie('csrftoken'),
-                'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
               },
-              credentials: 'same-origin'
+              credentials: 'same-origin',
+              mode: 'cors'
             });
-            
-            if (!resp.ok) {
-              throw new Error(`HTTP error! status: ${resp.status}`);
-            }
-            
             const data = await resp.json();
             if (data.success) {
               // Show success message with pricing details for digital print, gloss print, jumbo print, golden embossing, and passport photo
@@ -5086,18 +5081,7 @@
               alert('Error: ' + (data.error || 'Failed to submit.'));
             }
           } catch (err) {
-            console.error('Upload error:', err);
-            let errorMessage = 'Failed to submit print job. ';
-            
-            if (err.message.includes('Failed to fetch')) {
-              errorMessage += 'Network error - please check your internet connection and try again.';
-            } else if (err.message.includes('HTTP error')) {
-              errorMessage += `Server error: ${err.message}`;
-            } else {
-              errorMessage += err.message;
-            }
-            
-            alert(errorMessage);
+            alert('Error: ' + err.message);
           } finally {
               if (submitBtn) {
             submitBtn.disabled = false;
@@ -8638,8 +8622,11 @@
           method: 'POST',
           body: formData,
           headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-          }
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          mode: 'cors'
         });
 
         if (response.ok) {
