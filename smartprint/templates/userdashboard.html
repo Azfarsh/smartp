@@ -4445,12 +4445,9 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
             
-            // Store all files in modal dataset for later use
-            modal.dataset.uploadedFiles = JSON.stringify(files.map(f => ({
-              name: f.name,
-              size: f.size,
-              type: f.type
-            })));
+            // Store actual File objects in modal dataset for later use
+            modal.dataset.uploadedFiles = files;
+            console.log('📁 Files stored in modal dataset:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
             
             if (files.length === 1) {
               const file = files[0];
@@ -4738,13 +4735,26 @@
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           
-          // Get files from file input
-          const fileInput = modal.querySelector(`#${service}-file-input`);
-          const files = Array.from(fileInput.files);
+          // Get files from modal dataset (more reliable on mobile devices)
+          const files = modal.dataset.uploadedFiles;
           
-          if (files.length === 0) { 
+          console.log('📁 Files retrieved from modal dataset:', files);
+          
+          if (!files || files.length === 0) { 
+            console.error('❌ No files found in modal dataset');
             alert('Please upload at least one file.'); 
             return; 
+          }
+          
+          // Validate files are proper File objects
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file || !file.name || !file.size) {
+              console.error(`❌ Invalid file at index ${i}:`, file);
+              alert(`Invalid file detected: ${file?.name || 'Unknown file'}. Please try selecting the file again.`);
+              return;
+            }
+            console.log(`✅ File ${i} valid:`, { name: file.name, type: file.type, size: file.size });
           }
           
           // Validate shop selection
