@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -4408,6 +4409,97 @@
           'france': { width: 413, height: 531 }, // 35x45mm
           'germany': { width: 413, height: 531 } // 35x45mm
         };
+
+        // Function to create PDF for passport photos
+        async function createPassportPhotoPDF(imageFile, country, photoPackage, originalFileName) {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'pt', 'a4');
+          
+          // A4 dimensions in points
+          const a4Width = 595.28;
+          const a4Height = 841.89;
+          
+          // Set white background
+          pdf.setFillColor(255, 255, 255);
+          pdf.rect(0, 0, a4Width, a4Height, 'F');
+          
+          // Get country-specific dimensions
+          const dimensions = countryDimensions[country] || countryDimensions['india'];
+          const photoWidth = dimensions.width;
+          const photoHeight = dimensions.height;
+          
+          // Calculate grid layout based on photo package
+          const photoCount = parseInt(photoPackage);
+          let cols, rows;
+          
+          if (photoCount <= 8) {
+            cols = 2; rows = 4;
+          } else if (photoCount <= 16) {
+            cols = 4; rows = 4;
+          } else if (photoCount <= 30) {
+            cols = 5; rows = 6;
+          } else {
+            cols = 5; rows = 6; // Default for larger packages
+          }
+          
+          // Calculate margins and spacing
+          const margin = 20;
+          const spacing = 10;
+          const totalWidth = a4Width - (2 * margin);
+          const totalHeight = a4Height - (2 * margin);
+          const slotWidth = (totalWidth - ((cols - 1) * spacing)) / cols;
+          const slotHeight = (totalHeight - ((rows - 1) * spacing)) / rows;
+          
+          // Create image element to get dimensions
+          const img = new Image();
+          const imageData = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageFile);
+          });
+          
+          img.src = imageData;
+          
+          await new Promise((resolve) => {
+            img.onload = () => {
+              // Calculate how to fit the image in each slot while maintaining aspect ratio
+              const imgAspect = img.width / img.height;
+              const slotAspect = slotWidth / slotHeight;
+              
+              let drawWidth, drawHeight;
+              if (imgAspect > slotAspect) {
+                // Image is wider than slot
+                drawWidth = slotWidth - 4; // Small padding
+                drawHeight = drawWidth / imgAspect;
+              } else {
+                // Image is taller than slot
+                drawHeight = slotHeight - 4; // Small padding
+                drawWidth = drawHeight * imgAspect;
+              }
+              
+              // Center the image in the slot
+              const offsetX = (slotWidth - drawWidth) / 2;
+              const offsetY = (slotHeight - drawHeight) / 2;
+              
+              // Place photos in grid
+              for (let i = 0; i < photoCount; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = margin + col * (slotWidth + spacing) + offsetX;
+                const y = margin + row * (slotHeight + spacing) + offsetY;
+                
+                // Add image to PDF
+                pdf.addImage(img, 'JPEG', x, y, drawWidth, drawHeight);
+              }
+              
+              resolve();
+            };
+            img.onerror = () => resolve(); // Continue even if image fails to load
+          });
+          
+          return pdf.output('blob');
+        }
         
         // Wait for location-based shops to load before rendering shop dropdown
         function waitForShopsAndRender(attempt = 0) {
@@ -4772,27 +4864,39 @@
               let selectedVersion = filePreview?.dataset.selectedVersion || 'original';
               let enhancedUrl = filePreview?.dataset.enhancedUrl || null;
               let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
-              if (selectedVersion === 'enhanced') {
-                if (!enhancedReady || !enhancedUrl) {
-                  console.log('Enhanced image not ready, using original image for passport photo');
-                  // Use the original file if enhanced image is not available
-                  formData.set(`file_${i}`, file);
-                } else {
-                // Fetch the enhanced image as a blob
+              
+              let imageFile = file;
+              if (selectedVersion === 'enhanced' && enhancedReady && enhancedUrl) {
                 try {
                   const resp = await fetch(enhancedUrl);
                   const blob = await resp.blob();
-                  const enhancedFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
-                  formData.set(`file_${i}`, enhancedFile);
+                  imageFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
                 } catch (err) {
-                    console.log('Failed to fetch enhanced image, using original image for passport photo');
-                    // Use the original file if enhanced image fetch fails
-                    formData.set(`file_${i}`, file);
-                  }
+                  console.log('Failed to fetch enhanced image, using original image for passport photo');
+                  imageFile = file;
                 }
-              } else {
-                // Use the original file
-                formData.set(`file_${i}`, file);
+              }
+              
+              // Get country and photo package from form
+              const country = form.querySelector(`#${service}-field-1`)?.value || 'india';
+              const photoPackage = form.querySelector(`#${service}-field-2`)?.value || '8';
+              
+              // Create PDF for passport photos
+              try {
+                const pdfBlob = await createPassportPhotoPDF(imageFile, country, photoPackage, file.name);
+                
+                // Create filename with original name in brackets
+                const originalName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+                const pdfFileName = `passportphoto(${originalName}).pdf`;
+                
+                const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+                formData.set(`file_${i}`, pdfFile);
+                
+                console.log(`Passport photo PDF created: ${pdfFileName}`);
+              } catch (error) {
+                console.error('Error creating passport photo PDF:', error);
+                // Fallback to original file if PDF creation fails
+                formData.set(`file_${i}`, imageFile);
               }
             } else {
               // For other services, just use the original file
@@ -4819,7 +4923,15 @@
               if (f.label.toLowerCase().includes('paper size') || f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('photo size')) pageSize = val;
               if (f.label.toLowerCase().includes('color') || f.label.toLowerCase().includes('print color') || f.label.toLowerCase().includes('color set')) color = val;
               if (f.label.toLowerCase().includes('orientation')) orientation = val;
-              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) copies = parseInt(val) || 8;
+              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) {
+                // For passport photos, photo package is number of photos per page, not copies
+                // Copies should always be 1 for passport photos
+                if (service === 'passport') {
+                  copies = 1; // Always 1 copy for passport photos
+                } else {
+                  copies = parseInt(val) || 8;
+                }
+              }
               if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
               if (f.label.toLowerCase().includes('thickness')) thickness = val;
               if (f.label.toLowerCase().includes('country')) country = val;
@@ -4947,8 +5059,18 @@
             const resp = await fetch('/upload/', {
               method: 'POST',
               body: formData,
-              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              headers: { 
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              credentials: 'same-origin'
             });
+            
+            if (!resp.ok) {
+              throw new Error(`HTTP error! status: ${resp.status}`);
+            }
+            
             const data = await resp.json();
             if (data.success) {
               // Show success message with pricing details for digital print, gloss print, jumbo print, golden embossing, and passport photo
@@ -4964,7 +5086,18 @@
               alert('Error: ' + (data.error || 'Failed to submit.'));
             }
           } catch (err) {
-            alert('Error: ' + err.message);
+            console.error('Upload error:', err);
+            let errorMessage = 'Failed to submit print job. ';
+            
+            if (err.message.includes('Failed to fetch')) {
+              errorMessage += 'Network error - please check your internet connection and try again.';
+            } else if (err.message.includes('HTTP error')) {
+              errorMessage += `Server error: ${err.message}`;
+            } else {
+              errorMessage += err.message;
+            }
+            
+            alert(errorMessage);
           } finally {
               if (submitBtn) {
             submitBtn.disabled = false;
