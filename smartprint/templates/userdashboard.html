@@ -3351,6 +3351,8 @@
         appearance: none;
         transition: all 0.3s;
         font-weight: 500;
+        min-height: 48px; /* Touch-friendly height */
+        -webkit-tap-highlight-color: transparent;
       }
 
       .shop-dropdown select:focus {
@@ -3593,6 +3595,12 @@
         
         .modal-header {
           padding: 1.5rem 1.5rem 1rem 1.5rem;
+        }
+        
+        .shop-dropdown select {
+          font-size: 16px; /* Prevent zoom on iOS */
+          padding: 1.2rem 1rem 1.2rem 1.25rem;
+          min-height: 52px;
         }
         
         .modal-body {
@@ -4900,7 +4908,7 @@
               filename: file.name,
               service_type: tmpl.service_type,
               service_name: tmpl.title,
-              copies: copies,
+              copies: service === 'passport' ? 1 : copies, // Always set copies to 1 for passport photos
               color: color,
               orientation: orientation,
               pageRange: 'all',
@@ -4947,7 +4955,12 @@
             const resp = await fetch('/upload/', {
               method: 'POST',
               body: formData,
-              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              headers: { 
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              credentials: 'same-origin',
+              mode: 'cors'
             });
             const data = await resp.json();
             if (data.success) {
@@ -8505,8 +8518,11 @@
           method: 'POST',
           body: formData,
           headers: {
-            'X-CSRFToken': getCookie('csrftoken')
-          }
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          mode: 'cors'
         });
 
         if (response.ok) {
