@@ -4784,27 +4784,27 @@
                 if (!enhancedReady || !enhancedUrl) {
                   console.log('Enhanced image not ready, using original image for passport photo');
                   // Use the original file if enhanced image is not available
-                  formData.set(`file_${i}`, file);
+                  formData.append(`file_${i}`, file);
                 } else {
                 // Fetch the enhanced image as a blob
                 try {
                   const resp = await fetch(enhancedUrl);
                   const blob = await resp.blob();
                   const enhancedFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
-                  formData.set(`file_${i}`, enhancedFile);
+                  formData.append(`file_${i}`, enhancedFile);
                 } catch (err) {
                     console.log('Failed to fetch enhanced image, using original image for passport photo');
                     // Use the original file if enhanced image fetch fails
-                    formData.set(`file_${i}`, file);
+                    formData.append(`file_${i}`, file);
                   }
                 }
               } else {
                 // Use the original file
-                formData.set(`file_${i}`, file);
+                formData.append(`file_${i}`, file);
               }
             } else {
               // For other services, just use the original file
-              formData.set(`file_${i}`, file);
+              formData.append(`file_${i}`, file);
             }
           }
             
@@ -8498,7 +8498,7 @@
               if (existingSettings) {
                 const settingsObj = JSON.parse(existingSettings);
                 settingsObj.pricing_details = pricingDetails;
-                formData.set(`settings_${i}`, JSON.stringify(settingsObj));
+                formData.append(`settings_${i}`, JSON.stringify(settingsObj));
                 console.log(`💰 Updated settings_${i} with pricing details`);
               }
             }
