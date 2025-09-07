@@ -7,6 +7,7 @@
   <meta name="description" content="PrintMe - Your on-demand printing solution. Easily manage print jobs, track history, and find nearby print locations.">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script>
@@ -101,7 +102,7 @@
       /* Dark Mode - Professional & High Contrast */
       --primary: #60a5fa;
       --primary-variant: #3b82f6;
-      --primary-light: #1e3a8a;
+      --primary-light: #2563EB;
       --secondary: #34d399;
       --secondary-variant: #10b981;
       --accent: #a78bfa;
@@ -555,12 +556,12 @@
     .user-profile-trigger {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: var(--radius-lg);
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px; /* rounded pill */
       cursor: pointer;
       transition: all var(--transition-fast);
       backdrop-filter: blur(10px);
@@ -572,8 +573,8 @@
     }
 
     .user-avatar-small {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       border: 2px solid rgba(255, 255, 255, 0.3);
       background: rgba(255, 255, 255, 0.1);
@@ -596,8 +597,9 @@
     }
 
     .user-name-header {
-      font-weight: 600;
-      font-size: 0.9rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
     }
 
     .dropdown-arrow {
@@ -716,6 +718,19 @@
       padding: 6rem 1rem 2rem;
     }
 
+    /* Mobile-first responsive design */
+    @media (max-width: 768px) {
+      .main-content {
+        padding: 4.25rem 0.75rem 5rem; /* tighter top gap under navbar */
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main-content {
+        padding: 4rem 0.5rem 5rem; /* reduce gap further for very small screens */
+      }
+    }
+
     /* Stats Section */
     .stats-section {
       margin-bottom: 2rem;
@@ -731,27 +746,51 @@
       gap: 0.75rem;
     }
 
-    .section-title i {
-      color: var(--primary);
+    .section-title i,
+    .section-title .material-icons {
+      color: #2563eb;
       font-size: 1.1rem;
     }
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(4, 1fr); /* smaller cards across all viewports */
+      gap: 0.75rem;
+    }
+
+    /* Mobile-first compact stats design */
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.9rem; /* clearer separation between all four blocks */
+      }
     }
 
     .stat-card {
       background: var(--surface);
-      border-radius: var(--radius-lg);
-      padding: 1.25rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      padding: 0.45rem;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
       border: 1px solid var(--outline-variant);
       transition: all var(--transition-standard);
       position: relative;
       overflow: hidden;
       backdrop-filter: blur(10px);
+      aspect-ratio: 6 / 7; /* slightly flatter to save space */
+      min-height: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Mobile compact stat cards */
+    @media (max-width: 768px) {
+      .stat-card {
+        padding: 0.4rem; /* smaller block, keep numbers readable */
+        aspect-ratio: 6 / 7;
+        min-height: auto;
+        border-radius: 10px;
+      }
     }
 
     .stat-card:hover {
@@ -759,7 +798,6 @@
       transform: translateY(-4px) scale(1.02);
       border-color: rgba(255, 255, 255, 0.2);
     }
-
     .stat-card::after {
       content: '';
       position: absolute;
@@ -782,56 +820,67 @@
       left: 0;
       width: 100%;
       height: 3px;
-      background: var(--total-jobs-gradient);
+      background: linear-gradient(90deg, #22d3ee, #60a5fa);
     }
 
     .stat-card:nth-child(2)::before {
-      background: var(--pending-gradient);
+      background: linear-gradient(90deg, #f59e0b, #f43f5e);
     }
 
     .stat-card:nth-child(3)::before {
-      background: var(--completed-gradient);
+      background: linear-gradient(90deg, #10b981, #22c55e);
     }
 
     .stat-card:nth-child(4)::before {
-      background: var(--earnings-gradient);
+      background: linear-gradient(90deg, #8b5cf6, #6366f1);
     }
     .stat-header {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--on-surface-variant);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .stat-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-md);
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
       background: var(--total-jobs-gradient);
-      color: var(--on-primary);
+      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
-      box-shadow: var(--shadow-sm);
-      position: relative;
-      overflow: hidden;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    .stat-icon::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(45deg, rgba(255,255,255,0.3) 0%, transparent 100%);
-      z-index: 1;
+    .stat-icon .material-icons {
+      font-size: 16px;
     }
 
-    .stat-icon i {
-      position: relative;
-      z-index: 2;
+    /* Mobile stat icon adjustments */
+    @media (max-width: 768px) {
+      .stat-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 0.8rem;
+      }
+      
+      .stat-icon .material-icons {
+        font-size: 14px;
+      }
+      
+      .stat-title {
+        font-size: 0.7rem;
+      }
     }
 
     .stat-card:nth-child(2) .stat-icon {
@@ -847,7 +896,7 @@
     }
 
     .stat-value {
-      font-size: 1.5rem;
+      font-size: 1.8rem;
       font-weight: 800;
       color: var(--on-surface);
       line-height: 1;
@@ -855,11 +904,101 @@
     }
 
     .stat-label {
-      font-size: 0.8rem;
+      font-size: 0.7rem;
+      color: var(--on-surface-variant);
+      font-weight: 500;
+    }
+
+    /* Mobile stat value adjustments */
+    @media (max-width: 768px) {
+      .stat-value {
+        /* Keep numbers readable even in compact cards */
+        font-size: 1.5rem;
+      }
+      
+      .stat-label {
+        font-size: 0.6rem;
+      }
+    }
+
+    /* Enhanced job card visuals */
+    .job-card-icon-label {
+      margin-left: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 600;
       color: var(--on-surface-variant);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .job-token-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: linear-gradient(90deg, #eef2ff, #e0e7ff);
+      color: #334155;
+      border: 1px solid #c7d2fe;
+      padding: 0.16rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* Allow filename/content wrapping with a neat clamp */
+    .job-card-filename {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-clamp: 2;
+      overflow: hidden;
+      word-break: break-word;
+      max-width: 100%;
+    }
+
+    /* Action toolbar with labeled buttons */
+    .job-card-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      justify-content: space-between;
+      flex-wrap: wrap; /* prevent overlap on narrow widths */
+    }
+    .job-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 14px; /* rounded rectangle */
+      font-weight: 700;
+      font-size: 0.82rem;
+      flex: 1 1 30%;
+      min-width: 98px; /* gives 3 buttons per row on mobile */
+      justify-content: center;
+      border: 1px solid var(--outline-variant);
+      background: #fff;
+      color: var(--on-surface);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+    }
+    .job-action-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .job-action-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .job-action-btn i { font-size: 0.9rem; }
+
+    /* Variant tints for icon-only perception without loud colors */
+    .view-btn { border-color: color-mix(in oklab, #1e293b 20%, var(--outline-variant)); }
+    .pricing-btn { border-color: color-mix(in oklab, #1d4ed8 28%, var(--outline-variant)); }
+    .track-btn { border-color: color-mix(in oklab, #047857 28%, var(--outline-variant)); }
+    .job-action-btn i { font-size: 0.9rem; }
+    .job-action-label { display: inline-block; }
+
+    /* Token row under title to ensure clear placement */
+    .job-token-row {
+      display: grid;
+      grid-template-columns: 1fr auto; /* token full-width left, status right */
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.3rem;
     }
 
     /* Jobs Section */
@@ -942,6 +1081,32 @@
       padding: 0.5rem 0;
     }
 
+    /* Mobile layout for new job cards */
+    @media (max-width: 768px) {
+      .jobs-row {
+        flex-direction: column;
+        gap: 0;
+        min-width: auto;
+        padding: 0;
+      }
+      
+      /* Fix overview blocks to show 2 per row on mobile */
+      .stats-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.7rem !important;
+      }
+      /* Square, compact overview cards */
+      .stat-card {
+        aspect-ratio: 7 / 4;
+        min-height: auto;
+        padding: 0.6rem;
+        border-radius: 10px;
+      }
+      /* Increase vertical rhythm for job cards on mobile */
+      .job-card-mobile { margin-top: 8px; margin-bottom: 14px; }
+    }
+
     .job-card {
       background: var(--surface);
       border-radius: var(--radius-lg);
@@ -957,6 +1122,9 @@
       backdrop-filter: blur(10px);
     }
 
+    /* Mobile-optimized job cards - compact rectangular design */
+    /* Legacy mobile job card styles removed - using new mobile design */
+
     .job-card::before {
       content: '';
       position: absolute;
@@ -965,6 +1133,249 @@
       width: 100%;
       height: 3px;
       background: var(--digital-gradient);
+    }
+
+    /* New Mobile Job Card Design - Material Design inspired */
+    .job-card-mobile {
+      background: var(--surface);
+      border-radius: 12px;
+      margin-bottom: 12px; /* add clearer separation between jobs */
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--outline-variant);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      min-height: 96px;
+    }
+
+    .job-card-mobile:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .job-card-left-border {
+      width: 4px;
+      min-height: 100%;
+      border-radius: 2px 0 0 2px;
+    }
+
+    /* Status fallback colors (when service is unknown) */
+    .status-color-pending { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+    .status-color-processing { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .status-color-completed { background: linear-gradient(135deg, var(--success), #16a34a); }
+    .status-color-failed { background: linear-gradient(135deg, var(--error), #ef4444); }
+
+    /* Optional service-based accent helpers (match service cards) */
+    .service-color-photo { background: var(--total-jobs-gradient); }
+    .service-color-digital { background: var(--digital-gradient); }
+    .service-color-emboss { background: linear-gradient(135deg, #06b6d4, #0e7490); }
+    .service-color-gloss { background: var(--completed-gradient); }
+    .service-color-jumbo { background: var(--earnings-gradient); }
+
+    .job-card-content {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .job-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+
+    .job-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .job-card-icon {
+      color: var(--primary);
+      font-size: 18px;
+      width: 18px;
+      text-align: center;
+    }
+
+    /* Icon tint helpers */
+    .icon-tint-photo { color: #1e88e5; }
+    .icon-tint-digital { color: #0284c7; }
+    .icon-tint-emboss { color: #fb8c00; }
+    .icon-tint-gloss { color: #2e7d32; }
+    .icon-tint-jumbo { color: #6d28d9; }
+
+    /* PDF icon highlight */
+    .pdf-red { color: #e53935 !important; }
+
+    .job-card-filename {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--on-surface);
+      line-height: 1.25;
+    }
+
+    .job-card-status-badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pending { background: color-mix(in oklab, var(--warning) 16%, transparent); color: var(--warning); }
+    .status-processing { background: color-mix(in oklab, var(--info) 16%, transparent); color: var(--info); }
+    .status-completed { background: color-mix(in oklab, var(--success) 16%, transparent); color: var(--success); }
+    .status-failed { background: color-mix(in oklab, var(--error) 16%, transparent); color: var(--error); }
+
+    .job-card-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .job-card-detail-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .job-detail-icon {
+      color: #6b7280;
+      font-size: 13px;
+      width: 13px;
+      text-align: center;
+    }
+
+    /* Dark mode job detail icons */
+    [data-theme="dark"] .job-detail-icon {
+      color: #d1d5db;
+    }
+
+    .job-detail-text {
+      font-size: 13px;
+      color: var(--on-surface);
+      line-height: 1.35;
+    }
+
+    .job-card-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: auto;
+    }
+
+    .job-action-btn {
+      height: 36px;
+      padding: 0 .9rem;
+      border-radius: 18px; /* circular rectangle */
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 13px;
+      gap: .4rem;
+    }
+
+    .view-btn {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .view-btn:hover {
+      background: #bbdefb;
+      transform: scale(1.1);
+    }
+
+    .pricing-btn {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+
+    .pricing-btn:hover {
+      background: #e1bee7;
+      transform: scale(1.1);
+    }
+
+    .track-btn {
+      background: #e8f5e8;
+      color: #388e3c;
+    }
+
+    .track-btn:hover {
+      background: #c8e6c9;
+      transform: scale(1.1);
+    }
+
+    /* Dark mode action button text colors */
+    [data-theme="dark"] .view-btn {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    [data-theme="dark"] .view-btn:hover {
+      background: #bbdefb;
+      color: #1976d2;
+    }
+
+    [data-theme="dark"] .pricing-btn {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+
+    [data-theme="dark"] .pricing-btn:hover {
+      background: #e1bee7;
+      color: #7b1fa2;
+    }
+
+    [data-theme="dark"] .track-btn {
+      background: #e8f5e8;
+      color: #388e3c;
+    }
+
+    [data-theme="dark"] .track-btn:hover {
+      background: #c8e6c9;
+      color: #388e3c;
+    }
+
+    /* Responsive adjustments for mobile job cards */
+    @media (max-width: 480px) {
+      .job-card-mobile {
+        min-height: 100px;
+        margin-bottom: 8px;
+      }
+
+      .job-card-content {
+        padding: 12px;
+        gap: 6px;
+      }
+
+      .job-card-filename {
+        font-size: 13px;
+      }
+
+      .job-detail-text {
+        font-size: 11px;
+      }
+
+      .job-action-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+      }
+
+      .job-card-status-badge {
+        font-size: 10px;
+        padding: 3px 6px;
+      }
     }
 
     .job-card:hover {
@@ -1012,13 +1423,22 @@
     }
 
     .job-status {
-      padding: 0.25rem 0.5rem;
-      border-radius: var(--radius-lg);
-      font-size: 0.7rem;
-      font-weight: 700;
+      padding: 0.2rem 0.4rem;
+      border-radius: 8px;
+      font-size: 0.65rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       flex-shrink: 0;
+    }
+
+    /* Mobile job status adjustments */
+    @media (max-width: 768px) {
+      .job-status {
+        padding: 0.15rem 0.3rem;
+        font-size: 0.6rem;
+        border-radius: 6px;
+      }
     }
 
     .status-completed {
@@ -1204,7 +1624,6 @@
       transform: translateY(-8px) scale(1.05);
       border-color: rgba(255, 255, 255, 0.3);
     }
-
     .service-card::after {
       content: '';
       position: absolute;
@@ -1401,7 +1820,26 @@
       padding: 1.5rem;
       border-bottom: 1px solid var(--outline-variant);
       background: var(--surface-variant);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
+
+    .sidebar-back-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--outline-variant);
+      background: var(--surface);
+      color: var(--on-surface);
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+      margin-right: .75rem;
+    }
+    .sidebar-back-btn:hover { transform: translateX(-2px); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 
     .sidebar-profile {
       display: flex;
@@ -1449,6 +1887,27 @@
       padding: 1rem 0;
     }
 
+    /* Keep sidebar links readable in dark mode and remove hover fill on active item */
+    .nav-link {
+      color: var(--on-surface);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .75rem 1.25rem;
+      border-radius: 10px;
+      transition: background .15s ease, color .15s ease;
+    }
+    .nav-link i { color: var(--on-surface); }
+    .nav-link:hover { background: color-mix(in oklab, var(--surface-variant) 60%, transparent); }
+    .nav-link.active { background: #2563EB; color: #fff; }
+    .nav-link.active i { color: #fff; }
+    /* Day mode: dashboard icon black for visibility */
+    [data-theme="light"] .nav-link.active i { color: #000; }
+    [data-theme="light"] .nav-link.active { color: #000; background: rgba(37,99,235,0.12); }
+    [data-theme="dark"] .nav-link:hover { background: rgba(255,255,255,0.06); }
+    [data-theme="dark"] .nav-link.active { background: #2563EB; color: #fff; }
+
     .nav-item {
       margin-bottom: 0.2rem;
     }
@@ -1492,6 +1951,7 @@
       box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
       height: 60px;
       backdrop-filter: blur(20px);
+      overflow: visible; /* allow print button to overlap */
     }
 
     .bottom-nav-item {
@@ -1502,13 +1962,16 @@
       justify-content: center;
       text-decoration: none;
       color: var(--on-surface-variant);
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       padding: 0.3rem 0;
       transition: all var(--transition-fast);
       font-weight: 600;
       min-height: 45px;
       border-radius: var(--radius-sm);
     }
+
+    .bottom-nav-item span { line-height: 1; }
+    .passport-nav span { white-space: nowrap; }
 
     .bottom-nav-item:hover, .bottom-nav-item.active {
       color: var(--primary);
@@ -1523,97 +1986,116 @@
       box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
     }
 
-    .bottom-nav-item i {
+    .bottom-nav-item i,
+    .bottom-nav-item .material-icons {
       font-size: 1.2rem;
       margin-bottom: 0.2rem;
     }
 
     /* Mobile footer icons - bigger for better touch targets */
     @media (max-width: 768px) {
-      .bottom-nav-item i {
-        font-size: 1.4rem;
-        margin-bottom: 0.3rem;
+      .bottom-nav-item i,
+      .bottom-nav-item .material-icons {
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
       }
       
       .bottom-nav-item {
-        font-size: 0.7rem;
-        padding: 0.4rem 0;
-        min-height: 50px;
-      }
-      
-      .bottom-nav {
-        height: 65px;
-        padding: 0.4rem 0.6rem;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .bottom-nav-item i {
-        font-size: 1.6rem;
-        margin-bottom: 0.4rem;
-      }
-      
-      .bottom-nav-item {
-        font-size: 0.75rem;
+        font-size: 0.64rem;
         padding: 0.5rem 0;
         min-height: 55px;
+        font-weight: 600;
       }
       
       .bottom-nav {
         height: 70px;
-        padding: 0.5rem 0.8rem;
+        padding: 0.5rem 0.75rem;
+        box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.2);
+      }
+      
+      .print-btn-circle {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+      }
+      
+      .print-btn-circle .material-icons {
+        font-size: 1.3rem;
       }
     }
 
+    @media (max-width: 480px) {
+      .bottom-nav-item i,
+      .bottom-nav-item .material-icons {
+        font-size: 1.6rem;
+        margin-bottom: 0.2rem;
+      }
+      
+      .bottom-nav-item {
+        font-size: 0.65rem;
+        padding: 0.4rem 0;
+        min-height: 60px;
+        font-weight: 700;
+      }
+      
+      .bottom-nav {
+        height: 75px;
+        padding: 0.4rem 0.5rem;
+      }
+      
+      .print-btn-circle {
+        width: 55px;
+        height: 55px;
+        font-size: 1.4rem;
+      }
+      
+      .print-btn-circle .material-icons {
+        font-size: 1.4rem;
+      }
+    }
+
+    /* Print Button Styles */
     .print-btn {
-      position: relative;
-      transform: translateY(-15px);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+      position: relative;
+      padding-top: 34px; /* space for overlapping button */
+      flex: 0 0 80px; /* reserve space so other items don't shift */
     }
 
-    .print-btn-circle {
+    .print-btn-circle { 
+      background: var(--print-gradient);
+      border: none;
+      border-radius: 50%;
+      width: 58px;
+      height: 58px;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--print-gradient);
       color: white;
-      border: none;
+      font-size: 1.5rem;
       cursor: pointer;
-      box-shadow: var(--shadow-lg);
-      transition: all var(--transition-standard);
-      position: relative;
-      overflow: hidden;
+      transition: all var(--transition-fast);
+      box-shadow: 0 4px 12px rgb(84, 137, 253);
+      margin-bottom: 0;
     }
 
-    .print-btn-circle::before {
-      content: '';
+    .print-btn-circle .material-icons { font-size: 1.5rem; }
+    .print-btn-circle.priority {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(255,255,255,0.3) 0%, transparent 100%);
-      border-radius: 50%;
+      top: -29px; /* half outside (58px/2) */
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 14px 28px rgb(66, 103, 254);
+      border: 0;
+      z-index: 2;
     }
 
     .print-btn-circle:hover {
-      transform: scale(1.2) rotate(15deg);
-      box-shadow: var(--shadow-neon);
-    }
-
-    .print-btn-circle:hover::before {
-      background: linear-gradient(45deg, rgba(255,255,255,0.5) 0%, transparent 100%);
-    }
-
-    .print-btn-circle i {
-      font-size: 1.1rem;
-      z-index: 1;
+      transform: translateY(-2px) scale(1.1);
+      box-shadow: 0 6px 20px rgba(46, 107, 239, 0.881);
     }
     /* Modal Styles */
     .modal-overlay {
@@ -1660,20 +2142,22 @@
       align-items: center;
       padding: 1rem 1.25rem;
       border-bottom: 1px solid var(--outline-variant);
-      background: var(--surface-variant);
+      background: #2563EB;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      color: #ffffff;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
     }
 
     .modal-title {
       font-size: 1.1rem;
       font-weight: 700;
-      color: var(--on-surface);
+      color: #ffffff;
     }
 
     .modal-close {
-      background: rgba(0, 0, 0, 0.1);
+      background: rgba(255,255,255,0.18);
       border: none;
-      color: var(--on-surface-variant);
+      color: #ffffff;
       font-size: 1.1rem;
       cursor: pointer;
       padding: 0.4rem;
@@ -1682,57 +2166,125 @@
     }
 
     .modal-close:hover {
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(255,255,255,0.28);
       transform: scale(1.1);
     }
 
-    .modal-body {
-      padding: 1.25rem;
+    .modal-body { padding: 1.25rem; color: var(--on-surface); }
+
+    /* Mobile-safe modals: prevent overflow and wrap content */
+    @media (max-width: 768px) {
+      .modal {
+        display: flex;
+        flex-direction: column;
+        max-height: 86vh;
+      }
+      .modal-body {
+        padding: 1rem;
+        overflow-y: auto;
+        max-height: 100%;
+      }
+      .modal * {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .modal img, .modal video, .modal canvas {
+        max-width: 100%;
+        height: auto;
+      }
+      .modal .modal-actions, .modal .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-top: 1px solid #e5e7eb;
+        margin: 0 -1rem -1rem -1rem;
+        border-radius: 0 0 12px 12px;
+      }
+      .modal .modal-actions .btn, .modal .action-buttons .btn, .modal .action-buttons .btn-primary, .modal .action-buttons .btn-secondary, .modal .action-buttons .btn-calculate, .modal .action-buttons .btn-submit {
+        flex: 1 1 48%;
+        min-width: 0;
+        margin: 0;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+      
+      .modal .action-buttons .btn-calculate {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+        border-color: #059669;
+      }
+      
+      .modal .action-buttons .btn-submit {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white;
+        border-color: #2563eb;
+      }
+      
+      .modal .action-buttons .btn-cancel {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #d1d5db;
+      }
+      
+      .modal .action-buttons .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      /* Hide low-priority descriptive text on mobile to reduce clutter */
+      .modal .modal-subtitle, .modal .helper-text, .modal .field-hint, .modal .description-text {
+        display: none !important;
+      }
     }
 
     /* Upload Area Styles */
     .upload-area {
-      border: 2px dashed var(--outline);
+      border: 2px dashed #93c5fd;
       border-radius: var(--radius-lg);
       padding: 2rem;
       text-align: center;
-      background: var(--surface-variant);
+      background: #eff6ff;
       transition: all var(--transition-fast);
       cursor: pointer;
       margin-bottom: 1.5rem;
     }
 
     .upload-area:hover, .upload-area.dragover {
-      border-color: var(--primary);
-      background: var(--primary-light);
+      border-color: #2563eb;
+      background: #dbeafe;
     }
 
     .upload-icon {
       font-size: 3rem;
-      color: var(--primary);
+      color: #2563eb;
       margin-bottom: 1rem;
     }
 
     .upload-text {
-      font-weight: 600;
-      color: var(--on-surface);
+      font-weight: 700;
+      color: #1e3a8a;
       margin-bottom: 0.5rem;
       font-size: 1.1rem;
     }
 
     .upload-subtitle {
       font-size: 0.85rem;
-      color: var(--on-surface-variant);
+      color: #475569;
       line-height: 1.4;
     }
 
     .upload-btn {
-      background: var(--gradient-primary);
+      background: #2563eb;
       color: white;
       border: none;
-      padding: 0.75rem 1.5rem;
+      padding: 0.8rem 1.6rem;
       border-radius: var(--radius-md);
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: all var(--transition-fast);
       display: inline-flex;
@@ -1744,6 +2296,7 @@
     .upload-btn:hover {
       transform: translateY(-1px);
       box-shadow: var(--shadow-sm);
+      background: #1d4ed8;
     }
 
     /* File List */
@@ -1896,7 +2449,6 @@
       position: relative;
       width: 100%;
     }
-
     .vendor-dropdown select {
       width: 100%;
       padding: 0.875rem;
@@ -2136,6 +2688,48 @@
       font-weight: 600;
     }
 
+    /* Mobile: summaries scroll naturally (no sticky) */
+    @media (max-width: 768px) {
+      .order-summary, .pricing-summary {
+        position: static;
+        bottom: auto;
+        background: inherit;
+        border-top: none;
+        box-shadow: none;
+        z-index: auto;
+        margin: 1rem 0;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+      }
+      
+      .pricing-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 0.9rem;
+      }
+      
+      .pricing-item:last-child {
+        border-bottom: none;
+        font-weight: 600;
+        background: #f8fafc;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-top: 0.5rem;
+      }
+      
+      .pricing-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+      }
+      
+      .pricing-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1f2937;
+      }
+    }
+
     /* Action Buttons */
     .action-buttons {
       display: flex;
@@ -2301,12 +2895,8 @@
       animation: spin 1s linear infinite;
     }
 
-    /* Responsive Design */
+    /* Enhanced Mobile Responsive Design */
     @media (max-width: 768px) {
-      .main-content {
-        padding: 5rem 0.75rem 1.5rem;
-      }
-
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
@@ -2314,10 +2904,6 @@
 
       .services-grid {
         grid-template-columns: 1fr;
-      }
-
-      .job-card {
-        min-width: 250px;
       }
 
       .metadata-grid {
@@ -2328,6 +2914,48 @@
         margin: 0.75rem;
         max-width: calc(100% - 1.5rem);
       }
+      
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      
+      /* Mobile sidebar improvements */
+      .sidebar {
+        width: 280px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      
+      .sidebar.show {
+        transform: translateX(0);
+      }
+      
+      .sidebar-overlay {
+        display: block;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+      
+      .sidebar-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      /* Mobile header improvements */
+      .header {
+        height: 60px;
+      }
+      
+      .header-content {
+        padding: 0 1rem;
+      }
+      
+      .logo {
+        font-size: 1.4rem;
+      }
     }
 
     @media (max-width: 480px) {
@@ -2336,7 +2964,7 @@
       }
 
       .logo {
-        font-size: 1.5rem;
+        font-size: 1.3rem;
       }
 
       .menu-toggle, .header-btn {
@@ -2345,21 +2973,8 @@
         font-size: 1rem;
       }
 
-      .bottom-nav {
-        height: 55px;
-      }
-
-      .print-btn-circle {
-        width: 40px;
-        height: 40px;
-      }
-
-      .stat-card, .job-card, .service-card {
-        padding: 1rem;
-      }
-
-      .job-card {
-        min-width: 230px;
+      .stat-card, .service-card {
+        padding: 0.75rem;
       }
 
       .job-actions {
@@ -2368,6 +2983,24 @@
 
       .modal-header, .modal-body {
         padding: 1rem;
+      }
+      
+      /* Extra small screen optimizations */
+      .sidebar {
+        width: 100%;
+      }
+      
+      .header {
+        height: 55px;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+      }
+      
+      .section-title {
+        font-size: 1.1rem;
       }
     }
 
@@ -2538,6 +3171,74 @@
       box-shadow: none !important;
       text-shadow: 0 0 8px #fff;
     }
+
+    /* Custom Toggle Styles */
+    .custom-toggle {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+    }
+
+    .custom-toggle input[type="checkbox"] {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-track {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #d1d5db;
+      transition: all 0.3s ease;
+      border-radius: 14px;
+      border: 2px solid transparent;
+    }
+
+    .toggle-knob {
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      top: 2px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* Toggle checked state */
+    .custom-toggle input:checked + .toggle-track {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
+
+    .custom-toggle input:checked + .toggle-track + .toggle-knob {
+      transform: translateX(22px);
+      background: #ffffff;
+    }
+
+    /* Dark mode toggle styles */
+    [data-theme="dark"] .toggle-track {
+      background: #4b5563;
+    }
+
+    [data-theme="dark"] .custom-toggle input:checked + .toggle-track {
+      background: #60a5fa;
+      border-color: #60a5fa;
+    }
+
+    [data-theme="dark"] .toggle-knob {
+      background: #f3f4f6;
+    }
+
+    [data-theme="dark"] .custom-toggle input:checked + .toggle-track + .toggle-knob {
+      background: #ffffff;
+    }
   </style>
 </head>
 <body data-theme="light">
@@ -2547,6 +3248,9 @@
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
+      <button class="sidebar-back-btn" id="sidebarBackBtn" aria-label="Close sidebar">
+        <i class="fas fa-arrow-left"></i>
+      </button>
       <div class="sidebar-profile">
         <div class="sidebar-avatar">
           {% if user_details and user_details.profile_picture %}
@@ -2594,13 +3298,20 @@
         </a>
       </li>
       <li class="nav-item">
-        <a href="#" class="nav-link">
-          <i class="fas fa-cog"></i>
-          Settings
+        <a href="#" class="nav-link" id="sidebarModeToggle">
+          <i class="fas fa-adjust"></i>
+          Mode
+          <span style="margin-left:auto; display:inline-flex; align-items:center; gap:.4rem; font-weight:600;">
+            <label class="custom-toggle" style="position:relative; display:inline-block; width:50px; height:28px;">
+              <input type="checkbox" id="sidebarModeCheckbox" style="opacity:0; width:0; height:0;">
+              <span class="toggle-track" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#d1d5db; transition:all 0.3s ease; border-radius:14px; border:2px solid transparent;"></span>
+              <span class="toggle-knob" style="position:absolute; height:20px; width:20px; left:2px; top:2px; background:#ffffff; border-radius:50%; transition:all 0.3s ease; box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>
+            </label>
+          </span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="/logout/" class="nav-link">
+        <a href="/logout/?next=/" class="nav-link">
           <i class="fas fa-sign-out-alt"></i>
           Sign Out
         </a>
@@ -2618,9 +3329,6 @@
         <div class="logo">Printmax</div>
       </div>
       <div class="header-actions">
-        <button class="header-btn" id="themeToggle">
-          <i class="fas fa-sun"></i>
-        </button>
         <div class="notification-bell">
           <button class="header-btn" id="notificationToggle">
           <i class="fas fa-bell"></i>
@@ -2668,7 +3376,7 @@
                 <i class="fas fa-question-circle"></i>
                 Help
               </a>
-              <a href="/logout/" class="dropdown-item">
+              <a href="/logout/?next=/" class="dropdown-item">
                 <i class="fas fa-sign-out-alt"></i>
                 Sign Out
               </a>
@@ -2714,14 +3422,15 @@
     <!-- Quick Stats -->
     <section class="stats-section">
       <h2 class="section-title">
-        <i class="fas fa-chart-line"></i>
+        <span class="material-icons">dashboard</span>
         Dashboard Overview
       </h2>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-header">
+            <div class="stat-title">Total Jobs</div>
             <div class="stat-icon">
-              <i class="fas fa-print"></i>
+              <span class="material-icons">upload</span>
             </div>
           </div>
           <div class="stat-value" id="totalJobsCount">{{ total_jobs }}</div>
@@ -2729,17 +3438,19 @@
         </div>
         <div class="stat-card">
           <div class="stat-header">
+            <div class="stat-title">Pending</div>
             <div class="stat-icon">
-              <i class="fas fa-clock"></i>
+              <span class="material-icons">emoji_events</span>
             </div>
           </div>
           <div class="stat-value" id="pendingJobsCount">{{ pending_jobs }}</div>
-          <div class="stat-label">Pending</div>
+          <div class="stat-label">Pending Jobs</div>
         </div>
         <div class="stat-card">
           <div class="stat-header">
+            <div class="stat-title">Completed</div>
             <div class="stat-icon">
-              <i class="fas fa-check-circle"></i>
+              <span class="material-icons">bar_chart</span>
             </div>
           </div>
           <div class="stat-value" id="completedJobsCount">{{ completed_jobs }}</div>
@@ -2747,8 +3458,9 @@
         </div>
         <div class="stat-card">
           <div class="stat-header">
+            <div class="stat-title">This Month</div>
             <div class="stat-icon">
-              <i class="fas fa-indian-rupee-sign"></i>
+              <span class="material-icons">person</span>
             </div>
           </div>
           <div class="stat-value" id="totalEarningsCount">₹{{ total_earnings }}</div>
@@ -2761,11 +3473,11 @@
     <section class="jobs-section">
       <div class="section-header">
         <h2 class="section-title">
-          <i class="fas fa-history"></i>
+          <span class="material-icons">assignment</span>
           Print Requests (Pending Jobs)
         </h2>
         <button class="view-all-btn" onclick="refreshJobs()">
-          <i class="fas fa-sync-alt"></i> Refresh
+          <span class="material-icons">refresh</span> Refresh
         </button>
       </div>
 
@@ -2879,11 +3591,12 @@
         justify-content: center;
         padding: 1rem;
         backdrop-filter: blur(8px);
+        overflow: hidden;
       }
       .service-modal-overlay.active { display: flex; }
       
       .service-modal {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        background: #ffffff;
         border-radius: 24px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 8px 32px rgba(0,0,0,0.1);
         max-width: 500px;
@@ -2896,7 +3609,7 @@
       }
 
       .modal-header {
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        background: #2563EB;
         padding: 2rem 2rem 1.5rem 2rem;
         color: white;
         position: relative;
@@ -3337,10 +4050,13 @@
       .shop-dropdown {
         position: relative;
         width: 100%;
+        max-width: 100%;
+        overflow: hidden;
       }
 
       .shop-dropdown select {
         width: 100%;
+        max-width: 100%;
         padding: 1rem 1rem 1rem 1.25rem;
         border: 2px solid #e5e7eb;
         border-radius: 12px;
@@ -3350,6 +4066,10 @@
         cursor: pointer;
         appearance: none;
         transition: all 0.3s;
+        word-wrap: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-weight: 500;
         min-height: 48px; /* Touch-friendly height */
         -webkit-tap-highlight-color: transparent;
@@ -3386,7 +4106,7 @@
       .pricing-icon {
         width: 40px;
         height: 40px;
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        background: #2563EB;
         border-radius: 12px;
         display: flex;
         align-items: center;
@@ -3419,7 +4139,7 @@
         border-bottom: none;
         font-weight: 700;
         font-size: 1.1rem;
-        color: #1e3a8a;
+        color: #2563EB;
         border-top: 2px solid #3b82f6;
         padding-top: 0.75rem;
         margin-top: 0.5rem;
@@ -3438,10 +4158,64 @@
       .pricing-item.total {
         font-weight: 700;
         font-size: 1.1rem;
-        color: #1e3a8a;
+        color: #2563EB;
         border-top: 2px solid #3b82f6;
         padding-top: 0.75rem;
         margin-top: 0.5rem;
+      }
+      
+      .pricing-item.commission {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-left: 4px solid #f59e0b;
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+      
+      .pricing-item.vendor-price {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-left: 4px solid #3b82f6;
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        border-radius: 8px;
+        font-weight: 500;
+      }
+      
+      .pricing-item.commission .pricing-label {
+        color: #92400e;
+      }
+      
+      .pricing-item.commission .pricing-value {
+        color: #b45309;
+        font-weight: 700;
+      }
+      
+      .pricing-item.commission-per-item {
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+        border-left: 4px solid #a855f7;
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        border-radius: 8px;
+        font-weight: 500;
+      }
+      
+      .pricing-item.commission-per-item .pricing-label {
+        color: #7c3aed;
+      }
+      
+      .pricing-item.commission-per-item .pricing-value {
+        color: #8b5cf6;
+        font-weight: 600;
+      }
+      
+      .pricing-item.vendor-price .pricing-label {
+        color: #1e40af;
+      }
+      
+      .pricing-item.vendor-price .pricing-value {
+        color: #2563eb;
+        font-weight: 600;
       }
 
       .pricing-note {
@@ -3501,9 +4275,9 @@
       .btn-submit {
         flex: 2;
         padding: 1rem 1.5rem;
-        border: none;
+        border: 2px solid #2563EB;
         border-radius: 12px;
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        background: linear-gradient(135deg, #2563EB 0%, #1d4ed8 100%);
         color: white;
         font-weight: 600;
         cursor: pointer;
@@ -3514,23 +4288,27 @@
         gap: 0.5rem;
         font-size: 1rem;
         box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        margin: 0.25rem;
       }
 
       .btn-submit:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        border-color: #1d4ed8;
       }
 
       .btn-submit:disabled {
         background: #9ca3af;
+        border-color: #9ca3af;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
       }
+      
       .btn-calculate {
         flex: 1;
         padding: 1rem 1.5rem;
-        border: none;
+        border: 2px solid #059669;
         border-radius: 12px;
         background: linear-gradient(135deg, #059669 0%, #047857 100%);
         color: white;
@@ -3543,18 +4321,47 @@
         gap: 0.5rem;
         font-size: 1rem;
         box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+        margin: 0.25rem;
       }
 
       .btn-calculate:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(5, 150, 105, 0.4);
+        border-color: #047857;
       }
 
       .btn-calculate:disabled {
         background: #9ca3af;
+        border-color: #9ca3af;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
+      }
+      
+      .btn-cancel {
+        flex: 1;
+        padding: 1rem 1.5rem;
+        border: 2px solid #d1d5db;
+        border-radius: 12px;
+        background: #f9fafb;
+        color: #374151;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin: 0.25rem;
+      }
+
+      .btn-cancel:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background: #f3f4f6;
+        border-color: #9ca3af;
       }
 
       @keyframes modalSlideIn {
@@ -3601,6 +4408,13 @@
           font-size: 16px; /* Prevent zoom on iOS */
           padding: 1.2rem 1rem 1.2rem 1.25rem;
           min-height: 52px;
+          max-width: calc(100vw - 3rem); /* Prevent overflow on mobile */
+          box-sizing: border-box;
+        }
+        
+        .shop-dropdown {
+          max-width: calc(100vw - 3rem);
+          box-sizing: border-box;
         }
         
         .modal-body {
@@ -3613,6 +4427,424 @@
         
         .modal-actions {
           flex-direction: column;
+        }
+      }
+
+      /* Ensure modal fields wrap and dropdowns don't overflow screen */
+      .modal .modal-field-group, .modal .field-group, .service-modal .modal-field-group, .service-modal .field-group { 
+        max-width: 100%; 
+        overflow: hidden;
+      }
+      .modal select, .service-modal select { 
+        max-width: 100%; 
+        width: 100%; 
+        box-sizing: border-box;
+        word-wrap: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .modal .select, .service-modal .select { 
+        max-width: 100%; 
+        overflow: hidden;
+      }
+      .modal .field-row { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: .75rem; 
+      }
+      .modal .field-row > * { 
+        flex: 1 1 100%; 
+        min-width: 0; 
+        max-width: 100%;
+        overflow: hidden;
+      }
+      
+      /* Additional dropdown overflow fixes for all service modals */
+      .service-modal select {
+        max-width: calc(100vw - 4rem);
+        box-sizing: border-box;
+      }
+      
+      .service-modal .field-group {
+        max-width: calc(100vw - 4rem);
+        overflow: hidden;
+      }
+      
+      .service-modal .modal-field-group {
+        max-width: calc(100vw - 4rem);
+        overflow: hidden;
+      }
+      
+      /* Comprehensive dropdown overflow fixes for all modals */
+      .service-modal, .modal {
+        overflow: hidden;
+        position: relative;
+        max-width: 100vw;
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Modal content area */
+      .service-modal .modal-content, .modal .modal-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+      
+      .service-modal .modal-body, .modal .modal-body {
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: calc(100vh - 200px); /* Space for header and buttons */
+        padding-right: 0.5rem; /* Add padding to prevent scrollbar overlap */
+        padding-bottom: 120px; /* Space for fixed buttons */
+        position: relative;
+      }
+      
+      /* Ensure buttons are always visible and properly positioned */
+      .service-modal .modal-footer, .modal .modal-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 2px solid #e5e7eb;
+        padding: 1rem;
+        z-index: 1000;
+        box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+        align-items: center;
+      }
+      
+      /* Dark mode button visibility */
+      [data-theme="dark"] .service-modal .modal-footer, 
+      [data-theme="dark"] .modal .modal-footer {
+        background: #1f2937;
+        border-top-color: #374151;
+        box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
+      }
+      
+      /* Button styling improvements */
+      .service-modal .modal-footer .btn, .modal .modal-footer .btn {
+        flex: 1;
+        max-width: 120px;
+        min-height: 44px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+      }
+      
+      .service-modal .modal-footer .btn-cancel, .modal .modal-footer .btn-cancel {
+        background: white;
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+      }
+      
+      .service-modal .modal-footer .btn-calculate, .modal .modal-footer .btn-calculate {
+        background: #10b981;
+        color: white;
+        border: none;
+      }
+      
+      .service-modal .modal-footer .btn-submit, .modal .modal-footer .btn-submit {
+        background: #3b82f6;
+        color: white;
+        border: none;
+      }
+      
+      /* Hover states */
+      .service-modal .modal-footer .btn:hover, .modal .modal-footer .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      
+      /* Force dropdowns to stay within modal boundaries */
+      .service-modal, .modal {
+        contain: layout style;
+      }
+      
+      .service-modal *, .modal * {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      
+      /* Fix for all select elements in modals */
+      .service-modal select, .modal select {
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        position: relative;
+        z-index: 1;
+        /* Force select to respect container boundaries */
+        contain: layout;
+        /* Proper dropdown arrow styling */
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+        padding-right: 40px;
+        /* Center alignment */
+        text-align: left;
+        padding-left: 12px;
+        /* Ensure dropdown arrow is always visible */
+        background-color: white;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        height: 48px;
+        font-size: 16px;
+        line-height: 1.5;
+        /* Ensure text is fully visible */
+        padding-top: 12px;
+        padding-bottom: 12px;
+        vertical-align: middle;
+      }
+      
+      /* Dark mode dropdown styling */
+      [data-theme="dark"] .service-modal select, 
+      [data-theme="dark"] .modal select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f9fafb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+      }
+      
+      /* Focus state for dropdowns */
+      .service-modal select:focus, .modal select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      [data-theme="dark"] .service-modal select:focus, 
+      [data-theme="dark"] .modal select:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+      }
+      
+      /* Specific fix for select dropdown options */
+      .service-modal select:focus, .modal select:focus {
+        outline: none;
+        max-width: 100%;
+        width: 100%;
+      }
+      
+      /* Ensure select elements don't overflow their containers */
+      .service-modal .field-group select, .modal .field-group select,
+      .service-modal .modal-field-group select, .modal .modal-field-group select {
+        max-width: calc(100% - 1rem);
+        width: calc(100% - 1rem);
+      }
+      
+      /* Fix for select options to stay within modal */
+      .service-modal select option, .modal select option {
+        max-width: 100%;
+        word-wrap: break-word;
+        white-space: normal;
+        padding: 0.5rem;
+        background: var(--surface);
+        color: var(--on-surface);
+        /* Ensure option text is fully visible */
+        overflow: visible;
+        text-overflow: clip;
+        height: auto;
+        min-height: 40px;
+        display: block;
+        font-size: 16px;
+        line-height: 1.5;
+        border: none;
+      }
+      
+      /* Ensure select text is properly displayed */
+      .service-modal select, .modal select {
+        /* Remove any text truncation */
+        text-overflow: clip;
+        overflow: visible;
+        /* Ensure proper text display */
+        display: block;
+        width: 100%;
+        /* Better text rendering */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Ensure dropdown containers don't overflow */
+      .service-modal .field-group, .modal .field-group,
+      .service-modal .modal-field-group, .modal .modal-field-group {
+        max-width: 100%;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      /* Fix for vendor dropdown specifically */
+      .vendor-dropdown, .shop-dropdown {
+        max-width: 100%;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      .vendor-dropdown select, .shop-dropdown select {
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      /* Mobile-specific fixes for dropdown overflow */
+      @media (max-width: 768px) {
+        .service-modal, .modal {
+          margin: 0.5rem;
+          max-width: calc(100vw - 1rem);
+          max-height: calc(100vh - 1rem);
+        }
+        
+        .service-modal .modal-body, .modal .modal-body {
+          max-height: calc(100vh - 150px);
+          padding: 1rem;
+        }
+        
+        /* Mobile button fixes */
+        .service-modal .modal-footer, .modal .modal-footer {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: white;
+          border-top: 2px solid #e5e7eb;
+          padding: 0.75rem;
+          box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+          z-index: 1000;
+        }
+        
+        .action-buttons {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          justify-content: space-between;
+        }
+        
+        .action-buttons .btn {
+          flex: 1 1 45%;
+          min-width: 120px;
+          padding: 0.875rem 1rem;
+          font-size: 0.9rem;
+          border-radius: 10px;
+          font-weight: 600;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          transition: all 0.2s ease;
+        }
+        
+        .action-buttons .btn-calculate {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          color: white;
+          border: 2px solid #059669;
+        }
+        
+        .action-buttons .btn-submit {
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          color: white;
+          border: 2px solid #2563eb;
+        }
+        
+        .action-buttons .btn-cancel {
+          background: #f9fafb;
+          color: #374151;
+          border: 2px solid #d1d5db;
+        }
+        
+        .action-buttons .btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        [data-theme="dark"] .service-modal .modal-footer, 
+        [data-theme="dark"] .modal .modal-footer {
+          background: #1f2937;
+          border-top-color: #374151;
+          box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        
+        .service-modal .modal-body, .modal .modal-body {
+          max-height: calc(100vh - 200px); /* More space for fixed buttons */
+          padding-bottom: 100px; /* Space for fixed buttons */
+          overflow-y: auto;
+        }
+        
+        /* Mobile button styling */
+        .service-modal .modal-footer .btn, .modal .modal-footer .btn {
+          flex: 1;
+          max-width: 100px;
+          min-height: 40px;
+          font-size: 12px;
+          font-weight: 600;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.25rem;
+          padding: 0.5rem;
+        }
+        
+        .service-modal .modal-footer .btn i, .modal .modal-footer .btn i {
+          font-size: 12px;
+        }
+        
+        .service-modal select, .modal select {
+          max-width: calc(100vw - 3rem);
+          font-size: 16px; /* Prevent zoom on iOS */
+        }
+        
+        .service-modal select option, .modal select option {
+          max-width: calc(100vw - 3rem);
+          font-size: 14px;
+          padding: 0.75rem 0.5rem;
+        }
+      }
+      
+      /* Extra small mobile devices */
+      @media (max-width: 480px) {
+        .service-modal, .modal {
+          margin: 0.25rem;
+          max-width: calc(100vw - 0.5rem);
+          max-height: calc(100vh - 0.5rem);
+        }
+        
+        .service-modal .modal-body, .modal .modal-body {
+          max-height: calc(100vh - 120px);
+          padding: 0.75rem;
+        }
+        
+        .service-modal select, .modal select {
+          max-width: calc(100vw - 2rem);
+          font-size: 16px;
+        }
+        
+        .service-modal select option, .modal select option {
+          max-width: calc(100vw - 2rem);
+          font-size: 13px;
+          padding: 0.5rem;
         }
       }
     </style>
@@ -3677,12 +4909,12 @@
           icon: 'fas fa-print',
           fields: [
             { 
-              label: 'Upload Document', 
+              label: 'Upload Document or Images', 
               type: 'file', 
-              accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx', 
+              accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg', 
               required: true,
               multiple: true,
-              description: 'Upload your documents in PDF, Word, PowerPoint, Excel, or Text format (Multiple files supported)',
+              description: 'Upload PDF, Word, PPT, Excel, Text, or image files (Multiple files supported). Image previews will be shown.',
               icon: 'fas fa-file-alt'
             },
             { 
@@ -3723,8 +4955,8 @@
               label: 'Print Quality', 
               type: 'select', 
               options: [
-                { value: 'standard_quality', label: 'Standard Quality' },
-                { value: 'high_quality', label: 'High Quality' }
+                { value: 'standard_quality', label: 'Standard Quality - ₹5' },
+                { value: 'high_quality', label: 'High Quality - ₹24' }
               ], 
               required: true,
               description: 'Choose the print quality for your documents',
@@ -3820,13 +5052,10 @@
               label: 'Print Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (210 x 297 mm)' },
-                { value: 'A3', label: 'A3 (297 x 420 mm)' },
-                { value: 'A2', label: 'A2 (420 x 594 mm)' },
-                { value: 'A1', label: 'A1 (594 x 841 mm)' }
+                { value: 'A4', label: 'A4 (210 x 297 mm)' }
               ], 
               required: true,
-              description: 'Choose the size for your gloss print (A1 to A4 only)',
+              description: 'A4 size for professional gloss printing',
               icon: 'fas fa-ruler-combined'
             },
             { 
@@ -4365,6 +5594,12 @@
                       Calculate Price
                     </button>
                   ` : ''}
+                  ${service === 'photo' ? `
+                    <button type="button" class="btn-calculate" onclick="calculatePhotoPrintPrice('${service}')">
+                      <i class="fas fa-calculator"></i>
+                      Calculate Price
+                    </button>
+                  ` : ''}
                   <button type="submit" class="btn-submit">
                     <i class="fas fa-paper-plane"></i>
                     Submit Request
@@ -4461,6 +5696,90 @@
                 }
               } else {
                 await processFile(file, fileUploadLabel, filePreview);
+                
+                // For photo print, store file info and auto-calculate pricing if vendor is selected
+                if (service === 'photo') {
+                  modal.dataset.fileName = file.name;
+                  const shopSelect = modal.querySelector(`#${service}-shop-select`);
+                  if (shopSelect && shopSelect.value && shopSelect.value !== '') {
+                    // Small delay to ensure file processing is complete
+                    setTimeout(() => {
+                      calculatePhotoPrintPrice(service);
+                    }, 100);
+                  }
+                }
+                
+                // If service supports preview (digital, gloss, jumbo, goldenemboss), render a Live Preview block matching the Print modal style
+                if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss') && file) {
+                  // Store file data for preview functionality
+                  modal.dataset.currentFile = JSON.stringify({
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    lastModified: file.lastModified
+                  });
+                  
+                  if (file.type.startsWith('image/')) {
+                    // Handle image files
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const html = `
+                        <div class="image-preview-container active" style="margin-top: .5rem;">
+                        <div class="preview-title"><i class="fas fa-eye"></i> Live Preview</div>
+                        <div class="preview-canvas-container">
+                            <canvas id="${service}PreviewCanvas" class="preview-canvas" style="max-width:100%; border-radius:12px;"></canvas>
+                        </div>
+                        <div class="preview-info">
+                            <span id="${service}PreviewDimensions">Dimensions: -</span>
+                            <span id="${service}PreviewOrientation">Orientation: Portrait</span>
+                            <span id="${service}PreviewPages">Pages: 1</span>
+                        </div>
+                        <div class="preview-controls" style="display:flex;align-items:center;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
+                            <button id="${service}PrevPageBtn" class="copies-btn" title="Previous page" disabled><i class="fas fa-chevron-left"></i></button>
+                            <span id="${service}PageCounter" style="min-width:64px;text-align:center">1 / 1</span>
+                            <button id="${service}NextPageBtn" class="copies-btn" title="Next page" disabled><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                      </div>`;
+                    filePreview.innerHTML = html;
+                      
+                      // Render image preview
+                      updateServiceImagePreview(service, file, reader.result);
+                  };
+                  reader.readAsDataURL(file);
+                  } else if (file.type === 'application/pdf') {
+                    // Handle PDF files
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                      try {
+                        const html = `
+                          <div class="image-preview-container active" style="margin-top: .5rem;">
+                            <div class="preview-title"><i class="fas fa-eye"></i> Live Preview</div>
+                            <div class="preview-canvas-container">
+                              <canvas id="${service}PreviewCanvas" class="preview-canvas" style="max-width:100%; border-radius:12px;"></canvas>
+                            </div>
+                            <div class="preview-info">
+                              <span id="${service}PreviewDimensions">Dimensions: -</span>
+                              <span id="${service}PreviewOrientation">Orientation: Portrait</span>
+                              <span id="${service}PreviewPages">Pages: -</span>
+                            </div>
+                            <div class="preview-controls" style="display:flex;align-items:center;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
+                              <button id="${service}PrevPageBtn" class="copies-btn" title="Previous page" disabled><i class="fas fa-chevron-left"></i></button>
+                              <span id="${service}PageCounter" style="min-width:64px;text-align:center">0 / 0</span>
+                              <button id="${service}NextPageBtn" class="copies-btn" title="Next page" disabled><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                          </div>`;
+                        filePreview.innerHTML = html;
+                        
+                        // Initialize PDF preview
+                        await initializeServicePDFPreview(service, file, reader.result);
+                      } catch (error) {
+                        console.error('Error rendering PDF preview:', error);
+                        filePreview.innerHTML = '<div style="color:#ef4444; margin-top: .5rem;">Error loading PDF preview</div>';
+                      }
+                    };
+                    reader.readAsArrayBuffer(file);
+                  }
+                }
               }
             } else {
               // Handle multiple files
@@ -4494,6 +5813,17 @@
               // Store total page count in modal dataset
               modal.dataset.filePageCount = totalPages;
               modal.dataset.fileName = files.map(f => f.name).join(', ');
+            }
+            
+            // For photo print, automatically calculate pricing if vendor is selected
+            if (service === 'photo') {
+              const shopSelect = modal.querySelector(`#${service}-shop-select`);
+              if (shopSelect && shopSelect.value && shopSelect.value !== '') {
+                // Small delay to ensure file processing is complete
+                setTimeout(() => {
+                  calculatePhotoPrintPrice(service);
+                }, 100);
+              }
             }
           });
           
@@ -4550,7 +5880,7 @@
             
             // Handle images specially - convert to PDF and count as 1 page
             if (file.type.startsWith('image/')) {
-              pages = 1; // Images always count as 1 page
+              pages = 1; // Treat images as 1 page
               
               // Store original image for PDF conversion later
               fileObj.originalImageFile = file;
@@ -4560,6 +5890,10 @@
               const reader = new FileReader();
               reader.onload = (ev) => {
                 filePreview.innerHTML = `<img src='${ev.target.result}' alt='Preview' />`;
+                try {
+                  const pagesEl = document.getElementById('previewPages');
+                  if (pagesEl) pagesEl.textContent = 'Pages: 1';
+                } catch (e) { /* noop */ }
               };
               reader.readAsDataURL(file);
             } else {
@@ -4575,7 +5909,7 @@
                 };
                 reader.readAsDataURL(file);
               } else {
-                filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#1e3a8a;'></i><div>${file.name}<br><small>${pages} pages</small></div>`;
+                filePreview.innerHTML = `<i class='fas fa-file' style='font-size:2.5rem;color:#2563EB;'></i><div>${file.name}<br><small>${pages} pages</small></div>`;
               }
             }
             
@@ -4583,6 +5917,7 @@
             
             // Store page count in file object
             fileObj.pageCount = pages;
+            fileObj.pages = Math.max(1, pages || 0);
             
             // Store file info in modal dataset for access by other functions
             modal.dataset.filePageCount = pages;
@@ -4636,7 +5971,28 @@
             selectedShop = shopSelect.value; // Set initial value
             shopSelect.addEventListener('change', function() {
               selectedShop = this.value;
-              calculatePricing(service); // Calculate pricing when vendor changes
+              // Use specific pricing calculation function based on service type
+              if (service === 'photo') {
+                // For photo print, we need to check if file is uploaded first
+                if (modal.dataset.fileName) {
+                  calculatePhotoPrintPrice(service);
+                } else {
+                  // Show message to upload file first
+                  const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                  const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                  if (pricingDetails && pricingSummary) {
+                    pricingDetails.innerHTML = `
+                      <div class="loading-pricing">
+                        <i class="fas fa-upload"></i>
+                        <span>Please upload a photo first to calculate pricing</span>
+                      </div>
+                    `;
+                    pricingSummary.classList.add('active');
+                  }
+                }
+              } else {
+                calculatePricing(service); // Calculate pricing when vendor changes
+              }
             });
           }
         }, 500);
@@ -4644,9 +6000,20 @@
         // Add event listeners for form fields to trigger pricing recalculation
         setTimeout(() => {
           const formInputs = modal.querySelectorAll('select, input[type="number"], input[type="text"]');
+          // Only calculate when user explicitly clicks Calculate button, so hide auto-calc
           formInputs.forEach(input => {
-            input.addEventListener('change', () => calculatePricing(service));
-            input.addEventListener('input', () => calculatePricing(service));
+            input.addEventListener('change', () => {
+              const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+              if (pricingSummary) pricingSummary.classList.remove('active');
+              modal.dataset.calculatedPrice = '';
+              modal.dataset.pricingBreakdown = '';
+            });
+            input.addEventListener('input', () => {
+              const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+              if (pricingSummary) pricingSummary.classList.remove('active');
+              modal.dataset.calculatedPrice = '';
+              modal.dataset.pricingBreakdown = '';
+            });
           });
         }, 600);
         
@@ -5043,6 +6410,11 @@
         
         if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
           pricingSummary.classList.remove('active');
+          pricingDetails.innerHTML = `
+            <div class="loading-pricing">
+              <i class="fas fa-info-circle"></i>
+              <span>Select a vendor, then click Calculate</span>
+            </div>`;
           return;
         }
 
@@ -5115,7 +6487,6 @@
         
         return formData;
       }
-
       function calculateServicePricing(service, formData, vendorPricing) {
         let totalPrice = 0;
         const breakdown = [];
@@ -5143,7 +6514,27 @@
             break;
         }
 
-        return { total: totalPrice, breakdown };
+        // Calculate platform commission
+        const serviceKey = getServiceKey(service, formData);
+        const commission = calculatePlatformCommission(serviceKey, totalPrice);
+        
+        // Add commission details to breakdown
+        breakdown.push({
+          label: `Platform Commission (${commission.percentage}%)`,
+          value: `₹${commission.amount.toFixed(2)}`
+        });
+        
+        breakdown.push({
+          label: 'Vendor Price',
+          value: `₹${totalPrice.toFixed(2)}`
+        });
+
+        return { 
+          total: commission.total, 
+          vendorPrice: totalPrice,
+          commission: commission,
+          breakdown 
+        };
       }
 
       function calculateDigitalPricing(formData, pricing, pages, copies, breakdown) {
@@ -5356,23 +6747,36 @@
       function displayPricing(pricingDetails, pricing) {
         let html = '';
         
+        if (pricing.breakdown && pricing.breakdown.length > 0) {
         pricing.breakdown.forEach(item => {
+            const isCommission = item.label.includes('Platform Commission');
+            const isVendorPrice = item.label.includes('Vendor Price');
+            const isTotal = item.label.includes('Total Amount');
+            
           html += `
-            <div class="pricing-item">
+              <div class="pricing-item ${isCommission ? 'commission' : ''} ${isVendorPrice ? 'vendor-price' : ''} ${isTotal ? 'total' : ''}">
               <span class="pricing-label">${item.label}</span>
               <span class="pricing-value">${item.value}</span>
             </div>
           `;
         });
+        }
 
+        const totalPrice = pricing.total || pricing.total_price || 0;
         html += `
-          <div class="pricing-item">
-            <span class="pricing-label">Total Amount</span>
-            <span class="pricing-value">₹${pricing.total}</span>
+          <div class="pricing-item total">
+            <span class="pricing-label">Total Amount (Including Commission)</span>
+            <span class="pricing-value">₹${totalPrice.toFixed(2)}</span>
           </div>
         `;
 
         pricingDetails.innerHTML = html;
+        
+        // Show the pricing summary
+        const pricingSummary = pricingDetails.closest('.pricing-summary');
+        if (pricingSummary) {
+          pricingSummary.classList.add('active');
+        }
       }
 
       async function calculateDigitalPrintPrice(service) {
@@ -5649,49 +7053,10 @@
           const result = await response.json();
 
           if (result.success) {
-            // Update pricing summary
-            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
-            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-            
-            let html = '';
+            // Update pricing summary with commission
             const breakdown = result.pricing_breakdown;
-            
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
-                <span class="pricing-value">₹${breakdown.base_price}</span>
-              </div>
-            `;
-            
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Price per page</span>
-                <span class="pricing-value">₹${breakdown.price_per_page}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Number of pages</span>
-                <span class="pricing-value">${breakdown.page_count}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Number of copies</span>
-                <span class="pricing-value">${breakdown.num_copies}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Total pages</span>
-                <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
-              </div>
-              <div class="pricing-item total">
-                <span class="pricing-label">Total Amount</span>
-                <span class="pricing-value">₹${breakdown.total_price}</span>
-              </div>
-            `;
-            
-            pricingDetails.innerHTML = html;
-            pricingSummary.classList.add('active');
-            
-            // Store the calculated price in modal metadata
-            modal.dataset.calculatedPrice = breakdown.total_price;
-            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            const serviceKey = 'gloss_paper_a4';
+            displayPricingWithCommission(service, modal, breakdown, serviceKey);
             
           } else {
             alert('Error calculating price: ' + (result.error || 'Unknown error'));
@@ -5805,49 +7170,11 @@
           const result = await response.json();
 
           if (result.success) {
-            // Update pricing summary
-            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
-            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-            
-            let html = '';
+            // Update pricing summary with commission
             const breakdown = result.pricing_breakdown;
-            
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
-                <span class="pricing-value">₹${breakdown.base_price}</span>
-              </div>
-            `;
-            
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Price per page</span>
-                <span class="pricing-value">₹${breakdown.price_per_page}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Number of pages</span>
-                <span class="pricing-value">${breakdown.page_count}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Number of copies</span>
-                <span class="pricing-value">${breakdown.num_copies}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Total pages</span>
-                <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
-              </div>
-              <div class="pricing-item total">
-                <span class="pricing-label">Total Amount</span>
-                <span class="pricing-value">₹${breakdown.total_price}</span>
-              </div>
-            `;
-            
-            pricingDetails.innerHTML = html;
-            pricingSummary.classList.add('active');
-            
-            // Store the calculated price in modal metadata
-            modal.dataset.calculatedPrice = breakdown.total_price;
-            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            const printSize = formData.print_size || 'A3';
+            const serviceKey = `jumbo_${printSize.toLowerCase()}`;
+            displayPricingWithCommission(service, modal, breakdown, serviceKey);
             
           } else {
             alert('Error calculating price: ' + (result.error || 'Unknown error'));
@@ -5963,54 +7290,26 @@
           const result = await response.json();
 
           if (result.success) {
-            // Update pricing summary
-            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
-            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            // Update pricing summary with commission
+            const breakdown = {
+              total_price: result.total_price,
+              pricing_key_used: 'golden_emboss',
+              breakdown_items: result.pricing_breakdown
+            };
+            const serviceKey = 'a4_print_color'; // Use A4 color pricing for golden emboss
+            displayPricingWithCommission(service, modal, breakdown, serviceKey);
             
-            let html = '';
-            const breakdown = result.pricing_breakdown;
-            
-            // Add each breakdown item
-            breakdown.forEach(item => {
-              html += `
-                <div class="pricing-item">
-                  <span class="pricing-label">${item.label}</span>
-                  <span class="pricing-value">${item.value}</span>
-                </div>
-              `;
-            });
-            
-            // Add total pages information if available
-            if (result.structured_data && result.structured_data.total_pages) {
-              html += `
-                <div class="pricing-item">
-                  <span class="pricing-label">Total pages</span>
-                  <span class="pricing-value">${result.structured_data.total_pages}</span>
-                </div>
-              `;
-            }
-            
-            html += `
-              <div class="pricing-item total">
-                <span class="pricing-label">Total Amount</span>
-                <span class="pricing-value">₹${result.total_price}</span>
-              </div>
-            `;
-            
+            // Add additional info if using default pricing
             if (result.using_default_pricing) {
-              html += `
-                <div class="pricing-note">
+              const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+              const note = document.createElement('div');
+              note.className = 'pricing-note';
+              note.innerHTML = `
                   <i class="fas fa-info-circle"></i>
                   Using default pricing (vendor pricing not available)
-                </div>
               `;
+              pricingDetails.appendChild(note);
             }
-            
-            pricingDetails.innerHTML = html;
-            pricingSummary.classList.add('active');
-            
-            // Store the calculated price in modal metadata
-            modal.dataset.calculatedPrice = result.total_price;
             modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
             
             // Store structured data for better metadata handling
@@ -6084,53 +7383,24 @@
           const result = await response.json();
 
           if (result.success) {
-            // Update pricing summary
-            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
-            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-            
-            let html = '';
+            // Update pricing summary with commission
             const breakdown = result.pricing_breakdown;
+            const photoCount = formData.photo_package || '8';
+            const serviceKey = `passport_photo_${photoCount}`;
             
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
-                <span class="pricing-value">₹${breakdown.base_price}</span>
-              </div>
-            `;
+            // Create custom breakdown for passport photos
+            const customBreakdown = {
+              total_price: breakdown.total_price,
+              pricing_key_used: breakdown.pricing_key_used,
+              base_price: breakdown.base_price,
+              country: breakdown.country,
+              photo_package: breakdown.photo_package,
+              color_photo: breakdown.color_photo,
+              paper_size: breakdown.paper_size,
+              total_pages: breakdown.total_pages || 1
+            };
             
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Country</span>
-                <span class="pricing-value">${breakdown.country}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Photo Package</span>
-                <span class="pricing-value">${breakdown.photo_package} Photos</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Color Photo</span>
-                <span class="pricing-value">${breakdown.color_photo}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Paper Size</span>
-                <span class="pricing-value">${breakdown.paper_size}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Total pages</span>
-                <span class="pricing-value">${breakdown.total_pages || 1}</span>
-              </div>
-              <div class="pricing-item total">
-                <span class="pricing-label">Total Amount</span>
-                <span class="pricing-value">₹${breakdown.total_price}</span>
-              </div>
-            `;
-            
-            pricingDetails.innerHTML = html;
-            pricingSummary.classList.add('active');
-            
-            // Store the calculated price in modal metadata
-            modal.dataset.calculatedPrice = breakdown.total_price;
-            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            displayPricingWithCommission(service, modal, customBreakdown, serviceKey);
             
           } else {
             alert('Error calculating price: ' + (result.error || 'Unknown error'));
@@ -6144,30 +7414,121 @@
           calculateBtn.disabled = false;
         }
       }
+      
+      async function calculatePhotoPrintPrice(service) {
+        const modal = document.getElementById(`service-modal-${service}`);
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        
+        if (!shopSelect || !shopSelect.value || shopSelect.value === '') {
+          alert('Please select a vendor first');
+          return;
+        }
+
+        // Get selected vendor email
+        const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+        if (!selectedVendor || !selectedVendor.vendor_email) {
+          alert('Unable to get vendor information');
+          return;
+        }
+
+        // Check if a file is uploaded
+        if (!modal.dataset.fileName) {
+          alert('Please upload a photo first');
+          return;
+        }
+
+        // Collect form data for photo print
+        const formData = {
+          vendor_email: selectedVendor.vendor_email,
+          photo_size: modal.querySelector(`#${service}-field-1`).value, // Photo Size
+          print_quantity: parseInt(modal.querySelector(`#${service}-field-2`).value) || 1, // Print Quantity
+          paper_type: modal.querySelector(`#${service}-field-3`).value, // Paper Type
+          finish: modal.querySelector(`#${service}-field-4`).value // Finish
+        };
+        
+        console.log('Photo print form data being sent:', formData); // Debug log
+
+        // Show loading state
+        const calculateBtn = modal.querySelector('.btn-calculate');
+        const originalText = calculateBtn.innerHTML;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+
+        try {
+          // Use the photo print pricing calculation endpoint
+          const response = await fetch('/calculate-photo-print-pricing/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify(formData)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Update pricing summary with commission
+            const breakdown = result.pricing_breakdown;
+            const serviceKey = 'a4_print_color'; // Use A4 color pricing for photo prints (20% commission)
+            
+            // Ensure breakdown has all necessary fields for photo print
+            if (!breakdown.photo_size) {
+              breakdown.photo_size = formData.photo_size;
+            }
+            if (!breakdown.print_quantity) {
+              breakdown.print_quantity = formData.print_quantity;
+            }
+            if (!breakdown.paper_type) {
+              breakdown.paper_type = formData.paper_type;
+            }
+            if (!breakdown.finish) {
+              breakdown.finish = formData.finish;
+            }
+            
+            // Debug logging for photo print pricing
+            console.log('Photo print pricing breakdown:', breakdown);
+            console.log('Service key for commission:', serviceKey);
+            console.log('Form data:', formData);
+            
+            displayPricingWithCommission(service, modal, breakdown, serviceKey);
+            
+          } else {
+            alert('Error calculating price: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error calculating photo print price:', error);
+          alert('Error calculating price. Please try again.');
+        } finally {
+          // Restore button state
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
+      }
     </script>
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav">
       <a href="#" class="bottom-nav-item active">
-        <i class="fas fa-home"></i>
+        <span class="material-icons">home</span>
         <span>Home</span>
       </a>
       <a href="#" class="bottom-nav-item" id="historyBtn">
-        <i class="fas fa-history"></i>
+        <span class="material-icons">history</span>
         <span>History</span>
       </a>
       <div class="print-btn">
-        <button class="print-btn-circle" id="printBtn">
-          <i class="fas fa-print"></i>
+        <button class="print-btn-circle priority" id="printBtn">
+          <span class="material-icons">print</span>
         </button>
-        <span style="color: var(--on-surface); font-size: 0.65rem; font-weight: 600; margin-top: 0.2rem;">Print</span>
+        <span style="color: var(--on-surface); font-size: 0.72rem; font-weight: 700; margin-top: 0.1rem;">Print</span>
       </div>
       <a href="/photoprint/" class="bottom-nav-item passport-nav" id="passportPhotoBtn">
-        <i class="fas fa-id-card"></i>
+        <span class="material-icons">badge</span>
         <span>Passport Photo</span>
       </a>
       <a href="#" class="bottom-nav-item">
-        <i class="fas fa-user"></i>
+        <span class="material-icons">person</span>
         <span>Profile</span>
       </a>
     </nav>
@@ -6203,6 +7564,26 @@
         // Fallback to normal loading if preloading failed
         loadUserJobs();
       }
+      
+      // Fix back button behavior - redirect to home instead of login
+      let backButtonCount = 0;
+      const maxBackClicks = 2;
+      
+      window.addEventListener('popstate', function(event) {
+        backButtonCount++;
+        
+        if (backButtonCount >= maxBackClicks) {
+          // Redirect to home page instead of login
+          window.location.href = '/';
+          backButtonCount = 0;
+        }
+      });
+      
+      // Also handle browser back button
+      window.addEventListener('beforeunload', function() {
+        // Reset counter when leaving the page
+        backButtonCount = 0;
+      });
     });
   </script>
   
@@ -6275,7 +7656,7 @@
           <div class="upload-text">Choose a file or drag it here</div>
           <div class="upload-subtitle">Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, XLS, XLSX, JPG, PNG, GIF, BMP, TIFF, SVG</div>
           <button class="upload-btn" id="uploadBtn">
-            <i class="fas fa-plus"></i>
+            <i class="fas fa-file-upload"></i>
             Add files
           </button>
         </div>
@@ -6308,6 +7689,7 @@
             <span id="pageCounter" style="min-width:64px;text-align:center">0 / 0</span>
             <button id="nextPageBtn" class="copies-btn" title="Next page" disabled><i class="fas fa-chevron-right"></i></button>
           </div>
+          <!-- Layout guidance removed for generic print modal (kept only for Photo Print page) -->
         </div>
 
         <!-- Add More Files Button -->
@@ -6453,6 +7835,15 @@
                   <span class="option-price">+₹15 per page</span>
                 </label>
               </div>
+
+              <div class="option-item">
+                <input type="checkbox" id="tapeBinding" class="option-checkbox">
+                <label for="tapeBinding" class="option-label">
+                  <i class="fas fa-grip-lines"></i>
+                  Tape binding
+                  <span class="option-price">+₹25</span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -6537,6 +7928,208 @@
     let availableShops = [];
     let userLocation = null;
     let locationBasedShops = [];
+      
+      // Platform Commission Percentages
+      const PLATFORM_COMMISSIONS = {
+        'a4_print_bw': 20,           // A4 Print (B/W): 20%
+        'a4_print_color': 20,         // A4 Print (Color): 20%
+        'passport_photo_30': 20,      // Passport Photos (A4 - 30 photos): 20%
+        'passport_photo_8': 20,       // Passport Photos (A4 - 8 photos): 20%
+        'passport_photo_16': 15,      // Passport Photos (A4 - 16 photos): 15%
+        'digital_print_a4': 15,       // Digital Print (A4): 15%
+        'digital_print_12x18': 15,    // Digital Print (12x18): 15%
+        'gloss_paper_a4': 10,         // Gloss Paper Printing (A4): 10%
+        'spiral_binding': 10,         // Spiral Binding: 10%
+        'lamination_a4': 10,          // Lamination (A4): 10%
+        'tape_binding': 10,           // Tape Binding: 10%
+        'jumbo_a0': 10,               // Jumbo Paper Printing (A0): 10%
+        'jumbo_a1': 8,                // Jumbo Paper Printing (A1): 8%
+        'jumbo_a2': 12,               // Jumbo Paper Printing (A2): 12%
+        'jumbo_a3': 20,               // Jumbo Paper Printing (A3): 20%
+        'enhanced_image': 15          // Enhanced image charge: 15 rupees
+      };
+      
+      // Helper function to calculate platform commission
+      function calculatePlatformCommission(serviceKey, vendorPrice) {
+        const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 0;
+        const commissionAmount = (vendorPrice * commissionPercentage) / 100;
+        return {
+          percentage: commissionPercentage,
+          amount: commissionAmount,
+          total: vendorPrice + commissionAmount
+        };
+      }
+      
+      // Helper function to get service key for commission calculation
+      function getServiceKey(service, formData) {
+        switch(service) {
+          case 'a4':
+            const color = formData['Print Color'] || 'single_color';
+            return color === 'single_color' ? 'a4_print_bw' : 'a4_print_color';
+          case 'digital':
+            const paperSize = formData['Paper Size'] || 'A4';
+            return paperSize === 'A4' ? 'digital_print_a4' : 'digital_print_12x18';
+          case 'gloss':
+            return 'gloss_paper_a4';
+          case 'jumbo':
+            const size = formData['Print Size'] || 'A3';
+            return `jumbo_${size.toLowerCase()}`;
+          case 'goldenemboss':
+            return 'a4_print_color'; // Use A4 color pricing for golden emboss
+          case 'photo':
+            return 'a4_print_color'; // Use A4 color pricing for photo prints
+          case 'passport':
+            const photoCount = formData['Photo Package'] || '8';
+            return `passport_photo_${photoCount}`;
+          default:
+            return 'a4_print_color'; // Default fallback
+        }
+      }
+      
+      // Helper function to display pricing with commission
+      function displayPricingWithCommission(service, modal, breakdown, serviceKey) {
+        const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+        const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+        
+        const vendorPrice = breakdown.total_price;
+        const commission = calculatePlatformCommission(serviceKey, vendorPrice);
+        
+        let html = '';
+        
+        // Service details (keep existing breakdown items)
+        if (breakdown.pricing_key_used) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
+              <span class="pricing-value">₹${breakdown.base_price || 0}</span>
+            </div>
+          `;
+        }
+        
+        // Enhanced photo print specific details
+        if (service === 'photo') {
+          // Photo size and quantity details
+          if (breakdown.photo_size) {
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Photo Size</span>
+                <span class="pricing-value">${breakdown.photo_size}</span>
+              </div>
+            `;
+          }
+          
+          if (breakdown.print_quantity) {
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Number of Photos</span>
+                <span class="pricing-value">${breakdown.print_quantity}</span>
+              </div>
+            `;
+          }
+          
+          if (breakdown.paper_type) {
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Paper Type</span>
+                <span class="pricing-value">${breakdown.paper_type}</span>
+              </div>
+            `;
+          }
+          
+          if (breakdown.finish) {
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Finish</span>
+                <span class="pricing-value">${breakdown.finish}</span>
+              </div>
+            `;
+          }
+          
+          // Price per photo calculation
+          if (breakdown.base_price && breakdown.print_quantity) {
+            const pricePerPhoto = breakdown.base_price / breakdown.print_quantity;
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">Price per Photo</span>
+                <span class="pricing-value">₹${pricePerPhoto.toFixed(2)}</span>
+              </div>
+            `;
+          }
+        }
+        
+        if (breakdown.price_per_page) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">Price per page</span>
+              <span class="pricing-value">₹${breakdown.price_per_page}</span>
+            </div>
+          `;
+        }
+        
+        if (breakdown.page_count) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">Number of pages</span>
+              <span class="pricing-value">${breakdown.page_count}</span>
+            </div>
+          `;
+        }
+        
+        if (breakdown.num_copies) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">Number of copies</span>
+              <span class="pricing-value">${breakdown.num_copies}</span>
+            </div>
+          `;
+        }
+        
+        if (breakdown.page_count && breakdown.num_copies) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">Total pages</span>
+              <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
+            </div>
+          `;
+        }
+        
+        // Commission breakdown with per-page calculation
+        const totalItems = breakdown.print_quantity || breakdown.page_count || breakdown.num_copies || 1;
+        const commissionPerItem = commission.amount / totalItems;
+        
+        html += `
+          <div class="pricing-item vendor-price">
+            <span class="pricing-label">Vendor Price</span>
+            <span class="pricing-value">₹${vendorPrice.toFixed(2)}</span>
+          </div>
+          <div class="pricing-item commission">
+            <span class="pricing-label">Platform Commission (${commission.percentage}%)</span>
+            <span class="pricing-value">₹${commission.amount.toFixed(2)}</span>
+          </div>
+          <div class="pricing-item commission-per-item">
+            <span class="pricing-label">Commission per ${service === 'photo' ? 'Photo' : 'Page'}</span>
+            <span class="pricing-value">₹${commissionPerItem.toFixed(2)}</span>
+          </div>
+          <div class="pricing-item total">
+            <span class="pricing-label">Total Amount (Including Commission)</span>
+            <span class="pricing-value">₹${commission.total.toFixed(2)}</span>
+          </div>
+        `;
+        
+        pricingDetails.innerHTML = html;
+        pricingSummary.classList.add('active');
+        
+        // Store the calculated price in modal metadata
+        modal.dataset.calculatedPrice = commission.total;
+        modal.dataset.pricingBreakdown = JSON.stringify({
+          ...breakdown,
+          total_price: commission.total,
+          vendor_price: vendorPrice,
+          commission_amount: commission.amount,
+          commission_percentage: commission.percentage,
+          commission_per_item: commissionPerItem
+        });
+      }
 
     // Initialize user jobs data from backend - OPTIMIZED for instant loading
     try {
@@ -6562,7 +8155,8 @@
       specificPages: '',
       pageSize: 'a4',
       spiralBinding: false,
-      lamination: false
+      lamination: false,
+      tapeBinding: false
     };
 
     const pricePerPage = {
@@ -6572,12 +8166,14 @@
 
     const servicePrices = {
       spiralBinding: 20,
-      lamination: 15
+      lamination: 15,
+      tapeBinding: 25
     };
 
-    // Theme toggle functionality
+    // Theme toggle functionality (header + sidebar switch)
     const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = themeToggle.querySelector('i');
+    const themeIcon = themeToggle ? themeToggle.querySelector('i') : { className: '' };
+    const sidebarModeCheckbox = document.getElementById('sidebarModeCheckbox');
     let isDarkMode = false;
 
     const savedTheme = localStorage.getItem('theme');
@@ -6585,15 +8181,22 @@
       isDarkMode = savedTheme === 'dark';
       document.body.setAttribute('data-theme', savedTheme);
       themeIcon.className = isDarkMode ? 'fas fa-moon' : 'fas fa-sun';
+      if (sidebarModeCheckbox) sidebarModeCheckbox.checked = isDarkMode;
     }
 
-    themeToggle.addEventListener('click', () => {
-      isDarkMode = !isDarkMode;
+    const setTheme = (dark) => {
+      isDarkMode = !!dark;
       const theme = isDarkMode ? 'dark' : 'light';
       document.body.setAttribute('data-theme', theme);
       localStorage.setItem('theme', theme);
       themeIcon.className = isDarkMode ? 'fas fa-moon' : 'fas fa-sun';
-    });
+      if (sidebarModeCheckbox) sidebarModeCheckbox.checked = isDarkMode;
+    };
+
+    if (themeToggle) themeToggle.addEventListener('click', () => setTheme(!isDarkMode));
+    if (sidebarModeCheckbox) {
+      sidebarModeCheckbox.addEventListener('change', (e) => setTheme(e.target.checked));
+    }
 
     // Sidebar functionality
     const menuToggle = document.getElementById('menuToggle');
@@ -6614,6 +8217,8 @@
 
     menuToggle.addEventListener('click', openSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
+    const sidebarBackBtn = document.getElementById('sidebarBackBtn');
+    if (sidebarBackBtn) sidebarBackBtn.addEventListener('click', closeSidebar);
 
     // User profile dropdown functionality
     const userProfileTrigger = document.getElementById('userProfileTrigger');
@@ -7234,7 +8839,6 @@
       
       console.log(`⚡ INSTANT RENDER: ${pendingCount} pending jobs rendered immediately`);
     }
-
     // Function to create a job card - OPTIMIZED for performance
     function createJobCard(job) {
       // Cache status class calculation for better performance
@@ -7244,6 +8848,14 @@
         if (statusLower === 'pending') return 'status-pending';
         if (statusLower === 'processing' || statusLower === 'printing') return 'status-processing';
         return 'status-failed';
+      };
+
+      const getStatusColorClass = (status) => {
+        const statusLower = status.toLowerCase();
+        if (statusLower === 'completed') return 'status-color-completed';
+        if (statusLower === 'pending') return 'status-color-pending';
+        if (statusLower === 'processing' || statusLower === 'printing') return 'status-color-processing';
+        return 'status-color-failed';
       };
 
       const getFileIcon = (filename) => {
@@ -7268,6 +8880,39 @@
         return iconMap[ext] || 'fa-file';
       };
 
+      const getFileIconName = (filename) => {
+        const ext = (filename.split('.').pop() || '').toLowerCase();
+        const nameMap = {
+          'pdf': 'PDF',
+          'doc': 'Word',
+          'docx': 'Word',
+          'txt': 'Text',
+          'ppt': 'PowerPoint',
+          'pptx': 'PowerPoint',
+          'xls': 'Excel',
+          'xlsx': 'Excel',
+          'jpg': 'Image',
+          'jpeg': 'Image',
+          'png': 'Image',
+          'gif': 'GIF',
+          'bmp': 'Bitmap',
+          'tiff': 'TIFF',
+          'svg': 'SVG'
+        };
+        return nameMap[ext] || (ext ? ext.toUpperCase() : 'FILE');
+      };
+
+      // Map a job to a service color/icon tint and readable service name
+      const getServiceInfo = (job) => {
+        const type = (job.service_type || job.service || '').toString().toLowerCase();
+        if (type.includes('photo')) return { cls: 'service-color-photo icon-tint-photo', name: 'Photo Print' };
+        if (type.includes('digital')) return { cls: 'service-color-digital icon-tint-digital', name: 'Digital Print' };
+        if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
+        if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
+        if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
+        return { cls: '', name: 'Print Job' };
+      };
+
       const calculateEstimatedCost = (job) => {
         // Check if pricing details are stored in job metadata
         if (job.pricing_details && job.pricing_details.total_price) {
@@ -7282,81 +8927,81 @@
 
         if (job.spiralBinding === 'Yes') cost += 20;
         if (job.lamination === 'Yes') cost += pages * copies * 15;
+        if (job.tapeBinding === 'Yes') cost += 25;
 
         return cost;
       };
 
+      const serviceInfo = getServiceInfo(job);
+      const getJobToken = (jobObj) => {
+        const explicit = jobObj.token || jobObj.job_token || jobObj.order_id || jobObj.orderId || jobObj.reference || jobObj.ref || jobObj.id || jobObj.pk || jobObj.uuid;
+        if (explicit) return `${String(explicit).toString().slice(-8)}`;
+        const base = `${jobObj.filename || ''}-${jobObj.uploaded_at || ''}`;
+        let hash = 0;
+        for (let i = 0; i < base.length; i++) {
+          hash = ((hash << 5) - hash) + base.charCodeAt(i);
+          hash |= 0;
+        }
+        return `${Math.abs(hash).toString().slice(0, 8)}`;
+      };
+      const jobTokenText = getJobToken(job);
       return `
-        <div class="job-card">
-          <div class="job-header">
-            <div>
-              <div class="job-title" title="${job.filename}">
-                <i class="fas ${getFileIcon(job.filename)}" style="margin-right: 0.4rem; color: var(--primary);"></i>
-                ${job.filename.length > 20 ? job.filename.substring(0, 20) + '...' : job.filename}
+        <div class="job-card-mobile">
+          <div class="job-card-left-border ${serviceInfo.cls || getStatusColorClass(job.status)}"></div>
+          <div class="job-card-content">
+            <div class="job-card-header">
+              <div class="job-card-title">
+                <i class="fas ${getFileIcon(job.filename)} job-card-icon ${serviceInfo.cls.split(' ')[1] || ''} ${/\.pdf$/i.test(job.filename) ? 'pdf-red' : ''}"></i>
+                <span class="job-card-filename" title="${job.filename}">
+                  ${job.filename.length > 22 ? job.filename.substring(0, 22) + '...' : job.filename}
+                </span>
               </div>
-              <div class="job-subtitle">${job.uploaded_at}</div>
-            </div>
-            <span class="job-status ${getStatusClass(job.status)}">${job.status}</span>
-          </div>
-
-          <div class="job-metadata">
-            <div class="metadata-title">
-              <i class="fas fa-info-circle"></i>
-              Print Settings
-            </div>
-            <div class="metadata-grid">
-              <div class="metadata-item">
-                <div class="metadata-label">Pages</div>
-                <div class="metadata-value">${job.pages || 'N/A'}</div>
-              </div>
-              <div class="metadata-item">
-                <div class="metadata-label">Copies</div>
-                <div class="metadata-value">${job.copies || '1'}</div>
-              </div>
-              <div class="metadata-item">
-                <div class="metadata-label">Color</div>
-                <div class="metadata-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</div>
-              </div>
-              <div class="metadata-item">
-                <div class="metadata-label">Size</div>
-                <div class="metadata-value">${job.pageSize || 'A4'}</div>
+              <div class="job-token-row">
+                <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
+                <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
               </div>
             </div>
-          </div>
-
-          <div class="job-metadata" style="margin-top: 0.5rem;">
-            <div class="metadata-title">
-              <i class="fas fa-rupee-sign"></i>
-              Cost Details
-            </div>
-            <div class="metadata-grid">
-              <div class="metadata-item">
-                <div class="metadata-label">Estimated Cost</div>
-                <div class="metadata-value">₹${calculateEstimatedCost(job)}</div>
+            
+            <div class="job-card-details">
+              <div class="job-card-detail-row">
+                <i class="fas fa-tags job-detail-icon"></i>
+                <span class="job-detail-text">${serviceInfo.name}</span>
               </div>
-              <div class="metadata-item">
-                <div class="metadata-label">Status</div>
-                <div class="metadata-value">${job.job_completed === 'YES' ? 'Paid' : 'Pending'}</div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-calendar-alt job-detail-icon"></i>
+                <span class="job-detail-text">${job.uploaded_at}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-file-alt job-detail-icon"></i>
+                <span class="job-detail-text">${job.pages || 'N/A'} pages • ${job.copies || '1'} copies</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-palette job-detail-icon"></i>
+                <span class="job-detail-text">${job.color === 'Black and White' ? 'B&W' : 'Color'} • ${job.pageSize || 'A4'}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-rupee-sign job-detail-icon"></i>
+                <span class="job-detail-text">₹${calculateEstimatedCost(job)}</span>
               </div>
             </div>
-          </div>
-
-          <div class="job-actions">
-            <button class="job-btn" onclick="viewJobDetails('${job.filename}')">
-              <i class="fas fa-eye"></i> View
-            </button>
-            ${job.pricing_details ? `
-              <button class="job-btn" onclick="viewPricingDetails('${job.filename}')">
-                <i class="fas fa-calculator"></i> Pricing
+            
+            <div class="job-card-actions">
+              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
+                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
               </button>
-            ` : ''}
-            <button class="job-btn primary track-vendor-btn" 
-                    data-lat="${job.vendor_lat || ''}" 
-                    data-lng="${job.vendor_lng || ''}"
-                    data-vendor="${job.vendor || ''}"
-                    onclick="trackVendorLocation('${job.filename}')">
-              <i class="fas fa-map-marker-alt"></i> Track
-            </button>
+              ${job.pricing_details ? `
+                <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="Pricing Details">
+                  <i class="fas fa-calculator"></i><span class="job-action-label">Pricing</span>
+                </button>
+              ` : ''}
+              <button class="job-action-btn track-btn" 
+                      data-lat="${job.vendor_lat || ''}" 
+                      data-lng="${job.vendor_lng || ''}"
+                      data-vendor="${job.vendor || ''}"
+                      onclick="trackVendorLocation('${job.filename}')" title="Track Vendor">
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -7530,6 +9175,7 @@
     const pageSizeOptions = document.querySelectorAll('.page-size-option');
     const spiralBindingCheckbox = document.getElementById('spiralBinding');
     const laminationCheckbox = document.getElementById('lamination');
+    const tapeBindingCheckbox = document.getElementById('tapeBinding');
 
     const totalPages = document.getElementById('totalPages');
     const summaryPages = document.getElementById('summaryPages');
@@ -7838,7 +9484,8 @@
       addMoreBtn.style.display = hasFiles ? 'block' : 'none';
       document.getElementById('vendorSelection').style.display = hasFiles ? 'block' : 'none';
       printSettings.style.display = hasFiles ? 'block' : 'none';
-      orderSummary.style.display = hasFiles ? 'block' : 'none';
+      // Keep order summary hidden until user explicitly calculates price
+      orderSummary.style.display = 'none';
       actionButtons.style.display = hasFiles ? 'flex' : 'none';
 
       // Update calculate button visibility
@@ -7895,6 +9542,7 @@
 
       spiralBindingCheckbox.checked = settings.spiralBinding;
       laminationCheckbox.checked = settings.lamination;
+      if (tapeBindingCheckbox) tapeBindingCheckbox.checked = settings.tapeBinding;
 
       // Show image preview if current file is an image
       const previewEl = document.getElementById('imagePreviewContainer');
@@ -7948,7 +9596,7 @@
 
     function calculatePages(fileObj, settings) {
       if (settings.pageRange === 'all') {
-        return fileObj.pages;
+        return Math.max(1, fileObj.pages || 0);
       }
 
       const pageRanges = settings.specificPages.split(',').map(s => s.trim()).filter(s => s);
@@ -7984,6 +9632,263 @@
       
       updateOrderSummary();
     }
+    // Service Modal Preview Functions (for digital, gloss, jumbo, goldenemboss)
+    let servicePDFDocuments = {};
+    let serviceCurrentPreviewPageIdx = {};
+    let serviceFilteredPageNumbers = {};
+
+    // Generic function to update service image preview
+    async function updateServiceImagePreview(service, file, imageData) {
+      try {
+        const canvas = document.getElementById(`${service}PreviewCanvas`);
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        img.onload = function() {
+          // Set canvas size to fit the image
+          const maxWidth = 400;
+          const maxHeight = 300;
+          let { width, height } = img;
+          
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width *= ratio;
+            height *= ratio;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw white background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw image
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Update preview info
+          const dimensionsEl = document.getElementById(`${service}PreviewDimensions`);
+          const pagesEl = document.getElementById(`${service}PreviewPages`);
+          const pageCounter = document.getElementById(`${service}PageCounter`);
+          
+          if (dimensionsEl) dimensionsEl.textContent = `Dimensions: ${img.naturalWidth} x ${img.naturalHeight}`;
+          if (pagesEl) pagesEl.textContent = 'Pages: 1';
+          if (pageCounter) pageCounter.textContent = '1 / 1';
+        };
+
+        img.src = imageData;
+      } catch (error) {
+        console.error(`Error updating ${service} image preview:`, error);
+      }
+    }
+
+    // Function to update digital image preview (for backward compatibility)
+    async function updateDigitalImagePreview(file, imageData) {
+      return updateServiceImagePreview('digital', file, imageData);
+    }
+
+    // Generic function to initialize service PDF preview
+    async function initializeServicePDFPreview(service, file, pdfData) {
+      try {
+        const pdfBytes = new Uint8Array(pdfData);
+        servicePDFDocuments[service] = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+        serviceCurrentPreviewPageIdx[service] = 0;
+        serviceFilteredPageNumbers[service] = Array.from({ length: servicePDFDocuments[service].numPages }, (_, i) => i + 1);
+        
+        await updateServicePDFPreview(service);
+      } catch (error) {
+        console.error(`Error initializing ${service} PDF preview:`, error);
+      }
+    }
+
+    // Function to initialize digital PDF preview (for backward compatibility)
+    async function initializeDigitalPDFPreview(file, pdfData) {
+      return initializeServicePDFPreview('digital', file, pdfData);
+    }
+
+    // Generic function to update service PDF preview
+    async function updateServicePDFPreview(service) {
+      const canvas = document.getElementById(`${service}PreviewCanvas`);
+      const ctx = canvas.getContext('2d');
+      const pageCounter = document.getElementById(`${service}PageCounter`);
+      const prevBtn = document.getElementById(`${service}PrevPageBtn`);
+      const nextBtn = document.getElementById(`${service}NextPageBtn`);
+      const pagesEl = document.getElementById(`${service}PreviewPages`);
+
+      if (!servicePDFDocuments[service] || serviceFilteredPageNumbers[service].length === 0) {
+        canvas.width = 0;
+        canvas.height = 0;
+        if (pageCounter) pageCounter.textContent = '0 / 0';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        return;
+      }
+
+      try {
+        const pageNumber = serviceFilteredPageNumbers[service][serviceCurrentPreviewPageIdx[service]];
+        const page = await servicePDFDocuments[service].getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 1.2 });
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        const renderCtx = { canvasContext: ctx, viewport };
+        await page.render(renderCtx).promise;
+        
+        if (pageCounter) pageCounter.textContent = `${serviceCurrentPreviewPageIdx[service] + 1} / ${serviceFilteredPageNumbers[service].length}`;
+        if (prevBtn) prevBtn.disabled = serviceCurrentPreviewPageIdx[service] === 0;
+        if (nextBtn) nextBtn.disabled = serviceCurrentPreviewPageIdx[service] === serviceFilteredPageNumbers[service].length - 1;
+        if (pagesEl) pagesEl.textContent = `Pages: ${servicePDFDocuments[service].numPages}`;
+        
+        // Add event listeners if not already added
+        if (prevBtn && !prevBtn._serviceWired) {
+          prevBtn._serviceWired = true;
+          prevBtn.addEventListener('click', () => {
+            if (serviceCurrentPreviewPageIdx[service] > 0) {
+              serviceCurrentPreviewPageIdx[service]--;
+              updateServicePDFPreview(service);
+            }
+          });
+        }
+        
+        if (nextBtn && !nextBtn._serviceWired) {
+          nextBtn._serviceWired = true;
+          nextBtn.addEventListener('click', () => {
+            if (serviceCurrentPreviewPageIdx[service] < serviceFilteredPageNumbers[service].length - 1) {
+              serviceCurrentPreviewPageIdx[service]++;
+              updateServicePDFPreview(service);
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Error rendering ${service} PDF preview:`, error);
+      }
+    }
+
+    // Function to update digital PDF preview (for backward compatibility)
+    async function updateDigitalPDFPreview() {
+      return updateServicePDFPreview('digital');
+    }
+
+    // Function to fix dropdown overflow in modals
+    function fixDropdownOverflow() {
+      // Fix all select elements in service modals
+      const serviceModals = document.querySelectorAll('.service-modal-overlay.active .service-modal');
+      serviceModals.forEach(modal => {
+        const selects = modal.querySelectorAll('select');
+        selects.forEach(select => {
+          // Force select to respect modal boundaries
+          const modalRect = modal.getBoundingClientRect();
+          const selectRect = select.getBoundingClientRect();
+          
+          // Calculate maximum width based on modal width
+          const maxWidth = Math.min(modalRect.width - 40, window.innerWidth - 40);
+          select.style.maxWidth = `${maxWidth}px`;
+          select.style.width = `${maxWidth}px`;
+          
+          // Add event listener to handle dropdown opening
+          select.addEventListener('focus', function() {
+            // Ensure dropdown stays within viewport
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const selectRect = this.getBoundingClientRect();
+            
+            // Calculate safe width to prevent overflow
+            const safeWidth = Math.min(
+              modalRect.width - 40,
+              viewportWidth - selectRect.left - 20,
+              selectRect.width
+            );
+            
+            this.style.maxWidth = `${safeWidth}px`;
+            this.style.width = `${safeWidth}px`;
+            
+            // If select is too close to bottom edge, scroll modal up
+            if (selectRect.bottom > viewportHeight - 200) {
+              const modalBody = modal.querySelector('.modal-body');
+              if (modalBody) {
+                modalBody.scrollTop = Math.max(0, modalBody.scrollTop - 100);
+              }
+            }
+          });
+          
+          // Add event listener for when dropdown closes
+          select.addEventListener('blur', function() {
+            // Reset to modal-based width
+            const modalRect = modal.getBoundingClientRect();
+            const maxWidth = Math.min(modalRect.width - 40, window.innerWidth - 40);
+            this.style.maxWidth = `${maxWidth}px`;
+            this.style.width = `${maxWidth}px`;
+          });
+        });
+      });
+    }
+    
+    // Function to ensure modal buttons are always visible
+    function ensureModalButtonsVisible() {
+      const serviceModals = document.querySelectorAll('.service-modal-overlay.active .service-modal');
+      serviceModals.forEach(modal => {
+        const modalBody = modal.querySelector('.modal-body');
+        const modalFooter = modal.querySelector('.modal-footer');
+        
+        if (modalBody && modalFooter) {
+          // Ensure modal body has proper height
+          const viewportHeight = window.innerHeight;
+          const footerHeight = modalFooter.offsetHeight;
+          const headerHeight = 60; // Approximate header height
+          
+          modalBody.style.maxHeight = `${viewportHeight - headerHeight - footerHeight - 20}px`;
+          modalBody.style.overflowY = 'auto';
+          modalBody.style.paddingBottom = `${footerHeight + 20}px`;
+          
+          // Ensure footer is always visible
+          modalFooter.style.position = 'fixed';
+          modalFooter.style.bottom = '0';
+          modalFooter.style.left = '0';
+          modalFooter.style.right = '0';
+          modalFooter.style.zIndex = '1000';
+        }
+      });
+    }
+
+    // Call fixDropdownOverflow when modals are opened
+    function openServiceModal(service) {
+      const modalId = `service-modal-${service}`;
+      let modal = document.getElementById(modalId);
+      if (!modal) {
+        // Create modal if not exists
+        modal = document.createElement('div');
+        modal.className = 'service-modal-overlay active';
+        modal.id = modalId;
+        modal.innerHTML = renderServiceModal(service);
+        document.getElementById('serviceModalsContainer').appendChild(modal);
+        setTimeout(() => {
+          attachServiceModalEvents(service, modal);
+          fixDropdownOverflow(); // Fix dropdown overflow after modal is created
+          ensureModalButtonsVisible(); // Ensure buttons are visible
+        }, 100);
+      } else {
+        modal.classList.add('active');
+        setTimeout(() => {
+          fixDropdownOverflow(); // Fix dropdown overflow when modal is opened
+          ensureModalButtonsVisible(); // Ensure buttons are visible
+        }, 100);
+      }
+    }
+
+    // Add window resize listener to fix dropdown overflow and button visibility
+    window.addEventListener('resize', function() {
+      fixDropdownOverflow();
+      ensureModalButtonsVisible();
+    });
+
+    // Add orientation change listener for mobile devices
+    window.addEventListener('orientationchange', function() {
+      setTimeout(() => {
+        fixDropdownOverflow();
+        ensureModalButtonsVisible();
+      }, 500); // Delay to allow orientation change to complete
+    });
 
     // Function to update image preview based on settings
     async function updateImagePreview(fileObj, settings) {
@@ -8026,12 +9931,21 @@
           drawX = (canvas.width - drawWidth) / 2;
           drawY = (canvas.height - drawHeight) / 2;
           
-          // Draw the image
+          // Draw white page and the image
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
           
           // Update preview info
           document.getElementById('previewDimensions').textContent = '';
           document.getElementById('previewOrientation').textContent = '';
+          // Update page counters
+          const pagesEl = document.getElementById('previewPages');
+          if (pagesEl) pagesEl.textContent = 'Pages: 1';
+          const ctr = document.getElementById('pageCounter');
+          if (ctr) ctr.textContent = '1 / 1';
+          const modalEl = document.getElementById('printModal');
+          if (modalEl) modalEl.dataset.filePageCount = 1;
         };
 
         // Load the image
@@ -8294,6 +10208,13 @@
       updateCurrentFileSettings('lamination', laminationCheckbox.checked);
     });
 
+    if (tapeBindingCheckbox) {
+      tapeBindingCheckbox.addEventListener('change', () => {
+        if (selectedFileIndex === -1) return;
+        updateCurrentFileSettings('tapeBinding', tapeBindingCheckbox.checked);
+      });
+    }
+
     // Vendor selection is now handled in renderVendorOptions function
 
     // Action buttons
@@ -8352,13 +10273,21 @@
       
       console.log(`🎨 Color type: ${colorType}, Print type: ${printType}`);
       
+      // Collect binding options
+      const spiralBinding = document.getElementById('spiralBinding').checked;
+      const lamination = document.getElementById('lamination').checked;
+      const tapeBinding = document.getElementById('tapeBinding').checked;
+      
       // Collect form data for A4 print
       // Pricing structure supports: a4_print_single_bw, a4_print_single_color, a4_print_double_bw, a4_print_double_color
       const formData = {
         vendor_email: selectedVendorData.vendor_email,
         print_type: printType,
         total_pages: totalPages,
-        total_copies: totalCopies
+        total_copies: totalCopies,
+        spiral_binding: spiralBinding,
+        lamination: lamination,
+        tape_binding: tapeBinding
       };
       
       console.log('📊 A4 print form data being sent:', formData);
@@ -8383,17 +10312,49 @@
         const result = await response.json();
 
         if (result.success) {
-          // Pricing calculation successful - just update the order summary total
+          // Pricing calculation successful - calculate commission and update display
           const breakdown = result.pricing_breakdown;
+          let vendorPrice = breakdown.total_price;
+          
+          // Calculate platform commission for A4 print
+          const serviceKey = printType === 'single_color' ? 'a4_print_color' : 'a4_print_bw';
+          const commission = calculatePlatformCommission(serviceKey, vendorPrice);
+          
+          // Add binding services commission if selected
+          if (spiralBinding) {
+            const bindingCommission = calculatePlatformCommission('spiral_binding', 20);
+            commission.amount += bindingCommission.amount;
+            commission.total += bindingCommission.total;
+          }
+          if (lamination) {
+            const laminationPrice = totalPages * totalCopies * 15;
+            const laminationCommission = calculatePlatformCommission('lamination_a4', laminationPrice);
+            commission.amount += laminationCommission.amount;
+            commission.total += laminationCommission.total;
+          }
+          if (tapeBinding) {
+            const tapeCommission = calculatePlatformCommission('tape_binding', 25);
+            commission.amount += tapeCommission.amount;
+            commission.total += tapeCommission.total;
+          }
           
           // Store the calculated price in modal metadata
-          document.getElementById('printModal').dataset.calculatedPrice = breakdown.total_price;
-          document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify(breakdown);
+          document.getElementById('printModal').dataset.calculatedPrice = commission.total;
+          document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify({
+            ...breakdown,
+            total_price: commission.total,
+            vendor_price: vendorPrice,
+            commission_amount: commission.amount,
+            commission_percentage: commission.percentage
+          });
           
-          // Update the order summary total amount with the real calculated price
+          // Update the order summary total amount with commission included
           const totalAmountElement = document.getElementById('totalAmount');
           if (totalAmountElement) {
-            totalAmountElement.textContent = `₹${breakdown.total_price}`;
+            totalAmountElement.textContent = `₹${commission.total.toFixed(2)}`;
+            // Reveal the order summary only after a successful calculation
+            const orderSummaryEl = document.getElementById('orderSummary');
+            if (orderSummaryEl) orderSummaryEl.style.display = 'block';
           }
           
         } else {
@@ -8466,6 +10427,7 @@
             pageSize: settings.pageSize,
             spiralBinding: settings.spiralBinding ? 'Yes' : 'No',
             lamination: settings.lamination ? 'Yes' : 'No',
+            tapeBinding: settings.tapeBinding ? 'Yes' : 'No',
             timestamp: new Date().toISOString(),
             status: "pending",
             job_completed: "NO",
@@ -8718,7 +10680,6 @@
         return null;
       }
     }
-
     function filterShopsByLocation(shops, userLat, userLng) {
       console.log('🔍 Filtering shops by location:');
       console.log('👤 User coordinates:', { lat: userLat, lng: userLng });
@@ -9187,4 +11148,6 @@
 
 
 </body>
+</html>
+</html>
 </html>
