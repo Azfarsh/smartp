@@ -6,6 +6,7 @@
     <meta name="user-email" content="{{ user.email|default:'anonymous' }}">
     <title>Photo Print Service</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -1068,6 +1069,10 @@ async function handlePrint() {
         alert('Please select a shop');
         return;
     }
+    if (!document.body.dataset.calculatedPrice || !document.body.dataset.pricingBreakdown) {
+        alert('Please calculate the price before proceeding to print.');
+        return;
+    }
     
     printBtn.disabled = true;
     printBtn.textContent = 'Creating PDF...';
@@ -1153,27 +1158,55 @@ async function handlePrint() {
         formData.append('vendor_id', vendorId);
         // Always use vendor_print_jobs for storage to match dashboard
         // formData.append('storage_folder', 'vendor_manual_print_jobs'); // Remove this line if present
-        
-        const response = await fetch('/upload/', {
+        // Payment-first: create Razorpay order
+        const amountRs = pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0;
+        if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
+
+        const orderResp = await fetch('/payments/create-order/', {
             method: 'POST',
-            body: formData,
-            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ amount_paise: Math.round(amountRs * 100), receipt: `photo_${Date.now()}` })
         });
-        
-        if (response.ok) {
-            const result = await response.json();
-            // Show success message with pricing details if available
-            if (pricingDetails) {
-                alert(`Photo print job submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}\nToken: ${token}`);
-            } else {
-                alert(`Photo print job submitted successfully! Token: ${token}`);
-            }
-            // window.location.href = '/userdashboard/'; // Remove redirect
-            resetPhotoPrintModal();
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to submit print job');
-        }
+        const orderData = await orderResp.json();
+        if (!orderResp.ok || !orderData.success) { throw new Error(orderData.error || 'Failed to create Razorpay order'); }
+
+        await new Promise((resolve) => {
+            const rzp = new Razorpay({
+                key: orderData.key_id,
+                amount: orderData.order.amount,
+                currency: orderData.order.currency,
+                name: 'SmartPrint',
+                description: 'Photo Print',
+                order_id: orderData.order.id,
+                handler: async function (response) {
+                    try {
+                        formData.append('razorpay_payment_id', response.razorpay_payment_id);
+                        formData.append('razorpay_order_id', response.razorpay_order_id);
+                        formData.append('razorpay_signature', response.razorpay_signature);
+                        const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                        const verifyData = await verifyResp.json();
+                        if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
+                        if (pricingDetails) {
+                            alert(`Photo print job submitted successfully!\n\nTotal Paid: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}\nToken: ${token}`);
+                        } else {
+                            alert(`Photo print job submitted successfully! Token: ${token}`);
+                        }
+                        resetPhotoPrintModal();
+                        resolve();
+                    } catch (err) {
+                        alert(err.message || 'Payment verified but upload failed');
+                        resolve();
+                    }
+                },
+                modal: { ondismiss: function(){ resolve(); } },
+                theme: { color: '#3b82f6' }
+            });
+            rzp.on('payment.failed', function (resp) {
+                alert('Payment failed: ' + (resp.error && resp.error.description ? resp.error.description : 'Please try again.'));
+                resolve();
+            });
+            rzp.open();
+        });
     } catch (error) {
         console.error('Error:', error);
         alert(`Error: ${error.message}`);

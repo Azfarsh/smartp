@@ -6399,11 +6399,11 @@
                   });
                   const data = await verifyResp.json();
                   if (data.success) {
-                    if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport' || service === 'photo') && pricingDetails) {
-                      alert(`Request submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}`);
-                    } else {
-                      alert('Request submitted successfully!');
-                    }
+                    try { closeServiceModal(service); } catch (e) {}
+                    const toastMsg = pricingDetails
+                      ? `Your ${tmpl.title} request has been sent to print. Paid Rs${pricingDetails.total_price}.`
+                      : `Your ${tmpl.title} request has been sent to print.`;
+                    if (typeof showToast === 'function') { showToast('Payment successful', toastMsg); }
                     try {
                       const newJob = {
                         filename: modal.dataset.fileName || (files && files[0] ? files[0].name : 'New Job'),
@@ -6430,7 +6430,6 @@
                         if (node) container.insertBefore(node, container.firstChild);
                       }
                     } catch (e) { console.warn('Could not prepend new job card:', e); }
-                    closeServiceModal(service);
                     resetServiceModal(service);
                   } else {
                     alert('Payment verified but upload failed: ' + (data.error || 'Unknown error'));
@@ -10758,7 +10757,7 @@
       }
     }
 
-    // Complete R2 upload integration
+    // Payment-first flow with Razorpay, then upload on verified payment
     document.getElementById('proceedBtn').addEventListener('click', async () => {
       const proceedBtn = document.getElementById('proceedBtn');
       proceedBtn.disabled = true;
@@ -10777,6 +10776,7 @@
           return;
         }
 
+        // Prepare form data (files + settings) but DO NOT upload yet
         const formData = new FormData();
 
         for (let i = 0; i < uploadedFiles.length; i++) {
@@ -10869,42 +10869,123 @@
           console.log('⚠️ No pricing details available for A4 print job');
         }
 
-        const response = await fetch('/upload/', {
+        // 1) Create Razorpay order from server using calculated price
+        const totalAmountRupees = parseFloat(calculatedPrice);
+        const amountPaise = Math.round(totalAmountRupees * 100);
+
+        const orderResp = await fetch('/payments/create-order/', {
           method: 'POST',
-          body: formData,
-          headers: { 'X-CSRFToken': getCookie('csrftoken') }
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ amount_paise: amountPaise, receipt: `print_${Date.now()}` })
         });
 
-        if (response.ok) {
-          const result = await response.json();
-          // Show success message with pricing details if available
-          if (pricingDetails) {
-            alert(`Print job submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedVendorData?.shop_name || 'Unknown'}`);
-          } else {
-          alert(result.message || 'Print job submitted successfully!');
-          }
-          closeModalFunc();
-
-          uploadedFiles = [];
-          selectedFileIndex = -1;
-          fileSettings = {};
-          updateFileList();
-          updateUI();
-
-          // Refresh the jobs after successful upload
-          setTimeout(() => {
-            refreshJobs();
-          }, 1000);
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to upload files');
+        const orderData = await orderResp.json();
+        if (!orderResp.ok || !orderData.success) {
+          throw new Error(orderData.error || 'Failed to create Razorpay order');
         }
+
+        // 2) Open Razorpay Checkout
+        const options = {
+          key: orderData.key_id,
+          amount: amountPaise,
+          currency: 'INR',
+          name: 'SmartPrint',
+          description: 'Document Printing',
+          order_id: orderData.order.id,
+          handler: async function (paymentResponse) {
+            try {
+              // Append payment details to form data
+              formData.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
+              formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
+              formData.append('razorpay_signature', paymentResponse.razorpay_signature);
+
+              // 3) Verify payment on server and upload files atomically
+              const verifyResp = await fetch('/payments/verify/', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              });
+
+              const verifyData = await verifyResp.json();
+              if (!verifyResp.ok || !verifyData.success) {
+                throw new Error(verifyData.error || 'Payment verification failed');
+              }
+
+              // Success → notify, inject job card instantly, reset, and refresh
+              // Close modal instantly and show professional toast
+              try { closeModalFunc(); } catch (e) {}
+              const successMsg = pricingDetails
+                ? `Your print job has been sent to print. Paid Rs${pricingDetails.total_price}.`
+                : 'Your print job has been sent to print.';
+              if (typeof showToast === 'function') { showToast('Payment successful', successMsg); }
+
+              // Try to prepend a new job card instantly (without waiting for refresh)
+              try {
+                const firstFile = uploadedFiles && uploadedFiles[0];
+                const newJob = {
+                  filename: firstFile ? (firstFile.name || firstFile.file?.name || 'New Job') : 'New Job',
+                  uploaded_at: new Date().toISOString().slice(0,16).replace('T',' '),
+                  pages: (window.lastCalculatedPages) || (firstFile?.pages || 1),
+                  copies: (window.lastCalculatedCopies) || 1,
+                  color: (window.lastSelectedColor) || 'Black and White',
+                  pageSize: (window.lastSelectedPageSize) || 'A4',
+                  status: 'Pending',
+                  job_completed: 'NO',
+                  service_type: 'regular',
+                  vendor: selectedVendorData?.vendor_email || selectedVendorData?.shop_name || '',
+                  vendor_lat: selectedVendorData?.latitude || '',
+                  vendor_lng: selectedVendorData?.longitude || '',
+                  pricing_details: pricingDetails || null
+                };
+                if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
+                userJobs = [newJob, ...userJobs];
+                const container = document.getElementById('jobsContainer');
+                if (container && typeof createJobCard === 'function') {
+                  const cardHTML = createJobCard(newJob);
+                  const temp = document.createElement('div');
+                  temp.innerHTML = cardHTML;
+                  const node = temp.firstElementChild;
+                  if (node) container.insertBefore(node, container.firstChild);
+                }
+              } catch (e) { console.warn('Could not prepend new job card:', e); }
+
+              uploadedFiles = [];
+              selectedFileIndex = -1;
+              fileSettings = {};
+              updateFileList();
+              updateUI();
+              refreshJobs();
+            } catch (err) {
+              console.error('Verification/upload error:', err);
+              alert(err.message || 'Payment verification failed. You were not charged.');
+            } finally {
+              proceedBtn.disabled = false;
+              proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          console.error('Payment failed:', response.error);
+          alert('Payment failed: ' + (response.error && response.error.description ? response.error.description : 'Please try again.'));
+          proceedBtn.disabled = false;
+          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+        });
+
+        rzp.open();
       } catch (error) {
         console.error('Error submitting print job:', error);
         alert(`Error: ${error.message || 'Failed to submit print job. Please try again.'}`);
       } finally {
-        proceedBtn.disabled = false;
-        proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+        // Button state is reset in success/failure handlers. Keep a safety reset here if checkout did not open.
+        if (proceedBtn.disabled) {
+          proceedBtn.disabled = false;
+          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+        }
       }
     });
 
