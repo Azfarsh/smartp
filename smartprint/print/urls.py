@@ -10,7 +10,8 @@ from .views import (
     calculate_gloss_print_pricing, calculate_photo_print_pricing, calculate_jumbo_print_pricing, calculate_passport_photo_pricing, calculate_a4_print_pricing, calculate_golden_emboss_pricing,
     get_vendor_print_jobs, list_r2_files, debug_vendor_registrations,
     update_vendor_service_availability, get_vendor_service_availability, 
-    update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout
+    update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
+    create_razorpay_order, verify_razorpay_payment
 )
 
 urlpatterns = [
@@ -57,6 +58,9 @@ urlpatterns = [
     path('calculate-passport-photo-pricing/', calculate_passport_photo_pricing, name='calculate_passport_photo_pricing'),
     path('calculate-a4-print-pricing/', calculate_a4_print_pricing, name='calculate_a4_print_pricing'),
     path('calculate-golden-emboss-pricing/', calculate_golden_emboss_pricing, name='calculate_golden_emboss_pricing'),
+    # Razorpay payment endpoints
+    path('payments/create-order/', create_razorpay_order, name='create_razorpay_order'),
+    path('payments/verify/', verify_razorpay_payment, name='verify_razorpay_payment'),
 ]
 
 urlpatterns += [

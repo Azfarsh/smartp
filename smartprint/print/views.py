@@ -2363,11 +2363,118 @@ def process_print_request(request):
 
 from django.shortcuts import render
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+import hmac
+import hashlib
+import razorpay
 
 def sign_in(request):
     client_id = settings.GOOGLE_CLIENT_ID
     print(f"🔍 Debug: Google Client ID loaded: {client_id[:20] if client_id else 'None'}...")
     return render(request, 'login.html', {'client_id': client_id})
+
+
+# ─────────────────────────────────────────────────────────────
+# Razorpay: Create Order
+# ─────────────────────────────────────────────────────────────
+@csrf_exempt
+def create_razorpay_order(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8')) if request.body else {}
+        amount_paise = int(body.get('amount_paise'))  # amount in paise
+        receipt = body.get('receipt', f"rcpt_{int(time.time())}")
+
+        if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+            return JsonResponse({'success': False, 'error': 'Razorpay keys not configured'}, status=500)
+
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        order = client.order.create({
+            'amount': amount_paise,
+            'currency': 'INR',
+            'receipt': receipt,
+            'payment_capture': 1
+        })
+
+        return JsonResponse({'success': True, 'order': order, 'key_id': settings.RAZORPAY_KEY_ID})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────────────────────
+# Razorpay: Verify Payment and Persist Job
+# ─────────────────────────────────────────────────────────────
+@csrf_exempt
+def verify_razorpay_payment(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    try:
+        # Expect multipart: payment details + files + settings
+        payment_id = request.POST.get('razorpay_payment_id')
+        order_id = request.POST.get('razorpay_order_id')
+        signature = request.POST.get('razorpay_signature')
+
+        if not (payment_id and order_id and signature):
+            return JsonResponse({'success': False, 'error': 'Missing payment details'}, status=400)
+
+        generated_signature = hmac.new(
+            settings.RAZORPAY_KEY_SECRET.encode('utf-8'),
+            f"{order_id}|{payment_id}".encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
+        if generated_signature != signature:
+            return JsonResponse({'success': False, 'error': 'Signature verification failed'}, status=400)
+
+        # Signature valid → proceed to store files (reuse existing logic from process_print_request)
+        file_count = int(request.POST.get('file_count', 0))
+        files_processed = 0
+
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        for i in range(file_count):
+            file_key = f'file_{i}'
+            settings_key = f'settings_{i}'
+            if file_key in request.FILES and settings_key in request.POST:
+                fobj = request.FILES[file_key]
+                file_content = fobj.read()
+                settings_json = request.POST.get(settings_key)
+                print_settings = json.loads(settings_json)
+
+                s3.put_object(Bucket=settings.R2_BUCKET,
+                              Key=fobj.name,
+                              Body=file_content,
+                              ContentType=fobj.content_type,
+                              Metadata={
+                                  'copies': str(print_settings.get("copies", "1")),
+                                  'color': print_settings.get("color", "Black and White"),
+                                  'orientation': print_settings.get("orientation", "portrait"),
+                                  'pageRange': str(print_settings.get("pageRange", "")),
+                                  'specificPages': str(print_settings.get("specificPages", "")),
+                                  'pageSize': str(print_settings.get("pageSize", "A4")),
+                                  'spiralBinding': str(print_settings.get("spiralBinding", "No")),
+                                  'lamination': str(print_settings.get("lamination", "No")),
+                                  'timestamp': datetime.datetime.now().isoformat(),
+                                  'status': 'pending',
+                                  'job_completed': 'NO',
+                                  'vendor_status': 'not sended',
+                                  'trash': 'NO',
+                                  'payment_id': payment_id,
+                                  'order_id': order_id
+                              })
+                files_processed += 1
+
+        return JsonResponse({'success': True, 'files_processed': files_processed})
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 from django.http import JsonResponse
 from django.contrib.auth import login
