@@ -948,9 +948,9 @@
     /* Allow filename/content wrapping with a neat clamp */
     .job-card-filename {
       display: -webkit-box;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 3; /* allow a fuller heading */
       -webkit-box-orient: vertical;
-      line-clamp: 2;
+      line-clamp: 3;
       overflow: hidden;
       word-break: break-word;
       max-width: 100%;
@@ -998,7 +998,7 @@
       grid-template-columns: 1fr auto; /* token full-width left, status right */
       align-items: center;
       gap: 0.35rem;
-      margin-top: 0.3rem;
+      margin-top: 0.8rem; /* move badges slightly down */
     }
 
     /* Jobs Section */
@@ -2197,7 +2197,7 @@
         flex-wrap: wrap;
         gap: 0.75rem;
         padding: 1rem;
-        background: #f8fafc;
+       
         border-top: 1px solid #e5e7eb;
         margin: 0 -1rem -1rem -1rem;
         border-radius: 0 0 12px 12px;
@@ -3242,6 +3242,7 @@
   </style>
 </head>
 <body data-theme="light">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <!-- Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -3275,26 +3276,8 @@
       </li>
       <li class="nav-item">
         <a href="#" class="nav-link">
-          <i class="fas fa-print"></i>
-          Print Jobs
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link">
           <i class="fas fa-history"></i>
           History
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link">
-          <i class="fas fa-map-marker-alt"></i>
-          Locations
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="#" class="nav-link">
-          <i class="fas fa-credit-card"></i>
-          Billing
         </a>
       </li>
       <li class="nav-item">
@@ -3302,16 +3285,28 @@
           <i class="fas fa-adjust"></i>
           Mode
           <span style="margin-left:auto; display:inline-flex; align-items:center; gap:.4rem; font-weight:600;">
-            <label class="custom-toggle" style="position:relative; display:inline-block; width:50px; height:28px;">
-              <input type="checkbox" id="sidebarModeCheckbox" style="opacity:0; width:0; height:0;">
-              <span class="toggle-track" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#d1d5db; transition:all 0.3s ease; border-radius:14px; border:2px solid transparent;"></span>
-              <span class="toggle-knob" style="position:absolute; height:20px; width:20px; left:2px; top:2px; background:#ffffff; border-radius:50%; transition:all 0.3s ease; box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>
+            <style>
+              .pill-toggle{position:relative;display:inline-block;width:56px;height:30px}
+              .pill-toggle input{opacity:0;width:0;height:0}
+              .pill-track{position:absolute;inset:0;border-radius:9999px;background:#e5e7eb;transition:background .25s,border-color .25s;border:1px solid #d1d5db}
+              .pill-knob{position:absolute;height:24px;width:24px;left:3px;top:3px;border-radius:9999px;background:#111827;transition:transform .25s,background .25s}
+              .pill-toggle input:checked+.pill-track{background:#111827;border-color:#374151}
+              .pill-toggle input:checked+.pill-track+.pill-knob{transform:translateX(26px);background:#ffffff}
+              [data-theme="dark"] .pill-track{background:#374151;border-color:#4b5563}
+              [data-theme="dark"] .pill-knob{background:#e5e7eb}
+              [data-theme="dark"] .pill-toggle input:checked+.pill-track{background:#e5e7eb;border-color:#9ca3af}
+              [data-theme="dark"] .pill-toggle input:checked+.pill-track+.pill-knob{background:#111827}
+            </style>
+            <label class="pill-toggle">
+              <input type="checkbox" id="sidebarModeCheckbox">
+              <span class="pill-track"></span>
+              <span class="pill-knob"></span>
             </label>
           </span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="/logout/?next=/" class="nav-link">
+        <a href="/logout/?next=/login/" class="nav-link">
           <i class="fas fa-sign-out-alt"></i>
           Sign Out
         </a>
@@ -3368,15 +3363,12 @@
                 <i class="fas fa-user"></i>
                 Profile
               </a>
-              <a href="#" class="dropdown-item">
-                <i class="fas fa-cog"></i>
-                Settings
-              </a>
+              
               <a href="#" class="dropdown-item">
                 <i class="fas fa-question-circle"></i>
                 Help
               </a>
-              <a href="/logout/?next=/" class="dropdown-item">
+              <a href="/logout/?next=/login/" class="dropdown-item">
                 <i class="fas fa-sign-out-alt"></i>
                 Sign Out
               </a>
@@ -3596,7 +3588,7 @@
       .service-modal-overlay.active { display: flex; }
       
       .service-modal {
-        background: #ffffff;
+        background: var(--surface);
         border-radius: 24px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 8px 32px rgba(0,0,0,0.1);
         max-width: 500px;
@@ -4523,8 +4515,8 @@
       /* Dark mode button visibility */
       [data-theme="dark"] .service-modal .modal-footer, 
       [data-theme="dark"] .modal .modal-footer {
-        background: #1f2937;
-        border-top-color: #374151;
+        background: #0b1223;
+        border-top-color: #1f2937;
         box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
       }
       
@@ -4544,9 +4536,9 @@
       }
       
       .service-modal .modal-footer .btn-cancel, .modal .modal-footer .btn-cancel {
-        background: white;
-        color: #6b7280;
-        border: 1px solid #d1d5db;
+        background: #e5e7eb;
+        color: #374151;
+        border: 1px solid #cfd3da;
       }
       
       .service-modal .modal-footer .btn-calculate, .modal .modal-footer .btn-calculate {
@@ -4565,6 +4557,36 @@
       .service-modal .modal-footer .btn:hover, .modal .modal-footer .btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      
+      /* Dark mode: ensure footer buttons use dark backgrounds (no white) */
+      [data-theme="dark"] .service-modal .modal-footer .btn, 
+      [data-theme="dark"] .modal .modal-footer .btn {
+        border-color: #374151;
+        color: #e5e7eb;
+      }
+      [data-theme="dark"] .service-modal .modal-footer .btn-cancel, 
+      [data-theme="dark"] .modal .modal-footer .btn-cancel {
+        background: #374151;
+        color: #e5e7eb;
+        border-color: #4b5563;
+      }
+      [data-theme="dark"] .service-modal .modal-footer .btn-calculate, 
+      [data-theme="dark"] .modal .modal-footer .btn-calculate {
+        background: #065f46; /* dark green */
+        color: #e5e7eb;
+        border-color: #064e3b;
+      }
+      [data-theme="dark"] .service-modal .modal-footer .btn-submit, 
+      [data-theme="dark"] .modal .modal-footer .btn-submit {
+        background: #1e40af; /* dark primary */
+        color: #e5e7eb;
+        border-color: #1c3a9b;
+      }
+      [data-theme="dark"] .service-modal .modal-footer .btn:hover, 
+      [data-theme="dark"] .modal .modal-footer .btn:hover {
+        filter: brightness(1.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
       }
       
       /* Force dropdowns to stay within modal boundaries */
@@ -4781,8 +4803,8 @@
         
         [data-theme="dark"] .service-modal .modal-footer, 
         [data-theme="dark"] .modal .modal-footer {
-          background: #1f2937;
-          border-top-color: #374151;
+          background: #0b1223;
+          border-top-color: #1f2937;
           box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
         }
         
@@ -4932,13 +4954,10 @@
               type: 'select', 
               options: [
                 { value: 'A4', label: 'A4 (Standard)' },
-                { value: 'A3', label: 'A3 (Large)' },
-                { value: 'A2', label: 'A2 (Extra Large)' },
-                { value: 'A1', label: 'A1 (Jumbo)' },
                 { value: '12x18', label: '12" x 18" (Custom)' }
               ], 
               required: true,
-              description: 'Select the paper size for your documents',
+              description: 'Choose between A4 and 12×18 only',
               icon: 'fas fa-file'
             },
             { 
@@ -5330,12 +5349,21 @@
               }
             });
           }
-
-                      // Reset shop selection to "None" option
+          
+                      // Reset shop selection for custom dropdown (hidden input + trigger label)
             const shopSelect = modal.querySelector(`#${service}-shop-select`);
-            if (shopSelect && shopSelect.options.length > 0) {
-              shopSelect.selectedIndex = 0; // This will select the "-- Select Shop --" option
+            if (shopSelect) {
+              shopSelect.value = '';
             }
+            const trigger = modal.querySelector(`#${service}-shop-trigger`);
+            const panel = modal.querySelector(`#${service}-shop-panel`);
+            const list = modal.querySelector(`#${service}-shop-list`);
+            if (list) list.querySelectorAll('.shop-card').forEach(c => c.classList.remove('selected'));
+            const titleEl = trigger?.querySelector('.shop-title');
+            const subEl = trigger?.querySelector('.shop-subtitle');
+            if (titleEl) titleEl.textContent = 'Select Shop';
+            if (subEl) subEl.textContent = 'Name • Address • Distance';
+            if (panel) panel.classList.remove('open');
 
           // Reset feedback textarea
           const feedbackTextarea = modal.querySelector(`#${service}-feedback`);
@@ -5348,6 +5376,12 @@
             feedbackCounter.parentElement.classList.remove('warning', 'danger');
           }
 
+          // Clear pricing and summary
+          const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+          const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+          if (pricingSummary) pricingSummary.classList.remove('active');
+          if (pricingDetails) pricingDetails.innerHTML = '';
+
           // Reset submit button
           if (submitBtn) {
             submitBtn.disabled = false;
@@ -5358,6 +5392,12 @@
           if (typeof fileObj !== 'undefined') {
             fileObj = null;
           }
+
+          // Clear transient modal datasets
+          delete modal.dataset.fileName;
+          delete modal.dataset.calculatedPrice;
+          delete modal.dataset.pricingBreakdown;
+          delete modal.dataset.structuredPricing;
 
           // Remove reset animation class
           if (modalContent) {
@@ -5680,9 +5720,9 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
             
-            // Store actual File objects in modal dataset for later use
-            modal.dataset.uploadedFiles = files;
-            console.log('📁 Files stored in modal dataset:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+            // Store actual File objects on the modal instance (not dataset)
+            modal._uploadedFiles = files;
+            console.log('📁 Files stored on modal instance:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
             
             if (files.length === 1) {
               const file = files[0];
@@ -6102,10 +6142,10 @@
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           
-          // Get files from modal dataset (more reliable on mobile devices)
-          const files = modal.dataset.uploadedFiles;
+          // Get files from modal instance (File objects)
+          const files = modal._uploadedFiles || [];
           
-          console.log('📁 Files retrieved from modal dataset:', files);
+          console.log('📁 Files retrieved from modal instance:', files);
           
           if (!files || files.length === 0) { 
             console.error('❌ No files found in modal dataset');
@@ -6116,7 +6156,7 @@
           // Validate files are proper File objects
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            if (!file || !file.name || !file.size) {
+            if (!(file instanceof File) || !file.name || !file.size) {
               console.error(`❌ Invalid file at index ${i}:`, file);
               alert(`Invalid file detected: ${file?.name || 'Unknown file'}. Please try selecting the file again.`);
               return;
@@ -6132,8 +6172,8 @@
             return;
           }
           
-          // For digital print, gloss print, jumbo print, golden embossing, and passport photo, validate that pricing has been calculated
-          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') {
+          // For services with server-side pricing, validate that price has been calculated
+          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport' || service === 'photo') {
             const calculatedPrice = modal.dataset.calculatedPrice;
             if (!calculatedPrice) {
               alert('Please calculate the price before submitting your request.');
@@ -6247,7 +6287,7 @@
           
           // Get pricing details from modal metadata if available
           let pricingDetails = null;
-          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') {
+          if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport' || service === 'photo') {
             const calculatedPrice = modal.dataset.calculatedPrice;
             const pricingBreakdown = modal.dataset.pricingBreakdown;
             const structuredPricing = modal.dataset.structuredPricing;
@@ -6329,32 +6369,84 @@
             }
             
           try {
-            const resp = await fetch('/upload/', {
+            const amountRs = pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0;
+            if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
+            const orderResp = await fetch('/payments/create-order/', {
               method: 'POST',
-              body: formData,
-              headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ amount_paise: Math.round(amountRs * 100), receipt: `print_${Date.now()}` })
             });
-            const data = await resp.json();
-            if (data.success) {
-              // Show success message with pricing details for digital print, gloss print, jumbo print, golden embossing, and passport photo
-              if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport') && pricingDetails) {
-                alert(`Request submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}`);
-              } else {
-              alert('Request submitted successfully!');
-              }
-              closeServiceModal(service);
-                // Reset modal immediately after successful submission
-                resetServiceModal(service);
-            } else {
-              alert('Error: ' + (data.error || 'Failed to submit.'));
-            }
+            const orderData = await orderResp.json();
+            if (!orderData.success) { throw new Error(orderData.error || 'Failed to create order'); }
+
+            const options = {
+              key: orderData.key_id,
+              amount: orderData.order.amount,
+              currency: orderData.order.currency,
+              name: 'PrintMax',
+              description: `${tmpl.title} - ${pageSize} - ${color}`,
+              order_id: orderData.order.id,
+              theme: { color: '#3b82f6' },
+              handler: async function (response) {
+                try {
+                  formData.append('razorpay_payment_id', response.razorpay_payment_id);
+                  formData.append('razorpay_order_id', response.razorpay_order_id);
+                  formData.append('razorpay_signature', response.razorpay_signature);
+                  const verifyResp = await fetch('/payments/verify/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                  });
+                  const data = await verifyResp.json();
+                  if (data.success) {
+                    if ((service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport' || service === 'photo') && pricingDetails) {
+                      alert(`Request submitted successfully!\n\nTotal Price: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}`);
+                    } else {
+                      alert('Request submitted successfully!');
+                    }
+                    try {
+                      const newJob = {
+                        filename: modal.dataset.fileName || (files && files[0] ? files[0].name : 'New Job'),
+                        uploaded_at: new Date().toISOString().slice(0,16).replace('T',' '),
+                        pages: (window.lastCalculatedPages) || 1,
+                        copies: (window.lastCalculatedCopies) || 1,
+                        color: (window.lastSelectedColor) || 'Black and White',
+                        pageSize: (window.lastSelectedPageSize) || 'A4',
+                        status: 'Pending',
+                        job_completed: 'NO',
+                        service_type: service,
+                        vendor: selectedShopData?.vendor_email || selectedShopData?.shop_name || '',
+                        vendor_lat: selectedShopData?.latitude || '',
+                        vendor_lng: selectedShopData?.longitude || '',
+                        pricing_details: pricingDetails || null
+                      };
+                      userJobs = [newJob, ...(userJobs || [])];
+                      const container = document.getElementById('jobsContainer');
+                      if (container) {
+                        const cardHTML = createJobCard(newJob);
+                        const temp = document.createElement('div');
+                        temp.innerHTML = cardHTML;
+                        const node = temp.firstElementChild;
+                        if (node) container.insertBefore(node, container.firstChild);
+                      }
+                    } catch (e) { console.warn('Could not prepend new job card:', e); }
+                    closeServiceModal(service);
+                    resetServiceModal(service);
+                  } else {
+                    alert('Payment verified but upload failed: ' + (data.error || 'Unknown error'));
+                  }
+                } catch (err) {
+                  alert('Verification error: ' + err.message);
+                } finally {
+                  if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request'; }
+                }
+              },
+              modal: { ondismiss: function(){ if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request'; } } }
+            };
+            const rzp = new Razorpay(options);
+            rzp.open();
           } catch (err) {
             alert('Error: ' + err.message);
-          } finally {
-              if (submitBtn) {
-            submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request';
-              }
           }
         });
         }
@@ -6747,26 +6839,50 @@
       function displayPricing(pricingDetails, pricing) {
         let html = '';
         
-        if (pricing.breakdown && pricing.breakdown.length > 0) {
-        pricing.breakdown.forEach(item => {
-            const isCommission = item.label.includes('Platform Commission');
-            const isVendorPrice = item.label.includes('Vendor Price');
-            const isTotal = item.label.includes('Total Amount');
-            
+        // Hide explicit commission rows and only show effective per-page and total
+        const pagesTimesCopies = (pricing.page_count || 1) * (pricing.num_copies || 1);
+        const vendorPrice = Number(pricing.vendor_price || pricing.total_price || 0);
+        const commissionAmount = Number(pricing.commission_amount || 0);
+        const totalWithCommission = Number(pricing.total || pricing.total_price || (vendorPrice + commissionAmount));
+        const basePerPage = Number(pricing.price_per_page || 0);
+        const effectivePerPage = (basePerPage + (pagesTimesCopies ? (commissionAmount / pagesTimesCopies) : 0)).toFixed(2);
+
+        if (pricing.pricing_key_used) {
           html += `
-              <div class="pricing-item ${isCommission ? 'commission' : ''} ${isVendorPrice ? 'vendor-price' : ''} ${isTotal ? 'total' : ''}">
-              <span class="pricing-label">${item.label}</span>
-              <span class="pricing-value">${item.value}</span>
+            <div class="pricing-item">
+              <span class="pricing-label">${String(pricing.pricing_key_used).replace(/_/g, ' ').toUpperCase()}</span>
+              <span class="pricing-value">₹${Number(pricing.base_price || 0)}</span>
             </div>
           `;
-        });
         }
-
-        const totalPrice = pricing.total || pricing.total_price || 0;
+        if (Number(pricing.quality_upgrade || 0) > 0) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">High Quality Upgrade</span>
+              <span class="pricing-value">₹${Number(pricing.quality_upgrade).toFixed(2)}</span>
+            </div>
+          `;
+        }
+        if (basePerPage) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">Price per page</span>
+              <span class="pricing-value">₹${effectivePerPage}</span>
+            </div>
+          `;
+        }
+        if (pricing.page_count && pricing.num_copies) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">Pages × Copies</span>
+              <span class="pricing-value">${pricing.page_count} × ${pricing.num_copies}</span>
+            </div>
+          `;
+        }
         html += `
           <div class="pricing-item total">
-            <span class="pricing-label">Total Amount (Including Commission)</span>
-            <span class="pricing-value">₹${totalPrice.toFixed(2)}</span>
+            <span class="pricing-label">Total Amount</span>
+            <span class="pricing-value">₹${Number(totalWithCommission).toFixed(2)}</span>
           </div>
         `;
 
@@ -6882,16 +6998,24 @@
             const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
             const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
             
-            let html = '';
             const breakdown = result.pricing_breakdown;
-            
+            // Use bill-style summary with commission
+            const serviceKey = getServiceKey('digital', {
+              paper_size: modal.querySelector(`#${service}-field-2`)?.value,
+              print_color: modal.querySelector(`#${service}-field-1`)?.value
+            });
+            const vendorPrice = breakdown.total_price;
+            const commission = calculatePlatformCommission(serviceKey, vendorPrice);
+            const totalItems = breakdown.page_count && breakdown.num_copies ? (breakdown.page_count * breakdown.num_copies) : (breakdown.page_count || 1);
+            const commissionPerItem = commission.amount / (totalItems || 1);
+
+            let html = '';
             html += `
               <div class="pricing-item">
                 <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
                 <span class="pricing-value">₹${breakdown.base_price}</span>
               </div>
             `;
-            
             if (breakdown.quality_upgrade > 0) {
               html += `
                 <div class="pricing-item">
@@ -6900,27 +7024,20 @@
                 </div>
               `;
             }
-            
+            const pagesTimesCopies = (breakdown.page_count || 1) * (breakdown.num_copies || 1);
+            const effectivePerPage = (Number(breakdown.price_per_page || 0) + (commission.amount / (pagesTimesCopies || 1))).toFixed(2);
             html += `
               <div class="pricing-item">
                 <span class="pricing-label">Price per page</span>
-                <span class="pricing-value">₹${breakdown.price_per_page}</span>
+                <span class="pricing-value">₹${effectivePerPage}</span>
               </div>
               <div class="pricing-item">
-                <span class="pricing-label">Number of pages</span>
-                <span class="pricing-value">${breakdown.page_count}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Number of copies</span>
-                <span class="pricing-value">${breakdown.num_copies}</span>
-              </div>
-              <div class="pricing-item">
-                <span class="pricing-label">Total pages</span>
-                <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
+                <span class="pricing-label">Pages × Copies</span>
+                <span class="pricing-value">${breakdown.page_count} × ${breakdown.num_copies}</span>
               </div>
               <div class="pricing-item total">
                 <span class="pricing-label">Total Amount</span>
-                <span class="pricing-value">₹${breakdown.total_price}</span>
+                <span class="pricing-value">₹${commission.total.toFixed(2)}</span>
               </div>
             `;
             
@@ -6936,9 +7053,15 @@
             pricingDetails.innerHTML = html;
             pricingSummary.classList.add('active');
             
-            // Store the calculated price in modal metadata
-            modal.dataset.calculatedPrice = breakdown.total_price;
-            modal.dataset.pricingBreakdown = JSON.stringify(breakdown);
+            // Store the calculated price (including commission)
+            modal.dataset.calculatedPrice = commission.total;
+            modal.dataset.pricingBreakdown = JSON.stringify({
+              ...breakdown,
+              vendor_price: vendorPrice,
+              commission_amount: commission.amount,
+              commission_percentage: commission.percentage,
+              total_price: commission.total
+            });
             
           } else {
             alert('Error calculating price: ' + (result.error || 'Unknown error'));
@@ -7986,29 +8109,38 @@
         }
       }
       
-      // Helper function to display pricing with commission
+      // Helper function to display pricing with commission (hidden in UI)
       function displayPricingWithCommission(service, modal, breakdown, serviceKey) {
         const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
         const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
         
-        const vendorPrice = breakdown.total_price;
+        const vendorPrice = Number(breakdown.total_price || 0);
         const commission = calculatePlatformCommission(serviceKey, vendorPrice);
-        
+
         let html = '';
-        
-        // Service details (keep existing breakdown items)
+
+        // Service specifics
         if (breakdown.pricing_key_used) {
           html += `
             <div class="pricing-item">
               <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
-              <span class="pricing-value">₹${breakdown.base_price || 0}</span>
+              <span class="pricing-value">₹${Number(breakdown.base_price || 0)}</span>
             </div>
           `;
         }
-        
-        // Enhanced photo print specific details
+
+        // Optional extras
+        if (Number(breakdown.quality_upgrade || 0) > 0) {
+          html += `
+            <div class="pricing-item">
+              <span class="pricing-label">High Quality Upgrade</span>
+              <span class="pricing-value">₹${Number(breakdown.quality_upgrade).toFixed(2)}</span>
+            </div>
+          `;
+        }
+
+        // Photo-specific fields
         if (service === 'photo') {
-          // Photo size and quantity details
           if (breakdown.photo_size) {
             html += `
               <div class="pricing-item">
@@ -8017,7 +8149,6 @@
               </div>
             `;
           }
-          
           if (breakdown.print_quantity) {
             html += `
               <div class="pricing-item">
@@ -8026,7 +8157,6 @@
               </div>
             `;
           }
-          
           if (breakdown.paper_type) {
             html += `
               <div class="pricing-item">
@@ -8035,7 +8165,6 @@
               </div>
             `;
           }
-          
           if (breakdown.finish) {
             html += `
               <div class="pricing-item">
@@ -8044,90 +8173,46 @@
               </div>
             `;
           }
-          
-          // Price per photo calculation
-          if (breakdown.base_price && breakdown.print_quantity) {
-            const pricePerPhoto = breakdown.base_price / breakdown.print_quantity;
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Price per Photo</span>
-                <span class="pricing-value">₹${pricePerPhoto.toFixed(2)}</span>
-              </div>
-            `;
-          }
         }
-        
-        if (breakdown.price_per_page) {
+
+        // Effective per-page after adding commission silently
+        const pagesTimesCopies = (breakdown.page_count || breakdown.print_quantity || 1) * (breakdown.num_copies || 1);
+        const basePerPage = Number(breakdown.price_per_page || 0);
+        const effectivePerPage = (basePerPage + (pagesTimesCopies ? (commission.amount / pagesTimesCopies) : 0)).toFixed(2);
+        if (basePerPage) {
           html += `
             <div class="pricing-item">
               <span class="pricing-label">Price per page</span>
-              <span class="pricing-value">₹${breakdown.price_per_page}</span>
+              <span class="pricing-value">₹${effectivePerPage}</span>
             </div>
           `;
         }
-        
-        if (breakdown.page_count) {
-          html += `
-            <div class="pricing-item">
-              <span class="pricing-label">Number of pages</span>
-              <span class="pricing-value">${breakdown.page_count}</span>
-            </div>
-          `;
-        }
-        
-        if (breakdown.num_copies) {
-          html += `
-            <div class="pricing-item">
-              <span class="pricing-label">Number of copies</span>
-              <span class="pricing-value">${breakdown.num_copies}</span>
-            </div>
-          `;
-        }
-        
         if (breakdown.page_count && breakdown.num_copies) {
           html += `
             <div class="pricing-item">
-              <span class="pricing-label">Total pages</span>
-              <span class="pricing-value">${breakdown.page_count * breakdown.num_copies}</span>
+              <span class="pricing-label">Pages × Copies</span>
+              <span class="pricing-value">${breakdown.page_count} × ${breakdown.num_copies}</span>
             </div>
           `;
         }
-        
-        // Commission breakdown with per-page calculation
-        const totalItems = breakdown.print_quantity || breakdown.page_count || breakdown.num_copies || 1;
-        const commissionPerItem = commission.amount / totalItems;
-        
+
         html += `
-          <div class="pricing-item vendor-price">
-            <span class="pricing-label">Vendor Price</span>
-            <span class="pricing-value">₹${vendorPrice.toFixed(2)}</span>
-          </div>
-          <div class="pricing-item commission">
-            <span class="pricing-label">Platform Commission (${commission.percentage}%)</span>
-            <span class="pricing-value">₹${commission.amount.toFixed(2)}</span>
-          </div>
-          <div class="pricing-item commission-per-item">
-            <span class="pricing-label">Commission per ${service === 'photo' ? 'Photo' : 'Page'}</span>
-            <span class="pricing-value">₹${commissionPerItem.toFixed(2)}</span>
-          </div>
           <div class="pricing-item total">
-            <span class="pricing-label">Total Amount (Including Commission)</span>
-            <span class="pricing-value">₹${commission.total.toFixed(2)}</span>
+            <span class="pricing-label">Total Amount</span>
+            <span class="pricing-value">₹${Number(commission.total).toFixed(2)}</span>
           </div>
         `;
-        
+
         pricingDetails.innerHTML = html;
         pricingSummary.classList.add('active');
-        
-        // Store the calculated price in modal metadata
+
+        // Persist values for submission
         modal.dataset.calculatedPrice = commission.total;
         modal.dataset.pricingBreakdown = JSON.stringify({
           ...breakdown,
           total_price: commission.total,
           vendor_price: vendorPrice,
-          commission_amount: commission.amount,
-          commission_percentage: commission.percentage,
-          commission_per_item: commissionPerItem
+          commission_amount: commission.amount
         });
       }
 
@@ -8246,6 +8331,22 @@
         userProfileTrigger.classList.remove('active');
       }
     });
+
+    // Utility: remove any literal 'undefined' text nodes from a container
+    function removeUndefinedFromContainer(containerEl) {
+      if (!containerEl) return;
+      const walker = document.createTreeWalker(containerEl, NodeFilter.SHOW_TEXT);
+      const nodesToClean = [];
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node.nodeValue && /undefined/i.test(node.nodeValue)) {
+          nodesToClean.push(node);
+        }
+      }
+      nodesToClean.forEach((node) => {
+        node.nodeValue = node.nodeValue.replace(/undefined/gi, '').replace(/\s{2,}/g, ' ').trim();
+      });
+    }
 
     // Load user jobs and shops on page load - OPTIMIZED for instant loading
     document.addEventListener('DOMContentLoaded', function() {
@@ -8608,40 +8709,154 @@
         return;
       }
 
-      const optionsHtml = `<option value="">-- Select Shop --</option>` + shopsToRender.map((shop, index) => {
-        const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
-        const shopDisplay = shop.formattedDistance ? 
-          `${shop.shop_name} - ${shop.city}${distanceText}` : 
-          `${shop.shop_name} - ${shop.city}`;
-        return `<option value="${shop.shop_folder}">${shopDisplay}</option>`;
+      const listHtml = shopsToRender.map((shop) => {
+        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
+        const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
+        const address = [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code, shop.country]
+          .filter(Boolean)
+          .join(', ');
+        return `
+          <div class="shop-row" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}">
+            <div class="row-left">
+              <img class="avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" alt="${shop.shop_name||'Shop'}" />
+            </div>
+            <div class="row-body">
+              <div class="row-title">${shop.shop_name || 'Print Shop'}</div>
+              <div class="row-sub">${address}</div>
+            </div>
+            <div class="row-meta">
+              <i class="fas fa-location-arrow"></i>
+              <span>${distance || ''}</span>
+              <button type="button" class="track-btn" title="Track"><i class="fas fa-map-marker-alt"></i></button>
+            </div>
+          </div>
+        `;
       }).join('');
 
       vendorOptionsContainer.innerHTML = `
-        <div class="vendor-dropdown">
-          <select id="vendorSelect">
-            ${optionsHtml}
-          </select>
+        <style>
+          .shop-dropdown2 { position: relative; width: 100%; }
+          .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; margin-right:8px; }
+          .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
+          .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
+          .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-caret { color:#6b7280; }
+          .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:6px 6px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
+          .shop-panel.open { display:block; }
+          .shop-list { display:block; }
+          .shop-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-bottom:1px solid #eef2f7; background:#fff; }
+          .shop-row:hover { background:#f8fafc; }
+          .shop-row.selected { background:#f0f7ff; outline:2px solid #2563eb; }
+          .row-left { display:flex; align-items:center; }
+          .avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+          .row-body { flex:1; min-width:0; display:flex; flex-direction:column; padding-right: 96px; }
+          .row-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .row-sub { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .row-meta { display:flex; align-items:center; gap:8px; color:#2563eb; margin-left:auto; white-space:nowrap; flex-shrink:0; }
+          .track-btn { background:#10b981; color:#fff; border:none; border-radius:8px; padding:6px 8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+          .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 360px; margin-left:auto; margin-right:auto; }
+          /* Add horizontal padding so dropdown doesn't touch screen edges on mobile */
+          .shop-dropdown2 { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
+          @media (max-width: 768px) { .row-title { font-size:14px; } .row-sub { font-size:12px; } }
+          [data-theme="dark"] .shop-trigger { background:#1f2937; border-color:#374151; color:#e5e7eb; }
+          [data-theme="dark"] .shop-trigger .shop-title { color:#e5e7eb; }
+          [data-theme="dark"] .shop-trigger .shop-subtitle { color:#9ca3af; }
+          [data-theme="dark"] .shop-panel { background:#0b1223; border-color:#1f2937; box-shadow:0 12px 24px rgba(0,0,0,.6); }
+          [data-theme="dark"] .shop-row { background:#0b1223; border-bottom:1px solid #18213a; }
+          [data-theme="dark"] .shop-row:hover { background:#0f172a; }
+          [data-theme="dark"] .row-title { color:#e5e7eb; }
+          [data-theme="dark"] .row-sub { color:#9ca3af; }
+          [data-theme="dark"] .row-meta { color:#60a5fa; }
+        </style>
+        <input type="hidden" id="footer-shop-select" value="" />
+        <div class="shop-dropdown2" id="footer-shop-dropdown">
+          <button type="button" class="shop-trigger" id="footer-shop-trigger">
+            <div class="shop-trigger-label">
+              <div class="shop-avatar"><i class="fas fa-store"></i></div>
+              <div style="display:flex; flex-direction:column; min-width:0;">
+                <div class="shop-title">Select Shop</div>
+                <div class="shop-subtitle">Choose a nearby print shop</div>
+              </div>
+            </div>
+            <i class="fas fa-chevron-down shop-caret"></i>
+          </button>
+          <div class="shop-panel" id="footer-shop-panel">
+            <div class="shop-list" id="footer-shop-list">${listHtml}</div>
+          </div>
         </div>
       `;
 
-      // Set up change event listener
-      const vendorSelect = document.getElementById('vendorSelect');
-      if (vendorSelect) {
-        selectedVendor = vendorSelect.value; // Set initial value (will be empty string)
-        vendorSelect.addEventListener('change', function() {
-          selectedVendor = this.value;
-          
-          // Show/hide calculate price button based on vendor selection
+      // Bind interactions
+      const listEl = document.getElementById('footer-shop-list');
+      const hiddenSelect = document.getElementById('footer-shop-select');
+      const trigger = document.getElementById('footer-shop-trigger');
+      const panel = document.getElementById('footer-shop-panel');
+      const dropdown = document.getElementById('footer-shop-dropdown');
+
+      function positionPanel() {
+        const rect = trigger.getBoundingClientRect();
+        const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        const SAFE_MARGIN = 16; // ensure a right/left gutter so the panel never touches the edge
+        const panelWidth = Math.min(380, viewportWidth - SAFE_MARGIN * 2);
+        let left;
+        if (viewportWidth <= 600) {
+          // On small screens, center the dropdown panel
+          left = Math.round((viewportWidth - panelWidth) / 2);
+        } else {
+          const centeredLeft = Math.round(rect.left + (rect.width / 2) - (panelWidth / 2));
+          left = Math.max(SAFE_MARGIN, Math.min(centeredLeft, viewportWidth - panelWidth - SAFE_MARGIN));
+        }
+        panel.style.width = panelWidth + 'px';
+        panel.style.left = left + 'px';
+        panel.style.top = Math.round(rect.bottom + 8) + 'px';
+      }
+
+      trigger.addEventListener('click', () => {
+        const isOpen = panel.classList.contains('open');
+        if (!isOpen) positionPanel();
+        panel.classList.toggle('open');
+      });
+      window.addEventListener('resize', () => { if (panel.classList.contains('open')) positionPanel(); });
+      window.addEventListener('scroll', () => { if (panel.classList.contains('open')) positionPanel(); }, true);
+      document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target)) panel.classList.remove('open');
+      });
+
+      if (listEl) {
+        listEl.addEventListener('click', (e) => {
+          const row = e.target.closest('.shop-row');
+          const trackBtn = e.target.closest('.track-btn');
+          if (!row) return;
+          const shopId = row.getAttribute('data-shop');
+          const lat = row.getAttribute('data-lat');
+          const lng = row.getAttribute('data-lng');
+          if (trackBtn) {
+            if (lat && lng) window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+            return;
+          }
+          hiddenSelect.value = shopId;
+          selectedVendor = shopId;
+          panel.classList.remove('open');
+          listEl.querySelectorAll('.shop-row').forEach(r => r.classList.remove('selected'));
+          row.classList.add('selected');
+          const titleEl = trigger?.querySelector('.shop-title');
+          const subEl = trigger?.querySelector('.shop-subtitle');
+          const name = row.querySelector('.row-title')?.textContent || 'Selected Shop';
+          const addr = row.querySelector('.row-sub')?.textContent || '';
+          const meta = row.querySelector('.row-meta span')?.textContent || '';
+          if (titleEl) titleEl.textContent = name;
+          if (subEl) subEl.textContent = addr || meta;
           const calculatePriceBtn = document.getElementById('calculatePriceBtn');
           if (calculatePriceBtn) {
-            if (selectedVendor && uploadedFiles.length > 0) {
-              calculatePriceBtn.style.display = 'inline-block';
-            } else {
-              calculatePriceBtn.style.display = 'none';
-            }
+            if (selectedVendor && uploadedFiles.length > 0) calculatePriceBtn.style.display = 'inline-block';
+            else calculatePriceBtn.style.display = 'none';
           }
         });
       }
+
+      // Final cleanup of undefined placeholders
+      removeUndefinedFromContainer(vendorOptionsContainer);
     }
 
     // Location-based vendor options renderer
@@ -8651,6 +8866,7 @@
 
     // Function to render shops in service modals (with location support)
     function renderServiceModalShops(service) {
+      const vendorOptionsContainer = document.getElementById('vendorOptions');
       const shopOptionsContainer = document.getElementById(`${service}-shop-options`);
       if (!shopOptionsContainer) return;
 
@@ -8658,38 +8874,195 @@
 
       if (shopsToRender.length === 0) {
         shopOptionsContainer.innerHTML = `
-          <div class="no-shops-message">
+          <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
             <i class="fas fa-store-slash"></i>
-            <span>No print shops available at the moment</span>
-            <button onclick="loadLocationBasedShops().then(() => renderServiceModalShops('${service}'))" style="margin-top: 8px; padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-              <i class="fas fa-sync-alt"></i> Retry
-            </button>
+            <p>No print shops available at the moment.</p>
           </div>
         `;
         return;
       }
 
-      const optionsHtml = `<option value="">-- Select Shop --</option>` + shopsToRender.map((shop, index) => {
-        const distanceText = shop.formattedDistance ? ` (${shop.formattedDistance})` : '';
-        const shopDisplay = shop.formattedDistance ? 
-          `${shop.shop_name} - ${shop.city}${distanceText}` : 
-          `${shop.shop_name} - ${shop.city}`;
-        return `<option value="${shop.shop_folder}">${shopDisplay}</option>`;
+      const listHtml = shopsToRender.map((shop) => {
+        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
+        const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
+        const address = [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code, shop.country]
+          .filter(Boolean)
+          .join(', ');
+        return `
+          <div class="shop-row" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}">
+            <div class="row-left">
+              <img class="avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" alt="${shop.shop_name||'Shop'}" />
+            </div>
+            <div class="row-body">
+              <div class="row-title">${shop.shop_name || 'Print Shop'}</div>
+              <div class="row-sub">${address}</div>
+            </div>
+            <div class="row-meta">
+              <i class="fas fa-location-arrow"></i>
+              <span>${distance || ''}</span>
+              <button type="button" class="track-btn" title="Track"><i class="fas fa-map-marker-alt"></i></button>
+            </div>
+          </div>
+        `;
       }).join('');
 
       shopOptionsContainer.innerHTML = `
-        <div class="shop-dropdown">
-          <select id="${service}-shop-select">
-            ${optionsHtml}
-          </select>
-          <i class="fas fa-chevron-down select-arrow"></i>
-        </div>
-        <div class="shop-location-controls" style="margin-top: 8px; text-align: center;">
-          <button onclick="refreshShopLocations('${service}')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-            <i class="fas fa-location-arrow"></i> Update Distances
+        <style>
+          .shop-dropdown2 { position: relative; width: 100%; }
+          .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; margin-right:8px; }
+          .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
+          .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
+          .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-caret { color:#6b7280; }
+          .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:6px 6px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
+          .shop-panel.open { display:block; }
+          .shop-list { display:block; }
+          .shop-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-bottom:1px solid #eef2f7; background:#fff; }
+          .shop-row:hover { background:#f8fafc; }
+          .shop-row.selected { background:#f0f7ff; outline:2px solid #2563eb; }
+          .row-left { display:flex; align-items:center; }
+          .avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+          .row-body { flex:1; min-width:0; display:flex; flex-direction:column; padding-right: 96px; }
+          .row-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .row-sub { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .row-meta { display:flex; align-items:center; gap:8px; color:#2563eb; margin-left:auto; white-space:nowrap; flex-shrink:0; }
+          .track-btn { background:#10b981; color:#fff; border:none; border-radius:8px; padding:6px 8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+          .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 360px; margin-left:auto; margin-right:auto; }
+          .shop-dropdown2 { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
+          @media (max-width: 768px) { .row-title { font-size:14px; } .row-sub { font-size:12px; } }
+          [data-theme="dark"] .shop-trigger { background:#1f2937; border-color:#374151; color:#e5e7eb; }
+          [data-theme="dark"] .shop-trigger .shop-title { color:#e5e7eb; }
+          [data-theme="dark"] .shop-trigger .shop-subtitle { color:#9ca3af; }
+          [data-theme="dark"] .shop-panel { background:#0b1223; border-color:#1f2937; box-shadow:0 12px 24px rgba(0,0,0,.6); }
+          [data-theme="dark"] .shop-row { background:#0b1223; border-bottom:1px solid #18213a; }
+          [data-theme="dark"] .shop-row:hover { background:#0f172a; }
+          [data-theme="dark"] .row-title { color:#e5e7eb; }
+          [data-theme="dark"] .row-sub { color:#9ca3af; }
+          [data-theme="dark"] .row-meta { color:#60a5fa; }
+        </style>
+        <input type="hidden" id="${service}-shop-select" value="" />
+        <div class="shop-dropdown2" id="${service}-shop-dropdown">
+          <button type="button" class="shop-trigger" id="${service}-shop-trigger">
+            <div class="shop-trigger-label">
+              <div class="shop-avatar"><i class="fas fa-store"></i></div>
+              <div style="display:flex; flex-direction:column; min-width:0;">
+                <div class="shop-title">Select Shop</div>
+                <div class="shop-subtitle">Choose a nearby print shop</div>
+              </div>
+            </div>
+            <i class="fas fa-chevron-down shop-caret"></i>
           </button>
+          <div class="shop-panel" id="${service}-shop-panel">
+            <div class="shop-list" id="${service}-shop-list">${listHtml}</div>
+          </div>
         </div>
       `;
+
+      // Bind interactions (copied behavior from footer dropdown for consistency)
+      const listEl = document.getElementById(`${service}-shop-list`);
+      const hiddenSelect = document.getElementById(`${service}-shop-select`);
+      const trigger = document.getElementById(`${service}-shop-trigger`);
+      const panel = document.getElementById(`${service}-shop-panel`);
+      const dropdown = document.getElementById(`${service}-shop-dropdown`);
+
+      function positionPanel() {
+        const rect = trigger.getBoundingClientRect();
+        const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        const SAFE_MARGIN = 16;
+        const panelWidth = Math.min(380, viewportWidth - SAFE_MARGIN * 2);
+        let left;
+        if (viewportWidth <= 600) {
+          left = Math.round((viewportWidth - panelWidth) / 2);
+        } else {
+          const centeredLeft = Math.round(rect.left + (rect.width / 2) - (panelWidth / 2));
+          left = Math.max(SAFE_MARGIN, Math.min(centeredLeft, viewportWidth - panelWidth - SAFE_MARGIN));
+        }
+        panel.style.width = panelWidth + 'px';
+        panel.style.left = left + 'px';
+        panel.style.top = Math.round(rect.bottom + 8) + 'px';
+      }
+
+      trigger.addEventListener('click', () => {
+        const isOpen = panel.classList.contains('open');
+        if (!isOpen) positionPanel();
+        panel.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => { if (!dropdown.contains(e.target)) panel.classList.remove('open'); });
+      window.addEventListener('resize', () => { if (panel.classList.contains('open')) positionPanel(); });
+      window.addEventListener('scroll', () => { if (panel.classList.contains('open')) positionPanel(); }, true);
+
+      if (listEl && hiddenSelect) {
+        // Default-select the first shop
+        const firstRow = listEl.querySelector('.shop-row');
+        if (firstRow) {
+          firstRow.classList.add('selected');
+          hiddenSelect.value = firstRow.getAttribute('data-shop') || '';
+          const initName = firstRow.querySelector('.row-title')?.textContent || 'Selected Shop';
+          const initSub = firstRow.querySelector('.row-sub')?.textContent || '';
+          const initMeta = firstRow.querySelector('.row-meta span')?.textContent || '';
+          const initTitleEl = trigger?.querySelector('.shop-title');
+          const initSubEl = trigger?.querySelector('.shop-subtitle');
+          if (initTitleEl) initTitleEl.textContent = initName;
+          if (initSubEl) initSubEl.textContent = [initSub, initMeta].filter(Boolean).join(' • ');
+        }
+
+        listEl.querySelectorAll('.shop-row').forEach(row => {
+          row.addEventListener('click', (e) => {
+            listEl.querySelectorAll('.shop-row').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            const shopFolder = row.getAttribute('data-shop');
+            hiddenSelect.value = shopFolder;
+            const name = row.querySelector('.row-title')?.textContent || 'Selected Shop';
+            const addr = row.querySelector('.row-sub')?.textContent || '';
+            const meta = row.querySelector('.row-meta span')?.textContent || '';
+            const titleEl = trigger?.querySelector('.shop-title');
+            const subEl = trigger?.querySelector('.shop-subtitle');
+            if (titleEl) titleEl.textContent = name;
+            if (subEl) subEl.textContent = [addr, meta].filter(Boolean).join(' • ');
+            panel.classList.remove('open');
+
+            // If user location exists and shop has lat/lng, compute distance on the fly
+            if (window.userLocation) {
+              const lat = parseFloat(row.getAttribute('data-lat'));
+              const lng = parseFloat(row.getAttribute('data-lng'));
+              if (!isNaN(lat) && !isNaN(lng)) {
+                const d = calculateDistance(userLocation.latitude, userLocation.longitude, lat, lng);
+                const distanceText = d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1)} km`;
+                if (subEl) subEl.textContent = [addr, distanceText].filter(Boolean).join(' • ');
+              }
+            }
+
+            // Trigger pricing for the specific service
+            setTimeout(() => {
+              const fnMap = {
+                'digital': window.calculateDigitalPrintPrice,
+                'gloss': window.calculateGlossPrintPrice,
+                'jumbo': window.calculateJumboPrintPrice,
+                'goldenemboss': window.calculateGoldenEmbossPrice,
+                'passport': window.calculatePassportPhotoPrice,
+                'photo': window.calculatePhotoPrintPrice
+              };
+              const fn = fnMap[service];
+              if (typeof fn === 'function') fn(service);
+            }, 50);
+          });
+
+          const trackBtn = row.querySelector('.track-btn');
+          if (trackBtn) {
+            trackBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const lat = row.getAttribute('data-lat');
+              const lng = row.getAttribute('data-lng');
+              if (!lat || !lng) { alert('Location not available for this shop.'); return; }
+              const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&travelmode=driving`;
+              window.open(url, '_blank');
+            });
+          }
+        });
+      }
+
+      removeUndefinedFromContainer(shopOptionsContainer);
     }
 
     // Function to handle shop selection in service modals
@@ -8731,6 +9104,21 @@
         button.innerHTML = '<i class="fas fa-location-arrow"></i> Update Distances';
         button.disabled = false;
       }
+    }
+
+    // Track currently selected shop from dropdown
+    function trackSelectedShop(service) {
+      const modal = document.getElementById(`service-modal-${service}`);
+      if (!modal) return;
+      const select = modal.querySelector(`#${service}-shop-select`);
+      if (!select || !select.value) { alert('Please select a shop first.'); return; }
+      const option = select.options[select.selectedIndex];
+      const lat = option.getAttribute('data-lat');
+      const lng = option.getAttribute('data-lng');
+      const name = option.textContent.split('•')[0].trim();
+      if (!lat || !lng) { alert('This shop has no location coordinates.'); return; }
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&destination_place_id=&travelmode=driving`;
+      window.open(url, '_blank');
     }
 
     // Function to load user jobs from backend - OPTIMIZED for instant loading
@@ -10824,6 +11212,8 @@
             distance: null,
             formattedDistance: 'Enable location for distance'
           }));
+          // Show prompt banner to request location sharing
+          showLocationPrompt();
         }
         
         // Update selected vendor to first available location-based shop
@@ -10849,6 +11239,55 @@
       } catch (error) {
         console.error('❌ Error loading location-based shops:', error);
         locationBasedShops = [];
+      }
+    }
+
+    // Prompt user to enable location sharing (non-blocking banner)
+    function showLocationPrompt() {
+      let banner = document.getElementById('locationPermissionBanner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'locationPermissionBanner';
+        banner.style.position = 'fixed';
+        banner.style.left = '12px';
+        banner.style.right = '12px';
+        banner.style.bottom = '12px';
+        banner.style.zIndex = '999999';
+        banner.style.borderRadius = '12px';
+        banner.style.padding = '12px 14px';
+        banner.style.display = 'flex';
+        banner.style.alignItems = 'center';
+        banner.style.justifyContent = 'space-between';
+        banner.style.gap = '12px';
+        banner.style.boxShadow = '0 8px 24px rgba(0,0,0,.18)';
+        banner.style.background = '#111827';
+        banner.style.color = '#e5e7eb';
+        banner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-map-marker-alt" style="color:#60a5fa;"></i>
+            <div style="font-size:14px; line-height:1.4;">
+              Enable location to calculate accurate distance to nearby shops.
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button id="enableLocationBtn" style="background:#3b82f6;color:#fff;border:none;border-radius:10px;padding:8px 12px;">Enable</button>
+            <button id="dismissLocationBtn" style="background:transparent;color:#9ca3af;border:1px solid #374151;border-radius:10px;padding:8px 12px;">Dismiss</button>
+          </div>
+        `;
+        document.body.appendChild(banner);
+        document.getElementById('dismissLocationBtn').addEventListener('click', () => {
+          banner.remove();
+        });
+        document.getElementById('enableLocationBtn').addEventListener('click', async () => {
+          try {
+            await getUserLocation(true);
+            await loadLocationBasedShops(true);
+          } catch (e) {
+            console.warn('Location still unavailable:', e.message);
+          } finally {
+            banner.remove();
+          }
+        });
       }
     }
 

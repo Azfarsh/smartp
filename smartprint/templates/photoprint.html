@@ -358,6 +358,26 @@
             color: #059669;
             font-size: 1.2em;
         }
+        /* Shop dropdown (matches dashboard modal styling) */
+        .shop-dropdown2 { position: relative; width: 100%; }
+        .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; }
+        .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
+        .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
+        .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .shop-caret { color:#6b7280; }
+        .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:10px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
+        .shop-panel.open { display:block; }
+        .shop-list { display:grid; gap:8px; }
+        .shop-card { display:flex; align-items:center; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px; box-shadow:0 1px 2px rgba(0,0,0,.04); transition: box-shadow .2s, transform .2s; }
+        .shop-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); transform: translateY(-1px); }
+        .shop-card.selected { outline: 2px solid #2563eb; background:#f0f7ff; }
+        .shop-card-left { margin-right:10px; }
+        .shop-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
+        .shop-card-body { flex:1; min-width:0; }
+        .shop-name { font-weight:600; color:#111827; white-space:normal; overflow:visible; }
+        .shop-address { font-size:12px; color:#6b7280; white-space:normal; overflow:visible; }
+        .shop-meta { font-size:12px; color:#2563eb; margin-top:2px; display:flex; align-items:center; gap:6px; }
         @media (max-width: 800px) {
             .card-modal {
                 max-width: 99vw;
@@ -418,9 +438,22 @@
                 </div>
                 <div class="form-group">
                     <label for="shopSelect">Shop:</label>
-                    <select id="shopSelect">
-                        <option value="">Loading shops...</option>
-                    </select>
+                    <input type="hidden" id="shopSelect" value="" />
+                    <div class="shop-dropdown2" id="photo-shop-dropdown">
+                        <button type="button" class="shop-trigger" id="photo-shop-trigger">
+                            <div class="shop-trigger-label">
+                                <div class="shop-avatar"><i class="fas fa-store"></i></div>
+                                <div style="display:flex; flex-direction:column; min-width:0;">
+                                    <span class="shop-title">Select Shop</span>
+                                    <span class="shop-subtitle">Name • Address • Distance</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-down shop-caret"></i>
+                        </button>
+                        <div class="shop-panel" id="photo-shop-panel">
+                            <div class="shop-list" id="photo-shop-list"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="color">Color:</label>
@@ -482,6 +515,10 @@ const printBtn = document.getElementById('printBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const calculateBtn = document.getElementById('calculateBtn');
 const shopSelect = document.getElementById('shopSelect');
+const photoDropdown = document.getElementById('photo-shop-dropdown');
+const photoTrigger = document.getElementById('photo-shop-trigger');
+const photoPanel = document.getElementById('photo-shop-panel');
+const photoList = document.getElementById('photo-shop-list');
 const pricingSummary = document.getElementById('pricingSummary');
 const pricingDetails = document.getElementById('pricingDetails');
 const orientationSelect = document.getElementById('orientation');
@@ -491,15 +528,105 @@ function loadShops() {
         .then(data=>{
             if(data.success && data.shops.length>0){
                 availableShops = data.shops;
-                selectedShop = data.shops[0].shop_folder;
-                shopSelect.innerHTML = data.shops.map(shop=>`<option value="${shop.shop_folder}">${shop.shop_name} - ${shop.city}</option>`).join('');
-            }else{
+            } else {
                 availableShops = [];
-                selectedShop = 'firozshop';
-                shopSelect.innerHTML = '<option value="firozshop">Default Shop</option>';
             }
-        });
-    shopSelect.addEventListener('change', ()=>{selectedShop = shopSelect.value;});
+            renderPhotoShopDropdown();
+        })
+        .catch(()=>{ availableShops = []; renderPhotoShopDropdown(); });
+}
+
+function renderPhotoShopDropdown() {
+    if (!photoList) return;
+    if (!availableShops || availableShops.length === 0) {
+        photoList.innerHTML = '<div style="padding:8px 10px; color:#6b7280;">No shops available</div>';
+        selectedShop = '';
+        shopSelect.value = '';
+        return;
+    }
+
+    const listHtml = availableShops.map(s => {
+        const distanceKm = (typeof s.distanceKm === 'number') ? s.distanceKm : null;
+        const formattedDistance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (s.formattedDistance || (s.distance_km ? `${Number(s.distance_km).toFixed(1)} km` : ''));
+        const address = [s.address_line1, s.address_line2, s.city, s.state, s.postal_code].filter(Boolean).join(', ') || [s.area, s.city].filter(Boolean).join(', ');
+        return `
+          <div class="shop-card" data-shop="${s.shop_folder}" data-vendor_email="${s.vendor_email||''}" data-lat="${s.latitude||''}" data-lng="${s.longitude||''}">
+            <div class="shop-card-left">
+              <div class="shop-avatar"><i class="fas fa-store"></i></div>
+            </div>
+            <div class="shop-card-body">
+              <div class="shop-name">${s.shop_name||'Print Shop'}</div>
+              <div class="shop-address">${address}</div>
+              <div class="shop-meta"><i class="fas fa-location-arrow"></i> ${formattedDistance}</div>
+            </div>
+          </div>`;
+    }).join('');
+    photoList.innerHTML = listHtml;
+
+    // Default selection (match dashboard behavior)
+    const first = availableShops[0];
+    if (first) {
+        selectedShop = first.shop_folder;
+        shopSelect.value = selectedShop;
+        const titleEl = photoTrigger.querySelector('.shop-title');
+        const subEl = photoTrigger.querySelector('.shop-subtitle');
+        if (titleEl) titleEl.textContent = first.shop_name || 'Selected Shop';
+        const distanceKm = (typeof first.distanceKm === 'number') ? first.distanceKm : null;
+        const distanceText = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (first.formattedDistance || (first.distance_km ? `${Number(first.distance_km).toFixed(1)} km` : ''));
+        const addr = [first.address_line1, first.address_line2, first.city, first.state, first.postal_code].filter(Boolean).join(', ') || [first.area, first.city].filter(Boolean).join(', ');
+        if (subEl) subEl.textContent = [addr, distanceText].filter(Boolean).join(' • ');
+        const firstCard = photoList.querySelector('.shop-card');
+        if (firstCard) firstCard.classList.add('selected');
+    }
+
+    photoList.addEventListener('click', (e) => {
+        const trackBtn = e.target.closest('.shop-track-btn');
+        const card = e.target.closest('.shop-card');
+        if (!card) return;
+        if (trackBtn) {
+            const lat = card.getAttribute('data-lat');
+            const lng = card.getAttribute('data-lng');
+            if (!lat || !lng) { alert('Location not available for this shop.'); return; }
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&travelmode=driving`;
+            window.open(url, '_blank');
+            return;
+        }
+        // Toggle selected state like dashboard modal
+        photoList.querySelectorAll('.shop-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedShop = card.getAttribute('data-shop');
+        shopSelect.value = selectedShop;
+        const name = card.querySelector('.shop-name')?.textContent || 'Selected Shop';
+        const address = card.querySelector('.shop-address')?.textContent || '';
+        const meta = card.querySelector('.shop-meta')?.textContent || '';
+        const titleEl = photoTrigger.querySelector('.shop-title');
+        const subEl = photoTrigger.querySelector('.shop-subtitle');
+        if (titleEl) titleEl.textContent = name;
+        if (subEl) subEl.textContent = [address, meta].filter(Boolean).join(' • ');
+        photoPanel.classList.remove('open');
+    });
+}
+
+function positionPhotoPanel() {
+    if (!photoTrigger || !photoPanel) return;
+    const rect = photoTrigger.getBoundingClientRect();
+    const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const panelWidth = Math.min(380, viewportWidth - 24);
+    const centeredLeft = Math.round(rect.left + (rect.width / 2) - (panelWidth / 2));
+    const clampedLeft = Math.max(12, Math.min(centeredLeft, viewportWidth - panelWidth - 12));
+    photoPanel.style.width = panelWidth + 'px';
+    photoPanel.style.left = clampedLeft + 'px';
+    photoPanel.style.top = Math.round(rect.bottom + 8) + 'px';
+}
+
+if (photoTrigger && photoPanel) {
+    photoTrigger.addEventListener('click', () => {
+        if (!photoPanel.classList.contains('open')) positionPhotoPanel();
+        photoPanel.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => { if (!photoDropdown.contains(e.target)) photoPanel.classList.remove('open'); });
+    window.addEventListener('resize', () => { if (photoPanel.classList.contains('open')) positionPhotoPanel(); });
+    window.addEventListener('scroll', () => { if (photoPanel.classList.contains('open')) positionPhotoPanel(); }, true);
 }
 function handleFileUpload(e) {
     const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
@@ -743,7 +870,21 @@ function resetPhotoPrintModal() {
     document.getElementById('color').value = 'Color';
     document.getElementById('copies').value = 1;
     document.getElementById('orientation').value = 'portrait';
-    if (shopSelect.options.length > 0) shopSelect.selectedIndex = 0;
+    // Hidden input, not a <select>; reset value and trigger label instead of using options
+    if (shopSelect) shopSelect.value = selectedShop || '';
+    const titleEl = photoTrigger?.querySelector('.shop-title');
+    const subEl = photoTrigger?.querySelector('.shop-subtitle');
+    if (availableShops.length > 0) {
+        const first = availableShops[0];
+        if (titleEl) titleEl.textContent = first.shop_name || 'Select Shop';
+        const distanceKm = (typeof first.distanceKm === 'number') ? first.distanceKm : null;
+        const distanceText = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (first.formattedDistance || (first.distance_km ? `${Number(first.distance_km).toFixed(1)} km` : ''));
+        const addr = [first.address_line1, first.address_line2, first.city, first.state, first.postal_code].filter(Boolean).join(', ') || [first.area, first.city].filter(Boolean).join(', ');
+        if (subEl) subEl.textContent = [addr, distanceText].filter(Boolean).join(' • ');
+    } else {
+        if (titleEl) titleEl.textContent = 'Select Shop';
+        if (subEl) subEl.textContent = 'Name • Address • Distance';
+    }
     layoutBtns.forEach(b => b.classList.remove('active'));
     layoutBtns[0].classList.add('active');
     updateUI();
@@ -782,6 +923,21 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// Commission helper (same logic as dashboard)
+function calculatePlatformCommission(serviceKey, vendorPrice) {
+    // Default 20% for A4 color-like services
+    const commissionRates = {
+        a4_print_bw: 0.12,
+        a4_print_color: 0.2,
+        digital_print_a4: 0.15,
+        digital_print_12x18: 0.18,
+        gloss_paper_a4: 0.2
+    };
+    const rate = commissionRates[serviceKey] ?? 0.2;
+    const amount = vendorPrice * rate;
+    return { rate, amount, total: vendorPrice + amount };
 }
 
 async function calculatePhotoPrintPrice() {
@@ -832,17 +988,20 @@ async function calculatePhotoPrintPrice() {
         const result = await response.json();
 
         if (result.success) {
-            // Update pricing summary
-            let html = '';
+            // Apply platform commission silently (same approach as dashboard)
             const breakdown = result.pricing_breakdown;
-            
+            const vendorPrice = Number(breakdown.total_price || 0);
+            // Use A4 color pricing key for photo prints commission model
+            const commission = calculatePlatformCommission('a4_print_color', vendorPrice);
+
+            // Build display (do not show commission explicitly)
+            let html = '';
             html += `
                 <li class="pricing-item">
                     <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
-                    <span class="pricing-value">₹${breakdown.base_price}</span>
+                    <span class="pricing-value">₹${Number(breakdown.base_price || 0)}</span>
                 </li>
             `;
-            
             html += `
                 <li class="pricing-item">
                     <span class="pricing-label">Number of photos</span>
@@ -856,20 +1015,38 @@ async function calculatePhotoPrintPrice() {
                     <span class="pricing-label">Number of copies</span>
                     <span class="pricing-value">${breakdown.copies}</span>
                 </li>
+            `;
+
+            // Effective per-photo after adding commission
+            const items = (Number(breakdown.photo_count || 1) * Number(breakdown.copies || 1)) || 1;
+            const basePer = Number(breakdown.price_per_page || 0);
+            const effectivePer = (basePer + (items ? (commission.amount / items) : 0)).toFixed(2);
+            if (basePer) {
+              html += `
+                <li class="pricing-item">
+                  <span class="pricing-label">Price per photo</span>
+                  <span class="pricing-value">₹${effectivePer}</span>
+                </li>
+              `;
+            }
+
+            html += `
                 <li class="pricing-item total">
                     <i class="fas fa-check-circle"></i>
                     <span class="pricing-label">Total Amount</span>
-                    <span class="pricing-value">₹${breakdown.total_price}</span>
+                    <span class="pricing-value">₹${Number(commission.total).toFixed(2)}</span>
                 </li>
             `;
-            
+
             pricingDetails.innerHTML = html;
             pricingSummary.style.display = 'block';
-            
-            // Store the calculated price in modal metadata
-            document.body.dataset.calculatedPrice = breakdown.total_price;
-            document.body.dataset.pricingBreakdown = JSON.stringify(breakdown);
-            
+
+            // Store calculated price + breakdown in page dataset for submit
+            const finalBreakdown = { ...breakdown };
+            finalBreakdown.total_price = Number(commission.total).toFixed(2);
+            document.body.dataset.calculatedPrice = finalBreakdown.total_price;
+            document.body.dataset.pricingBreakdown = JSON.stringify(finalBreakdown);
+
         } else {
             alert('Error calculating price: ' + (result.error || 'Unknown error'));
         }

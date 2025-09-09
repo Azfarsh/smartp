@@ -163,3 +163,7 @@ EMAIL_SUBJECT_PREFIX = '[PrintMax] '
 
 # Email templates directory
 EMAIL_TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates', 'emails')
+
+# Razorpay API Keys (set in environment variables)
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_live_RF2OLAhxugVc5B')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '5NkBgjtxzJLNAUwhQLTXzsQP')
