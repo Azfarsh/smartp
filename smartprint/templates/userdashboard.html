@@ -314,6 +314,28 @@
       50% { transform: scale(1.1); }
     }
 
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
     .notification-panel {
       position: fixed;
       top: 64px;
@@ -1214,7 +1236,7 @@
 
     .job-card-filename {
       font-weight: 700;
-      font-size: 16px;
+      font-size: 18px;
       color: var(--on-surface);
       line-height: 1.25;
     }
@@ -1248,7 +1270,7 @@
 
     .job-detail-icon {
       color: #6b7280;
-      font-size: 13px;
+      font-size: 14px;
       width: 13px;
       text-align: center;
     }
@@ -1259,7 +1281,7 @@
     }
 
     .job-detail-text {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--on-surface);
       line-height: 1.35;
     }
@@ -1359,11 +1381,11 @@
       }
 
       .job-card-filename {
-        font-size: 13px;
+        font-size: 14px;
       }
 
       .job-detail-text {
-        font-size: 11px;
+        font-size: 12px;
       }
 
       .job-action-btn {
@@ -1373,7 +1395,7 @@
       }
 
       .job-card-status-badge {
-        font-size: 10px;
+        font-size: 11px;
         padding: 3px 6px;
       }
     }
@@ -1599,7 +1621,6 @@
     .services-section {
       margin-bottom: 2rem;
     }
-
     .services-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -2394,7 +2415,6 @@
       font-size: 0.75rem;
       color: var(--on-surface-variant);
     }
-
     .file-remove {
       background: none;
       border: none;
@@ -3185,7 +3205,6 @@
       width: 0;
       height: 0;
     }
-
     .toggle-track {
       position: absolute;
       cursor: pointer;
@@ -3481,6 +3500,8 @@
         </div>
       </div>
     </section>
+
+    <!-- Completed Jobs History removed; use History button/modal instead -->
 
     <!-- Printing Services -->
     <section class="services-section">
@@ -4366,7 +4387,6 @@
           transform: scale(1) translateY(0);
         }
       }
-
       @keyframes modalReset {
         0% {
           opacity: 1;
@@ -4659,6 +4679,86 @@
         box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
       }
       
+      /* Dark mode: ensure labels are white and inputs are gray with white text */
+      [data-theme="dark"] .service-modal .field-title,
+      [data-theme="dark"] .service-modal .field-description,
+      [data-theme="dark"] .service-modal label,
+      [data-theme="dark"] .modal .field-title,
+      [data-theme="dark"] .modal .field-description,
+      [data-theme="dark"] .modal label {
+        color: #ffffff;
+      }
+      
+      [data-theme="dark"] .service-modal .number-input-wrapper input,
+      [data-theme="dark"] .service-modal .text-input-wrapper input,
+      [data-theme="dark"] .service-modal .feedback-textarea,
+      [data-theme="dark"] .modal .number-input-wrapper input,
+      [data-theme="dark"] .modal .text-input-wrapper input,
+      [data-theme="dark"] .modal .feedback-textarea {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+      }
+      
+      [data-theme="dark"] .service-modal .text-input-wrapper input::placeholder,
+      [data-theme="dark"] .service-modal .feedback-textarea::placeholder,
+      [data-theme="dark"] .modal .text-input-wrapper input::placeholder,
+      [data-theme="dark"] .modal .feedback-textarea::placeholder {
+        color: #d1d5db;
+      }
+      
+      /* Dark mode: adjust upload and selection blocks to gray */
+      [data-theme="dark"] .service-modal .file-upload-area,
+      [data-theme="dark"] .modal .file-upload-area {
+        background: #1f2937;
+        border-color: #6b7280;
+        color: #ffffff;
+      }
+      
+      /* Dark mode: upload block readability */
+      [data-theme="dark"] .service-modal .upload-text,
+      [data-theme="dark"] .modal .upload-text {
+        color: #ffffff;
+        font-weight: 700;
+      }
+      [data-theme="dark"] .service-modal .upload-hint,
+      [data-theme="dark"] .modal .upload-hint {
+        color: #e5e7eb;
+      }
+      [data-theme="dark"] .service-modal .upload-icon,
+      [data-theme="dark"] .modal .upload-icon {
+        color: #93c5fd;
+      }
+      [data-theme="dark"] .service-modal .file-upload-area:hover,
+      [data-theme="dark"] .modal .file-upload-area:hover {
+        border-color: #93c5fd;
+        background: #111827;
+      }
+
+      /* Dark mode: generic print modal upload area (.upload-area) */
+      [data-theme="dark"] .modal .upload-area {
+        background: #111827;
+        border-color: #93c5fd;
+        color: #ffffff;
+      }
+      [data-theme="dark"] .modal .upload-area:hover,
+      [data-theme="dark"] .modal .upload-area.dragover {
+        border-color: #bfdbfe;
+        background: #0b1223;
+      }
+      [data-theme="dark"] .modal .upload-text { color: #ffffff; font-weight: 700; }
+      [data-theme="dark"] .modal .upload-subtitle { color: #e5e7eb; }
+      [data-theme="dark"] .modal .upload-icon { color: #93c5fd; }
+      [data-theme="dark"] .modal .upload-btn { background: #2563eb; color: #ffffff; }
+      [data-theme="dark"] .modal .upload-btn:hover { background: #1d4ed8; }
+      
+      [data-theme="dark"] .service-modal .file-item,
+      [data-theme="dark"] .modal .file-item {
+        background-color: #1f2937;
+        border-color: #4b5563;
+        color: #e5e7eb;
+      }
+      
       /* Specific fix for select dropdown options */
       .service-modal select:focus, .modal select:focus {
         outline: none;
@@ -4933,7 +5033,7 @@
             { 
               label: 'Upload Document or Images', 
               type: 'file', 
-              accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg', 
+              accept: '.pdf,.jpeg,.png,', 
               required: true,
               multiple: true,
               description: 'Upload PDF, Word, PPT, Excel, Text, or image files (Multiple files supported). Image previews will be shown.',
@@ -6135,7 +6235,6 @@
             }
           }, 600);
         }
-        
         // Form submit
         const form = modal.querySelector(`#${service}-modal-form`);
         if (form) {
@@ -6399,7 +6498,10 @@
                   });
                   const data = await verifyResp.json();
                   if (data.success) {
+                    // Close modal immediately
                     try { closeServiceModal(service); } catch (e) {}
+                    
+                    // Show success message
                     const toastMsg = pricingDetails
                       ? `Your ${tmpl.title} request has been sent to print. Paid Rs${pricingDetails.total_price}.`
                       : `Your ${tmpl.title} request has been sent to print.`;
@@ -6418,7 +6520,8 @@
                         vendor: selectedShopData?.vendor_email || selectedShopData?.shop_name || '',
                         vendor_lat: selectedShopData?.latitude || '',
                         vendor_lng: selectedShopData?.longitude || '',
-                        pricing_details: pricingDetails || null
+                        pricing_details: pricingDetails || null,
+                        token: data.token || ''
                       };
                       userJobs = [newJob, ...(userJobs || [])];
                       const container = document.getElementById('jobsContainer');
@@ -6893,7 +6996,6 @@
           pricingSummary.classList.add('active');
         }
       }
-
       async function calculateDigitalPrintPrice(service) {
         const modal = document.getElementById(`service-modal-${service}`);
         const shopSelect = modal.querySelector(`#${service}-shop-select`);
@@ -7655,7 +7757,6 @@
       </a>
     </nav>
   </main>
-
   <!-- Data from backend - OPTIMIZED for instant loading -->
   <script>
     window.userJobsData = [];
@@ -8351,6 +8452,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       // OPTIMIZED: Load jobs instantly without any delay
       loadUserJobs();
+      initWebSocketConnection();
       
       // Load other components asynchronously to not block job rendering
       // Use requestIdleCallback for better performance
@@ -8507,7 +8609,7 @@
       const tokenMatch = notification.message.match(/Token #(\d+)/);
       const token = tokenMatch ? tokenMatch[1] : '';
       const serviceMatch = notification.message.match(/- (.+) completed/);
-      const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job';
+      const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job ';
       return `
         <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${notification.notification_id}" onclick="handleNotificationClick('${notification.notification_id}')">
           <button class="notification-close" onclick="event.stopPropagation(); hideNotification('${notification.notification_id}')" title="Dismiss notification">
@@ -8690,7 +8792,6 @@
         renderVendorOptions();
       }
     }
-
     // Function to render vendor options in main print modal (with location support)
     function renderVendorOptions() {
       const vendorOptionsContainer = document.getElementById('vendorOptions');
@@ -8755,7 +8856,6 @@
           .row-meta { display:flex; align-items:center; gap:8px; color:#2563eb; margin-left:auto; white-space:nowrap; flex-shrink:0; }
           .track-btn { background:#10b981; color:#fff; border:none; border-radius:8px; padding:6px 8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
           .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 360px; margin-left:auto; margin-right:auto; }
-          /* Add horizontal padding so dropdown doesn't touch screen edges on mobile */
           .shop-dropdown2 { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
           @media (max-width: 768px) { .row-title { font-size:14px; } .row-sub { font-size:12px; } }
           [data-theme="dark"] .shop-trigger { background:#1f2937; border-color:#374151; color:#e5e7eb; }
@@ -8846,10 +8946,9 @@
           const meta = row.querySelector('.row-meta span')?.textContent || '';
           if (titleEl) titleEl.textContent = name;
           if (subEl) subEl.textContent = addr || meta;
-          const calculatePriceBtn = document.getElementById('calculatePriceBtn');
-          if (calculatePriceBtn) {
-            if (selectedVendor && uploadedFiles.length > 0) calculatePriceBtn.style.display = 'inline-block';
-            else calculatePriceBtn.style.display = 'none';
+          // Auto-calc pricing when vendor changes and files are present
+          if (selectedVendor && uploadedFiles && uploadedFiles.length > 0) {
+            calculateA4PrintPrice();
           }
         });
       }
@@ -9120,6 +9219,101 @@
       window.open(url, '_blank');
     }
 
+    // WebSocket connection for real-time notifications
+    let userWebSocket = null;
+    
+    function initWebSocketConnection() {
+      const userEmail = '{{ user.email|default:"anonymous" }}';
+      if (userEmail === 'anonymous') return;
+      
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/user/${encodeURIComponent(userEmail)}/`;
+      
+      try {
+        userWebSocket = new WebSocket(wsUrl);
+        
+        userWebSocket.onopen = function(event) {
+          console.log('🔌 Connected to user notifications');
+        };
+        
+        userWebSocket.onmessage = function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            handleUserNotification(data);
+          } catch (e) {
+            console.error('Error parsing WebSocket message:', e);
+          }
+        };
+        
+        userWebSocket.onclose = function(event) {
+          console.log('🔌 Disconnected from user notifications');
+          // Reconnect after 5 seconds
+          setTimeout(initWebSocketConnection, 5000);
+        };
+        
+        userWebSocket.onerror = function(error) {
+          console.error('WebSocket error:', error);
+        };
+        
+      } catch (error) {
+        console.error('Failed to initialize WebSocket connection:', error);
+      }
+    }
+    
+    function handleUserNotification(data) {
+      if (data.type === 'job_completion') {
+        showJobCompletionNotification(data);
+        // Refresh jobs to show updated status
+        loadUserJobs();
+      }
+    }
+    
+    function showJobCompletionNotification(data) {
+      // Create notification element
+      const notification = document.createElement('div');
+      notification.className = 'job-completion-notification';
+      notification.innerHTML = `
+        <div class="notification-content">
+          <div class="notification-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="notification-text">
+            <div class="notification-title">Print Job Completed!</div>
+            <div class="notification-message">${data.filename}</div>
+          </div>
+          <button class="notification-close" onclick="this.parentElement.parentElement.remove()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
+      
+      // Add styles
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+        z-index: 10000;
+        max-width: 350px;
+        animation: slideInRight 0.3s ease-out;
+      `;
+      
+      // Add to page
+      document.body.appendChild(notification);
+      
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.style.animation = 'slideOutRight 0.3s ease-in';
+          setTimeout(() => notification.remove(), 300);
+        }
+      }, 5000);
+    }
+
     // Function to load user jobs from backend - OPTIMIZED for instant loading
     function loadUserJobs() {
       try {
@@ -9185,6 +9379,8 @@
     // Function to render user jobs - OPTIMIZED for instant rendering
     function renderUserJobs() {
       const container = document.getElementById('jobsContainer');
+      const historyContainer = null; // inline history section removed; use modal
+      
       if (!container) return;
 
       if (!userJobs || userJobs.length === 0) {
@@ -9192,39 +9388,49 @@
         return;
       }
 
-      // Filter pending jobs efficiently
+      // Filter jobs efficiently
       const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
+      const completedJobs = userJobs.filter(job => job.job_completed === 'YES');
 
+      // Render pending jobs in main container
       if (pendingJobs.length === 0) {
         showNoJobs('No pending print jobs found. All your jobs are completed!');
-        return;
+      } else {
+        // OPTIMIZED: Use DocumentFragment for faster DOM manipulation
+        const fragment = document.createDocumentFragment();
+        const tempDiv = document.createElement('div');
+        
+        // Render all pending jobs at once for better performance
+        const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
+        tempDiv.innerHTML = jobsHTML;
+        
+        // Move all child nodes to fragment
+        while (tempDiv.firstChild) {
+          fragment.appendChild(tempDiv.firstChild);
+        }
+        
+        // Clear container and append fragment in one operation
+        container.innerHTML = '';
+        container.appendChild(fragment);
       }
 
-      // OPTIMIZED: Use DocumentFragment for faster DOM manipulation
-      const fragment = document.createDocumentFragment();
-      const tempDiv = document.createElement('div');
-      
-      // Render all jobs at once for better performance
-      const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
-      tempDiv.innerHTML = jobsHTML;
-      
-      // Move all child nodes to fragment
-      while (tempDiv.firstChild) {
-        fragment.appendChild(tempDiv.firstChild);
-      }
-      
-      // Clear container and append fragment in one operation
-      container.innerHTML = '';
-      container.appendChild(fragment);
+      // Completed jobs are displayed via the History modal only
       
       // Update the pending jobs count in real-time
       const pendingCount = pendingJobs.length;
+      const completedCount = completedJobs.length;
+      
       const pendingElement = document.getElementById('pendingJobsCount');
       if (pendingElement) {
         pendingElement.textContent = pendingCount;
       }
       
-      console.log(`⚡ INSTANT RENDER: ${pendingCount} pending jobs rendered immediately`);
+      const completedElement = document.getElementById('completedJobsCount');
+      if (completedElement) {
+        completedElement.textContent = completedCount;
+      }
+      
+      console.log(`⚡ INSTANT RENDER: ${pendingCount} pending jobs, ${completedCount} completed jobs rendered immediately`);
     }
     // Function to create a job card - OPTIMIZED for performance
     function createJobCard(job) {
@@ -9320,16 +9526,23 @@
       };
 
       const serviceInfo = getServiceInfo(job);
+      // Prefer pages/copies from pricing metadata when available
+      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+      const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
+      const resolvedCopies = copiesFromMetadata || job.copies || '1';
       const getJobToken = (jobObj) => {
-        const explicit = jobObj.token || jobObj.job_token || jobObj.order_id || jobObj.orderId || jobObj.reference || jobObj.ref || jobObj.id || jobObj.pk || jobObj.uuid;
-        if (explicit) return `${String(explicit).toString().slice(-8)}`;
-        const base = `${jobObj.filename || ''}-${jobObj.uploaded_at || ''}`;
-        let hash = 0;
-        for (let i = 0; i < base.length; i++) {
-          hash = ((hash << 5) - hash) + base.charCodeAt(i);
-          hash |= 0;
-        }
-        return `${Math.abs(hash).toString().slice(0, 8)}`;
+        if (jobObj.token) return String(jobObj.token);
+        if (jobObj.job_token) return String(jobObj.job_token);
+        if (jobObj.order_id) return String(jobObj.order_id);
+        if (jobObj.orderId) return String(jobObj.orderId);
+        if (jobObj.reference) return String(jobObj.reference);
+        if (jobObj.ref) return String(jobObj.ref);
+        if (jobObj.id) return String(jobObj.id);
+        if (jobObj.pk) return String(jobObj.pk);
+        if (jobObj.uuid) return String(jobObj.uuid);
+        return '';
       };
       const jobTokenText = getJobToken(job);
       return `
@@ -9360,7 +9573,7 @@
               </div>
               <div class="job-card-detail-row">
                 <i class="fas fa-file-alt job-detail-icon"></i>
-                <span class="job-detail-text">${job.pages || 'N/A'} pages • ${job.copies || '1'} copies</span>
+                <span class="job-detail-text">${resolvedPages} pages • ${resolvedCopies} copies</span>
               </div>
               <div class="job-card-detail-row">
                 <i class="fas fa-palette job-detail-icon"></i>
@@ -9394,11 +9607,228 @@
       `;
     }
 
+    // Function to create a completed job card for history section
+    function createCompletedJobCard(job) {
+      // Prefer pages/copies from pricing metadata when available
+      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+      const resolvedPages = pagesFromMetadata || job.pages || 1;
+      const resolvedCopies = copiesFromMetadata || job.copies || 1;
+      const completionTime = job.completion_time ? new Date(job.completion_time * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : 'Recently';
+
+      const serviceTypeDisplay = {
+        'digital_print': 'Digital Print',
+        'project_binding': 'Project Binding',
+        'gloss_printing': 'Gloss Paper Printing',
+        'jumbo_printing': 'Jumbo Paper Printing',
+        'regular_print': 'Regular Print',
+        'photo_print': 'Photo Print',
+        'passport_print': 'Passport Print'
+      }[job.service_type] || job.service_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+      return `
+        <div class="job-card completed-job-card" onclick="showJobPreview('${job.filename}', '${job.preview_url}')">
+          <div class="job-header">
+            <div class="job-token">Token #${job.token || 'N/A'}</div>
+            <div class="job-status status-completed">Completed</div>
+          </div>
+          <div class="job-filename">${job.filename}</div>
+          <div class="job-meta">
+            <div class="job-meta-item">
+              <i class="fas fa-file-alt"></i>
+              <span>${resolvedPages} pages</span>
+            </div>
+            <div class="job-meta-item">
+              <i class="fas fa-copy"></i>
+              <span>${resolvedCopies} copies</span>
+            </div>
+            <div class="job-meta-item">
+              <i class="fas fa-tags"></i>
+              <span>${serviceTypeDisplay}</span>
+            </div>
+          </div>
+          <div class="job-actions">
+            <button class="btn-small btn-primary" onclick="event.stopPropagation(); downloadFile('${job.download_url}', '${job.filename}')" title="Download file">
+              <i class="fas fa-download"></i> Download
+            </button>
+            <button class="btn-small btn-secondary" onclick="event.stopPropagation(); showJobPreview('${job.filename}', '${job.preview_url}')" title="Preview file">
+              <i class="fas fa-eye"></i> Preview
+            </button>
+          </div>
+          <div class="job-completion-info">
+            <small>Completed by ${job.vendor_name || 'PrintMax Vendor'} on ${completionTime}</small>
+          </div>
+        </div>
+      `;
+    }
+
     // Function to show loading state - OPTIMIZED: Removed for instant rendering
     function showLoading() {
       // No loading state - render jobs instantly
       return;
     }
+    // Function to download file
+    function downloadFile(url, filename) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Global preview handler used by job cards
+    if (!window.showPreview) {
+      window.showPreview = function(filename, url) {
+        try {
+          // Create modal once and reuse
+          let overlay = document.getElementById('jobPreviewOverlay');
+          if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'jobPreviewOverlay';
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.background = 'rgba(0,0,0,0.6)';
+            overlay.style.zIndex = '3000';
+            overlay.style.display = 'none';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.padding = '1rem';
+
+            const modal = document.createElement('div');
+            modal.id = 'jobPreviewModal';
+            modal.style.background = 'var(--surface)';
+            modal.style.border = '1px solid var(--outline)';
+            modal.style.borderRadius = '16px';
+            modal.style.boxShadow = '0 20px 60px rgba(0,0,0,0.2)';
+            modal.style.maxWidth = '900px';
+            modal.style.width = '100%';
+            modal.style.maxHeight = '90vh';
+            modal.style.overflow = 'hidden';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.alignItems = 'center';
+            header.style.justifyContent = 'space-between';
+            header.style.background = '#2563EB';
+            header.style.color = '#fff';
+            header.style.padding = '0.75rem 1rem';
+
+            const title = document.createElement('div');
+            title.id = 'jobPreviewTitle';
+            title.style.fontWeight = '700';
+            title.style.fontSize = '0.95rem';
+            title.textContent = 'Preview';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.setAttribute('aria-label', 'Close');
+            closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            closeBtn.style.background = 'rgba(255,255,255,0.2)';
+            closeBtn.style.border = 'none';
+            closeBtn.style.color = '#fff';
+            closeBtn.style.width = '36px';
+            closeBtn.style.height = '36px';
+            closeBtn.style.borderRadius = '10px';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.onclick = () => { overlay.style.display = 'none'; };
+
+            header.appendChild(title);
+            header.appendChild(closeBtn);
+
+            const body = document.createElement('div');
+            body.id = 'jobPreviewBody';
+            body.style.padding = '0.75rem';
+            body.style.background = 'var(--surface)';
+            body.style.maxHeight = 'calc(90vh - 56px)';
+            body.style.overflow = 'auto';
+
+            modal.appendChild(header);
+            modal.appendChild(body);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+              if (e.target === overlay) overlay.style.display = 'none';
+            });
+            // Close on Escape
+            document.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape' && overlay.style.display !== 'none') overlay.style.display = 'none';
+            });
+          }
+
+          const body = document.getElementById('jobPreviewBody');
+          const titleEl = document.getElementById('jobPreviewTitle');
+          if (body) body.innerHTML = '';
+          if (titleEl) titleEl.textContent = filename ? `Preview • ${filename}` : 'Preview';
+
+          const lower = (filename || url || '').toLowerCase();
+          const isImage = /(\.png|\.jpg|\.jpeg|\.gif|\.bmp|\.webp|\.tif|\.tiff)$/.test(lower);
+          const isPdf = /\.pdf$/.test(lower) || (url && url.toLowerCase().includes('content-type=application/pdf'));
+
+          if (isImage) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = filename || 'preview image';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.display = 'block';
+            img.style.borderRadius = '12px';
+            body.appendChild(img);
+          } else if (isPdf) {
+            const embed = document.createElement('embed');
+            embed.src = url;
+            embed.type = 'application/pdf';
+            embed.style.width = '100%';
+            embed.style.height = '75vh';
+            embed.style.border = 'none';
+            body.appendChild(embed);
+          } else {
+            // Try iframe for other doc types; if it fails, open new tab
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.style.width = '100%';
+            iframe.style.height = '75vh';
+            iframe.style.border = 'none';
+            body.appendChild(iframe);
+
+            // As a safety, also provide a direct open link
+            const hint = document.createElement('div');
+            hint.style.marginTop = '0.5rem';
+            hint.style.fontSize = '0.85rem';
+            hint.style.color = 'var(--on-surface-variant)';
+            hint.innerHTML = `If the preview doesn't load, <a href="${url}" target="_blank" rel="noopener">open in a new tab</a>.`;
+            body.appendChild(hint);
+          }
+
+          overlay.style.display = 'flex';
+        } catch (err) {
+          console.error('Preview error:', err);
+          // Fallback behavior
+          if (url) window.open(url, '_blank');
+        }
+      };
+    }
+
+    // Function to show job preview
+    function showJobPreview(filename, url) {
+      // Use existing preview functionality
+      if (window.showPreview) {
+        window.showPreview(filename, url);
+      } else {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+      }
+    }
+
     // Function to show no jobs message
     function showNoJobs(message = 'No pending print jobs found.') {
       const container = document.getElementById('jobsContainer');
@@ -9450,7 +9880,6 @@
       
       alert(pricingMessage);
     }
-
     // Function to track vendor location and open Google Maps navigation
     window.trackVendorLocation = function(filename) {
       console.log('trackVendorLocation called with filename:', filename);
@@ -10237,7 +10666,6 @@
         }
       });
     }
-
     // Call fixDropdownOverflow when modals are opened
     function openServiceModal(service) {
       const modalId = `service-modal-${service}`;
@@ -10492,6 +10920,9 @@
       if (e.target.files && e.target.files.length > 0) {
         console.log('Files found:', e.target.files.length);
         handleFileSelect(Array.from(e.target.files));
+        if (selectedVendor) {
+          setTimeout(() => { calculateA4PrintPrice(); }, 200);
+        }
       } else {
         console.log('No files found in input');
       }
@@ -10512,6 +10943,9 @@
       uploadArea.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         handleFileSelect(Array.from(e.dataTransfer.files));
+        if (selectedVendor) {
+          setTimeout(() => { calculateA4PrintPrice(); }, 200);
+        }
       }
     });
 
@@ -10541,6 +10975,7 @@
         colorOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('color', option.dataset.color);
+        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
 
@@ -10551,6 +10986,7 @@
         orientationOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('orientation', option.dataset.orientation);
+        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
 
@@ -10568,6 +11004,7 @@
 
         // reflect immediately in preview
         updateDocumentPreview();
+        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
 
@@ -10575,6 +11012,7 @@
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('specificPages', pageRangeInput.value);
       updateDocumentPreview();
+      if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
     });
     pageSizeOptions.forEach(option => {
       option.addEventListener('click', () => {
@@ -10583,33 +11021,45 @@
         pageSizeOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('pageSize', option.dataset.size);
+        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
     spiralBindingCheckbox.addEventListener('change', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('spiralBinding', spiralBindingCheckbox.checked);
+      if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
     });
 
     laminationCheckbox.addEventListener('change', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('lamination', laminationCheckbox.checked);
+      if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
     });
 
     if (tapeBindingCheckbox) {
       tapeBindingCheckbox.addEventListener('change', () => {
         if (selectedFileIndex === -1) return;
         updateCurrentFileSettings('tapeBinding', tapeBindingCheckbox.checked);
+        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     }
 
     // Vendor selection is now handled in renderVendorOptions function
+    // Debounce helper for auto-calc
+    let a4CalcTimer = null;
+    function debounceCalculateA4() {
+      if (a4CalcTimer) clearTimeout(a4CalcTimer);
+      a4CalcTimer = setTimeout(() => { calculateA4PrintPrice(); }, 300);
+    }
 
     // Action buttons
     document.getElementById('cancelBtn').addEventListener('click', closeModalFunc);
-    // Calculate price button event listener
-    document.getElementById('calculatePriceBtn').addEventListener('click', async () => {
-      await calculateA4PrintPrice();
-    });
+    // Auto-calc: keep button hidden; support click if present
+    const hiddenCalcBtn = document.getElementById('calculatePriceBtn');
+    if (hiddenCalcBtn) {
+      hiddenCalcBtn.style.display = 'none';
+      hiddenCalcBtn.addEventListener('click', async () => { await calculateA4PrintPrice(); });
+    }
 
     // A4 Print Pricing Calculation Function
     async function calculateA4PrintPrice() {
@@ -10681,9 +11131,11 @@
       console.log(`💰 Expected pricing key: a4_print_${printType}`);
 
       // Show loading state
-      const originalText = calculateBtn.innerHTML;
-      calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
-      calculateBtn.disabled = true;
+      const originalText = calculateBtn ? calculateBtn.innerHTML : '';
+      if (calculateBtn) {
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        calculateBtn.disabled = true;
+      }
 
       try {
         // Use the A4 print pricing calculation endpoint
@@ -10752,8 +11204,10 @@
         alert('Error calculating price. Please try again.');
       } finally {
         // Restore button state
-        calculateBtn.innerHTML = originalText;
-        calculateBtn.disabled = false;
+        if (calculateBtn) {
+          calculateBtn.innerHTML = originalText;
+          calculateBtn.disabled = false;
+        }
       }
     }
 
@@ -10904,10 +11358,10 @@
 
               // 3) Verify payment on server and upload files atomically
               const verifyResp = await fetch('/payments/verify/', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRFToken': getCookie('csrftoken') }
-              });
+          method: 'POST',
+          body: formData,
+          headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
 
               const verifyData = await verifyResp.json();
               if (!verifyResp.ok || !verifyData.success) {
@@ -10938,7 +11392,8 @@
                   vendor: selectedVendorData?.vendor_email || selectedVendorData?.shop_name || '',
                   vendor_lat: selectedVendorData?.latitude || '',
                   vendor_lng: selectedVendorData?.longitude || '',
-                  pricing_details: pricingDetails || null
+                  pricing_details: pricingDetails || null,
+                  token: verifyData.token || ''
                 };
                 if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
                 userJobs = [newJob, ...userJobs];
@@ -10952,12 +11407,12 @@
                 }
               } catch (e) { console.warn('Could not prepend new job card:', e); }
 
-              uploadedFiles = [];
-              selectedFileIndex = -1;
-              fileSettings = {};
-              updateFileList();
-              updateUI();
-              refreshJobs();
+          uploadedFiles = [];
+          selectedFileIndex = -1;
+          fileSettings = {};
+          updateFileList();
+          updateUI();
+            refreshJobs();
             } catch (err) {
               console.error('Verification/upload error:', err);
               alert(err.message || 'Payment verification failed. You were not charged.');
@@ -10983,8 +11438,8 @@
       } finally {
         // Button state is reset in success/failure handlers. Keep a safety reset here if checkout did not open.
         if (proceedBtn.disabled) {
-          proceedBtn.disabled = false;
-          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+        proceedBtn.disabled = false;
+        proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
         }
       }
     });
@@ -11030,7 +11485,6 @@
         return distance.toFixed(1) + 'km';
       }
     }
-
     function getUserLocation(forceRefresh = false) {
       return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
@@ -11407,10 +11861,17 @@
         completedJobsList.innerHTML = '<div class="no-jobs-message">No completed print jobs found.</div>';
         return;
       }
-      completedJobsList.innerHTML = completedJobs.map(job => `
+      completedJobsList.innerHTML = completedJobs.map(job => {
+        const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+        const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+        const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+        const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
+        const resolvedCopies = copiesFromMetadata || job.copies || '1';
+        const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3) + (job.spiralBinding==='Yes'?20:0) + (job.lamination==='Yes'?parseInt(job.pages||1)*parseInt(job.copies||1)*15:0));
+        return `
         <div class="completed-job-card">
           <div class="completed-job-header">
-            <i class="fas fa-file-${job.file_extension === 'pdf' ? 'pdf' : (['jpg','jpeg','png','gif','bmp','tiff','svg'].includes(job.file_extension) ? 'image' : 'alt')}"></i>
+            <i class="fas fa-file-${job.file_extension === 'pdf' ? 'pdf pdf-red' : (['jpg','jpeg','png','gif','bmp','tiff','svg'].includes(job.file_extension) ? 'image' : 'alt')}"></i>
             <span class="completed-job-filename">${job.filename.length > 28 ? job.filename.substring(0, 28) + '...' : job.filename}</span>
             <span class="completed-job-status">COMPLETED</span>
           </div>
@@ -11418,8 +11879,8 @@
           <div class="completed-job-section">
             <div class="completed-job-section-title"><i class="fas fa-cog"></i> Print Settings</div>
             <div class="completed-job-details">
-              <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${job.pages || 'N/A'}</span></div>
-              <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${job.copies || '1'}</span></div>
+              <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${resolvedPages}</span></div>
+              <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${resolvedCopies}</span></div>
               <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</span></div>
               <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
             </div>
@@ -11427,7 +11888,7 @@
           <div class="completed-job-section">
             <div class="completed-job-section-title"><i class="fas fa-rupee-sign"></i> Cost Details</div>
             <div class="completed-job-details">
-              <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${(parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3) + (job.spiralBinding==='Yes'?20:0) + (job.lamination==='Yes'?parseInt(job.pages||1)*parseInt(job.copies||1)*15:0))}</span></div>
+              <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${totalPrice}</span></div>
               <div><span class="completed-job-details-label">Status</span><br><span class="completed-job-details-value">Paid</span></div>
             </div>
           </div>
@@ -11440,7 +11901,7 @@
                     onclick="trackVendorLocation('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
           </div>
         </div>
-      `).join('');
+      `}).join('');
     }
 
     function hideNotification(notificationId) {

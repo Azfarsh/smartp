@@ -762,6 +762,20 @@
             justify-content: space-between;
         }
 
+        /* Compact variant for tighter presentation */
+        .job-card.compact { padding: 10px 12px; border-radius: 10px; min-height: 160px; max-height: 160px; }
+        .job-card.compact .job-header { margin-bottom: 6px; padding-bottom: 6px; }
+        .job-card.compact .job-token { font-size: 11px; padding: 4px 8px; }
+        .job-card.compact .job-status { font-size: 10px; padding: 2px 8px; }
+        .job-card.compact .job-filename { font-size: 13px; line-height: 1.2; margin: 4px 0 6px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .job-card.compact .job-meta { gap: 6px; margin-bottom: 6px; }
+        .job-card.compact .job-meta-item { gap: 6px; font-size: 12px; }
+        .job-card.compact .job-meta-item i { font-size: 12px; }
+        .job-card.compact .job-actions { gap: 8px; }
+        .job-card.compact .btn-small { padding: 6px 8px; font-size: 12px; border-radius: 8px; }
+        @media (max-width: 1024px) { .jobs-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .jobs-grid { grid-template-columns: 1fr; } }
+
         .job-card::before {
             content: '';
             position: absolute;
@@ -2955,8 +2969,11 @@
                     <i class="fas fa-info-circle"></i> Print Info
                 </button>` :
                 type === 'requests' ? 
-                `<button class="btn-small btn-success" onclick="acceptJob('${job.filename}')">
-                    <i class="fas fa-check"></i> Accept
+                `<button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
+                    <i class="fas fa-check"></i> Completed
+                </button>
+                <button class="btn-small btn-primary" onclick="event.stopPropagation(); acceptJob('${job.filename}')" title="Accept job">
+                    <i class="fas fa-thumbs-up"></i> Accept
                 </button>` : '';
 
             // Add hide button for completed jobs
