@@ -419,7 +419,7 @@
         <div class="modal-content">
             <div class="left-panel">
                 <button class="upload-btn" id="uploadBtn">Upload Photos</button>
-                <input type="file" id="fileInput" accept="image/*,.heic,.heif" multiple style="display:none;">
+                <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
                 <div class="photos-count" id="photosCount">0 photos uploaded</div>
                 <div class="thumbnails-grid" id="thumbnailsGrid"></div>
                 <div class="layout-row">
@@ -662,11 +662,7 @@ function positionPhotoPanel() {
 }
 
 function handleFileUpload(e) {
-    const files = Array.from(e.target.files).filter(file => 
-        file.type.startsWith('image/') || 
-        file.name.toLowerCase().endsWith('.heic') || 
-        file.name.toLowerCase().endsWith('.heif')
-    );
+    const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
     if (files.length === 0) return;
     let loadedCount = 0;
     files.forEach((file, index) => {

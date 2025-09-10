@@ -2074,11 +2074,7 @@ def get_file_type(extension):
         'gif': 'GIF Image',
         'bmp': 'BMP Image',
         'tiff': 'TIFF Image',
-        'tif': 'TIFF Image',
-        'svg': 'SVG Image',
-        'heic': 'HEIC Image',
-        'heif': 'HEIF Image',
-        'webp': 'WebP Image'
+        'svg': 'SVG Image'
     }
     return file_types.get(extension, 'Document')
 
