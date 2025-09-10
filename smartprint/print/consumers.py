@@ -7,6 +7,66 @@ from . import views
 
 logger = logging.getLogger(__name__)
 
+
+class UserConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        """Handle WebSocket connection for user notifications"""
+        self.user_email = self.scope['url_route']['kwargs']['user_email']
+        self.room_group_name = f'user_{self.user_email.replace("@", "_").replace(".", "_")}'
+        
+        # Join room group
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+        
+        await self.accept()
+        logger.info(f"User {self.user_email} connected for notifications")
+        
+        # Send initial status
+        await self.send(text_data=json.dumps({
+            'type': 'connection_status',
+            'status': 'connected',
+            'user_email': self.user_email,
+            'message': 'Connected to notifications'
+        }))
+
+    async def disconnect(self, close_code):
+        """Handle WebSocket disconnection"""
+        # Leave room group
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+        logger.info(f"User {self.user_email} disconnected from notifications")
+
+    async def receive(self, text_data):
+        """Handle incoming WebSocket messages from user"""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+            
+            if message_type == 'ping':
+                await self.send(text_data=json.dumps({
+                    'type': 'pong',
+                    'timestamp': data.get('timestamp')
+                }))
+                
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON received from user")
+        except Exception as e:
+            logger.error(f"Error handling user message: {e}")
+
+    async def job_completion_notification(self, event):
+        """Handle job completion notification"""
+        await self.send(text_data=json.dumps({
+            'type': 'job_completion',
+            'filename': event['filename'],
+            'vendor_id': event['vendor_id'],
+            'completion_time': event['completion_time'],
+            'message': event['message']
+        }))
+
 class VendorConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         """Handle WebSocket connection for vendor client"""

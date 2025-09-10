@@ -26,38 +26,61 @@ from PIL import Image, ImageDraw
 import io
 from django.views.decorators.http import require_POST
 
-# Token management for sequential token generation (100-300)
+# Token management for sequential token generation (100-200)
 _used_tokens = set()
 _current_token = 100
 
 def get_next_sequential_token():
     """
-    Generate the next sequential token in the range 100-300.
-    Once all tokens are used, reset and start over.
+    Generate token based on total pending requests + random digit.
+    Format: (total_pending + 1) * 100 + random_digit
     """
-    global _used_tokens, _current_token
-    
-    # If all tokens are used, reset
-    if len(_used_tokens) >= 201:  # 201 tokens from 100-300 inclusive
-        _used_tokens.clear()
-        _current_token = 100
-    
-    # Find the next available token
-    while _current_token in _used_tokens:
-        _current_token += 1
-        if _current_token > 300:
-            _current_token = 100
-    
-    # Mark this token as used
-    _used_tokens.add(_current_token)
-    
-    # Return the token and increment for next use
-    token = _current_token
-    _current_token += 1
-    if _current_token > 300:
-        _current_token = 100
-    
-    return str(token)
+    try:
+        # Count total pending requests across all users and vendors
+        total_pending = 0
+        
+        # Count user pending jobs
+        try:
+            user_jobs_data = r2_client.get_object(
+                Bucket=settings.R2_BUCKET_NAME,
+                Key='users/jobs_data.json'
+            )
+            user_jobs = json.loads(user_jobs_data['Body'].read().decode('utf-8'))
+            total_pending += len([job for job in user_jobs if job.get('status', '').lower() in ['pending', 'processing', 'in_progress']])
+        except:
+            pass
+            
+        # Count vendor pending jobs
+        try:
+            response = r2_client.list_objects_v2(
+                Bucket=settings.R2_BUCKET_NAME,
+                Prefix='vendor_print_jobs/'
+            )
+            
+            for obj in response.get('Contents', []):
+                if obj['Key'].endswith('jobs_data.json'):
+                    try:
+                        vendor_jobs_data = r2_client.get_object(
+                            Bucket=settings.R2_BUCKET_NAME,
+                            Key=obj['Key']
+                        )
+                        vendor_jobs = json.loads(vendor_jobs_data['Body'].read().decode('utf-8'))
+                        total_pending += len([job for job in vendor_jobs if job.get('status', '').lower() in ['pending', 'processing', 'in_progress']])
+                    except:
+                        continue
+        except:
+            pass
+        
+        # Generate token: (total_pending + 1) + 100 + random_digit
+        random_digit = random.randint(0, 9)
+        token = (total_pending + 1) + 100 + random_digit
+        
+        return str(token)
+        
+    except Exception as e:
+        print(f"Error generating token: {e}")
+        # Fallback to random token
+        return str(random.randint(100, 200))
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -1055,6 +1078,118 @@ def get_vendor_specific_print_jobs(vendor_id):
         return []
 
 
+def update_job_status_comprehensive(filename, job_completed_status, vendor_id, completion_time):
+    """
+    Update job status in all relevant folders: user folder, vendor_print_jobs, vendor_manual_print_jobs
+    Returns (success, user_email)
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+    
+    try:
+        user_email = None
+        updated_folders = []
+        
+        # Define all possible folder paths to check
+        folder_paths = [
+            f'users/',
+            f'vendor_print_jobs/{vendor_id}/',
+            f'vendor_manual_print_jobs/{vendor_id}/'
+        ]
+        
+        # Find the file in all folders and update metadata
+        for folder_path in folder_paths:
+            try:
+                # List objects in the folder
+                response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=folder_path)
+                
+                if 'Contents' in response:
+                    for obj in response['Contents']:
+                        if obj['Key'].endswith(filename):
+                            # Get current metadata
+                            head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
+                            current_metadata = head_response.get('Metadata', {})
+                            
+                            # Extract user email from user folder
+                            if folder_path.startswith('users/') and not user_email:
+                                user_email = obj['Key'].split('/')[1]  # Extract email from path
+                            
+                            # Update metadata
+                            updated_metadata = current_metadata.copy()
+                            updated_metadata['job_completed'] = job_completed_status
+                            if completion_time:
+                                updated_metadata['completion_time'] = str(completion_time)
+                            
+                            # Copy object with updated metadata
+                            copy_source = {
+                                'Bucket': settings.R2_BUCKET,
+                                'Key': obj['Key']
+                            }
+                            
+                            s3.copy_object(
+                                CopySource=copy_source,
+                                Bucket=settings.R2_BUCKET,
+                                Key=obj['Key'],
+                                Metadata=updated_metadata,
+                                MetadataDirective='REPLACE'
+                            )
+                            
+                            updated_folders.append(obj['Key'])
+                            print(f"✅ Updated metadata in {obj['Key']}")
+                            
+            except Exception as e:
+                print(f"⚠️ Error checking folder {folder_path}: {str(e)}")
+                continue
+        
+        if updated_folders:
+            print(f"✅ Successfully updated {len(updated_folders)} file(s) for {filename}")
+            return True, user_email
+        else:
+            print(f"❌ No files found to update for {filename}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Error in comprehensive job status update: {str(e)}")
+        return False, None
+
+
+def send_job_completion_notification(user_email, filename, vendor_id):
+    """
+    Send real-time notification to user about job completion
+    """
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            # Send notification to user's channel group
+            notification_data = {
+                'type': 'job_completion_notification',
+                'filename': filename,
+                'vendor_id': vendor_id,
+                'completion_time': datetime.datetime.now().isoformat(),
+                'message': f'Your print job "{filename}" has been completed!'
+            }
+            
+            # Send to user-specific channel group
+            user_group_name = f'user_{user_email.replace("@", "_").replace(".", "_")}'
+            async_to_sync(channel_layer.group_send)(
+                user_group_name,
+                notification_data
+            )
+            
+            print(f"📢 Notification sent to user {user_email} for job {filename}")
+        else:
+            print("⚠️ Channel layer not available for notifications")
+            
+    except Exception as e:
+        print(f"❌ Error sending notification: {str(e)}")
+
+
 @csrf_exempt
 def update_job_status(request):
     """
@@ -1098,15 +1233,21 @@ def update_job_status(request):
             # Convert status to job_completed format
             job_completed_status = 'YES' if status.lower() in ['completed', 'yes'] else 'NO'
 
-            # Update the file metadata in R2
-            success = update_file_job_status(filename, job_completed_status, vendor_id, completion_time)
+            # Enhanced: Update metadata in all relevant folders and send notification
+            success, user_email = update_job_status_comprehensive(filename, job_completed_status, vendor_id, completion_time)
 
             if success:
                 print(f"✅ Job status updated by vendor {vendor_id}: {filename} -> {job_completed_status}")
+                
+                # Send notification to user if job is completed
+                if job_completed_status == 'YES' and user_email:
+                    send_job_completion_notification(user_email, filename, vendor_id)
+                
                 return JsonResponse({
                     'success': True,
                     'message': f'Job status updated for {filename}',
-                    'status': job_completed_status
+                    'status': job_completed_status,
+                    'user_notified': user_email is not None
                 })
             else:
                 return JsonResponse({
@@ -2432,6 +2573,7 @@ def verify_razorpay_payment(request):
         # Signature valid → proceed to store files (reuse existing logic from process_print_request)
         file_count = int(request.POST.get('file_count', 0))
         files_processed = 0
+        token_value = ''
 
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -2448,30 +2590,112 @@ def verify_razorpay_payment(request):
                 settings_json = request.POST.get(settings_key)
                 print_settings = json.loads(settings_json)
 
-                s3.put_object(Bucket=settings.R2_BUCKET,
-                              Key=fobj.name,
-                              Body=file_content,
-                              ContentType=fobj.content_type,
-                              Metadata={
-                                  'copies': str(print_settings.get("copies", "1")),
-                                  'color': print_settings.get("color", "Black and White"),
-                                  'orientation': print_settings.get("orientation", "portrait"),
-                                  'pageRange': str(print_settings.get("pageRange", "")),
-                                  'specificPages': str(print_settings.get("specificPages", "")),
-                                  'pageSize': str(print_settings.get("pageSize", "A4")),
-                                  'spiralBinding': str(print_settings.get("spiralBinding", "No")),
-                                  'lamination': str(print_settings.get("lamination", "No")),
+                # Resolve user and vendor context
+                user_email = request.user.email if request.user.is_authenticated else 'anonymous'
+                selected_vendor = request.POST.get('selected_vendor') or ''
+                vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
+
+                # Decide storage folder based on service type (mirror upload_to_r2)
+                service_type = (print_settings.get('service_type') or '').strip()
+                manual_job_services = [
+                    'digital_print',      # Digital Document Printing
+                    'gloss_printing',     # Gloss Print
+                    'jumbo_printing',     # Jumbo Paper Printing
+                    'golden_embossing',   # Golden Embossing
+                    'project_binding'     # Project Binding
+                ]
+
+                if service_type in manual_job_services:
+                    vendor_file_key = f'vendor_manual_print_jobs/{vendor_id}/{fobj.name}'
+                    user_file_key = f'users/{user_email}/{fobj.name}'
+                else:
+                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{fobj.name}'
+                    user_file_key = f'users/{user_email}/{fobj.name}'
+
+                # Allocate a sequential token (100-200)
+                if not token_value:  # Only generate once per request
+                    try:
+                        token_value = get_next_sequential_token()
+                    except Exception:
+                        token_value = str(random.randint(100, 200))
+
+                # Build metadata (extend base with payment details)
+                metadata = {
+                    'copies': str(print_settings.get('copies', '1')),
+                    'color': print_settings.get('color', 'Black and White'),
+                    'orientation': print_settings.get('orientation', 'portrait'),
+                    'pageRange': str(print_settings.get('pageRange', '')),
+                    'specificPages': str(print_settings.get('specificPages', '')),
+                    'pageSize': str(print_settings.get('pageSize', 'A4')),
+                    'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
+                    'lamination': str(print_settings.get('lamination', 'No')),
                                   'timestamp': datetime.datetime.now().isoformat(),
                                   'status': 'pending',
                                   'job_completed': 'NO',
                                   'vendor_status': 'not sended',
                                   'trash': 'NO',
+                    'user': user_email,
+                    'vendor': vendor_id,
+                    'job_id': str(print_settings.get('job_id', '')),
+                    'service_type': service_type or 'regular print',
+                    'service_name': str(print_settings.get('service_name', '')),
+                    'token': token_value,
                                   'payment_id': payment_id,
                                   'order_id': order_id
-                              })
+                }
+
+                # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
+                pricing_details = print_settings.get('pricing_details')
+                if pricing_details:
+                    try:
+                        breakdown = pricing_details.get('pricing_breakdown', {})
+                        price_per_page = 0
+                        page_count = 0
+                        num_copies = 0
+                        pricing_key = ''
+                        if isinstance(breakdown, dict):
+                            price_per_page = breakdown.get('price_per_page', 0)
+                            page_count = breakdown.get('page_count', 0)
+                            num_copies = breakdown.get('num_copies', 0)
+                            pricing_key = breakdown.get('pricing_key_used', '')
+                        compact_pricing = {
+                            'total': pricing_details.get('total_price', 0),
+                            'per_page': price_per_page,
+                            'pages': page_count,
+                            'copies': num_copies,
+                            'key': pricing_key,
+                            'quality': breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
+                        }
+                        metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
+                        metadata['total_price'] = str(pricing_details.get('total_price', 0))
+                    except Exception:
+                        pass
+
+                # Store to vendor folder
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=vendor_file_key,
+                    Body=file_content,
+                    ContentType=fobj.content_type,
+                    Metadata=metadata
+                )
+
+                # Store a copy under the user's folder
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=user_file_key,
+                    Body=file_content,
+                    ContentType=fobj.content_type,
+                    Metadata=metadata
+                )
+
                 files_processed += 1
 
-        return JsonResponse({'success': True, 'files_processed': files_processed})
+        return JsonResponse({
+            'success': True, 
+            'files_processed': files_processed,
+            'token': token_value
+        })
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -5355,7 +5579,7 @@ def list_vendor_folder(request):
             })
         
         sanitized_email = sanitize_email(vendor_email)
-        folder_prefix = f"printme/vendor_register_details/{sanitized_email}/"
+        folder_prefix = f"vendor_register_details/{sanitized_email}/"
         
         print(f"🔍 DEBUG - Listing folder: {folder_prefix}")
         
@@ -5429,8 +5653,8 @@ def create_vendor_folder_structure(request):
         
         # Create folder structure with placeholder files
         folders_to_create = [
-            f"printme/vendor_register_details/{sanitized_email}/vendor_services_availability/.folder",
-            f"printme/vendor_register_details/{sanitized_email}/vendor_services_availability/README.md"
+            f"vendor_register_details/{sanitized_email}/vendor_services_availability/.folder",
+            f"vendor_register_details/{sanitized_email}/vendor_services_availability/README.md"
         ]
         
         created_files = []

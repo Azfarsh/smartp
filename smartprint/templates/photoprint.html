@@ -1186,10 +1186,11 @@ async function handlePrint() {
                         const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
                         const verifyData = await verifyResp.json();
                         if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
+                        const serverToken = verifyData.token || token;
                         if (pricingDetails) {
-                            alert(`Photo print job submitted successfully!\n\nTotal Paid: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}\nToken: ${token}`);
+                            alert(`Photo print job submitted successfully!\n\nTotal Paid: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}\nToken: ${serverToken}`);
                         } else {
-                            alert(`Photo print job submitted successfully! Token: ${token}`);
+                            alert(`Photo print job submitted successfully! Token: ${serverToken}`);
                         }
                         resetPhotoPrintModal();
                         resolve();
