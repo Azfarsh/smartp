@@ -745,6 +745,33 @@
       .main-content {
         padding: 4.25rem 0.75rem 5rem; /* tighter top gap under navbar */
       }
+      
+      /* Mobile file upload improvements */
+      .file-upload-area {
+        min-height: 140px;
+        padding: 2rem 1rem;
+        font-size: 16px; /* Prevent zoom on iOS */
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      }
+      
+      .upload-content {
+        gap: 1rem;
+      }
+      
+      .upload-text {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+      
+      .upload-hint {
+        font-size: 0.9rem;
+      }
+      
+      .upload-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
     }
 
     @media (max-width: 480px) {
@@ -787,7 +814,6 @@
         gap: 0.9rem; /* clearer separation between all four blocks */
       }
     }
-
     .stat-card {
       background: var(--surface);
       border-radius: 12px;
@@ -1583,7 +1609,6 @@
       transform: translateY(-2px) scale(1.05);
       box-shadow: var(--shadow-neon);
     }
-
     .job-btn:hover {
       background: var(--view-gradient);
       color: white;
@@ -2373,7 +2398,6 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .file-item {
       display: flex;
       align-items: center;
@@ -3761,6 +3785,10 @@
         transition: all 0.3s;
         position: relative;
         overflow: hidden;
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .file-upload-area:hover {
@@ -5033,7 +5061,7 @@
             { 
               label: 'Upload Document or Images', 
               type: 'file', 
-              accept: '.pdf,.jpeg,.png,', 
+              accept: '.pdf,.jpeg,.jpg,.png,.heic,.heif,.tiff,.tif,.bmp,.gif,.webp', 
               required: true,
               multiple: true,
               description: 'Upload PDF, Word, PPT, Excel, Text, or image files (Multiple files supported). Image previews will be shown.',
@@ -5053,11 +5081,14 @@
               label: 'Paper Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (Standard)' },
+                { value: 'A4', label: 'A4 (210 x 297 mm)' },
+                { value: 'A3', label: 'A3 (297 x 420 mm)' },
+                { value: 'A2', label: 'A2 (420 x 594 mm)' },
+                { value: 'A1', label: 'A1 (594 x 841 mm)' },
                 { value: '12x18', label: '12" x 18" (Custom)' }
               ], 
               required: true,
-              description: 'Choose between A4 and 12×18 only',
+              description: 'Choose the paper size for your digital printing',
               icon: 'fas fa-file'
             },
             { 
@@ -5161,7 +5192,7 @@
             { 
               label: 'Upload Document', 
               type: 'file', 
-              accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png', 
+              accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.heic,.heif,.tiff,.tif,.bmp,.gif,.webp', 
               required: true,
               multiple: true,
               description: 'Upload your documents or images for glossy printing (Multiple files supported)',
@@ -5171,10 +5202,13 @@
               label: 'Print Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (210 x 297 mm)' }
+                { value: 'A4', label: 'A4 (210 x 297 mm)' },
+                { value: 'A3', label: 'A3 (297 x 420 mm)' },
+                { value: 'A2', label: 'A2 (420 x 594 mm)' },
+                { value: 'A1', label: 'A1 (594 x 841 mm)' }
               ], 
               required: true,
-              description: 'A4 size for professional gloss printing',
+              description: 'Choose the paper size for professional gloss printing',
               icon: 'fas fa-ruler-combined'
             },
             { 
@@ -5218,7 +5252,7 @@
             { 
               label: 'Upload Document', 
               type: 'file', 
-              accept: '.pdf,.jpg,.jpeg,.png', 
+              accept: '.pdf,.jpg,.jpeg,.png,.heic,.heif,.tiff,.tif,.bmp,.gif,.webp', 
               required: true,
               multiple: true,
               description: 'Upload your documents or images for large format printing (Multiple files supported)',
@@ -5528,13 +5562,13 @@
                   </div>
                 </div>
                 <div class="field-description">${fieldDescription}</div>
-                <div class="file-upload-area" id="${service}-file-upload" onclick="document.getElementById('${service}-file-input').click()">
+                <div class="file-upload-area" id="${service}-file-upload" onclick="triggerFileInput('${service}')" ontouchend="triggerFileInput('${service}')">
                   <div class="upload-content">
                     <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                    <span id="${service}-file-upload-label" class="upload-text">Click to select file</span>
+                    <span id="${service}-file-upload-label" class="upload-text">Tap to select file</span>
                     <span class="upload-hint">or drag and drop here</span>
                   </div>
-                  <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} ${f.multiple ? 'multiple' : ''} />
+                  <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} ${f.multiple ? 'multiple' : ''} style="display: none;" />
                 </div>
                 <div class="file-preview" id="${service}-file-preview"></div>
               </div>
@@ -6475,8 +6509,10 @@
               headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
               body: JSON.stringify({ amount_paise: Math.round(amountRs * 100), receipt: `print_${Date.now()}` })
             });
-            const orderData = await orderResp.json();
-            if (!orderData.success) { throw new Error(orderData.error || 'Failed to create order'); }
+            const orderData = await safeParseJson(orderResp);
+            if (!orderResp.ok || !orderData.success) {
+              throw new Error(orderData.error || 'Failed to create Razorpay order');
+            }
 
             const options = {
               key: orderData.key_id,
@@ -6496,47 +6532,14 @@
                     body: formData,
                     headers: { 'X-CSRFToken': getCookie('csrftoken') }
                   });
-                  const data = await verifyResp.json();
-                  if (data.success) {
-                    // Close modal immediately
-                    try { closeServiceModal(service); } catch (e) {}
-                    
-                    // Show success message
-                    const toastMsg = pricingDetails
-                      ? `Your ${tmpl.title} request has been sent to print. Paid Rs${pricingDetails.total_price}.`
-                      : `Your ${tmpl.title} request has been sent to print.`;
-                    if (typeof showToast === 'function') { showToast('Payment successful', toastMsg); }
-                    try {
-                      const newJob = {
-                        filename: modal.dataset.fileName || (files && files[0] ? files[0].name : 'New Job'),
-                        uploaded_at: new Date().toISOString().slice(0,16).replace('T',' '),
-                        pages: (window.lastCalculatedPages) || 1,
-                        copies: (window.lastCalculatedCopies) || 1,
-                        color: (window.lastSelectedColor) || 'Black and White',
-                        pageSize: (window.lastSelectedPageSize) || 'A4',
-                        status: 'Pending',
-                        job_completed: 'NO',
-                        service_type: service,
-                        vendor: selectedShopData?.vendor_email || selectedShopData?.shop_name || '',
-                        vendor_lat: selectedShopData?.latitude || '',
-                        vendor_lng: selectedShopData?.longitude || '',
-                        pricing_details: pricingDetails || null,
-                        token: data.token || ''
-                      };
-                      userJobs = [newJob, ...(userJobs || [])];
-                      const container = document.getElementById('jobsContainer');
-                      if (container) {
-                        const cardHTML = createJobCard(newJob);
-                        const temp = document.createElement('div');
-                        temp.innerHTML = cardHTML;
-                        const node = temp.firstElementChild;
-                        if (node) container.insertBefore(node, container.firstChild);
-                      }
-                    } catch (e) { console.warn('Could not prepend new job card:', e); }
-                    resetServiceModal(service);
-                  } else {
-                    alert('Payment verified but upload failed: ' + (data.error || 'Unknown error'));
+                  const verifyData = await safeParseJson(verifyResp);
+                  if (!verifyResp.ok || !verifyData.success) {
+                    throw new Error(verifyData.error || 'Payment verification failed');
                   }
+                  // Close modal and redirect to dashboard after success
+                  try { closeModalFunc(); } catch (e) {}
+                  window.location.href = '/userdashboard/';
+                  return;
                 } catch (err) {
                   alert('Verification error: ' + err.message);
                 } finally {
@@ -7815,6 +7818,15 @@
   <script>
     // Make CSRF token globally available
     window.csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Mobile-friendly file input trigger function
+    function triggerFileInput(service) {
+      const fileInput = document.getElementById(`${service}-file-input`);
+      if (fileInput) {
+        // Prevent double-trigger on mobile
+        fileInput.click();
+      }
+    }
   </script>
 
   <!-- Hidden element with user jobs data - OPTIMIZED for instant loading -->
@@ -7860,7 +7872,6 @@
       }
     })();
   </script>
-
   <!-- Print Modal (Complete R2 Integration) -->
   <div class="modal-overlay" id="printModal">
     <div class="modal">
@@ -7884,7 +7895,7 @@
           </button>
         </div>
 
-        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg">
+        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg,.heic,.heif,.webp">
 
         <!-- File List -->
         <div class="file-list" id="fileList">
@@ -8031,6 +8042,30 @@
                   <i class="fas fa-file-alt"></i>
                 </div>
                 <div class="page-size-label">A4</div>
+              </div>
+              <div class="page-size-option" data-size="a3">
+                <div class="page-size-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="page-size-label">A3</div>
+              </div>
+              <div class="page-size-option" data-size="a2">
+                <div class="page-size-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="page-size-label">A2</div>
+              </div>
+              <div class="page-size-option" data-size="a1">
+                <div class="page-size-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="page-size-label">A1</div>
+              </div>
+              <div class="page-size-option" data-size="12x18">
+                <div class="page-size-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="page-size-label">12" x 18"</div>
               </div>
             </div>
           </div>
@@ -8644,7 +8679,6 @@
       
       return date.toLocaleDateString();
     }
-
     async function handleNotificationClick(notificationId) {
       try {
         const userEmail = '{{ user.email }}';
@@ -9153,7 +9187,7 @@
               const lat = row.getAttribute('data-lat');
               const lng = row.getAttribute('data-lng');
               if (!lat || !lng) { alert('Location not available for this shop.'); return; }
-              const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&travelmode=driving`;
+              const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&destination_place_id=&travelmode=driving`;
               window.open(url, '_blank');
             });
           }
@@ -10232,7 +10266,6 @@
         return Math.max(1, Math.ceil(sizeInKB / 100));
       }
     }
-
     function formatFileSize(bytes) {
       if (bytes === 0) return '0 Bytes';
       const k = 1024;
@@ -11029,7 +11062,6 @@
       updateCurrentFileSettings('spiralBinding', spiralBindingCheckbox.checked);
       if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
     });
-
     laminationCheckbox.addEventListener('change', () => {
       if (selectedFileIndex === -1) return;
       updateCurrentFileSettings('lamination', laminationCheckbox.checked);
@@ -11148,7 +11180,7 @@
           body: JSON.stringify(formData)
         });
 
-        const result = await response.json();
+        const result = await safeParseJson(response);
 
         if (result.success) {
           // Pricing calculation successful - calculate commission and update display
@@ -11336,7 +11368,7 @@
           body: JSON.stringify({ amount_paise: amountPaise, receipt: `print_${Date.now()}` })
         });
 
-        const orderData = await orderResp.json();
+        const orderData = await safeParseJson(orderResp);
         if (!orderResp.ok || !orderData.success) {
           throw new Error(orderData.error || 'Failed to create Razorpay order');
         }
@@ -11363,7 +11395,7 @@
           headers: { 'X-CSRFToken': getCookie('csrftoken') }
         });
 
-              const verifyData = await verifyResp.json();
+              const verifyData = await safeParseJson(verifyResp);
               if (!verifyResp.ok || !verifyData.success) {
                 throw new Error(verifyData.error || 'Payment verification failed');
               }
@@ -11828,7 +11860,6 @@
 
     // Initialize UI
     updateUI();
-
     // Add after the main print modal JS and before updateUI();
     // Completed Jobs Modal Logic
     const historyBtn = document.getElementById('historyBtn');

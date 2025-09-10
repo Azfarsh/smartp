@@ -438,6 +438,24 @@ def get_user_jobs_from_r2(user_email):
                 # Calculate estimated pages if not in metadata
                 pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
 
+                # Get vendor coordinates for tracking
+                vendor_id = metadata.get('vendor', 'firozshop')
+                vendor_lat = None
+                vendor_lng = None
+                vendor_email = None
+                
+                # Try to get vendor coordinates from vendor_register_details
+                try:
+                    vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                    if vendor_email:
+                        # Get vendor coordinates from registration details
+                        vendor_coords = get_vendor_coordinates_from_email(vendor_email)
+                        if vendor_coords:
+                            vendor_lat = vendor_coords.get('latitude')
+                            vendor_lng = vendor_coords.get('longitude')
+                except Exception as e:
+                    print(f"Error getting vendor coordinates for {vendor_id}: {str(e)}")
+
                 # Build job info
                 job_info = {
                     "filename": filename,
@@ -460,6 +478,9 @@ def get_user_jobs_from_r2(user_email):
                     "job_completed": metadata.get('job_completed', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
                     "vendor": metadata.get('vendor', 'firozshop'),
+                    "vendor_lat": vendor_lat,
+                    "vendor_lng": vendor_lng,
+                    "vendor_email": vendor_email,
                     "service_type": metadata.get('service_type', ''),
                     "job_id": metadata.get('job_id', ''),
                     "token": metadata.get('token', ''),
@@ -2053,7 +2074,11 @@ def get_file_type(extension):
         'gif': 'GIF Image',
         'bmp': 'BMP Image',
         'tiff': 'TIFF Image',
-        'svg': 'SVG Image'
+        'tif': 'TIFF Image',
+        'svg': 'SVG Image',
+        'heic': 'HEIC Image',
+        'heif': 'HEIF Image',
+        'webp': 'WebP Image'
     }
     return file_types.get(extension, 'Document')
 
@@ -5230,6 +5255,36 @@ def get_vendor_email_by_vendor_id(vendor_id):
     except Exception as e:
         print(f"Error finding vendor email for vendor_id {vendor_id}: {str(e)}")
     return None
+
+def get_vendor_coordinates_from_email(vendor_email):
+    """
+    Get vendor coordinates from vendor_register_details/{vendor_email}/registration_details.json
+    """
+    s3 = boto3.client('s3',
+                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                      endpoint_url=settings.R2_ENDPOINT,
+                      region_name='auto')
+    
+    try:
+        # Construct the key path
+        sanitized_email = sanitize_email(vendor_email)
+        key = f'vendor_register_details/{sanitized_email}/registration_details.json'
+        
+        # Get the vendor registration details
+        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+        
+        return {
+            'latitude': vendor_data.get('latitude'),
+            'longitude': vendor_data.get('longitude'),
+            'vendor_name': vendor_data.get('vendor_name'),
+            'city': vendor_data.get('city'),
+            'shop_address': vendor_data.get('shop_address')
+        }
+    except Exception as e:
+        print(f"Error getting vendor coordinates for {vendor_email}: {str(e)}")
+        return None
 
 def get_vendor_coordinates(request):
     """
