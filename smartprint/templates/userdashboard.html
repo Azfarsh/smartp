@@ -745,33 +745,6 @@
       .main-content {
         padding: 4.25rem 0.75rem 5rem; /* tighter top gap under navbar */
       }
-      
-      /* Mobile file upload improvements */
-      .file-upload-area {
-        min-height: 140px;
-        padding: 2rem 1rem;
-        font-size: 16px; /* Prevent zoom on iOS */
-        -webkit-tap-highlight-color: transparent;
-        touch-action: manipulation;
-      }
-      
-      .upload-content {
-        gap: 1rem;
-      }
-      
-      .upload-text {
-        font-size: 1.1rem;
-        font-weight: 600;
-      }
-      
-      .upload-hint {
-        font-size: 0.9rem;
-      }
-      
-      .upload-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-      }
     }
 
     @media (max-width: 480px) {
@@ -3785,10 +3758,6 @@
         transition: all 0.3s;
         position: relative;
         overflow: hidden;
-        min-height: 120px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
       }
 
       .file-upload-area:hover {
@@ -5061,7 +5030,7 @@
             { 
               label: 'Upload Document or Images', 
               type: 'file', 
-              accept: '.pdf,.jpeg,.jpg,.png,.heic,.heif,.tiff,.tif,.bmp,.gif,.webp', 
+              accept: '.pdf,.jpeg,.png,', 
               required: true,
               multiple: true,
               description: 'Upload PDF, Word, PPT, Excel, Text, or image files (Multiple files supported). Image previews will be shown.',
@@ -5081,14 +5050,11 @@
               label: 'Paper Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (210 x 297 mm)' },
-                { value: 'A3', label: 'A3 (297 x 420 mm)' },
-                { value: 'A2', label: 'A2 (420 x 594 mm)' },
-                { value: 'A1', label: 'A1 (594 x 841 mm)' },
+                { value: 'A4', label: 'A4 (Standard)' },
                 { value: '12x18', label: '12" x 18" (Custom)' }
               ], 
               required: true,
-              description: 'Choose the paper size for your digital printing',
+              description: 'Choose between A4 and 12×18 only',
               icon: 'fas fa-file'
             },
             { 
@@ -5192,7 +5158,7 @@
             { 
               label: 'Upload Document', 
               type: 'file', 
-              accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.heic,.heif,.tiff,.tif,.bmp,.gif,.webp', 
+              accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png', 
               required: true,
               multiple: true,
               description: 'Upload your documents or images for glossy printing (Multiple files supported)',
@@ -5202,13 +5168,10 @@
               label: 'Print Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (210 x 297 mm)' },
-                { value: 'A3', label: 'A3 (297 x 420 mm)' },
-                { value: 'A2', label: 'A2 (420 x 594 mm)' },
-                { value: 'A1', label: 'A1 (594 x 841 mm)' }
+                { value: 'A4', label: 'A4 (210 x 297 mm)' }
               ], 
               required: true,
-              description: 'Choose the paper size for professional gloss printing',
+              description: 'A4 size for professional gloss printing',
               icon: 'fas fa-ruler-combined'
             },
             { 
@@ -5252,7 +5215,7 @@
             { 
               label: 'Upload Document', 
               type: 'file', 
-              accept: '.pdf,.jpg,.jpeg,.png,.heic,.heif,.tiff,.tif,.bmp,.gif,.webp', 
+              accept: '.pdf,.jpg,.jpeg,.png', 
               required: true,
               multiple: true,
               description: 'Upload your documents or images for large format printing (Multiple files supported)',
@@ -5562,13 +5525,13 @@
                   </div>
                 </div>
                 <div class="field-description">${fieldDescription}</div>
-                <div class="file-upload-area" id="${service}-file-upload" onclick="triggerFileInput('${service}')" ontouchend="triggerFileInput('${service}')">
+                <div class="file-upload-area" id="${service}-file-upload" onclick="document.getElementById('${service}-file-input').click()">
                   <div class="upload-content">
                     <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                    <span id="${service}-file-upload-label" class="upload-text">Tap to select file</span>
+                    <span id="${service}-file-upload-label" class="upload-text">Click to select file</span>
                     <span class="upload-hint">or drag and drop here</span>
                   </div>
-                  <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} ${f.multiple ? 'multiple' : ''} style="display: none;" />
+                  <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} ${f.multiple ? 'multiple' : ''} />
                 </div>
                 <div class="file-preview" id="${service}-file-preview"></div>
               </div>
@@ -6709,6 +6672,9 @@
           case 'passport':
             totalPrice = calculatePassportPricing(formData, vendorPricing, breakdown);
             break;
+          case 'print':
+            totalPrice = calculateA4PrintPricing(formData, vendorPricing, pages, copies, breakdown);
+            break;
         }
 
         // Calculate platform commission
@@ -7818,15 +7784,6 @@
   <script>
     // Make CSRF token globally available
     window.csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-    // Mobile-friendly file input trigger function
-    function triggerFileInput(service) {
-      const fileInput = document.getElementById(`${service}-file-input`);
-      if (fileInput) {
-        // Prevent double-trigger on mobile
-        fileInput.click();
-      }
-    }
   </script>
 
   <!-- Hidden element with user jobs data - OPTIMIZED for instant loading -->
@@ -7895,7 +7852,7 @@
           </button>
         </div>
 
-        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg,.heic,.heif,.webp">
+        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg">
 
         <!-- File List -->
         <div class="file-list" id="fileList">
@@ -8043,30 +8000,6 @@
                 </div>
                 <div class="page-size-label">A4</div>
               </div>
-              <div class="page-size-option" data-size="a3">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">A3</div>
-              </div>
-              <div class="page-size-option" data-size="a2">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">A2</div>
-              </div>
-              <div class="page-size-option" data-size="a1">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">A1</div>
-              </div>
-              <div class="page-size-option" data-size="12x18">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">12" x 18"</div>
-              </div>
             </div>
           </div>
 
@@ -8207,6 +8140,40 @@
         'enhanced_image': 15          // Enhanced image charge: 15 rupees
       };
       
+      function calculateA4PrintPricing(formData, vendorPricing, pages, copies, breakdown) {
+        let total = 0;
+        const color = formData['Print Color'] || 'Black and White';
+        const orientation = formData['Print Orientation'] || 'portrait';
+        const numCopies = formData['Number of Copies'] || 1;
+
+        // Determine print type based on color and orientation
+        let printType = 'single_bw'; // Default to single-sided black & white
+        if (color === 'Color') {
+          printType = 'single_color';
+        }
+
+        // Construct the pricing key
+        const pricingKey = `a4_print_${printType}`;
+        
+        // Get the categorized pricing for A4 print
+        const categorizedPricing = vendorPricing['categorized_pricing'] || {};
+        const a4PrintPricing = categorizedPricing['a4_print'] || {};
+        
+        // Get the base price for this print type
+        let basePrice = a4PrintPricing[pricingKey] || 2; // Default to ₹2 if not found
+        
+        // Calculate total price
+        let subtotal = basePrice * pages * copies;
+        breakdown.push({ 
+          label: `A4 ${color} Print (${pages} pages × ${copies} copies)`, 
+          value: `₹${subtotal}` 
+        });
+        
+        total += subtotal;
+
+        return total;
+      }
+
       // Helper function to calculate platform commission
       function calculatePlatformCommission(serviceKey, vendorPrice) {
         const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 0;
@@ -8224,6 +8191,9 @@
           case 'a4':
             const color = formData['Print Color'] || 'single_color';
             return color === 'single_color' ? 'a4_print_bw' : 'a4_print_color';
+          case 'print':
+            const printColor = formData['Print Color'] || 'Black and White';
+            return printColor === 'Color' ? 'a4_print_color' : 'a4_print_bw';
           case 'digital':
             const paperSize = formData['Paper Size'] || 'A4';
             return paperSize === 'A4' ? 'digital_print_a4' : 'digital_print_12x18';
@@ -11091,6 +11061,18 @@
     if (hiddenCalcBtn) {
       hiddenCalcBtn.style.display = 'none';
       hiddenCalcBtn.addEventListener('click', async () => { await calculateA4PrintPrice(); });
+    }
+
+    // Add a safe JSON parser to prevent "<!DOCTYPE" HTML parsing errors
+    async function safeParseJson(response) {
+        const contentType = response.headers.get('content-type') || '';
+        const text = await response.text();
+        if (contentType.includes('application/json')) {
+            try { return JSON.parse(text); } catch (e) { throw new Error('Invalid JSON from server'); }
+        }
+        // If HTML returned (e.g., auth redirect/403), surface a clearer error
+        const snippet = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+        throw new Error(snippet || 'Unexpected non-JSON response');
     }
 
     // A4 Print Pricing Calculation Function
