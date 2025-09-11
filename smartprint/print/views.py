@@ -1856,11 +1856,11 @@ def upload_to_r2(request):
                     # Determine storage folder based on service type
                     # Specific services go to vendor_manual_print_jobs folder
                     # These services require manual processing by vendors
-                    # Only keep services that truly require manual handling here.
-                    # Move 'digital_print', 'gloss_printing', and 'golden_embossing'
-                    # into vendor_print_jobs so they show in Print Requests.
                     manual_job_services = [
+                        'digital_print',      # Digital Document Printing
+                        'gloss_printing',     # Gloss Print
                         'jumbo_printing',     # Jumbo Paper Printing
+                        'golden_embossing',   # Golden Embossing
                         'project_binding'     # Project Binding
                     ]
                     
