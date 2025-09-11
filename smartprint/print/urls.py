@@ -73,4 +73,11 @@ urlpatterns += [
     path('test-r2-url-generation/', test_r2_url_generation, name='test_r2_url_generation'),
     path('test-r2-simple/', test_r2_simple, name='test_r2_simple'),
     path('list-vendor-folder/', list_vendor_folder, name='list_vendor_folder'),
+    # New job management endpoints
+    path('accept-job/', views.accept_job, name='accept_job'),
+    path('mark-job-completed/', views.mark_job_completed, name='mark_job_completed'),
+    path('retry-failed-job/', views.retry_failed_job, name='retry_failed_job'),
+    path('cancel-failed-job/', views.cancel_failed_job, name='cancel_failed_job'),
+    # Notification endpoints
+    path('get-user-notifications/', views.get_user_notifications, name='get_user_notifications'),
 ]

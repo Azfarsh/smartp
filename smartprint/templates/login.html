@@ -626,6 +626,8 @@
       z-index: 9999;
       opacity: 0;
       transition: all 1s cubic-bezier(0.23, 1, 0.32, 1);
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     #welcomeScreen.show {
@@ -1759,8 +1761,8 @@
     const welcomeMessage = document.getElementById('welcomeMessage');
     const welcomeStatusText = document.getElementById('welcomeStatusText');
     if (isVendor) {
-      welcomeMessage.innerHTML = `👑 Welcome Back, <span style='color:#3a86ff'>${name}</span>!`;
-      welcomeStatusText.innerHTML = '🚀 Launching your print command center...';
+      welcomeMessage.innerHTML = `👑 Welcome back, <span style='color:#3a86ff'>${name}</span>`;
+      welcomeStatusText.innerHTML = '🛠️ Preparing your Vendor Command Center...';
     } else {
       welcomeMessage.innerHTML = `🎉 Welcome, <span style='color:#3a86ff'>${name}</span>!`;
       welcomeStatusText.innerHTML = '⚡ Initializing AI-powered experience...';
@@ -1825,7 +1827,12 @@
     submitBtn.disabled = true;
     btnIcon.textContent = 'hourglass_empty';
     btnIcon.style.animation = 'spin 1s linear infinite';
-    btnText.innerHTML = '🚀 loging in Successfully...';
+    btnText.innerHTML = '🚀 Logging in...';
+    // Show fullscreen welcome screen immediately for vendor
+    try {
+      const nameForWelcome = (email || 'Vendor');
+      showWelcome(nameForWelcome, true);
+    } catch (_) {}
     try {
       const response = await fetch('/vendor-login/', {
         method: 'POST',
@@ -1837,7 +1844,8 @@
       });
       const data = await response.json();
       if (data.success) {
-        showWelcome(data.vendor?.vendor_name || 'Vendor', true);
+        // Already showing welcome; update message if available
+        try { showWelcome(data.vendor?.vendor_name || 'Vendor', true); } catch (_) {}
         setTimeout(() => {
           window.location.href = '/vendordashboard/';
         }, 1000); // 1 second delay for smooth vendor login transition
@@ -1845,7 +1853,16 @@
         submitBtn.disabled = false;
         btnIcon.textContent = 'rocket_launch';
         btnIcon.style.animation = 'none';
-        btnText.innerHTML = '🚀 Launch Control Panel';
+        btnText.innerHTML = '🚀 Vendor login';
+        // Hide welcome screen on failure
+        try {
+          const welcomeScreen = document.getElementById('welcomeScreen');
+          if (welcomeScreen) { welcomeScreen.classList.remove('show'); welcomeScreen.style.display = 'none'; }
+          const container = document.querySelector('.login-container');
+          const themeToggle = document.querySelector('.theme-toggle');
+          if (container) container.style.display = 'grid';
+          if (themeToggle) themeToggle.style.display = 'block';
+        } catch (_) {}
         alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
       }
     } catch (err) {
@@ -1853,7 +1870,16 @@
       submitBtn.disabled = false;
       btnIcon.textContent = 'rocket_launch';
       btnIcon.style.animation = 'none';
-      btnText.innerHTML = '🚀 Launch Control Panel';
+      btnText.innerHTML = '🚀 Vendor login';
+      // Hide welcome screen on error
+      try {
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        if (welcomeScreen) { welcomeScreen.classList.remove('show'); welcomeScreen.style.display = 'none'; }
+        const container = document.querySelector('.login-container');
+        const themeToggle = document.querySelector('.theme-toggle');
+        if (container) container.style.display = 'grid';
+        if (themeToggle) themeToggle.style.display = 'block';
+      } catch (_) {}
       alert('🚫 Connection failed. Please try again.');
     }
   }

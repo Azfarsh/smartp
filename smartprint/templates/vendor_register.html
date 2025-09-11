@@ -677,6 +677,65 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--gray-400);
         }
+
+        /* Submit overlay */
+        .submit-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(2px);
+        }
+
+        .submit-card {
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-2xl);
+            padding: 1.5rem 1.75rem;
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid var(--gray-200);
+            text-align: center;
+        }
+
+        .submit-loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--primary-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            margin: 0 auto 1rem auto;
+            animation: spin 1s linear infinite;
+        }
+
+        .submit-title {
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .submit-subtitle {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        .dot-ellipsis::after {
+            content: '';
+            display: inline-block;
+            width: 1.5em;
+            text-align: left;
+            animation: dots 1.2s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
     </style>
 </head>
 <body>
@@ -847,7 +906,116 @@
         </div>
     </div>
 
+    <!-- Submit Overlay -->
+    <div id="submitOverlay" class="submit-overlay" aria-hidden="true">
+        <div class="submit-card" role="status" aria-live="polite">
+            <div class="submit-loader" aria-hidden="true"></div>
+            <div class="submit-title" id="submitOverlayTitle">Creating your account</div>
+            <div class="submit-subtitle" id="submitOverlayMsg">Setting up your PrintMax vendor profile<span class="dot-ellipsis"></span></div>
+        </div>
+    </div>
+
     <script>
+        // Global validation functions
+        function checkPasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 8) strength += 1;
+            if (/[a-zA-Z]/.test(password)) strength += 1;
+            if (/[0-9]/.test(password)) strength += 1;
+            if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+            return strength;
+        }
+
+        function validateField(fieldId, errorId, validationFn) {
+            const field = document.getElementById(fieldId);
+            const error = document.getElementById(errorId);
+            const result = validationFn(field.value);
+            
+            if (result.isValid) {
+                field.style.borderColor = 'var(--success)';
+                error.style.display = 'none';
+                return true;
+            } else {
+                field.style.borderColor = 'var(--error)';
+                error.textContent = result.message;
+                error.style.display = 'block';
+                return false;
+            }
+        }
+
+        // Global validation functions
+        const validations = {
+            email: (value) => {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!value) return { isValid: false, message: 'Email is required' };
+                if (!emailRegex.test(value)) return { isValid: false, message: 'Please enter a valid email address' };
+                return { isValid: true };
+            },
+            vendorName: (value) => {
+                if (!value.trim()) return { isValid: false, message: 'Shop name is required' };
+                if (value.trim().length < 2) return { isValid: false, message: 'Shop name must be at least 2 characters' };
+                return { isValid: true };
+            },
+            password: (value) => {
+                if (!value) return { isValid: false, message: 'Password is required' };
+                if (checkPasswordStrength(value) < 2) return { isValid: false, message: 'Password must be at least 8 characters with letters and numbers' };
+                return { isValid: true };
+            },
+            confirmPassword: (value) => {
+                const password = document.getElementById('password').value;
+                if (!value) return { isValid: false, message: 'Please confirm your password' };
+                if (value !== password) return { isValid: false, message: 'Passwords do not match' };
+                return { isValid: true };
+            },
+            phoneNumber: (value) => {
+                const phoneRegex = /^\d{10}$/;
+                if (!value) return { isValid: false, message: 'Phone number is required' };
+                if (!phoneRegex.test(value.replace(/\D/g, ''))) return { isValid: false, message: 'Please enter a valid 10-digit phone number' };
+                return { isValid: true };
+            },
+            city: (value) => {
+                if (!value.trim()) return { isValid: false, message: 'City is required' };
+                if (value.trim().length < 2) return { isValid: false, message: 'Please enter a valid city name' };
+                return { isValid: true };
+            },
+            shopAddress: (value) => {
+                if (!value.trim()) return { isValid: false, message: 'Shop address is required' };
+                if (value.trim().length < 10) return { isValid: false, message: 'Please enter a complete address' };
+                return { isValid: true };
+            },
+            pincode: (value) => {
+                const pincodeRegex = /^\d{6}$/;
+                if (!value) return { isValid: false, message: 'PIN code is required' };
+                if (!pincodeRegex.test(value)) return { isValid: false, message: 'Please enter a valid 6-digit PIN code' };
+                return { isValid: true };
+            }
+        };
+
+        // Global notification function
+        function showNotification(message, type = 'info') {
+            // Remove existing notification
+            const existingNotification = document.querySelector('.location-notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+
+            const notification = document.createElement('div');
+            notification.className = `location-notification ${type}`;
+            notification.innerHTML = `
+                <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}</span>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
         // Enhanced form functionality
         document.addEventListener('DOMContentLoaded', function() {
             // Password toggle functionality
@@ -869,16 +1037,6 @@
 
             setupPasswordToggle('password', 'togglePassword');
             setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
-
-            // Password strength checker
-            function checkPasswordStrength(password) {
-                let strength = 0;
-                if (password.length >= 8) strength += 1;
-                if (/[a-zA-Z]/.test(password)) strength += 1;
-                if (/[0-9]/.test(password)) strength += 1;
-                if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-                return strength;
-            }
 
             function updatePasswordStrength(password) {
                 const strength = checkPasswordStrength(password);
@@ -910,72 +1068,6 @@
                 updatePasswordStrength(this.value);
             });
 
-            // Form validation
-            function validateField(fieldId, errorId, validationFn) {
-                const field = document.getElementById(fieldId);
-                const error = document.getElementById(errorId);
-                const result = validationFn(field.value);
-                
-                if (result.isValid) {
-                    field.style.borderColor = 'var(--success)';
-                    error.style.display = 'none';
-                    return true;
-                } else {
-                    field.style.borderColor = 'var(--error)';
-                    error.textContent = result.message;
-                    error.style.display = 'block';
-                    return false;
-                }
-            }
-
-            // Validation functions
-            const validations = {
-                email: (value) => {
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!value) return { isValid: false, message: 'Email is required' };
-                    if (!emailRegex.test(value)) return { isValid: false, message: 'Please enter a valid email address' };
-                    return { isValid: true };
-                },
-                vendorName: (value) => {
-                    if (!value.trim()) return { isValid: false, message: 'Shop name is required' };
-                    if (value.trim().length < 2) return { isValid: false, message: 'Shop name must be at least 2 characters' };
-                    return { isValid: true };
-                },
-                password: (value) => {
-                    if (!value) return { isValid: false, message: 'Password is required' };
-                    if (checkPasswordStrength(value) < 2) return { isValid: false, message: 'Password must be at least 8 characters with letters and numbers' };
-                    return { isValid: true };
-                },
-                confirmPassword: (value) => {
-                    const password = document.getElementById('password').value;
-                    if (!value) return { isValid: false, message: 'Please confirm your password' };
-                    if (value !== password) return { isValid: false, message: 'Passwords do not match' };
-                    return { isValid: true };
-                },
-                phoneNumber: (value) => {
-                    const phoneRegex = /^\d{10}$/;
-                    if (!value) return { isValid: false, message: 'Phone number is required' };
-                    if (!phoneRegex.test(value.replace(/\D/g, ''))) return { isValid: false, message: 'Please enter a valid 10-digit phone number' };
-                    return { isValid: true };
-                },
-                city: (value) => {
-                    if (!value.trim()) return { isValid: false, message: 'City is required' };
-                    if (value.trim().length < 2) return { isValid: false, message: 'Please enter a valid city name' };
-                    return { isValid: true };
-                },
-                shopAddress: (value) => {
-                    if (!value.trim()) return { isValid: false, message: 'Shop address is required' };
-                    if (value.trim().length < 10) return { isValid: false, message: 'Please enter a complete address' };
-                    return { isValid: true };
-                },
-                pincode: (value) => {
-                    const pincodeRegex = /^\d{6}$/;
-                    if (!value) return { isValid: false, message: 'PIN code is required' };
-                    if (!pincodeRegex.test(value)) return { isValid: false, message: 'Please enter a valid 6-digit PIN code' };
-                    return { isValid: true };
-                }
-            };
-
             // Add validation on input
             Object.keys(validations).forEach(fieldId => {
                 const field = document.getElementById(fieldId);
@@ -1003,14 +1095,36 @@
                     let bestCity = '';
                     let bestPincode = '';
                     
+                    function formatAddressFromNominatim(addr) {
+                        if (!addr) return null;
+                        const parts = [];
+                        if (addr.house_number && addr.road) {
+                            parts.push(`${addr.house_number}, ${addr.road}`);
+                        } else if (addr.road) {
+                            parts.push(addr.road);
+                        }
+                        if (addr.neighbourhood) parts.push(addr.neighbourhood);
+                        if (addr.suburb) parts.push(addr.suburb);
+                        if (addr.village) parts.push(addr.village);
+                        if (addr.town) parts.push(addr.town);
+                        if (addr.city_district) parts.push(addr.city_district);
+                        if (addr.city) parts.push(addr.city);
+                        if (addr.state_district) parts.push(addr.state_district);
+                        if (addr.state) parts.push(addr.state);
+                        if (addr.postcode) parts.push(addr.postcode);
+                        if (addr.country) parts.push(addr.country);
+                        return parts.filter(Boolean).join(', ');
+                    }
+                    
                     // Service 1: OpenStreetMap Nominatim (Primary)
                     try {
                         const response1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18&accept-language=en`);
                         const data1 = await response1.json();
                         console.log('Nominatim response:', data1);
                         
-                        if (data1 && data1.display_name) {
-                            bestAddress = data1.display_name;
+                        if (data1 && (data1.address || data1.display_name)) {
+                            const formatted = formatAddressFromNominatim(data1.address);
+                            bestAddress = formatted || data1.display_name;
                             bestCity = data1.address?.city || data1.address?.town || data1.address?.village || data1.address?.suburb || data1.address?.district || '';
                             bestPincode = data1.address?.postcode || '';
                         }
@@ -1025,8 +1139,22 @@
                             const data2 = await response2.json();
                             console.log('BigDataCloud response:', data2);
                             
-                            if (data2 && data2.locality) {
-                                if (!bestAddress) bestAddress = `${data2.locality}, ${data2.principalSubdivision}, ${data2.countryName}`;
+                            if (data2 && (data2.locality || data2.city || data2.localityInfo)) {
+                                if (!bestAddress) {
+                                    const pieces = [];
+                                    const locality = data2.locality || data2.city || '';
+                                    if (data2.localityInfo && data2.localityInfo.administrative) {
+                                        const admin = data2.localityInfo.administrative.map(x => x.name).filter(Boolean);
+                                        pieces.push(locality);
+                                        if (admin.length) pieces.push(admin[0]);
+                                        if (admin.length > 1) pieces.push(admin[1]);
+                                    } else if (locality) {
+                                        pieces.push(locality);
+                                    }
+                                    if (data2.postcode) pieces.push(data2.postcode);
+                                    if (data2.countryName) pieces.push(data2.countryName);
+                                    bestAddress = pieces.join(', ');
+                                }
                                 if (!bestCity) bestCity = data2.locality;
                                 if (!bestPincode) bestPincode = data2.postcode || '';
                             }
@@ -1103,7 +1231,7 @@
                 try {
                     const position = await new Promise((resolve, reject) => {
                         navigator.geolocation.getCurrentPosition(resolve, reject, {
-                            enableHighAccuracy: true,
+                            enableHighAccuracy: true, // use GPS when available (mobile)
                             timeout: 15000,
                             maximumAge: 300000 // 5 minutes cache
                         });
@@ -1164,30 +1292,6 @@
                 }
             }
 
-            // Enhanced notification system
-            function showNotification(message, type = 'info') {
-                // Remove existing notification
-                const existingNotification = document.querySelector('.location-notification');
-                if (existingNotification) {
-                    existingNotification.remove();
-                }
-
-                const notification = document.createElement('div');
-                notification.className = `location-notification ${type}`;
-                notification.innerHTML = `
-                    <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info'}</span>
-                    <span>${message}</span>
-                `;
-                
-                document.body.appendChild(notification);
-                
-                // Auto remove after 5 seconds
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 5000);
-            }
 
             // Add click event listener to location icon
             const locationIcon = document.getElementById('locationIcon');
@@ -1243,7 +1347,7 @@
             event.preventDefault();
             
             // Validate all fields
-            const validations = [
+            const validationResults = [
                 validateField('email', 'emailError', validations.email),
                 validateField('vendorName', 'vendorNameError', validations.vendorName),
                 validateField('password', 'passwordError', validations.password),
@@ -1254,7 +1358,7 @@
                 validateField('pincode', 'pincodeError', validations.pincode)
             ];
 
-            if (!validations.every(v => v)) {
+            if (!validationResults.every(v => v)) {
                 return;
             }
 
@@ -1263,15 +1367,22 @@
             const longitude = document.getElementById('longitude').value;
             
             if (!latitude || !longitude) {
-                alert('Please allow location access to continue registration.');
+                showNotification('Please allow location access to continue registration.', 'warning');
                 return;
             }
 
-            // Show loading state
-            const submitBtn = document.getElementById('submitBtn');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            submitBtn.disabled = true;
-            loadingSpinner.style.display = 'inline-block';
+            // Prevent duplicate submits without changing button design
+            if (window.__registerSubmitting) return;
+            window.__registerSubmitting = true;
+
+            // Show overlay with friendly message
+            const overlay = document.getElementById('submitOverlay');
+            const overlayTitle = document.getElementById('submitOverlayTitle');
+            const overlayMsg = document.getElementById('submitOverlayMsg');
+            overlayTitle.textContent = 'Creating your account';
+            overlayMsg.textContent = '';
+            overlayMsg.innerHTML = 'Setting up your PrintMax vendor profile<span class="dot-ellipsis"></span>';
+            overlay.style.display = 'flex';
 
             const formData = {
                 email: document.getElementById('email').value,
@@ -1298,17 +1409,32 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Show success message
+                    // Show success message immediately
                     document.getElementById('successMessage').style.display = 'block';
                     document.getElementById('vendorRegisterForm').style.display = 'none';
+                    
+                    // Show success notification
+                    showNotification('Account created successfully! Welcome to PrintMax!', 'success');
+
+                    // Update overlay to success state briefly then hide
+                    overlayTitle.textContent = 'Welcome aboard!';
+                    overlayMsg.textContent = 'Your vendor dashboard is ready.';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 1200);
                 } else {
                     throw new Error(data.message || 'Registration failed');
                 }
             } catch (error) {
-                alert(error.message || 'Registration failed. Please try again.');
-            } finally {
-                submitBtn.disabled = false;
-                loadingSpinner.style.display = 'none';
+                console.error('Registration error:', error);
+                showNotification(error.message || 'Registration failed. Please try again.', 'error');
+                
+                // Allow resubmit
+                window.__registerSubmitting = false;
+
+                // Hide overlay on error
+                const overlay = document.getElementById('submitOverlay');
+                if (overlay) overlay.style.display = 'none';
             }
         }
     </script>

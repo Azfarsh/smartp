@@ -3466,13 +3466,13 @@
         </div>
         <div class="stat-card">
           <div class="stat-header">
-            <div class="stat-title">This Month</div>
+            <div class="stat-title">Points</div>
             <div class="stat-icon">
-              <span class="material-icons">person</span>
+              <span class="material-icons">stars</span>
             </div>
           </div>
-          <div class="stat-value" id="totalEarningsCount">₹{{ total_earnings }}</div>
-          <div class="stat-label">This Month</div>
+          <div class="stat-value" id="totalPointsCount">{{ user_points|default:0 }}</div>
+          <div class="stat-label">Points</div>
         </div>
       </div>
     </section>
@@ -6519,19 +6519,24 @@
         });
         }
         // Close modal on overlay click
+        if (modal) {
         modal.addEventListener('click', (e) => {
           if (e.target === modal) closeServiceModal(service);
         });
+        }
       }
 
-      document.getElementById('passportPhotoBtn').addEventListener('click', function(e) {
+      const passportPhotoBtn = document.getElementById('passportPhotoBtn');
+      if (passportPhotoBtn) {
+        passportPhotoBtn.addEventListener('click', function(e) {
         e.preventDefault();
         // Ensure shops are loaded before opening modal
         if (availableShops.length === 0 && locationBasedShops.length === 0) {
           loadLocationBasedShops();
         }
         openServiceModal('passport');
-      });
+        });
+      }
       // Pricing calculation functions
       let vendorPricingData = {};
 
@@ -7027,9 +7032,8 @@
           fileName: modal.dataset.fileName
         });
 
-        // Check if a file is uploaded
+        // Check if a file is uploaded (removed alert for mobile uploads)
         if (pageCount === 1 && !modal.dataset.fileName) {
-          alert('Please upload a document first');
           return;
         }
 
@@ -7208,9 +7212,8 @@
           fileName: modal.dataset.fileName
         });
 
-        // Check if a file is uploaded
+        // Check if a file is uploaded (removed alert for mobile uploads)
         if (pageCount === 1 && !modal.dataset.fileName) {
-          alert('Please upload a document first');
           return;
         }
 
@@ -7325,9 +7328,8 @@
           fileName: modal.dataset.fileName
         });
 
-        // Check if a file is uploaded
+        // Check if a file is uploaded (removed alert for mobile uploads)
         if (pageCount === 1 && !modal.dataset.fileName) {
-          alert('Please upload a document first');
           return;
         }
 
@@ -7443,9 +7445,8 @@
           fileName: modal.dataset.fileName
         });
 
-        // Check if a file is uploaded
+        // Check if a file is uploaded (removed alert for mobile uploads)
         if (pageCount === 1 && !modal.dataset.fileName) {
-          alert('Please upload a document first');
           return;
         }
 
@@ -7741,7 +7742,7 @@
           // OPTIMIZED: Use DocumentFragment for faster rendering
           const fragment = document.createDocumentFragment();
           const tempDiv = document.createElement('div');
-          const jobsHTML = window.preloadedPendingJobs.map(job => createJobCard(job)).join('');
+          const jobsHTML = window.preloadedPendingJobs.map(job => window.createJobCard(job)).join('');
           tempDiv.innerHTML = jobsHTML;
           
           while (tempDiv.firstChild) {
@@ -7791,6 +7792,159 @@
   
   <!-- INSTANT JOBS RENDERING - No waiting for DOM ready -->
   <script>
+    // Define createJobCard function in global scope for instant loading
+    window.createJobCard = function(job) {
+      // Cache status class calculation for better performance
+      const getStatusClass = (status) => {
+        const statusLower = status.toLowerCase();
+        if (statusLower === 'completed') return 'status-completed';
+        if (statusLower === 'pending') return 'status-pending';
+        if (statusLower === 'processing' || statusLower === 'printing') return 'status-processing';
+        return 'status-failed';
+      };
+
+      const getStatusColorClass = (status) => {
+        const statusLower = status.toLowerCase();
+        if (statusLower === 'completed') return 'status-color-completed';
+        if (statusLower === 'pending') return 'status-color-pending';
+        if (statusLower === 'processing' || statusLower === 'printing') return 'status-color-processing';
+        return 'status-color-failed';
+      };
+
+      const getFileIcon = (filename) => {
+        const ext = filename.split('.').pop().toLowerCase();
+        const iconMap = {
+          'pdf': 'fa-file-pdf',
+          'doc': 'fa-file-word',
+          'docx': 'fa-file-word',
+          'txt': 'fa-file-alt',
+          'ppt': 'fa-file-powerpoint',
+          'pptx': 'fa-file-powerpoint',
+          'xls': 'fa-file-excel',
+          'xlsx': 'fa-file-excel',
+          'jpg': 'fa-file-image',
+          'jpeg': 'fa-file-image',
+          'png': 'fa-file-image',
+          'gif': 'fa-file-image',
+          'bmp': 'fa-file-image',
+          'tiff': 'fa-file-image',
+          'svg': 'fa-file-image'
+        };
+        return iconMap[ext] || 'fa-file';
+      };
+
+      // Map a job to a service color/icon tint and readable service name
+      const getServiceInfo = (job) => {
+        const type = (job.service_type || job.service || '').toString().toLowerCase();
+        if (type.includes('photo')) return { cls: 'service-color-photo icon-tint-photo', name: 'Photo Print' };
+        if (type.includes('digital')) return { cls: 'service-color-digital icon-tint-digital', name: 'Digital Print' };
+        if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
+        if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
+        if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
+        return { cls: '', name: 'Print Job' };
+      };
+
+      const calculateEstimatedCost = (job) => {
+        // Check if pricing details are stored in job metadata
+        if (job.pricing_details && job.pricing_details.total_price) {
+          return job.pricing_details.total_price;
+        }
+        
+        // Fallback to estimated calculation
+        const pages = parseInt(job.pages) || 1;
+        const copies = parseInt(job.copies) || 1;
+        const basePrice = job.color === 'color' ? 5 : 3;
+        let cost = pages * copies * basePrice;
+
+        if (job.spiralBinding === 'Yes') cost += 20;
+        if (job.lamination === 'Yes') cost += pages * copies * 15;
+        if (job.tapeBinding === 'Yes') cost += 25;
+
+        return cost;
+      };
+
+      const serviceInfo = getServiceInfo(job);
+      // Prefer pages/copies from pricing metadata when available
+      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+      const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
+      const resolvedCopies = copiesFromMetadata || job.copies || '1';
+      const getJobToken = (jobObj) => {
+        if (jobObj.token) return String(jobObj.token);
+        if (jobObj.job_token) return String(jobObj.job_token);
+        if (jobObj.order_id) return String(jobObj.order_id);
+        if (jobObj.orderId) return String(jobObj.orderId);
+        if (jobObj.reference) return String(jobObj.reference);
+        if (jobObj.ref) return String(jobObj.ref);
+        if (jobObj.id) return String(jobObj.id);
+        if (jobObj.pk) return String(jobObj.pk);
+        if (jobObj.uuid) return String(jobObj.uuid);
+        return '';
+      };
+      const jobTokenText = getJobToken(job);
+      return `
+        <div class="job-card-mobile">
+          <div class="job-card-left-border ${serviceInfo.cls || getStatusColorClass(job.status)}"></div>
+          <div class="job-card-content">
+            <div class="job-card-header">
+              <div class="job-card-title">
+                <i class="fas ${getFileIcon(job.filename)} job-card-icon ${serviceInfo.cls.split(' ')[1] || ''} ${/\.pdf$/i.test(job.filename) ? 'pdf-red' : ''}"></i>
+                <span class="job-card-filename" title="${job.filename}">
+                  ${job.filename.length > 22 ? job.filename.substring(0, 22) + '...' : job.filename}
+                </span>
+              </div>
+              <div class="job-token-row">
+                <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
+                <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
+              </div>
+            </div>
+            
+            <div class="job-card-details">
+              <div class="job-card-detail-row">
+                <i class="fas fa-tags job-detail-icon"></i>
+                <span class="job-detail-text">${serviceInfo.name}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-calendar-alt job-detail-icon"></i>
+                <span class="job-detail-text">${job.uploaded_at}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-file-alt job-detail-icon"></i>
+                <span class="job-detail-text">${resolvedPages} pages • ${resolvedCopies} copies</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-palette job-detail-icon"></i>
+                <span class="job-detail-text">${job.color === 'Black and White' ? 'B&W' : 'Color'} • ${job.pageSize || 'A4'}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-rupee-sign job-detail-icon"></i>
+                <span class="job-detail-text">₹${calculateEstimatedCost(job)}</span>
+              </div>
+            </div>
+            
+            <div class="job-card-actions">
+              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
+                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
+              </button>
+              ${job.pricing_details ? `
+                <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="Pricing Details">
+                  <i class="fas fa-calculator"></i><span class="job-action-label">Pricing</span>
+                </button>
+              ` : ''}
+              <button class="job-action-btn track-btn" 
+                      data-lat="${job.vendor_lat || ''}" 
+                      data-lng="${job.vendor_lng || ''}"
+                      data-vendor="${job.vendor || ''}"
+                      onclick="trackVendorLocation('${job.filename}')" title="Track Vendor">
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
     // OPTIMIZED: Render jobs immediately when this script runs
     (function() {
       const userJobsElement = document.getElementById('userJobsData');
@@ -7810,7 +7964,7 @@
               if (container) {
                 const fragment = document.createDocumentFragment();
                 const tempDiv = document.createElement('div');
-                const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
+                const jobsHTML = pendingJobs.map(job => window.createJobCard(job)).join('');
                 tempDiv.innerHTML = jobsHTML;
                 
                 while (tempDiv.firstChild) {
@@ -8105,6 +8259,181 @@
     </div>
   </div>
   <script>
+    // Function to create a job card - OPTIMIZED for performance
+    function createJobCard(job) {
+      // Cache status class calculation for better performance
+      const getStatusClass = (status) => {
+        const statusLower = status.toLowerCase();
+        if (statusLower === 'completed') return 'status-completed';
+        if (statusLower === 'pending') return 'status-pending';
+        if (statusLower === 'processing' || statusLower === 'printing') return 'status-processing';
+        return 'status-failed';
+      };
+
+      const getStatusColorClass = (status) => {
+        const statusLower = status.toLowerCase();
+        if (statusLower === 'completed') return 'status-color-completed';
+        if (statusLower === 'pending') return 'status-color-pending';
+        if (statusLower === 'processing' || statusLower === 'printing') return 'status-color-processing';
+        return 'status-color-failed';
+      };
+
+      const getFileIcon = (filename) => {
+        const ext = filename.split('.').pop().toLowerCase();
+        const iconMap = {
+          'pdf': 'fa-file-pdf',
+          'doc': 'fa-file-word',
+          'docx': 'fa-file-word',
+          'txt': 'fa-file-alt',
+          'ppt': 'fa-file-powerpoint',
+          'pptx': 'fa-file-powerpoint',
+          'xls': 'fa-file-excel',
+          'xlsx': 'fa-file-excel',
+          'jpg': 'fa-file-image',
+          'jpeg': 'fa-file-image',
+          'png': 'fa-file-image',
+          'gif': 'fa-file-image',
+          'bmp': 'fa-file-image',
+          'tiff': 'fa-file-image',
+          'svg': 'fa-file-image'
+        };
+        return iconMap[ext] || 'fa-file';
+      };
+
+      const getFileIconName = (filename) => {
+        const ext = (filename.split('.').pop() || '').toLowerCase();
+        const nameMap = {
+          'pdf': 'PDF',
+          'doc': 'Word',
+          'docx': 'Word',
+          'txt': 'Text',
+          'ppt': 'PowerPoint',
+          'pptx': 'PowerPoint',
+          'xls': 'Excel',
+          'xlsx': 'Excel',
+          'jpg': 'Image',
+          'jpeg': 'Image',
+          'png': 'Image',
+          'gif': 'GIF',
+          'bmp': 'Bitmap',
+          'tiff': 'TIFF',
+          'svg': 'SVG'
+        };
+        return nameMap[ext] || (ext ? ext.toUpperCase() : 'FILE');
+      };
+
+      // Map a job to a service color/icon tint and readable service name
+      const getServiceInfo = (job) => {
+        const type = (job.service_type || job.service || '').toString().toLowerCase();
+        if (type.includes('photo')) return { cls: 'service-color-photo icon-tint-photo', name: 'Photo Print' };
+        if (type.includes('digital')) return { cls: 'service-color-digital icon-tint-digital', name: 'Digital Print' };
+        if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
+        if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
+        if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
+        return { cls: '', name: 'Print Job' };
+      };
+
+      const calculateEstimatedCost = (job) => {
+        // Check if pricing details are stored in job metadata
+        if (job.pricing_details && job.pricing_details.total_price) {
+          return job.pricing_details.total_price;
+        }
+        
+        // Fallback to estimated calculation
+        const pages = parseInt(job.pages) || 1;
+        const copies = parseInt(job.copies) || 1;
+        const basePrice = job.color === 'color' ? 5 : 3;
+        let cost = pages * copies * basePrice;
+
+        if (job.spiralBinding === 'Yes') cost += 20;
+        if (job.lamination === 'Yes') cost += pages * copies * 15;
+        if (job.tapeBinding === 'Yes') cost += 25;
+
+        return cost;
+      };
+
+      const serviceInfo = getServiceInfo(job);
+      // Prefer pages/copies from pricing metadata when available
+      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+      const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
+      const resolvedCopies = copiesFromMetadata || job.copies || '1';
+      const getJobToken = (jobObj) => {
+        if (jobObj.token) return String(jobObj.token);
+        if (jobObj.job_token) return String(jobObj.job_token);
+        if (jobObj.order_id) return String(jobObj.order_id);
+        if (jobObj.orderId) return String(jobObj.orderId);
+        if (jobObj.reference) return String(jobObj.reference);
+        if (jobObj.ref) return String(jobObj.ref);
+        if (jobObj.id) return String(jobObj.id);
+        if (jobObj.pk) return String(jobObj.pk);
+        if (jobObj.uuid) return String(jobObj.uuid);
+        return '';
+      };
+      const jobTokenText = getJobToken(job);
+      return `
+        <div class="job-card-mobile">
+          <div class="job-card-left-border ${serviceInfo.cls || getStatusColorClass(job.status)}"></div>
+          <div class="job-card-content">
+            <div class="job-card-header">
+              <div class="job-card-title">
+                <i class="fas ${getFileIcon(job.filename)} job-card-icon ${serviceInfo.cls.split(' ')[1] || ''} ${/\.pdf$/i.test(job.filename) ? 'pdf-red' : ''}"></i>
+                <span class="job-card-filename" title="${job.filename}">
+                  ${job.filename.length > 22 ? job.filename.substring(0, 22) + '...' : job.filename}
+                </span>
+              </div>
+              <div class="job-token-row">
+                <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
+                <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
+              </div>
+            </div>
+            
+            <div class="job-card-details">
+              <div class="job-card-detail-row">
+                <i class="fas fa-tags job-detail-icon"></i>
+                <span class="job-detail-text">${serviceInfo.name}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-calendar-alt job-detail-icon"></i>
+                <span class="job-detail-text">${job.uploaded_at}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-file-alt job-detail-icon"></i>
+                <span class="job-detail-text">${resolvedPages} pages • ${resolvedCopies} copies</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-palette job-detail-icon"></i>
+                <span class="job-detail-text">${job.color === 'Black and White' ? 'B&W' : 'Color'} • ${job.pageSize || 'A4'}</span>
+              </div>
+              <div class="job-card-detail-row">
+                <i class="fas fa-rupee-sign job-detail-icon"></i>
+                <span class="job-detail-text">₹${calculateEstimatedCost(job)}</span>
+              </div>
+            </div>
+            
+            <div class="job-card-actions">
+              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
+                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
+              </button>
+              ${job.pricing_details ? `
+                <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="Pricing Details">
+                  <i class="fas fa-calculator"></i><span class="job-action-label">Pricing</span>
+                </button>
+              ` : ''}
+              <button class="job-action-btn track-btn" 
+                      data-lat="${job.vendor_lat || ''}" 
+                      data-lng="${job.vendor_lng || ''}"
+                      data-vendor="${job.vendor || ''}"
+                      onclick="trackVendorLocation('${job.filename}')" title="Track Vendor">
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     // Global state management (Complete R2 Integration)
     let uploadedFiles = [];
     let selectedFileIndex = -1;
@@ -8457,7 +8786,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       // OPTIMIZED: Load jobs instantly without any delay
       loadUserJobs();
-      initWebSocketConnection();
+      // WebSocket removed - not used
       
       // Load other components asynchronously to not block job rendering
       // Use requestIdleCallback for better performance
@@ -8777,8 +9106,10 @@
         });
         
         const data = await response.json();
+        console.log('🏪 Loaded shops data:', data);
         if (data.success) {
           availableShops = data.shops;
+          console.log('🏪 Available shops:', availableShops);
           if (availableShops.length > 0) {
             selectedVendor = availableShops[0].shop_folder;
           }
@@ -8802,6 +9133,13 @@
       if (!vendorOptionsContainer) return;
 
       const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      
+      console.log('🏪 Rendering shops:', {
+        locationBasedShops: locationBasedShops.length,
+        availableShops: availableShops.length,
+        shopsToRender: shopsToRender.length,
+        shops: shopsToRender
+      });
 
       if (shopsToRender.length === 0) {
         vendorOptionsContainer.innerHTML = `
@@ -8816,7 +9154,7 @@
       const listHtml = shopsToRender.map((shop) => {
         const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
         const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
-        const address = [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code, shop.country]
+        const address = [shop.shop_address, shop.city, shop.pincode]
           .filter(Boolean)
           .join(', ');
         return `
@@ -8839,13 +9177,14 @@
 
       vendorOptionsContainer.innerHTML = `
         <style>
-          .shop-dropdown2 { position: relative; width: 100%; }
+          .shop-dropdown2 { position: relative; width: 100%; z-index: 1000; }
           .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; margin-right:8px; }
           .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
           .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
           .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .shop-caret { color:#6b7280; }
+          .shop-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 1001; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto; }
           .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:6px 6px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
           .shop-panel.open { display:block; }
           .shop-list { display:block; }
@@ -8987,7 +9326,7 @@
       const listHtml = shopsToRender.map((shop) => {
         const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
         const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
-        const address = [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code, shop.country]
+        const address = [shop.shop_address, shop.city, shop.pincode]
           .filter(Boolean)
           .join(', ');
         return `
@@ -9010,13 +9349,14 @@
 
       shopOptionsContainer.innerHTML = `
         <style>
-          .shop-dropdown2 { position: relative; width: 100%; }
+          .shop-dropdown2 { position: relative; width: 100%; z-index: 1000; }
           .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; margin-right:8px; }
           .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
           .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
           .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .shop-caret { color:#6b7280; }
+          .shop-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 1001; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto; }
           .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:6px 6px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
           .shop-panel.open { display:block; }
           .shop-list { display:block; }
@@ -9223,46 +9563,7 @@
       window.open(url, '_blank');
     }
 
-    // WebSocket connection for real-time notifications
-    let userWebSocket = null;
-    
-    function initWebSocketConnection() {
-      const userEmail = '{{ user.email|default:"anonymous" }}';
-      if (userEmail === 'anonymous') return;
-      
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/user/${encodeURIComponent(userEmail)}/`;
-      
-      try {
-        userWebSocket = new WebSocket(wsUrl);
-        
-        userWebSocket.onopen = function(event) {
-          console.log('🔌 Connected to user notifications');
-        };
-        
-        userWebSocket.onmessage = function(event) {
-          try {
-            const data = JSON.parse(event.data);
-            handleUserNotification(data);
-          } catch (e) {
-            console.error('Error parsing WebSocket message:', e);
-          }
-        };
-        
-        userWebSocket.onclose = function(event) {
-          console.log('🔌 Disconnected from user notifications');
-          // Reconnect after 5 seconds
-          setTimeout(initWebSocketConnection, 5000);
-        };
-        
-        userWebSocket.onerror = function(error) {
-          console.error('WebSocket error:', error);
-        };
-        
-      } catch (error) {
-        console.error('Failed to initialize WebSocket connection:', error);
-      }
-    }
+    // WebSocket functionality removed - not used in this application
     
     function handleUserNotification(data) {
       if (data.type === 'job_completion') {
@@ -9405,7 +9706,7 @@
         const tempDiv = document.createElement('div');
         
         // Render all pending jobs at once for better performance
-        const jobsHTML = pendingJobs.map(job => createJobCard(job)).join('');
+        const jobsHTML = pendingJobs.map(job => window.createJobCard(job)).join('');
         tempDiv.innerHTML = jobsHTML;
         
         // Move all child nodes to fragment
@@ -9436,180 +9737,7 @@
       
       console.log(`⚡ INSTANT RENDER: ${pendingCount} pending jobs, ${completedCount} completed jobs rendered immediately`);
     }
-    // Function to create a job card - OPTIMIZED for performance
-    function createJobCard(job) {
-      // Cache status class calculation for better performance
-      const getStatusClass = (status) => {
-        const statusLower = status.toLowerCase();
-        if (statusLower === 'completed') return 'status-completed';
-        if (statusLower === 'pending') return 'status-pending';
-        if (statusLower === 'processing' || statusLower === 'printing') return 'status-processing';
-        return 'status-failed';
-      };
-
-      const getStatusColorClass = (status) => {
-        const statusLower = status.toLowerCase();
-        if (statusLower === 'completed') return 'status-color-completed';
-        if (statusLower === 'pending') return 'status-color-pending';
-        if (statusLower === 'processing' || statusLower === 'printing') return 'status-color-processing';
-        return 'status-color-failed';
-      };
-
-      const getFileIcon = (filename) => {
-        const ext = filename.split('.').pop().toLowerCase();
-        const iconMap = {
-          'pdf': 'fa-file-pdf',
-          'doc': 'fa-file-word',
-          'docx': 'fa-file-word',
-          'txt': 'fa-file-alt',
-          'ppt': 'fa-file-powerpoint',
-          'pptx': 'fa-file-powerpoint',
-          'xls': 'fa-file-excel',
-          'xlsx': 'fa-file-excel',
-          'jpg': 'fa-file-image',
-          'jpeg': 'fa-file-image',
-          'png': 'fa-file-image',
-          'gif': 'fa-file-image',
-          'bmp': 'fa-file-image',
-          'tiff': 'fa-file-image',
-          'svg': 'fa-file-image'
-        };
-        return iconMap[ext] || 'fa-file';
-      };
-
-      const getFileIconName = (filename) => {
-        const ext = (filename.split('.').pop() || '').toLowerCase();
-        const nameMap = {
-          'pdf': 'PDF',
-          'doc': 'Word',
-          'docx': 'Word',
-          'txt': 'Text',
-          'ppt': 'PowerPoint',
-          'pptx': 'PowerPoint',
-          'xls': 'Excel',
-          'xlsx': 'Excel',
-          'jpg': 'Image',
-          'jpeg': 'Image',
-          'png': 'Image',
-          'gif': 'GIF',
-          'bmp': 'Bitmap',
-          'tiff': 'TIFF',
-          'svg': 'SVG'
-        };
-        return nameMap[ext] || (ext ? ext.toUpperCase() : 'FILE');
-      };
-
-      // Map a job to a service color/icon tint and readable service name
-      const getServiceInfo = (job) => {
-        const type = (job.service_type || job.service || '').toString().toLowerCase();
-        if (type.includes('photo')) return { cls: 'service-color-photo icon-tint-photo', name: 'Photo Print' };
-        if (type.includes('digital')) return { cls: 'service-color-digital icon-tint-digital', name: 'Digital Print' };
-        if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
-        if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
-        if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
-        return { cls: '', name: 'Print Job' };
-      };
-
-      const calculateEstimatedCost = (job) => {
-        // Check if pricing details are stored in job metadata
-        if (job.pricing_details && job.pricing_details.total_price) {
-          return job.pricing_details.total_price;
-        }
-        
-        // Fallback to estimated calculation
-        const pages = parseInt(job.pages) || 1;
-        const copies = parseInt(job.copies) || 1;
-        const basePrice = job.color === 'color' ? 5 : 3;
-        let cost = pages * copies * basePrice;
-
-        if (job.spiralBinding === 'Yes') cost += 20;
-        if (job.lamination === 'Yes') cost += pages * copies * 15;
-        if (job.tapeBinding === 'Yes') cost += 25;
-
-        return cost;
-      };
-
-      const serviceInfo = getServiceInfo(job);
-      // Prefer pages/copies from pricing metadata when available
-      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
-      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
-      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
-      const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
-      const resolvedCopies = copiesFromMetadata || job.copies || '1';
-      const getJobToken = (jobObj) => {
-        if (jobObj.token) return String(jobObj.token);
-        if (jobObj.job_token) return String(jobObj.job_token);
-        if (jobObj.order_id) return String(jobObj.order_id);
-        if (jobObj.orderId) return String(jobObj.orderId);
-        if (jobObj.reference) return String(jobObj.reference);
-        if (jobObj.ref) return String(jobObj.ref);
-        if (jobObj.id) return String(jobObj.id);
-        if (jobObj.pk) return String(jobObj.pk);
-        if (jobObj.uuid) return String(jobObj.uuid);
-        return '';
-      };
-      const jobTokenText = getJobToken(job);
-      return `
-        <div class="job-card-mobile">
-          <div class="job-card-left-border ${serviceInfo.cls || getStatusColorClass(job.status)}"></div>
-          <div class="job-card-content">
-            <div class="job-card-header">
-              <div class="job-card-title">
-                <i class="fas ${getFileIcon(job.filename)} job-card-icon ${serviceInfo.cls.split(' ')[1] || ''} ${/\.pdf$/i.test(job.filename) ? 'pdf-red' : ''}"></i>
-                <span class="job-card-filename" title="${job.filename}">
-                  ${job.filename.length > 22 ? job.filename.substring(0, 22) + '...' : job.filename}
-                </span>
-              </div>
-              <div class="job-token-row">
-                <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
-                <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
-              </div>
-            </div>
-            
-            <div class="job-card-details">
-              <div class="job-card-detail-row">
-                <i class="fas fa-tags job-detail-icon"></i>
-                <span class="job-detail-text">${serviceInfo.name}</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-calendar-alt job-detail-icon"></i>
-                <span class="job-detail-text">${job.uploaded_at}</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-file-alt job-detail-icon"></i>
-                <span class="job-detail-text">${resolvedPages} pages • ${resolvedCopies} copies</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-palette job-detail-icon"></i>
-                <span class="job-detail-text">${job.color === 'Black and White' ? 'B&W' : 'Color'} • ${job.pageSize || 'A4'}</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-rupee-sign job-detail-icon"></i>
-                <span class="job-detail-text">₹${calculateEstimatedCost(job)}</span>
-              </div>
-            </div>
-            
-            <div class="job-card-actions">
-              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
-                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
-              </button>
-              ${job.pricing_details ? `
-                <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="Pricing Details">
-                  <i class="fas fa-calculator"></i><span class="job-action-label">Pricing</span>
-                </button>
-              ` : ''}
-              <button class="job-action-btn track-btn" 
-                      data-lat="${job.vendor_lat || ''}" 
-                      data-lng="${job.vendor_lng || ''}"
-                      data-vendor="${job.vendor || ''}"
-                      onclick="trackVendorLocation('${job.filename}')" title="Track Vendor">
-                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
+    // createJobCard function moved to top of script section
 
     // Function to create a completed job card for history section
     function createCompletedJobCard(job) {
@@ -11241,6 +11369,16 @@
         const hasCalculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
         if (!hasCalculatedPrice) {
           alert('Please calculate the price before submitting the print job.');
+          proceedBtn.disabled = false;
+          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+          return;
+        }
+
+        // Check if a shop is selected
+        if (!selectedVendor || selectedVendor === '') {
+          alert('Please select a print shop before proceeding.');
+          proceedBtn.disabled = false;
+          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
           return;
         }
 
@@ -11412,8 +11550,8 @@
                 if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
                 userJobs = [newJob, ...userJobs];
                 const container = document.getElementById('jobsContainer');
-                if (container && typeof createJobCard === 'function') {
-                  const cardHTML = createJobCard(newJob);
+                if (container && typeof window.createJobCard === 'function') {
+                  const cardHTML = window.createJobCard(newJob);
                   const temp = document.createElement('div');
                   temp.innerHTML = cardHTML;
                   const node = temp.firstElementChild;
@@ -11627,8 +11765,7 @@
         return shops; // Return all shops if no location data
       }
 
-      const radiusRanges = [1, 2, 3, 4, 5]; // km ranges to check
-      let filteredShops = [];
+      const maxRadius = 3; // Fixed 3km radius as requested
 
       // Calculate distance for all shops that have coordinates
       const shopsWithDistance = shops
@@ -11657,20 +11794,22 @@
 
       console.log('📊 Shops with coordinates and distances:', shopsWithDistance.length);
 
-      // Try each radius range starting from smallest
-      for (let radius of radiusRanges) {
-        filteredShops = shopsWithDistance.filter(shop => shop.distance <= radius);
-        console.log(`🎯 Within ${radius}km: ${filteredShops.length} shops`);
+      // Filter shops within 3km radius
+      const filteredShops = shopsWithDistance.filter(shop => shop.distance <= maxRadius);
+      console.log(`🎯 Within ${maxRadius}km: ${filteredShops.length} shops`);
+      
         if (filteredShops.length > 0) {
-          console.log(`✅ Found ${filteredShops.length} shops within ${radius}km radius`);
+        console.log(`✅ Found ${filteredShops.length} shops within ${maxRadius}km radius`);
           console.log('🏆 Selected shops:', filteredShops.map(s => `${s.shop_name} (${s.formattedDistance})`));
-          break;
-        }
+      } else {
+        console.log(`⚠️ No shops found within ${maxRadius}km, showing all available shops`);
+        // If no shops within 3km, show all shops with distance info
+        return shopsWithDistance;
       }
 
-      // If no shops found within 5km, include shops without coordinates at the end
+      // If no shops found within 3km, include shops without coordinates at the end
       if (filteredShops.length === 0) {
-        console.log('❌ No shops found within 5km, showing all shops');
+        console.log('❌ No shops found within 3km, showing all shops');
         const shopsWithoutCoords = shops
           .filter(shop => !shop.latitude || !shop.longitude || 
                          shop.latitude === '' || shop.longitude === '')

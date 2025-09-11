@@ -42,7 +42,7 @@ def get_next_sequential_token():
         # Count user pending jobs
         try:
             user_jobs_data = r2_client.get_object(
-                Bucket=settings.R2_BUCKET_NAME,
+                Bucket=settings.R2_BUCKET,
                 Key='users/jobs_data.json'
             )
             user_jobs = json.loads(user_jobs_data['Body'].read().decode('utf-8'))
@@ -53,7 +53,7 @@ def get_next_sequential_token():
         # Count vendor pending jobs
         try:
             response = r2_client.list_objects_v2(
-                Bucket=settings.R2_BUCKET_NAME,
+                Bucket=settings.R2_BUCKET,
                 Prefix='vendor_print_jobs/'
             )
             
@@ -61,7 +61,7 @@ def get_next_sequential_token():
                 if obj['Key'].endswith('jobs_data.json'):
                     try:
                         vendor_jobs_data = r2_client.get_object(
-                            Bucket=settings.R2_BUCKET_NAME,
+                            Bucket=settings.R2_BUCKET,
                             Key=obj['Key']
                         )
                         vendor_jobs = json.loads(vendor_jobs_data['Body'].read().decode('utf-8'))
@@ -621,6 +621,12 @@ def userdashboard(request):
                 current_month_jobs += 1
 
         total_earnings = current_month_jobs * 50  # Example: ₹50 per job
+        
+        # Points start at 0 and accrue only via vendor cancellations
+        try:
+            user_points = get_total_user_points(request.user.email)
+        except Exception:
+            user_points = 0
 
         context = {
             'user': request.user,
@@ -632,7 +638,8 @@ def userdashboard(request):
             'total_jobs': total_jobs,
             'pending_jobs': pending_jobs,
             'completed_jobs': completed_jobs,
-            'total_earnings': total_earnings
+            'total_earnings': total_earnings,
+            'user_points': user_points
         }
         return render(request, 'userdashboard.html', context)
         
@@ -649,7 +656,8 @@ def userdashboard(request):
             'total_jobs': 0,
             'pending_jobs': 0,
             'completed_jobs': 0,
-            'total_earnings': 0
+            'total_earnings': 0,
+            'user_points': 0
         })
 
 
@@ -683,6 +691,12 @@ def userdashboard_data(request):
 
         total_earnings = current_month_jobs * 50
 
+        # Points start at 0 and accrue only via vendor cancellations
+        try:
+            user_points = get_total_user_points(request.user.email)
+        except Exception:
+            user_points = 0
+
         return JsonResponse({
             'success': True,
             'user_details': user_details,
@@ -690,7 +704,8 @@ def userdashboard_data(request):
             'total_jobs': total_jobs,
             'pending_jobs': pending_jobs,
             'completed_jobs': completed_jobs,
-            'total_earnings': total_earnings
+            'total_earnings': total_earnings,
+            'user_points': user_points
         })
         
     except Exception as e:
@@ -703,7 +718,8 @@ def userdashboard_data(request):
             'total_jobs': 0,
             'pending_jobs': 0,
             'completed_jobs': 0,
-            'total_earnings': 0
+            'total_earnings': 0,
+            'user_points': 0
         })
 
 
@@ -894,13 +910,14 @@ def get_vendor_print_jobs(request):
                             'timestamp': obj["LastModified"].isoformat()
                         }
 
-                    # Filter only desired services and statuses
+                    # Filter only desired services and statuses - ONLY ACCEPTED JOBS
                     service_type = (metadata.get('service_type') or '').strip().lower()
                     job_completed = (metadata.get('job_completed') or 'NO').upper()
                     vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
                     allowed_services = {'regular print', 'passport_photo', 'photo_print'}
 
-                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'not sended'):
+                    # Only process jobs that are accepted by vendor
+                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
                         print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
                         continue
 
@@ -1251,8 +1268,60 @@ def update_job_status(request):
                 else:
                     vendor_id = 'vendor1'
 
-            # Convert status to job_completed format
-            job_completed_status = 'YES' if status.lower() in ['completed', 'yes'] else 'NO'
+            status_lower = str(status).lower()
+
+            # When a job is accepted or retried from the dashboard, copy it into
+            # vendor_print_jobs/<vendor_id>/ so the vendor client (which polls this
+            # folder) can immediately see and process it.
+            if status_lower in ['accepted', 'retry'] and vendor_id:
+                try:
+                    s3 = boto3.client('s3',
+                                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                                      endpoint_url=settings.R2_ENDPOINT,
+                                      region_name='auto')
+
+                    # Search common locations for the file by filename
+                    search_prefixes = ['users/', f'vendor_manual_print_jobs/{vendor_id}/', f'vendor_print_jobs/{vendor_id}/']
+                    source_key = None
+                    src_metadata = {}
+                    for pref in search_prefixes:
+                        resp = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=pref)
+                        for obj in resp.get('Contents', []) if resp.get('Contents') else []:
+                            if obj['Key'].endswith(filename):
+                                source_key = obj['Key']
+                                try:
+                                    head = s3.head_object(Bucket=settings.R2_BUCKET, Key=source_key)
+                                    src_metadata = head.get('Metadata', {})
+                                except Exception:
+                                    src_metadata = {}
+                                break
+                        if source_key:
+                            break
+
+                    if source_key is None:
+                        return JsonResponse({'success': False, 'error': 'Source file not found'}, status=404)
+
+                    # Destination in vendor_print_jobs
+                    dest_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                    updated_metadata = src_metadata.copy()
+                    updated_metadata['status'] = 'accepted'
+                    updated_metadata['job_completed'] = 'NO'
+
+                    s3.copy_object(
+                        CopySource={'Bucket': settings.R2_BUCKET, 'Key': source_key},
+                        Bucket=settings.R2_BUCKET,
+                        Key=dest_key,
+                        Metadata=updated_metadata,
+                        MetadataDirective='REPLACE'
+                    )
+
+                    return JsonResponse({'success': True, 'message': 'Job accepted and queued for vendor client'})
+                except Exception as e:
+                    return JsonResponse({'success': False, 'error': f'Accept failed: {str(e)}'}, status=500)
+
+            # Convert status to job_completed format for completion updates
+            job_completed_status = 'YES' if status_lower in ['completed', 'yes'] else 'NO'
 
             # Enhanced: Update metadata in all relevant folders and send notification
             success, user_email = update_job_status_comprehensive(filename, job_completed_status, vendor_id, completion_time)
@@ -1271,10 +1340,7 @@ def update_job_status(request):
                     'user_notified': user_email is not None
                 })
             else:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Failed to update job status'
-                })
+                return JsonResponse({'success': False, 'error': 'Failed to update job status'})
 
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
@@ -4640,8 +4706,10 @@ def get_available_shops(request):
                                 'shop_name': vendor_name,
                                 'shop_folder': shop_folder,
                                 'vendor_email': vendor_email,
+                                'phone_number': vendor_data.get('phone_number', ''),
                                 'shop_address': shop_address,
                                 'city': city,
+                                'pincode': vendor_data.get('pincode', ''),
                                 'latitude': latitude,
                                 'longitude': longitude,
                                 'status': 'Available',
@@ -6322,6 +6390,295 @@ def test_r2_url_generation(request):
         "success": False,
         "error": "Invalid request method"
     }, status=405)
+
+@csrf_exempt
+def accept_job(request):
+    """Accept a print job and update vendor status to accepted"""
+    try:
+        data = json.loads(request.body)
+        filename = data.get('filename')
+        vendor_id = data.get('vendor_id')
+        
+        if not filename or not vendor_id:
+            return JsonResponse({'error': 'Filename and vendor_id required'}, status=400)
+        
+        # Update job status to accepted in R2
+        success = update_job_vendor_status(filename, vendor_id, 'accepted')
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': f'Job {filename} accepted successfully'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to accept job'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error accepting job: {e}")
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+@csrf_exempt
+def mark_job_completed(request):
+    """Mark a job as completed and send notification to user"""
+    try:
+        data = json.loads(request.body)
+        filename = data.get('filename')
+        vendor_id = data.get('vendor_id')
+        
+        if not filename or not vendor_id:
+            return JsonResponse({'error': 'Filename and vendor_id required'}, status=400)
+        
+        # Update job status to completed
+        completion_time = datetime.now().isoformat()
+        success, user_email = update_job_status_comprehensive(filename, 'YES', vendor_id, completion_time)
+        
+        if success:
+            # Send notification to user
+            if user_email:
+                send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time)
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Job {filename} marked as completed'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to mark job as completed'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error marking job as completed: {e}")
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+@csrf_exempt
+def retry_failed_job(request):
+    """Retry a failed print job"""
+    try:
+        data = json.loads(request.body)
+        filename = data.get('filename')
+        vendor_id = data.get('vendor_id')
+        
+        if not filename or not vendor_id:
+            return JsonResponse({'error': 'Filename and vendor_id required'}, status=400)
+        
+        # Set job status to accepted so the vendor client will poll and print
+        success = update_job_vendor_status(filename, vendor_id, 'accepted')
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': f'Job {filename} queued for retry'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to retry job'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error retrying job: {e}")
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+@csrf_exempt
+def cancel_failed_job(request):
+    """Cancel a failed print job and compensate user"""
+    try:
+        data = json.loads(request.body)
+        filename = data.get('filename')
+        vendor_id = data.get('vendor_id')
+        user_email = data.get('user_email')
+        job_price = data.get('job_price', 0.0)
+        
+        if not filename or not vendor_id:
+            return JsonResponse({'error': 'Filename and vendor_id required'}, status=400)
+        
+        # Mark job as cancelled
+        success = update_job_vendor_status(filename, vendor_id, 'cancelled')
+        
+        if success:
+            # Compensate user with points
+            if user_email and job_price > 0:
+                points = int(job_price * 10)  # 1 rupee = 10 points
+                # Add points to user account (implement your points system)
+                add_user_points(user_email, points, f"Compensation for failed job: {filename}")
+            
+            # Send notification to user
+            if user_email:
+                send_job_completion_notification(user_email, filename, vendor_id, 'cancelled', datetime.now().isoformat())
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Job {filename} cancelled and user compensated'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to cancel job'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error cancelling job: {e}")
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+def update_job_vendor_status(filename, vendor_id, status):
+    """Update vendor status for a specific job"""
+    try:
+        # Update in vendor_print_jobs folder
+        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        result = r2_client.get_object(Bucket=bucket_name, Key=vendor_key)
+        
+        if result:
+            metadata = json.loads(result['Body'].read().decode('utf-8'))
+            metadata['vendor_status'] = status
+            metadata['updated_at'] = datetime.now().isoformat()
+            
+            r2_client.put_object(
+                Bucket=bucket_name,
+                Key=vendor_key,
+                Body=json.dumps(metadata, indent=2),
+                ContentType='application/json'
+            )
+            
+            print(f"✅ Updated vendor status for {filename}: {status}")
+            return True
+        else:
+            print(f"❌ Job not found: {filename}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error updating vendor status: {e}")
+        return False
+
+def add_user_points(user_email, points, reason):
+    """Add points to user account"""
+    try:
+        # Store points transaction in R2
+        points_data = {
+            'user_email': user_email,
+            'points': points,
+            'reason': reason,
+            'timestamp': datetime.now().isoformat(),
+            'transaction_id': f"points_{int(time.time())}"
+        }
+        
+        points_key = f'user_points/{sanitize_email(user_email)}/transactions/{int(time.time())}.json'
+        
+        try:
+            r2_client.put_object(
+                Bucket=bucket_name,
+                Key=points_key,
+                Body=json.dumps(points_data, indent=2),
+                ContentType='application/json'
+            )
+            print(f"💰 Added {points} points to {user_email} for: {reason}")
+        except Exception as e:
+            print(f"❌ Error storing points in R2: {e}")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error adding points: {e}")
+        return False
+
+@csrf_exempt
+def get_user_notifications(request):
+    """Get user notifications"""
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+        
+        user_email = request.user.email
+        notifications = []
+        
+        # Get notifications from R2
+        prefix = f'user_notifications/{sanitize_email(user_email)}/'
+        
+        try:
+            response = r2_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+            
+            for obj in response.get('Contents', []):
+                try:
+                    result = r2_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                    notification_data = json.loads(result['Body'].read().decode('utf-8'))
+                    notifications.append(notification_data)
+                except Exception as e:
+                    print(f"Error reading notification {obj['Key']}: {e}")
+                    continue
+            
+            # Sort by timestamp (newest first)
+            notifications.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+            
+            return JsonResponse({
+                'success': True,
+                'notifications': notifications
+            })
+            
+        except Exception as e:
+            print(f"Error getting notifications: {e}")
+            return JsonResponse({
+                'success': True,
+                'notifications': []
+            })
+            
+    except Exception as e:
+        print(f"Error in get_user_notifications: {e}")
+        return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
+
+def get_total_user_points(user_email: str) -> int:
+    """Sum all points transactions for the user from R2. Returns 0 if none."""
+    try:
+        prefix = f'user_points/{sanitize_email(user_email)}/transactions/'
+        response = r2_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+        total_points = 0
+        for obj in response.get('Contents', []):
+            try:
+                res = r2_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                data = json.loads(res['Body'].read().decode('utf-8'))
+                total_points += int(data.get('points', 0))
+            except Exception as _e:
+                print(f"⚠️ Skipping invalid points record {obj.get('Key')}: {_e}")
+                continue
+        return total_points
+    except Exception as e:
+        print(f"❌ Error summing user points: {e}")
+        return 0
+
+def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time):
+    """Send job completion notification to user"""
+    try:
+        # Create notification data
+        notification_data = {
+            'user_email': user_email,
+            'filename': filename,
+            'vendor_id': vendor_id,
+            'status': status,
+            'completion_time': completion_time,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Store notification in R2 for user to see
+        notification_key = f'user_notifications/{sanitize_email(user_email)}/{filename}_{int(time.time())}.json'
+        
+        try:
+            r2_client.put_object(
+                Bucket=bucket_name,
+                Key=notification_key,
+                Body=json.dumps(notification_data, indent=2),
+                ContentType='application/json'
+            )
+            print(f"📧 Stored {status} notification for {user_email} for job {filename}")
+        except Exception as e:
+            print(f"❌ Error storing notification in R2: {e}")
+        
+        # Here you could also send email, push notification, etc.
+        print(f"📧 Sent {status} notification to {user_email} for job {filename}")
+        return True
+    except Exception as e:
+        print(f"❌ Error sending notification: {e}")
+        return False
 
 def logout(request):
     """
