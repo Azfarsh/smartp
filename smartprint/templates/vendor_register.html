@@ -976,10 +976,6 @@
                 }
             };
 
-            // Expose validation utilities globally for handlers outside this scope
-            window.validateField = validateField;
-            window.validations = validations;
-
             // Add validation on input
             Object.keys(validations).forEach(fieldId => {
                 const field = document.getElementById(fieldId);
@@ -1109,7 +1105,7 @@
                         navigator.geolocation.getCurrentPosition(resolve, reject, {
                             enableHighAccuracy: true,
                             timeout: 15000,
-                            maximumAge: (/(Android|iPhone|iPad|iPod)/i.test(navigator.userAgent)) ? 0 : 300000
+                            maximumAge: 300000 // 5 minutes cache
                         });
                     });
 
@@ -1119,20 +1115,6 @@
                     // Set coordinates first
                     setLocationFields(latitude, longitude);
                     
-                    // Briefly refine accuracy on mobile with watchPosition
-                    try {
-                        if (/(Android|iPhone|iPad|iPod)/i.test(navigator.userAgent)) {
-                            const watchId = navigator.geolocation.watchPosition(
-                                (pos) => {
-                                    setLocationFields(pos.coords.latitude, pos.coords.longitude);
-                                    navigator.geolocation.clearWatch(watchId);
-                                },
-                                () => { try { navigator.geolocation.clearWatch(watchId); } catch(e){} },
-                                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                            );
-                        }
-                    } catch(_) {}
-
                     // Get detailed address
                     const success = await getAddressFromCoordinates(latitude, longitude);
                     
@@ -1261,18 +1243,18 @@
             event.preventDefault();
             
             // Validate all fields
-            const validationResults = [
-                window.validateField('email', 'emailError', window.validations.email),
-                window.validateField('vendorName', 'vendorNameError', window.validations.vendorName),
-                window.validateField('password', 'passwordError', window.validations.password),
-                window.validateField('confirmPassword', 'confirmPasswordError', window.validations.confirmPassword),
-                window.validateField('phoneNumber', 'phoneNumberError', window.validations.phoneNumber),
-                window.validateField('city', 'cityError', window.validations.city),
-                window.validateField('shopAddress', 'shopAddressError', window.validations.shopAddress),
-                window.validateField('pincode', 'pincodeError', window.validations.pincode)
+            const validations = [
+                validateField('email', 'emailError', validations.email),
+                validateField('vendorName', 'vendorNameError', validations.vendorName),
+                validateField('password', 'passwordError', validations.password),
+                validateField('confirmPassword', 'confirmPasswordError', validations.confirmPassword),
+                validateField('phoneNumber', 'phoneNumberError', validations.phoneNumber),
+                validateField('city', 'cityError', validations.city),
+                validateField('shopAddress', 'shopAddressError', validations.shopAddress),
+                validateField('pincode', 'pincodeError', validations.pincode)
             ];
 
-            if (!validationResults.every(v => v)) {
+            if (!validations.every(v => v)) {
                 return;
             }
 
@@ -1304,18 +1286,14 @@
             };
 
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 12000);
                 const response = await fetch('/vendor-register-api/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify(formData),
-                    signal: controller.signal
+                    body: JSON.stringify(formData)
                 });
-                clearTimeout(timeoutId);
 
                 const data = await response.json();
                 
@@ -1327,8 +1305,7 @@
                     throw new Error(data.message || 'Registration failed');
                 }
             } catch (error) {
-                console.error('Registration submit error:', error);
-                alert(error.message || 'Network delay. Please check your connection and try again.');
+                alert(error.message || 'Registration failed. Please try again.');
             } finally {
                 submitBtn.disabled = false;
                 loadingSpinner.style.display = 'none';
