@@ -1251,60 +1251,8 @@ def update_job_status(request):
                 else:
                     vendor_id = 'vendor1'
 
-            status_lower = str(status).lower()
-
-            # When a job is accepted or retried from the dashboard, copy it into
-            # vendor_print_jobs/<vendor_id>/ so the vendor client (which polls this
-            # folder) can immediately see and process it.
-            if status_lower in ['accepted', 'retry'] and vendor_id:
-                try:
-                    s3 = boto3.client('s3',
-                                      aws_access_key_id=settings.R2_ACCESS_KEY,
-                                      aws_secret_access_key=settings.R2_SECRET_KEY,
-                                      endpoint_url=settings.R2_ENDPOINT,
-                                      region_name='auto')
-
-                    # Search common locations for the file by filename
-                    search_prefixes = ['users/', f'vendor_manual_print_jobs/{vendor_id}/', f'vendor_print_jobs/{vendor_id}/']
-                    source_key = None
-                    src_metadata = {}
-                    for pref in search_prefixes:
-                        resp = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=pref)
-                        for obj in resp.get('Contents', []) if resp.get('Contents') else []:
-                            if obj['Key'].endswith(filename):
-                                source_key = obj['Key']
-                                try:
-                                    head = s3.head_object(Bucket=settings.R2_BUCKET, Key=source_key)
-                                    src_metadata = head.get('Metadata', {})
-                                except Exception:
-                                    src_metadata = {}
-                                break
-                        if source_key:
-                            break
-
-                    if source_key is None:
-                        return JsonResponse({'success': False, 'error': 'Source file not found'}, status=404)
-
-                    # Destination in vendor_print_jobs
-                    dest_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-                    updated_metadata = src_metadata.copy()
-                    updated_metadata['status'] = 'accepted'
-                    updated_metadata['job_completed'] = 'NO'
-
-                    s3.copy_object(
-                        CopySource={'Bucket': settings.R2_BUCKET, 'Key': source_key},
-                        Bucket=settings.R2_BUCKET,
-                        Key=dest_key,
-                        Metadata=updated_metadata,
-                        MetadataDirective='REPLACE'
-                    )
-
-                    return JsonResponse({'success': True, 'message': 'Job accepted and queued for vendor client'})
-                except Exception as e:
-                    return JsonResponse({'success': False, 'error': f'Accept failed: {str(e)}'}, status=500)
-
-            # Convert status to job_completed format for completion updates
-            job_completed_status = 'YES' if status_lower in ['completed', 'yes'] else 'NO'
+            # Convert status to job_completed format
+            job_completed_status = 'YES' if status.lower() in ['completed', 'yes'] else 'NO'
 
             # Enhanced: Update metadata in all relevant folders and send notification
             success, user_email = update_job_status_comprehensive(filename, job_completed_status, vendor_id, completion_time)
@@ -1323,7 +1271,10 @@ def update_job_status(request):
                     'user_notified': user_email is not None
                 })
             else:
-                return JsonResponse({'success': False, 'error': 'Failed to update job status'})
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to update job status'
+                })
 
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
