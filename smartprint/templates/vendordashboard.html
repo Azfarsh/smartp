@@ -750,12 +750,12 @@
             background: var(--surface);
             border: 1px solid var(--outline);
             border-radius: 10px;
-            padding: 12px 14px;
+            padding: 14px 16px; /* slightly increased padding */
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            min-height: 190px; /* increased to ensure buttons never overlap */
+            min-height: 210px; /* slightly increased to prevent button crowding */
             /* no max-height to prevent content overlap */
             box-shadow: 0 2px 8px var(--shadow-light);
             display: flex;
@@ -764,7 +764,7 @@
         }
 
         /* Compact variant for tighter presentation */
-        .job-card.compact { padding: 10px 12px; border-radius: 10px; min-height: 160px; max-height: 160px; }
+        .job-card.compact { padding: 12px 14px; border-radius: 10px; min-height: 180px; max-height: 180px; }
         .job-card.compact .job-header { margin-bottom: 6px; padding-bottom: 6px; }
         .job-card.compact .job-token { font-size: 11px; padding: 4px 8px; }
         .job-card.compact .job-status { font-size: 10px; padding: 2px 8px; }
@@ -943,7 +943,7 @@
             display: flex;
             gap: 6px;
             margin-top: auto;
-            padding-top: 6px;
+            padding-top: 10px; /* add a bit more breathing room above buttons */
         }
 
         .service-type-badge {
@@ -1855,10 +1855,6 @@
     </style>
 </head>
 <body>
-    <script>
-        // Expose current vendor id for AJAX calls used by Accept/Completed actions
-        window.currentVendorId = "{% if vendor_details and vendor_details.vendor_id %}{{ vendor_details.vendor_id }}{% else %}{% if request and request.session and request.session.vendor_id %}{{ request.session.vendor_id }}{% else %}{% endif %}{% endif %}";
-    </script>
     <!-- Header with Logo -->
     <header class="header">
         <div class="header-left">
@@ -2334,6 +2330,8 @@
     </div>
 
     <script>
+        // Current vendor id injected for API calls used by Accept/Complete actions
+        const currentVendorId = "{{ vendor_details.vendor_id|default:'' }}";
         // Global variables
         let allJobs = [];
         let filteredJobs = { manual: [], completed: [], requests: [] };
