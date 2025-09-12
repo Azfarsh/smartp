@@ -2595,6 +2595,141 @@ from django.views.decorators.csrf import csrf_exempt
 import hmac
 import hashlib
 import razorpay
+from django.urls import reverse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+
+# Google Drive imports (server-side OAuth and Drive access)
+try:
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+    from google_auth_oauthlib.flow import Flow
+    from googleapiclient.http import MediaIoBaseDownload
+    import io
+except Exception:
+    Credentials = None
+    build = None
+    Flow = None
+    MediaIoBaseDownload = None
+    io = None
+
+# ─────────────────────────────────────────────────────────────
+# Google Drive OAuth + File Proxy (for mobile Drive import)
+# ─────────────────────────────────────────────────────────────
+
+GOOGLE_DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+
+def _get_google_oauth_client_config():
+    client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', None) or getattr(settings, 'GOOGLE_CLIENT_ID', None)
+    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', None)
+    if not client_id or not client_secret:
+        return None
+    return {
+        'web': {
+            'client_id': client_id,
+            'project_id': 'smartprint',
+            'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
+            'token_uri': 'https://oauth2.googleapis.com/token',
+            'auth_provider_x509_cert_url': 'https://www.googleapis.com/oauth2/v1/certs',
+            'client_secret': client_secret,
+            'redirect_uris': [],
+            'javascript_origins': []
+        }
+    }
+
+def drive_oauth_start(request):
+    if Flow is None:
+        return JsonResponse({'error': 'Google API libraries not installed'}, status=500)
+
+    client_config = _get_google_oauth_client_config()
+    if not client_config:
+        return JsonResponse({'error': 'Google OAuth not configured'}, status=500)
+
+    redirect_uri = request.build_absolute_uri(reverse('drive_oauth_callback'))
+    client_config['web']['redirect_uris'] = [redirect_uri]
+    client_config['web']['javascript_origins'] = [request.build_absolute_uri('/')[:-1]]
+
+    flow = Flow.from_client_config(client_config, scopes=GOOGLE_DRIVE_SCOPES, redirect_uri=redirect_uri)
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
+    request.session['google_drive_oauth_state'] = state
+    return HttpResponseRedirect(authorization_url)
+
+def drive_oauth_callback(request):
+    if Flow is None:
+        return JsonResponse({'error': 'Google API libraries not installed'}, status=500)
+
+    client_config = _get_google_oauth_client_config()
+    if not client_config:
+        return JsonResponse({'error': 'Google OAuth not configured'}, status=500)
+
+    redirect_uri = request.build_absolute_uri(reverse('drive_oauth_callback'))
+    state = request.session.get('google_drive_oauth_state')
+    flow = Flow.from_client_config(client_config, scopes=GOOGLE_DRIVE_SCOPES, state=state, redirect_uri=redirect_uri)
+    try:
+        flow.fetch_token(authorization_response=request.build_absolute_uri())
+        creds = flow.credentials
+        request.session['google_credentials'] = {
+            'token': creds.token,
+            'refresh_token': getattr(creds, 'refresh_token', None),
+            'token_uri': creds.token_uri,
+            'client_id': creds.client_id,
+            'client_secret': creds.client_secret,
+            'scopes': creds.scopes,
+        }
+        # Redirect back to user dashboard (print modal will retry list)
+        return HttpResponseRedirect(reverse('userdashboard'))
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def drive_list_files(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    creds_data = request.session.get('google_credentials')
+    if not creds_data or Credentials is None or build is None:
+        return JsonResponse({'error': 'Not authenticated with Google'}, status=401)
+    try:
+        creds = Credentials.from_authorized_user_info(creds_data)
+        service = build('drive', 'v3', credentials=creds)
+        # Limit to common document types
+        q = "mimeType!='application/vnd.google-apps.folder' and trashed=false"
+        results = service.files().list(
+            q=q,
+            orderBy='modifiedTime desc',
+            pageSize=20,
+            fields="files(id, name, mimeType, size)"
+        ).execute()
+        items = results.get('files', [])
+        return JsonResponse({'files': items})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def drive_download_file(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    file_id = request.GET.get('file_id')
+    if not file_id:
+        return JsonResponse({'error': 'file_id required'}, status=400)
+    creds_data = request.session.get('google_credentials')
+    if not creds_data or Credentials is None or build is None or MediaIoBaseDownload is None:
+        return JsonResponse({'error': 'Not authenticated with Google'}, status=401)
+    try:
+        creds = Credentials.from_authorized_user_info(creds_data)
+        service = build('drive', 'v3', credentials=creds)
+        request_media = service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request_media)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        fh.seek(0)
+        # Try to get file metadata (name, mimeType)
+        meta = service.files().get(fileId=file_id, fields='name, mimeType').execute()
+        filename = meta.get('name', 'downloaded_file')
+        content_type = meta.get('mimeType', 'application/octet-stream')
+        resp = HttpResponse(fh.read(), content_type=content_type)
+        resp['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return resp
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 def sign_in(request):
     client_id = settings.GOOGLE_CLIENT_ID

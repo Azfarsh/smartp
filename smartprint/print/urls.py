@@ -61,6 +61,11 @@ urlpatterns = [
     # Razorpay payment endpoints
     path('payments/create-order/', create_razorpay_order, name='create_razorpay_order'),
     path('payments/verify/', verify_razorpay_payment, name='verify_razorpay_payment'),
+    # Google Drive integration endpoints
+    path('drive/oauth/start/', views.drive_oauth_start, name='drive_oauth_start'),
+    path('drive/oauth/callback/', views.drive_oauth_callback, name='drive_oauth_callback'),
+    path('drive/list/', views.drive_list_files, name='drive_list_files'),
+    path('drive/download/', views.drive_download_file, name='drive_download_file'),
 ]
 
 urlpatterns += [
