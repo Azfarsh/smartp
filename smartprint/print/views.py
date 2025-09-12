@@ -2714,42 +2714,17 @@ def drive_download_file(request):
     try:
         creds = Credentials.from_authorized_user_info(creds_data)
         service = build('drive', 'v3', credentials=creds)
-
-        # First, get metadata to decide whether to export or download
-        meta = service.files().get(fileId=file_id, fields='name, mimeType').execute()
-        mime_type = meta.get('mimeType', '') or ''
-        original_name = meta.get('name', 'downloaded_file')
-
+        request_media = service.files().get_media(fileId=file_id)
         fh = io.BytesIO()
-
-        # Handle Google Docs/Sheets/Slides by exporting to PDF
-        if mime_type.startswith('application/vnd.google-apps.'):
-            export_map = {
-                'application/vnd.google-apps.document': ('application/pdf', '.pdf'),
-                'application/vnd.google-apps.spreadsheet': ('application/pdf', '.pdf'),
-                'application/vnd.google-apps.presentation': ('application/pdf', '.pdf'),
-                'application/vnd.google-apps.drawing': ('application/pdf', '.pdf'),
-            }
-            export_mime, ext = export_map.get(mime_type, ('application/pdf', '.pdf'))
-            request_media = service.files().export_media(fileId=file_id, mimeType=export_mime)
-            downloader = MediaIoBaseDownload(fh, request_media)
-            done = False
-            while not done:
-                status, done = downloader.next_chunk()
-            fh.seek(0)
-            filename = original_name if original_name.lower().endswith(ext) else f"{original_name}{ext}"
-            content_type = export_mime
-        else:
-            # Binary files (pdf, images, office uploads, etc.)
-            request_media = service.files().get_media(fileId=file_id)
-            downloader = MediaIoBaseDownload(fh, request_media)
-            done = False
-            while not done:
-                status, done = downloader.next_chunk()
-            fh.seek(0)
-            filename = original_name
-            content_type = mime_type or 'application/octet-stream'
-
+        downloader = MediaIoBaseDownload(fh, request_media)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        fh.seek(0)
+        # Try to get file metadata (name, mimeType)
+        meta = service.files().get(fileId=file_id, fields='name, mimeType').execute()
+        filename = meta.get('name', 'downloaded_file')
+        content_type = meta.get('mimeType', 'application/octet-stream')
         resp = HttpResponse(fh.read(), content_type=content_type)
         resp['Content-Disposition'] = f'attachment; filename="{filename}"'
         return resp
