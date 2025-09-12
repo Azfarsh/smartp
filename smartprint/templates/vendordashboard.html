@@ -750,12 +750,12 @@
             background: var(--surface);
             border: 1px solid var(--outline);
             border-radius: 10px;
-            padding: 12px 14px;
+            padding: 14px 16px; /* slightly increased padding */
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            min-height: 190px; /* increased to ensure buttons never overlap */
+            min-height: 210px; /* slightly increased to prevent button crowding */
             /* no max-height to prevent content overlap */
             box-shadow: 0 2px 8px var(--shadow-light);
             display: flex;
@@ -764,7 +764,7 @@
         }
 
         /* Compact variant for tighter presentation */
-        .job-card.compact { padding: 10px 12px; border-radius: 10px; min-height: 160px; max-height: 160px; }
+        .job-card.compact { padding: 12px 14px; border-radius: 10px; min-height: 180px; max-height: 180px; }
         .job-card.compact .job-header { margin-bottom: 6px; padding-bottom: 6px; }
         .job-card.compact .job-token { font-size: 11px; padding: 4px 8px; }
         .job-card.compact .job-status { font-size: 10px; padding: 2px 8px; }
@@ -903,6 +903,7 @@
             text-overflow: ellipsis;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             line-height: 1.25;
             flex-grow: 1;
@@ -943,7 +944,7 @@
             display: flex;
             gap: 6px;
             margin-top: auto;
-            padding-top: 6px;
+            padding-top: 10px; /* add a bit more breathing room above buttons */
         }
 
         .service-type-badge {
@@ -2330,6 +2331,8 @@
     </div>
 
     <script>
+        // Current vendor id injected for API calls used by Accept/Complete actions
+        const currentVendorId = "{{ vendor_details.vendor_id|default:'' }}";
         // Global variables
         let allJobs = [];
         let filteredJobs = { manual: [], completed: [], requests: [] };
@@ -3137,28 +3140,33 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    // INSTANTLY move the job to completed section
-                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
-                    if (jobIndex !== -1) {
-                        allJobs[jobIndex].job_completed = 'YES';
-                        allJobs[jobIndex].completion_time = Date.now() / 1000;
-                        allJobs[jobIndex].vendor_status = 'completed';
-                        allJobs[jobIndex].status = 'completed';
-                        
-                        // Remove from accepted jobs
-                        const jobKey = `${allJobs[jobIndex].filename}_${allJobs[jobIndex].token || ''}`;
-                        acceptedJobs.delete(jobKey);
-                        localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
-                        
-                        // Re-categorize and render jobs
-                        categorizeJobs();
-                        
-                        // Show success notification
-                        showNotification(`Job "${filename}" completed successfully! User has been notified.`, 'success');
+                    if (result.success) {
+                        // INSTANTLY move the job to completed section
+                        const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                        if (jobIndex !== -1) {
+                            allJobs[jobIndex].job_completed = 'YES';
+                            allJobs[jobIndex].completion_time = Date.now() / 1000;
+                            allJobs[jobIndex].vendor_status = 'completed';
+                            allJobs[jobIndex].status = 'completed';
+                            
+                            // Remove from accepted jobs
+                            const jobKey = `${allJobs[jobIndex].filename}_${allJobs[jobIndex].token || ''}`;
+                            acceptedJobs.delete(jobKey);
+                            localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
+                            
+                            // Re-categorize and render jobs
+                            categorizeJobs();
+                            
+                            // Show success notification
+                            showNotification(`Job "${filename}" completed successfully! User has been notified.`, 'success');
+                        }
+                        showToast(`Job "${filename}" marked as completed!`);
+                    } else {
+                        showToast(`Failed to mark job as completed: ${result.error || 'Unknown error'}`, 'error');
                     }
-                    showToast(`Job "${filename}" marked as completed!`);
                 } else {
-                    showToast(`Failed to mark job as completed`, 'error');
+                    const errorData = await response.json().catch(() => ({}));
+                    showToast(`Failed to mark job as completed: ${errorData.error || 'Server error'}`, 'error');
                 }
             } catch (error) {
                 console.error('Error marking job as completed:', error);
@@ -3199,23 +3207,29 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    acceptedJobs.add(jobKey);
-                    localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
-                    
-                    // Update job status in local data
-                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
-                    if (jobIndex !== -1) {
-                        allJobs[jobIndex].vendor_status = 'accepted';
-                        allJobs[jobIndex].status = 'accepted';
-                        categorizeJobs();
+                    if (result.success) {
+                        acceptedJobs.add(jobKey);
+                        localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
                         
-                        // Show success message
-                        showNotification(`Job ${filename} accepted successfully!`, 'success');
+                        // Update job status in local data IMMEDIATELY
+                        const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                        if (jobIndex !== -1) {
+                            allJobs[jobIndex].vendor_status = 'accepted';
+                            allJobs[jobIndex].status = 'accepted';
+                            // Force UI to immediately show the Completed button
+                            categorizeJobs();
+                            
+                            // Show success message
+                            showNotification(`Job ${filename} accepted successfully!`, 'success');
+                        }
+                        
+                        showToast(`Job "${filename}" accepted!`);
+                    } else {
+                        showToast(`Failed to accept job: ${result.error || 'Unknown error'}`, 'error');
                     }
-                    
-                    showToast(`Job "${filename}" accepted!`);
                 } else {
-                    showToast(`Failed to accept job`, 'error');
+                    const errorData = await response.json().catch(() => ({}));
+                    showToast(`Failed to accept job: ${errorData.error || 'Server error'}`, 'error');
                 }
             } catch (e) {
                 console.error(e);
