@@ -2986,8 +2986,12 @@
         function createJobCard(job, type) {
             const statusClass = type === 'completed' ? 'status-completed' : 
                                type === 'manual' ? 'status-manual' : 'status-requests';
+            // Live status for request cards
+            const vendorStatus = (job.vendor_status || '').toLowerCase();
+            const jobFailed = (job.status === 'failed' || job.job_failed === 'YES' || !!job.error_message);
+            const localAccepted = acceptedJobs.has(getJobKey(job));
             const statusText = type === 'completed' ? 'Done' : 
-                              type === 'manual' ? '' : 'Pending'; // Remove 'Manual' text
+                              type === 'manual' ? '' : (jobFailed ? 'Failed' : (vendorStatus === 'accepted' || localAccepted ? 'Accepted' : 'Pending')); // Remove 'Manual' text
             const cardClass = type === 'completed' ? 'completed' : 
                               type === 'manual' ? 'manual' : 'requests';
 
@@ -2995,7 +2999,7 @@
 
             // Job key for local state
             const jobKey = getJobKey(job);
-            const isAccepted = acceptedJobs.has(jobKey);
+            const isAccepted = acceptedJobs.has(jobKey) || vendorStatus === 'accepted';
             const isFailed = failedJobs.has(jobKey);
 
             // Get service type for badge
