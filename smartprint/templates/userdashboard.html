@@ -5997,50 +5997,101 @@
               }
             });
           }
-          // Google Drive import button
+          // Google Drive import button (client-side Google Picker approach)
           const driveBtn = modal.querySelector(`#${service}-drive-import-btn`);
           if (driveBtn) {
+            // Lazy loader for Google APIs
+            let googleApisLoaded = false;
+            let pickerAccessToken = null;
+            const GOOGLE_CLIENT_ID = "{{ settings.GOOGLE_CLIENT_ID|default:'' }}";
+            const GOOGLE_API_KEY = "{{ settings.GOOGLE_API_KEY|default:'' }}";
+            const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+
+            function loadScriptOnce(src) {
+              return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${src}"]`)) return resolve();
+                const s = document.createElement('script');
+                s.src = src; s.async = true; s.defer = true;
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
+
+            async function ensureGoogleApis() {
+              if (googleApisLoaded) return;
+              await loadScriptOnce('https://accounts.google.com/gsi/client');
+              await loadScriptOnce('https://apis.google.com/js/api.js');
+              await new Promise((res) => {
+                window.gapi.load('client:picker', res);
+              });
+              await window.gapi.client.init({
+                apiKey: GOOGLE_API_KEY,
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+              });
+              googleApisLoaded = true;
+            }
+
+            function requestAccessToken() {
+              return new Promise((resolve, reject) => {
+                try {
+                  const tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_CLIENT_ID,
+                    scope: GOOGLE_DRIVE_SCOPE,
+                    prompt: 'consent',
+                    callback: (resp) => {
+                      if (resp && resp.access_token) return resolve(resp.access_token);
+                      return reject(new Error(resp && resp.error ? resp.error : 'No access token'));
+                    }
+                  });
+                  tokenClient.requestAccessToken();
+                } catch (e) { reject(e); }
+              });
+            }
+
+            function openPicker(oauthToken) {
+              return new Promise((resolve) => {
+                const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+                  .setIncludeFolders(false)
+                  .setSelectFolderEnabled(false)
+                  .setMimeTypes('application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,image/png,image/jpeg');
+                const picker = new google.picker.PickerBuilder()
+                  .enableFeature(google.picker.Feature.NAV_HIDDEN)
+                  .setOAuthToken(oauthToken)
+                  .setDeveloperKey(GOOGLE_API_KEY)
+                  .addView(view)
+                  .setCallback((data) => resolve(data))
+                  .build();
+                picker.setVisible(true);
+              });
+            }
+
+            async function downloadDriveFile(fileId, fileName) {
+              const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+              const resp = await fetch(url, { headers: { Authorization: `Bearer ${pickerAccessToken}` } });
+              if (!resp.ok) throw new Error('Failed to download file from Drive');
+              const blob = await resp.blob();
+              return new File([blob], fileName || `drive_file_${Date.now()}`, { type: blob.type || 'application/octet-stream' });
+            }
+
             driveBtn.addEventListener('click', async () => {
               try {
-                // Try listing files; if 401, start OAuth
-                let resp = await fetch('/drive/list/', { credentials: 'include' });
-                if (resp.status === 401) {
-                  window.location.href = '/drive/oauth/start/';
-                  return;
+                await ensureGoogleApis();
+                pickerAccessToken = await requestAccessToken();
+                const data = await openPicker(pickerAccessToken);
+                if (data && data.action === google.picker.Action.PICKED && data.docs && data.docs.length > 0) {
+                  // Only take the first selection for the modal
+                  const picked = data.docs[0];
+                  const fileId = picked.id;
+                  const fileName = picked.name || picked.id;
+                  const file = await downloadDriveFile(fileId, fileName);
+                  const dt = new DataTransfer();
+                  dt.items.add(file);
+                  fileInput.files = dt.files;
+                  fileInput.dispatchEvent(new Event('change'));
                 }
-                const data = await resp.json();
-                if (!data || !Array.isArray(data.files)) {
-                  alert('Unable to load Drive files');
-                  return;
-                }
-                // Simple picker: prompt user to choose by index
-                const names = data.files.map((f, idx) => `${idx + 1}. ${f.name}`);
-                const choice = prompt(`Select a file from Google Drive:\n${names.join('\n')}`);
-                const idx = parseInt(choice || '', 10) - 1;
-                if (isNaN(idx) || idx < 0 || idx >= data.files.length) return;
-                const fileId = data.files[idx].id;
-                // Download the selected file
-                const download = await fetch(`/drive/download/?file_id=${encodeURIComponent(fileId)}`, { credentials: 'include' });
-                if (!download.ok) {
-                  const err = await download.json().catch(() => ({}));
-                  alert(`Failed to fetch document from Drive${err.error ? ': ' + err.error : ''}`);
-                  return;
-                }
-                // Convert response to a File and attach to input
-                const blob = await download.blob();
-                // Extract filename from header or fallback
-                const disp = download.headers.get('Content-Disposition') || '';
-                const match = /filename="?([^";]+)"?/i.exec(disp);
-                const filename = match ? match[1] : `drive_file_${Date.now()}`;
-                const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                fileInput.files = dt.files;
-                // Trigger change to processFile and previews
-                fileInput.dispatchEvent(new Event('change'));
               } catch (e) {
-                console.error('Drive import failed', e);
-                alert('Drive import failed. Please try again.');
+                console.error('Google Picker import failed:', e);
+                alert('Unable to import from Google Drive. Please try again.');
               }
             });
           }
