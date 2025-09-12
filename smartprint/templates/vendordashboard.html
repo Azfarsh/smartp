@@ -903,6 +903,7 @@
             text-overflow: ellipsis;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             line-height: 1.25;
             flex-grow: 1;
@@ -3138,14 +3139,15 @@
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
+                    const result = await response.json();
+                    if (result.success) {
                         // INSTANTLY move the job to completed section
                         const jobIndex = allJobs.findIndex(job => job.filename === filename);
                         if (jobIndex !== -1) {
                             allJobs[jobIndex].job_completed = 'YES';
                             allJobs[jobIndex].completion_time = Date.now() / 1000;
                             allJobs[jobIndex].vendor_status = 'completed';
+                            allJobs[jobIndex].status = 'completed';
                             
                             // Remove from accepted jobs
                             const jobKey = `${allJobs[jobIndex].filename}_${allJobs[jobIndex].token || ''}`;
@@ -3154,10 +3156,13 @@
                             
                             // Re-categorize and render jobs
                             categorizeJobs();
+                            
+                            // Show success notification
+                            showNotification(`Job "${filename}" completed successfully! User has been notified.`, 'success');
                         }
                         showToast(`Job "${filename}" marked as completed!`);
                     } else {
-                        showToast(`Failed to mark job as completed: ${data.error || 'Unknown error'}`, 'error');
+                        showToast(`Failed to mark job as completed: ${result.error || 'Unknown error'}`, 'error');
                     }
                 } else {
                     const errorData = await response.json().catch(() => ({}));
@@ -3201,8 +3206,8 @@
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
+                    const result = await response.json();
+                    if (result.success) {
                         acceptedJobs.add(jobKey);
                         localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
                         
@@ -3213,11 +3218,14 @@
                             allJobs[jobIndex].status = 'accepted';
                             // Force UI to immediately show the Completed button
                             categorizeJobs();
+                            
+                            // Show success message
+                            showNotification(`Job ${filename} accepted successfully!`, 'success');
                         }
                         
                         showToast(`Job "${filename}" accepted!`);
                     } else {
-                        showToast(`Failed to accept job: ${data.error || 'Unknown error'}`, 'error');
+                        showToast(`Failed to accept job: ${result.error || 'Unknown error'}`, 'error');
                     }
                 } else {
                     const errorData = await response.json().catch(() => ({}));
@@ -3636,6 +3644,73 @@
             toast.textContent = message;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            // Add styles if not already present
+            if (!document.getElementById('notification-styles')) {
+                const style = document.createElement('style');
+                style.id = 'notification-styles';
+                style.textContent = `
+                    .notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: white;
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        padding: 15px 20px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        z-index: 10000;
+                        transform: translateX(100%);
+                        transition: transform 0.3s ease;
+                        max-width: 400px;
+                    }
+                    .notification.show {
+                        transform: translateX(0);
+                    }
+                    .notification-success {
+                        border-left: 4px solid #28a745;
+                        background: #d4edda;
+                    }
+                    .notification-error {
+                        border-left: 4px solid #dc3545;
+                        background: #f8d7da;
+                    }
+                    .notification-info {
+                        border-left: 4px solid #17a2b8;
+                        background: #d1ecf1;
+                    }
+                    .notification-content {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
         }
 
         // Event Listeners
