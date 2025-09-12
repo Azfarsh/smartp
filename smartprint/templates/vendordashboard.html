@@ -3138,24 +3138,30 @@
                 });
                 
                 if (response.ok) {
-                    // INSTANTLY move the job to completed section
-                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
-                    if (jobIndex !== -1) {
-                        allJobs[jobIndex].job_completed = 'YES';
-                        allJobs[jobIndex].completion_time = Date.now() / 1000;
-                        allJobs[jobIndex].vendor_status = 'completed';
-                        
-                        // Remove from accepted jobs
-                        const jobKey = `${allJobs[jobIndex].filename}_${allJobs[jobIndex].token || ''}`;
-                        acceptedJobs.delete(jobKey);
-                        localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
-                        
-                        // Re-categorize and render jobs
-                        categorizeJobs();
+                    const data = await response.json();
+                    if (data.success) {
+                        // INSTANTLY move the job to completed section
+                        const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                        if (jobIndex !== -1) {
+                            allJobs[jobIndex].job_completed = 'YES';
+                            allJobs[jobIndex].completion_time = Date.now() / 1000;
+                            allJobs[jobIndex].vendor_status = 'completed';
+                            
+                            // Remove from accepted jobs
+                            const jobKey = `${allJobs[jobIndex].filename}_${allJobs[jobIndex].token || ''}`;
+                            acceptedJobs.delete(jobKey);
+                            localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
+                            
+                            // Re-categorize and render jobs
+                            categorizeJobs();
+                        }
+                        showToast(`Job "${filename}" marked as completed!`);
+                    } else {
+                        showToast(`Failed to mark job as completed: ${data.error || 'Unknown error'}`, 'error');
                     }
-                    showToast(`Job "${filename}" marked as completed!`);
                 } else {
-                    showToast(`Failed to mark job as completed`, 'error');
+                    const errorData = await response.json().catch(() => ({}));
+                    showToast(`Failed to mark job as completed: ${errorData.error || 'Server error'}`, 'error');
                 }
             } catch (error) {
                 console.error('Error marking job as completed:', error);
@@ -3195,19 +3201,27 @@
                 });
                 
                 if (response.ok) {
-                    acceptedJobs.add(jobKey);
-                    localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
-                    
-                    // Update job status in local data
-                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
-                    if (jobIndex !== -1) {
-                        allJobs[jobIndex].vendor_status = 'accepted';
-                        categorizeJobs();
+                    const data = await response.json();
+                    if (data.success) {
+                        acceptedJobs.add(jobKey);
+                        localStorage.setItem('acceptedJobs', JSON.stringify([...acceptedJobs]));
+                        
+                        // Update job status in local data IMMEDIATELY
+                        const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                        if (jobIndex !== -1) {
+                            allJobs[jobIndex].vendor_status = 'accepted';
+                            allJobs[jobIndex].status = 'accepted';
+                            // Force UI to immediately show the Completed button
+                            categorizeJobs();
+                        }
+                        
+                        showToast(`Job "${filename}" accepted!`);
+                    } else {
+                        showToast(`Failed to accept job: ${data.error || 'Unknown error'}`, 'error');
                     }
-                    
-                    showToast(`Job "${filename}" accepted!`);
                 } else {
-                    showToast(`Failed to accept job`, 'error');
+                    const errorData = await response.json().catch(() => ({}));
+                    showToast(`Failed to accept job: ${errorData.error || 'Server error'}`, 'error');
                 }
             } catch (e) {
                 console.error(e);

@@ -41,7 +41,13 @@ def get_next_sequential_token():
         
         # Count user pending jobs
         try:
-            user_jobs_data = r2_client.get_object(
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            user_jobs_data = s3.get_object(
                 Bucket=settings.R2_BUCKET,
                 Key='users/jobs_data.json'
             )
@@ -52,7 +58,7 @@ def get_next_sequential_token():
             
         # Count vendor pending jobs
         try:
-            response = r2_client.list_objects_v2(
+            response = s3.list_objects_v2(
                 Bucket=settings.R2_BUCKET,
                 Prefix='vendor_print_jobs/'
             )
@@ -60,7 +66,7 @@ def get_next_sequential_token():
             for obj in response.get('Contents', []):
                 if obj['Key'].endswith('jobs_data.json'):
                     try:
-                        vendor_jobs_data = r2_client.get_object(
+                        vendor_jobs_data = s3.get_object(
                             Bucket=settings.R2_BUCKET,
                             Key=obj['Key']
                         )
@@ -6662,17 +6668,24 @@ def cancel_failed_job(request):
 def update_job_vendor_status(filename, vendor_id, status):
     """Update vendor status for a specific job"""
     try:
+        # Initialize R2 client
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
         # Update in vendor_print_jobs folder
         vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-        result = r2_client.get_object(Bucket=bucket_name, Key=vendor_key)
         
-        if result:
+        try:
+            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
             metadata = json.loads(result['Body'].read().decode('utf-8'))
             metadata['vendor_status'] = status
             metadata['updated_at'] = datetime.now().isoformat()
             
-            r2_client.put_object(
-                Bucket=bucket_name,
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
                 Key=vendor_key,
                 Body=json.dumps(metadata, indent=2),
                 ContentType='application/json'
@@ -6680,7 +6693,7 @@ def update_job_vendor_status(filename, vendor_id, status):
             
             print(f"✅ Updated vendor status for {filename}: {status}")
             return True
-        else:
+        except s3.exceptions.NoSuchKey:
             print(f"❌ Job not found: {filename}")
             return False
             
@@ -6703,8 +6716,15 @@ def add_user_points(user_email, points, reason):
         points_key = f'user_points/{sanitize_email(user_email)}/transactions/{int(time.time())}.json'
         
         try:
-            r2_client.put_object(
-                Bucket=bucket_name,
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
                 Key=points_key,
                 Body=json.dumps(points_data, indent=2),
                 ContentType='application/json'
@@ -6732,11 +6752,18 @@ def get_user_notifications(request):
         prefix = f'user_notifications/{sanitize_email(user_email)}/'
         
         try:
-            response = r2_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
             
             for obj in response.get('Contents', []):
                 try:
-                    result = r2_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
                     notification_data = json.loads(result['Body'].read().decode('utf-8'))
                     notifications.append(notification_data)
                 except Exception as e:
@@ -6765,12 +6792,19 @@ def get_user_notifications(request):
 def get_total_user_points(user_email: str) -> int:
     """Sum all points transactions for the user from R2. Returns 0 if none."""
     try:
+        # Initialize R2 client
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
         prefix = f'user_points/{sanitize_email(user_email)}/transactions/'
-        response = r2_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+        response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
         total_points = 0
         for obj in response.get('Contents', []):
             try:
-                res = r2_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                res = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
                 data = json.loads(res['Body'].read().decode('utf-8'))
                 total_points += int(data.get('points', 0))
             except Exception as _e:
@@ -6798,8 +6832,15 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         notification_key = f'user_notifications/{sanitize_email(user_email)}/{filename}_{int(time.time())}.json'
         
         try:
-            r2_client.put_object(
-                Bucket=bucket_name,
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
                 Key=notification_key,
                 Body=json.dumps(notification_data, indent=2),
                 ContentType='application/json'
