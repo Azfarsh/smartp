@@ -916,10 +916,12 @@ def get_vendor_print_jobs(request):
                     vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
                     allowed_services = {'regular print', 'passport_photo', 'photo_print'}
 
-                    # Only process jobs that are accepted by vendor
+                    # Only process jobs that are accepted by vendor and not completed
                     if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
                         print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
                         continue
+                    
+                    print(f"   ✅ Found accepted job: {filename} (service: {service_type}, vendor_status: {vendor_status})")
 
                     # Force job to be pending for processing
                     job_info = {
@@ -6541,9 +6543,42 @@ def accept_job(request):
         success = update_job_vendor_status(filename, vendor_id, 'accepted')
         
         if success:
+            # Also update the job in the original location to maintain consistency
+            try:
+                s3 = boto3.client('s3',
+                    aws_access_key_id=settings.R2_ACCESS_KEY,
+                    aws_secret_access_key=settings.R2_SECRET_KEY,
+                    endpoint_url=settings.R2_ENDPOINT,
+                    region_name='auto')
+                
+                # Update in print_requests folder
+                source_key = f'print_requests/{filename}'
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=source_key)
+                    src_metadata = json.loads(response['Body'].read().decode('utf-8'))
+                    src_metadata['vendor_status'] = 'accepted'
+                    src_metadata['vendor_id'] = vendor_id
+                    src_metadata['accepted_at'] = datetime.now().isoformat()
+                    
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=source_key,
+                        Body=json.dumps(src_metadata, indent=2),
+                        ContentType='application/json'
+                    )
+                except:
+                    pass  # If not found in print_requests, that's okay
+                
+                print(f"✅ Job {filename} accepted by vendor {vendor_id}")
+                
+            except Exception as e:
+                print(f"⚠️ Error updating original job status: {e}")
+        
+        if success:
             return JsonResponse({
                 'success': True,
-                'message': f'Job {filename} accepted successfully'
+                'message': f'Job {filename} accepted successfully',
+                'status': 'accepted'
             })
         else:
             return JsonResponse({
@@ -6571,13 +6606,48 @@ def mark_job_completed(request):
         success, user_email = update_job_status_comprehensive(filename, 'YES', vendor_id, completion_time)
         
         if success:
-            # Send notification to user
+            # Send instant notification to user
             if user_email:
-                send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time)
+                try:
+                    send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time)
+                    print(f"✅ Sent completion notification to user: {user_email}")
+                except Exception as e:
+                    print(f"⚠️ Error sending notification: {e}")
+            
+            # Also update vendor_print_jobs folder to mark as completed
+            try:
+                s3 = boto3.client('s3',
+                    aws_access_key_id=settings.R2_ACCESS_KEY,
+                    aws_secret_access_key=settings.R2_SECRET_KEY,
+                    endpoint_url=settings.R2_ENDPOINT,
+                    region_name='auto')
+                
+                vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                    vendor_metadata = json.loads(response['Body'].read().decode('utf-8'))
+                    vendor_metadata['job_completed'] = 'YES'
+                    vendor_metadata['completion_time'] = completion_time
+                    vendor_metadata['status'] = 'completed'
+                    
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=vendor_key,
+                        Body=json.dumps(vendor_metadata, indent=2),
+                        ContentType='application/json'
+                    )
+                    print(f"✅ Updated vendor job status to completed: {filename}")
+                except Exception as e:
+                    print(f"⚠️ Error updating vendor job status: {e}")
+                    
+            except Exception as e:
+                print(f"⚠️ Error updating vendor job: {e}")
             
             return JsonResponse({
                 'success': True,
-                'message': f'Job {filename} marked as completed'
+                'message': f'Job {filename} marked as completed and user notified',
+                'status': 'completed',
+                'user_notified': user_email is not None
             })
         else:
             return JsonResponse({
@@ -6662,17 +6732,29 @@ def cancel_failed_job(request):
 def update_job_vendor_status(filename, vendor_id, status):
     """Update vendor status for a specific job"""
     try:
-        # Update in vendor_print_jobs folder
-        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-        result = r2_client.get_object(Bucket=bucket_name, Key=vendor_key)
+        s3 = boto3.client('s3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=settings.R2_ENDPOINT,
+            region_name='auto')
         
-        if result:
-            metadata = json.loads(result['Body'].read().decode('utf-8'))
+        # First, try to find the job in print_requests folder
+        source_key = f'print_requests/{filename}'
+        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        
+        try:
+            # Get the job from print_requests
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=source_key)
+            metadata = json.loads(response['Body'].read().decode('utf-8'))
+            
+            # Update metadata with vendor status
             metadata['vendor_status'] = status
+            metadata['vendor_id'] = vendor_id
             metadata['updated_at'] = datetime.now().isoformat()
             
-            r2_client.put_object(
-                Bucket=bucket_name,
+            # Copy to vendor_print_jobs folder
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
                 Key=vendor_key,
                 Body=json.dumps(metadata, indent=2),
                 ContentType='application/json'
@@ -6680,9 +6762,28 @@ def update_job_vendor_status(filename, vendor_id, status):
             
             print(f"✅ Updated vendor status for {filename}: {status}")
             return True
-        else:
-            print(f"❌ Job not found: {filename}")
-            return False
+            
+        except Exception as e:
+            # If not found in print_requests, try to update existing vendor job
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                metadata = json.loads(response['Body'].read().decode('utf-8'))
+                metadata['vendor_status'] = status
+                metadata['updated_at'] = datetime.now().isoformat()
+                
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=vendor_key,
+                    Body=json.dumps(metadata, indent=2),
+                    ContentType='application/json'
+                )
+                
+                print(f"✅ Updated existing vendor job status for {filename}: {status}")
+                return True
+                
+            except Exception as e2:
+                print(f"❌ Job not found in either location: {filename}")
+                return False
             
     except Exception as e:
         print(f"❌ Error updating vendor status: {e}")
