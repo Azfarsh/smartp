@@ -1407,6 +1407,27 @@ def get_vendor_specific_print_jobs(vendor_id):
 
                         pending_jobs.append(job_info)
                         print(f"✅ Found pending job for vendor {vendor_id}: {filename}")
+                        
+                        # Update print_round from 1 to 2 when sending to vendor client
+                        current_print_round = metadata.get('print_round', '0')
+                        if current_print_round == '1':
+                            try:
+                                # Update metadata to set print_round to 2
+                                updated_metadata = metadata.copy()
+                                updated_metadata['print_round'] = '2'
+                                
+                                # Copy object with updated metadata
+                                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
+                                s3.copy_object(
+                                    CopySource=copy_source,
+                                    Bucket=settings.R2_BUCKET,
+                                    Key=key,
+                                    Metadata=updated_metadata,
+                                    MetadataDirective='REPLACE'
+                                )
+                                print(f"🔄 Updated print_round from 1 to 2 for {filename}")
+                            except Exception as update_error:
+                                print(f"⚠️ Failed to update print_round for {filename}: {str(update_error)}")
 
                 except Exception as e:
                     print(f"Error processing vendor file {key}: {str(e)}")
@@ -3979,6 +4000,8 @@ def vendor_authenticate(request):
                 vendor_id_hash = shop_info.get('vendor_id_hash')
                 vendor_token_hash = shop_info.get('vendor_token_hash')
                 if check_password(vendor_id, vendor_id_hash) and check_password(vendor_token, vendor_token_hash):
+                    # Update authentication timestamp for 8-hour tracking
+                    update_vendor_auth_timestamp(vendor_id)
                     return JsonResponse({'success': True, 'message': 'Authenticated'})
                 else:
                     return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=401)
@@ -7429,9 +7452,11 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
                 current_metadata = head_response.get('Metadata', {})
                 
-                # Update vendor_status
+                # Update vendor_status and print_round
                 current_metadata['vendor_status'] = status
                 current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
+                if status == 'accepted':
+                    current_metadata['print_round'] = '1'  # Set print_round to 1 when accepted
                 
                 # Copy object with updated metadata
                 copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
@@ -7466,9 +7491,11 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                     current_metadata = head_response.get('Metadata', {})
                     
-                    # Update vendor_status
+                    # Update vendor_status and print_round
                     current_metadata['vendor_status'] = status
                     current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
+                    if status == 'accepted':
+                        current_metadata['print_round'] = '1'  # Set print_round to 1 when accepted
                     
                     # Copy object with updated metadata
                     copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
@@ -7916,6 +7943,10 @@ from datetime import timedelta
 vendor_connections = {}
 connection_lock = threading.Lock()
 
+# Global dictionary to track vendor authentication timestamps
+vendor_auth_timestamps = {}
+auth_lock = threading.Lock()
+
 def update_vendor_connection_status(vendor_id, status='connected'):
     """Update vendor client connection status"""
     with connection_lock:
@@ -7924,6 +7955,30 @@ def update_vendor_connection_status(vendor_id, status='connected'):
             'last_seen': datetime.datetime.now(),
             'is_connected': status == 'connected'
         }
+
+def update_vendor_auth_timestamp(vendor_id):
+    """Update vendor authentication timestamp"""
+    with auth_lock:
+        vendor_auth_timestamps[vendor_id] = datetime.datetime.now()
+        print(f"🔐 Updated auth timestamp for vendor {vendor_id}")
+
+def get_vendor_auth_status(vendor_id):
+    """Check if vendor authentication is still valid (within 8 hours)"""
+    with auth_lock:
+        if vendor_id not in vendor_auth_timestamps:
+            return False
+        
+        auth_time = vendor_auth_timestamps[vendor_id]
+        current_time = datetime.datetime.now()
+        time_diff = current_time - auth_time
+        
+        # Check if more than 8 hours have passed
+        is_valid = time_diff < timedelta(hours=8)
+        
+        if not is_valid:
+            print(f"🔐 Vendor {vendor_id} authentication expired (8+ hours old)")
+        
+        return is_valid
 
 def get_vendor_connection_status(vendor_id):
     """Get vendor client connection status"""
@@ -8085,6 +8140,16 @@ def vendor_connection_heartbeat(request):
             if not vendor_id:
                 return JsonResponse({'success': False, 'error': 'Missing vendor_id'})
             
+            # Check if authentication is still valid (8 hours)
+            is_authenticated = get_vendor_auth_status(vendor_id)
+            if not is_authenticated:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Authentication expired',
+                    'auth_expired': True,
+                    'message': 'Please re-authenticate - 8 hours have passed'
+                }, status=401)
+            
             # Update connection status
             update_vendor_connection_status(vendor_id, 'connected')
             
@@ -8130,10 +8195,22 @@ def get_vendor_connection_status(request):
             # Get updated status after timeout check
             connection_info = get_vendor_connection_status(vendor_id)
             
+            # Check authentication status (8-hour validity)
+            is_authenticated = get_vendor_auth_status(vendor_id)
+            
+            # Determine overall status
+            if not is_authenticated:
+                overall_status = 'auth_expired'
+                is_connected = False
+            else:
+                overall_status = connection_info['status']
+                is_connected = connection_info['is_connected']
+            
             return JsonResponse({
                 'success': True,
-                'connection_status': connection_info['status'],
-                'is_connected': connection_info['is_connected'],
+                'connection_status': overall_status,
+                'is_connected': is_connected,
+                'is_authenticated': is_authenticated,
                 'last_seen': connection_info['last_seen'].isoformat() if connection_info['last_seen'] else None
             })
             

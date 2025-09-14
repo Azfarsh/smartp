@@ -355,6 +355,15 @@
             color: #F59E0B;
         }
 
+        .connection-status.auth_expired .connection-indicator i {
+            color: #DC2626;
+            animation: pulse-red 2s infinite;
+        }
+
+        .connection-status.auth_expired .connection-text {
+            color: #DC2626;
+        }
+
         @keyframes pulse-green {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
@@ -4411,13 +4420,21 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    const newStatus = data.is_connected ? 'connected' : 'disconnected';
+                    let newStatus;
+                    if (!data.is_authenticated) {
+                        newStatus = 'auth_expired';
+                    } else {
+                        newStatus = data.is_connected ? 'connected' : 'disconnected';
+                    }
+                    
                     if (newStatus !== connectionStatus) {
                         connectionStatus = newStatus;
                         updateConnectionUI();
                         
-                        // If disconnected, show notification
-                        if (connectionStatus === 'disconnected') {
+                        // Show appropriate notifications
+                        if (connectionStatus === 'auth_expired') {
+                            showToast('🔐 Vendor authentication expired - please re-authenticate', 'warning');
+                        } else if (connectionStatus === 'disconnected') {
                             showToast('⚠️ Vendor client disconnected - services auto-disabled', 'warning');
                         } else if (connectionStatus === 'connected') {
                             showToast('✅ Vendor client connected', 'success');
@@ -4451,7 +4468,7 @@
             }
             
             // Remove all status classes
-            connectionStatusEl.classList.remove('connected', 'disconnected', 'checking');
+            connectionStatusEl.classList.remove('connected', 'disconnected', 'checking', 'auth_expired');
             
             // Add appropriate class and update text
             if (connectionStatus === 'connected') {
@@ -4460,6 +4477,9 @@
             } else if (connectionStatus === 'disconnected') {
                 connectionStatusEl.classList.add('disconnected');
                 connectionTextEl.textContent = 'Disconnected';
+            } else if (connectionStatus === 'auth_expired') {
+                connectionStatusEl.classList.add('auth_expired');
+                connectionTextEl.textContent = 'Auth Expired';
             } else {
                 connectionStatusEl.classList.add('checking');
                 connectionTextEl.textContent = 'Checking...';
