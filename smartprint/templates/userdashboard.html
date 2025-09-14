@@ -7840,6 +7840,55 @@
     window.csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   </script>
 
+  <!-- ✅ Session Validation Script for Persistent Login -->
+  <script>
+    // Check session validity every 5 minutes
+    setInterval(function() {
+      fetch('/userdashboard-data/', {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': window.csrfToken,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.status === 401) {
+          // Session expired, redirect to login
+          console.log('Session expired, redirecting to login...');
+          window.location.href = '/login/';
+        }
+      })
+      .catch(error => {
+        console.log('Session check failed:', error);
+      });
+    }, 300000); // Check every 5 minutes
+
+    // Also check on page visibility change (when user comes back to tab)
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        // Page became visible, check session
+        fetch('/userdashboard-data/', {
+          method: 'GET',
+          headers: {
+            'X-CSRFToken': window.csrfToken,
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (response.status === 401) {
+            console.log('Session expired on visibility change, redirecting...');
+            window.location.href = '/login/';
+          }
+        })
+        .catch(error => {
+          console.log('Session check failed on visibility change:', error);
+        });
+      }
+    });
+  </script>
+
   <!-- Hidden element with user jobs data - OPTIMIZED for instant loading -->
   <div id="userJobsData" data-jobs='{{ user_jobs_json|safe }}' style="display: none;"></div>
   
