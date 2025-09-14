@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['printmax.onrender.com', 'localhost', '127.0.0.1']  # Production domain
+ALLOWED_HOSTS = ['printmax.onrender.com', 'localhost', '127.0.0.1', '0.0.0.0', '*']  # Production domain + localhost + wildcard for Render
 
 # Application definition
 INSTALLED_APPS = [
@@ -145,8 +145,14 @@ R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
 R2_ENDPOINT = os.getenv('R2_ENDPOINT', '').rstrip('/')  # Remove trailing slash
 R2_BUCKET = os.getenv('R2_BUCKET')
 
-# ✅ CORS setup
-CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
+# ✅ CORS setup for production (if using django-cors-headers)
+# CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOWED_ORIGINS = [
+#     'https://printmax.onrender.com',
+#     'http://localhost:8000',  # For local development
+#     'http://127.0.0.1:8000',  # For local development
+# ]
 
 VENDOR_ID=1
 
@@ -175,12 +181,24 @@ GOOGLE_API_KEY = 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw'
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'your-google-client-id-here')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'your-google-client-secret-here')
 
+# ✅ Google OAuth Redirect URIs for Production
+GOOGLE_OAUTH_REDIRECT_URIS = [
+    'https://printmax.onrender.com/auth-receiver/',
+    'http://localhost:8000/auth-receiver/',  # For local development
+]
+
+# ✅ Google OAuth JavaScript Origins for Production
+GOOGLE_OAUTH_JAVASCRIPT_ORIGINS = [
+    'https://printmax.onrender.com',
+    'http://localhost:8000',  # For local development
+]
+
 # ✅ Session Configuration for Persistent Login
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 180  # 6 months (180 days)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
-SESSION_COOKIE_SECURE = True  # Set to True in production with HTTPS
+SESSION_COOKIE_SECURE = True  # Set to True for production HTTPS
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
@@ -197,7 +215,21 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # ✅ Security Settings for Production
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True  # Force HTTPS in production
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # For Render.com
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+CSRF_COOKIE_SECURE = True  # CSRF cookies only over HTTPS
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# ✅ Force HTTP for localhost testing
+if DEBUG:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False

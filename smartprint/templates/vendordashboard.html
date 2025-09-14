@@ -1038,6 +1038,18 @@
             text-transform: uppercase;
         }
 
+        .print-round-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 4px;
+        }
+
         .status-manual {
             background: var(--manual-bg);
             color: var(--manual-color);
@@ -1278,6 +1290,12 @@
             background: #F59E0B;
             color: white;
             box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        }
+
+        .vendor-status-badge.sended {
+            background: #8B5CF6;
+            color: white;
+            box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
         }
 
         .btn-small {
@@ -3290,7 +3308,41 @@
                 const data = await response.json();
 
                 if (data.print_requests) {
-                    allJobs = data.print_requests;
+                    // Merge fresh data with local changes instead of replacing
+                    const freshJobs = data.print_requests;
+                    const localJobsMap = new Map();
+                    
+                    // Create a map of local jobs for quick lookup
+                    allJobs.forEach(job => {
+                        localJobsMap.set(job.filename, job);
+                    });
+                    
+                    // Merge fresh data with local changes
+                    const mergedJobs = freshJobs.map(freshJob => {
+                        const localJob = localJobsMap.get(freshJob.filename);
+                        if (localJob) {
+                            // Preserve local changes (job_completed, vendor_status, etc.)
+                            return {
+                                ...freshJob,
+                                job_completed: localJob.job_completed,
+                                vendor_status: localJob.vendor_status,
+                                completion_time: localJob.completion_time,
+                                accepted_time: localJob.accepted_time,
+                                is_hidden: localJob.is_hidden
+                            };
+                        }
+                        return freshJob;
+                    });
+                    
+                    // Add any new jobs that weren't in the fresh data
+                    const freshFilenames = new Set(freshJobs.map(job => job.filename));
+                    allJobs.forEach(localJob => {
+                        if (!freshFilenames.has(localJob.filename)) {
+                            mergedJobs.push(localJob);
+                        }
+                    });
+                    
+                    allJobs = mergedJobs;
                     categorizeJobs();
                     showToast('Jobs refreshed successfully');
                 } else {
@@ -3317,19 +3369,19 @@
             });
 
             // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
-            // AND vendor_status is 'not sended' or 'accepted' (show both pending and accepted jobs)
+            // AND vendor_status is 'pending', 'accepted', or 'sended' (show all non-completed jobs)
             const requests = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
                 const serviceType = (job.service_type || '').trim().toLowerCase();
-                const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
+                const vendorStatus = (job.vendor_status || 'pending').toLowerCase();
                 
                 // Include regular print jobs and specific service types
-                const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
+                const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'passport_photo' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
                 
-                // Show jobs that are either not sent or accepted
-                const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted';
+                // Show jobs that are pending, accepted, or sended (all non-completed jobs)
+                const isNonCompleted = vendorStatus === 'pending' || vendorStatus === 'accepted' || vendorStatus === 'sended';
                 
-                return isRegularPrint && isPendingOrAccepted;
+                return isRegularPrint && isNonCompleted;
             });
 
             // Completed Jobs: job_completed = 'YES' AND not hidden
@@ -3422,13 +3474,15 @@
             const tokenNumber = job.token ? `#${job.token}` : '';
 
             // Get vendor status for display - only show badge for requests section
-            const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
+            const vendorStatus = (job.vendor_status || 'pending').toLowerCase();
             let vendorStatusBadge = '';
             if (type === 'requests') {
                 if (vendorStatus === 'accepted') {
                     vendorStatusBadge = `<div class="vendor-status-badge accepted" title="Job accepted by vendor">ACCEPTED</div>`;
-                } else if (vendorStatus === 'not sended') {
-                    vendorStatusBadge = `<div class="vendor-status-badge pending" title="Waiting for vendor acceptance">PENDING</div>`;
+                } else if (vendorStatus === 'pending') {
+                    vendorStatusBadge = `<div class="vendor-status-badge pending" title="Job pending vendor acceptance">PENDING</div>`;
+                } else if (vendorStatus === 'sended') {
+                    vendorStatusBadge = `<div class="vendor-status-badge sended" title="Job sent to vendor">ACCEPTED</div>`;
                 }
             }
 
@@ -3472,8 +3526,8 @@
                         <i class="fas fa-info-circle"></i> Print Info
                     </button>`;
             } else if (type === 'requests') {
-                if (vendorStatus === 'accepted') {
-                    // Accepted jobs: Only show Completed button
+                if (vendorStatus === 'accepted' || vendorStatus === 'sended') {
+                    // Accepted or sended jobs: Only show Completed button
                     actions = `
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
                             <i class="fas fa-check"></i> Completed
@@ -3526,6 +3580,7 @@
                     <div class="job-header compact">
                         <div class="job-token" title="Job Token">${tokenNumber}</div>
                         ${statusText ? `<div class="job-status ${statusClass}">${statusText}</div>` : ''}
+                        ${job.print_round > 0 ? `<div class="print-round-badge" title="Print Round: ${job.print_round}">R${job.print_round}</div>` : ''}
                         ${feedbackHtml}
                     </div>
                     <div class="job-filename main-info" title="${job.filename}">
@@ -3664,6 +3719,7 @@
                 const jobIndex = allJobs.findIndex(job => job.filename === filename);
                 if (jobIndex !== -1) {
                     allJobs[jobIndex].vendor_status = 'accepted';
+                    allJobs[jobIndex].print_round = 1; // Set print_round to 1 when accepted
                     categorizeJobs(); // Refresh the display immediately
                 }
                 
@@ -3685,7 +3741,8 @@
                         // If API call fails, revert the change
                         const jobIndex = allJobs.findIndex(job => job.filename === filename);
                         if (jobIndex !== -1) {
-                            allJobs[jobIndex].vendor_status = 'not sended';
+                            allJobs[jobIndex].vendor_status = 'pending';
+                            allJobs[jobIndex].print_round = 0; // Revert print_round to 0
                             categorizeJobs();
                         }
                         showToast(`Error accepting job: ${data.error || 'Unknown error'}`);
@@ -3695,7 +3752,8 @@
                     // If API call fails, revert the change
                     const jobIndex = allJobs.findIndex(job => job.filename === filename);
                     if (jobIndex !== -1) {
-                        allJobs[jobIndex].vendor_status = 'not sended';
+                        allJobs[jobIndex].vendor_status = 'pending';
+                        allJobs[jobIndex].print_round = 0; // Revert print_round to 0
                         categorizeJobs();
                     }
                     showToast(`Error accepting job: ${error.message}`);
