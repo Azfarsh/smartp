@@ -11,7 +11,7 @@ from .views import (
     get_vendor_print_jobs, list_r2_files, debug_vendor_registrations,
     update_vendor_service_availability, get_vendor_service_availability, 
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
-    create_razorpay_order, verify_razorpay_payment
+    create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations
 )
 
 urlpatterns = [
@@ -85,4 +85,12 @@ urlpatterns += [
     path('cancel-failed-job/', views.cancel_failed_job, name='cancel_failed_job'),
     # Notification endpoints
     path('get-user-notifications/', views.get_user_notifications, name='get_user_notifications'),
+    # Accept print job endpoints
+    path('accept-print-job/', views.accept_print_job, name='accept_print_job'),
+    path('mark-job-completed/', views.mark_job_completed, name='mark_job_completed'),
+    path('hide-completed-job/', views.hide_completed_job, name='hide_completed_job'),
+    path('debug-file-locations/', views.debug_file_locations, name='debug_file_locations'),
+    # Connection monitoring endpoints
+    path('vendor-connection-heartbeat/', views.vendor_connection_heartbeat, name='vendor_connection_heartbeat'),
+    path('get-vendor-connection-status/', views.get_vendor_connection_status, name='get_vendor_connection_status'),
 ]

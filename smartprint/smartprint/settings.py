@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']  # In production, specify your actual domain
+ALLOWED_HOSTS = ['printmax.onrender.com', 'localhost', '127.0.0.1']  # Production domain
 
 # Application definition
 INSTALLED_APPS = [
@@ -37,6 +37,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'print.middleware.SessionValidationMiddleware',  # ✅ Custom session validation
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -169,3 +170,34 @@ RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_live_RF2OLAhxugVc5B')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '5NkBgjtxzJLNAUwhQLTXzsQP')
 
 GOOGLE_API_KEY = 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw'
+
+# ✅ Google OAuth Configuration for Production
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'your-google-client-id-here')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'your-google-client-secret-here')
+
+# ✅ Session Configuration for Persistent Login
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 180  # 6 months (180 days)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = True  # Set to True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# ✅ Authentication Settings
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/userdashboard/'
+LOGOUT_REDIRECT_URL = '/'
+
+# ✅ CSRF Settings for Production
+CSRF_TRUSTED_ORIGINS = [
+    'https://printmax.onrender.com',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# ✅ Security Settings for Production
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True

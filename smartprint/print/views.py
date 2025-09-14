@@ -28,6 +28,20 @@ from django.views.decorators.http import require_POST
 
 # Token management for sequential token generation (100-200)
 _used_tokens = set()
+
+# Simple in-memory cache for vendordashboard
+_vendor_dashboard_cache = {}
+_cache_timestamp = {}
+CACHE_DURATION = 30  # seconds
+
+def clear_vendor_cache(vendor_email, vendor_id=None):
+    """Clear cache for a specific vendor"""
+    cache_key = f"vendor_dashboard_{vendor_email}_{vendor_id}" if vendor_id else f"vendor_dashboard_{vendor_email}"
+    if cache_key in _vendor_dashboard_cache:
+        del _vendor_dashboard_cache[cache_key]
+    if cache_key in _cache_timestamp:
+        del _cache_timestamp[cache_key]
+    print(f"🗑️ Cleared cache for vendor: {vendor_email}")
 _current_token = 100
 
 def get_next_sequential_token():
@@ -41,7 +55,13 @@ def get_next_sequential_token():
         
         # Count user pending jobs
         try:
-            user_jobs_data = r2_client.get_object(
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            user_jobs_data = s3.get_object(
                 Bucket=settings.R2_BUCKET,
                 Key='users/jobs_data.json'
             )
@@ -52,7 +72,7 @@ def get_next_sequential_token():
             
         # Count vendor pending jobs
         try:
-            response = r2_client.list_objects_v2(
+            response = s3.list_objects_v2(
                 Bucket=settings.R2_BUCKET,
                 Prefix='vendor_print_jobs/'
             )
@@ -60,7 +80,7 @@ def get_next_sequential_token():
             for obj in response.get('Contents', []):
                 if obj['Key'].endswith('jobs_data.json'):
                     try:
-                        vendor_jobs_data = r2_client.get_object(
+                        vendor_jobs_data = s3.get_object(
                             Bucket=settings.R2_BUCKET,
                             Key=obj['Key']
                         )
@@ -87,6 +107,9 @@ def get_next_sequential_token():
 
 
 def home(request):
+    # ✅ Auto-redirect authenticated users to dashboard
+    if request.user.is_authenticated:
+        return redirect('userdashboard')
     return render(request, 'home.html')
 
 
@@ -107,6 +130,22 @@ def get_vendor_details_by_email(email):
         print(f"   - vendor_name: {vendor_data.get('vendor_name', '')}")
         print(f"   - profile_image_url: {vendor_data.get('profile_image_url', '')}")
         
+        # Check and refresh profile image URL if needed
+        profile_image_url = vendor_data.get('profile_image_url', '')
+        if profile_image_url:
+            # Test if the current URL is accessible
+            try:
+                test_response = requests.head(profile_image_url, timeout=5)
+                if test_response.status_code != 200:
+                    print(f"⚠️ Profile image URL not accessible, attempting to refresh...")
+                    profile_image_url = refresh_profile_image_url(s3, email, vendor_data)
+            except Exception as e:
+                print(f"⚠️ Profile image URL test failed: {e}, attempting to refresh...")
+                profile_image_url = refresh_profile_image_url(s3, email, vendor_data)
+        else:
+            # Try to find and generate URL for existing profile image
+            profile_image_url = find_and_generate_profile_image_url(s3, email)
+        
         return {
             'vendor_id': vendor_data.get('vendor_id', ''),
             'vendor_name': vendor_data.get('vendor_name', ''),
@@ -117,10 +156,93 @@ def get_vendor_details_by_email(email):
             'pincode': vendor_data.get('pincode', ''),
             'vendor_id': vendor_data.get('vendor_id', ''),
             'vendor_token': vendor_data.get('vendor_token', ''),
-            'profile_image_url': vendor_data.get('profile_image_url', ''),
+            'profile_image_url': profile_image_url,
         }
     except Exception as e:
         print(f"Error fetching vendor details for {email}: {str(e)}")
+        return None
+
+
+def refresh_profile_image_url(s3, email, vendor_data):
+    """Refresh profile image URL by generating a new presigned URL"""
+    try:
+        # Look for existing profile image in the profile folder
+        profile_prefix = f"vendor_register_details/{sanitize_email(email)}/profile/"
+        
+        # List objects in the profile folder
+        response = s3.list_objects_v2(
+            Bucket=settings.R2_BUCKET,
+            Prefix=profile_prefix
+        )
+        
+        if 'Contents' in response and response['Contents']:
+            # Get the most recent profile image
+            latest_image = max(response['Contents'], key=lambda x: x['LastModified'])
+            image_key = latest_image['Key']
+            
+            # Generate a new presigned URL
+            new_url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.R2_BUCKET, 'Key': image_key},
+                ExpiresIn=3600 * 24 * 7  # 7 days
+            )
+            
+            print(f"✅ Refreshed profile image URL: {new_url}")
+            
+            # Update the vendor data with the new URL
+            vendor_data['profile_image_url'] = new_url
+            
+            # Save the updated data back to R2
+            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=reg_key,
+                Body=json.dumps(vendor_data, indent=2),
+                ContentType='application/json'
+            )
+            
+            return new_url
+        else:
+            print(f"❌ No profile image found for {email}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error refreshing profile image URL: {str(e)}")
+        return None
+
+
+def find_and_generate_profile_image_url(s3, email):
+    """Find existing profile image and generate URL"""
+    try:
+        # Look for existing profile image in the profile folder
+        profile_prefix = f"vendor_register_details/{sanitize_email(email)}/profile/"
+        
+        # List objects in the profile folder
+        response = s3.list_objects_v2(
+            Bucket=settings.R2_BUCKET,
+            Prefix=profile_prefix
+        )
+        
+        if 'Contents' in response and response['Contents']:
+            # Get the most recent profile image
+            latest_image = max(response['Contents'], key=lambda x: x['LastModified'])
+            image_key = latest_image['Key']
+            
+            # Generate a presigned URL
+            new_url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.R2_BUCKET, 'Key': image_key},
+                ExpiresIn=3600 * 24 * 7  # 7 days
+            )
+            
+            print(f"✅ Generated new profile image URL: {new_url}")
+            return new_url
+        else:
+            print(f"❌ No profile image found for {email}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error finding profile image: {str(e)}")
         return None
 
 
@@ -196,10 +318,27 @@ def get_vendor_specific_jobs(vendor_id):
                 file_extension = filename.split('.')[-1].lower() if '.' in filename else ''
                 file_type = get_file_type(file_extension)
                 
-                # Calculate estimated pages if not in metadata
+                # Calculate pages - prioritize pricing_details.pages over metadata.pages
                 pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
                 
-                # Build file info
+                # Try to get actual pages from pricing_details if available
+                pricing_details_str = metadata.get('pricing_details')
+                if pricing_details_str:
+                    try:
+                        pricing_details = json.loads(pricing_details_str)
+                        if isinstance(pricing_details, dict) and 'pages' in pricing_details:
+                            pages = pricing_details['pages']
+                            print(f"📄 Using pages from pricing_details for {filename}: {pages}")
+                    except (json.JSONDecodeError, ValueError) as e:
+                        print(f"⚠️ Error parsing pricing_details for {filename}: {e}")
+                        # Keep the original pages value
+                
+                # Build file info - prioritize job_completed over job_completed_status
+                job_completed = metadata.get('job_completed', 'NO')
+                if job_completed == 'NO' and 'job_completed_status' in metadata:
+                    # Handle legacy field if job_completed is not set
+                    job_completed = metadata.get('job_completed_status', 'NO')
+                
                 file_info = {
                     "filename": filename,
                     "job_id": metadata.get('job_id', ''),
@@ -221,7 +360,8 @@ def get_vendor_specific_jobs(vendor_id):
                     "pageSize": metadata.get('pagesize', 'A4'),
                     "spiralBinding": metadata.get('spiralbinding', 'No'),
                     "lamination": metadata.get('lamination', 'No'),
-                    "job_completed": metadata.get('job_completed', 'NO'),
+                    "job_completed": job_completed.upper(),
+                    "vendor_status": metadata.get('vendor_status', 'not sended'),
                     "trash": metadata.get('trash', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
                     "service_type": metadata.get('service_type', ''),
@@ -230,7 +370,8 @@ def get_vendor_specific_jobs(vendor_id):
                     "vendor_id": vendor_id,
                     "feedback": metadata.get('feedback', ''),
                     "quality": metadata.get('quality', ''),
-                    "thickness": metadata.get('thickness', '')
+                    "thickness": metadata.get('thickness', ''),
+                    "pricing_details": pricing_details_str  # Include pricing_details for frontend
                 }
                 
                 # Create print options string
@@ -296,25 +437,48 @@ def vendordashboard(request):
         # Fetch vendor-specific jobs
         files = get_vendor_specific_jobs(vendor_id)
         
+        # Define service types for categorization
         manual_services = [
-            'photo_print', 'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
+            'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
         ]
+        regular_services = [
+            'regular_print', 'passport_print', 'photo_print', 'regular print', 'passport_photo'
+        ]
+        
         manual_print_jobs = []
         print_requests = []
         completed_jobs = []
         
         for job in files:
+            # Get job status - prioritize job_completed over job_completed_status
             job_completed = job.get('job_completed', 'NO').upper()
-            service_type = job.get('service_type', '').strip().lower()
+            if job_completed == 'NO' and 'job_completed_status' in job:
+                # Handle legacy field if job_completed is not set
+                job_completed = job.get('job_completed_status', 'NO').upper()
             
-            if job_completed == 'NO':
+            service_type = job.get('service_type', '').strip().lower()
+            vendor_status = job.get('vendor_status', 'not sended').lower()
+            is_hidden = job.get('is_hidden', 'false').lower() == 'true'
+            
+            print(f"🔍 Job: {job.get('filename', 'unknown')} - job_completed: {job_completed}, service_type: {service_type}, vendor_status: {vendor_status}")
+            
+            if job_completed == 'YES':
+                # Completed jobs - regardless of service type
+                if not is_hidden:
+                    completed_jobs.append(job)
+            elif job_completed == 'NO':
+                # Pending jobs - categorize by service type
                 if service_type in manual_services:
+                    # Manual print jobs (digital_print, project_binding, etc.)
                     manual_print_jobs.append(job)
-                else:
-                    # Regular print jobs, passport prints, photo prints, etc.
+                elif service_type in regular_services or service_type == '' or service_type == 'regular print':
+                    # Regular print jobs - show both pending and accepted
                     print_requests.append(job)
-            elif job_completed == 'YES':
-                completed_jobs.append(job)
+                else:
+                    # Default to print requests for unknown service types
+                    print_requests.append(job)
+
+        print(f"📊 Job categorization - Manual: {len(manual_print_jobs)}, Requests: {len(print_requests)}, Completed: {len(completed_jobs)}")
 
         context = {
             'manual_print_jobs': manual_print_jobs,
@@ -326,6 +490,12 @@ def vendordashboard(request):
             'print_requests_count': len(print_requests),
             'completed_jobs_count': len(completed_jobs),
         }
+        
+        # Cache the context for faster subsequent loads
+        cache_key = f"vendor_dashboard_{vendor_email}_{vendor_id}"
+        _vendor_dashboard_cache[cache_key] = context
+        _cache_timestamp[cache_key] = time.time()
+        
         return render(request, 'vendordashboard.html', context)
         
     except Exception as e:
@@ -456,6 +626,14 @@ def get_user_jobs_from_r2(user_email):
                 except Exception as e:
                     print(f"Error getting vendor coordinates for {vendor_id}: {str(e)}")
 
+                # Check job completion and vendor status for filtering
+                job_completed = metadata.get('job_completed', 'NO').upper()
+                vendor_status = metadata.get('vendor_status', 'not sended').lower()
+                
+                # Only include jobs that are not completed and vendor status is not 'sended'
+                if job_completed == 'YES' or vendor_status == 'sended':
+                    return None
+
                 # Build job info
                 job_info = {
                     "filename": filename,
@@ -475,7 +653,8 @@ def get_user_jobs_from_r2(user_email):
                     "pageSize": metadata.get('pagesize', 'A4'),
                     "spiralBinding": metadata.get('spiralbinding', 'No'),
                     "lamination": metadata.get('lamination', 'No'),
-                    "job_completed": metadata.get('job_completed', 'NO'),
+                    "job_completed": job_completed,
+                    "vendor_status": vendor_status,
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
                     "vendor": metadata.get('vendor', 'firozshop'),
                     "vendor_lat": vendor_lat,
@@ -727,6 +906,61 @@ def userdashboard_data(request):
 # FILE LISTING FROM R2
 # ─────────────────────────────────────────────────────────────
 
+def get_vendor_printer_configuration(vendor_email):
+    """
+    Get printer configuration for a vendor from their pricing data
+    """
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Get vendor pricing file
+        pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+        pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+        
+        # Return printer configuration
+        return pricing_data.get('printer_configuration', {})
+        
+    except Exception as e:
+        print(f"❌ Error getting printer configuration for {vendor_email}: {str(e)}")
+        return {}
+
+def get_printer_name_for_service(printer_config, service_type):
+    """
+    Get the appropriate printer name for a given service type
+    """
+    if not printer_config:
+        return "No Printer Configured"
+    
+    service_type = service_type.lower().strip()
+    
+    # Map service types to printer fields
+    printer_mapping = {
+        'digital_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'project_binding': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'gloss_printing': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'jumbo_printing': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'regular_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'passport_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+        'photo_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+        'passport_photo': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3']
+    }
+    
+    # Get the appropriate printer fields for this service type
+    printer_fields = printer_mapping.get(service_type, ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'])
+    
+    # Find the first non-NA printer
+    for field in printer_fields:
+        printer_name = printer_config.get(field, 'NA')
+        if printer_name and printer_name.strip() and printer_name != 'NA':
+            return printer_name
+    
+    return "No Printer Configured"
+
 def get_print_requests(request):
     try:
         # Get vendor details from session to filter jobs
@@ -747,9 +981,73 @@ def get_print_requests(request):
             print("❌ No vendor ID found in session - returning empty job list")
             return JsonResponse({"print_requests": []}, status=200)
         
-        # Get vendor-specific jobs instead of all jobs
+        # Get vendor printer configuration
+        printer_config = {}
+        if vendor_email:
+            printer_config = get_vendor_printer_configuration(vendor_email)
+            print(f"🖨️ Loaded printer configuration: {printer_config}")
+        
+        # Get vendor-specific jobs and categorize them properly
         files = get_vendor_specific_jobs(vendor_id)
-        return JsonResponse({"print_requests": files}, status=200)
+        
+        # Add printer information to each job
+        for job in files:
+            service_type = job.get('service_type', '').strip()
+            job['printer_name'] = get_printer_name_for_service(printer_config, service_type)
+        
+        # Define service types for categorization (same as vendordashboard)
+        manual_services = [
+            'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
+        ]
+        regular_services = [
+            'regular_print', 'passport_print', 'photo_print', 'regular print', 'passport_photo'
+        ]
+        
+        # Categorize jobs the same way as vendordashboard
+        categorized_jobs = {
+            'manual': [],
+            'requests': [],
+            'completed': []
+        }
+        
+        for job in files:
+            # Get job status - prioritize job_completed over job_completed_status
+            job_completed = job.get('job_completed', 'NO').upper()
+            if job_completed == 'NO' and 'job_completed_status' in job:
+                # Handle legacy field if job_completed is not set
+                job_completed = job.get('job_completed_status', 'NO').upper()
+            
+            service_type = job.get('service_type', '').strip().lower()
+            vendor_status = job.get('vendor_status', 'not sended').lower()
+            
+            if job_completed == 'YES':
+                # Completed jobs - regardless of service type
+                categorized_jobs['completed'].append(job)
+            elif job_completed == 'NO':
+                # Pending jobs - categorize by service type
+                if service_type in manual_services:
+                    # Manual print jobs (digital_print, project_binding, etc.)
+                    categorized_jobs['manual'].append(job)
+                elif service_type in regular_services or service_type == '' or service_type == 'regular print':
+                    # Regular print jobs - show both pending and accepted
+                    categorized_jobs['requests'].append(job)
+                else:
+                    # Default to print requests for unknown service types
+                    categorized_jobs['requests'].append(job)
+        
+        print(f"📊 AJAX Job categorization - Manual: {len(categorized_jobs['manual'])}, Requests: {len(categorized_jobs['requests'])}, Completed: {len(categorized_jobs['completed'])}")
+        
+        # Return all jobs with categorization info
+        return JsonResponse({
+            "print_requests": files,
+            "categorized": categorized_jobs,
+            "counts": {
+                "manual": len(categorized_jobs['manual']),
+                "requests": len(categorized_jobs['requests']),
+                "completed": len(categorized_jobs['completed']),
+                "total": len(files)
+            }
+        }, status=200)
     except Exception as e:
         print(f"Error in get_print_requests: {str(e)}")
         return JsonResponse({"error": str(e), "print_requests": []}, status=500)
@@ -2983,13 +3281,35 @@ def auth_receiver(request):
                 print(f"❌ Error storing signup details in R2: {str(e)}")
                 traceback.print_exc()
 
-            # Find or create user
+            # ✅ Find or create user with enhanced details
             user, created = User.objects.get_or_create(
                 username=email,
-                defaults={'email': email}
+                defaults={
+                    'email': email,
+                    'first_name': data.get('given_name', ''),
+                    'last_name': data.get('family_name', ''),
+                }
             )
+            
+            # ✅ Update user details if they exist but are incomplete
+            if not created:
+                if not user.first_name and data.get('given_name'):
+                    user.first_name = data.get('given_name')
+                if not user.last_name and data.get('family_name'):
+                    user.last_name = data.get('family_name')
+                user.save()
+            
+            # ✅ Set up persistent session
             login(request, user)
-            return JsonResponse({'status': 'success', 'email': email})
+            
+            # ✅ Store additional user info in session for quick access
+            request.session['user_email'] = email
+            request.session['user_name'] = data.get('name', '')
+            request.session['user_picture'] = data.get('picture', '')
+            request.session['google_user_id'] = google_user_id
+            
+            print(f"✅ User {email} logged in successfully with persistent session")
+            return JsonResponse({'status': 'success', 'email': email, 'redirect': '/userdashboard/'})
         return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
@@ -3086,6 +3406,22 @@ def vendor_pricing(request):
                 print(f"ℹ️ No existing pricing data found for {vendor_email}: {str(e)}")
                 pricing_data = None
         
+        # If this is an AJAX request for loading pricing data, return JSON
+        if load_pricing and vendor_email:
+            if pricing_data:
+                return JsonResponse({
+                    'success': True,
+                    'pricing_data': pricing_data.get('pricing_data', {}),
+                    'categorized_pricing': pricing_data.get('categorized_pricing', {}),
+                    'printer_configuration': pricing_data.get('printer_configuration', {}),
+                    'services_summary': pricing_data.get('services_summary', {})
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No pricing data found'
+                })
+        
         context = {
             'vendor_email': vendor_email,
             'vendor_details': vendor_details,
@@ -3108,61 +3444,104 @@ def vendor_pricing(request):
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
 
-            # Categorize pricing data by service type
-            pricing_entries = data.get('pricing_entries', [])
-            categorized_pricing = {
-                'digital_print': {},
-                'jumbo_print': {},
-                'gloss_print': {},
-                'photo_print': {},
-                'golden_embossing': {},
-                'passport_photo': {},
-                'a4_print': {},
-                'lamination': {},
-                'binding': {}
-            }
+            # Load existing pricing data to preserve values
+            existing_pricing_data = {}
+            existing_categorized_pricing = {}
+            existing_printer_configuration = {}
             
-            # Organize pricing entries by service category
+            try:
+                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                existing_data = json.loads(response['Body'].read().decode('utf-8'))
+                existing_pricing_data = existing_data.get('pricing_data', {})
+                existing_categorized_pricing = existing_data.get('categorized_pricing', {})
+                existing_printer_configuration = existing_data.get('printer_configuration', {})
+                print(f"📋 Loaded existing pricing data for vendor {vendor_email}")
+            except Exception as e:
+                print(f"ℹ️ No existing pricing data found for vendor {vendor_email}: {str(e)}")
+                # Initialize empty structures if no existing data
+                existing_data = {}
+                existing_pricing_data = {}
+                existing_categorized_pricing = {
+                    'digital_print': {},
+                    'jumbo_print': {},
+                    'gloss_print': {},
+                    'photo_print': {},
+                    'golden_embossing': {},
+                    'passport_photo': {},
+                    'a4_print': {},
+                    'lamination': {},
+                    'binding': {}
+                }
+                existing_printer_configuration = {}
+
+            # Categorize pricing data by service type - merge with existing data
+            pricing_entries = data.get('pricing_entries', [])
+            categorized_pricing = existing_categorized_pricing.copy()  # Start with existing data
+            
+            # Organize pricing entries by service category - only update non-empty values
             for entry in pricing_entries:
                 service_type = entry.get('service_type', '')
                 price = entry.get('price', 0)
                 
-                # Categorize based on service type prefix
-                if service_type.startswith('digital_print'):
-                    categorized_pricing['digital_print'][service_type] = price
-                elif service_type.startswith('jumbo_print'):
-                    categorized_pricing['jumbo_print'][service_type] = price
-                elif service_type.startswith('gloss_print'):
-                    categorized_pricing['gloss_print'][service_type] = price
-                elif service_type.startswith('photo_print'):
-                    categorized_pricing['photo_print'][service_type] = price
-                elif service_type.startswith('emboss'):
-                    categorized_pricing['golden_embossing'][service_type] = price
-                elif service_type.startswith('passport_photo'):
-                    categorized_pricing['passport_photo'][service_type] = price
-                elif service_type.startswith('a4_print'):
-                    categorized_pricing['a4_print'][service_type] = price
-                elif service_type.startswith('lamination'):
-                    categorized_pricing['lamination'][service_type] = price
-                elif service_type.startswith('binding'):
-                    categorized_pricing['binding'][service_type] = price
-                else:
-                    # Fallback to general category
-                    if 'general' not in categorized_pricing:
-                        categorized_pricing['general'] = {}
-                    categorized_pricing['general'][service_type] = price
+                # Only update if price is provided and greater than 0
+                if price and price > 0:
+                    # Categorize based on service type prefix
+                    if service_type.startswith('digital_print'):
+                        categorized_pricing['digital_print'][service_type] = price
+                    elif service_type.startswith('jumbo_print'):
+                        categorized_pricing['jumbo_print'][service_type] = price
+                    elif service_type.startswith('gloss_print'):
+                        categorized_pricing['gloss_print'][service_type] = price
+                    elif service_type.startswith('photo_print'):
+                        categorized_pricing['photo_print'][service_type] = price
+                    elif service_type.startswith('emboss'):
+                        categorized_pricing['golden_embossing'][service_type] = price
+                    elif service_type.startswith('passport_photo'):
+                        categorized_pricing['passport_photo'][service_type] = price
+                    elif service_type.startswith('a4_print'):
+                        categorized_pricing['a4_print'][service_type] = price
+                    elif service_type.startswith('lamination'):
+                        categorized_pricing['lamination'][service_type] = price
+                    elif service_type.startswith('binding'):
+                        categorized_pricing['binding'][service_type] = price
+                    else:
+                        # Fallback to general category
+                        if 'general' not in categorized_pricing:
+                            categorized_pricing['general'] = {}
+                        categorized_pricing['general'][service_type] = price
+            
+            # Get printer configuration from request data - merge with existing
+            printer_configuration = existing_printer_configuration.copy()  # Start with existing data
+            new_printer_config = data.get('printer_configuration', {})
+            
+            # Only update printer fields that have actual values (not empty or NA)
+            for printer_field, printer_name in new_printer_config.items():
+                if printer_name and printer_name.strip() and printer_name.strip() != 'NA':
+                    printer_configuration[printer_field] = printer_name.strip()
+            
+            # Ensure all 6 printer fields are included, using "NA" for empty ones
+            all_printer_fields = [
+                'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
+                'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
+            ]
+            
+            for printer_field in all_printer_fields:
+                if printer_field not in printer_configuration or not printer_configuration[printer_field] or printer_configuration[printer_field].strip() == '':
+                    printer_configuration[printer_field] = 'NA'
             
             # Prepare pricing data with categorized structure
             pricing_data = {
                 'vendor_email': vendor_email,
-                'pricing_data': data.get('pricing_data', {}),  # Keep original for backward compatibility
+                'pricing_data': existing_pricing_data,  # Preserve existing pricing_data
                 'categorized_pricing': categorized_pricing,
+                'printer_configuration': printer_configuration,
                 'services_summary': {
-                    'total_services': len(pricing_entries),
+                    'total_services': len([e for e in pricing_entries if e.get('price', 0) > 0]),
                     'available_services_count': len([e for e in pricing_entries if e.get('price', 0) > 0]),
                     'not_available_services_count': len([e for e in pricing_entries if e.get('price', 0) == 0])
                 },
-                'created_at': datetime.datetime.now().isoformat(),
+                'created_at': existing_data.get('created_at', datetime.datetime.now().isoformat()),
                 'updated_at': datetime.datetime.now().isoformat()
             }
 
@@ -3176,13 +3555,31 @@ def vendor_pricing(request):
 
             print(f"✅ Successfully saved pricing data for vendor {vendor_email}")
 
+            # Calculate detailed statistics for success message
+            total_services = pricing_data['services_summary']['total_services']
+            available_services = pricing_data['services_summary']['available_services_count']
+            not_available_services = pricing_data['services_summary']['not_available_services_count']
+            configured_printers = len([p for p in printer_configuration.values() if p and p.strip() and p != 'NA'])
+            
+            # Create detailed success message
+            success_message = f"✅ Pricing & Printer Configuration Updated Successfully!\n\n"
+            success_message += f"📊 Services Configured: {total_services}\n"
+            success_message += f"✅ Available Services: {available_services}\n"
+            success_message += f"❌ Not Available: {not_available_services}\n"
+            success_message += f"🖨️ Printers Configured: {configured_printers}\n\n"
+            success_message += f"Your pricing is now live and customers can place orders!"
+            
             return JsonResponse({
                 'success': True,
-                'message': 'Pricing saved successfully',
-                'total_services': pricing_data['services_summary']['total_services'],
-                'available_services_count': pricing_data['services_summary']['available_services_count'],
-                'not_available_services_count': pricing_data['services_summary']['not_available_services_count'],
-                'categorized_pricing': categorized_pricing
+                'message': 'Pricing and printer configuration saved successfully',
+                'detailed_message': success_message,
+                'total_services': total_services,
+                'available_services_count': available_services,
+                'not_available_services_count': not_available_services,
+                'total_printers': configured_printers,
+                'categorized_pricing': categorized_pricing,
+                'printer_configuration': printer_configuration,
+                'updated_at': datetime.datetime.now().isoformat()
             })
 
         except Exception as e:
@@ -6558,7 +6955,7 @@ def accept_job(request):
                     src_metadata = json.loads(response['Body'].read().decode('utf-8'))
                     src_metadata['vendor_status'] = 'accepted'
                     src_metadata['vendor_id'] = vendor_id
-                    src_metadata['accepted_at'] = datetime.now().isoformat()
+                    src_metadata['accepted_at'] = datetime.datetime.now().isoformat()
                     
                     s3.put_object(
                         Bucket=settings.R2_BUCKET,
@@ -6592,72 +6989,56 @@ def accept_job(request):
 
 @csrf_exempt
 def mark_job_completed(request):
-    """Mark a job as completed and send notification to user"""
-    try:
-        data = json.loads(request.body)
-        filename = data.get('filename')
-        vendor_id = data.get('vendor_id')
-        
-        if not filename or not vendor_id:
-            return JsonResponse({'error': 'Filename and vendor_id required'}, status=400)
-        
-        # Update job status to completed
-        completion_time = datetime.now().isoformat()
-        success, user_email = update_job_status_comprehensive(filename, 'YES', vendor_id, completion_time)
-        
-        if success:
-            # Send instant notification to user
-            if user_email:
-                try:
-                    send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time)
-                    print(f"✅ Sent completion notification to user: {user_email}")
-                except Exception as e:
-                    print(f"⚠️ Error sending notification: {e}")
+    """Mark a print job as completed by updating job_completed to 'YES'"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            filename = data.get('filename')
             
-            # Also update vendor_print_jobs folder to mark as completed
-            try:
-                s3 = boto3.client('s3',
-                    aws_access_key_id=settings.R2_ACCESS_KEY,
-                    aws_secret_access_key=settings.R2_SECRET_KEY,
-                    endpoint_url=settings.R2_ENDPOINT,
-                    region_name='auto')
+            if not filename:
+                return JsonResponse({'success': False, 'error': 'Filename required'})
+            
+            # Get vendor email from session
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
+            
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+            
+            vendor_id = vendor_details.get('vendor_id', 'vendor1')
+            vendor_name = vendor_details.get('shop_name', 'Unknown Vendor')
+            
+            # Update job_completed in R2 metadata
+            success = update_job_completed_status_in_r2(filename, 'YES', vendor_id)
+            
+            if success:
+                # Get user email for notification
+                user_email = get_user_email_from_file_metadata(filename, vendor_id)
                 
-                vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                    vendor_metadata = json.loads(response['Body'].read().decode('utf-8'))
-                    vendor_metadata['job_completed'] = 'YES'
-                    vendor_metadata['completion_time'] = completion_time
-                    vendor_metadata['status'] = 'completed'
-                    
-                    s3.put_object(
-                        Bucket=settings.R2_BUCKET,
-                        Key=vendor_key,
-                        Body=json.dumps(vendor_metadata, indent=2),
-                        ContentType='application/json'
-                    )
-                    print(f"✅ Updated vendor job status to completed: {filename}")
-                except Exception as e:
-                    print(f"⚠️ Error updating vendor job status: {e}")
-                    
-            except Exception as e:
-                print(f"⚠️ Error updating vendor job: {e}")
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Job {filename} marked as completed and user notified',
-                'status': 'completed',
-                'user_notified': user_email is not None
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': 'Failed to mark job as completed'
-            }, status=500)
-            
-    except Exception as e:
-        print(f"Error marking job as completed: {e}")
-        return JsonResponse({'error': 'Internal server error'}, status=500)
+                # Send notification to user
+                if user_email:
+                    try:
+                        send_job_completion_notification(user_email, filename, vendor_id, 'completed', datetime.datetime.now().isoformat())
+                        print(f"✅ Sent completion notification to user: {user_email}")
+                    except Exception as e:
+                        print(f"⚠️ Error sending notification: {e}")
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': f'Job "{filename}" marked as completed successfully!',
+                    'vendor_name': vendor_name
+                })
+            else:
+                return JsonResponse({'success': False, 'error': 'Failed to update job status'})
+                
+        except Exception as e:
+            print(f"Error in mark_job_completed: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @csrf_exempt
 def retry_failed_job(request):
@@ -6713,7 +7094,7 @@ def cancel_failed_job(request):
             
             # Send notification to user
             if user_email:
-                send_job_completion_notification(user_email, filename, vendor_id, 'cancelled', datetime.now().isoformat())
+                send_job_completion_notification(user_email, filename, vendor_id, 'cancelled', datetime.datetime.now().isoformat())
             
             return JsonResponse({
                 'success': True,
@@ -6750,7 +7131,7 @@ def update_job_vendor_status(filename, vendor_id, status):
             # Update metadata with vendor status
             metadata['vendor_status'] = status
             metadata['vendor_id'] = vendor_id
-            metadata['updated_at'] = datetime.now().isoformat()
+            metadata['updated_at'] = datetime.datetime.now().isoformat()
             
             # Copy to vendor_print_jobs folder
             s3.put_object(
@@ -6769,7 +7150,7 @@ def update_job_vendor_status(filename, vendor_id, status):
                 response = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
                 metadata = json.loads(response['Body'].read().decode('utf-8'))
                 metadata['vendor_status'] = status
-                metadata['updated_at'] = datetime.now().isoformat()
+                metadata['updated_at'] = datetime.datetime.now().isoformat()
                 
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
@@ -6797,15 +7178,22 @@ def add_user_points(user_email, points, reason):
             'user_email': user_email,
             'points': points,
             'reason': reason,
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.datetime.now().isoformat(),
             'transaction_id': f"points_{int(time.time())}"
         }
         
         points_key = f'user_points/{sanitize_email(user_email)}/transactions/{int(time.time())}.json'
         
         try:
-            r2_client.put_object(
-                Bucket=bucket_name,
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
                 Key=points_key,
                 Body=json.dumps(points_data, indent=2),
                 ContentType='application/json'
@@ -6833,11 +7221,18 @@ def get_user_notifications(request):
         prefix = f'user_notifications/{sanitize_email(user_email)}/'
         
         try:
-            response = r2_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
             
             for obj in response.get('Contents', []):
                 try:
-                    result = r2_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
                     notification_data = json.loads(result['Body'].read().decode('utf-8'))
                     notifications.append(notification_data)
                 except Exception as e:
@@ -6866,12 +7261,19 @@ def get_user_notifications(request):
 def get_total_user_points(user_email: str) -> int:
     """Sum all points transactions for the user from R2. Returns 0 if none."""
     try:
+        # Initialize R2 client
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
         prefix = f'user_points/{sanitize_email(user_email)}/transactions/'
-        response = r2_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+        response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
         total_points = 0
         for obj in response.get('Contents', []):
             try:
-                res = r2_client.get_object(Bucket=bucket_name, Key=obj['Key'])
+                res = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
                 data = json.loads(res['Body'].read().decode('utf-8'))
                 total_points += int(data.get('points', 0))
             except Exception as _e:
@@ -6892,15 +7294,22 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'vendor_id': vendor_id,
             'status': status,
             'completion_time': completion_time,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.datetime.now().isoformat()
         }
         
         # Store notification in R2 for user to see
         notification_key = f'user_notifications/{sanitize_email(user_email)}/{filename}_{int(time.time())}.json'
         
         try:
-            r2_client.put_object(
-                Bucket=bucket_name,
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
                 Key=notification_key,
                 Body=json.dumps(notification_data, indent=2),
                 ContentType='application/json'
@@ -6916,6 +7325,536 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         print(f"❌ Error sending notification: {e}")
         return False
 
+@csrf_exempt
+def accept_print_job(request):
+    """Accept a print job by updating vendor_status to 'accepted'"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            filename = data.get('filename')
+            
+            if not filename:
+                return JsonResponse({'success': False, 'error': 'Filename required'})
+            
+            # Get vendor email from session
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
+            
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+            
+            vendor_id = vendor_details.get('vendor_id', 'vendor1')
+            
+            # Update vendor_status in R2 metadata
+            success = update_vendor_status_in_r2(filename, 'accepted', vendor_id)
+            
+            if success:
+                # Clear vendor cache to ensure fresh data on next load
+                clear_vendor_cache(vendor_email, vendor_id)
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Job "{filename}" accepted successfully',
+                    'vendor_status': 'accepted'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to update vendor status - file not found'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Error accepting print job: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+def update_vendor_status_in_r2(filename, status, vendor_id):
+    """Update vendor_status in R2 storage metadata - searches in correct folder structure"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Define all possible folder structures to search
+        possible_paths = [
+            f'vendor_print_jobs/{vendor_id}/{filename}',
+            f'vendor_manual_print_jobs/{vendor_id}/{filename}',
+            f'vendor_register_details/{vendor_id}/firozshop/{filename}',
+            f'vendor_register_details/{sanitize_email(vendor_id)}/firozshop/{filename}',
+            f'users/*/{filename}',  # This will be handled separately
+        ]
+        
+        print(f"🔍 Searching for {filename} in vendor {vendor_id}...")
+        
+        # First, try the most common paths
+        for path in possible_paths[:4]:  # Skip the users path for now
+            try:
+                print(f"   🔍 Trying path: {path}")
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
+                current_metadata = head_response.get('Metadata', {})
+                
+                # Update vendor_status
+                current_metadata['vendor_status'] = status
+                current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
+                
+                # Copy object with updated metadata
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=path,
+                    Metadata=current_metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                print(f"✅ Updated vendor_status to '{status}' for {filename} at {path}")
+                return True
+                
+            except Exception as e:
+                print(f"   ⚠️ Not found at {path}: {str(e)}")
+                continue
+        
+        # If not found in vendor folders, search in users folder
+        print(f"   🔍 Searching in users folder...")
+        try:
+            # List all users and search for the file
+            users_prefix = 'users/'
+            users_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=users_prefix)
+            
+            for obj in users_response.get('Contents', []):
+                key = obj['Key']
+                if key.endswith(f'/{filename}'):
+                    print(f"   🎯 Found file at: {key}")
+                    
+                    # Get current metadata
+                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                    current_metadata = head_response.get('Metadata', {})
+                    
+                    # Update vendor_status
+                    current_metadata['vendor_status'] = status
+                    current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
+                    
+                    # Copy object with updated metadata
+                    copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
+                    s3.copy_object(
+                        CopySource=copy_source,
+                        Bucket=settings.R2_BUCKET,
+                        Key=key,
+                        Metadata=current_metadata,
+                        MetadataDirective='REPLACE'
+                    )
+                    
+                    print(f"✅ Updated vendor_status to '{status}' for {filename} at {key}")
+                    return True
+                    
+        except Exception as e:
+            print(f"   ⚠️ Error searching users folder: {str(e)}")
+        
+        print(f"❌ File {filename} not found in any expected location")
+        return False
+                
+    except Exception as e:
+        print(f"❌ Error updating vendor status: {str(e)}")
+        return False
+
+@csrf_exempt
+def mark_job_completed(request):
+    """Mark a print job as completed by updating job_completed_status to 'YES'"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            filename = data.get('filename')
+            
+            if not filename:
+                return JsonResponse({'success': False, 'error': 'Filename required'})
+            
+            # Get vendor email from session
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
+            
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+            
+            vendor_id = vendor_details.get('vendor_id', 'vendor1')
+            vendor_name = vendor_details.get('shop_name', 'Unknown Vendor')
+            
+            # Update job_completed_status in R2 metadata
+            success = update_job_completed_status_in_r2(filename, 'YES', vendor_id)
+            
+            if success:
+                # Clear vendor cache to ensure fresh data on next load
+                clear_vendor_cache(vendor_email, vendor_id)
+                
+                # Send job completion notification to user
+                try:
+                    # Get user email from the file metadata
+                    user_email = get_user_email_from_file_metadata(filename, vendor_id)
+                    if user_email:
+                        send_job_completion_notification(user_email, filename, vendor_id, 'completed', datetime.datetime.now())
+                        print(f"✅ Job completion notification sent to {user_email}")
+                except Exception as e:
+                    print(f"⚠️ Error sending notification: {str(e)}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Job "{filename}" marked as completed successfully',
+                    'job_completed_status': 'YES'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to update job completion status - file not found'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Error marking job as completed: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+def update_job_completed_status_in_r2(filename, status, vendor_id):
+    """Update job_completed_status in R2 storage metadata"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Define all possible folder structures to search
+        possible_paths = [
+            f'vendor_print_jobs/{vendor_id}/{filename}',
+            f'vendor_manual_print_jobs/{vendor_id}/{filename}',
+            f'vendor_register_details/{vendor_id}/firozshop/{filename}',
+            f'vendor_register_details/{sanitize_email(vendor_id)}/firozshop/{filename}',
+        ]
+        
+        print(f"🔍 Searching for {filename} to mark as completed...")
+        
+        # First, try the most common paths
+        for path in possible_paths:
+            try:
+                print(f"   🔍 Trying path: {path}")
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
+                current_metadata = head_response.get('Metadata', {})
+                
+                # Update job_completed (not job_completed_status)
+                current_metadata['job_completed'] = status
+                current_metadata['completion_time'] = datetime.datetime.now().isoformat()
+                
+                # Copy object with updated metadata
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=path,
+                    Metadata=current_metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                print(f"✅ Updated job_completed to '{status}' for {filename} at {path}")
+                return True
+                
+            except Exception as e:
+                print(f"   ⚠️ Not found at {path}: {str(e)}")
+                continue
+        
+        # If not found in vendor folders, search in users folder
+        print(f"   🔍 Searching in users folder...")
+        try:
+            # List all users and search for the file
+            users_prefix = 'users/'
+            users_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=users_prefix)
+            
+            for obj in users_response.get('Contents', []):
+                key = obj['Key']
+                if key.endswith(f'/{filename}'):
+                    print(f"   🎯 Found file at: {key}")
+                    
+                    # Get current metadata
+                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                    current_metadata = head_response.get('Metadata', {})
+                    
+                    # Update job_completed (not job_completed_status)
+                    current_metadata['job_completed'] = status
+                    current_metadata['completion_time'] = datetime.datetime.now().isoformat()
+                    
+                    # Copy object with updated metadata
+                    copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
+                    s3.copy_object(
+                        CopySource=copy_source,
+                        Bucket=settings.R2_BUCKET,
+                        Key=key,
+                        Metadata=current_metadata,
+                        MetadataDirective='REPLACE'
+                    )
+                    
+                    print(f"✅ Updated job_completed to '{status}' for {filename} at {key}")
+                    return True
+                    
+        except Exception as e:
+            print(f"   ⚠️ Error searching users folder: {str(e)}")
+        
+        print(f"❌ File {filename} not found in any expected location")
+        return False
+                
+    except Exception as e:
+        print(f"❌ Error updating job completion status: {str(e)}")
+        return False
+
+def get_user_email_from_file_metadata(filename, vendor_id):
+    """Extract user email from file metadata"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Search in users folder for the file
+        users_prefix = 'users/'
+        users_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=users_prefix)
+        
+        for obj in users_response.get('Contents', []):
+            key = obj['Key']
+            if key.endswith(f'/{filename}'):
+                # Get metadata to extract user email
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                metadata = head_response.get('Metadata', {})
+                return metadata.get('user_email', '')
+        
+        return None
+    except Exception as e:
+        print(f"Error getting user email from metadata: {str(e)}")
+        return None
+
+@csrf_exempt
+def hide_completed_job(request):
+    """Hide a completed job from the completed section"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            filename = data.get('filename')
+            token = data.get('token', '')
+            
+            if not filename:
+                return JsonResponse({'success': False, 'error': 'Filename required'})
+            
+            # Get vendor email from session
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
+            
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+            
+            vendor_id = vendor_details.get('vendor_id', 'vendor1')
+            
+            # Update is_hidden status in R2 metadata
+            success = update_job_hidden_status_in_r2(filename, 'true', vendor_id)
+            
+            if success:
+                # Clear vendor cache to ensure fresh data on next load
+                clear_vendor_cache(vendor_email, vendor_id)
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Job "{filename}" hidden from completed section'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to hide job - file not found'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Error hiding completed job: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+def update_job_hidden_status_in_r2(filename, hidden_status, vendor_id):
+    """Update is_hidden status in R2 storage metadata"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Define all possible folder structures to search
+        possible_paths = [
+            f'vendor_print_jobs/{vendor_id}/{filename}',
+            f'vendor_manual_print_jobs/{vendor_id}/{filename}',
+            f'vendor_register_details/{vendor_id}/firozshop/{filename}',
+            f'vendor_register_details/{sanitize_email(vendor_id)}/firozshop/{filename}',
+        ]
+        
+        print(f"🔍 Searching for {filename} to hide...")
+        
+        # First, try the most common paths
+        for path in possible_paths:
+            try:
+                print(f"   🔍 Trying path: {path}")
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
+                current_metadata = head_response.get('Metadata', {})
+                
+                # Update is_hidden status
+                current_metadata['is_hidden'] = hidden_status
+                
+                # Copy object with updated metadata
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=path,
+                    Metadata=current_metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                print(f"✅ Updated is_hidden to '{hidden_status}' for {filename} at {path}")
+                return True
+                
+            except Exception as e:
+                print(f"   ⚠️ Not found at {path}: {str(e)}")
+                continue
+        
+        # If not found in vendor folders, search in users folder
+        print(f"   🔍 Searching in users folder...")
+        try:
+            # List all users and search for the file
+            users_prefix = 'users/'
+            users_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=users_prefix)
+            
+            for obj in users_response.get('Contents', []):
+                key = obj['Key']
+                if key.endswith(f'/{filename}'):
+                    print(f"   🎯 Found file at: {key}")
+                    
+                    # Get current metadata
+                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                    current_metadata = head_response.get('Metadata', {})
+                    
+                    # Update is_hidden status
+                    current_metadata['is_hidden'] = hidden_status
+                    
+                    # Copy object with updated metadata
+                    copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
+                    s3.copy_object(
+                        CopySource=copy_source,
+                        Bucket=settings.R2_BUCKET,
+                        Key=key,
+                        Metadata=current_metadata,
+                        MetadataDirective='REPLACE'
+                    )
+                    
+                    print(f"✅ Updated is_hidden to '{hidden_status}' for {filename} at {key}")
+                    return True
+                    
+        except Exception as e:
+            print(f"   ⚠️ Error searching users folder: {str(e)}")
+        
+        print(f"❌ File {filename} not found in any expected location")
+        return False
+                
+    except Exception as e:
+        print(f"❌ Error updating hidden status: {str(e)}")
+        return False
+
+@csrf_exempt
+def debug_file_locations(request):
+    """Debug endpoint to find where files are stored"""
+    if request.method == 'GET':
+        try:
+            filename = request.GET.get('filename')
+            vendor_email = request.session.get('vendor_email')
+            
+            if not filename:
+                return JsonResponse({'success': False, 'error': 'Filename parameter required'})
+            
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
+            
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+            
+            vendor_id = vendor_details.get('vendor_id', 'vendor1')
+            
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Search in all possible locations
+            search_locations = [
+                f'vendor_print_jobs/{vendor_id}/',
+                f'vendor_manual_print_jobs/{vendor_id}/',
+                f'vendor_register_details/{vendor_id}/firozshop/',
+                f'vendor_register_details/{sanitize_email(vendor_id)}/firozshop/',
+                'users/'
+            ]
+            
+            found_locations = []
+            
+            for location in search_locations:
+                try:
+                    if location == 'users/':
+                        # Search all user folders
+                        response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=location)
+                        for obj in response.get('Contents', []):
+                            if obj['Key'].endswith(f'/{filename}'):
+                                found_locations.append({
+                                    'path': obj['Key'],
+                                    'size': obj.get('Size', 0),
+                                    'last_modified': obj.get('LastModified', '').isoformat() if obj.get('LastModified') else '',
+                                    'location_type': 'users'
+                                })
+                    else:
+                        # Search specific vendor folder
+                        response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=location)
+                        for obj in response.get('Contents', []):
+                            if obj['Key'].endswith(f'/{filename}'):
+                                found_locations.append({
+                                    'path': obj['Key'],
+                                    'size': obj.get('Size', 0),
+                                    'last_modified': obj.get('LastModified', '').isoformat() if obj.get('LastModified') else '',
+                                    'location_type': 'vendor'
+                                })
+                except Exception as e:
+                    print(f"Error searching {location}: {str(e)}")
+            
+            return JsonResponse({
+                'success': True,
+                'filename': filename,
+                'vendor_id': vendor_id,
+                'vendor_email': vendor_email,
+                'found_locations': found_locations,
+                'search_locations': search_locations
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
 def logout(request):
     """
     Logout view that clears session data and redirects to home
@@ -6928,3 +7867,239 @@ def logout(request):
     
     # Redirect to home page
     return redirect('home')
+
+
+# Connection monitoring system for vendor client
+import threading
+import time
+from datetime import timedelta
+
+# Global dictionary to track vendor client connections
+vendor_connections = {}
+connection_lock = threading.Lock()
+
+def update_vendor_connection_status(vendor_id, status='connected'):
+    """Update vendor client connection status"""
+    with connection_lock:
+        vendor_connections[vendor_id] = {
+            'status': status,
+            'last_seen': datetime.datetime.now(),
+            'is_connected': status == 'connected'
+        }
+
+def get_vendor_connection_status(vendor_id):
+    """Get vendor client connection status"""
+    with connection_lock:
+        return vendor_connections.get(vendor_id, {
+            'status': 'disconnected',
+            'last_seen': None,
+            'is_connected': False
+        })
+
+def check_vendor_connection_timeout():
+    """Check if vendor connections have timed out (3x polling interval = 30 seconds)"""
+    with connection_lock:
+        current_time = datetime.datetime.now()
+        timeout_threshold = timedelta(seconds=30)  # 3 * 10 seconds polling interval
+        
+        for vendor_id, connection_info in vendor_connections.items():
+            if connection_info['is_connected']:
+                time_since_last_seen = current_time - connection_info['last_seen']
+                if time_since_last_seen > timeout_threshold:
+                    # Mark as disconnected
+                    vendor_connections[vendor_id]['status'] = 'disconnected'
+                    vendor_connections[vendor_id]['is_connected'] = False
+                    
+                    # Auto-disable services for this vendor
+                    auto_disable_vendor_services(vendor_id)
+                    print(f"🔌 Vendor {vendor_id} connection timed out - services disabled")
+
+def auto_disable_vendor_services(vendor_id):
+    """Automatically disable vendor services when connection is lost"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Get vendor email from vendor_id
+        vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+        if not vendor_email:
+            print(f"❌ Could not find vendor email for vendor_id: {vendor_id}")
+            return False
+        
+        # Get current vendor details
+        vendor_details = get_vendor_details_by_email(vendor_email)
+        if not vendor_details:
+            print(f"❌ Could not find vendor details for email: {vendor_email}")
+            return False
+        
+        # Update service availability to disable specific services
+        vendor_folder = vendor_email_folder(vendor_email)
+        availability_key = f'{vendor_folder}/vendor_availability.json'
+        
+        try:
+            # Get current availability data
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=availability_key)
+            availability_data = json.loads(response['Body'].read().decode('utf-8'))
+        except:
+            # Create default availability data if not found
+            availability_data = {
+                'vendor_shop_avaliability': 'online',
+                'passport_photo_available': True,
+                'digital_print_available': True,
+                'regular_print_available': True,
+                'last_updated': datetime.datetime.now().isoformat()
+            }
+        
+        # Disable specific services due to connection loss
+        availability_data.update({
+            'passport_photo_available': False,
+            'digital_print_available': False,
+            'regular_print_available': False,
+            'connection_lost_at': datetime.datetime.now().isoformat(),
+            'connection_status': 'disconnected',
+            'last_updated': datetime.datetime.now().isoformat()
+        })
+        
+        # Save updated availability
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=availability_key,
+            Body=json.dumps(availability_data, indent=2),
+            ContentType='application/json'
+        )
+        
+        print(f"🔌 Auto-disabled services for vendor {vendor_id} due to connection loss")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error auto-disabling vendor services: {str(e)}")
+        return False
+
+def auto_enable_vendor_services(vendor_id):
+    """Automatically re-enable vendor services when connection is restored"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Get vendor email from vendor_id
+        vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+        if not vendor_email:
+            print(f"❌ Could not find vendor email for vendor_id: {vendor_id}")
+            return False
+        
+        # Update service availability to re-enable specific services
+        vendor_folder = vendor_email_folder(vendor_email)
+        availability_key = f'{vendor_folder}/vendor_availability.json'
+        
+        try:
+            # Get current availability data
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=availability_key)
+            availability_data = json.loads(response['Body'].read().decode('utf-8'))
+        except:
+            # Create default availability data if not found
+            availability_data = {
+                'vendor_shop_avaliability': 'online',
+                'passport_photo_available': True,
+                'digital_print_available': True,
+                'regular_print_available': True,
+                'last_updated': datetime.datetime.now().isoformat()
+            }
+        
+        # Re-enable specific services due to connection restoration
+        availability_data.update({
+            'passport_photo_available': True,
+            'digital_print_available': True,
+            'regular_print_available': True,
+            'connection_restored_at': datetime.datetime.now().isoformat(),
+            'connection_status': 'connected',
+            'last_updated': datetime.datetime.now().isoformat()
+        })
+        
+        # Save updated availability
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=availability_key,
+            Body=json.dumps(availability_data, indent=2),
+            ContentType='application/json'
+        )
+        
+        print(f"🔌 Auto-enabled services for vendor {vendor_id} due to connection restoration")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error auto-enabling vendor services: {str(e)}")
+        return False
+
+@csrf_exempt
+def vendor_connection_heartbeat(request):
+    """Endpoint for vendor client to report connection status"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_id = data.get('vendor_id')
+            
+            if not vendor_id:
+                return JsonResponse({'success': False, 'error': 'Missing vendor_id'})
+            
+            # Update connection status
+            update_vendor_connection_status(vendor_id, 'connected')
+            
+            # Re-enable services if they were disabled due to connection loss
+            auto_enable_vendor_services(vendor_id)
+            
+            # Check for timed out connections
+            check_vendor_connection_timeout()
+            
+            return JsonResponse({'success': True, 'message': 'Connection status updated'})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def get_vendor_connection_status(request):
+    """Get vendor client connection status for dashboard"""
+    if request.method == 'GET':
+        try:
+            vendor_email = request.session.get('vendor_email')
+            if not vendor_email:
+                return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
+            
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+            
+            vendor_id = vendor_details.get('vendor_id')
+            if not vendor_id:
+                return JsonResponse({'success': False, 'error': 'Vendor ID not found'})
+            
+            # Get connection status
+            connection_info = get_vendor_connection_status(vendor_id)
+            
+            # Check for timeout
+            check_vendor_connection_timeout()
+            
+            # Get updated status after timeout check
+            connection_info = get_vendor_connection_status(vendor_id)
+            
+            return JsonResponse({
+                'success': True,
+                'connection_status': connection_info['status'],
+                'is_connected': connection_info['is_connected'],
+                'last_seen': connection_info['last_seen'].isoformat() if connection_info['last_seen'] else None
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)

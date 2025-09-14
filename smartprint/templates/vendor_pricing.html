@@ -164,6 +164,18 @@
             height: 100%;
             object-fit: cover;
         }
+        
+        .vendor-image .default-avatar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+            font-weight: 600;
+        }
 
         .vendor-details {
             flex: 1;
@@ -368,6 +380,25 @@
             cursor: not-allowed;
         }
 
+        /* Printer input specific styling */
+        .price-input[name*="printer"] {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .price-input[name*="printer"]::placeholder {
+            color: var(--text-hint);
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        .price-input[name*="printer"]:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+            background: #fafafa;
+        }
+
         /* Form Actions */
         .form-actions {
             text-align: center;
@@ -486,8 +517,8 @@
 
         <!-- Vendor Information -->
         <div class="vendor-info">
-            <div class="vendor-image">
-                <img src="{% static 'images/priceimage.png' %}" alt="Vendor Shop">
+            <div class="vendor-image" id="vendorImageContainer">
+                <img src="{% static 'images/priceimage.png' %}" alt="Vendor Shop" id="vendorImage" onerror="showDefaultAvatar()">
             </div>
             <div class="vendor-details">
                 <h3>
@@ -985,11 +1016,98 @@
                      </div>
                  </div>
 
+                <!-- Printer Configuration -->
+                <div class="service-section">
+                    <div class="service-header">
+                        <span class="material-icons">print</span>
+                        <h3>Printer Configuration</h3>
+                    </div>
+                    <div class="service-content">
+                        <div class="pricing-grid">
+                            <!-- A4 Size Paper Printing Printers -->
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <h4 style="color: var(--primary-blue); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons">description</span>
+                                    A4 Size Paper Printing Printers
+                                </h4>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <span class="material-icons">print</span>
+                                    Printer 1 (A4)
+                                </label>
+                                <div class="price-input-container">
+                                    <span class="rupee-icon" style="background: var(--secondary-teal);">🖨️</span>
+                                    <input type="text" id="a4_printer_1" class="price-input" name="a4_printer_1" placeholder="Enter printer name (e.g., HP LaserJet Pro)" style="background: white; color: var(--text-primary);">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <span class="material-icons">print</span>
+                                    Printer 2 (A4)
+                                </label>
+                                <div class="price-input-container">
+                                    <span class="rupee-icon" style="background: var(--secondary-teal);">🖨️</span>
+                                    <input type="text" id="a4_printer_2" class="price-input" name="a4_printer_2" placeholder="Enter printer name (e.g., Canon PIXMA)" style="background: white; color: var(--text-primary);">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <span class="material-icons">print</span>
+                                    Printer 3 (A4)
+                                </label>
+                                <div class="price-input-container">
+                                    <span class="rupee-icon" style="background: var(--secondary-teal);">🖨️</span>
+                                    <input type="text" id="a4_printer_3" class="price-input" name="a4_printer_3" placeholder="Enter printer name (e.g., Epson WorkForce)" style="background: white; color: var(--text-primary);">
+                                </div>
+                            </div>
+                            
+                            <!-- Passport Photo Printing Printers -->
+                            <div class="form-group" style="grid-column: 1 / -1; margin-top: 20px;">
+                                <h4 style="color: var(--primary-blue); margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons">photo_camera</span>
+                                    Passport Photo Printing Printers
+                                </h4>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <span class="material-icons">photo_camera</span>
+                                    Printer 1 (Passport)
+                                </label>
+                                <div class="price-input-container">
+                                    <span class="rupee-icon" style="background: var(--accent-orange);">📸</span>
+                                    <input type="text" id="passport_printer_1" class="price-input" name="passport_printer_1" placeholder="Enter printer name (e.g., Canon Selphy)" style="background: white; color: var(--text-primary);">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <span class="material-icons">photo_camera</span>
+                                    Printer 2 (Passport)
+                                </label>
+                                <div class="price-input-container">
+                                    <span class="rupee-icon" style="background: var(--accent-orange);">📸</span>
+                                    <input type="text" id="passport_printer_2" class="price-input" name="passport_printer_2" placeholder="Enter printer name (e.g., HP Photosmart)" style="background: white; color: var(--text-primary);">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <span class="material-icons">photo_camera</span>
+                                    Printer 3 (Passport)
+                                </label>
+                                <div class="price-input-container">
+                                    <span class="rupee-icon" style="background: var(--accent-orange);">📸</span>
+                                    <input type="text" id="passport_printer_3" class="price-input" name="passport_printer_3" placeholder="Enter printer name (e.g., Epson PictureMate)" style="background: white; color: var(--text-primary);">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn" id="submitBtn">
                         <span class="loading-spinner" id="loadingSpinner"></span>
                         <span class="material-icons">save</span>
-                        Save All Pricing
+                        Save All Pricing & Printer Configuration
                     </button>
                 </div>
             </form>
@@ -1004,13 +1122,29 @@
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('vendorEmail');
         }
+        
+        // Function to check if page was opened from vendor dashboard
         function isFromDashboard() {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('from_dashboard') === '1';
         }
+        
         // This variable will be set by Django if available
         var vendorEmailFromSession = "{{ vendor_email|default:''|escapejs }}";
         let vendorEmail = getVendorEmailFromUrl() || vendorEmailFromSession;
+
+        // Function to show default avatar when image fails to load
+        function showDefaultAvatar() {
+            const container = document.getElementById('vendorImageContainer');
+            const vendorName = document.querySelector('#vendorName')?.textContent || 'Vendor';
+            const initials = vendorName.split(' ').map(word => word.charAt(0)).join('').toUpperCase().substring(0, 2);
+            
+            container.innerHTML = `
+                <div class="default-avatar">
+                    ${initials}
+                </div>
+            `;
+        }
 
         // Load vendor information and existing pricing
         async function loadVendorInfo() {
@@ -1084,6 +1218,22 @@
                         }
                     });
                     
+                    // Load printer configuration if available
+                    if (data.printer_configuration) {
+                        console.log('🖨️ Loading existing printer configuration:', data.printer_configuration);
+                        Object.entries(data.printer_configuration).forEach(([printerKey, printerName]) => {
+                            const printerInput = document.getElementById(printerKey);
+                            if (printerInput) {
+                                // Show "NA" as empty field, actual names as values
+                                if (printerName && printerName !== 'NA') {
+                                    printerInput.value = printerName;
+                                } else {
+                                    printerInput.value = '';
+                                }
+                            }
+                        });
+                    }
+                    
                     console.log('✅ Existing pricing data loaded successfully');
                     console.log('📊 Services status:', data.services_summary || 'Not available');
                 }
@@ -1140,34 +1290,111 @@
              }
          }
 
-         // Function to add integer validation to all price inputs
-         function addIntegerValidation() {
-             const priceInputs = document.querySelectorAll('.price-input');
-             priceInputs.forEach(input => {
-                 input.addEventListener('input', function() {
-                     validateIntegerInput(this);
-                 });
-                 
-                 input.addEventListener('keypress', function(e) {
-                     // Allow only digits and backspace
-                     if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
-                         e.preventDefault();
-                     }
-                 });
-             });
-         }
+        // Function to show success notification
+        function showSuccessNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4caf50, #45a049);
+                color: white;
+                padding: 20px 25px;
+                border-radius: 12px;
+                box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+                z-index: 10000;
+                max-width: 400px;
+                font-family: 'Roboto', sans-serif;
+                border-left: 4px solid #2e7d32;
+                animation: slideInFromRight 0.4s ease;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="material-icons" style="font-size: 24px;">check_circle</span>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">Success!</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9; white-space: pre-line;">${message}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Add animation keyframes
+            if (!document.getElementById('notification-styles')) {
+                const style = document.createElement('style');
+                style.id = 'notification-styles';
+                style.textContent = `
+                    @keyframes slideInFromRight {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.animation = 'slideInFromRight 0.4s ease reverse';
+                    setTimeout(() => notification.remove(), 400);
+                }
+            }, 5000);
+        }
+
+        // Function to add validation to all price inputs
+        function addIntegerValidation() {
+            const priceInputs = document.querySelectorAll('.price-input');
+            priceInputs.forEach(input => {
+                // Check if this is a printer input (by name)
+                const isPrinterInput = input.name && (input.name.startsWith('a4_printer_') || input.name.startsWith('passport_printer_'));
+                
+                if (isPrinterInput) {
+                    // For printer inputs, allow both text and numbers
+                    input.addEventListener('input', function() {
+                        // Allow any text input for printer names
+                        // No special validation needed
+                    });
+                    
+                    input.addEventListener('keypress', function(e) {
+                        // Allow all characters for printer names (letters, numbers, spaces, special chars)
+                        // No restrictions
+                    });
+                } else {
+                    // For pricing inputs, use integer validation
+                    input.addEventListener('input', function() {
+                        validateIntegerInput(this);
+                    });
+                    
+                    input.addEventListener('keypress', function(e) {
+                        // Allow only digits and backspace for pricing
+                        if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
+                            e.preventDefault();
+                        }
+                    });
+                }
+            });
+        }
 
         // Function to validate form before submission
         function validateForm() {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             let hasCheckedService = false;
+            let hasPrinterData = false;
             
+            // Check if any services are selected
             checkboxes.forEach(checkbox => {
                 if (checkbox.checked) {
                     hasCheckedService = true;
                     const inputId = checkbox.getAttribute('onchange').match(/'([^']+)'/)[1];
                     const input = document.getElementById(inputId);
-                    if (!input.value || input.value.trim() === '') {
+                    
+                    // Skip validation for printer inputs (they're optional)
+                    const isPrinterInput = input.name && (input.name.startsWith('a4_printer_') || input.name.startsWith('passport_printer_'));
+                    
+                    if (!isPrinterInput && (!input.value || input.value.trim() === '')) {
                         alert('Please enter pricing for all selected services.');
                         input.focus();
                         return false;
@@ -1175,10 +1402,22 @@
                 }
             });
             
-            if (!hasCheckedService) {
-                alert('Please select at least one service to set pricing.');
+            // Check if any printer fields have data
+            const printerInputs = document.querySelectorAll('input[name*="printer"]');
+            printerInputs.forEach(input => {
+                if (input.value && input.value.trim() !== '' && input.value.trim() !== 'NA') {
+                    hasPrinterData = true;
+                }
+            });
+            
+            // Allow submission if either services are selected OR printer data is provided
+            if (!hasCheckedService && !hasPrinterData) {
+                alert('Please select at least one service to set pricing or enter printer information.');
                 return false;
             }
+            
+            // Note: Printer names are optional - empty ones will be stored as "NA"
+            // Printer inputs can contain any text or numbers
             
             return true;
         }
@@ -1199,12 +1438,18 @@
             // Collect all form data more comprehensively
             const formData = new FormData(event.target);
             const pricingData = {};
+            const printerData = {};
             const allPriceInputs = document.querySelectorAll('.price-input');
 
             // First, collect from FormData
             for (let [key, value] of formData.entries()) {
                 if (key !== 'csrfmiddlewaretoken' && key !== 'vendorId' && value && value.trim() !== '') {
-                    pricingData[key] = parseFloat(value);
+                    // Check if it's a printer field
+                    if (key.startsWith('a4_printer_') || key.startsWith('passport_printer_')) {
+                        printerData[key] = value.trim();
+                    } else {
+                        pricingData[key] = parseFloat(value);
+                    }
                 }
             }
 
@@ -1215,19 +1460,73 @@
                 const isEnabled = !input.disabled;
                 
                 if (isEnabled && inputValue && inputValue !== '') {
-                    pricingData[inputName] = parseFloat(inputValue);
+                    // Check if it's a printer field
+                    if (inputName.startsWith('a4_printer_') || inputName.startsWith('passport_printer_')) {
+                        printerData[inputName] = inputValue;
+                    } else {
+                        pricingData[inputName] = parseFloat(inputValue);
+                    }
                 }
             });
+            
+            // Check if this is an update from vendor dashboard (only send changed values)
+            const isFromDashboardUpdate = isFromDashboard();
+            if (isFromDashboardUpdate) {
+                console.log('🔄 Update from vendor dashboard - only sending changed values');
+                // Only include pricing data that has actual values
+                const filteredPricingData = {};
+                Object.entries(pricingData).forEach(([key, value]) => {
+                    if (value && value > 0) {
+                        filteredPricingData[key] = value;
+                    }
+                });
+                // Update pricingData by clearing and repopulating it
+                Object.keys(pricingData).forEach(key => delete pricingData[key]);
+                Object.assign(pricingData, filteredPricingData);
+                
+                // Only include printer data that has actual values
+                const filteredPrinterData = {};
+                Object.entries(printerData).forEach(([key, value]) => {
+                    if (value && value.trim() !== '' && value !== 'NA') {
+                        filteredPrinterData[key] = value;
+                    }
+                });
+                // Update printerData by clearing and repopulating it
+                Object.keys(printerData).forEach(key => delete printerData[key]);
+                Object.assign(printerData, filteredPrinterData);
+                
+                console.log('📊 Filtered pricing data for dashboard update:', pricingData);
+                console.log('🖨️ Filtered printer data for dashboard update:', printerData);
+            }
+            
+            // Ensure all 6 printer fields are included, using "NA" for empty ones
+            // Only do this if NOT updating from dashboard (preserve existing values)
+            if (!isFromDashboardUpdate) {
+                const allPrinterFields = [
+                    'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
+                    'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
+                ];
+                
+                allPrinterFields.forEach(printerField => {
+                    if (!printerData[printerField]) {
+                        printerData[printerField] = 'NA';
+                    }
+                });
+            }
 
             console.log('📊 Collected pricing data:', pricingData);
+            console.log('🖨️ Collected printer data:', printerData);
             console.log('📋 Number of services configured:', Object.keys(pricingData).length);
+            console.log('🖨️ Number of printers configured:', Object.keys(printerData).length);
+            console.log('🖨️ Actual printers (non-NA):', Object.values(printerData).filter(p => p && p !== 'NA').length);
 
             const requestData = {
                 vendor_email: vendorEmail || '{{ vendor_email }}',
                 pricing_entries: Object.entries(pricingData).map(([service, price]) => ({
                     service_type: service,
                     price: price
-                }))
+                })),
+                printer_configuration: printerData
             };
 
             console.log('📤 Sending request data:', requestData);
@@ -1246,6 +1545,16 @@
                 console.log('📥 Response received:', data);
 
                 if (data.success) {
+                    // Check if this was opened from vendor dashboard
+                    if (isFromDashboard()) {
+                        // Show success notification and redirect to vendor dashboard
+                        showSuccessNotification(data.detailed_message || data.message);
+                        setTimeout(() => {
+                            window.location.href = '/vendordashboard/';
+                        }, 2000);
+                        return;
+                    }
+                    
                     document.getElementById('successMessage').style.display = 'block';
                     document.getElementById('pricingForm').style.display = 'none';
 
@@ -1253,32 +1562,54 @@
                     const totalServices = data.total_services || 0;
                     const availableServices = data.available_services_count || 0;
                     const notAvailableServices = data.not_available_services_count || 0;
+                    const totalPrinters = data.total_printers || 0;
+                    const updatedAt = data.updated_at || new Date().toISOString();
+                    
+                    // Format the update time
+                    const updateTime = new Date(updatedAt).toLocaleString();
                     
                     document.getElementById('successMessage').innerHTML = `
-                        <span class="material-icons">check_circle</span>
-                        <div style="text-align: left; margin-top: 10px;">
-                            <strong>Pricing saved successfully!</strong><br>
-                            📊 Total services: ${totalServices}<br>
-                            ✅ Available services: ${availableServices}<br>
-                            ❌ Not available services: ${notAvailableServices}<br>
-                            <small>Redirecting to login...</small>
+                        <span class="material-icons" style="font-size: 3rem; color: #4caf50; margin-bottom: 1rem;">check_circle</span>
+                        <div style="text-align: center; margin-top: 10px;">
+                            <h3 style="color: #4caf50; margin-bottom: 1rem; font-weight: 700;">🎉 Pricing & Printer Configuration Updated Successfully!</h3>
+                            <div style="background: rgba(76, 175, 80, 0.1); padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span><strong>📊 Services Configured:</strong></span>
+                                    <span style="color: #1976d2; font-weight: 600;">${totalServices}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span><strong>✅ Available Services:</strong></span>
+                                    <span style="color: #4caf50; font-weight: 600;">${availableServices}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span><strong>❌ Not Available:</strong></span>
+                                    <span style="color: #f44336; font-weight: 600;">${notAvailableServices}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span><strong>🖨️ Printers Configured:</strong></span>
+                                    <span style="color: #ff9800; font-weight: 600;">${totalPrinters}</span>
+                                </div>
+                            </div>
+                            <div style="background: #e8f5e8; padding: 0.75rem; border-radius: 6px; margin: 1rem 0; border-left: 4px solid #4caf50;">
+                                <strong style="color: #2e7d32;">🚀 Your pricing is now live and customers can place orders!</strong>
+                            </div>
+                            <div style="color: #666; font-size: 0.9rem; margin-top: 1rem;">
+                                <strong>Last Updated:</strong> ${updateTime}
+                            </div>
+                            <div style="margin-top: 1.5rem;">
+                                <small style="color: #888;">Redirecting to login in <span id="countdown">5</span> seconds...</small>
+                            </div>
                         </div>
                     `;
 
                     // Show countdown message
                     let countdown = 5;
+                    const countdownElement = document.getElementById('countdown');
                     const countdownInterval = setInterval(() => {
-                        document.getElementById('successMessage').innerHTML = `
-                            <span class="material-icons">check_circle</span>
-                            <div style="text-align: left; margin-top: 10px;">
-                                <strong>Pricing saved successfully!</strong><br>
-                                📊 Total services: ${totalServices}<br>
-                                ✅ Available services: ${availableServices}<br>
-                                ❌ Not available services: ${notAvailableServices}<br>
-                                <small>Redirecting to login in ${countdown} seconds...</small>
-                            </div>
-                        `;
                         countdown--;
+                        if (countdownElement) {
+                            countdownElement.textContent = countdown;
+                        }
                         if (countdown < 0) {
                             clearInterval(countdownInterval);
                             window.location.href = '/login/';
@@ -1336,6 +1667,15 @@ window.addEventListener('DOMContentLoaded', function() {
                     <div style="font-size: 0.98rem; color: #f3f4f6; margin-bottom: 2px;"><strong>Vendor ID:</strong> <span id="vendorId">${data.vendor_id || '-'}</span></div>
                     <div style="font-size: 0.98rem; color: #f3f4f6;"><strong>Vendor Token:</strong> <span id="vendorToken">${data.vendor_token || '-'}</span></div>
                 `;
+            }
+            
+            // Update vendor image if profile image URL is available
+            if (data.profile_image_url) {
+                const vendorImage = document.getElementById('vendorImage');
+                if (vendorImage) {
+                    vendorImage.src = data.profile_image_url;
+                    vendorImage.onerror = showDefaultAvatar;
+                }
             }
         })
         .catch(() => {
