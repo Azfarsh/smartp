@@ -349,8 +349,7 @@ def get_vendor_specific_jobs(vendor_id):
                     "size": format_file_size(obj.get('Size', 0)),
                     "user": metadata.get('user', 'Auto User'),
                     "pages": pages,
-                    "payment_status": metadata.get('payment_status', metadata.get('status', 'pending')).title(),
-                    "print_round": int(metadata.get('print_round', 0)),
+                    "status": metadata.get('status', 'pending').title(),
                     "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
                     "priority": metadata.get('priority', 'Medium'),
                     "copies": metadata.get('copies', '1'),
@@ -362,7 +361,7 @@ def get_vendor_specific_jobs(vendor_id):
                     "spiralBinding": metadata.get('spiralbinding', 'No'),
                     "lamination": metadata.get('lamination', 'No'),
                     "job_completed": job_completed.upper(),
-                    "vendor_status": metadata.get('vendor_status', 'pending'),
+                    "vendor_status": metadata.get('vendor_status', 'not sended'),
                     "trash": metadata.get('trash', 'NO'),
                     "timestamp": metadata.get('timestamp', obj["LastModified"].isoformat()),
                     "service_type": metadata.get('service_type', ''),
@@ -458,7 +457,7 @@ def vendordashboard(request):
                 job_completed = job.get('job_completed_status', 'NO').upper()
             
             service_type = job.get('service_type', '').strip().lower()
-            vendor_status = job.get('vendor_status', 'pending').lower()
+            vendor_status = job.get('vendor_status', 'not sended').lower()
             is_hidden = job.get('is_hidden', 'false').lower() == 'true'
             
             print(f"🔍 Job: {job.get('filename', 'unknown')} - job_completed: {job_completed}, service_type: {service_type}, vendor_status: {vendor_status}")
@@ -629,7 +628,7 @@ def get_user_jobs_from_r2(user_email):
 
                 # Check job completion and vendor status for filtering
                 job_completed = metadata.get('job_completed', 'NO').upper()
-                vendor_status = metadata.get('vendor_status', 'pending').lower()
+                vendor_status = metadata.get('vendor_status', 'not sended').lower()
                 
                 # Only include jobs that are not completed and vendor status is not 'sended'
                 if job_completed == 'YES' or vendor_status == 'sended':
@@ -1019,7 +1018,7 @@ def get_print_requests(request):
                 job_completed = job.get('job_completed_status', 'NO').upper()
             
             service_type = job.get('service_type', '').strip().lower()
-            vendor_status = job.get('vendor_status', 'pending').lower()
+            vendor_status = job.get('vendor_status', 'not sended').lower()
             
             if job_completed == 'YES':
                 # Completed jobs - regardless of service type
@@ -1212,18 +1211,12 @@ def get_vendor_print_jobs(request):
                     # Filter only desired services and statuses - ONLY ACCEPTED JOBS
                     service_type = (metadata.get('service_type') or '').strip().lower()
                     job_completed = (metadata.get('job_completed') or 'NO').upper()
-                    vendor_status = (metadata.get('vendor_status') or 'pending').lower()
+                    vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
                     allowed_services = {'regular print', 'passport_photo', 'photo_print'}
 
                     # Only process jobs that are accepted by vendor and not completed
                     if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
                         print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
-                        continue
-                        
-                    # Check print_round - only process jobs with print_round = 1 (first time being picked up)
-                    print_round = int(metadata.get('print_round', 0))
-                    if print_round != 1:
-                        print(f"   ⏭️ Skipping (print_round): print_round={print_round}, only processing print_round=1")
                         continue
                     
                     print(f"   ✅ Found accepted job: {filename} (service: {service_type}, vendor_status: {vendor_status})")
@@ -2094,10 +2087,9 @@ def upload_to_r2(request):
                         'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                         'lamination': str(print_settings.get("lamination", "No")),
                         'timestamp': datetime.datetime.now().isoformat(),
-                        'payment_status': 'pending',  # Renamed from 'status' to avoid confusion
+                        'status': 'pending',
                         'job_completed': 'NO',
-                        'vendor_status': 'pending',
-                        'print_round': 0,  # Initialize print round to 0
+                        'vendor_status': 'not sended',
                         'trash': 'NO',
                         'user': user_email,
                         'vendor': vendor_id,
@@ -2902,10 +2894,9 @@ def process_print_request(request):
                                       'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                                       'lamination': str(print_settings.get("lamination", "No")),
                                       'timestamp': datetime.datetime.now().isoformat(),
-                                      'payment_status': 'pending',  # Renamed from 'status' to avoid confusion
+                                      'status': 'pending',
                                       'job_completed': 'NO',
-                                      'vendor_status': 'pending',
-                                      'print_round': '0',  # Initialize print round to 0
+                                      'vendor_status': 'not sended',
                                       'trash': 'NO'
                                   })
 
@@ -2950,14 +2941,9 @@ GOOGLE_DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 def _get_google_oauth_client_config():
     client_id = getattr(settings, 'GOOGLE_OAUTH_CLIENT_ID', None) or getattr(settings, 'GOOGLE_CLIENT_ID', None)
-    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', None) or getattr(settings, 'GOOGLE_CLIENT_SECRET', None)
+    client_secret = getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET', None)
     if not client_id or not client_secret:
         return None
-    
-    # Get production redirect URIs and JavaScript origins
-    redirect_uris = getattr(settings, 'GOOGLE_OAUTH_REDIRECT_URIS', [])
-    javascript_origins = getattr(settings, 'GOOGLE_OAUTH_JAVASCRIPT_ORIGINS', [])
-    
     return {
         'web': {
             'client_id': client_id,
@@ -2966,8 +2952,8 @@ def _get_google_oauth_client_config():
             'token_uri': 'https://oauth2.googleapis.com/token',
             'auth_provider_x509_cert_url': 'https://www.googleapis.com/oauth2/v1/certs',
             'client_secret': client_secret,
-            'redirect_uris': redirect_uris,
-            'javascript_origins': javascript_origins
+            'redirect_uris': [],
+            'javascript_origins': []
         }
     }
 
@@ -3118,11 +3104,8 @@ def verify_razorpay_payment(request):
         if not (payment_id and order_id and signature):
             return JsonResponse({'success': False, 'error': 'Missing payment details'}, status=400)
 
-        # Ensure RAZORPAY_KEY_SECRET is a string
-        razorpay_secret = str(settings.RAZORPAY_KEY_SECRET)
-        
         generated_signature = hmac.new(
-            razorpay_secret.encode('utf-8'),
+            settings.RAZORPAY_KEY_SECRET.encode('utf-8'),
             f"{order_id}|{payment_id}".encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
@@ -3190,10 +3173,9 @@ def verify_razorpay_payment(request):
                     'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
                     'lamination': str(print_settings.get('lamination', 'No')),
                                   'timestamp': datetime.datetime.now().isoformat(),
-                                  'payment_status': 'pending',  # Renamed from 'status' to avoid confusion
+                                  'status': 'pending',
                                   'job_completed': 'NO',
-                                  'vendor_status': 'pending',
-                                  'print_round': '0',  # Initialize print round to 0
+                                  'vendor_status': 'not sended',
                                   'trash': 'NO',
                     'user': user_email,
                     'vendor': vendor_id,
@@ -3232,16 +3214,13 @@ def verify_razorpay_payment(request):
                     except Exception:
                         pass
 
-                # Convert all metadata values to strings (S3 requirement)
-                string_metadata = {k: str(v) for k, v in metadata.items()}
-                
                 # Store to vendor folder
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=vendor_file_key,
                     Body=file_content,
                     ContentType=fobj.content_type,
-                    Metadata=string_metadata
+                    Metadata=metadata
                 )
 
                 # Store a copy under the user's folder
@@ -3250,7 +3229,7 @@ def verify_razorpay_payment(request):
                     Key=user_file_key,
                     Body=file_content,
                     ContentType=fobj.content_type,
-                    Metadata=string_metadata
+                    Metadata=metadata
                 )
 
                 files_processed += 1
@@ -7177,10 +7156,6 @@ def update_job_vendor_status(filename, vendor_id, status):
             metadata['vendor_id'] = vendor_id
             metadata['updated_at'] = datetime.datetime.now().isoformat()
             
-            # Set print_round to 1 when accepting a job
-            if status == 'accepted':
-                metadata['print_round'] = 1
-            
             # Copy to vendor_print_jobs folder
             s3.put_object(
                 Bucket=settings.R2_BUCKET,
@@ -7199,10 +7174,6 @@ def update_job_vendor_status(filename, vendor_id, status):
                 metadata = json.loads(response['Body'].read().decode('utf-8'))
                 metadata['vendor_status'] = status
                 metadata['updated_at'] = datetime.datetime.now().isoformat()
-                
-                # Set print_round to 1 when accepting a job
-                if status == 'accepted':
-                    metadata['print_round'] = 1
                 
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
@@ -7924,15 +7895,6 @@ def logout(request):
     # Redirect to home page
     return redirect('home')
 
-def serve_manifest(request):
-    """Serve the web app manifest file"""
-    try:
-        with open('static/manifest.json', 'r') as f:
-            manifest_content = f.read()
-        return HttpResponse(manifest_content, content_type='application/json')
-    except FileNotFoundError:
-        return HttpResponse('{"error": "Manifest not found"}', content_type='application/json', status=404)
-
 
 # Connection monitoring system for vendor client
 import threading
@@ -7990,10 +7952,10 @@ def get_vendor_connection_status(vendor_id):
         })
 
 def check_vendor_connection_timeout():
-    """Check if vendor connections have timed out (5x polling interval = 50 seconds)"""
+    """Check if vendor connections have timed out (3x polling interval = 30 seconds)"""
     with connection_lock:
         current_time = datetime.datetime.now()
-        timeout_threshold = timedelta(seconds=50)  # 5 * 10 seconds polling interval
+        timeout_threshold = timedelta(seconds=30)  # 3 * 10 seconds polling interval
         
         for vendor_id, connection_info in vendor_connections.items():
             if connection_info['is_connected']:

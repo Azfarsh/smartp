@@ -93,8 +93,4 @@ urlpatterns += [
     # Connection monitoring endpoints
     path('vendor-connection-heartbeat/', views.vendor_connection_heartbeat, name='vendor_connection_heartbeat'),
     path('get-vendor-connection-status/', views.get_vendor_connection_status, name='get_vendor_connection_status'),
-    
-    # Static file serving for development
-    path('static/manifest.json', views.serve_manifest, name='manifest'),
-
 ]
