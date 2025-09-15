@@ -1289,6 +1289,12 @@
             box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
         }
 
+        .vendor-status-badge.failed {
+            background: #EF4444;
+            color: white;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        }
+
         .btn-small {
             padding: 10px 12px; /* Increased for better visibility */
             border: none;
@@ -3432,9 +3438,15 @@
 
             // Get vendor status for display - only show badge for requests section
             const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
+            // Detect failure from multiple possible fields
+            const rawStatus = (job.status || job.metadata?.status || '').toLowerCase();
+            const jobFailedFlag = (job.job_failed || job.metadata?.job_failed || '').toString().toUpperCase() === 'YES';
+            const isFailed = rawStatus === 'failed' || rawStatus === 'timeout' || vendorStatus === 'failed' || jobFailedFlag === true;
             let vendorStatusBadge = '';
             if (type === 'requests') {
-                if (vendorStatus === 'accepted') {
+                if (isFailed) {
+                    vendorStatusBadge = `<div class="vendor-status-badge failed" title="Job failed or printer issue">FAILED</div>`;
+                } else if (vendorStatus === 'accepted') {
                     vendorStatusBadge = `<div class="vendor-status-badge accepted" title="Job accepted by vendor">ACCEPTED</div>`;
                 } else if (vendorStatus === 'not sended') {
                     vendorStatusBadge = `<div class="vendor-status-badge pending" title="Waiting for vendor acceptance">PENDING</div>`;
