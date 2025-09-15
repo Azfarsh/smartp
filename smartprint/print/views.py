@@ -287,11 +287,10 @@ def get_vendor_specific_jobs(vendor_id):
                 # Get object metadata first
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                 metadata = head_response.get('Metadata', {})
-                job_completed = metadata.get('job_completed', 'NO').upper()
-                
-                # Only include jobs with job_completed == 'NO' or 'YES'
+                # Determine completion status; default to 'NO' if missing or unexpected
+                job_completed = metadata.get('job_completed', metadata.get('job_completed_status', 'NO')).upper()
                 if job_completed not in ['NO', 'YES']:
-                    continue
+                    job_completed = 'NO'
                     
                 # Generate presigned URL for preview
                 url = s3.generate_presigned_url(
