@@ -1,0 +1,2445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPrint Admin Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+
+        .menu-item {
+            display: block;
+            padding: 18px 25px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-left-color: #fff;
+            transform: translateX(5px);
+        }
+
+        .menu-item.active {
+            background-color: rgba(255,255,255,0.2);
+            border-left-color: #fff;
+        }
+
+        .menu-item i {
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 0;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 25px 35px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .top-bar h1 {
+            color: #1e293b;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 35px;
+        }
+
+        /* Overview Cards */
+        .overview-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .overview-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .overview-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+        }
+
+        .overview-card.users {
+            border-left-color: #3b82f6;
+        }
+
+        .overview-card.cost {
+            border-left-color: #10b981;
+        }
+
+        .overview-card.revenue {
+            border-left-color: #f59e0b;
+        }
+
+        .overview-card.growth {
+            border-left-color: #8b5cf6;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        .card-icon.users {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .card-icon.cost {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .card-icon.revenue {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .card-icon.growth {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .card-subtitle {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        /* Search and Filter Section */
+        .search-filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .search-filter-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8fafc;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            padding: 12px 20px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active:hover {
+            background: #5a67d8;
+            border-color: #5a67d8;
+        }
+
+        /* Primary button (Save) */
+        .primary-btn {
+            padding: 12px 20px;
+            border: 2px solid #3b82f6;
+            background: #3b82f6;
+            color: #ffffff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 700;
+            box-shadow: 0 3px 10px rgba(59,130,246,0.25);
+        }
+        .primary-btn:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37,99,235,0.3);
+        }
+        .primary-btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+        }
+        .primary-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .month-dropdown {
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .month-dropdown:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+
+        /* Commission Rates Section */
+        .commission-rates-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .section-header {
+            margin-bottom: 20px;
+        }
+
+        .section-header h3 {
+            color: #1e293b;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-header h3 i {
+            color: #667eea;
+        }
+
+        .section-header p {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .commission-rates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .rate-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .rate-item:hover {
+            background: #f1f5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .service-name {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.95rem;
+        }
+
+        .rate-value {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1rem;
+            background: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 2px solid #e2e8f0;
+        }
+
+        /* Data Table */
+        .data-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .data-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .data-content {
+            padding: 0;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            padding: 20px 25px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 20px 25px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .user-email {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 1rem;
+        }
+
+        .documents-count {
+            text-align: center;
+            font-weight: 700;
+            color: #3b82f6;
+            font-size: 1.2rem;
+        }
+
+        .service-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .service-tag {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1e40af;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid #93c5fd;
+        }
+
+        /* Status badges for transactions */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap; /* keep one line */
+            padding: 6px 12px;
+            border-radius: 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+            position: relative;
+        }
+        .status-badge.not-completed {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+            border-color: #fcd34d;
+        }
+        .status-badge.completed {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #065f46;
+            border-color: #86efac;
+        }
+        .row-close {
+            opacity: 0.0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #fecaca;
+            background: #fee2e2;
+            color: #b91c1c;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            transition: opacity 0.2s ease, background 0.2s ease, transform 0.1s ease;
+        }
+        tr:hover .row-close { opacity: 1; }
+        .row-close:hover { background: #fecaca; }
+        .row-close:active { transform: scale(0.96); }
+
+        .cost-amount {
+            text-align: right;
+            font-weight: 700;
+            color: #10b981;
+            font-size: 1.1rem;
+        }
+
+        .revenue-amount {
+            text-align: right;
+            font-weight: 700;
+            color: #f59e0b;
+            font-size: 1.1rem;
+        }
+
+        .last-activity {
+            text-align: right;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        /* Loading and Empty States */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #64748b;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 25px;
+            opacity: 0.5;
+            color: #94a3b8;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #475569;
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+            color: #64748b;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .top-bar {
+                padding: 20px;
+            }
+
+            .content-area {
+                padding: 20px;
+            }
+
+            .overview-cards {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .search-filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                min-width: auto;
+            }
+
+            .data-table {
+                font-size: 0.9rem;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 15px 10px;
+            }
+        }
+
+        /* Hidden class for category switching */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Compact styling specifically for New Vendor Installation section */
+        #installations-category .data-container {
+            max-width: 100%;
+            margin: 0;
+        }
+        #installations-category .search-filter-section {
+            padding: 16px;
+        }
+        #installations-category .overview-card {
+            padding: 14px;
+            border-radius: 10px;
+        }
+        #installations-category .card-icon {
+            width: 34px;
+            height: 34px;
+            font-size: 1rem;
+            margin-right: 10px;
+            border-radius: 8px;
+        }
+        #installations-category .card-title {
+            font-size: 0.75rem;
+        }
+        #installations-category .card-value {
+            font-size: 1.4rem;
+            margin-bottom: 0;
+        }
+        #installations-category .month-dropdown {
+            padding: 8px 12px;
+            font-size: 13px;
+            min-width: 130px;
+            border-radius: 8px;
+        }
+        #installations-category .filter-btn {
+            padding: 8px 12px;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+        #installations-category .primary-btn {
+            padding: 9px 14px;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+        #installations-category .data-table th,
+        #installations-category .data-table td {
+            padding: 8px 6px;
+            font-size: 0.85rem;
+        }
+        #installations-category .lat-long-input {
+            min-width: 80px !important;
+            width: 80px !important;
+            padding: 6px 8px !important;
+            font-size: 0.8rem !important;
+        }
+        #installations-category .form-input {
+            min-width: 120px !important;
+            padding: 6px 8px !important;
+            font-size: 0.8rem !important;
+        }
+        #installations-category .table-container {
+            overflow-x: auto;
+        }
+        #installations-category .status-badge {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            border-radius: 12px;
+        }
+        #installations-category #availability-calendar button[data-date] {
+            padding: 8px !important;
+            border-radius: 6px !important;
+        }
+        #installations-category #availability-preview-grid > div {
+            padding: 8px !important;
+            border-radius: 6px !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h2>
+                <p>SmartPrint Management</p>
+            </div>
+            <div class="sidebar-menu">
+                <a href="#" class="menu-item active" data-category="users">
+                    <i class="fas fa-users"></i>
+                    User Data
+                </a>
+                <a href="#" class="menu-item" data-category="vendors">
+                    <i class="fas fa-store"></i>
+                    Vendor Data
+                </a>
+                <a href="#" class="menu-item" data-category="transactions">
+                    <i class="fas fa-credit-card"></i>
+                    Vendor Transactions
+                </a>
+                <a href="#" class="menu-item" data-category="contacts">
+                    <i class="fas fa-address-book"></i>
+                    Contact Data
+                </a>
+                <a href="#" class="menu-item" data-category="installations">
+                    <i class="fas fa-download"></i>
+                    New Vendor Installation
+                </a>
+                <a href="#" class="menu-item" data-category="activity">
+                    <i class="fas fa-chart-line"></i>
+                    Total Activity
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <h1 id="category-title">User Data</h1>
+                <div class="user-info">
+                    <div class="user-avatar">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <span>{{ user.username }}</span>
+                    <a href="{% url 'admin:logout' %}" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Users Category -->
+                <div id="users-category" class="category-content">
+                    <!-- Overview Cards -->
+                    <div class="overview-cards">
+                        <div class="overview-card users">
+                            <div class="card-header">
+                                <div class="card-icon users">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Users</div>
+                                    <div class="card-value" id="total-users">0</div>
+                                    <div class="card-subtitle">Active users</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overview-card cost">
+                            <div class="card-header">
+                                <div class="card-icon cost">
+                                    <i class="fas fa-rupee-sign"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Cost</div>
+                                    <div class="card-value" id="total-cost">₹0.00</div>
+                                    <div class="card-subtitle">All user payments</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overview-card revenue">
+                            <div class="card-header">
+                                <div class="card-icon revenue">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Platform Revenue</div>
+                                    <div class="card-value" id="total-revenue">₹0.00</div>
+                                    <div class="card-subtitle">After platform fees</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overview-card growth">
+                            <div class="card-header">
+                                <div class="card-icon growth">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Growth</div>
+                                    <div class="card-value" id="growth-percentage">+0%</div>
+                                    <div class="card-subtitle">vs previous month</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Commission Rates Section -->
+                    <div class="commission-rates-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-percentage"></i> Service Commission Rates</h3>
+                            <p>Commission rates applied to different print services</p>
+                        </div>
+                        <div class="commission-rates-grid">
+                            <div class="rate-item">
+                                <span class="service-name">Regular Print</span>
+                                <span class="rate-value">15%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Photo Print</span>
+                                <span class="rate-value">20%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Passport Photo</span>
+                                <span class="rate-value">25%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Jumbo Print</span>
+                                <span class="rate-value">18%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Gloss Print</span>
+                                <span class="rate-value">22%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Digital Print</span>
+                                <span class="rate-value">16%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">A4 Print</span>
+                                <span class="rate-value">14%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Golden Emboss</span>
+                                <span class="rate-value">30%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter Section -->
+                    <div class="search-filter-section">
+                        <div class="search-filter-row">
+                            <div class="search-container">
+                                <input type="text" id="users-search" class="search-input" placeholder="Search by user email...">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <div class="month-selector">
+                                <label for="month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select Month:</label>
+                                <select id="month-select" class="month-dropdown">
+                                    <option value="">Loading months...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="data-container">
+                        <div class="data-header">
+                            <i class="fas fa-users"></i> Users Data
+                        </div>
+                        <div class="data-content">
+                            <div id="users-loading" class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <p>Loading user data from R2 storage...</p>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="users-table" style="display: none;">
+                                    <thead>
+                                        <tr>
+                                            <th>User Email</th>
+                                            <th style="text-align: center;">Documents</th>
+                                            <th style="text-align: center;">Service Types</th>
+                                            <th style="text-align: right;">Total Cost</th>
+                                            <th style="text-align: right;">Platform Revenue</th>
+                                            <th style="text-align: right;">Last Activity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-table-body">
+                                        <!-- User data will be loaded here via AJAX -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="users-empty" class="empty-state" style="display: none;">
+                                <i class="fas fa-users"></i>
+                                <h3>No users found</h3>
+                                <p>No user data available in R2 storage.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vendors Category -->
+                <div id="vendors-category" class="category-content hidden">
+                    <!-- Overview Cards -->
+                    <div class="overview-cards">
+                        <div class="overview-card users">
+                            <div class="card-header">
+                                <div class="card-icon users">
+                                    <i class="fas fa-store"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Vendors</div>
+                                    <div class="card-value" id="total-vendors">0</div>
+                                    <div class="card-subtitle">Active vendors</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overview-card cost">
+                            <div class="card-header">
+                                <div class="card-icon cost">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Documents</div>
+                                    <div class="card-value" id="total-vendor-documents">0</div>
+                                    <div class="card-subtitle">All vendor documents</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overview-card revenue">
+                            <div class="card-header">
+                                <div class="card-icon revenue">
+                                    <i class="fas fa-rupee-sign"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Amount</div>
+                                    <div class="card-value" id="total-vendor-cost">₹0.00</div>
+                                    <div class="card-subtitle">All vendor amounts</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overview-card growth">
+                            <div class="card-header">
+                                <div class="card-icon growth">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Growth</div>
+                                    <div class="card-value" id="vendor-growth-percentage">+0%</div>
+                                    <div class="card-subtitle">vs previous month</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter Section -->
+                    <div class="search-filter-section">
+                        <div class="search-filter-row">
+                            <div class="search-container">
+                                <input type="text" id="vendors-search" class="search-input" placeholder="Search by vendor name or email...">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <div class="month-selector">
+                                <label for="vendor-month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select Month:</label>
+                                <select id="vendor-month-select" class="month-dropdown">
+                                    <option value="">Loading months...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="data-container">
+                        <div class="data-header">
+                            <i class="fas fa-store"></i> Vendor Data
+                        </div>
+                        <div class="data-content">
+                            <div id="vendors-loading" class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <p>Loading vendor data from R2 storage...</p>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="vendors-table" style="display: none;">
+                                    <thead>
+                                        <tr>
+                                            <th>Vendor Name</th>
+                                            <th>Email</th>
+                                            <th>Vendor ID</th>
+                                            <th style="text-align: center;">Documents</th>
+                                            <th style="text-align: center;">Service Types</th>
+                                            <th style="text-align: right;">Total Amount</th>
+                                            <th style="text-align: right;">Last Activity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="vendors-table-body">
+                                        <!-- Vendor data will be loaded here via AJAX -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="vendors-empty" class="empty-state" style="display: none;">
+                                <i class="fas fa-store"></i>
+                                <h3>No vendors found</h3>
+                                <p>No vendor data available in R2 storage.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="transactions-category" class="category-content hidden">
+                    <div class="search-filter-section">
+                        <div class="search-filter-row">
+                            <div class="search-container">
+                                <input type="text" id="transactions-search" class="search-input" placeholder="Search by vendor name, email, or vendor ID...">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                            <div class="month-selector">
+                                <label for="transactions-month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select Month:</label>
+                                <select id="transactions-month-select" class="month-dropdown">
+                                    <option value="">All Months</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="data-container">
+                        <div class="data-header">
+                            <i class="fas fa-credit-card"></i> Vendor Transactions
+                        </div>
+                        <div class="data-content">
+                            <div id="transactions-loading" class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <p>Loading transaction reports from R2...</p>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="transactions-table" style="display: none;">
+                                    <thead>
+                                        <tr>
+                                            <th>Vendor</th>
+                                            <th>Email</th>
+                                            <th>Vendor ID</th>
+                                            <th style="text-align:center;">Documents</th>
+                                            <th style="text-align:right;">Earnings</th>
+                                            <th>Period</th>
+                                            <th>Status</th>
+                                            <th style="text-align:right;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="transactions-table-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="transactions-empty" class="empty-state" style="display: none;">
+                        <i class="fas fa-credit-card"></i>
+                                <h3>No transactions found</h3>
+                                <p>No vendor reports available.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="contacts-category" class="category-content hidden">
+                    <div class="empty-state">
+                        <i class="fas fa-address-book"></i>
+                        <h3>Contact Data</h3>
+                        <p>Contact management section coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="installations-category" class="category-content hidden">
+                    <div class="data-container">
+                        <div class="data-header">
+                            <i class="fas fa-download"></i> New Vendor Installation
+                        </div>
+                        <div class="data-content" style="padding:20px;">
+                            <div style="display:block;">
+                                <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
+                                    <!-- Left: Summary Cards -->
+                                    <div style="flex:1; min-width:320px;">
+                                        <div class="search-filter-section" style="margin-bottom:10px;">
+                                            <div class="search-filter-row" style="justify-content: space-between; align-items:center;">
+                                                <div class="month-selector">
+                                                    <label for="availability-month-select" style="font-weight:600; margin-right:10px; color:#374151;">Select Month:</label>
+                                                    <input type="month" id="availability-month-select" class="month-dropdown" />
+                                                </div>
+                                                <div style="display:flex; gap:10px; align-items:center;">
+                                                    <button id="availability-toggle-btn" class="filter-btn">Switch to Preview</button>
+                                                    <button id="availability-save-btn" class="primary-btn"><i class="fas fa-save"></i>&nbsp;Save Availability</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap:12px; margin-bottom:12px;">
+                                            <div id="card-pending" class="overview-card" style="border-left-color:#f59e0b; display:flex; align-items:center;">
+                                                <div class="card-icon revenue"><i class="fas fa-clock"></i></div>
+                                                <div>
+                                                    <div class="card-title">Pending</div>
+                                                    <div class="card-value" id="pending-count-badge">0</div>
+                                                </div>
+                                            </div>
+                                            <div id="card-completed" class="overview-card" style="border-left-color:#10b981; display:flex; align-items:center;">
+                                                <div class="card-icon cost"><i class="fas fa-check-circle"></i></div>
+                                                <div>
+                                                    <div class="card-title">Completed</div>
+                                                    <div class="card-value" id="completed-count-badge">0</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Right: Calendar -->
+                                    <div style="flex:1; min-width:320px;">
+                                        <div id="availability-mode-bar" style="display:flex; align-items:center; gap:12px; margin-bottom:8px; justify-content:flex-end;">
+                                            <span id="availability-mode-label" style="font-weight:700; color:#334155;">Edit Mode</span>
+                                        </div>
+                                        <div id="availability-editor" style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+                                            <div style="flex:1; min-width:320px;">
+                                                <div id="availability-calendar" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px;"></div>
+                                            </div>
+                                            <div style="flex:1; min-width:280px;">
+                                                <h3 style="margin-bottom:8px; color:#1e293b;">Time Slots</h3>
+                                                <div id="availability-slots" style="display:flex; flex-direction:column; gap:6px;"></div>
+                                            </div>
+                                        </div>
+                                        <div id="availability-preview" style="display:none;">
+                                            <div id="availability-preview-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:4px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Center Select Month Button -->
+                                <div style="display:flex; justify-content:center; margin:16px 0;">
+                                    <button id="center-select-month-btn" class="filter-btn"><i class="fas fa-calendar-alt"></i>&nbsp;Select Month</button>
+                                </div>
+                                <!-- Vendor To-Do List -->
+                                <div>
+                                    <h3 style="margin-bottom:10px; color:#1e293b;">Vendor Installation To-Do List</h3>
+                                    <div id="installations-vendors" class="table-container" style="max-height:none; overflow:visible;">
+                                        <table class="data-table" id="installations-table" style="display: none;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Vendor</th>
+                                                    <th>Email</th>
+                                                    <th>Vendor ID</th>
+                                                    <th>Appointment</th>
+                                                    <th>Latitude</th>
+                                                    <th>Longitude</th>
+                                                    <th>Coordinator</th>
+                                                    <th>Shop Visited</th>
+                                                    <th style="text-align:right;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="installations-table-body"></tbody>
+                                        </table>
+                                        <div id="installations-empty" class="empty-state" style="display:none;">
+                                            <i class="fas fa-store"></i>
+                                            <h3>No vendors</h3>
+                                            <p>No registrations found.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="activity-category" class="category-content hidden">
+                    <div class="empty-state">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Activity Data</h3>
+                        <p>Activity monitoring section coming soon...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allUsersData = [];
+        let filteredUsersData = [];
+        let allVendorsData = [];
+        let filteredVendorsData = [];
+        let allTransactions = [];
+        let filteredTransactions = [];
+
+        // CSRF helper (same as used elsewhere)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsersData();
+            setupEventListeners();
+            initAvailabilityUI();
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Sidebar navigation
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    switchCategory(this.getAttribute('data-category'));
+                });
+            });
+
+            // Search functionality
+            const searchInput = document.getElementById('users-search');
+            searchInput.addEventListener('input', function() {
+                filterUsers();
+            });
+
+            // Month selector
+            const monthSelect = document.getElementById('month-select');
+            monthSelect.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                if (selectedMonth) {
+                    loadUsersData(selectedMonth);
+                }
+            });
+
+            // Vendor search functionality
+            const vendorSearchInput = document.getElementById('vendors-search');
+            vendorSearchInput.addEventListener('input', function() {
+                filterVendors();
+            });
+
+            // Vendor month selector
+            const vendorMonthSelect = document.getElementById('vendor-month-select');
+            vendorMonthSelect.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                if (selectedMonth) {
+                    loadVendorsData(selectedMonth);
+                }
+            });
+
+            // Filter buttons
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    filterButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    filterUsers();
+                });
+            });
+
+            // Transactions search and month
+            const transactionsSearch = document.getElementById('transactions-search');
+            if (transactionsSearch) {
+                transactionsSearch.addEventListener('input', filterTransactions);
+            }
+            const transactionsMonth = document.getElementById('transactions-month-select');
+            if (transactionsMonth) {
+                // Preload current year months as options and select current month
+                initTransactionsMonthSelector(transactionsMonth);
+                transactionsMonth.addEventListener('change', function() {
+                    loadTransactions(this.value || null);
+                });
+                // Initial load with current month
+                if (transactionsMonth.value) {
+                    loadTransactions(transactionsMonth.value);
+                } else {
+                    loadTransactions();
+                }
+            }
+        }
+
+        function initTransactionsMonthSelector(selectEl) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const curMonth = `${year}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            // Clear and add All Months option
+            selectEl.innerHTML = '';
+            const allOpt = document.createElement('option');
+            allOpt.value = '';
+            allOpt.textContent = 'All Months';
+            selectEl.appendChild(allOpt);
+            // Generate months for current and next year for convenience
+            const months = [];
+            for (let y = year; y <= year + 1; y++) {
+                for (let m = 1; m <= 12; m++) {
+                    months.push(`${y}-${String(m).padStart(2,'0')}`);
+                }
+            }
+            months.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = formatMonthDisplay(m);
+                if (m === curMonth) opt.selected = true;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        // ================= Availability UI =================
+        const SUPPORT_SLOTS = [
+            '09:45-11:15','11:15-12:45','12:45-14:15','14:15-15:45','15:45-17:15','17:15-18:45','18:45-20:15','20:15-21:00'
+        ];
+        let availabilityMonth = null; // 'YYYY-MM'
+        // Schema: { dates: { 'YYYY-MM-DD': { 'slot': 'available'|'not available', ... } } }
+        let availabilityData = { dates: {} };
+        // Support multi-date selection
+        let selectedDates = new Set();
+
+        function initAvailabilityUI() {
+            const monthInput = document.getElementById('availability-month-select');
+            const saveBtn = document.getElementById('availability-save-btn');
+            const toggleBtn = document.getElementById('availability-toggle-btn');
+            const centerBtn = document.getElementById('center-select-month-btn');
+            if (!monthInput || !saveBtn) return;
+
+            // Default to current month
+            const now = new Date();
+            const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            monthInput.value = ym;
+            availabilityMonth = ym;
+            loadAvailabilityMonth(ym);
+
+            monthInput.addEventListener('change', function() {
+                availabilityMonth = this.value;
+                loadAvailabilityMonth(this.value);
+            });
+
+            if (centerBtn) {
+                centerBtn.addEventListener('click', function() {
+                    monthInput.showPicker ? monthInput.showPicker() : monthInput.focus();
+                });
+            }
+
+            saveBtn.addEventListener('click', saveAvailabilityMonth);
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const editor = document.getElementById('availability-editor');
+                    const preview = document.getElementById('availability-preview');
+                    const label = document.getElementById('availability-mode-label');
+                    if (editor.style.display !== 'none') {
+                        // switch to preview
+                        buildPreviewCalendar(availabilityMonth);
+                        editor.style.display = 'none';
+                        preview.style.display = 'block';
+                        label.textContent = 'Preview Mode';
+                        toggleBtn.textContent = 'Switch to Edit';
+                        loadInstallationsVendors();
+                    } else {
+                        // switch to edit
+                        editor.style.display = 'flex';
+                        preview.style.display = 'none';
+                        label.textContent = 'Edit Mode';
+                        toggleBtn.textContent = 'Switch to Preview';
+                    }
+                });
+            }
+        }
+
+        function loadAvailabilityMonth(month) {
+            fetch(`/admin-dashboard/availability/?month=${month}`)
+                .then(r => r.json())
+                .then(data => {
+                    const editor = document.getElementById('availability-editor');
+                    const preview = document.getElementById('availability-preview');
+                    const toggleBtn = document.getElementById('availability-toggle-btn');
+                    const label = document.getElementById('availability-mode-label');
+                    if (data.success) {
+                        availabilityData = normalizeAvailability(data.data || { dates: {} });
+                        if (data.exists) {
+                            // Show only preview when month file exists
+                            buildPreviewCalendar(month);
+                            if (editor && preview) {
+                                editor.style.display = 'none';
+                                preview.style.display = 'block';
+                                if (label) label.textContent = 'Preview Mode';
+                                if (toggleBtn) toggleBtn.textContent = 'Switch to Edit';
+                            }
+                        } else {
+                            // Ask for dates/time slots when no month file
+                            buildCalendar(month);
+                            buildSlots();
+                            if (editor && preview) {
+                                editor.style.display = 'flex';
+                                preview.style.display = 'none';
+                                if (label) label.textContent = 'Edit Mode';
+                                if (toggleBtn) toggleBtn.textContent = 'Switch to Preview';
+                            }
+                        }
+                    } else {
+                        availabilityData = { dates: {} };
+                        buildCalendar(month);
+                        buildSlots();
+                        if (editor && preview) {
+                            editor.style.display = 'flex';
+                            preview.style.display = 'none';
+                            if (label) label.textContent = 'Edit Mode';
+                            if (toggleBtn) toggleBtn.textContent = 'Switch to Preview';
+                        }
+                    }
+                })
+                .catch(() => {
+                    availabilityData = { dates: {} };
+                    buildCalendar(month);
+                    buildSlots();
+                })
+                .finally(() => {
+                    // End-of-month prompt: if today is last two days, prompt to plan next month
+                    try {
+                        const today = new Date();
+                        const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+                        const day = today.getDate();
+                        if (lastDay - day <= 1) {
+                            const nextMonth = new Date(today.getFullYear(), today.getMonth()+1, 1);
+                            const ym = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth()+1).padStart(2,'0')}`;
+                            if (confirm(`It's the end of the month. Plan support dates for ${formatMonthDisplay(ym)}?`)) {
+                                const monthInput = document.getElementById('availability-month-select');
+                                if (monthInput) {
+                                    monthInput.value = ym;
+                                    availabilityMonth = ym;
+                                    loadAvailabilityMonth(ym);
+                                }
+                            }
+                        }
+                    } catch (e) { /* noop */ }
+                });
+        }
+
+        function normalizeAvailability(raw) {
+            const result = { dates: {} };
+            const dates = raw.dates || {};
+            for (const [date, val] of Object.entries(dates)) {
+                if (Array.isArray(val)) {
+                    // legacy format: array of available slots
+                    result.dates[date] = {};
+                    for (const s of SUPPORT_SLOTS) {
+                        result.dates[date][s] = val.includes(s) ? 'available' : 'not available';
+                    }
+                } else if (val && typeof val === 'object') {
+                    // ensure all slots present
+                    result.dates[date] = {};
+                    for (const s of SUPPORT_SLOTS) {
+                        const st = val[s];
+                        result.dates[date][s] = (st === 'available') ? 'available' : 'not available';
+                    }
+                }
+            }
+            return result;
+        }
+
+        function buildCalendar(month) {
+            const cal = document.getElementById('availability-calendar');
+            if (!cal) return;
+            cal.innerHTML = '';
+
+            // Weekday headers
+            const headers = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            headers.forEach(h => {
+                const hd = document.createElement('div');
+                hd.textContent = h;
+                hd.style.fontWeight = '700';
+                hd.style.color = '#334155';
+                cal.appendChild(hd);
+            });
+
+            const [y, m] = month.split('-').map(Number);
+            const firstDay = new Date(y, m-1, 1);
+            const startWeekday = firstDay.getDay();
+            const lastDay = new Date(y, m, 0).getDate();
+
+            // blanks before first
+            for (let i=0;i<startWeekday;i++) {
+                const blank = document.createElement('div');
+                cal.appendChild(blank);
+            }
+
+            for (let d=1; d<=lastDay; d++) {
+                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const cell = document.createElement('button');
+                cell.textContent = String(d);
+                cell.style.padding = '10px';
+                cell.style.border = '1px solid #e2e8f0';
+                cell.style.borderRadius = '8px';
+                cell.style.background = hasAnyAvailable(dateStr) ? '#dbeafe' : '#ffffff';
+                cell.style.color = '#1e293b';
+                cell.style.cursor = 'pointer';
+                cell.onclick = () => { toggleSelectedDate(cal, dateStr); buildSlots(); };
+                cell.setAttribute('data-date', dateStr);
+                cal.appendChild(cell);
+            }
+        }
+
+        function buildPreviewCalendar(month) {
+            const grid = document.getElementById('availability-preview-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const headers = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            headers.forEach(h => {
+                const hd = document.createElement('div');
+                hd.textContent = h;
+                hd.style.fontWeight = '700';
+                hd.style.color = '#334155';
+                grid.appendChild(hd);
+            });
+
+            const [y, m] = month.split('-').map(Number);
+            const firstDay = new Date(y, m-1, 1);
+            const startWeekday = firstDay.getDay();
+            const lastDay = new Date(y, m, 0).getDate();
+            for (let i=0;i<startWeekday;i++) grid.appendChild(document.createElement('div'));
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            for (let d=1; d<=lastDay; d++) {
+                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const cell = document.createElement('div');
+                const has = hasAnyAvailable(dateStr);
+                cell.textContent = String(d);
+                cell.style.padding = '10px';
+                cell.style.border = '1px solid #e2e8f0';
+                cell.style.borderRadius = '8px';
+                // Past dates grey, today marked, future normal
+                const dateObj = new Date(dateStr + 'T00:00:00');
+                if (dateStr === todayStr) {
+                    cell.style.outline = '3px solid #10b981';
+                } else if (dateObj < new Date(todayStr + 'T00:00:00')) {
+                    cell.style.background = '#f1f5f9';
+                    cell.style.color = '#94a3b8';
+                } else {
+                    cell.style.background = has ? '#dbeafe' : '#ffffff';
+                }
+                cell.title = has ? (Object.entries(availabilityData.dates[dateStr]||{})
+                    .filter(([k,v]) => v==='available').map(([k])=>k).join(', ') || 'No slots') : 'No slots';
+                grid.appendChild(cell);
+            }
+        }
+
+        function hasAnyAvailable(dateStr) {
+            const map = availabilityData.dates[dateStr];
+            if (!map) return false;
+            return Object.values(map).some(v => v === 'available');
+        }
+
+        function toggleSelectedDate(cal, dateStr) {
+            if (selectedDates.has(dateStr)) selectedDates.delete(dateStr); else selectedDates.add(dateStr);
+            highlightSelectedDates(cal);
+        }
+
+        function highlightSelectedDates(cal) {
+            Array.from(cal.querySelectorAll('button[data-date]')).forEach(b => {
+                const d = b.getAttribute('data-date');
+                const hasSlots = hasAnyAvailable(d);
+                b.style.outline = selectedDates.has(d) ? '3px solid #93c5fd' : 'none';
+                b.style.background = hasSlots ? '#dbeafe' : '#ffffff';
+            });
+        }
+
+        function buildSlots() {
+            const box = document.getElementById('availability-slots');
+            if (!box) return;
+            box.innerHTML = '';
+            const info = document.createElement('div');
+            info.style.marginBottom = '8px';
+            info.style.color = '#64748b';
+            const selList = Array.from(selectedDates);
+            info.textContent = selList.length > 0 ? `Selected: ${selList.join(', ')}` : 'Select one or more dates';
+            box.appendChild(info);
+
+            SUPPORT_SLOTS.forEach(s => {
+                const btn = document.createElement('button');
+                btn.textContent = s.replace('-', ' – ');
+                btn.className = 'filter-btn';
+                btn.style.justifyContent = 'flex-start';
+                const active = isSlotActiveForSelection(s);
+                if (active) {
+                    btn.style.background = '#3b82f6';
+                    btn.style.borderColor = '#3b82f6';
+                    btn.style.color = '#ffffff';
+                }
+                btn.onclick = () => toggleSlot(s);
+                box.appendChild(btn);
+            });
+        }
+
+        function toggleSlot(slot) {
+            if (selectedDates.size === 0) return;
+            // If all selected dates currently have slot available, set to not available for all; else set available for all
+            const allHave = Array.from(selectedDates).every(d => (availabilityData.dates[d]?.[slot] === 'available'));
+            Array.from(selectedDates).forEach(d => {
+                const map = availabilityData.dates[d] || {};
+                // ensure all slots present
+                for (const s of SUPPORT_SLOTS) if (!(s in map)) map[s] = 'not available';
+                map[slot] = allHave ? 'not available' : 'available';
+                availabilityData.dates[d] = map;
+            });
+            buildSlots();
+            // refresh calendar cell color
+            const cal = document.getElementById('availability-calendar');
+            if (cal) highlightSelectedDates(cal);
+        }
+
+        function isSlotActiveForSelection(slot) {
+            if (selectedDates.size === 0) return false;
+            // active only if all selected dates have this slot available
+            return Array.from(selectedDates).every(d => (availabilityData.dates[d]?.[slot] === 'available'));
+        }
+
+        function saveAvailabilityMonth() {
+            if (!availabilityMonth) return;
+            const saveBtn = document.getElementById('availability-save-btn');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;Saving...'; }
+            fetch('/admin-dashboard/availability/save/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ month: availabilityMonth, dates: availabilityData.dates || {} })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) alert('Save failed: ' + (data.error || 'unknown error'));
+                else alert('Availability saved successfully for ' + availabilityMonth);
+                // After save, show preview only
+                const editor = document.getElementById('availability-editor');
+                const preview = document.getElementById('availability-preview');
+                const label = document.getElementById('availability-mode-label');
+                buildPreviewCalendar(availabilityMonth);
+                if (editor && preview) {
+                    editor.style.display = 'none';
+                    preview.style.display = 'block';
+                    if (label) label.textContent = 'Preview Mode';
+                    const toggleBtn = document.getElementById('availability-toggle-btn');
+                    if (toggleBtn) toggleBtn.textContent = 'Switch to Edit';
+                }
+                // load vendors under preview
+                loadInstallationsVendors();
+            })
+            .catch(err => alert('Save error: ' + err.message))
+            .finally(() => { if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i>&nbsp;Save Availability'; } });
+        }
+
+        // =============== Installations Vendors ===============
+        function loadInstallationsVendors() {
+            fetch('/admin-dashboard/installations/list/')
+                .then(r => r.json())
+                .then(data => {
+                    const table = document.getElementById('installations-table');
+                    const tbody = document.getElementById('installations-table-body');
+                    const empty = document.getElementById('installations-empty');
+                    if (!table || !tbody || !empty) return;
+                    if (data.success && data.vendors && data.vendors.length > 0) {
+                        table.style.display = 'table';
+                        empty.style.display = 'none';
+                        tbody.innerHTML = data.vendors.map(v => `
+                            <tr>
+                                <td class="user-email">${v.vendor_name || '-'}</td>
+                                <td class="user-email">${v.vendor_email || '-'}</td>
+                                <td class="user-email">${v.vendor_id || '-'}</td>
+                                <td>
+                                    <div class="status-badge ${v.appointment_date ? 'completed' : 'not-completed'}" title="${v.appointment_slot || ''}">
+                                        ${v.appointment_date ? (v.appointment_date + (v.appointment_slot ? ' • ' + v.appointment_slot : '')) : 'Not Booked'}
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="number" step="any" value="${v.latitude || '0'}" data-email="${v.vendor_email}" data-field="latitude" class="form-input lat-long-input" style="padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; min-width:120px;" onchange="updateLatLong(this)" />
+                                </td>
+                                <td>
+                                    <input type="number" step="any" value="${v.longitude || '0'}" data-email="${v.vendor_email}" data-field="longitude" class="form-input lat-long-input" style="padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; min-width:120px;" onchange="updateLatLong(this)" />
+                                </td>
+                                <td>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <input type="text" value="${v.coordinator || 'none'}" data-email="${v.vendor_email}" class="form-input" style="padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; min-width:180px;" />
+                                        <button class="filter-btn" onclick="setCoordinator(this)" data-email="${v.vendor_email}"><i class=\"fas fa-user-edit\"></i>&nbsp;Set</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge ${v.shop_visited==='visited' ? 'completed' : 'not-completed'}">${v.shop_visited==='visited' ? 'Visited' : 'Not Visited'}</span>
+                                </td>
+                                <td style="text-align:right;">
+                                    <button class="primary-btn" onclick="submitInstallationRow(this)" data-email="${v.vendor_email}"><i class=\"fas fa-check\"></i>&nbsp;Submit</button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        table.style.display = 'none';
+                        empty.style.display = 'block';
+                    }
+                    const pBadge = document.getElementById('pending-count-badge');
+                    const cBadge = document.getElementById('completed-count-badge');
+                    if (pBadge) pBadge.textContent = `Pending: ${data.counts?.pending ?? (data.vendors?.length || 0)}`;
+                    if (cBadge) cBadge.textContent = `Completed: ${data.counts?.completed ?? 0}`;
+                })
+                .catch(() => {});
+        }
+
+        function setCoordinator(btn) {
+            const email = btn.getAttribute('data-email');
+            const input = btn.parentElement.querySelector('input[data-email="' + email + '"]');
+            if (!input) return;
+            const value = input.value.trim() || 'none';
+            input.value = value;
+            
+            // Show setting message
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;Setting...';
+            btn.disabled = true;
+            
+            // Update the coordinator value in the backend
+            fetch('/admin-dashboard/installations/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    vendor_email: email,
+                    coordinator: value,
+                    shop_visited: false
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    btn.innerHTML = '<i class="fas fa-check"></i>&nbsp;Set';
+                    btn.style.background = '#10b981';
+                    btn.style.borderColor = '#10b981';
+                    console.log(`Coordinator updated successfully for ${email}`);
+                    
+                    // Reset button after 2 seconds
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '';
+                        btn.style.borderColor = '';
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>&nbsp;Error';
+                    btn.style.background = '#ef4444';
+                    btn.style.borderColor = '#ef4444';
+                    console.error('Failed to update coordinator:', data.error);
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '';
+                        btn.style.borderColor = '';
+                        btn.disabled = false;
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>&nbsp;Error';
+                btn.style.background = '#ef4444';
+                btn.style.borderColor = '#ef4444';
+                console.error('Error updating coordinator:', error);
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                    btn.disabled = false;
+                }, 3000);
+            });
+        }
+
+        function updateLatLong(input) {
+            // Just store the value locally, don't save to backend yet
+            const value = input.value || '0';
+            input.setAttribute('data-original-value', value);
+            console.log(`Lat/Long value updated locally: ${value}`);
+        }
+
+        function submitInstallationRow(btn) {
+            const email = btn.getAttribute('data-email');
+            const row = btn.closest('tr');
+            const coordinatorInput = row.querySelector('input[data-email="' + email + '"]');
+            const latitudeInput = row.querySelector('input[data-field="latitude"]');
+            const longitudeInput = row.querySelector('input[data-field="longitude"]');
+            
+            const coordinator = (coordinatorInput?.value || 'none').trim();
+            const latitude = latitudeInput?.value || '0';
+            const longitude = longitudeInput?.value || '0';
+            
+            btn.disabled = true; 
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;Submitting...';
+            let removedSubmitBtn = false;
+            
+            fetch('/admin-dashboard/installations/update/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ 
+                    vendor_email: email, 
+                    coordinator: coordinator, 
+                    shop_visited: true,
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const badge = btn.closest('tr').querySelector('.status-badge');
+                    if (badge) { badge.classList.remove('not-completed'); badge.classList.add('completed'); badge.textContent = 'Visited'; }
+                    // Remove submit button so it is not displayed again for this row
+                    const tr = btn.closest('tr');
+                    const actionCell = btn.parentElement;
+                    if (actionCell) {
+                        try { actionCell.removeChild(btn); } catch (e) {}
+                        removedSubmitBtn = true;
+                    }
+                    // Move row to bottom of table
+                    const tbody = tr.parentElement;
+                    // Add delete (❌) button if not present
+                    const lastCell = tr.querySelector('td:last-child');
+                    if (lastCell && !tr.querySelector('.delete-row-btn')) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'filter-btn delete-row-btn';
+                        delBtn.style.background = '#fee2e2';
+                        delBtn.style.borderColor = '#fecaca';
+                        delBtn.style.color = '#b91c1c';
+                        delBtn.innerHTML = '❌';
+                        delBtn.title = 'Remove row';
+                        delBtn.onclick = function() { tr.remove(); };
+                        lastCell.appendChild(delBtn);
+                    }
+                    tbody.appendChild(tr);
+                } else {
+                    alert('Update failed: ' + (data.error || 'unknown error'));
+                }
+            })
+            .catch(err => alert('Update error: ' + err.message))
+            .finally(() => {
+                if (!removedSubmitBtn) {
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i>&nbsp;Submit';
+                }
+            });
+        }
+
+        // Switch between categories
+        function switchCategory(category) {
+            // Update active menu item
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+
+            // Show/hide category content
+            document.querySelectorAll('.category-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`${category}-category`).classList.remove('hidden');
+
+            // Update title
+            const titles = {
+                'users': 'User Data',
+                'vendors': 'Vendor Data',
+                'transactions': 'Vendor Transactions',
+                'contacts': 'Contact Data',
+                'installations': 'New Vendor Installation',
+                'activity': 'Total Activity'
+            };
+            document.getElementById('category-title').textContent = titles[category];
+
+            // Hide/show top bar for installations
+            const topBar = document.querySelector('.top-bar');
+            if (topBar) {
+                if (category === 'installations') {
+                    topBar.style.display = 'none';
+                } else {
+                    topBar.style.display = '';
+                }
+            }
+
+            // Load data for active category
+            if (category === 'users') {
+                loadUsersData();
+            } else if (category === 'vendors') {
+                loadVendorsData();
+            } else if (category === 'transactions') {
+                loadTransactions();
+            } else if (category === 'installations') {
+                // Ensure installations UI is initialized and vendors shown
+                initAvailabilityUI();
+                loadInstallationsVendors();
+            }
+        }
+
+        // Load users data from R2
+        function loadUsersData(selectedMonth = null) {
+            const loading = document.getElementById('users-loading');
+            const table = document.getElementById('users-table');
+            const empty = document.getElementById('users-empty');
+            
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            empty.style.display = 'none';
+            
+            let url = '/admin-dashboard/users/';
+            if (selectedMonth) {
+                url += `?month=${selectedMonth}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    
+                    if (data.success && data.users && data.users.length > 0) {
+                        allUsersData = data.users;
+                        filteredUsersData = [...allUsersData];
+                        displayUsers(data.users);
+                        updateOverviewCards(data.overview);
+                        updateMonthSelector(data.overview.available_months, data.overview.selected_month);
+                    } else {
+                        empty.style.display = 'block';
+                        updateMonthSelector(data.overview.available_months, data.overview.selected_month);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading users:', error);
+                    loading.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error loading user data. Please try again.</p>';
+                });
+        }
+
+        // Display users in the table
+        function displayUsers(users) {
+            const tableBody = document.getElementById('users-table-body');
+            const table = document.getElementById('users-table');
+            
+            if (users.length === 0) {
+                document.getElementById('users-empty').style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+
+            table.style.display = 'table';
+            document.getElementById('users-empty').style.display = 'none';
+
+            tableBody.innerHTML = users.map(user => `
+                <tr>
+                    <td class="user-email">${user.email}</td>
+                    <td class="documents-count">${user.total_documents}</td>
+                    <td class="service-tags">
+                        ${user.service_breakdown.map(service => 
+                            `<span class="service-tag" title="Commission: ${service.commission_rate}">${service.name} (${service.count})</span>`
+                        ).join('')}
+                    </td>
+                    <td class="cost-amount">₹${user.total_cost.toFixed(2)}</td>
+                    <td class="revenue-amount">₹${user.platform_revenue.toFixed(2)}</td>
+                    <td class="last-activity">${user.last_activity}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Update overview cards
+        function updateOverviewCards(overview) {
+            document.getElementById('total-users').textContent = overview.total_users || 0;
+            document.getElementById('total-cost').textContent = `₹${(overview.total_cost || 0).toFixed(2)}`;
+            document.getElementById('total-revenue').textContent = `₹${(overview.total_revenue || 0).toFixed(2)}`;
+            
+            // Update growth percentage in overview card
+            const growthPercentage = overview.growth_percentage || 0;
+            const growthElement = document.getElementById('growth-percentage');
+            growthElement.textContent = `${growthPercentage > 0 ? '+' : ''}${growthPercentage}%`;
+            
+            // Color coding for growth
+            if (growthPercentage > 0) {
+                growthElement.style.color = '#10b981';
+            } else if (growthPercentage < 0) {
+                growthElement.style.color = '#ef4444';
+            } else {
+                growthElement.style.color = '#64748b';
+            }
+        }
+
+        // Update month selector dropdown
+        function updateMonthSelector(availableMonths, selectedMonth) {
+            const monthSelect = document.getElementById('month-select');
+            monthSelect.innerHTML = '';
+            
+            if (availableMonths && availableMonths.length > 0) {
+                availableMonths.forEach(month => {
+                    const option = document.createElement('option');
+                    option.value = month;
+                    option.textContent = formatMonthDisplay(month);
+                    if (month === selectedMonth) {
+                        option.selected = true;
+                    }
+                    monthSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No data available';
+                monthSelect.appendChild(option);
+            }
+        }
+
+        // Format month for display (e.g., "2024-09" -> "September 2024")
+        function formatMonthDisplay(month) {
+            if (!month) return '';
+            const [year, monthNum] = month.split('-');
+            const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            return `${monthNames[parseInt(monthNum) - 1]} ${year}`;
+        }
+
+
+        // Filter users based on search and period
+        function filterUsers() {
+            const searchTerm = document.getElementById('users-search').value.toLowerCase();
+            const activePeriod = document.querySelector('.filter-btn.active').getAttribute('data-period');
+            
+            filteredUsersData = allUsersData.filter(user => {
+                const matchesSearch = user.email.toLowerCase().includes(searchTerm);
+                const matchesPeriod = filterByPeriod(user, activePeriod);
+                return matchesSearch && matchesPeriod;
+            });
+            
+            displayUsers(filteredUsersData);
+        }
+
+        // Filter by time period
+        function filterByPeriod(user, period) {
+            if (period === 'all') return true;
+            
+            const now = new Date();
+            const userDate = new Date(user.last_activity);
+            
+            switch (period) {
+                case 'week':
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    return userDate >= weekAgo;
+                case 'month':
+                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    return userDate >= monthAgo;
+                default:
+                    return true;
+            }
+        }
+
+        // Load vendors data from R2
+        function loadVendorsData(selectedMonth = null) {
+            const loading = document.getElementById('vendors-loading');
+            const table = document.getElementById('vendors-table');
+            const empty = document.getElementById('vendors-empty');
+            
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            empty.style.display = 'none';
+            
+            let url = '/admin-dashboard/vendors/';
+            if (selectedMonth) {
+                url += `?month=${selectedMonth}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    
+                    if (data.success && data.vendors && data.vendors.length > 0) {
+                        allVendorsData = data.vendors;
+                        filteredVendorsData = [...allVendorsData];
+                        displayVendors(data.vendors);
+                        updateVendorOverviewCards(data.overview);
+                        updateVendorMonthSelector(data.overview.available_months, data.overview.selected_month);
+                    } else {
+                        empty.style.display = 'block';
+                        updateVendorMonthSelector(data.overview.available_months, data.overview.selected_month);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vendors:', error);
+                    loading.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error loading vendor data. Please try again.</p>';
+                });
+        }
+
+        // Display vendors in the table
+        function displayVendors(vendors) {
+            const tableBody = document.getElementById('vendors-table-body');
+            const table = document.getElementById('vendors-table');
+            
+            if (vendors.length === 0) {
+                document.getElementById('vendors-empty').style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+
+            table.style.display = 'table';
+            document.getElementById('vendors-empty').style.display = 'none';
+
+            tableBody.innerHTML = vendors.map(vendor => `
+                <tr>
+                    <td class="user-email">${vendor.vendor_name}</td>
+                    <td class="user-email">${vendor.email}</td>
+                    <td class="user-email">${vendor.vendor_id}</td>
+                    <td class="documents-count">${vendor.total_documents}</td>
+                    <td class="service-tags">
+                        ${vendor.service_breakdown.map(service => 
+                            `<span class="service-tag" title="Amount: ₹${service.total_cost}">${service.name} (${service.count})</span>`
+                        ).join('')}
+                    </td>
+                    <td class="cost-amount">₹${vendor.total_cost.toFixed(2)}</td>
+                    <td class="last-activity">${vendor.last_activity}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Update vendor overview cards
+        function updateVendorOverviewCards(overview) {
+            document.getElementById('total-vendors').textContent = overview.total_vendors || 0;
+            document.getElementById('total-vendor-documents').textContent = overview.total_documents || 0;
+            document.getElementById('total-vendor-cost').textContent = `₹${(overview.total_cost || 0).toFixed(2)}`;
+            
+            // Update growth percentage in overview card
+            const growthPercentage = overview.growth_percentage || 0;
+            const growthElement = document.getElementById('vendor-growth-percentage');
+            growthElement.textContent = `${growthPercentage > 0 ? '+' : ''}${growthPercentage}%`;
+            
+            // Color coding for growth
+            if (growthPercentage > 0) {
+                growthElement.style.color = '#10b981';
+            } else if (growthPercentage < 0) {
+                growthElement.style.color = '#ef4444';
+            } else {
+                growthElement.style.color = '#64748b';
+            }
+        }
+
+        // Update vendor month selector dropdown
+        function updateVendorMonthSelector(availableMonths, selectedMonth) {
+            const monthSelect = document.getElementById('vendor-month-select');
+            monthSelect.innerHTML = '';
+            
+            if (availableMonths && availableMonths.length > 0) {
+                availableMonths.forEach(month => {
+                    const option = document.createElement('option');
+                    option.value = month;
+                    option.textContent = formatMonthDisplay(month);
+                    if (month === selectedMonth) {
+                        option.selected = true;
+                    }
+                    monthSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No data available';
+                monthSelect.appendChild(option);
+            }
+        }
+
+        // Filter vendors based on search
+        function filterVendors() {
+            const searchTerm = document.getElementById('vendors-search').value.toLowerCase();
+            
+            filteredVendorsData = allVendorsData.filter(vendor => {
+                const matchesName = vendor.vendor_name.toLowerCase().includes(searchTerm);
+                const matchesEmail = vendor.email.toLowerCase().includes(searchTerm);
+                const matchesId = vendor.vendor_id.toLowerCase().includes(searchTerm);
+                return matchesName || matchesEmail || matchesId;
+            });
+            
+            displayVendors(filteredVendorsData);
+        }
+
+        // Load transactions (vendor reports)
+        function loadTransactions(selectedMonth = null) {
+            const loading = document.getElementById('transactions-loading');
+            const table = document.getElementById('transactions-table');
+            const empty = document.getElementById('transactions-empty');
+
+            if (!loading) return;
+
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            empty.style.display = 'none';
+
+            let url = '/admin-dashboard/transactions/';
+            if (selectedMonth) {
+                url += `?month=${selectedMonth}`;
+            }
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    if (data.success && data.transactions && data.transactions.length > 0) {
+                        allTransactions = data.transactions;
+                        filteredTransactions = [...allTransactions];
+                        // ensure initial sort: not completed first, completed last
+                        sortTransactionsForDisplay();
+                        displayTransactions(filteredTransactions);
+                        updateTransactionsMonthSelector(data.available_months || [], selectedMonth);
+                    } else {
+                        empty.style.display = 'block';
+                        updateTransactionsMonthSelector(data.available_months || [], selectedMonth);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading transactions:', err);
+                    loading.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error loading transactions. Please try again.</p>';
+                });
+        }
+
+        // Display transactions in table
+        function displayTransactions(items) {
+            const tbody = document.getElementById('transactions-table-body');
+            const table = document.getElementById('transactions-table');
+            if (!tbody || !table) return;
+
+            if (items.length === 0) {
+                document.getElementById('transactions-empty').style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+
+            table.style.display = 'table';
+            document.getElementById('transactions-empty').style.display = 'none';
+
+            tbody.innerHTML = items.map(rep => {
+                const payCompleted = (rep.payment_status || '').toLowerCase() === 'completed';
+                const period = rep.period_display || `${(rep.period_start||'').slice(5)} - ${(rep.period_end||'').slice(5)}`;
+                return `
+                    <tr>
+                        <td class="user-email">${rep.__vendor_name || '-'}</td>
+                        <td class="user-email">${rep.__vendor_email || rep.vendor_email || '-'}</td>
+                        <td class="user-email">${rep.__vendor_id || rep.vendor_id || '-'}</td>
+                        <td class="documents-count">${rep.total_documents || 0}</td>
+                        <td class="cost-amount">₹${(rep.total_earning || 0).toFixed(2)}</td>
+                        <td>${period}</td>
+                        <td>
+                            <span class="status-badge ${payCompleted ? 'completed' : 'not-completed'}">${payCompleted ? 'Completed' : 'Not Completed'}</span>
+                        </td>
+                        <td style="text-align:right; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+                            ${payCompleted ? '' : `<button class=\"filter-btn\" onclick=\"markReportCompleted('${(rep.__vendor_email || rep.vendor_email || '').replace(/'/g, "&#39;")}', '${(rep.__report_key||'').replace(/'/g, "&#39;")}')\"><i class=\\\"fas fa-check\\\"></i> Mark Completed</button>`}
+                            <button class="row-close" title="Hide row" onclick="hideTransactionRow(this)">×</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateTransactionsMonthSelector(months, selected) {
+            const sel = document.getElementById('transactions-month-select');
+            if (!sel) return;
+            sel.innerHTML = '';
+            const allOpt = document.createElement('option');
+            allOpt.value = '';
+            allOpt.textContent = 'All Months';
+            sel.appendChild(allOpt);
+            months.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = formatMonthDisplay(m);
+                if (selected && selected === m) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        function filterTransactions() {
+            const term = (document.getElementById('transactions-search')?.value || '').toLowerCase();
+            filteredTransactions = allTransactions.filter(rep => {
+                const name = (rep.__vendor_name || '').toLowerCase();
+                const email = (rep.__vendor_email || rep.vendor_email || '').toLowerCase();
+                const vid = (rep.__vendor_id || rep.vendor_id || '').toLowerCase();
+                return name.includes(term) || email.includes(term) || vid.includes(term);
+            });
+            // re-apply sort after filtering
+            filteredTransactions = filteredTransactions.sort((a, b) => {
+                const ac = (a.payment_status || '').toLowerCase() === 'completed';
+                const bc = (b.payment_status || '').toLowerCase() === 'completed';
+                if (ac !== bc) return ac ? 1 : -1;
+                const ad = (a.generated_at || a.report_date || '');
+                const bd = (b.generated_at || b.report_date || '');
+                return bd.localeCompare(ad);
+            });
+            displayTransactions(filteredTransactions);
+        }
+
+        function markReportCompleted(vendorEmail, reportKey) {
+            if (!vendorEmail || !reportKey) return;
+            // Instant UI update before API (optimistic):
+            allTransactions = allTransactions.map(r => {
+                if (r.__report_key === reportKey) { r.payment_status = 'completed'; }
+                return r;
+            });
+            sortTransactionsForDisplay();
+            displayTransactions(filteredTransactions);
+
+            fetch('/admin-dashboard/transactions/update-payment-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ vendor_email: vendorEmail, report_key: reportKey, payment_status: 'completed' })
+            })
+            .then(async r => {
+                const contentType = r.headers.get('content-type') || '';
+                if (!r.ok) {
+                    const text = await r.text();
+                    throw new Error(text.slice(0, 200));
+                }
+                if (!contentType.includes('application/json')) {
+                    const text = await r.text();
+                    throw new Error('Unexpected response: ' + text.slice(0, 120));
+                }
+                return r.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    alert('Failed to update status: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(err => alert('Error updating status: ' + err.message));
+        }
+
+        function sortTransactionsForDisplay() {
+            filteredTransactions = [...allTransactions].sort((a, b) => {
+                const ac = (a.payment_status || '').toLowerCase() === 'completed';
+                const bc = (b.payment_status || '').toLowerCase() === 'completed';
+                if (ac !== bc) return ac ? 1 : -1; // completed last
+                const ad = (a.generated_at || a.report_date || '');
+                const bd = (b.generated_at || b.report_date || '');
+                return bd.localeCompare(ad); // newest first within group
+            });
+        }
+
+        function hideTransactionRow(btn) {
+            const tr = btn.closest('tr');
+            if (tr) tr.remove();
+        }
+    </script>
+</body>
+</html>
