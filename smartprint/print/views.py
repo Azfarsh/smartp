@@ -1014,7 +1014,8 @@ def userdashboard(request):
             'pending_jobs': pending_jobs,
             'completed_jobs': completed_jobs,
             'total_earnings': total_earnings,
-            'user_points': user_points
+            'user_points': user_points,
+            'client_id': settings.GOOGLE_CLIENT_ID  # Add Google Client ID for Drive integration
         }
         return render(request, 'userdashboard.html', context)
         
@@ -1032,7 +1033,8 @@ def userdashboard(request):
             'pending_jobs': 0,
             'completed_jobs': 0,
             'total_earnings': 0,
-            'user_points': 0
+            'user_points': 0,
+            'client_id': settings.GOOGLE_CLIENT_ID  # Add Google Client ID for Drive integration
         })
 
 
@@ -3642,6 +3644,7 @@ def verify_razorpay_payment(request):
 
         # Signature valid → proceed to store files (reuse existing logic from process_print_request)
         file_count = int(request.POST.get('file_count', 0))
+        drive_file_key = request.POST.get('drive_file_key')  # Handle Drive files
         files_processed = 0
         token_value = ''
 
@@ -3651,6 +3654,90 @@ def verify_razorpay_payment(request):
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
 
+        # Handle Drive file first if present
+        if drive_file_key:
+            try:
+                # Get Drive file metadata
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=drive_file_key)
+                drive_metadata = response.get('Metadata', {})
+                original_filename = drive_metadata.get('original_filename', 'drive_file.pdf')
+                
+                # Resolve user and vendor context
+                user_email = request.user.email if request.user.is_authenticated else 'anonymous'
+                selected_vendor = request.POST.get('selected_vendor') or ''
+                vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
+                
+                # Get service type from POST data
+                service_type = request.POST.get('service_type', 'regular_print').strip()
+                manual_job_services = [
+                    'digital_print', 'gloss_printing', 'jumbo_printing', 
+                    'golden_embossing', 'project_binding'
+                ]
+                
+                if service_type in manual_job_services:
+                    vendor_file_key = f'vendor_manual_print_jobs/{vendor_id}/{original_filename}'
+                    user_file_key = f'users/{user_email}/{original_filename}'
+                else:
+                    vendor_file_key = f'vendor_print_jobs/{vendor_id}/{original_filename}'
+                    user_file_key = f'users/{user_email}/{original_filename}'
+                
+                # Assign token
+                if not token_value:
+                    try:
+                        vendor_email = get_vendor_email_by_shop_folder(selected_vendor) if selected_vendor else None
+                        if vendor_email:
+                            assigned_token = assign_token_from_vendor_pool(vendor_email)
+                            token_value = str(assigned_token) if assigned_token else str(get_next_sequential_token())
+                        else:
+                            token_value = str(get_next_sequential_token())
+                    except Exception as e:
+                        print(f"❌ Error in token assignment: {str(e)}")
+                        token_value = str(random.randint(100, 200))
+                
+                # Build metadata for Drive file
+                metadata = {
+                    'copies': str(request.POST.get('copies', '1')),
+                    'color': request.POST.get('color', 'Black and White'),
+                    'orientation': request.POST.get('orientation', 'portrait'),
+                    'pageRange': str(request.POST.get('pageRange', '')),
+                    'specificPages': str(request.POST.get('specificPages', '')),
+                    'pageSize': request.POST.get('pageSize', 'A4'),
+                    'service_type': service_type,
+                    'vendor_id': vendor_id,
+                    'user_email': user_email,
+                    'token': token_value,
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'price': str(request.POST.get('total_price', '0')),
+                    'source': 'google_drive'
+                }
+                
+                # Copy Drive file to vendor location
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': drive_file_key}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=vendor_file_key,
+                    Metadata=metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                # Copy to user location
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=user_file_key,
+                    Metadata=metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                files_processed += 1
+                print(f"✅ Processed Drive file: {original_filename}")
+                
+            except Exception as e:
+                print(f"❌ Error processing Drive file: {str(e)}")
+                return JsonResponse({'success': False, 'error': f'Failed to process Drive file: {str(e)}'}, status=500)
+
+        # Process regular uploaded files
         for i in range(file_count):
             file_key = f'file_{i}'
             settings_key = f'settings_{i}'
