@@ -172,6 +172,7 @@ RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_live_RF2OLAhxugVc5B')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '5NkBgjtxzJLNAUwhQLTXzsQP')
 
 GOOGLE_API_KEY = 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw'
+GOOGLE_DEVELOPER_KEY = os.getenv('GOOGLE_DEVELOPER_KEY', 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw')
 
 # ✅ Google OAuth Configuration for Production
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'your-google-client-id-here')

@@ -2567,6 +2567,13 @@
       line-height: 1.4;
     }
 
+    .upload-buttons {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      justify-content: center;
+    }
+
     .upload-btn {
       background: #2563eb;
       color: white;
@@ -2579,13 +2586,23 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      margin-top: 1rem;
+      flex: 1;
+      max-width: 150px;
+      justify-content: center;
     }
 
     .upload-btn:hover {
       transform: translateY(-1px);
       box-shadow: var(--shadow-sm);
       background: #1d4ed8;
+    }
+
+    .drive-btn {
+      background: #4285f4;
+    }
+
+    .drive-btn:hover {
+      background: #1a73e8;
     }
 
     /* File List */
@@ -3529,7 +3546,7 @@
 </head>
 <body data-theme="light">
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <!-- Google APIs for Drive integration -->
+  <!-- Google Drive Picker API -->
   <script src="https://apis.google.com/js/api.js"></script>
   <script src="https://apis.google.com/js/picker.js"></script>
   <!-- Sidebar Overlay -->
@@ -8588,14 +8605,16 @@
           </div>
           <div class="upload-text">Choose a file or drag it here</div>
           <div class="upload-subtitle">Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, XLS, XLSX, JPG, PNG, GIF, BMP, TIFF, SVG</div>
-          <button class="upload-btn" id="uploadBtn">
-            <i class="fas fa-file-upload"></i>
-            Add files
-          </button>
-          <button class="upload-btn" id="driveBtn" style="margin-left: 10px; background: #4285f4;">
-            <i class="fab fa-google-drive"></i>
-            Google Drive
-          </button>
+          <div class="upload-buttons">
+            <button class="upload-btn" id="uploadBtn">
+              <i class="fas fa-file-upload"></i>
+              Add files
+            </button>
+            <button class="upload-btn drive-btn" id="driveBtn" onclick="onPickerApiLoad()">
+              <i class="fab fa-google-drive"></i>
+              Google Drive
+            </button>
+          </div>
         </div>
 
         <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg">
@@ -9038,6 +9057,141 @@
     let availableShops = [];
     let userLocation = null;
     let locationBasedShops = [];
+    
+    // Google Drive Picker Configuration
+    const DEVELOPER_KEY = '{{ GOOGLE_DEVELOPER_KEY|default:"AIzaSyBvOkBw7uFyVhDqHiWiXH3fGJjKjLmNpQr" }}';
+    let oauthToken = null;
+    let driveFiles = new Map(); // Store temp_key for each fileId
+
+    // Initialize Google Drive Picker
+    function initializeDrivePicker() {
+      gapi.load('auth2', function() {
+        gapi.auth2.init({
+          client_id: '{{ GOOGLE_CLIENT_ID }}',
+          scope: 'https://www.googleapis.com/auth/drive.readonly'
+        }).then(function() {
+          console.log('Google Drive Picker initialized');
+        });
+      });
+    }
+
+    // Load Google Drive Picker
+    function onPickerApiLoad() {
+      gapi.load('picker', {'callback': createPicker});
+    }
+
+    // Create Google Drive Picker
+    function createPicker() {
+      if (!oauthToken) {
+        // Get OAuth token first
+        gapi.auth2.getAuthInstance().signIn().then(function(googleUser) {
+          oauthToken = googleUser.getAuthResponse().access_token;
+          showDrivePicker();
+        });
+      } else {
+        showDrivePicker();
+      }
+    }
+
+    function showDrivePicker() {
+      const picker = new google.picker.PickerBuilder()
+        .addView(google.picker.ViewId.DOCS)
+        .setOAuthToken(oauthToken)
+        .setDeveloperKey(DEVELOPER_KEY)
+        .setCallback(pickerCallback)
+        .build();
+      picker.setVisible(true);
+    }
+
+    // Handle Google Drive file selection
+    function pickerCallback(data) {
+      if (data.action === google.picker.Action.PICKED) {
+        const fileId = data.docs[0].id;
+        const fileName = data.docs[0].name;
+        console.log('Selected Drive file:', fileName, fileId);
+        
+        // Fetch file from Drive and stage it
+        fetchDriveFile(fileId, fileName);
+      }
+    }
+
+    // Fetch file from Google Drive
+    async function fetchDriveFile(fileId, fileName) {
+      try {
+        const response = await fetch('/drive/fetch/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ file_id: fileId })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          // Store the temp_key for later finalization
+          driveFiles.set(fileId, {
+            temp_key: data.temp_key,
+            filename: data.filename,
+            mimeType: data.mimeType,
+            size: data.size
+          });
+          
+          // Add to uploaded files list
+          const fileId_local = Date.now() + Math.random();
+          uploadedFiles.push({
+            id: fileId_local,
+            name: data.filename,
+            size: data.size,
+            type: data.mimeType,
+            driveFileId: fileId,
+            isDriveFile: true
+          });
+          
+          fileSettings[fileId_local] = { ...defaultSettings };
+          updateFileList();
+          updateUI();
+          
+          showToast('File added', `Google Drive file "${data.filename}" added successfully`);
+        } else {
+          throw new Error(data.error || 'Failed to fetch file from Google Drive');
+        }
+      } catch (error) {
+        console.error('Error fetching Drive file:', error);
+        showToast('Error', 'Failed to fetch file from Google Drive: ' + error.message);
+      }
+    }
+
+    // Finalize Drive files after successful payment
+    async function finalizeDriveFiles() {
+      const promises = [];
+      for (const [fileId, fileData] of driveFiles) {
+        promises.push(
+          fetch('/drive/finalize/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+              temp_key: fileData.temp_key,
+              filename: fileData.filename
+            })
+          }).then(response => response.json())
+        );
+      }
+      
+      try {
+        const results = await Promise.all(promises);
+        const failed = results.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.warn('Some Drive files failed to finalize:', failed);
+        }
+        console.log('Drive files finalized:', results);
+      } catch (error) {
+        console.error('Error finalizing Drive files:', error);
+      }
+    }
       
       // Platform Commission Percentages
       const PLATFORM_COMMISSIONS = {
@@ -12144,8 +12298,33 @@
           order_id: orderData.order.id,
           handler: async function (paymentResponse) {
             try {
-              // Use the new Drive-compatible payment handler
-              const verifyData = await handlePaymentSuccessWithDrive(paymentResponse, formData);
+              // Append payment details to form data
+              formData.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
+              formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
+              formData.append('razorpay_signature', paymentResponse.razorpay_signature);
+
+              // 3) Verify payment on server and upload files atomically
+              const verifyResp = await fetch('/payments/verify/', {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+
+              const verifyData = await safeParseJson(verifyResp);
+              if (!verifyResp.ok || !verifyData.success) {
+                throw new Error(verifyData.error || 'Payment verification failed');
+              }
+
+              // Finalize Google Drive files after successful payment
+              if (driveFiles.size > 0) {
+                try {
+                  await finalizeDriveFiles();
+                  console.log('Google Drive files finalized successfully');
+                } catch (error) {
+                  console.error('Error finalizing Drive files:', error);
+                  // Don't fail the payment for Drive finalization errors
+                }
+              }
 
               // Success → notify, inject job card instantly, reset, and refresh
               // Close modal instantly and show professional toast
@@ -12703,6 +12882,9 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Google Drive Picker
+      initializeDrivePicker();
+      
       var passportBtn = document.getElementById('passportPhotoBtn');
       if (passportBtn) {
         passportBtn.addEventListener('click', function(e) {
@@ -12908,175 +13090,7 @@
   }
   </script>
 
-  <!-- Google Drive Integration -->
-  <script>
-    let tempDriveKey = null; // Store temp key from Drive fetch
-    let driveFileData = null; // Store Drive file data
 
-    // Google Drive Picker functions
-    function onPickerApiLoad() {
-        gapi.load('picker', {'callback': createPicker});
-    }
-
-    function createPicker() {
-        if (!window.oauthToken) {
-            // Try to get OAuth token from session
-            fetch('/drive/oauth/start/')
-                .then(response => {
-                    if (response.ok) {
-                        window.location.href = response.url;
-                    } else {
-                        alert('Please authenticate with Google Drive first');
-                    }
-                })
-                .catch(error => {
-                    console.error('OAuth error:', error);
-                    alert('Failed to authenticate with Google Drive');
-                });
-            return;
-        }
-        
-        var picker = new google.picker.PickerBuilder()
-            .addView(google.picker.ViewId.DOCS)
-            .setOAuthToken(window.oauthToken)
-            .setDeveloperKey('{{ client_id }}') // Google Client ID from Django
-            .setCallback(pickerCallback)
-            .build();
-        picker.setVisible(true);
-    }
-
-    function pickerCallback(data) {
-        if (data.action == google.picker.Action.PICKED) {
-            const fileId = data.docs[0].id;
-            const fileName = data.docs[0].name;
-            
-            // Show loading state
-            if (typeof showToast === 'function') {
-                showToast('Processing', 'Downloading file from Google Drive...');
-            }
-            
-            // Fetch file from Drive via your backend
-            fetch('/drive/fetch/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ file_id: fileId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    tempDriveKey = data.temp_key; // Store for later finalize
-                    driveFileData = {
-                        filename: data.filename,
-                        size: data.size,
-                        mimeType: data.mimeType
-                    };
-                    
-                    // Add to uploaded files list
-                    const fileObj = {
-                        id: Date.now() + Math.random(),
-                        name: data.filename,
-                        size: data.size,
-                        type: data.mimeType,
-                        isDriveFile: true,
-                        tempKey: data.temp_key
-                    };
-                    
-                    uploadedFiles.push(fileObj);
-                    updateFileList();
-                    
-                    if (typeof showToast === 'function') {
-                        showToast('Success', 'File added from Google Drive');
-                    }
-                } else {
-                    throw new Error(data.error || 'Failed to fetch file');
-                }
-            })
-            .catch(error => {
-                console.error('Drive fetch error:', error);
-                if (typeof showToast === 'function') {
-                    showToast('Error', 'Failed to fetch file from Google Drive');
-                }
-            });
-        }
-    }
-
-    // Modified payment success handler for Drive files
-    async function handlePaymentSuccessWithDrive(paymentResponse, formData) {
-        try {
-            // If we have Drive files, finalize them first
-            if (tempDriveKey && driveFileData) {
-                try {
-                    const finalizeResp = await fetch('/drive/finalize/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: JSON.stringify({ 
-                            temp_key: tempDriveKey,
-                            filename: driveFileData.filename
-                        })
-                    });
-                    
-                    const finalizeData = await finalizeResp.json();
-                    if (!finalizeData.success) {
-                        throw new Error(finalizeData.error || 'Failed to finalize Drive file');
-                    }
-                    
-                    // Add the final file to form data
-                    formData.append('drive_file_key', finalizeData.final_key);
-                    formData.append('service_type', 'regular_print'); // Default service type
-                    formData.append('copies', '1');
-                    formData.append('color', 'Black and White');
-                    formData.append('pageSize', 'A4');
-                    formData.append('total_price', window.lastCalculatedPrice || '0');
-                    
-                    // Clear Drive data
-                    tempDriveKey = null;
-                    driveFileData = null;
-                } catch (error) {
-                    console.error('Drive finalize error:', error);
-                    throw new Error('Failed to process Drive file: ' + error.message);
-                }
-            }
-            
-            // Add payment details to form data
-            formData.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
-            formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
-            formData.append('razorpay_signature', paymentResponse.razorpay_signature);
-            
-            // Verify payment and upload
-            const verifyResp = await fetch('/payments/verify/', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRFToken': getCookie('csrftoken') }
-            });
-            
-            const verifyData = await verifyResp.json();
-            if (!verifyResp.ok || !verifyData.success) {
-                throw new Error(verifyData.error || 'Payment verification failed');
-            }
-            
-            return verifyData;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    // Add Drive button event listener
-    document.addEventListener('DOMContentLoaded', function() {
-        const driveBtn = document.getElementById('driveBtn');
-        if (driveBtn) {
-            driveBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                createPicker();
-            });
-        }
-    });
-  </script>
 
 </body>
 </html>
