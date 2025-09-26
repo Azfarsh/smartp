@@ -103,6 +103,35 @@
             --jumbo-printing-bg: linear-gradient(135deg, #9370DB, #DA70D6);
         }
 
+        /* Swap logo images based on theme */
+        .logo .logo-light { display: inline-block; }
+        .logo .logo-dark { display: none; }
+        [data-theme="dark"] .logo .logo-light { display: none; }
+        [data-theme="dark"] .logo .logo-dark { display: inline-block; }
+
+        /* PRINTMAX wordmark beside logo */
+        .logo .brand-wordmark {
+            font-family: 'Poppins', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            font-weight: 800;
+            font-style: italic;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 1.1rem; /* slightly smaller */
+            line-height: 1;
+            margin-left: 8px;
+            display: inline-flex;
+            align-items: center;
+            transform: translateY(1px);
+            color: #111827; /* solid black in day */
+            -webkit-text-fill-color: currentColor; /* override any transparent fill */
+            -webkit-background-clip: initial;
+            background-clip: initial;
+        }
+        [data-theme="dark"] .logo .brand-wordmark {
+            color: #ffffff; /* solid white in dark */
+            -webkit-text-fill-color: currentColor;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -132,6 +161,23 @@
             z-index: 1000;
             transition: all 0.3s ease;
         }
+
+        /* Light mode navbar: white with dark content */
+        :root:not([data-theme="dark"]) .header { background: #ffffff; border-bottom: 1px solid rgba(17,24,39,0.08); }
+        :root:not([data-theme="dark"]) .menu-toggle { color: #111827; background: rgba(17,24,39,0.06); }
+        :root:not([data-theme="dark"]) .menu-toggle:hover { background: rgba(17,24,39,0.12); }
+        :root:not([data-theme="dark"]) .logo { color: #111827; }
+        :root:not([data-theme="dark"]) .header .page-title,
+        :root:not([data-theme="dark"]) .header .connection-text,
+        :root:not([data-theme="dark"]) .header i,
+        :root:not([data-theme="dark"]) .header .fas,
+        :root:not([data-theme="dark"]) .header .far { color: #111827; }
+
+        /* Dark mode navbar: consistent dark color with white content */
+        [data-theme="dark"] .header { background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border-bottom: 1px solid rgba(255,255,255,0.12); }
+        [data-theme="dark"] .menu-toggle { color: #ffffff; background: rgba(255,255,255,0.10); }
+        [data-theme="dark"] .menu-toggle:hover { background: rgba(255,255,255,0.18); }
+        [data-theme="dark"] .logo { color: #ffffff; }
 
         .header-left {
             display: flex;
@@ -774,6 +820,7 @@
         .section-icon.manual { background: var(--manual-color); }
         .section-icon.requests { background: var(--requests-color); }
         .section-icon.completed { background: var(--completed-color); }
+        .section-icon.history { background: #8b5cf6; }
 
         .section-title {
             font-size: 18px; /* Reduced from 20px */
@@ -1007,6 +1054,413 @@
         .job-card.manual::before { background: var(--manual-color); }
         .job-card.requests::before { background: var(--requests-color); }
         .job-card.completed::before { background: var(--completed-color); }
+
+        /* History Section Styles */
+        .history-container {
+            padding: 8px;
+            max-height: none;
+            overflow-y: visible;
+        }
+
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            padding: 8px;
+        }
+
+        .report-card {
+            background: var(--surface);
+            border: 1px solid var(--outline);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px var(--shadow);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #8b5cf6;
+        }
+
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--outline);
+        }
+
+        .report-date {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .report-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .report-status.not-completed {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .report-status.completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .report-content {
+            margin-bottom: 12px;
+        }
+
+        .report-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .report-info-item {
+            text-align: center;
+        }
+
+        .report-info-label {
+            font-size: 11px;
+            color: var(--on-surface-variant);
+            margin-bottom: 2px;
+        }
+
+        .report-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .report-services {
+            margin-top: 8px;
+        }
+
+        .report-services-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--on-surface-variant);
+            margin-bottom: 4px;
+        }
+
+        .service-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .service-tag {
+            background: var(--primary-container);
+            color: var(--on-primary-container);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .month-dropdown {
+            padding: 12px 18px;
+            border: 2px solid var(--outline);
+            border-radius: 12px;
+            background: var(--surface);
+            color: var(--on-surface);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 220px;
+            box-shadow: 0 2px 8px var(--shadow-light);
+            transition: all 0.2s ease;
+        }
+
+        .month-dropdown:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+        }
+
+        /* Larger, readable month selector specifically in history */
+        #history-month-select.month-dropdown {
+            padding: 14px 22px;
+            font-size: 18px;
+            min-width: 260px;
+            border-radius: 14px;
+        }
+
+        /* History Summary Styles */
+        .history-summary {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .summary-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: var(--surface-container);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--on-surface-variant);
+            font-weight: 500;
+        }
+
+        /* Month Section Styles */
+        .month-section {
+            margin-bottom: 32px;
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .month-header {
+            background: var(--primary);
+            color: var(--on-primary);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .month-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .month-stats {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .month-earnings {
+            font-size: 18px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .month-earnings::before {
+            content: "₹";
+            font-size: 16px;
+        }
+
+        .month-documents {
+            font-size: 16px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .month-documents::before {
+            content: "📄";
+            font-size: 14px;
+        }
+
+        .reports-grid {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        /* Empty and Error States */
+        .empty-state, .error-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--on-surface-variant);
+        }
+
+        .empty-state i, .error-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3, .error-state h3 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--on-surface);
+        }
+
+        .empty-state p, .error-state p {
+            font-size: 16px;
+            margin: 0;
+        }
+
+        /* Enhanced History Section Styles */
+        .history-header {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .history-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--surface-container);
+            border-radius: 10px;
+            border: 1px solid var(--outline);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .report-period {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .report-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .report-summary-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            padding: 10px;
+            background: var(--surface-container);
+            border-radius: 8px;
+        }
+
+        .report-summary-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--primary-container);
+            color: var(--on-primary-container);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .report-summary-details {
+            flex: 1;
+        }
+
+        .report-summary-label {
+            font-size: 11px;
+            color: var(--on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .report-summary-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .report-services-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--on-surface-variant);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .report-footer {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--outline);
+        }
+
+        .report-date {
+            font-size: 11px;
+            color: var(--on-surface-variant);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
 
         .job-card:hover {
             transform: translateY(-4px);
@@ -2306,14 +2760,16 @@
 </head>
 <body>
     <!-- Header with Logo -->
+    {% load static %}
     <header class="header">
         <div class="header-left">
             <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
-            <div class="logo">
-                <i class="fas fa-print"></i>
-                <span>PrintMax</span>
+            <div class="logo" style="display:flex; align-items:center; gap:8px;">
+                <img class="logo-light" src="{% static 'images/Printmaxdaylogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle;" />
+                <img class="logo-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle; display:none;" />
+                <span class="brand-wordmark">PRINTMAX</span>
             </div>
             <h1 class="page-title">Vendor Dashboard</h1>
         </div>
@@ -2393,6 +2849,13 @@
                 <a href="/vendor-pricing/?from_dashboard=1&vendorEmail={{ vendor_details.vendor_email }}" class="nav-link" onclick="setActiveNav(this)">
                     <i class="fas fa-rupee-sign"></i>
                     <span>Pricing</span>
+                </a>
+            </div>
+            
+            <div class="nav-item">
+                <a href="#history" class="nav-link" onclick="setActiveNav(this); showHistory()">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
                 </a>
             </div>
          
@@ -2565,6 +3028,41 @@
                         <h3>Loading Completed Jobs</h3>
                         <p>Please wait while we fetch your completed jobs...</p>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section class="job-section" id="history-section" style="display: none;">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon history">
+                    <i class="fas fa-history"></i>
+                </div>
+                    <h2 class="section-title">Transaction History</h2>
+                </div>
+                <div class="section-controls">
+                    <div class="month-selector">
+                        <label for="history-month-select" style="font-weight: 600; margin-right: 10px; color: var(--on-surface);">Select Month:</label>
+                        <select id="history-month-select" class="month-dropdown">
+                            <option value="">Loading months...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="section-content">
+                <div id="history-loading" class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <h3>Loading Transaction History</h3>
+                    <p>Please wait while we fetch your transaction reports...</p>
+                </div>
+                <div class="history-container" id="history-container" style="display: none;">
+                    <!-- History reports will be loaded here -->
+                </div>
+                <div id="history-empty" class="empty-state" style="display: none;">
+                    <i class="fas fa-history"></i>
+                    <h3>No Transaction History</h3>
+                    <p>No transaction reports available for the selected period.</p>
                 </div>
             </div>
         </section>
@@ -2809,6 +3307,17 @@
             // Initialize connection monitoring
             initConnectionMonitoring();
             
+            // History month selector event listener
+            const historyMonthSelect = document.getElementById('history-month-select');
+            if (historyMonthSelect) {
+                historyMonthSelect.addEventListener('change', function() {
+                    const selectedMonth = this.value;
+                    if (selectedMonth) {
+                    loadHistoryData(selectedMonth);
+                    }
+                });
+            }
+            
             // Test profile image URL on page load
             setTimeout(() => {
                 testProfileImageUrl();
@@ -2893,6 +3402,292 @@
             if (section) {
                 section.scrollIntoView({ behavior: 'smooth' });
             }
+        }
+
+        // History Section Functions
+        function showHistory() {
+            // Hide all main content sections
+            document.querySelectorAll('.job-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Hide the main content wrapper and show only history
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = '';
+            
+            // Hide theme toggle while viewing history
+            const themeBtn = document.getElementById('themeToggle');
+            if (themeBtn) themeBtn.style.display = 'none';
+            
+            // Create history container
+            const historyContainer = document.createElement('div');
+            historyContainer.innerHTML = `
+                <div class="history-header">
+                    <h1><i class="fas fa-history"></i> Transaction History</h1>
+                    <p>View your transaction reports and earnings</p>
+                </div>
+                
+                <div class="history-controls">
+                    <div class="month-selector">
+                        <label for="history-month-select" style="font-weight:600; margin-right:10px; color: var(--on-surface);">Filter by Month:</label>
+                        <select id="history-month-select" class="month-dropdown" onchange="loadHistoryData(this.value)">
+                            <option value="">All Months</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="history-loading" class="loading-state" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>Loading transaction history...</p>
+                </div>
+                
+                <div id="history-container" class="history-container">
+                    <!-- History content will be loaded here -->
+                </div>
+            `;
+            
+            mainContent.appendChild(historyContainer);
+            
+            // Load history data
+            loadHistoryData();
+        }
+
+        function loadHistoryData(selectedMonth = null) {
+            const loading = document.getElementById('history-loading');
+            const container = document.getElementById('history-container');
+            
+            if (loading) loading.style.display = 'block';
+            if (container) container.innerHTML = '';
+            
+            // Get vendor ID from the page
+            const vendorId = '{{ vendor_details.vendor_id }}';
+            if (!vendorId) {
+                if (loading) loading.style.display = 'none';
+                if (container) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Vendor ID Not Found</h3>
+                            <p>Unable to load transaction history. Please contact support.</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            let url = `/vendor-reports/?vendor_id=${vendorId}`;
+            if (selectedMonth) {
+                url += `&month=${selectedMonth}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (loading) loading.style.display = 'none';
+                    
+                    if (data.success && data.reports && data.reports.length > 0) {
+                        displayHistoryReports(data.reports);
+                        updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                    } else {
+                        if (container) {
+                            container.innerHTML = `
+                                <div class="empty-state">
+                                    <i class="fas fa-history"></i>
+                                    <h3>No Transaction History</h3>
+                                    <p>Your transaction reports will appear here once generated.</p>
+                                </div>
+                            `;
+                        }
+                        updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading history:', error);
+                    if (loading) loading.style.display = 'none';
+                    if (container) {
+                        container.innerHTML = `
+                            <div class="error-state">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <h3>Error Loading History</h3>
+                                <p>Please try again later.</p>
+                            </div>
+                        `;
+                    }
+                });
+        }
+
+        function displayHistoryReports(reports) {
+            const container = document.getElementById('history-container');
+            
+            if (reports.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-history"></i>
+                        <h3>No Transaction History</h3>
+                        <p>Your transaction reports will appear here once generated.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort reports by date (newest first)
+            reports.sort((a, b) => new Date(b.generated_at) - new Date(a.generated_at));
+
+            // Group reports by month
+            const reportsByMonth = {};
+            reports.forEach(report => {
+                const date = new Date(report.generated_at);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                
+                if (!reportsByMonth[monthKey]) {
+                    reportsByMonth[monthKey] = {
+                        monthName: monthName,
+                        reports: []
+                    };
+                }
+                reportsByMonth[monthKey].reports.push(report);
+            });
+
+            // Calculate summary statistics
+            const totalReports = reports.length;
+            const totalEarnings = reports.reduce((sum, report) => sum + (report.total_amount || report.total_earning || 0), 0);
+            const totalDocuments = reports.reduce((sum, report) => sum + (report.total_documents || 0), 0);
+
+            let html = `
+                <div class="history-summary">
+                    <div class="summary-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${totalReports}</div>
+                            <div class="stat-label">Total Reports</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">₹${totalEarnings.toFixed(2)}</div>
+                            <div class="stat-label">Total Earnings</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${totalDocuments}</div>
+                            <div class="stat-label">Total Documents</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${Object.keys(reportsByMonth).length}</div>
+                            <div class="stat-label">Active Months</div>
+                    </div>
+                    </div>
+                </div>
+            `;
+
+            // Display reports grouped by month
+            Object.keys(reportsByMonth).sort().reverse().forEach(monthKey => {
+                const monthData = reportsByMonth[monthKey];
+                const monthEarnings = monthData.reports.reduce((sum, report) => sum + (report.total_amount || report.total_earning || 0), 0);
+                const monthDocuments = monthData.reports.reduce((sum, report) => sum + (report.total_documents || 0), 0);
+
+                html += `
+                    <div class="month-section">
+                        <div class="month-header">
+                            <h3>${monthData.monthName}</h3>
+                            <div class="month-stats">
+                                <span class="month-earnings">₹${monthEarnings.toFixed(2)}</span>
+                                <span class="month-documents">${monthDocuments} docs</span>
+                            </div>
+                        </div>
+                        <div class="reports-grid">
+                `;
+
+                monthData.reports.forEach(report => {
+                    const reportDate = new Date(report.generated_at);
+                    const statusClass = report.payment_status === 'completed' ? 'completed' : 'not-completed';
+                    
+                    html += `
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div class="report-period">${report.period_display || 'N/A'}</div>
+                                <div class="report-status ${statusClass}">
+                                    ${report.payment_status === 'completed' ? 'Completed' : 'Pending'}
+                                </div>
+                            </div>
+                            <div class="report-content">
+                                <div class="report-summary">
+                                    <div class="report-summary-item">
+                                        <div class="report-summary-icon">
+                                            <i class="fas fa-file-alt"></i>
+                                        </div>
+                                        <div class="report-summary-details">
+                                            <div class="report-summary-label">Documents</div>
+                                            <div class="report-summary-value">${report.total_documents || 0}</div>
+                                        </div>
+                                    </div>
+                                    <div class="report-summary-item">
+                                        <div class="report-summary-icon">
+                                            <i class="fas fa-rupee-sign"></i>
+                                        </div>
+                                        <div class="report-summary-details">
+                                            <div class="report-summary-label">Earnings</div>
+                                            <div class="report-summary-value">₹${(report.total_amount || report.total_earning || 0).toFixed(2)}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                ${report.service_breakdown ? `
+                                    <div class="report-services">
+                                        <div class="report-services-title">Services:</div>
+                        <div class="service-tags">
+                                            ${Object.entries(report.service_breakdown).map(([service, count]) => 
+                                                `<span class="service-tag">${service}: ${count}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                                ` : ''}
+                </div>
+                            <div class="report-footer">
+                                <div class="report-date">
+                                    Generated: ${reportDate.toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function updateHistoryMonthSelector(availableMonths, selectedMonth) {
+            const monthSelect = document.getElementById('history-month-select');
+            monthSelect.innerHTML = '';
+            
+            if (availableMonths && availableMonths.length > 0) {
+                availableMonths.forEach(month => {
+                    const option = document.createElement('option');
+                    option.value = month;
+                    option.textContent = formatMonthDisplay(month);
+                    if (month === selectedMonth) {
+                        option.selected = true;
+                    }
+                    monthSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No data available';
+                monthSelect.appendChild(option);
+            }
+        }
+
+        function formatMonthDisplay(month) {
+            const date = new Date(month + '-01');
+            return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
         }
 
         function showProfile() {

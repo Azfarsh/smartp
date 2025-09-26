@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import admin_views
 from .views import (
     home, userdashboard, vendordashboard, upload_to_r2,
     get_print_requests, process_print_request, auto_print_documents, update_job_status,
@@ -11,7 +12,8 @@ from .views import (
     get_vendor_print_jobs, list_r2_files, debug_vendor_registrations,
     update_vendor_service_availability, get_vendor_service_availability, 
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
-    create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations
+    create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations,
+    vendor_appointment_page, vendor_appointment_get_availability, vendor_appointment_book
 )
 
 urlpatterns = [
@@ -39,6 +41,8 @@ urlpatterns = [
     path('vendor-register-api/', vendor_register_api, name='vendor_register_api'),
     path('vendor-authenticate/', views.vendor_authenticate, name='vendor_authenticate'),
     path('get-available-shops/', views.get_available_shops, name='get_available_shops'),
+    path('get-available-printers/', views.get_available_printers, name='get_available_printers'),
+    path('assign-printer-to-job/', views.assign_printer_to_job, name='assign_printer_to_job'),
     path('debug-vendor-registrations/', views.debug_vendor_registrations, name='debug_vendor_registrations'),
     path('get-vendor-pricing/', get_vendor_pricing, name='get_vendor_pricing'),
     #path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
@@ -66,6 +70,9 @@ urlpatterns = [
     path('drive/oauth/callback/', views.drive_oauth_callback, name='drive_oauth_callback'),
     path('drive/list/', views.drive_list_files, name='drive_list_files'),
     path('drive/download/', views.drive_download_file, name='drive_download_file'),
+    # Mobile-friendly Google Drive upload flow
+    path('drive/fetch/', views.drive_fetch_file, name='drive_fetch_file'),
+    path('drive/finalize/', views.finalize_drive_upload, name='finalize_drive_upload'),
 ]
 
 urlpatterns += [
@@ -78,6 +85,10 @@ urlpatterns += [
     path('test-r2-url-generation/', test_r2_url_generation, name='test_r2_url_generation'),
     path('test-r2-simple/', test_r2_simple, name='test_r2_simple'),
     path('list-vendor-folder/', list_vendor_folder, name='list_vendor_folder'),
+    # Vendor appointment booking
+    path('vendor-appointment/', vendor_appointment_page, name='vendor_appointment_page'),
+    path('vendor-appointment/availability/', vendor_appointment_get_availability, name='vendor_appointment_get_availability'),
+    path('vendor-appointment/book/', vendor_appointment_book, name='vendor_appointment_book'),
     # New job management endpoints
     path('accept-job/', views.accept_job, name='accept_job'),
     path('mark-job-completed/', views.mark_job_completed, name='mark_job_completed'),
@@ -93,4 +104,23 @@ urlpatterns += [
     # Connection monitoring endpoints
     path('vendor-connection-heartbeat/', views.vendor_connection_heartbeat, name='vendor_connection_heartbeat'),
     path('get-vendor-connection-status/', views.get_vendor_connection_status, name='get_vendor_connection_status'),
-]
+    # Admin dashboard endpoints
+    path('admin-dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
+    path('admin-dashboard/users/', admin_views.admin_users_data, name='admin_users_data'),
+    path('admin-dashboard/vendors/', admin_views.admin_vendors_data, name='admin_vendors_data'),
+    path('admin-dashboard/transactions/', admin_views.admin_transactions_data, name='admin_transactions_data'),
+    path('admin-dashboard/transactions/update-payment-status/', admin_views.admin_update_report_payment_status, name='admin_update_report_payment_status'),
+    path('admin-dashboard/contacts/', admin_views.admin_contacts_data, name='admin_contacts_data'),
+    path('admin-dashboard/installations/', admin_views.admin_installations_data, name='admin_installations_data'),
+    path('admin-dashboard/installations/list/', admin_views.admin_installations_list, name='admin_installations_list'),
+    path('admin-dashboard/installations/update/', admin_views.admin_installations_update, name='admin_installations_update'),
+    path('admin/update-vendor-location/', admin_views.admin_update_vendor_location, name='admin_update_vendor_location'),
+        path('admin-dashboard/activity/', admin_views.admin_activity_data, name='admin_activity_data'),
+    # Support availability calendar endpoints
+    path('admin-dashboard/availability/', admin_views.admin_support_availability_get, name='admin_support_availability_get'),
+    path('admin-dashboard/availability/save/', admin_views.admin_support_availability_save, name='admin_support_availability_save'),
+    # Vendor reports endpoints
+    path('vendor-reports/', admin_views.get_vendor_reports_for_history, name='get_vendor_reports'),
+    path('vendor-reports/download/', admin_views.download_vendor_monthly_report, name='download_vendor_monthly_report'),
+    path('admin-dashboard/trigger-reports/', admin_views.trigger_report_generation_view, name='trigger_report_generation'),
+    ]

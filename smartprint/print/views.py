@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -5,6 +6,8 @@ from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 import boto3
 import datetime
 import json
@@ -25,6 +28,7 @@ import traceback
 from PIL import Image, ImageDraw
 import io
 from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods
 
 # Token management for sequential token generation (100-200)
 _used_tokens = set()
@@ -101,6 +105,86 @@ def get_next_sequential_token():
         print(f"Error generating token: {e}")
         # Fallback to random token
         return str(random.randint(100, 200))
+
+def assign_token_from_vendor_pool(vendor_email):
+    """
+    Assign a token from the vendor's token pool using the checkpoint algorithm.
+    
+    Args:
+        vendor_email (str): The vendor's email address
+        
+    Returns:
+        int: The assigned token number, or None if no free tokens available
+    """
+    try:
+        # Initialize S3 client
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Fetch the vendor's token.json file
+        token_key = f'vendor_register_details/{sanitize_email(vendor_email)}/token.json'
+        
+        try:
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=token_key)
+            token_data = json.loads(response['Body'].read().decode('utf-8'))
+        except s3.exceptions.NoSuchKey:
+            print(f"❌ Token file not found for vendor {vendor_email}")
+            return None
+        except Exception as e:
+            print(f"❌ Error fetching token file for vendor {vendor_email}: {str(e)}")
+            return None
+        
+        # Define checkpoint list (expanded for 300 tokens)
+        checkpoints = [1, 11, 21, 31, 41, 51, 61, 71, 81, 91,
+                      101, 111, 121, 131, 141, 151, 161, 171, 181, 191,
+                      201, 211, 221, 231, 241, 251, 261, 271, 281, 291]
+        
+        # Choose a random checkpoint
+        import random
+        start_checkpoint = random.choice(checkpoints)
+        
+        # Convert token_data keys to integers for proper sorting
+        available_tokens = {int(k): v for k, v in token_data.items()}
+        
+        # Scan sequentially from checkpoint to find first free token
+        assigned_token = None
+        
+        # First pass: from checkpoint to 300
+        for token_num in range(start_checkpoint, 301):
+            if available_tokens.get(token_num) == "free":
+                assigned_token = token_num
+                break
+        
+        # Second pass: wrap around from 1 to checkpoint-1 if no token found
+        if assigned_token is None:
+            for token_num in range(1, start_checkpoint):
+                if available_tokens.get(token_num) == "free":
+                    assigned_token = token_num
+                    break
+        
+        if assigned_token is None:
+            print(f"❌ No free tokens available for vendor {vendor_email}")
+            return None
+        
+        # Mark the token as busy
+        token_data[str(assigned_token)] = "busy"
+        
+        # Update the token file in R2
+        updated_token_content = json.dumps(token_data, indent=4)
+        s3.put_object(Bucket=settings.R2_BUCKET,
+                      Key=token_key,
+                      Body=updated_token_content,
+                      ContentType='application/json')
+        
+        print(f"✅ Assigned token {assigned_token} to vendor {vendor_email}")
+        return assigned_token
+        
+    except Exception as e:
+        print(f"❌ Error in token assignment for vendor {vendor_email}: {str(e)}")
+        return None
 # ─────────────────────────────────────────────────────────────
 # BASIC PAGE VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -111,6 +195,119 @@ def home(request):
     if request.user.is_authenticated:
         return redirect('userdashboard')
     return render(request, 'home.html')
+
+
+def vendor_appointment_page(request):
+    """Render appointment booking page for a vendor (expects ?email=)."""
+    email = request.GET.get('email', '')
+    return render(request, 'vendor_appointment.html', { 'vendor_email': email })
+
+
+@require_http_methods(["GET"]) 
+def vendor_appointment_get_availability(request):
+    """Return current month availability with only available slots per date.
+    Query: month=YYYY-MM (optional); defaults to current month.
+    """
+    try:
+        month = request.GET.get('month')
+        if not month:
+            now = datetime.datetime.now()
+            month = f"{now.year}-{str(now.month).zfill(2)}"
+
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        year, mon = month.split('-')
+        month_name = datetime.datetime(int(year), int(mon), 1).strftime('%B %Y')
+        folder = "Printmax Support availability Calendar"
+        legacy_folder = "Printmax Support avialablity Calendar"
+        key = f"{folder}/{month_name}.json"
+        data = { 'dates': {} }
+        try:
+            resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+            data = json.loads(resp['Body'].read().decode('utf-8'))
+        except Exception:
+            try:
+                legacy_key = f"{legacy_folder}/{month_name}.json"
+                resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=legacy_key)
+                data = json.loads(resp['Body'].read().decode('utf-8'))
+            except Exception:
+                data = { 'dates': {} }
+
+        # Filter to only available slots for each date
+        pruned = {}
+        for d, slots in (data.get('dates') or {}).items():
+            avail = [s for s, st in (slots or {}).items() if st == 'available']
+            if avail:
+                pruned[d] = avail
+
+        # Build day-of-week metadata for client calendar header
+        return JsonResponse({ 'success': True, 'month': month, 'dates': pruned })
+    except Exception as e:
+        return JsonResponse({ 'success': False, 'error': str(e) }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"]) 
+def vendor_appointment_book(request):
+    """Book an appointment for a vendor: save appointment.json and mark slot busy.
+    Body: { vendor_email, date: 'YYYY-MM-DD', slot: 'HH:MM-HH:MM' }
+    """
+    try:
+        body = json.loads(request.body or '{}')
+        vendor_email = (body.get('vendor_email') or '').strip()
+        date_str = (body.get('date') or '').strip()
+        slot = (body.get('slot') or '').strip()
+        if not vendor_email or not date_str or not slot:
+            return JsonResponse({ 'success': False, 'error': 'vendor_email, date, slot are required' }, status=400)
+
+        # Save appointment.json into vendor folder
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        appointment = {
+            'vendor_email': vendor_email,
+            'appointment_date': date_str,
+            'appointment_slot': slot,
+            'booked_at': datetime.datetime.utcnow().isoformat() + 'Z'
+        }
+        app_key = f"vendor_register_details/{sanitize_email(vendor_email)}/appointment.json"
+        s3.put_object(Bucket=settings.R2_BUCKET, Key=app_key, Body=json.dumps(appointment, indent=2), ContentType='application/json')
+
+        # Mark the selected slot as busy (not available) in month file
+        year, mon, _ = date_str.split('-')
+        month = f"{year}-{mon}"
+        month_name = datetime.datetime(int(year), int(mon), 1).strftime('%B %Y')
+        folder = "Printmax Support availability Calendar"
+        key = f"{folder}/{month_name}.json"
+        data = { 'dates': {} }
+        try:
+            resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+            data = json.loads(resp['Body'].read().decode('utf-8'))
+        except Exception:
+            data = { 'dates': {} }
+
+        # Ensure structure and flip the slot to not available
+        dates = data.get('dates') or {}
+        if date_str not in dates:
+            dates[date_str] = {}
+        if slot not in dates[date_str]:
+            dates[date_str][slot] = 'not available'
+        else:
+            dates[date_str][slot] = 'not available'
+        data['dates'] = dates
+
+        s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(data, indent=2), ContentType='application/json')
+
+        return JsonResponse({ 'success': True, 'appointment': appointment })
+    except Exception as e:
+        return JsonResponse({ 'success': False, 'error': str(e) }, status=500)
 
 
 def get_vendor_details_by_email(email):
@@ -960,6 +1157,172 @@ def get_printer_name_for_service(printer_config, service_type):
     
     return "No Printer Configured"
 
+# ─────────────────────────────────────────────────────────────
+# Printer assignment (alternating) logic for vendor dashboard/jobs
+# ─────────────────────────────────────────────────────────────
+
+# In-memory assignment state per vendor. Keys:
+#  - 'small_last' for jobs with pages < 20
+#  - 'large_last' for jobs with pages >= 20
+_VENDOR_ASSIGNMENT_STATE = {}
+
+def _get_candidate_printers_for_service(printer_config, service_type):
+    """Return an ordered list of configured printer names (max 3) for a service."""
+    if not printer_config:
+        return []
+    service_type = (service_type or '').lower().strip()
+    mapping = {
+        'digital_print': ['digital_printer_1', 'digital_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'project_binding': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'gloss_printing': ['gloss_printer_1', 'gloss_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'jumbo_printing': ['jumbo_printer_1', 'jumbo_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'regular_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'regular print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'passport_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+        'photo_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+        'passport_photo': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3']
+    }
+    fields = mapping.get(service_type, ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'])
+    candidates = []
+    for field in fields:
+        name = (printer_config.get(field) or '').strip()
+        if name and name != 'NA' and name not in candidates:
+            candidates.append(name)
+    return candidates
+
+def _assign_printer_alternating(vendor_id, printer_config, service_type, pages_str):
+    """Assign a printer according to rules:
+    - < 20 pages: strictly alternate between first two candidates
+    - >= 20 pages: alternate between first two candidates, ensuring no consecutive large jobs on same printer
+    - If only one candidate exists: always that one
+    """
+    try:
+        pages = int(str(pages_str or '0'))
+    except Exception:
+        pages = 0
+
+    candidates = _get_candidate_printers_for_service(printer_config, service_type)
+    if not candidates:
+        return "No Printer Configured"
+    if len(candidates) == 1:
+        return candidates[0]
+
+    # Round-robin across all available candidates (2 or 3+)
+    # Maintain separate indices for small and large jobs to avoid clustering
+    state = _VENDOR_ASSIGNMENT_STATE.setdefault(str(vendor_id), {
+        'small_idx': -1, 'large_idx': -1, 'small_last': None, 'large_last': None
+    })
+
+    # Backward-compatibility: if only *_last present, derive index once
+    if state.get('small_idx', -1) == -1 and state.get('small_last') in candidates:
+        try:
+            state['small_idx'] = candidates.index(state['small_last'])
+        except ValueError:
+            state['small_idx'] = -1
+    if state.get('large_idx', -1) == -1 and state.get('large_last') in candidates:
+        try:
+            state['large_idx'] = candidates.index(state['large_last'])
+        except ValueError:
+            state['large_idx'] = -1
+
+    if pages < 20:
+        state['small_idx'] = (state.get('small_idx', -1) + 1) % len(candidates)
+        assigned = candidates[state['small_idx']]
+        state['small_last'] = assigned
+        return assigned
+    else:
+        state['large_idx'] = (state.get('large_idx', -1) + 1) % len(candidates)
+        assigned = candidates[state['large_idx']]
+        state['large_last'] = assigned
+        return assigned
+
+# ─────────────────────────────────────────────────────────────
+# Printer assignment based on lowest count (load balancing)
+# ─────────────────────────────────────────────────────────────
+def _select_printer_by_lowest_count(printer_config, printer_counts, service_type):
+    """Pick configured printer with the smallest count; ties by config order.
+    Returns empty string if none configured.
+    """
+    candidates_fields = {
+        'digital_print': ['digital_printer_1', 'digital_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'project_binding': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'gloss_printing': ['gloss_printer_1', 'gloss_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'jumbo_printing': ['jumbo_printer_1', 'jumbo_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'regular_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'regular print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        'passport_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+        'photo_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+        'passport_photo': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3']
+    }
+    st = (service_type or '').lower().strip()
+    fields = candidates_fields.get(st, ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'])
+
+    chosen_name = ''
+    chosen_count = None
+    for field in fields:
+        name = (printer_config or {}).get(field, '') or ''
+        if not name or name == 'NA':
+            continue
+        count_key = f"{field}_count"
+        try:
+            cnt = int((printer_counts or {}).get(count_key, 0))
+        except Exception:
+            cnt = 0
+        if chosen_count is None or cnt < chosen_count:
+            chosen_count = cnt
+            chosen_name = name
+    return chosen_name
+
+
+def assign_printer_and_increment_count(vendor_email, service_type):
+    """Assign printer by lowest count and persist increment in pricing.json."""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        key = f"vendor_register_details/{sanitize_email(vendor_email)}/pricing.json"
+        resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        pricing_data = json.loads(resp['Body'].read().decode('utf-8')) if resp else {}
+
+        printer_config = pricing_data.get('printer_configuration', {}) or {}
+        printer_counts = pricing_data.get('printer_counts', {}) or {}
+
+        selected_name = _select_printer_by_lowest_count(printer_config, printer_counts, service_type)
+        if not selected_name:
+            return ''
+
+        # find field to bump
+        st = (service_type or '').lower().strip()
+        reverse_fields = {
+            'digital_print': ['digital_printer_1', 'digital_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'project_binding': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'gloss_printing': ['gloss_printer_1', 'gloss_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'jumbo_printing': ['jumbo_printer_1', 'jumbo_printer_2', 'a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'regular_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'regular print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'passport_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+            'photo_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+            'passport_photo': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3']
+        }
+        for field in reverse_fields.get(st, ['a4_printer_1', 'a4_printer_2', 'a4_printer_3']):
+            if printer_config.get(field) == selected_name:
+                count_key = f"{field}_count"
+                try:
+                    cur = int(pricing_data.setdefault('printer_counts', {}).get(count_key, 0))
+                except Exception:
+                    cur = 0
+                pricing_data['printer_counts'][count_key] = cur + 1
+                s3.put_object(Bucket=settings.R2_BUCKET,
+                              Key=key,
+                              Body=json.dumps(pricing_data, indent=4),
+                              ContentType='application/json')
+                break
+        return selected_name
+    except Exception as e:
+        print(f"⚠️ assign_printer_and_increment_count error: {str(e)}")
+        return ''
 def get_print_requests(request):
     try:
         # Get vendor details from session to filter jobs
@@ -989,10 +1352,14 @@ def get_print_requests(request):
         # Get vendor-specific jobs and categorize them properly
         files = get_vendor_specific_jobs(vendor_id)
         
-        # Add printer information to each job
+        # Assign printers per job using alternating rules
         for job in files:
             service_type = job.get('service_type', '').strip()
-            job['printer_name'] = get_printer_name_for_service(printer_config, service_type)
+            pages = job.get('pages') or job.get('metadata', {}).get('pages', '0')
+            assigned = _assign_printer_alternating(vendor_id, printer_config, service_type, pages)
+            job['assigned_printer'] = assigned
+            # Preserve original field for UI if used elsewhere
+            job['printer_name'] = assigned
         
         # Define service types for categorization (same as vendordashboard)
         manual_services = [
@@ -1129,6 +1496,14 @@ def get_vendor_print_jobs(request):
 
             response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
             jobs = []
+            # Load vendor printer configuration for assignment
+            try:
+                vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+            except Exception:
+                vendor_email = None
+            printer_config = {}
+            if vendor_email:
+                printer_config = get_vendor_printer_configuration(vendor_email)
 
             print(f"📊 Response details:")
             print(f"   - IsTruncated: {response.get('IsTruncated', False)}")
@@ -1220,7 +1595,10 @@ def get_vendor_print_jobs(request):
                     
                     print(f"   ✅ Found accepted job: {filename} (service: {service_type}, vendor_status: {vendor_status})")
 
-                    # Force job to be pending for processing
+                    # Force job to be pending for processing and assign printer
+                    pages_value = metadata.get('pages', '0')
+                    service_value = metadata.get('service_type', 'regular print')
+                    assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
                     job_info = {
                         'filename': filename,
                         'download_url': download_url,
@@ -1240,8 +1618,10 @@ def get_vendor_print_jobs(request):
                             'job_id': metadata.get('job_id', filename.split('.')[0]),
                             'token': metadata.get('token', filename.split('.')[0]),
                             'vendor_id': vendor_id,
-                            'vendor_status': 'sended'
-                        }
+                            'vendor_status': 'sended',
+                            'assigned_printer': assigned
+                        },
+                        'assigned_printer': assigned
                     }
 
                     jobs.append(job_info)
@@ -1273,6 +1653,10 @@ def get_vendor_print_jobs(request):
                             ExpiresIn=3600
                         )
 
+                        # Minimal metadata path: still assign a printer deterministically
+                        pages_value = '1'
+                        service_value = 'regular print'
+                        assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
                         job_info = {
                             'filename': filename,
                             'download_url': download_url,
@@ -1295,8 +1679,10 @@ def get_vendor_print_jobs(request):
                                 'feedback': '',
                                 'quality': '',
                                 'thickness': '',
-                                'service_name': ''
-                            }
+                                'service_name': '',
+                                'assigned_printer': assigned
+                            },
+                            'assigned_printer': assigned
                         }
                         jobs.append(job_info)
                         print(f"   ⚠️ Added job with minimal metadata: {filename}")
@@ -2060,8 +2446,28 @@ def upload_to_r2(request):
                     print(f"   Pricing details: {print_settings.get('pricing_details')}")
                     print(f"   All settings keys: {list(print_settings.keys())}")
 
-                    # Generate a unique sequential token for this job (100-300)
-                    token = get_next_sequential_token()
+                    # Get vendor email for token assignment
+                    vendor_email = None
+                    if selected_vendor:
+                        try:
+                            # Get vendor email from shop folder
+                            vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                        except Exception as e:
+                            print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+                    
+                    # Assign token from vendor pool if vendor email is available
+                    if vendor_email:
+                        token = assign_token_from_vendor_pool(vendor_email)
+                        if token is None:
+                            # Fallback to sequential token if vendor pool is empty
+                            token = get_next_sequential_token()
+                            print(f"⚠️ Vendor token pool empty, using fallback token: {token}")
+                        else:
+                            print(f"✅ Assigned token {token} from vendor pool for {vendor_email}")
+                    else:
+                        # Fallback to sequential token if no vendor email
+                        token = get_next_sequential_token()
+                        print(f"⚠️ No vendor email available, using fallback token: {token}")
 
                     # Generate a unique job_id for this file (use original_filename + timestamp for idempotency)
                     job_id = print_settings.get('job_id')
@@ -3051,6 +3457,128 @@ def drive_download_file(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
+@csrf_exempt
+def drive_fetch_file(request):
+    """
+    Mobile-friendly endpoint: accepts a Google Drive fileId (from Picker)
+    and downloads the file server-side using stored OAuth credentials.
+    The file is stored temporarily in R2 under temp_drive_uploads/<session>/<uuid>_<filename>.
+    Returns a JSON payload with a temporary key and basic metadata for later finalize.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body or '{}')
+        file_id = body.get('file_id')
+        if not file_id:
+            return JsonResponse({'success': False, 'error': 'file_id is required'}, status=400)
+
+        creds_data = request.session.get('google_credentials')
+        if not creds_data or Credentials is None or build is None or MediaIoBaseDownload is None:
+            return JsonResponse({'success': False, 'error': 'Not authenticated with Google'}, status=401)
+
+        # Ensure session key exists for namespacing temp uploads
+        if not request.session.session_key:
+            request.session.save()
+        session_key = request.session.session_key
+
+        creds = Credentials.from_authorized_user_info(creds_data)
+        service = build('drive', 'v3', credentials=creds)
+
+        # Fetch metadata first
+        meta = service.files().get(fileId=file_id, fields='name, mimeType, size').execute()
+        filename = meta.get('name', 'document')
+        content_type = meta.get('mimeType', 'application/octet-stream')
+
+        # Stream download
+        request_media = service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request_media)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        fh.seek(0)
+
+        # Store to R2 temporary location
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        unique_id = uuid.uuid4().hex
+        safe_filename = re.sub(r'[^A-Za-z0-9._-]', '_', filename)
+        temp_key = f"temp_drive_uploads/{session_key}/{unique_id}_{safe_filename}"
+
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=temp_key,
+            Body=fh.getvalue(),
+            ContentType=content_type,
+            Metadata={
+                'source': 'google_drive_picker',
+                'original_filename': safe_filename,
+            }
+        )
+
+        return JsonResponse({
+            'success': True,
+            'temp_key': temp_key,
+            'filename': filename,
+            'mimeType': content_type,
+            'size': int(meta.get('size') or 0)
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def finalize_drive_upload(request):
+    """
+    After successful payment, move the temporary object into a permanent location.
+    Expects JSON: { temp_key, target_path (optional), filename (optional) }
+    Returns the final key.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body or '{}')
+        temp_key = body.get('temp_key')
+        filename = body.get('filename')
+        if not temp_key:
+            return JsonResponse({'success': False, 'error': 'temp_key is required'}, status=400)
+
+        # Determine final storage path. Prefer user context if available.
+        user_email = request.user.email if getattr(request, 'user', None) and request.user.is_authenticated else None
+        vendor_id = request.session.get('vendor_id')
+
+        safe_name = re.sub(r'[^A-Za-z0-9._-]', '_', (filename or temp_key.rsplit('/', 1)[-1]))
+        if user_email:
+            final_key = f"user_drive_uploads/{sanitize_email(user_email)}/{safe_name}"
+        elif vendor_id:
+            final_key = f"vendor_print_jobs/{vendor_id}/{safe_name}"
+        else:
+            # Fallback into a generic bucket path
+            final_key = f"user_drive_uploads/anonymous/{safe_name}"
+
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        # Copy then delete temp
+        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': temp_key}
+        s3.copy_object(CopySource=copy_source, Bucket=settings.R2_BUCKET, Key=final_key, MetadataDirective='COPY')
+        s3.delete_object(Bucket=settings.R2_BUCKET, Key=temp_key)
+
+        return JsonResponse({'success': True, 'final_key': final_key})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 def sign_in(request):
     client_id = settings.GOOGLE_CLIENT_ID
     print(f"🔍 Debug: Google Client ID loaded: {client_id[:20] if client_id else 'None'}...")
@@ -3154,11 +3682,33 @@ def verify_razorpay_payment(request):
                     vendor_file_key = f'vendor_print_jobs/{vendor_id}/{fobj.name}'
                     user_file_key = f'users/{user_email}/{fobj.name}'
 
-                # Allocate a sequential token (100-200)
+                # Assign token from vendor pool if available
                 if not token_value:  # Only generate once per request
                     try:
-                        token_value = get_next_sequential_token()
-                    except Exception:
+                        # Get vendor email for token assignment
+                        vendor_email = None
+                        if selected_vendor:
+                            try:
+                                vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                            except Exception as e:
+                                print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+                        
+                        # Assign token from vendor pool if vendor email is available
+                        if vendor_email:
+                            assigned_token = assign_token_from_vendor_pool(vendor_email)
+                            if assigned_token is None:
+                                # Fallback to sequential token if vendor pool is empty
+                                token_value = get_next_sequential_token()
+                                print(f"⚠️ Vendor token pool empty, using fallback token: {token_value}")
+                            else:
+                                token_value = str(assigned_token)
+                                print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email}")
+                        else:
+                            # Fallback to sequential token if no vendor email
+                            token_value = get_next_sequential_token()
+                            print(f"⚠️ No vendor email available, using fallback token: {token_value}")
+                    except Exception as e:
+                        print(f"❌ Error in token assignment: {str(e)}")
                         token_value = str(random.randint(100, 200))
 
                 # Build metadata (extend base with payment details)
@@ -3182,9 +3732,26 @@ def verify_razorpay_payment(request):
                     'service_type': service_type or 'regular print',
                     'service_name': str(print_settings.get('service_name', '')),
                     'token': token_value,
+                    'printer_name': '',
                                   'payment_id': payment_id,
                                   'order_id': order_id
                 }
+
+                # Resolve vendor email for printer assignment and assign by lowest count
+                assigned_printer_name = ''
+                try:
+                    vendor_email_for_printer = None
+                    if selected_vendor:
+                        try:
+                            vendor_email_for_printer = get_vendor_email_by_shop_folder(selected_vendor)
+                        except Exception as e:
+                            print(f"⚠️ Could not resolve vendor email for printer assignment: {str(e)}")
+                    if vendor_email_for_printer:
+                        assigned_printer_name = assign_printer_and_increment_count(vendor_email_for_printer, service_type)
+                        if assigned_printer_name:
+                            metadata['printer_name'] = assigned_printer_name
+                except Exception as e:
+                    print(f"⚠️ Printer assignment failed: {str(e)}")
 
                 # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
                 pricing_details = print_settings.get('pricing_details')
@@ -3236,7 +3803,8 @@ def verify_razorpay_payment(request):
         return JsonResponse({
             'success': True, 
             'files_processed': files_processed,
-            'token': token_value
+            'token': token_value,
+            'printer_name': metadata.get('printer_name', '') if files_processed else ''
         })
     except Exception as e:
         traceback.print_exc()
@@ -3434,6 +4002,7 @@ def vendor_pricing(request):
                     'pricing_data': pricing_data.get('pricing_data', {}),
                     'categorized_pricing': pricing_data.get('categorized_pricing', {}),
                     'printer_configuration': pricing_data.get('printer_configuration', {}),
+                    'printer_counts': pricing_data.get('printer_counts', {}),
                     'services_summary': pricing_data.get('services_summary', {})
                 })
             else:
@@ -3535,13 +4104,27 @@ def vendor_pricing(request):
             printer_configuration = existing_printer_configuration.copy()  # Start with existing data
             new_printer_config = data.get('printer_configuration', {})
             
+            # Handle printer names and counts separately
+            printer_counts = {}
+            if 'counts' in new_printer_config:
+                printer_counts = new_printer_config['counts']
+                del new_printer_config['counts']  # Remove counts from main config
+            
             # Only update printer fields that have actual values (not empty or NA)
             for printer_field, printer_name in new_printer_config.items():
                 if printer_name and printer_name.strip() and printer_name.strip() != 'NA':
                     printer_configuration[printer_field] = printer_name.strip()
             
-            # Ensure all 6 printer fields are included, using "NA" for empty ones
+                    # Initialize count for this printer if not already set
+                    count_field = f"{printer_field}_count"
+                    if count_field not in printer_counts:
+                        printer_counts[count_field] = 0
+            
+            # Ensure all printer fields are included, using "NA" for empty ones
             all_printer_fields = [
+                'digital_printer_1', 'digital_printer_2',
+                'gloss_printer_1', 'gloss_printer_2',
+                'jumbo_printer_1', 'jumbo_printer_2',
                 'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
                 'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
             ]
@@ -3549,6 +4132,11 @@ def vendor_pricing(request):
             for printer_field in all_printer_fields:
                 if printer_field not in printer_configuration or not printer_configuration[printer_field] or printer_configuration[printer_field].strip() == '':
                     printer_configuration[printer_field] = 'NA'
+                
+                # Initialize count for this printer field
+                count_field = f"{printer_field}_count"
+                if count_field not in printer_counts:
+                    printer_counts[count_field] = 0
             
             # Prepare pricing data with categorized structure
             pricing_data = {
@@ -3556,6 +4144,7 @@ def vendor_pricing(request):
                 'pricing_data': existing_pricing_data,  # Preserve existing pricing_data
                 'categorized_pricing': categorized_pricing,
                 'printer_configuration': printer_configuration,
+                'printer_counts': printer_counts,  # Add printer counts
                 'services_summary': {
                     'total_services': len([e for e in pricing_entries if e.get('price', 0) > 0]),
                     'available_services_count': len([e for e in pricing_entries if e.get('price', 0) > 0]),
@@ -3574,6 +4163,21 @@ def vendor_pricing(request):
                           ContentType='application/json')
 
             print(f"✅ Successfully saved pricing data for vendor {vendor_email}")
+            
+            # Create token.json file with 300 tokens set to "free"
+            token_data = {}
+            for i in range(1, 301):  # Generate tokens 1 to 300
+                token_data[str(i)] = "free"
+            
+            token_file_content = json.dumps(token_data, indent=4)
+            token_file_key = f"vendor_register_details/{sanitize_email(vendor_email)}/token.json"
+            
+            s3.put_object(Bucket=settings.R2_BUCKET,
+                          Key=token_file_key,
+                          Body=token_file_content,
+                          ContentType='application/json')
+            
+            print(f"✅ Successfully created token.json file for vendor {vendor_email} with 300 tokens set to 'free'")
 
             # Calculate detailed statistics for success message
             total_services = pricing_data['services_summary']['total_services']
@@ -3586,7 +4190,8 @@ def vendor_pricing(request):
             success_message += f"📊 Services Configured: {total_services}\n"
             success_message += f"✅ Available Services: {available_services}\n"
             success_message += f"❌ Not Available: {not_available_services}\n"
-            success_message += f"🖨️ Printers Configured: {configured_printers}\n\n"
+            success_message += f"🖨️ Printers Configured: {configured_printers}\n"
+            success_message += f"🎫 Token File Created: 200 tokens generated and set to 'free'\n\n"
             success_message += f"Your pricing is now live and customers can place orders!"
             
             return JsonResponse({
@@ -3599,6 +4204,7 @@ def vendor_pricing(request):
                 'total_printers': configured_printers,
                 'categorized_pricing': categorized_pricing,
                 'printer_configuration': printer_configuration,
+                'printer_counts': printer_counts,
                 'updated_at': datetime.datetime.now().isoformat()
             })
 
@@ -3879,6 +4485,8 @@ def vendor_register_api(request):
                 'pincode': pincode,
                 'latitude': latitude,
                 'longitude': longitude,
+                'shop_visited': 'not visited',
+                'coordinator': 'none',
                 'registration_date': timezone.now().isoformat(),
                 'hashed_password': password_hash
             }
@@ -5302,6 +5910,194 @@ def get_available_shops(request):
 
 def vendor_email_folder(email):
     return f'vendor_register_details/{sanitize_email(email)}'
+
+
+@csrf_exempt
+def get_available_printers(request):
+    """
+    Get available printers for a specific service type from vendor pricing data
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        service_type = (data.get('service_type') or '').strip().lower()
+        
+        if not service_type:
+            return JsonResponse({'success': False, 'error': 'Service type is required'}, status=400)
+        
+        # Get vendor email from session
+        vendor_email = request.session.get('vendor_email')
+        if not vendor_email:
+            return JsonResponse({'success': False, 'error': 'Vendor not authenticated'}, status=401)
+        
+        # Get vendor pricing data
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        pricing_key = f"vendor_register_details/{sanitize_email(vendor_email)}/pricing.json"
+        
+        try:
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+            pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Failed to load pricing data: {str(e)}'}, status=404)
+        
+        printer_config = pricing_data.get('printer_configuration') or pricing_data.get('printers') or {}
+        printers = []
+        
+        # Normalize service type variants used across UI/backend
+        normalized = service_type.replace(' ', '_')
+        if normalized == 'gloss_printing':
+            normalized = 'gloss_print'
+        if normalized == 'jumbo_printing':
+            normalized = 'jumbo_print'
+        if normalized in ('regular_print', 'regular'):
+            normalized = 'a4_print'
+        if not normalized:
+            normalized = 'a4_print'
+
+        # Map service types to printer configuration keys
+        service_to_printer_mapping = {
+            'digital_print': ['digital_printer_1', 'digital_printer_2'],
+            'project_binding': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'jumbo_print': ['jumbo_printer_1', 'jumbo_printer_2'],
+            'gloss_print': ['gloss_printer_1', 'gloss_printer_2'],
+            'photo_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+            'passport_print': ['passport_printer_1', 'passport_printer_2', 'passport_printer_3'],
+            'a4_print': ['a4_printer_1', 'a4_printer_2', 'a4_printer_3'],
+        }
+        
+        printer_keys = service_to_printer_mapping.get(normalized, [])
+        
+        for key in printer_keys:
+            printer_name = (printer_config.get(key) if isinstance(printer_config, dict) else None) or 'NA'
+            if printer_name and printer_name != 'NA':
+                printers.append({'name': printer_name, 'type': key, 'key': key})
+
+        # De-duplicate by name while preserving order
+        seen = set()
+        unique_printers = []
+        for p in printers:
+            if p['name'] not in seen:
+                seen.add(p['name'])
+                unique_printers.append(p)
+        
+        return JsonResponse({
+            'success': True,
+            'printers': unique_printers,
+            'service_type': normalized
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def assign_printer_to_job(request):
+    """
+    Assign a printer to a specific job and update the job's metadata in R2
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        filename = data.get('filename')
+        service_type = data.get('service_type')
+        printer_name = data.get('printer_name')
+        
+        if not all([filename, service_type, printer_name]):
+            return JsonResponse({'success': False, 'error': 'filename, service_type, and printer_name are required'}, status=400)
+        
+        # Get vendor email from session
+        vendor_email = request.session.get('vendor_email')
+        if not vendor_email:
+            return JsonResponse({'success': False, 'error': 'Vendor not authenticated'}, status=401)
+        
+        # Initialize S3 client
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Also get vendor_id from session, as jobs are rendered under vendor_id-based folders
+        vendor_id = request.session.get('vendor_id') or request.session.get('vendorId')
+
+        # Define possible paths where the print job might be stored
+        possible_paths = [
+            f'vendor_print_jobs/{vendor_email}/{filename}',
+            f'vendor_manual_print_jobs/{vendor_email}/{filename}',
+            f'vendor_register_details/{vendor_email.replace("@", "_at_").replace(".", "_dot_")}/firozshop/{filename}',
+            f'vendor_print_jobs/{vendor_email.replace("@", "_at_").replace(".", "_dot_")}/{filename}',
+            f'vendor_manual_print_jobs/{vendor_email.replace("@", "_at_").replace(".", "_dot_")}/{filename}',
+        ]
+
+        # Add vendor_id based paths (these are used by get_print_requests)
+        if vendor_id:
+            possible_paths = [
+                f'vendor_print_jobs/{vendor_id}/{filename}',
+                f'vendor_manual_print_jobs/{vendor_id}/{filename}',
+            ] + possible_paths
+        
+        updated = False
+        updated_path = None
+        
+        # Search for the file in all possible paths
+        for path in possible_paths:
+            try:
+                print(f"🔍 Searching for {filename} at {path}")
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
+                current_metadata = head_response.get('Metadata', {})
+                
+                # Update metadata with printer information (store under multiple keys for compatibility)
+                current_metadata['assigned_printer'] = printer_name
+                current_metadata['printer_name'] = printer_name
+                current_metadata['printer_assigned_at'] = datetime.datetime.now().isoformat()
+                current_metadata['service_type'] = service_type
+                
+                # Copy object with updated metadata
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=path,
+                    Metadata=current_metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                updated = True
+                updated_path = path
+                print(f"✅ Updated printer assignment for {filename} at {path}")
+                break
+                
+            except Exception as e:
+                print(f"   ⚠️ Not found at {path}: {str(e)}")
+                continue
+        
+        if not updated:
+            return JsonResponse({
+                'success': False, 
+                'error': f'Print job {filename} not found in any vendor folder'
+            }, status=404)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Printer {printer_name} assigned to job {filename}',
+            'filename': filename,
+            'service_type': service_type,
+            'printer_name': printer_name,
+            'updated_path': updated_path
+        })
+        
+    except Exception as e:
+        print(f"❌ Error assigning printer to job: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 def get_vendor_email_by_shop_folder(shop_folder):
     """Get vendor email by shop folder name from R2 storage"""
@@ -7941,7 +8737,7 @@ def get_vendor_auth_status(vendor_id):
         
         return is_valid
 
-def get_vendor_connection_status(vendor_id):
+def get_vendor_connection_info(vendor_id):
     """Get vendor client connection status"""
     with connection_lock:
         return vendor_connections.get(vendor_id, {
@@ -8025,6 +8821,26 @@ def auto_disable_vendor_services(vendor_id):
             ContentType='application/json'
         )
         
+        # Reset printer counts to zero when vendor goes offline
+        try:
+            vendor_folder = vendor_email_folder(vendor_email)
+            pricing_key = f'{vendor_folder}/pricing.json'
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+            pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+            # Reset all printer counts to zero
+            if isinstance(pricing_data, dict) and 'printer_counts' in pricing_data:
+                for count_key in list(pricing_data['printer_counts'].keys()):
+                    pricing_data['printer_counts'][count_key] = 0
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=pricing_key,
+                    Body=json.dumps(pricing_data, indent=4),
+                    ContentType='application/json'
+                )
+                print(f"🔄 Reset printer counts to zero for vendor {vendor_id}")
+        except Exception as e:
+            print(f"⚠️ Could not reset printer counts for vendor {vendor_id}: {str(e)}")
+
         print(f"🔌 Auto-disabled services for vendor {vendor_id} due to connection loss")
         return True
         
@@ -8148,13 +8964,13 @@ def get_vendor_connection_status(request):
                 return JsonResponse({'success': False, 'error': 'Vendor ID not found'})
             
             # Get connection status
-            connection_info = get_vendor_connection_status(vendor_id)
+            connection_info = get_vendor_connection_info(vendor_id)
             
             # Check for timeout
             check_vendor_connection_timeout()
             
             # Get updated status after timeout check
-            connection_info = get_vendor_connection_status(vendor_id)
+            connection_info = get_vendor_connection_info(vendor_id)
             
             # Check authentication status (8-hour validity)
             is_authenticated = get_vendor_auth_status(vendor_id)

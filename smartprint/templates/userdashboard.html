@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -191,6 +192,35 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
 
+    /* Navbar logo swap for light/dark themes */
+    .logo-img-light { display: inline-block; height: 36px; width: auto; vertical-align: middle; }
+    .logo-img-dark { display: none; height: 36px; width: auto; vertical-align: middle; }
+    [data-theme="dark"] .logo-img-light { display: none; }
+    [data-theme="dark"] .logo-img-dark { display: inline-block; }
+
+    /* PRINTMAX wordmark beside logo */
+    .brand-wordmark {
+      font-family: 'Poppins', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-weight: 800;
+      font-style: italic;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 1.15rem; /* increase wordmark size for emphasis */
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 2px; /* closer to the logo */
+      transform: translateY(1px); /* baseline alignment */
+      color: #111827; /* solid black in day mode */
+      -webkit-text-fill-color: currentColor; /* override any transparent fill */
+      -webkit-background-clip: initial;
+      background-clip: initial;
+    }
+    [data-theme="dark"] .brand-wordmark {
+      color: #ffffff; /* solid white in dark mode */
+      -webkit-text-fill-color: currentColor;
+    }
+
     .header::before {
       content: '';
       position: absolute;
@@ -207,6 +237,29 @@
       0%, 100% { opacity: 0.6; }
       50% { opacity: 0.9; }
     }
+
+    /* Navbar content colors by theme */
+    /* Light mode (default) - scope to body since data-theme is on <body> */
+    body:not([data-theme="dark"]) .header { background: #ffffff; border-bottom: 1px solid rgba(17,24,39,0.08); }
+    body:not([data-theme="dark"]) .header::before { background: linear-gradient(45deg, rgba(17,24,39,0.06) 0%, transparent 50%, rgba(17,24,39,0.04) 100%); }
+    body:not([data-theme="dark"]) .header .logo { color: #111827; text-shadow: none; }
+    body:not([data-theme="dark"]) .header .menu-toggle,
+    body:not([data-theme="dark"]) .header .header-btn { color: #111827; background: rgba(17,24,39,0.06); }
+    body:not([data-theme="dark"]) .header .menu-toggle:hover,
+    body:not([data-theme="dark"]) .header .header-btn:hover { background: rgba(17,24,39,0.12); }
+    body:not([data-theme="dark"]) .header .user-name-header { color: #111827; }
+    body:not([data-theme="dark"]) .header i,
+    body:not([data-theme="dark"]) .header .fas,
+    body:not([data-theme="dark"]) .header .far { color: #111827; }
+
+    /* Dark mode: consistent navbar color and white content */
+    [data-theme="dark"] .header { background: #111827 ; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    [data-theme="dark"] .header::before { background: linear-gradient(45deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(255,255,255,0.04) 100%); }
+    [data-theme="dark"] .header .logo { color: #ffffff; text-shadow: none; }
+    [data-theme="dark"] .header .menu-toggle,
+    [data-theme="dark"] .header .header-btn { color: #ffffff; background: rgba(255,255,255,0.10); }
+    [data-theme="dark"] .header .menu-toggle:hover,
+    [data-theme="dark"] .header .header-btn:hover { background: rgba(255,255,255,0.18); }
 
     .header-content {
       position: relative;
@@ -226,7 +279,7 @@
     .logo-section {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.25rem; /* tightest spacing */
     }
 
     .menu-toggle {
@@ -338,7 +391,7 @@
 
     .notification-panel {
       position: fixed;
-      top: 64px;
+      top: 72px;
       right: 1rem;
       width: 400px;
       max-height: 500px;
@@ -570,192 +623,89 @@
       transition: width linear;
     }
 
-    /* User Profile in Header */
-    .user-profile-dropdown {
-      position: relative;
-    }
-
-    .user-profile-trigger {
+    /* Simple User Profile in Header */
+    .user-profile-simple {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      padding: 0.35rem 0.6rem;
-      border-radius: 999px; /* rounded pill */
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      backdrop-filter: blur(10px);
     }
 
-    .user-profile-trigger:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-1px);
-    }
-
-    .user-avatar-small {
-      width: 28px;
-      height: 28px;
+    .user-avatar-simple {
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      background: rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .user-avatar-small img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .user-avatar-small i {
-      font-size: 1rem;
-      color: white;
-    }
-
-    .user-name-header {
-      font-weight: 700;
-      font-size: 0.85rem;
-      letter-spacing: 0.02em;
-    }
-
-    .dropdown-arrow {
-      font-size: 0.8rem;
-      transition: transform var(--transition-fast);
-      transform: rotate(180deg);
-    }
-
-    .user-profile-trigger.active .dropdown-arrow {
-      transform: rotate(0deg);
-    }
-
-    /* User Dropdown Menu */
-    .user-dropdown {
-      position: absolute;
-      top: calc(100% + 0.5rem);
-      right: 0;
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-xl);
-      border: 1px solid var(--outline);
-      min-width: 280px;
-      z-index: 1000;
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-10px);
-      transition: all var(--transition-fast);
-    }
-
-    .user-dropdown.active {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-
-    .user-dropdown-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid var(--outline);
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .user-avatar-large {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: 2px solid var(--primary);
       background: var(--primary-light);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 1rem;
+      border: 2px solid var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: all var(--transition-fast);
       overflow: hidden;
-      flex-shrink: 0;
     }
 
-    .user-avatar-large img {
+    .user-avatar-simple:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .user-avatar-simple img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
 
-    .user-avatar-large i {
-      font-size: 1.5rem;
-      color: var(--primary);
-    }
-
-    .user-info-dropdown h3 {
-      font-weight: 600;
-      color: var(--on-surface);
-      margin-bottom: 0.25rem;
+    .user-avatar-simple i {
       font-size: 1rem;
-    }
-
-    .user-info-dropdown p {
-      font-size: 0.875rem;
-      color: var(--on-surface-variant);
-    }
-
-    .user-dropdown-menu {
-      padding: 0.5rem;
-    }
-
-    .dropdown-item {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius-md);
-      color: var(--on-surface);
-      text-decoration: none;
-      transition: all var(--transition-fast);
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-
-    .dropdown-item:hover {
-      background: var(--surface-variant);
       color: var(--primary);
     }
 
-    .dropdown-item i {
-      width: 20px;
-      text-align: center;
-      color: var(--on-surface-variant);
-    }
-
-    .dropdown-item:hover i {
+    /* Light mode styling - now uses CSS variables for consistency */
+    body:not([data-theme="dark"]) .user-avatar-simple {
+      background: var(--primary-light);
       color: var(--primary);
+      border: 2px solid var(--primary);
     }
 
     /* Main Content */
     .main-content {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 6rem 1rem 2rem;
+      padding: 2.5rem 1rem 2rem; /* reduced top gap under navbar */
     }
 
     /* Mobile-first responsive design */
     @media (max-width: 768px) {
       .main-content {
-        padding: 4.25rem 0.75rem 5rem; /* tighter top gap under navbar */
+        padding: 2rem 0.75rem 5rem; /* further reduced top gap under navbar */
+      }
+      
+      .notification-panel {
+        top: 68px;
+        right: 0.5rem;
+        width: calc(100vw - 1rem);
+        max-width: 350px;
       }
     }
 
     @media (max-width: 480px) {
       .main-content {
-        padding: 4rem 0.5rem 5rem; /* reduce gap further for very small screens */
+        padding: 1.5rem 0.5rem 5rem; /* further reduced gap for very small screens */
+      }
+      
+      .notification-panel {
+        top: 66px;
+        right: 0.25rem;
+        width: calc(100vw - 0.5rem);
+        max-width: 320px;
       }
     }
 
     /* Stats Section */
     .stats-section {
-      margin-bottom: 2rem;
+      margin-bottom: 1rem; /* reduced margin */
     }
 
     .section-title {
@@ -777,48 +727,46 @@
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr); /* smaller cards across all viewports */
-      gap: 0.75rem;
+      gap: 0.4rem; /* proper spacing between blocks */
     }
 
     /* Mobile-first compact stats design */
     @media (max-width: 480px) {
       .stats-grid {
         grid-template-columns: repeat(4, 1fr);
-        gap: 0.9rem; /* clearer separation between all four blocks */
+        gap: 0.6rem; /* tighter spacing for mobile squares */
       }
     }
     .stat-card {
       background: var(--surface);
-      border-radius: 12px;
-      padding: 0.45rem;
-      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-      border: 1px solid var(--outline-variant);
+      border-radius: 12px; /* more rounded for modern look */
+      padding: 0.08rem; /* ultra minimal padding */
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); /* very subtle shadow */
+      border: 1px solid #6b7280; /* gray border for contrast */
       transition: all var(--transition-standard);
       position: relative;
       overflow: hidden;
       backdrop-filter: blur(10px);
-      aspect-ratio: 6 / 7; /* slightly flatter to save space */
-      min-height: auto;
+      aspect-ratio: 1; /* Perfect square for all viewports */
+      min-height: 35px; /* ultra small height for professional look */
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
 
     /* Mobile compact stat cards */
     @media (max-width: 768px) {
       .stat-card {
-        padding: 0.4rem; /* smaller block, keep numbers readable */
-        aspect-ratio: 6 / 7;
-        min-height: auto;
-        border-radius: 10px;
+        padding: 0.08rem; /* ultra minimal padding for mobile */
+        aspect-ratio: 1; /* Perfect square for mobile */
+        min-height: 40px; /* ultra small height for mobile */
+        border-radius: 12px; /* more rounded for modern look */
       }
     }
 
-    .stat-card:hover {
-      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
-      transform: translateY(-4px) scale(1.02);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
+    /* Hover effects removed for mobile optimization */
     .stat-card::after {
       content: '';
       position: absolute;
@@ -830,9 +778,7 @@
       transition: left 0.6s;
     }
 
-    .stat-card:hover::after {
-      left: 100%;
-    }
+    /* Hover effects removed for mobile optimization */
 
     .stat-card::before {
       content: '';
@@ -855,32 +801,27 @@
     .stat-card:nth-child(4)::before {
       background: linear-gradient(90deg, #8b5cf6, #6366f1);
     }
-    .stat-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-    }
-
     .stat-title {
-      font-size: 0.75rem;
+      font-size: 0.5rem; /* reduced font size */
       font-weight: 600;
       color: var(--on-surface-variant);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px; /* reduced letter spacing */
+      margin-top: 0.15rem; /* reduced margin */
     }
 
     .stat-icon {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
+      width: 16px; /* reduced size */
+      height: 16px; /* reduced size */
+      border-radius: 4px; /* reduced radius */
       background: var(--total-jobs-gradient);
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.9rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-size: 0.6rem; /* reduced font size */
+      margin-bottom: 0.15rem; /* reduced margin */
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
     .stat-icon .material-icons {
@@ -890,17 +831,18 @@
     /* Mobile stat icon adjustments */
     @media (max-width: 768px) {
       .stat-icon {
-        width: 20px;
-        height: 20px;
-        font-size: 0.8rem;
+        width: 18px;
+        height: 18px;
+        font-size: 0.7rem;
+        margin-bottom: 0.2rem;
       }
       
       .stat-icon .material-icons {
-        font-size: 14px;
+        font-size: 12px;
       }
       
       .stat-title {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
       }
     }
 
@@ -917,11 +859,11 @@
     }
 
     .stat-value {
-      font-size: 1.8rem;
+      font-size: 1.1rem; /* reduced font size */
       font-weight: 800;
       color: var(--on-surface);
       line-height: 1;
-      margin-bottom: 0.25rem;
+      margin: 0.15rem 0; /* reduced margin */
     }
 
     .stat-label {
@@ -930,15 +872,21 @@
       font-weight: 500;
     }
 
+    /* Dark mode stat colors - same as overview cards */
+    [data-theme="dark"] .stat-value {
+      color: var(--on-surface);
+    }
+
+    [data-theme="dark"] .stat-label {
+      color: var(--on-surface-variant);
+    }
+
     /* Mobile stat value adjustments */
     @media (max-width: 768px) {
       .stat-value {
         /* Keep numbers readable even in compact cards */
-        font-size: 1.5rem;
-      }
-      
-      .stat-label {
-        font-size: 0.6rem;
+        font-size: 1.2rem;
+        margin: 0.2rem 0;
       }
     }
 
@@ -955,26 +903,37 @@
     .job-token-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      background: linear-gradient(90deg, #eef2ff, #e0e7ff);
-      color: #334155;
-      border: 1px solid #c7d2fe;
-      padding: 0.16rem 0.45rem;
-      border-radius: 999px;
-      font-size: 0.62rem;
-      font-weight: 700;
+      gap: 0.3rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
       white-space: nowrap;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      min-width: fit-content;
     }
 
     /* Allow filename/content wrapping with a neat clamp */
     .job-card-filename {
       display: -webkit-box;
-      -webkit-line-clamp: 3; /* allow a fuller heading */
+      -webkit-line-clamp: 1;
       -webkit-box-orient: vertical;
-      line-clamp: 3;
+      line-clamp: 1;
       overflow: hidden;
       word-break: break-word;
       max-width: 100%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .job-card-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
     }
 
     /* Action toolbar with labeled buttons */
@@ -988,29 +947,59 @@
     .job-action-btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.6rem 0.9rem;
-      border-radius: 14px; /* rounded rectangle */
-      font-weight: 700;
-      font-size: 0.82rem;
-      flex: 1 1 30%;
-      min-width: 98px; /* gives 3 buttons per row on mobile */
+      gap: 0.4rem; /* increased gap for better spacing */
+      padding: 0.4rem 0.8rem; /* slightly increased padding for better size */
+      border-radius: 12px; /* more rounded for modern look */
+      font-weight: 700; /* bold text for better visibility */
+      font-size: 0.7rem; /* slightly increased font size */
+      flex: 0 0 auto; /* prevent stretching to fill available space */
+      min-width: 65px; /* slightly increased minimum width */
       justify-content: center;
-      border: 1px solid var(--outline-variant);
-      background: #fff;
-      color: var(--on-surface);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-      transition: transform .12s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+      border: none; /* remove border for cleaner look */
+      color: white; /* white text like in the image */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* more prominent shadow */
+      transition: all 0.2s ease;
+      text-transform: uppercase; /* uppercase text like in the image */
+      letter-spacing: 0.5px; /* letter spacing for professional look */
     }
     .job-action-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
     .job-action-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-    .job-action-btn i { font-size: 0.9rem; }
+    .job-action-btn i { 
+      font-size: 0.8rem; /* larger icon size for better visibility */
+      color: white; /* white icons like in the image */
+    }
 
-    /* Variant tints for icon-only perception without loud colors */
-    .view-btn { border-color: color-mix(in oklab, #1e293b 20%, var(--outline-variant)); }
-    .pricing-btn { border-color: color-mix(in oklab, #1d4ed8 28%, var(--outline-variant)); }
-    .track-btn { border-color: color-mix(in oklab, #047857 28%, var(--outline-variant)); }
-    .job-action-btn i { font-size: 0.9rem; }
+    /* Vibrant button colors like in the uploaded image */
+    .view-btn { 
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed); /* Purple gradient */
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+    }
+    .view-btn:hover { 
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+    
+    .pricing-btn { 
+      background: linear-gradient(135deg, #ef4444, #dc2626); /* Red gradient */
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+    .pricing-btn:hover { 
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    
+    .track-btn { 
+      background: linear-gradient(135deg, #10b981, #059669); /* Green gradient */
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+    .track-btn:hover { 
+      background: linear-gradient(135deg, #059669, #047857);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    .job-action-btn i { 
+      font-size: 0.8rem; /* larger icon size for better visibility */
+      color: white; /* white icons like in the image */
+    }
     .job-action-label { display: inline-block; }
 
     /* Token row under title to ensure clear placement */
@@ -1018,20 +1007,30 @@
       display: grid;
       grid-template-columns: 1fr auto; /* token full-width left, status right */
       align-items: center;
-      gap: 0.35rem;
-      margin-top: 0.8rem; /* move badges slightly down */
+  gap: 0.3rem;
+  margin-top: 0.25rem; /* align badges closer to filename */
     }
 
     /* Jobs Section */
     .jobs-section {
-      margin-bottom: 2rem;
+      margin-bottom: 1rem; /* reduced margin */
+    }
+    
+    /* Hide jobs section when no jobs */
+    .jobs-section.no-jobs {
+      display: none;
+    }
+    
+    /* Show services section immediately after overview when no jobs */
+    .services-section.no-jobs-visible {
+      margin-top: 0;
     }
 
     .section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1.5rem;
+  margin-bottom: 0.35rem; /* reduced margin to bring list up */
     }
 
     .view-all-btn {
@@ -1071,6 +1070,7 @@
     .jobs-container {
       position: relative;
       overflow: hidden;
+  margin-top: 0.25rem; /* pull jobs closer to header */
     }
 
     .jobs-scroll-wrapper {
@@ -1097,7 +1097,7 @@
 
     .jobs-row {
       display: flex;
-      gap: 1rem;
+      gap: 1.5rem;
       min-width: max-content;
       padding: 0.5rem 0;
     }
@@ -1106,26 +1106,30 @@
     @media (max-width: 768px) {
       .jobs-row {
         flex-direction: column;
-        gap: 0;
+        gap: 1.5rem;
         min-width: auto;
         padding: 0;
       }
       
-      /* Fix overview blocks to show 2 per row on mobile */
+      /* Fix overview blocks to show 3 per row on mobile (hide Total Jobs) */
       .stats-grid {
         display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 0.7rem !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 0.5rem !important; /* proper spacing for mobile */
+      }
+      /* Hide Total Jobs card on mobile */
+      .stat-card:first-child {
+        display: none !important;
       }
       /* Square, compact overview cards */
       .stat-card {
-        aspect-ratio: 7 / 4;
-        min-height: auto;
-        padding: 0.6rem;
-        border-radius: 10px;
+        aspect-ratio: 1; /* perfect square */
+        min-height: 40px; /* ultra small height */
+        padding: 0.08rem; /* ultra minimal padding */
+        border-radius: 12px; /* more rounded for modern look */
       }
       /* Increase vertical rhythm for job cards on mobile */
-      .job-card-mobile { margin-top: 8px; margin-bottom: 14px; }
+      .job-card-mobile { margin-top: 8px; margin-bottom: 16px; }
     }
 
     .job-card {
@@ -1133,7 +1137,7 @@
       border-radius: var(--radius-lg);
       padding: 1rem;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--outline-variant);
+      border: 1px solid #6b7280; /* gray border for contrast */
       transition: all var(--transition-standard);
       position: relative;
       min-width: 280px;
@@ -1159,20 +1163,26 @@
     /* New Mobile Job Card Design - Material Design inspired */
     .job-card-mobile {
       background: var(--surface);
-      border-radius: 12px;
-      margin-bottom: 12px; /* add clearer separation between jobs */
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-      border: 1px solid var(--outline-variant);
-      transition: box-shadow 0.2s ease, transform 0.2s ease;
+      border-radius: 16px; /* more rounded for modern look */
+      margin-bottom: 12px; /* increased separation for better visual hierarchy */
+      margin-left: 0.5rem; /* left margin for separation */
+      margin-right: 0.5rem; /* right margin for separation */
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* more prominent shadow */
+      border: 1px solid #6b7280; /* gray border for contrast */
+      transition: all 0.3s ease; /* smoother transitions */
       position: relative;
       overflow: hidden;
       display: flex;
-      min-height: 96px;
+      min-height: 90px; /* slightly increased height */
+      backdrop-filter: blur(10px); /* glass effect */
+      min-width: 320px; /* increased minimum width to prevent badge overlap */
+      max-width: 100%; /* ensure it doesn't exceed container */
     }
 
     .job-card-mobile:hover {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); /* more dramatic shadow */
+      transform: translateY(-3px); /* more lift effect */
+      border-color: rgba(139, 92, 246, 0.3); /* subtle purple border on hover */
     }
 
     .job-card-left-border {
@@ -1191,22 +1201,24 @@
     .service-color-photo { background: var(--total-jobs-gradient); }
     .service-color-digital { background: var(--digital-gradient); }
     .service-color-emboss { background: linear-gradient(135deg, #06b6d4, #0e7490); }
-    .service-color-gloss { background: var(--completed-gradient); }
-    .service-color-jumbo { background: var(--earnings-gradient); }
+      .service-color-gloss { background: var(--completed-gradient); }
+      .service-color-jumbo { background: var(--earnings-gradient); }
+      .service-color-print { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
     .job-card-content {
       flex: 1;
-      padding: 16px;
+      padding: 12px; /* reduced padding */
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px; /* reduced gap */
     }
 
     .job-card-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 4px;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      gap: 0.5rem;
     }
 
     .job-card-title {
@@ -1214,6 +1226,7 @@
       align-items: center;
       gap: 8px;
       flex: 1;
+      min-width: 0;
     }
 
     .job-card-icon {
@@ -1227,26 +1240,31 @@
     .icon-tint-photo { color: #1e88e5; }
     .icon-tint-digital { color: #0284c7; }
     .icon-tint-emboss { color: #fb8c00; }
-    .icon-tint-gloss { color: #2e7d32; }
-    .icon-tint-jumbo { color: #6d28d9; }
+      .icon-tint-gloss { color: #2e7d32; }
+      .icon-tint-jumbo { color: #6d28d9; }
+      .icon-tint-print { color: #ef4444; }
 
     /* PDF icon highlight */
     .pdf-red { color: #e53935 !important; }
 
     .job-card-filename {
-      font-weight: 700;
-      font-size: 18px;
+      font-weight: 800; /* extra bold */
+      font-size: 17px; /* slightly larger */
       color: var(--on-surface);
-      line-height: 1.25;
+      line-height: 1.3;
+      letter-spacing: 0.3px; /* subtle letter spacing */
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* subtle text shadow */
     }
 
     .job-card-status-badge {
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
+      padding: 6px 12px; /* increased padding */
+      border-radius: 20px; /* more rounded */
+      font-size: 10px; /* slightly smaller font */
+      font-weight: 700; /* bolder */
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px; /* increased letter spacing */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* subtle shadow */
+      border: 1px solid rgba(255, 255, 255, 0.2); /* subtle border */
     }
 
     .status-pending { background: color-mix(in oklab, var(--warning) 16%, transparent); color: var(--warning); }
@@ -1257,21 +1275,26 @@
     .job-card-details {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-bottom: 8px;
+      gap: 6px; /* increased gap for better spacing between service type and page count */
+      margin-bottom: 6px; /* reduced from 8px */
     }
 
     .job-card-detail-row {
       display: flex;
       align-items: center;
       gap: 8px;
+      min-height: 20px; /* ensure consistent height for alignment */
     }
 
     .job-detail-icon {
       color: #6b7280;
       font-size: 14px;
-      width: 13px;
+      width: 16px; /* increased width for better alignment */
+      height: 16px; /* added height for consistent sizing */
       text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* Dark mode job detail icons */
@@ -1285,86 +1308,152 @@
       line-height: 1.35;
     }
 
+    /* Service type styling (smaller size, theme-aware colors) */
+    .job-card-detail-row:first-child .job-detail-text {
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    :root:not([data-theme="dark"]) .job-card-detail-row:first-child .job-detail-text {
+      color: #111827;
+    }
+    [data-theme="dark"] .job-card-detail-row:first-child .job-detail-text {
+      color: #ffffff !important;
+    }
+    /* Pages count text - theme-aware colors and larger size */
+    .pages-count-text { 
+      font-size: 15px; /* larger text */
+      font-weight: 700; /* bold */
+    }
+    :root:not([data-theme="dark"]) .pages-count-text { 
+      color: #111827; /* black in day mode */
+    }
+    [data-theme="dark"] .pages-count-text { 
+      color: #ffffff !important; /* white in dark mode */
+    }
+    
+    /* Pages count icon - larger and theme-aware */
+    .job-card-detail-row .job-detail-icon {
+      font-size: 16px; /* larger icon */
+    }
+    :root:not([data-theme="dark"]) .job-card-detail-row .job-detail-icon {
+      color: #6b7280; /* gray in day mode */
+    }
+    [data-theme="dark"] .job-card-detail-row .job-detail-icon {
+      color: #ffffff !important; /* white icon in dark mode */
+    }
+
+    /* Service type icon - white and larger */
+    .job-card-detail-row:first-child .job-detail-icon {
+      color: white !important; /* white icon */
+      background: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
+      border-radius: 50%; /* circular background */
+      width: 20px; /* larger width */
+      height: 20px; /* larger height */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px; /* larger icon size */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* subtle shadow */
+    }
+
     .job-card-actions {
       display: flex;
-      gap: 8px;
+      gap: 12px; /* increased gap for better spacing between buttons */
       justify-content: flex-end;
       margin-top: auto;
     }
 
     .job-action-btn {
-      height: 36px;
-      padding: 0 .9rem;
-      border-radius: 18px; /* circular rectangle */
+      height: 32px; /* slightly increased height */
+      padding: 0 .6rem; /* slightly increased padding */
+      border-radius: 12px; /* rounded corners */
       border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       transition: all 0.2s ease;
-      font-size: 13px;
-      gap: .4rem;
+      font-size: 11px; /* slightly increased font */
+      gap: .4rem; /* increased gap for better spacing */
+      font-weight: 700; /* bold text */
+      color: white; /* white text */
+      text-transform: uppercase; /* uppercase text */
+      letter-spacing: 0.5px; /* letter spacing */
     }
 
     .view-btn {
-      background: #e3f2fd;
-      color: #1976d2;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed); /* Purple gradient */
+      color: white;
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
     }
 
     .view-btn:hover {
-      background: #bbdefb;
-      transform: scale(1.1);
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+      transform: translateY(-1px);
     }
 
     .pricing-btn {
-      background: #f3e5f5;
-      color: #7b1fa2;
+      background: linear-gradient(135deg, #ef4444, #dc2626); /* Red gradient */
+      color: white;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
     }
 
     .pricing-btn:hover {
-      background: #e1bee7;
-      transform: scale(1.1);
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+      transform: translateY(-1px);
     }
 
     .track-btn {
-      background: #e8f5e8;
-      color: #388e3c;
+      background: linear-gradient(135deg, #10b981, #059669); /* Green gradient */
+      color: white;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
     .track-btn:hover {
-      background: #c8e6c9;
-      transform: scale(1.1);
+      background: linear-gradient(135deg, #059669, #047857);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      transform: translateY(-1px);
     }
 
-    /* Dark mode action button text colors */
+    /* Dark mode action button colors - same as day mode with white text */
     [data-theme="dark"] .view-btn {
-      background: #e3f2fd;
-      color: #1976d2;
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
     }
 
     [data-theme="dark"] .view-btn:hover {
-      background: #bbdefb;
-      color: #1976d2;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
     }
 
     [data-theme="dark"] .pricing-btn {
-      background: #f3e5f5;
-      color: #7b1fa2;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
     }
 
     [data-theme="dark"] .pricing-btn:hover {
-      background: #e1bee7;
-      color: #7b1fa2;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
     }
 
     [data-theme="dark"] .track-btn {
-      background: #e8f5e8;
-      color: #388e3c;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
     [data-theme="dark"] .track-btn:hover {
-      background: #c8e6c9;
-      color: #388e3c;
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }
 
     /* Responsive adjustments for mobile job cards */
@@ -1388,9 +1477,10 @@
       }
 
       .job-action-btn {
-        width: 28px;
-        height: 28px;
-        font-size: 11px;
+        width: 28px; /* increased width for better touch targets */
+        height: 28px; /* increased height */
+        font-size: 9px; /* increased font size */
+        padding: 0.2rem 0.4rem; /* added padding */
       }
 
       .job-card-status-badge {
@@ -1619,30 +1709,209 @@
     .services-section {
       margin-bottom: 2rem;
     }
-    .services-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1rem;
-    }
+      .services-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-width: 800px;
+        margin: 0 auto;
+      }
 
-    .service-card {
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      padding: 1rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--outline-variant);
-      transition: all var(--transition-standard);
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-      backdrop-filter: blur(10px);
-    }
+      .service-card {
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        border: 1px solid var(--outline);
+        transition: all var(--transition-standard);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        min-height: 120px;
+        height: auto;
+        display: flex;
+        align-items: center;
+        flex-direction: row-reverse;
+      }
 
-    .service-card:hover {
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-      transform: translateY(-8px) scale(1.05);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
+      .service-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+        border-color: var(--primary);
+      }
+
+      /* Service Card Image */
+      .service-image {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 0 16px 16px 0;
+        flex-shrink: 0;
+      }
+
+      /* Service Card Content */
+      .service-content {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: static;
+      }
+
+      .service-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .service-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: white;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .service-info {
+        flex: 1;
+      }
+
+      .service-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--on-surface);
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+      }
+
+      .service-description {
+        font-size: 0.95rem;
+        color: var(--on-surface-variant);
+        line-height: 1.5;
+        margin-bottom: 0.75rem;
+        opacity: 0.9;
+      }
+
+      .service-price {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+      }
+
+      .service-card .service-arrow {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        color: var(--primary);
+        font-size: 1.2rem;
+        opacity: 0.85;
+        transition: all 0.3s ease;
+        background: var(--primary-light);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      .service-card:hover .service-arrow {
+        opacity: 1;
+        transform: translateX(4px);
+        background: var(--primary);
+        color: white;
+      }
+
+      /* Dark Mode Enhancements */
+      [data-theme="dark"] .service-card {
+        background: var(--surface);
+        border-color: var(--outline);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      [data-theme="dark"] .service-card:hover {
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        border-color: var(--primary);
+      }
+
+      [data-theme="dark"] .service-name {
+        color: var(--on-surface);
+      }
+
+      [data-theme="dark"] .service-description {
+        color: var(--on-surface-variant);
+      }
+
+      [data-theme="dark"] .service-price {
+        color: var(--primary);
+      }
+
+      [data-theme="dark"] .service-arrow {
+        background: var(--primary-light);
+        color: var(--primary);
+      }
+
+      [data-theme="dark"] .service-card:hover .service-arrow {
+        background: var(--primary);
+        color: white;
+      }
+
+      /* Mobile Responsive */
+      @media (max-width: 768px) {
+        .services-grid {
+          gap: 1rem;
+        }
+
+        .service-card {
+          min-height: 100px;
+          height: auto;
+        }
+
+        .service-image {
+          width: 100px;
+          height: 100px;
+          border-radius: 0 16px 16px 0;
+        }
+
+        .service-content {
+          padding: 1rem;
+        }
+
+        .service-name {
+          font-size: 1.1rem;
+        }
+
+        .service-description {
+          font-size: 0.85rem;
+        }
+
+        .service-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 1.2rem;
+        }
+
+        .service-card .service-arrow {
+          width: 32px;
+          height: 32px;
+          font-size: 1rem;
+          top: 0.5rem;
+          right: 0.5rem;
+        }
+      }
+
+    /* Hover effects removed for mobile optimization */
     .service-card::after {
       content: '';
       position: absolute;
@@ -1654,9 +1923,7 @@
       transition: left 0.6s;
     }
 
-    .service-card:hover::after {
-      left: 100%;
-    }
+    /* Hover effects removed for mobile optimization */
 
     .service-card::before {
       content: '';
@@ -1671,10 +1938,7 @@
       transition: all var(--transition-standard);
     }
 
-    .service-card:hover::before {
-      opacity: 0.2;
-      transform: scale(1.2);
-    }
+    /* Hover effects removed for mobile optimization */
 
     .service-header {
       display: flex;
@@ -1718,9 +1982,7 @@
       z-index: 2;
     }
 
-    .service-card:hover .service-icon {
-      transform: scale(1.1) rotate(5deg);
-    }
+    /* Hover effects removed for mobile optimization */
 
     /* Photo Print Service */
     .service-card:nth-child(1) .service-icon {
@@ -1791,17 +2053,15 @@
       transition: all var(--transition-fast);
     }
 
-    .service-card:hover .service-arrow {
-      transform: translateX(4px);
-      color: var(--primary);
-    }
+    /* Hover effects removed for mobile optimization */
 
     /* Sidebar */
     .sidebar {
       position: fixed;
       top: 0;
       left: 0;
-      width: 280px;
+      width: min(360px, 92vw);
+      max-width: 360px;
       height: 100%;
       background: var(--surface);
       border-right: 1px solid var(--outline);
@@ -1810,6 +2070,7 @@
       z-index: 999;
       box-shadow: var(--shadow-lg);
       overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .sidebar.active {
@@ -1857,6 +2118,8 @@
       cursor: pointer;
       transition: transform var(--transition-fast), box-shadow var(--transition-fast);
       margin-right: .75rem;
+      padding: 0;
+      aspect-ratio: 1 / 1;
     }
     .sidebar-back-btn:hover { transform: translateX(-2px); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 
@@ -2143,9 +2406,10 @@
       background: var(--surface);
       border-radius: var(--radius-xl);
       box-shadow: var(--shadow-xl);
-      width: 100%;
-      max-width: 600px;
-      max-height: 90vh;
+      width: 40vw;
+      height: 90vh;
+      max-width: none;
+      max-height: none;
       overflow-y: auto;
       transform: scale(0.9);
       transition: all var(--transition-standard);
@@ -3337,7 +3601,10 @@
         <button class="menu-toggle" id="menuToggle">
           <i class="fas fa-bars"></i>
         </button>
-        <div class="logo">Printmax</div>
+        <img class="logo-img-light" src="{% static 'images/Printmaxdaylogo.png' %}" alt="Printmax" style="height:36px; width:auto;" />
+        <img class="logo-img-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax" style="height:36px; width:auto;" />
+        <span class="brand-wordmark">PRINTMAX</span>
+        <div class="logo" style="display:none;">Printmax</div>
       </div>
       <div class="header-actions">
         <div class="notification-bell">
@@ -3346,7 +3613,16 @@
             <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
         </button>
         </div>
-        <div class="user-profile-dropdown">
+        <div class="user-profile-simple">
+          <div class="user-avatar-simple">
+            {% if user_details and user_details.profile_picture %}
+              <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+            {% else %}
+              <i class="fas fa-user"></i>
+            {% endif %}
+          </div>
+        </div>
+        <div class="user-profile-dropdown" id="desktopUserProfile" style="display:none;">
           <button class="user-profile-trigger" id="userProfileTrigger">
             <div class="user-avatar-small">
               {% if user_details and user_details.profile_picture %}
@@ -3375,15 +3651,6 @@
               </div>
             </div>
             <div class="user-dropdown-menu">
-              <a href="#" class="dropdown-item">
-                <i class="fas fa-user"></i>
-                Profile
-              </a>
-              
-              <a href="#" class="dropdown-item">
-                <i class="fas fa-question-circle"></i>
-                Help
-              </a>
               <a href="/logout/?next=/login/" class="dropdown-item">
                 <i class="fas fa-sign-out-alt"></i>
                 Sign Out
@@ -3435,47 +3702,267 @@
       </h2>
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-header">
-            <div class="stat-title">Total Jobs</div>
             <div class="stat-icon">
-              <span class="material-icons">upload</span>
-            </div>
+              <i class="fas fa-print"></i>
           </div>
           <div class="stat-value" id="totalJobsCount">{{ total_jobs }}</div>
-          <div class="stat-label">Total Jobs</div>
+          <div class="stat-title">Total Jobs</div>
         </div>
         <div class="stat-card">
-          <div class="stat-header">
-            <div class="stat-title">Pending</div>
             <div class="stat-icon">
-              <span class="material-icons">emoji_events</span>
-            </div>
+              <i class="fas fa-clock"></i>
           </div>
           <div class="stat-value" id="pendingJobsCount">{{ pending_jobs }}</div>
-          <div class="stat-label">Pending Jobs</div>
+          <div class="stat-title">Pending</div>
         </div>
         <div class="stat-card">
-          <div class="stat-header">
-            <div class="stat-title">Completed</div>
             <div class="stat-icon">
-              <span class="material-icons">bar_chart</span>
-            </div>
+              <i class="fas fa-check-circle"></i>
           </div>
           <div class="stat-value" id="completedJobsCount">{{ completed_jobs }}</div>
-          <div class="stat-label">Completed</div>
+          <div class="stat-title">Completed</div>
         </div>
         <div class="stat-card">
-          <div class="stat-header">
-            <div class="stat-title">Points</div>
             <div class="stat-icon">
               <span class="material-icons">stars</span>
-            </div>
           </div>
           <div class="stat-value" id="totalPointsCount">{{ user_points|default:0 }}</div>
-          <div class="stat-label">Points</div>
+          <div class="stat-title">Points</div>
         </div>
       </div>
     </section>
+    <style>
+      /* Desktop-only refinements for service cards (non-functional) */
+      @media (min-width: 1024px) {
+        .services-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 1.25rem;
+          max-width: 1200px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .service-card {
+          min-height: 150px;
+          border-radius: 18px;
+          padding-right: 4.25rem; /* reserve space for corner arrow */
+        }
+
+        .service-content {
+          padding: 1.25rem 1.5rem;
+        }
+
+        .service-image {
+          width: 128px;
+          height: 128px;
+          margin-right: 1rem;
+        }
+
+        .service-name { font-size: 1.25rem; }
+        .service-description { font-size: 0.95rem; }
+        .service-card .service-arrow { top: 0.75rem; right: 0.75rem; }
+      }
+    </style>
+
+  <!-- Desktop-only navbar profile dropdown styles (ported from old dashboard) -->
+  <style>
+    @media (min-width: 1024px) {
+      /* Hide simple avatar on desktop, show dropdown profile */
+      .user-profile-simple { display: none !important; }
+      #desktopUserProfile { display: block !important; }
+
+      .user-profile-dropdown { position: relative; }
+      .user-profile-trigger {
+        display: flex; align-items: center; gap: 0.6rem;
+        background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.18);
+        color: #fff; padding: 0.4rem 0.6rem; border-radius: 999px;
+        transition: transform 120ms ease, background 160ms ease;
+      }
+      body:not([data-theme="dark"]) .header .user-profile-trigger {
+        background: rgba(17,24,39,0.06); color: #111827; border-color: rgba(17,24,39,0.12);
+      }
+      .user-profile-trigger:hover { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
+      body:not([data-theme="dark"]) .header .user-profile-trigger:hover { background: rgba(17,24,39,0.12); }
+      .user-avatar-small { width: 32px; height: 32px; border-radius: 999px; overflow: hidden; display:flex; align-items:center; justify-content:center; background: var(--primary); }
+      .user-avatar-small img { width:100%; height:100%; object-fit: cover; }
+      .user-avatar-small i { font-size: 0.95rem; color: #fff; }
+      .user-name-header { font-weight: 600; font-size: 0.95rem; }
+      .dropdown-arrow { font-size: 0.8rem; }
+
+      .user-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; width: 280px; background: var(--surface); border: 1px solid var(--outline); border-radius: 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); opacity: 0; visibility: hidden; transform: translateY(-6px); transition: opacity 160ms ease, transform 160ms ease, visibility 160ms; z-index: 1000; }
+      .user-dropdown.active { opacity: 1; visibility: visible; transform: translateY(0); }
+      .user-dropdown-header { padding: 1.2rem 1rem; border-bottom: 1px solid var(--outline); display:flex; align-items:center; gap: 0.8rem; }
+      .user-avatar-large { width: 48px; height: 48px; border-radius: 12px; overflow: hidden; background: var(--surface-variant); display:flex; align-items:center; justify-content:center; }
+      .user-avatar-large img { width:100%; height:100%; object-fit: cover; }
+      .user-avatar-large i { font-size: 1.25rem; color: var(--primary); }
+      .user-info-dropdown h3 { margin: 0; font-weight: 600; color: var(--on-surface); font-size: 1rem; }
+      .user-info-dropdown p { margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--on-surface-variant); }
+      .user-dropdown-menu { padding: 0.35rem; }
+      .dropdown-item { display:flex; align-items:center; gap: 0.6rem; padding: 0.6rem 0.7rem; border-radius: 10px; color: var(--on-surface); text-decoration: none; transition: background 140ms ease, color 140ms ease; }
+      .dropdown-item i { width: 20px; text-align: center; color: var(--on-surface-variant); }
+      .dropdown-item:hover { background: var(--surface-variant); color: var(--primary); }
+      .dropdown-item:hover i { color: var(--primary); }
+    }
+  </style
+    <!-- Desktop-only layout for Overview stats and Print Requests sizing -->
+    <style>
+      @media (min-width: 1024px) {
+        /* Overview blocks styled to match screenshot */
+        .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+        .stat-card {
+          aspect-ratio: auto;
+          min-height: 130px;
+          border-radius: 16px;
+          padding: 1rem;
+          background: var(--surface);
+          border: 1px solid var(--outline);
+          box-shadow: var(--shadow-md);
+          display: block;
+          text-align: left;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(10px);
+        }
+        /* Colored top strip */
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; border-top-left-radius: 16px; border-top-right-radius: 16px; }
+        .stats-grid > .stat-card:nth-child(1)::before { background: linear-gradient(90deg,#60a5fa,#1d4ed8); }
+        .stats-grid > .stat-card:nth-child(2)::before { background: linear-gradient(90deg,#fb923c,#f59e0b); }
+        .stats-grid > .stat-card:nth-child(3)::before { background: linear-gradient(90deg,#34d399,#10b981); }
+        .stats-grid > .stat-card:nth-child(4)::before { background: linear-gradient(90deg,#a78bfa,#8b5cf6); }
+
+        .stat-icon {
+          width: 44px; height: 44px; border-radius: 12px;
+          background: #e4e7e9; /* neutral by default */
+          color: #111827; /* dark icon */
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1rem;
+        }
+        /* Icon background per card */
+        .stats-grid > .stat-card:nth-child(1) .stat-icon { background: #60a5fa; color: #111827; }
+        .stats-grid > .stat-card:nth-child(2) .stat-icon { background: #f59e0b; color: #111827; }
+        .stats-grid > .stat-card:nth-child(3) .stat-icon { background: #10b981; color: #111827; }
+        .stats-grid > .stat-card:nth-child(4) .stat-icon { background: #8b5cf6; color: #111827; }
+
+        .stat-title { font-size: 0.9rem; color: var(--on-surface-variant); font-weight: 600; margin-top: 0.25rem; }
+        .stat-value { font-size: 1.4rem; margin: 0.2rem 0 0; line-height: 1.1; font-weight: 700; color: var(--on-surface); }
+
+        /* Fixed-size print job cards for desktop */
+        .jobs-row { 
+          gap: 2rem; 
+          display: grid;
+          grid-template-columns: repeat(auto-fit, 300px);
+          justify-content: start;
+          margin: 0 1rem;
+        }
+        .job-card { 
+          width: 300px; 
+          height: 200px; 
+          min-width: 300px; 
+          max-width: 300px; 
+          min-height: 200px; 
+          max-height: 200px;
+          display: flex;
+          flex-direction: column;
+        }
+        .job-card-content { 
+          padding: 16px; 
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .job-card-filename { 
+          -webkit-line-clamp: 1; 
+          line-clamp: 1; 
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: var(--on-surface);
+          margin-bottom: 0.5rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .job-card-actions { 
+          flex-wrap: nowrap; 
+          margin-top: auto;
+          padding-top: 0.5rem;
+        }
+        
+        /* Filename and badges on same horizontal line */
+        .job-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 0.5rem;
+          gap: 0.5rem;
+        }
+        .job-card-filename {
+          flex: 1;
+          margin-bottom: 0;
+        }
+        .job-card-badges {
+          display: flex;
+          gap: 0.25rem;
+          flex-shrink: 0;
+        }
+
+        /* 3-column service cards layout for desktop */
+        .services-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.5rem;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        
+        .service-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 1.5rem;
+          min-height: 200px;
+          justify-content: space-between;
+        }
+        
+        .service-card .service-icon {
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .service-card .service-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .service-card .service-name {
+          font-size: 1.1rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+          text-align: center;
+        }
+        
+        .service-card .service-description {
+          font-size: 0.9rem;
+          color: var(--on-surface-variant);
+          text-align: center;
+          margin-bottom: 1rem;
+          line-height: 1.4;
+        }
+        
+        .service-card .service-price {
+          font-size: 1rem;
+          font-weight: 700;
+          color: var(--primary);
+          text-align: center;
+        }
+      }
+    </style>
 
     <!-- Recent Jobs -->
     <section class="jobs-section">
@@ -3484,9 +3971,6 @@
           <span class="material-icons">assignment</span>
           Print Requests (Pending Jobs)
         </h2>
-        <button class="view-all-btn" onclick="refreshJobs()">
-          <span class="material-icons">refresh</span> Refresh
-        </button>
       </div>
 
       <div class="jobs-container">
@@ -3512,80 +3996,145 @@
       <!-- Location Display removed for cleaner UI -->
 
       <div class="services-grid">
-        <!-- Photo Print -->
-        <div class="service-card" onclick="window.location.href='/photoprint/'">
-          <div class="service-header">
-            <div class="service-icon">
-              <i class="fas fa-image"></i>
+        <!-- Document Printing (uses existing print modal via #printBtn) -->
+        <div class="service-card" id="printBtn">
+          <img src="{% static 'images/Documents.png' %}" alt="Document Printing" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                <i class="fas fa-print"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Document Printing</div>
+                <div class="service-description">Upload and print your documents quickly</div>
+                <div class="service-price">Starting from ₹2/page</div>
+              </div>
             </div>
-            <div class="service-info">
-              <div class="service-name">Photo Print</div>
-              <div class="service-description">High-quality photo printing on premium paper</div>
-              <div class="service-price">Starting from ₹5/photo</div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
             </div>
           </div>
-          <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-        <!-- Digital Print -->
-        <div class="service-card" onclick="openServiceModal('digital')">
-          <div class="service-header">
-            <div class="service-icon">
-              <i class="fas fa-file-alt"></i>
+
+        <!-- Photo Printing -->
+        <div class="service-card" onclick="window.location.href='/photoprint/'">
+          <img src="{% static 'images/photo print.png' %}" alt="Photo Printing" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <i class="fas fa-image"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Photo Printing</div>
+                <div class="service-description">High-quality photo printing on premium paper</div>
+                <div class="service-price">Starting from ₹5/photo</div>
+              </div>
             </div>
-            <div class="service-info">
-              <div class="service-name">Digital Print</div>
-              <div class="service-description">Fast digital printing for documents and presentations</div>
-              <div class="service-price">Starting from ₹2/page</div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
             </div>
           </div>
-          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <!-- Passport Photo Printing (uses existing passport modal via #passportPhotoBtn) -->
+        <div class="service-card" id="passportPhotoBtn">
+          <img src="{% static 'images/Passport photo.png' %}" alt="Passport Photo Printing" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <i class="fas fa-id-card"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Passport Photo Printing</div>
+                <div class="service-description">Government-spec passport photos instantly</div>
+                <div class="service-price">Standard packages</div>
+              </div>
+            </div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Jumbo Paper Printing -->
+        <div class="service-card" onclick="openServiceModal('jumbo')">
+          <img src="{% static 'images/Jumbo printing.png' %}" alt="Jumbo Paper Printing" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <i class="fas fa-file"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Jumbo Paper Printing</div>
+                <div class="service-description">A0, A1, A2, A3 print sizes available</div>
+                <div class="service-price">Starting from ₹6/page</div>
+              </div>
+            </div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+          </div>
         </div>
 
         <!-- Golden Embossing Black Book -->
         <div class="service-card" onclick="openServiceModal('goldenemboss')">
-          <div class="service-header">
-            <div class="service-icon">
-              <i class="fas fa-book"></i>
+          <img src="{% static 'images/Black Book.png' %}" alt="Golden Embossing Black Book" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <i class="fas fa-book"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Golden Embossing Black Book</div>
+                <div class="service-description">Premium black book with golden embossing for projects and theses</div>
+                <div class="service-price">Custom pricing</div>
+              </div>
             </div>
-            <div class="service-info">
-              <div class="service-name">Golden Embossing Black Book</div>
-              <div class="service-description">Premium black book with golden embossing for projects and theses</div>
-              <div class="service-price">Custom pricing</div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
             </div>
           </div>
-          <i class="fas fa-arrow-right service-arrow"></i>
+        </div>
+
+        <!-- Digital Paper Printing -->
+        <div class="service-card" onclick="openServiceModal('digital')">
+          <img src="{% static 'images/Digital printing.png' %}" alt="Digital Paper Printing" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #06b6d4, #0e7490);">
+                <i class="fas fa-file-alt"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Digital Paper Printing</div>
+                <div class="service-description">Fast digital printing for documents and presentations</div>
+                <div class="service-price">Starting from ₹2/page</div>
+              </div>
+            </div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+          </div>
         </div>
 
         <!-- Gloss Paper Printing -->
         <div class="service-card" onclick="openServiceModal('gloss')">
-          <div class="service-header">
-            <div class="service-icon">
-              <i class="fas fa-star"></i>
+          <img src="{% static 'images/Gloss print.png' %}" alt="Gloss Paper Printing" class="service-image">
+          <div class="service-content">
+            <div class="service-header">
+              <div class="service-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <i class="fas fa-star"></i>
+              </div>
+              <div class="service-info">
+                <div class="service-name">Gloss Paper Printing</div>
+                <div class="service-description">Shiny finish printing for presentations and marketing</div>
+                <div class="service-price">Starting from ₹8/page</div>
+              </div>
             </div>
-            <div class="service-info">
-              <div class="service-name">Gloss Paper Printing</div>
-              <div class="service-description">Shiny finish printing for presentations and marketing</div>
-              <div class="service-price">Starting from ₹8/page</div>
-            </div>
-          </div>
-          <i class="fas fa-arrow-right service-arrow"></i>
-        </div>
-        <!-- Jumbo Paper Printing -->
-        <div class="service-card" onclick="openServiceModal('jumbo')">
-          <div class="service-header">
-            <div class="service-icon">
-              <i class="fas fa-file"></i>
-            </div>
-            <div class="service-info">
-              <div class="service-name">Jumbo Paper Printing</div>
-              <div class="service-description">A0, A1, A2, A3 print sizes available</div>
-              <div class="service-price">Starting from ₹6/page</div>
+            <div class="service-arrow">
+              <i class="fas fa-arrow-right"></i>
             </div>
           </div>
-          <i class="fas fa-arrow-right service-arrow"></i>
         </div>
-
-
       </div>
     </section>
     <!-- Service Modals (one for each service) -->
@@ -3609,9 +4158,10 @@
         background: var(--surface);
         border-radius: 24px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 8px 32px rgba(0,0,0,0.1);
-        max-width: 500px;
-        width: 100%;
-        max-height: 90vh;
+        width: 50vw;
+        height: 70vh;
+        max-width: none;
+        max-height: none;
         overflow: hidden;
         position: relative;
         animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -5533,12 +6083,6 @@
                   </div>
                   <input type="file" id="${service}-file-input" accept="${f.accept}" ${f.required ? 'required' : ''} ${f.multiple ? 'multiple' : ''} />
                 </div>
-                <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-                  <button type="button" class="btn btn-secondary" id="${service}-drive-import-btn" style="display:inline-flex;align-items:center;gap:6px;">
-                    <i class="fab fa-google-drive"></i>
-                    Import from Drive
-                  </button>
-                </div>
                 <div class="file-preview" id="${service}-file-preview"></div>
               </div>
             `;
@@ -5997,53 +6541,7 @@
               }
             });
           }
-          // Google Drive import button
-          const driveBtn = modal.querySelector(`#${service}-drive-import-btn`);
-          if (driveBtn) {
-            driveBtn.addEventListener('click', async () => {
-              try {
-                // Try listing files; if 401, start OAuth
-                let resp = await fetch('/drive/list/', { credentials: 'include' });
-                if (resp.status === 401) {
-                  window.location.href = '/drive/oauth/start/';
-                  return;
-                }
-                const data = await resp.json();
-                if (!data || !Array.isArray(data.files)) {
-                  alert('Unable to load Drive files');
-                  return;
-                }
-                // Simple picker: prompt user to choose by index
-                const names = data.files.map((f, idx) => `${idx + 1}. ${f.name}`);
-                const choice = prompt(`Select a file from Google Drive:\n${names.join('\n')}`);
-                const idx = parseInt(choice || '', 10) - 1;
-                if (isNaN(idx) || idx < 0 || idx >= data.files.length) return;
-                const fileId = data.files[idx].id;
-                // Download the selected file
-                const download = await fetch(`/drive/download/?file_id=${encodeURIComponent(fileId)}`, { credentials: 'include' });
-                if (!download.ok) {
-                  const err = await download.json().catch(() => ({}));
-                  alert(`Failed to fetch document from Drive${err.error ? ': ' + err.error : ''}`);
-                  return;
-                }
-                // Convert response to a File and attach to input
-                const blob = await download.blob();
-                // Extract filename from header or fallback
-                const disp = download.headers.get('Content-Disposition') || '';
-                const match = /filename="?([^";]+)"?/i.exec(disp);
-                const filename = match ? match[1] : `drive_file_${Date.now()}`;
-                const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                fileInput.files = dt.files;
-                // Trigger change to processFile and previews
-                fileInput.dispatchEvent(new Event('change'));
-              } catch (e) {
-                console.error('Drive import failed', e);
-                alert('Drive import failed. Please try again.');
-              }
-            });
-          }
+          // Drive import removed
         } else {
           if (!fileInput) console.warn('File input not found for service modal:', service);
           if (!fileUploadLabel) console.warn('File upload label not found for service modal:', service);
@@ -7754,31 +8252,7 @@
       }
     </script>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-      <a href="#" class="bottom-nav-item active">
-        <span class="material-icons">home</span>
-        <span>Home</span>
-      </a>
-      <a href="#" class="bottom-nav-item" id="historyBtn">
-        <span class="material-icons">history</span>
-        <span>History</span>
-      </a>
-      <div class="print-btn">
-        <button class="print-btn-circle priority" id="printBtn">
-          <span class="material-icons">print</span>
-        </button>
-        <span style="color: var(--on-surface); font-size: 0.72rem; font-weight: 700; margin-top: 0.1rem;">Print</span>
-      </div>
-      <a href="/photoprint/" class="bottom-nav-item passport-nav" id="passportPhotoBtn">
-        <span class="material-icons">badge</span>
-        <span>Passport Photo</span>
-      </a>
-      <a href="#" class="bottom-nav-item">
-        <span class="material-icons">person</span>
-        <span>Profile</span>
-      </a>
-    </nav>
+    
   </main>
   <!-- Data from backend - OPTIMIZED for instant loading -->
   <script>
@@ -7806,9 +8280,14 @@
           container.appendChild(fragment);
           console.log(`⚡ INSTANT RENDER: ${window.preloadedPendingJobs.length} jobs displayed immediately`);
         }
+        
+        // Update layout based on job availability
+        updateLayoutBasedOnJobs();
       } else {
         // Fallback to normal loading if preloading failed
         loadUserJobs();
+        // Update layout after loading
+        setTimeout(updateLayoutBasedOnJobs, 100);
       }
       
       // Fix back button behavior - redirect to home instead of login
@@ -7943,7 +8422,7 @@
         if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
         if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
         if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
-        return { cls: '', name: 'Print Job' };
+        return { cls: 'service-color-print icon-tint-print', name: 'Print Job' };
       };
 
       const calculateEstimatedCost = (job) => {
@@ -7966,12 +8445,13 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Prefer pages/copies from pricing metadata when available
-      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
-      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
-      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
-      const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
-      const resolvedCopies = copiesFromMetadata || job.copies || '1';
+      // Get pages from pricing_details directly - check both levels like pricing button does
+      const pricingDetails = job.pricing_details || {};
+      const breakdown = pricingDetails.pricing_breakdown || {};
+      const pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
+      const copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
+      const resolvedPages = pagesFromPricing || job.pages || 1;
+      const resolvedCopies = copiesFromPricing || job.copies || 1;
       const getJobToken = (jobObj) => {
         if (jobObj.token) return String(jobObj.token);
         if (jobObj.job_token) return String(jobObj.job_token);
@@ -7993,10 +8473,19 @@
               <div class="job-card-title">
                 <i class="fas ${getFileIcon(job.filename)} job-card-icon ${serviceInfo.cls.split(' ')[1] || ''} ${/\.pdf$/i.test(job.filename) ? 'pdf-red' : ''}"></i>
                 <span class="job-card-filename" title="${job.filename}">
-                  ${job.filename.length > 22 ? job.filename.substring(0, 22) + '...' : job.filename}
+                  ${(() => {
+                    const filename = job.filename;
+                    const lastDotIndex = filename.lastIndexOf('.');
+                    if (lastDotIndex === -1) {
+                      return filename.length > 8 ? filename.substring(0, 5) + '...' : filename;
+                    }
+                    const name = filename.substring(0, lastDotIndex);
+                    const ext = filename.substring(lastDotIndex);
+                    return name.length > 5 ? name.substring(0, 5) + '...' + ext : filename;
+                  })()}
                 </span>
               </div>
-              <div class="job-token-row">
+              <div class="job-card-badges">
                 <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
                 <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
               </div>
@@ -8008,20 +8497,8 @@
                 <span class="job-detail-text">${serviceInfo.name}</span>
               </div>
               <div class="job-card-detail-row">
-                <i class="fas fa-calendar-alt job-detail-icon"></i>
-                <span class="job-detail-text">${job.uploaded_at}</span>
-              </div>
-              <div class="job-card-detail-row">
                 <i class="fas fa-file-alt job-detail-icon"></i>
-                <span class="job-detail-text">${resolvedPages} pages • ${resolvedCopies} copies</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-palette job-detail-icon"></i>
-                <span class="job-detail-text">${job.color === 'Black and White' ? 'B&W' : 'Color'} • ${job.pageSize || 'A4'}</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-rupee-sign job-detail-icon"></i>
-                <span class="job-detail-text">₹${calculateEstimatedCost(job)}</span>
+                <span class="job-detail-text pages-count-text">${parseInt(resolvedPages)} page${parseInt(resolvedPages)===1?'':'s'}</span>
               </div>
             </div>
             
@@ -8432,7 +8909,7 @@
         if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
         if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
         if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
-        return { cls: '', name: 'Print Job' };
+        return { cls: 'service-color-print icon-tint-print', name: 'Print Job' };
       };
 
       const calculateEstimatedCost = (job) => {
@@ -8455,12 +8932,13 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Prefer pages/copies from pricing metadata when available
-      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
-      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
-      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
-      const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
-      const resolvedCopies = copiesFromMetadata || job.copies || '1';
+      // Get pages from pricing_details directly - check both levels like pricing button does
+      const pricingDetails = job.pricing_details || {};
+      const breakdown = pricingDetails.pricing_breakdown || {};
+      const pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
+      const copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
+      const resolvedPages = pagesFromPricing || job.pages || 1;
+      const resolvedCopies = copiesFromPricing || job.copies || 1;
       const getJobToken = (jobObj) => {
         if (jobObj.token) return String(jobObj.token);
         if (jobObj.job_token) return String(jobObj.job_token);
@@ -8482,10 +8960,19 @@
               <div class="job-card-title">
                 <i class="fas ${getFileIcon(job.filename)} job-card-icon ${serviceInfo.cls.split(' ')[1] || ''} ${/\.pdf$/i.test(job.filename) ? 'pdf-red' : ''}"></i>
                 <span class="job-card-filename" title="${job.filename}">
-                  ${job.filename.length > 22 ? job.filename.substring(0, 22) + '...' : job.filename}
+                  ${(() => {
+                    const filename = job.filename;
+                    const lastDotIndex = filename.lastIndexOf('.');
+                    if (lastDotIndex === -1) {
+                      return filename.length > 8 ? filename.substring(0, 5) + '...' : filename;
+                    }
+                    const name = filename.substring(0, lastDotIndex);
+                    const ext = filename.substring(lastDotIndex);
+                    return name.length > 5 ? name.substring(0, 5) + '...' + ext : filename;
+                  })()}
                 </span>
               </div>
-              <div class="job-token-row">
+              <div class="job-card-badges">
                 <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
                 <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
               </div>
@@ -8497,20 +8984,8 @@
                 <span class="job-detail-text">${serviceInfo.name}</span>
               </div>
               <div class="job-card-detail-row">
-                <i class="fas fa-calendar-alt job-detail-icon"></i>
-                <span class="job-detail-text">${job.uploaded_at}</span>
-              </div>
-              <div class="job-card-detail-row">
                 <i class="fas fa-file-alt job-detail-icon"></i>
-                <span class="job-detail-text">${resolvedPages} pages • ${resolvedCopies} copies</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-palette job-detail-icon"></i>
-                <span class="job-detail-text">${job.color === 'Black and White' ? 'B&W' : 'Color'} • ${job.pageSize || 'A4'}</span>
-              </div>
-              <div class="job-card-detail-row">
-                <i class="fas fa-rupee-sign job-detail-icon"></i>
-                <span class="job-detail-text">₹${calculateEstimatedCost(job)}</span>
+                <span class="job-detail-text pages-count-text">${parseInt(resolvedPages)} page${parseInt(resolvedPages)===1?'':'s'}</span>
               </div>
             </div>
             
@@ -8841,32 +9316,47 @@
     const sidebarBackBtn = document.getElementById('sidebarBackBtn');
     if (sidebarBackBtn) sidebarBackBtn.addEventListener('click', closeSidebar);
 
-    // User profile dropdown functionality
-    const userProfileTrigger = document.getElementById('userProfileTrigger');
-    const userDropdown = document.getElementById('userDropdown');
+    // Desktop-only user profile dropdown (keeps mobile simple avatar untouched)
+    (function(){
+      const trigger = document.getElementById('userProfileTrigger');
+      const dropdown = document.getElementById('userDropdown');
+      if (!trigger || !dropdown) return;
 
-    userProfileTrigger.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const isActive = userProfileTrigger.classList.contains('active');
-      if (!isActive) {
-        userDropdown.classList.add('active');
-        userProfileTrigger.classList.add('active');
-      } else {
-        userDropdown.classList.remove('active');
-        userProfileTrigger.classList.remove('active');
+      const mq = window.matchMedia('(min-width: 1024px)');
+      let open = false;
+
+      function setVisible(v){
+        open = v;
+        if (open) {
+          dropdown.classList.add('active');
+          trigger.classList.add('active');
+        } else {
+          dropdown.classList.remove('active');
+          trigger.classList.remove('active');
+        }
       }
-    });
 
-    userDropdown.addEventListener('click', function(e) {
-      e.stopPropagation();
-    });
+      function toggle(e){ e.preventDefault(); setVisible(!open); }
 
-    document.addEventListener('click', function(e) {
-      if (!userProfileTrigger.contains(e.target) && !userDropdown.contains(e.target)) {
-        userDropdown.classList.remove('active');
-        userProfileTrigger.classList.remove('active');
+      function onDocClick(e){
+        if (!open) return;
+        if (!dropdown.contains(e.target) && !trigger.contains(e.target)) setVisible(false);
       }
-    });
+
+      function bind(){
+        trigger.addEventListener('click', toggle);
+        document.addEventListener('click', onDocClick);
+      }
+      function unbind(){
+        trigger.removeEventListener('click', toggle);
+        document.removeEventListener('click', onDocClick);
+        setVisible(false);
+      }
+
+      function handle(m){ if (m.matches) bind(); else unbind(); }
+      handle(mq);
+      mq.addEventListener('change', handle);
+    })();
 
     // Utility: remove any literal 'undefined' text nodes from a container
     function removeUndefinedFromContainer(containerEl) {
@@ -9279,15 +9769,15 @@
 
       vendorOptionsContainer.innerHTML = `
         <style>
-          .shop-dropdown2 { position: relative; width: 100%; z-index: 1000; }
-          .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; margin-right:8px; }
-          .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
-          .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
-          .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-          .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-dropdown2 { position: relative; width: 80%; z-index: 1000; margin-left:auto; margin-right:auto; }
+          .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:16px; border-radius:12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; }
+          .shop-trigger-label { display:flex; align-items:center; gap:12px; min-width:0; }
+          .shop-trigger .shop-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
+          .shop-trigger .shop-title { font-weight:700; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:16px; }
+          .shop-trigger .shop-subtitle { font-size:13px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .shop-caret { color:#6b7280; }
-          .shop-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 1001; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto; }
-          .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:6px 6px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
+          .shop-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 1001; background: white; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto; }
+          .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:8px; z-index:99999; display:none; max-height:55vh; overflow:auto; max-width:none; width:auto; overscroll-behavior:contain; }
           .shop-panel.open { display:block; }
           .shop-list { display:block; }
           .shop-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-bottom:1px solid #eef2f7; background:#fff; }
@@ -9300,8 +9790,8 @@
           .row-sub { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .row-meta { display:flex; align-items:center; gap:8px; color:#2563eb; margin-left:auto; white-space:nowrap; flex-shrink:0; }
           .track-btn { background:#10b981; color:#fff; border:none; border-radius:8px; padding:6px 8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-          .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 360px; margin-left:auto; margin-right:auto; }
-          .shop-dropdown2 { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
+          .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 720px; margin-left:auto; margin-right:auto; }
+          .shop-dropdown2 { padding-left: 0; padding-right: 0; box-sizing: border-box; }
           @media (max-width: 768px) { .row-title { font-size:14px; } .row-sub { font-size:12px; } }
           [data-theme="dark"] .shop-trigger { background:#1f2937; border-color:#374151; color:#e5e7eb; }
           [data-theme="dark"] .shop-trigger .shop-title { color:#e5e7eb; }
@@ -9342,18 +9832,23 @@
         const rect = trigger.getBoundingClientRect();
         const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
         const SAFE_MARGIN = 16; // ensure a right/left gutter so the panel never touches the edge
-        const panelWidth = Math.min(380, viewportWidth - SAFE_MARGIN * 2);
-        let left;
-        if (viewportWidth <= 600) {
-          // On small screens, center the dropdown panel
-          left = Math.round((viewportWidth - panelWidth) / 2);
+        const modalEl = dropdown.closest('.service-modal, .modal');
+        const bounds = modalEl ? modalEl.getBoundingClientRect() : { left: SAFE_MARGIN, right: viewportWidth - SAFE_MARGIN, width: viewportWidth - SAFE_MARGIN * 2 };
+        
+        if (viewportWidth > 600) {
+          // Desktop view: width 90%, left 5%, top 40%
+          panel.style.width = '90%';
+          panel.style.left = '5%';
+          panel.style.top = '40%';
         } else {
-          const centeredLeft = Math.round(rect.left + (rect.width / 2) - (panelWidth / 2));
-          left = Math.max(SAFE_MARGIN, Math.min(centeredLeft, viewportWidth - panelWidth - SAFE_MARGIN));
-        }
+          // Mobile view: keep original logic
+          const desired = Math.min(Math.round(rect.width * 1.2), Math.round(bounds.width * 0.9), 720);
+          const panelWidth = Math.min(desired, viewportWidth - SAFE_MARGIN * 2);
+          const left = Math.round((viewportWidth - panelWidth) / 2);
         panel.style.width = panelWidth + 'px';
         panel.style.left = left + 'px';
         panel.style.top = Math.round(rect.bottom + 8) + 'px';
+        }
       }
 
       trigger.addEventListener('click', () => {
@@ -9451,15 +9946,15 @@
 
       shopOptionsContainer.innerHTML = `
         <style>
-          .shop-dropdown2 { position: relative; width: 100%; z-index: 1000; }
-          .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; margin-right:8px; }
-          .shop-trigger-label { display:flex; align-items:center; gap:10px; min-width:0; }
-          .shop-trigger .shop-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
-          .shop-trigger .shop-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-          .shop-trigger .shop-subtitle { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-dropdown2 { position: relative; width: 80%; z-index: 1000; margin-left:auto; margin-right:auto; }
+          .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:16px; border-radius:12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; }
+          .shop-trigger-label { display:flex; align-items:center; gap:12px; min-width:0; }
+          .shop-trigger .shop-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:#4f46e5; }
+          .shop-trigger .shop-title { font-weight:700; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:16px; }
+          .shop-trigger .shop-subtitle { font-size:13px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .shop-caret { color:#6b7280; }
-          .shop-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 1001; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto; }
-          .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:6px 6px; z-index:99999; display:none; max-height:45vh; overflow:auto; max-width:420px; width:auto; overscroll-behavior:contain; }
+          .shop-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 1001; background: white; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto; }
+          .shop-panel { position:fixed; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:8px; z-index:99999; display:none; max-height:55vh; overflow:auto; max-width:none; width:auto; overscroll-behavior:contain; }
           .shop-panel.open { display:block; }
           .shop-list { display:block; }
           .shop-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-bottom:1px solid #eef2f7; background:#fff; }
@@ -9472,8 +9967,8 @@
           .row-sub { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
           .row-meta { display:flex; align-items:center; gap:8px; color:#2563eb; margin-left:auto; white-space:nowrap; flex-shrink:0; }
           .track-btn { background:#10b981; color:#fff; border:none; border-radius:8px; padding:6px 8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-          .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 360px; margin-left:auto; margin-right:auto; }
-          .shop-dropdown2 { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
+          .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 720px; margin-left:auto; margin-right:auto; }
+          .shop-dropdown2 { padding-left: 0; padding-right: 0; box-sizing: border-box; }
           @media (max-width: 768px) { .row-title { font-size:14px; } .row-sub { font-size:12px; } }
           [data-theme="dark"] .shop-trigger { background:#1f2937; border-color:#374151; color:#e5e7eb; }
           [data-theme="dark"] .shop-trigger .shop-title { color:#e5e7eb; }
@@ -9514,17 +10009,23 @@
         const rect = trigger.getBoundingClientRect();
         const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
         const SAFE_MARGIN = 16;
-        const panelWidth = Math.min(380, viewportWidth - SAFE_MARGIN * 2);
-        let left;
-        if (viewportWidth <= 600) {
-          left = Math.round((viewportWidth - panelWidth) / 2);
+        const modalEl = dropdown.closest('.service-modal, .modal');
+        const bounds = modalEl ? modalEl.getBoundingClientRect() : { left: SAFE_MARGIN, right: viewportWidth - SAFE_MARGIN, width: viewportWidth - SAFE_MARGIN * 2 };
+        
+        if (viewportWidth > 600) {
+          // Desktop view: width 90%, left 5%, top 40%
+          panel.style.width = '90%';
+          panel.style.left = '5%';
+          panel.style.top = '40%';
         } else {
-          const centeredLeft = Math.round(rect.left + (rect.width / 2) - (panelWidth / 2));
-          left = Math.max(SAFE_MARGIN, Math.min(centeredLeft, viewportWidth - panelWidth - SAFE_MARGIN));
-        }
+          // Mobile view: keep original logic
+          const desired = Math.min(Math.round(rect.width * 1.2), Math.round(bounds.width * 0.9), 720);
+          const panelWidth = Math.min(desired, viewportWidth - SAFE_MARGIN * 2);
+          const left = Math.round((viewportWidth - panelWidth) / 2);
         panel.style.width = panelWidth + 'px';
         panel.style.left = left + 'px';
         panel.style.top = Math.round(rect.bottom + 8) + 'px';
+        }
       }
 
       trigger.addEventListener('click', () => {
@@ -10073,6 +10574,31 @@
           <p style="margin-top: 0.75rem; font-size: 0.8rem;">Click the + button below to start a new print job!</p>
         </div>
       `;
+    }
+
+    // Function to update layout based on job availability
+    function updateLayoutBasedOnJobs() {
+      const jobsSection = document.querySelector('.jobs-section');
+      const servicesSection = document.querySelector('.services-section');
+      const pendingJobs = window.preloadedPendingJobs || [];
+      
+      if (pendingJobs.length === 0) {
+        // No jobs - hide jobs section, show services immediately after overview
+        if (jobsSection) {
+          jobsSection.classList.add('no-jobs');
+        }
+        if (servicesSection) {
+          servicesSection.classList.add('no-jobs-visible');
+        }
+      } else {
+        // Has jobs - show jobs section, normal services layout
+        if (jobsSection) {
+          jobsSection.classList.remove('no-jobs');
+        }
+        if (servicesSection) {
+          servicesSection.classList.remove('no-jobs-visible');
+        }
+      }
     }
 
     // Function to view job details
@@ -11659,6 +12185,9 @@
                   const node = temp.firstElementChild;
                   if (node) container.insertBefore(node, container.firstChild);
                 }
+                
+                // Update layout when new job is added
+                updateLayoutBasedOnJobs();
               } catch (e) { console.warn('Could not prepend new job card:', e); }
 
           uploadedFiles = [];
