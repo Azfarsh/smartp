@@ -7950,6 +7950,27 @@ def cancel_print_job(request):
         user_email = data.get('user_email')
         job_price = float(data.get('job_price', 0))
         
+        # If job_price is 0, try to get it from R2 metadata
+        if job_price == 0:
+            try:
+                s3 = boto3.client('s3',
+                                aws_access_key_id=settings.R2_ACCESS_KEY,
+                                aws_secret_access_key=settings.R2_SECRET_KEY,
+                                endpoint_url=settings.R2_ENDPOINT,
+                                region_name='auto')
+                
+                # Try to get price from vendor job metadata
+                vendor_key = f'vendor_print_jobs/{request.session.get("vendor_id")}/{filename}'
+                try:
+                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                    job_data = json.loads(result['Body'].read().decode('utf-8'))
+                    job_price = float(job_data.get('total_price', job_data.get('price', 0)))
+                    print(f"💰 Retrieved price from R2 metadata: {job_price}")
+                except Exception as e:
+                    print(f"⚠️ Could not get price from R2: {e}")
+            except Exception as e:
+                print(f"⚠️ Error accessing R2 for price: {e}")
+        
         if not filename:
             return JsonResponse({
                 'success': False,

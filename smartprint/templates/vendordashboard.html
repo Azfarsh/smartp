@@ -1710,6 +1710,21 @@
             font-size: 10px;
         }
 
+        /* Print Round Status Styles */
+        .print-round-failed {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+            border: 1px solid #fecaca !important;
+            font-weight: 600 !important;
+        }
+
+        .print-round-attempt {
+            background: #fef3c7 !important;
+            color: #d97706 !important;
+            border: 1px solid #fed7aa !important;
+            font-weight: 600 !important;
+        }
+
         .job-actions {
             display: flex;
             gap: 8px;
@@ -4341,7 +4356,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); acceptJob('${job.filename}')" title="Retry failed job">
                             <i class="fas fa-redo"></i> Retry
                         </button>
-                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${job.price || 0})" title="Cancel job and compensate user">
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${job.total_price || job.price || 0})" title="Cancel job and compensate user">
                             <i class="fas fa-times"></i> Cancel
                         </button>`;
                 } else if (vendorStatus === 'accepted') {
@@ -4417,6 +4432,17 @@
                             <i class="fas fa-tags"></i>
                             <span>${serviceTypeForBadge.replace('_', ' ').toUpperCase() || 'PRINT'}</span>
                         </div>
+                        ${job.print_round === 'failed' ? `
+                        <div class="job-meta-item print-round-failed" title="Print Status">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>PRINT FAILED</span>
+                        </div>
+                        ` : job.print_round && job.print_round !== '1' ? `
+                        <div class="job-meta-item print-round-attempt" title="Print Attempt">
+                            <i class="fas fa-clock"></i>
+                            <span>ATTEMPT ${job.print_round}</span>
+                        </div>
+                        ` : ''}
                     </div>
                     ${type === 'requests' ? `
                         <div class="printer-switch-container ${isNoPrinter ? 'no-printer' : ''}" title="${isNoPrinter ? 'No printer configured for this service type' : 'Assigned printer for this job'}">
