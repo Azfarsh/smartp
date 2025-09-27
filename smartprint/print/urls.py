@@ -94,6 +94,7 @@ urlpatterns += [
     path('mark-job-completed/', views.mark_job_completed, name='mark_job_completed'),
     path('retry-failed-job/', views.retry_failed_job, name='retry_failed_job'),
     path('cancel-failed-job/', views.cancel_failed_job, name='cancel_failed_job'),
+    path('cancel-print-job/', views.cancel_print_job, name='cancel_print_job'),
     # Notification endpoints
     path('get-user-notifications/', views.get_user_notifications, name='get_user_notifications'),
     # Accept print job endpoints

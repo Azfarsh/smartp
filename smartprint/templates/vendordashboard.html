@@ -1678,6 +1678,38 @@
             background: #dc2626;
         }
 
+        /* Printer Actions Layout */
+        .printer-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .printer-cancel-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .printer-cancel-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .printer-cancel-btn i {
+            font-size: 10px;
+        }
+
         .job-actions {
             display: flex;
             gap: 8px;
@@ -4139,18 +4171,21 @@
 
             // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
             // AND vendor_status is 'not sended' or 'accepted' (show both pending and accepted jobs)
+            // Also include failed jobs (job_failed = 'YES')
             const requests = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
                 const serviceType = (job.service_type || '').trim().toLowerCase();
                 const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
+                const jobFailed = (job.job_failed || 'NO').toLowerCase();
                 
                 // Include regular print jobs and specific service types
                 const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
                 
-                // Show jobs that are either not sent or accepted
+                // Show jobs that are either not sent, accepted, or failed
                 const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted';
+                const isFailed = jobFailed === 'yes';
                 
-                return isRegularPrint && isPendingOrAccepted;
+                return isRegularPrint && (isPendingOrAccepted || isFailed);
             });
 
             // Completed Jobs: job_completed = 'YES' AND not hidden
@@ -4247,7 +4282,8 @@
             // Detect failure from multiple possible fields
             const rawStatus = (job.status || job.metadata?.status || '').toLowerCase();
             const jobFailedFlag = (job.job_failed || job.metadata?.job_failed || '').toString().toUpperCase() === 'YES';
-            const isFailed = rawStatus === 'failed' || rawStatus === 'timeout' || vendorStatus === 'failed' || jobFailedFlag === true;
+            const printingStatus = (job.printing_status || '').toLowerCase();
+            const isFailed = rawStatus === 'failed' || rawStatus === 'timeout' || vendorStatus === 'failed' || jobFailedFlag === true || printingStatus === 'failed';
             let vendorStatusBadge = '';
             if (type === 'requests') {
                 if (isFailed) {
@@ -4388,10 +4424,16 @@
                                 <i class="fas ${printerIcon}"></i>
                                 <span class="printer-name-text">${printerName}</span>
                             </div>
-                            <button class="printer-switch-btn" onclick="event.stopPropagation(); switchPrinter('${job.filename}', '${serviceType}')" title="Switch printer for this service type">
-                                <i class="fas fa-exchange-alt"></i>
-                                <span>Switch</span>
-                            </button>
+                            <div class="printer-actions">
+                                <button class="printer-switch-btn" onclick="event.stopPropagation(); switchPrinter('${job.filename}', '${serviceType}')" title="Switch printer for this service type">
+                                    <i class="fas fa-exchange-alt"></i>
+                                    <span>Switch</span>
+                                </button>
+                                <button class="printer-cancel-btn" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${job.price || 0})" title="Cancel job and refund user">
+                                    <i class="fas fa-times"></i>
+                                    <span>Cancel</span>
+                                </button>
+                            </div>
                         </div>
                     ` : `
                         <div class="printer-name ${isNoPrinter ? 'no-printer' : ''}" title="${isNoPrinter ? 'No printer configured for this service type' : 'Assigned printer for this job'}">
@@ -4508,6 +4550,9 @@
                 
                 showToast(`Job "${filename}" accepted successfully!`);
                 
+                // Trigger immediate polling in vendor client
+                triggerVendorClientPoll();
+                
                 // Call the API in background (don't wait for response)
                 fetch('/accept-print-job/', {
                     method: 'POST',
@@ -4542,6 +4587,86 @@
             } catch (error) {
                 console.error('Error accepting job:', error);
                 showToast(`Error accepting job: ${error.message}`);
+            }
+        }
+
+        // Trigger immediate polling in vendor client
+        async function triggerVendorClientPoll() {
+            try {
+                const response = await fetch('http://localhost:8080/trigger-poll', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'immediate_poll',
+                        timestamp: Date.now()
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        console.log('✅ Immediate poll triggered successfully');
+                    } else {
+                        console.log('⚠️ Immediate poll failed:', data.message);
+                    }
+                } else {
+                    console.log('⚠️ Vendor client not responding, will use regular polling');
+                }
+            } catch (error) {
+                console.log('⚠️ Could not connect to vendor client:', error.message);
+                // This is not critical - regular polling will handle it
+            }
+        }
+
+        // Cancel job function
+        function confirmCancelJob(filename, userEmail, jobPrice) {
+            const points = Math.round(jobPrice); // 1 rupee = 1 point
+            const confirmMessage = `Are you sure you want to cancel this print job?\n\n` +
+                                 `Job: ${filename}\n` +
+                                 `User will be refunded with ${points} points (₹${jobPrice})\n\n` +
+                                 `This action cannot be undone.`;
+            
+            if (confirm(confirmMessage)) {
+                cancelJob(filename, userEmail, jobPrice);
+            }
+        }
+
+        async function cancelJob(filename, userEmail, jobPrice) {
+            try {
+                showToast(`Cancelling job "${filename}"...`, 'info');
+                
+                const response = await fetch('/cancel-print-job/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        user_email: userEmail,
+                        job_price: jobPrice
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Remove job from display
+                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                    if (jobIndex !== -1) {
+                        allJobs.splice(jobIndex, 1);
+                        categorizeJobs();
+                    }
+                    
+                    showToast(`Job "${filename}" cancelled successfully. User refunded with ${Math.round(jobPrice)} points.`, 'success');
+                } else {
+                    showToast(`Error cancelling job: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error cancelling job:', error);
+                showToast(`Error cancelling job: ${error.message}`, 'error');
             }
         }
 
