@@ -104,10 +104,10 @@
         }
 
         /* Swap logo images based on theme */
-        .logo .logo-light { display: inline-block; }
-        .logo .logo-dark { display: none; }
-        [data-theme="dark"] .logo .logo-light { display: none; }
-        [data-theme="dark"] .logo .logo-dark { display: inline-block; }
+        .logo .logo-img-light { display: inline-block; }
+        .logo .logo-img-dark { display: none; }
+        [data-theme="dark"] .logo .logo-img-light { display: none; }
+        [data-theme="dark"] .logo .logo-img-dark { display: inline-block; }
 
         /* PRINTMAX wordmark beside logo */
         .logo .brand-wordmark {
@@ -1776,6 +1776,17 @@
             color: var(--on-primary);
         }
 
+        .btn-danger {
+            background: #EF4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #DC2626;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
         .btn-secondary {
             background: var(--surface-container);
             color: var(--on-surface);
@@ -2767,8 +2778,8 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="logo" style="display:flex; align-items:center; gap:8px;">
-                <img class="logo-light" src="{% static 'images/Printmaxdaylogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle;" />
-                <img class="logo-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle; display:none;" />
+                <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle;" />
+                <img class="logo-img-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle; display:none;" />
                 <span class="brand-wordmark">PRINTMAX</span>
             </div>
             <h1 class="page-title">Vendor Dashboard</h1>
@@ -4288,7 +4299,16 @@
                         <i class="fas fa-info-circle"></i> Print Info
                     </button>`;
             } else if (type === 'requests') {
-                if (vendorStatus === 'accepted') {
+                if (isFailed) {
+                    // Failed jobs: Show Accept and Cancel buttons
+                    actions = `
+                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); acceptJob('${job.filename}')" title="Retry failed job">
+                            <i class="fas fa-redo"></i> Retry
+                        </button>
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${job.price || 0})" title="Cancel job and compensate user">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>`;
+                } else if (vendorStatus === 'accepted') {
                     // Accepted jobs: Only show Completed button
                     actions = `
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
@@ -4480,6 +4500,9 @@
                 const jobIndex = allJobs.findIndex(job => job.filename === filename);
                 if (jobIndex !== -1) {
                     allJobs[jobIndex].vendor_status = 'accepted';
+                    // Reset failed status for retry
+                    allJobs[jobIndex].job_failed = 'NO';
+                    allJobs[jobIndex].status = 'pending';
                     categorizeJobs(); // Refresh the display immediately
                 }
                 
@@ -4769,6 +4792,58 @@
                 }
                 showToast(`Error hiding job: ${err.message}`);
             });
+        }
+
+        // Cancel job with confirmation
+        function confirmCancelJob(filename, userEmail, jobPrice) {
+            const points = Math.round(jobPrice); // 1 rupee = 1 point
+            const confirmMessage = `Are you sure you want to cancel this print job?\n\n` +
+                                 `Job: ${filename}\n` +
+                                 `User will be compensated with ${points} points (₹${jobPrice})\n\n` +
+                                 `This action cannot be undone.`;
+            
+            if (confirm(confirmMessage)) {
+                cancelJob(filename, userEmail, jobPrice);
+            }
+        }
+
+        // Cancel job function
+        async function cancelJob(filename, userEmail, jobPrice) {
+            try {
+                showToast(`Cancelling job "${filename}"...`, 'info');
+                
+                // Make API call to cancel job
+                const response = await fetch('/cancel-failed-job/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        user_email: userEmail,
+                        job_price: jobPrice
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Remove job from all jobs array
+                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                    if (jobIndex !== -1) {
+                        allJobs.splice(jobIndex, 1);
+                        categorizeJobs(); // Refresh the display
+                    }
+                    
+                    showToast(`Job "${filename}" cancelled successfully. User compensated with ${Math.round(jobPrice)} points.`, 'success');
+                } else {
+                    showToast(`Error cancelling job: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error cancelling job:', error);
+                showToast(`Error cancelling job: ${error.message}`, 'error');
+            }
         }
 
         // Search Functionality

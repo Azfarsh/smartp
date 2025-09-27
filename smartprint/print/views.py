@@ -2039,7 +2039,7 @@ def update_job_status(request):
                 
                 # Send notification to user if job is completed
                 if job_completed_status == 'YES' and user_email:
-                    send_job_completion_notification(user_email, filename, vendor_id)
+                    send_job_completion_notification(user_email, filename, vendor_id, 'completed', datetime.datetime.now().isoformat())
                 
                 return JsonResponse({
                     'success': True,
@@ -7899,18 +7899,28 @@ def cancel_failed_job(request):
         user_email = data.get('user_email')
         job_price = data.get('job_price', 0.0)
         
-        if not filename or not vendor_id:
-            return JsonResponse({'error': 'Filename and vendor_id required'}, status=400)
+        if not filename:
+            return JsonResponse({'error': 'Filename required'}, status=400)
         
-        # Mark job as cancelled
+        # Get vendor_id from session if not provided
+        if not vendor_id:
+            vendor_id = request.session.get('vendor_id')
+            if not vendor_id:
+                return JsonResponse({'error': 'Vendor ID required'}, status=400)
+        
+        # Mark job as cancelled in R2
         success = update_job_vendor_status(filename, vendor_id, 'cancelled')
         
         if success:
+            # Also update job_failed status to YES to mark it as failed
+            update_job_failed_status_in_r2(filename, vendor_id, 'YES')
+            
             # Compensate user with points
             if user_email and job_price > 0:
-                points = int(job_price * 10)  # 1 rupee = 10 points
-                # Add points to user account (implement your points system)
-                add_user_points(user_email, points, f"Compensation for failed job: {filename}")
+                points = int(job_price)  # 1 rupee = 1 point
+                # Add points to user account
+                add_user_points(user_email, points, f"Compensation for cancelled job: {filename}")
+                print(f"💰 Compensated user {user_email} with {points} points for cancelled job: {filename}")
             
             # Send notification to user
             if user_email:
@@ -7918,7 +7928,7 @@ def cancel_failed_job(request):
             
             return JsonResponse({
                 'success': True,
-                'message': f'Job {filename} cancelled and user compensated'
+                'message': f'Job {filename} cancelled and user compensated with {int(job_price)} points'
             })
         else:
             return JsonResponse({
@@ -7928,6 +7938,7 @@ def cancel_failed_job(request):
             
     except Exception as e:
         print(f"Error cancelling job: {e}")
+        traceback.print_exc()
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
 def update_job_vendor_status(filename, vendor_id, status):
@@ -7990,19 +8001,54 @@ def update_job_vendor_status(filename, vendor_id, status):
         print(f"❌ Error updating vendor status: {e}")
         return False
 
-def add_user_points(user_email, points, reason):
-    """Add points to user account"""
+def update_job_failed_status_in_r2(filename, vendor_id, failed_status):
+    """Update job_failed status in R2 storage"""
     try:
-        # Store points transaction in R2
+        s3 = boto3.client('s3',
+                         aws_access_key_id=settings.R2_ACCESS_KEY,
+                         aws_secret_access_key=settings.R2_SECRET_KEY,
+                         endpoint_url=settings.R2_ENDPOINT,
+                         region_name='auto')
+        
+        # Update in vendor_print_jobs folder
+        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        
+        try:
+            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+            metadata = json.loads(result['Body'].read().decode('utf-8'))
+            metadata['job_failed'] = failed_status
+            metadata['updated_at'] = datetime.datetime.now().isoformat()
+            
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=vendor_key,
+                Body=json.dumps(metadata, indent=2),
+                ContentType='application/json'
+            )
+            
+            print(f"✅ Updated job_failed status for {filename}: {failed_status}")
+            return True
+        except Exception as e:
+            print(f"❌ Job not found in R2: {filename} - {e}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error updating job_failed status: {e}")
+        traceback.print_exc()
+        return False
+
+def add_user_points(user_email, points, reason):
+    """Add points to user account - stores only points, date and time"""
+    try:
+        # Store only essential points data
         points_data = {
-            'user_email': user_email,
             'points': points,
-            'reason': reason,
-            'timestamp': datetime.datetime.now().isoformat(),
-            'transaction_id': f"points_{int(time.time())}"
+            'date': datetime.datetime.now().strftime('%Y-%m-%d'),
+            'time': datetime.datetime.now().strftime('%H:%M:%S')
         }
         
-        points_key = f'user_points/{sanitize_email(user_email)}/transactions/{int(time.time())}.json'
+        # Create folder structure: user_points/{email}/{timestamp}.json
+        points_key = f'user_points/{sanitize_email(user_email)}/{int(time.time())}.json'
         
         try:
             # Initialize R2 client
@@ -8018,7 +8064,7 @@ def add_user_points(user_email, points, reason):
                 Body=json.dumps(points_data, indent=2),
                 ContentType='application/json'
             )
-            print(f"💰 Added {points} points to {user_email} for: {reason}")
+            print(f"💰 Stored {points} points for {user_email} on {points_data['date']} at {points_data['time']}")
         except Exception as e:
             print(f"❌ Error storing points in R2: {e}")
         
@@ -8062,9 +8108,13 @@ def get_user_notifications(request):
             # Sort by timestamp (newest first)
             notifications.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
             
+            # Count unread notifications
+            unread_count = sum(1 for n in notifications if not n.get('read', False))
+            
             return JsonResponse({
                 'success': True,
-                'notifications': notifications
+                'notifications': notifications,
+                'unread_count': unread_count
             })
             
         except Exception as e:
@@ -8078,8 +8128,58 @@ def get_user_notifications(request):
         print(f"Error in get_user_notifications: {e}")
         return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
 
+@csrf_exempt
+def mark_notification_read(request):
+    """Mark a notification as read"""
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+        
+        data = json.loads(request.body)
+        notification_id = data.get('notification_id')
+        
+        if not notification_id:
+            return JsonResponse({'success': False, 'error': 'Notification ID required'}, status=400)
+        
+        user_email = request.user.email
+        notification_key = f'user_notifications/{sanitize_email(user_email)}/{notification_id}.json'
+        
+        try:
+            # Initialize R2 client
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get current notification
+            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=notification_key)
+            notification_data = json.loads(result['Body'].read().decode('utf-8'))
+            
+            # Mark as read
+            notification_data['read'] = True
+            notification_data['read_at'] = datetime.datetime.now().isoformat()
+            
+            # Update notification
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=notification_key,
+                Body=json.dumps(notification_data, indent=2),
+                ContentType='application/json'
+            )
+            
+            return JsonResponse({'success': True, 'message': 'Notification marked as read'})
+            
+        except Exception as e:
+            print(f"Error marking notification as read: {e}")
+            return JsonResponse({'success': False, 'error': 'Notification not found'}, status=404)
+            
+    except Exception as e:
+        print(f"Error in mark_notification_read: {e}")
+        return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
+
 def get_total_user_points(user_email: str) -> int:
-    """Sum all points transactions for the user from R2. Returns 0 if none."""
+    """Sum all points for the user from R2. Returns 0 if none."""
     try:
         # Initialize R2 client
         s3 = boto3.client('s3',
@@ -8088,9 +8188,11 @@ def get_total_user_points(user_email: str) -> int:
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
         
-        prefix = f'user_points/{sanitize_email(user_email)}/transactions/'
+        # Updated prefix to match new structure: user_points/{email}/
+        prefix = f'user_points/{sanitize_email(user_email)}/'
         response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
         total_points = 0
+        
         for obj in response.get('Contents', []):
             try:
                 res = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
@@ -8099,6 +8201,8 @@ def get_total_user_points(user_email: str) -> int:
             except Exception as _e:
                 print(f"⚠️ Skipping invalid points record {obj.get('Key')}: {_e}")
                 continue
+        
+        print(f"💰 Total points for {user_email}: {total_points}")
         return total_points
     except Exception as e:
         print(f"❌ Error summing user points: {e}")
@@ -8107,18 +8211,49 @@ def get_total_user_points(user_email: str) -> int:
 def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time):
     """Send job completion notification to user"""
     try:
-        # Create notification data
+        # Extract token from filename
+        token = os.path.splitext(filename)[0]
+        
+        # Get service type from job metadata if available
+        service_type = "Print Job"
+        try:
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Try to get service type from vendor_print_jobs
+            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+            try:
+                result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                job_data = json.loads(result['Body'].read().decode('utf-8'))
+                service_type = job_data.get('service_type', 'Print Job')
+            except:
+                pass
+        except:
+            pass
+        
+        # Create notification data in format expected by user dashboard
+        notification_id = f"{filename}_{int(time.time())}"
         notification_data = {
+            'notification_id': notification_id,
             'user_email': user_email,
             'filename': filename,
             'vendor_id': vendor_id,
             'status': status,
             'completion_time': completion_time,
-            'timestamp': datetime.datetime.now().isoformat()
+            'timestamp': datetime.datetime.now().isoformat(),
+            'created_at': datetime.datetime.now().isoformat(),
+            'read': False,
+            'type': 'job_completed',
+            'title': 'Print Job Completed!',
+            'message': f'Token #{token} - {service_type} completed',
+            'token': token
         }
         
         # Store notification in R2 for user to see
-        notification_key = f'user_notifications/{sanitize_email(user_email)}/{filename}_{int(time.time())}.json'
+        notification_key = f'user_notifications/{sanitize_email(user_email)}/{notification_id}.json'
         
         try:
             # Initialize R2 client
@@ -8172,6 +8307,9 @@ def accept_print_job(request):
             success = update_vendor_status_in_r2(filename, 'accepted', vendor_id)
             
             if success:
+                # Reset failed status for retry
+                update_job_failed_status_in_r2(filename, vendor_id, 'NO')
+                
                 # Clear vendor cache to ensure fresh data on next load
                 clear_vendor_cache(vendor_email, vendor_id)
                 return JsonResponse({
