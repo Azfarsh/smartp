@@ -1710,21 +1710,6 @@
             font-size: 10px;
         }
 
-        /* Print Round Status Styles */
-        .print-round-failed {
-            background: #fee2e2 !important;
-            color: #dc2626 !important;
-            border: 1px solid #fecaca !important;
-            font-weight: 600 !important;
-        }
-
-        .print-round-attempt {
-            background: #fef3c7 !important;
-            color: #d97706 !important;
-            border: 1px solid #fed7aa !important;
-            font-weight: 600 !important;
-        }
-
         .job-actions {
             display: flex;
             gap: 8px;
@@ -4187,11 +4172,15 @@
             // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
             // AND vendor_status is 'not sended' or 'accepted' (show both pending and accepted jobs)
             // Also include failed jobs (job_failed = 'YES')
+            // EXCLUDE cancelled jobs (vendor_status = 'cancelled')
             const requests = allJobs.filter(job => {
                 if (job.job_completed !== 'NO') return false;
                 const serviceType = (job.service_type || '').trim().toLowerCase();
                 const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
                 const jobFailed = (job.job_failed || 'NO').toLowerCase();
+                
+                // Exclude cancelled jobs
+                if (vendorStatus === 'cancelled') return false;
                 
                 // Include regular print jobs and specific service types
                 const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
@@ -4356,7 +4345,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); acceptJob('${job.filename}')" title="Retry failed job">
                             <i class="fas fa-redo"></i> Retry
                         </button>
-                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${job.total_price || job.price || 0})" title="Cancel job and compensate user">
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})" title="Cancel job and compensate user">
                             <i class="fas fa-times"></i> Cancel
                         </button>`;
                 } else if (vendorStatus === 'accepted') {
@@ -4432,17 +4421,6 @@
                             <i class="fas fa-tags"></i>
                             <span>${serviceTypeForBadge.replace('_', ' ').toUpperCase() || 'PRINT'}</span>
                         </div>
-                        ${job.print_round === 'failed' ? `
-                        <div class="job-meta-item print-round-failed" title="Print Status">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>PRINT FAILED</span>
-                        </div>
-                        ` : job.print_round && job.print_round !== '1' ? `
-                        <div class="job-meta-item print-round-attempt" title="Print Attempt">
-                            <i class="fas fa-clock"></i>
-                            <span>ATTEMPT ${job.print_round}</span>
-                        </div>
-                        ` : ''}
                     </div>
                     ${type === 'requests' ? `
                         <div class="printer-switch-container ${isNoPrinter ? 'no-printer' : ''}" title="${isNoPrinter ? 'No printer configured for this service type' : 'Assigned printer for this job'}">
@@ -4455,7 +4433,7 @@
                                     <i class="fas fa-exchange-alt"></i>
                                     <span>Switch</span>
                                 </button>
-                                <button class="printer-cancel-btn" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${job.price || 0})" title="Cancel job and refund user">
+                                <button class="printer-cancel-btn" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})" title="Cancel job and refund user">
                                     <i class="fas fa-times"></i>
                                     <span>Cancel</span>
                                 </button>
@@ -4643,6 +4621,42 @@
             } catch (error) {
                 console.log('⚠️ Could not connect to vendor client:', error.message);
                 // This is not critical - regular polling will handle it
+            }
+        }
+
+        // Function to extract job price from multiple possible fields
+        function getJobPrice(job) {
+            try {
+                // Try total_price first (most reliable)
+                if (job.total_price && !isNaN(parseFloat(job.total_price))) {
+                    return parseFloat(job.total_price);
+                }
+                
+                // Try price field
+                if (job.price && !isNaN(parseFloat(job.price))) {
+                    return parseFloat(job.price);
+                }
+                
+                // Try pricing_details.total (same as page count extraction)
+                if (job.pricing_details) {
+                    try {
+                        const pricingDetails = typeof job.pricing_details === 'string' 
+                            ? JSON.parse(job.pricing_details) 
+                            : job.pricing_details;
+                        
+                        if (pricingDetails && pricingDetails.total && !isNaN(parseFloat(pricingDetails.total))) {
+                            return parseFloat(pricingDetails.total);
+                        }
+                    } catch (e) {
+                        console.log('Error parsing pricing_details:', e);
+                    }
+                }
+                
+                // Default to 0 if no price found
+                return 0;
+            } catch (e) {
+                console.log('Error extracting job price:', e);
+                return 0;
             }
         }
 
@@ -4964,7 +4978,7 @@
                 showToast(`Cancelling job "${filename}"...`, 'info');
                 
                 // Make API call to cancel job
-                const response = await fetch('/cancel-failed-job/', {
+                const response = await fetch('/cancel-print-job/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

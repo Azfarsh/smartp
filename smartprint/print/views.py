@@ -517,17 +517,30 @@ def get_vendor_specific_jobs(vendor_id):
                 # Calculate pages - prioritize pricing_details.pages over metadata.pages
                 pages = metadata.get('pages', estimate_pages_from_size(obj.get('Size', 0), file_extension))
                 
-                # Try to get actual pages from pricing_details if available
+                # Try to get actual pages and price from pricing_details if available
                 pricing_details_str = metadata.get('pricing_details')
+                pricing_details = None
                 if pricing_details_str:
                     try:
                         pricing_details = json.loads(pricing_details_str)
-                        if isinstance(pricing_details, dict) and 'pages' in pricing_details:
-                            pages = pricing_details['pages']
-                            print(f"📄 Using pages from pricing_details for {filename}: {pages}")
+                        if isinstance(pricing_details, dict):
+                            if 'pages' in pricing_details:
+                                pages = pricing_details['pages']
+                                print(f"📄 Using pages from pricing_details for {filename}: {pages}")
                     except (json.JSONDecodeError, ValueError) as e:
                         print(f"⚠️ Error parsing pricing_details for {filename}: {e}")
                         # Keep the original pages value
+                
+                # Extract price from multiple possible fields
+                job_price = 0.0
+                if 'total_price' in metadata:
+                    job_price = float(metadata['total_price'])
+                elif 'price' in metadata:
+                    job_price = float(metadata['price'])
+                elif pricing_details and 'total' in pricing_details:
+                    job_price = float(pricing_details['total'])
+                
+                print(f"💰 Extracted job price for {filename}: ₹{job_price}")
                 
                 # Build file info - prioritize job_completed over job_completed_status
                 job_completed = metadata.get('job_completed', 'NO')
@@ -544,6 +557,7 @@ def get_vendor_specific_jobs(vendor_id):
                     "file_extension": file_extension,
                     "size": format_file_size(obj.get('Size', 0)),
                     "user": metadata.get('user', 'Auto User'),
+                    "user_email": metadata.get('user', 'Auto User'),  # Add user_email field
                     "pages": pages,
                     "status": metadata.get('status', 'pending').title(),
                     "uploaded_at": obj["LastModified"].strftime("%Y-%m-%d %H:%M"),
@@ -567,7 +581,9 @@ def get_vendor_specific_jobs(vendor_id):
                     "feedback": metadata.get('feedback', ''),
                     "quality": metadata.get('quality', ''),
                     "thickness": metadata.get('thickness', ''),
-                    "pricing_details": pricing_details_str  # Include pricing_details for frontend
+                    "pricing_details": pricing_details_str,  # Include pricing_details for frontend
+                    "price": job_price,  # Add extracted price
+                    "total_price": job_price  # Add total_price for compatibility
                 }
                 
                 # Create print options string
@@ -7943,33 +7959,12 @@ def cancel_failed_job(request):
 
 @csrf_exempt
 def cancel_print_job(request):
-    """Cancel a print job and refund user"""
+    """Cancel a print job and refund user - using same approach as accept button"""
     try:
         data = json.loads(request.body)
         filename = data.get('filename')
         user_email = data.get('user_email')
         job_price = float(data.get('job_price', 0))
-        
-        # If job_price is 0, try to get it from R2 metadata
-        if job_price == 0:
-            try:
-                s3 = boto3.client('s3',
-                                aws_access_key_id=settings.R2_ACCESS_KEY,
-                                aws_secret_access_key=settings.R2_SECRET_KEY,
-                                endpoint_url=settings.R2_ENDPOINT,
-                                region_name='auto')
-                
-                # Try to get price from vendor job metadata
-                vendor_key = f'vendor_print_jobs/{request.session.get("vendor_id")}/{filename}'
-                try:
-                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                    job_data = json.loads(result['Body'].read().decode('utf-8'))
-                    job_price = float(job_data.get('total_price', job_data.get('price', 0)))
-                    print(f"💰 Retrieved price from R2 metadata: {job_price}")
-                except Exception as e:
-                    print(f"⚠️ Could not get price from R2: {e}")
-            except Exception as e:
-                print(f"⚠️ Error accessing R2 for price: {e}")
         
         if not filename:
             return JsonResponse({
@@ -7977,7 +7972,7 @@ def cancel_print_job(request):
                 'error': 'Missing filename parameter'
             }, status=400)
         
-        # Get vendor_id from session
+        # Get vendor_id from session (same as accept button)
         vendor_id = request.session.get('vendor_id')
         if not vendor_id:
             return JsonResponse({
@@ -7985,23 +7980,24 @@ def cancel_print_job(request):
                 'error': 'Vendor not authenticated'
             }, status=401)
         
-        # Update job status to cancelled
-        success = update_job_vendor_status(filename, vendor_id, 'cancelled')
+        print(f"🔄 Cancelling job {filename} for vendor {vendor_id}")
+        print(f"📧 User email: {user_email}")
+        print(f"💰 Job price: {job_price}")
+        
+        # Use the same function as accept button to update vendor status
+        success = update_vendor_status_in_r2(filename, 'cancelled', vendor_id)
         
         if success:
-            # Mark job as failed in R2
-            update_job_failed_status_in_r2(filename, 'YES')
-            
-            # Compensate user with points
+            # Add points to user's compensation folder
             if user_email and job_price > 0:
                 points = int(job_price)  # 1 rupee = 1 point
-                # Add points to user account
                 add_user_points(user_email, points, f"Refund for cancelled job: {filename}")
                 print(f"💰 Refunded user {user_email} with {points} points for cancelled job: {filename}")
             
-            # Send notification to user
-            if user_email:
-                send_job_completion_notification(user_email, filename, vendor_id, 'cancelled', datetime.datetime.now().isoformat())
+            # Clear vendor cache to ensure fresh data on next load (same as accept)
+            vendor_email = request.session.get('vendor_email')
+            if vendor_email:
+                clear_vendor_cache(vendor_email, vendor_id)
             
             return JsonResponse({
                 'success': True,
@@ -8010,11 +8006,132 @@ def cancel_print_job(request):
         else:
             return JsonResponse({
                 'success': False,
-                'error': 'Failed to cancel job'
+                'error': 'Failed to cancel job - job not found'
             }, status=500)
             
     except Exception as e:
         print(f"Error cancelling print job: {e}")
+        traceback.print_exc()
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+def simple_update_vendor_status(filename, vendor_id, status):
+    """Simple function to update vendor status directly in R2"""
+    try:
+        print(f"🔄 Attempting to update vendor status for {filename} to {status}")
+        
+        s3 = boto3.client('s3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=settings.R2_ENDPOINT,
+            region_name='auto')
+        
+        # Try to update the job in vendor_print_jobs folder
+        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        print(f"🔍 Looking for job at: {vendor_key}")
+        
+        try:
+            # Get the existing job data
+            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+            metadata = json.loads(response['Body'].read().decode('utf-8'))
+            print(f"📄 Found job metadata for {filename}")
+            
+            # Update vendor status
+            metadata['vendor_status'] = status
+            metadata['updated_at'] = datetime.datetime.now().isoformat()
+            
+            # Save back to R2
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=vendor_key,
+                Body=json.dumps(metadata, indent=2),
+                ContentType='application/json'
+            )
+            
+            print(f"✅ Updated vendor status for {filename}: {status}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Could not update vendor status for {filename}: {e}")
+            print(f"🔍 Vendor key attempted: {vendor_key}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error in simple_update_vendor_status: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@csrf_exempt
+def vendor_dashboard_notification(request):
+    """Handle vendor dashboard notifications including compensation requests"""
+    try:
+        data = json.loads(request.body)
+        notification_type = data.get('notification_type')
+        vendor_id = data.get('vendor_id')
+        action = data.get('action')
+        
+        if action == 'compensate_failed_job':
+            # Handle compensation request from vendor client
+            job_filename = data.get('job_filename')
+            user_email = data.get('user_email')
+            job_price = float(data.get('job_price', 0))
+            reason = data.get('reason', 'Print job failed')
+            
+            if not job_filename or not user_email or job_price <= 0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Missing required compensation data'
+                }, status=400)
+            
+            # Compensate user with points (1 rupee = 1 point)
+            points = int(job_price)
+            success = add_user_points(user_email, points, reason)
+            
+            if success:
+                print(f"💰 Compensated user {user_email} with {points} points for failed job: {job_filename}")
+                return JsonResponse({
+                    'success': True,
+                    'message': f'User compensated with {points} points for failed job: {job_filename}'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to compensate user'
+                }, status=500)
+        
+        elif notification_type == 'printer_issue':
+            # Handle printer issue notification
+            printer_name = data.get('printer_name')
+            issue_type = data.get('issue_type')
+            error_message = data.get('error_message')
+            
+            print(f"🖨️ Printer issue notification: {printer_name} - {issue_type}: {error_message}")
+            return JsonResponse({
+                'success': True,
+                'message': f'Printer issue notification received for {printer_name}'
+            })
+        
+        elif notification_type == 'job_waiting':
+            # Handle job waiting notification
+            job_filename = data.get('job_filename')
+            printer_name = data.get('printer_name')
+            issue_type = data.get('issue_type')
+            error_message = data.get('error_message')
+            
+            print(f"⏳ Job waiting notification: {job_filename} - {printer_name}: {error_message}")
+            return JsonResponse({
+                'success': True,
+                'message': f'Job waiting notification received for {job_filename}'
+            })
+        
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Unknown notification type or action'
+            }, status=400)
+            
+    except Exception as e:
+        print(f"Error handling vendor dashboard notification: {e}")
         traceback.print_exc()
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
@@ -8435,11 +8552,16 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
                 current_metadata = head_response.get('Metadata', {})
                 
-                # Update vendor_status and print_round
+                # Update vendor_status and appropriate timestamps
                 current_metadata['vendor_status'] = status
-                current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
+                current_metadata['updated_at'] = datetime.datetime.now().isoformat()
+                
                 if status == 'accepted':
+                    current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
                     current_metadata['print_round'] = '1'  # Set print_round to 1 when accepted
+                elif status == 'cancelled':
+                    current_metadata['cancelled_time'] = datetime.datetime.now().isoformat()
+                    current_metadata['job_failed'] = 'YES'  # Mark as failed for cancelled jobs
                 
                 # Copy object with updated metadata
                 copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
@@ -8474,11 +8596,16 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                     head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
                     current_metadata = head_response.get('Metadata', {})
                     
-                    # Update vendor_status and print_round
+                    # Update vendor_status and appropriate timestamps
                     current_metadata['vendor_status'] = status
-                    current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
+                    current_metadata['updated_at'] = datetime.datetime.now().isoformat()
+                    
                     if status == 'accepted':
+                        current_metadata['accepted_time'] = datetime.datetime.now().isoformat()
                         current_metadata['print_round'] = '1'  # Set print_round to 1 when accepted
+                    elif status == 'cancelled':
+                        current_metadata['cancelled_time'] = datetime.datetime.now().isoformat()
+                        current_metadata['job_failed'] = 'YES'  # Mark as failed for cancelled jobs
                     
                     # Copy object with updated metadata
                     copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
