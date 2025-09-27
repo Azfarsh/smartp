@@ -7941,6 +7941,62 @@ def cancel_failed_job(request):
         traceback.print_exc()
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
+@csrf_exempt
+def cancel_print_job(request):
+    """Cancel a print job and refund user"""
+    try:
+        data = json.loads(request.body)
+        filename = data.get('filename')
+        user_email = data.get('user_email')
+        job_price = float(data.get('job_price', 0))
+        
+        if not filename:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing filename parameter'
+            }, status=400)
+        
+        # Get vendor_id from session
+        vendor_id = request.session.get('vendor_id')
+        if not vendor_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Vendor not authenticated'
+            }, status=401)
+        
+        # Update job status to cancelled
+        success = update_job_vendor_status(filename, vendor_id, 'cancelled')
+        
+        if success:
+            # Mark job as failed in R2
+            update_job_failed_status_in_r2(filename, 'YES')
+            
+            # Compensate user with points
+            if user_email and job_price > 0:
+                points = int(job_price)  # 1 rupee = 1 point
+                # Add points to user account
+                add_user_points(user_email, points, f"Refund for cancelled job: {filename}")
+                print(f"💰 Refunded user {user_email} with {points} points for cancelled job: {filename}")
+            
+            # Send notification to user
+            if user_email:
+                send_job_completion_notification(user_email, filename, vendor_id, 'cancelled', datetime.datetime.now().isoformat())
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Job {filename} cancelled and user refunded with {int(job_price)} points'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to cancel job'
+            }, status=500)
+            
+    except Exception as e:
+        print(f"Error cancelling print job: {e}")
+        traceback.print_exc()
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
 def update_job_vendor_status(filename, vendor_id, status):
     """Update vendor status for a specific job"""
     try:
