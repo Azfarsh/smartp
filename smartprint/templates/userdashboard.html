@@ -3564,7 +3564,7 @@
         </a>
       </li>
       <li class="nav-item">
-        <a href="#" class="nav-link">
+        <a href="#" class="nav-link" id="historyBtn">
           <i class="fas fa-history"></i>
           History
         </a>
@@ -4167,10 +4167,9 @@
         background: var(--surface);
         border-radius: 24px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 8px 32px rgba(0,0,0,0.1);
-        width: 50vw;
-        height: 70vh;
-        max-width: none;
-        max-height: none;
+        width: 600px !important;
+        max-width: 95% !important;
+        max-height: 80vh !important;
         overflow: hidden;
         position: relative;
         animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -4672,6 +4671,208 @@
         margin-bottom: 1rem;
       }
 
+      .points-section {
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+        transition: all 0.3s ease;
+      }
+
+      .points-section.points-applied {
+        background: linear-gradient(135deg, #87ceeb, #b0e0e6);
+        border-color: #87ceeb;
+        box-shadow: 0 4px 12px rgba(135, 206, 235, 0.25);
+        color: #1e3a8a;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .points-section.points-applied::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #87ceeb, #b0e0e6, #e0f6ff);
+        border-radius: 8px 8px 0 0;
+      }
+
+      .points-section.points-applied .points-title {
+        color: #1e3a8a;
+        font-weight: 700;
+      }
+
+      .points-section.points-applied .points-available {
+        color: #1e40af;
+        font-weight: 500;
+      }
+
+      .points-section.points-applied .points-balance {
+        color: #1d4ed8;
+        font-weight: 500;
+      }
+
+      .points-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .points-icon {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+        transition: all 0.3s ease;
+      }
+
+      .points-section.points-applied .points-icon {
+        background: linear-gradient(135deg, #87ceeb, #b0e0e6);
+        box-shadow: 0 2px 8px rgba(135, 206, 235, 0.4);
+        transform: scale(1.1);
+        color: #1e3a8a;
+      }
+
+      .points-title {
+        font-weight: 600;
+        color: var(--on-surface);
+        font-size: 0.95rem;
+      }
+
+      .points-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .points-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex: 1;
+      }
+
+      .points-available, .points-balance {
+        font-size: 0.85rem;
+        color: var(--on-surface-variant);
+      }
+
+      .points-available span, .points-balance span {
+        font-weight: 600;
+        color: var(--on-surface);
+      }
+
+      .points-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .btn-apply-points, .btn-remove-points {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .btn-apply-points {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+      }
+
+      .btn-apply-points:hover {
+        background: linear-gradient(135deg, #d97706, #b45309);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+      }
+
+      .btn-remove-points {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: 1px solid #dc2626;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+      }
+
+      .btn-remove-points:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        border-color: #b91c1c;
+      }
+
+      .points-section.points-applied .btn-remove-points {
+        background: linear-gradient(135deg, #f87171, #ef4444);
+        border-color: #f87171;
+        box-shadow: 0 2px 6px rgba(248, 113, 113, 0.3);
+      }
+
+      .points-section.points-applied .btn-remove-points:hover {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        border-color: #ef4444;
+        box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+      }
+
+      .points-applied {
+        background: linear-gradient(135deg, #87ceeb, #b0e0e6);
+        border-color: #87ceeb;
+        box-shadow: 0 4px 12px rgba(135, 206, 235, 0.25);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .points-applied::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #87ceeb, #b0e0e6, #e0f6ff);
+        border-radius: 8px 8px 0 0;
+      }
+
+      .points-applied .points-icon {
+        background: linear-gradient(135deg, #87ceeb, #b0e0e6);
+        box-shadow: 0 2px 8px rgba(135, 206, 235, 0.4);
+      }
+
+      .points-applied .pricing-label {
+        color: #1e3a8a;
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+
+      .points-applied .pricing-value {
+        color: #1e40af;
+        font-weight: 700;
+        font-size: 1rem;
+        text-shadow: 0 1px 2px rgba(30, 58, 138, 0.1);
+      }
+
+      .points-section.active {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+
       .pricing-icon {
         width: 40px;
         height: 40px;
@@ -4962,9 +5163,26 @@
         animation: modalReset 0.3s ease-in-out;
       }
 
+      @media (max-width: 768px) {
+        .service-modal {
+          width: 600px !important;
+          max-width: 95% !important;
+          max-height: 80vh !important;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .service-modal {
+          width: 600px !important;
+          max-width: 98vw !important;
+          margin: 1rem;
+        }
+      }
+
       @media (max-width: 640px) {
         .service-modal {
-          max-width: 95vw;
+          width: 600px !important;
+          max-width: 95vw !important;
           margin: 1rem;
         }
         
@@ -5048,10 +5266,20 @@
       .service-modal, .modal {
         overflow: hidden;
         position: relative;
-        max-width: 100vw;
-        max-height: 100vh;
         display: flex;
         flex-direction: column;
+      }
+      
+      /* Service modal specific sizing - override general modal rules */
+      .service-modal {
+        max-width: 95% !important;
+        max-height: 80vh !important;
+      }
+      
+      /* General modal sizing */
+      .modal {
+        max-width: 100vw;
+        max-height: 100vh;
       }
       
       /* Modal content area */
@@ -5388,7 +5616,13 @@
       
       /* Mobile-specific fixes for dropdown overflow */
       @media (max-width: 768px) {
-        .service-modal, .modal {
+        .service-modal {
+          margin: 0.5rem;
+          max-width: 95% !important;
+          max-height: 80vh !important;
+        }
+        
+        .modal {
           margin: 0.5rem;
           max-width: calc(100vw - 1rem);
           max-height: calc(100vh - 1rem);
@@ -5503,7 +5737,13 @@
       
       /* Extra small mobile devices */
       @media (max-width: 480px) {
-        .service-modal, .modal {
+        .service-modal {
+          margin: 0.25rem;
+          max-width: 95% !important;
+          max-height: 80vh !important;
+        }
+        
+        .modal {
           margin: 0.25rem;
           max-width: calc(100vw - 0.5rem);
           max-height: calc(100vh - 0.5rem);
@@ -6255,6 +6495,30 @@
                   </div>
                 </div>
                 
+                <!-- Points Application Section -->
+                <div class="points-section" id="${service}-points-section" style="display: none;">
+                  <div class="points-header">
+                    <div class="points-icon">
+                      <i class="fas fa-star"></i>
+                    </div>
+                    <div class="points-title">Apply Points</div>
+                  </div>
+                  <div class="points-content">
+                    <div class="points-info">
+                      <span class="points-available">Available Points: <span id="${service}-available-points">0</span></span>
+                      <span class="points-balance">Balance after payment: <span id="${service}-points-balance">0</span></span>
+                    </div>
+                    <div class="points-actions">
+                      <button type="button" class="btn-apply-points" id="${service}-apply-points-btn" onclick="applyPoints('${service}')">
+                        <i class="fas fa-star"></i> Apply Points
+                      </button>
+                      <button type="button" class="btn-remove-points" id="${service}-remove-points-btn" onclick="removePoints('${service}')" style="display: none;">
+                        <i class="fas fa-times"></i> Remove Points
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
                 <div class="modal-actions">
                   <button type="button" class="btn-cancel" onclick="closeServiceModal('${service}')">
                     <i class="fas fa-times"></i>
@@ -6941,6 +7205,15 @@
           formData.append('vendor_id', vendorId);
             formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
           
+          // Add points information if points were applied
+          const pointsApplied = modal.dataset.pointsApplied === 'true';
+          const pointsUsed = modal.dataset.pointsUsed || '0';
+          const finalAmount = modal.dataset.finalAmount || modal.dataset.calculatedPrice;
+          
+          formData.append('points_applied', pointsApplied.toString());
+          formData.append('points_used', pointsUsed);
+          formData.append('final_amount', finalAmount);
+          
           // Get pricing details from modal metadata if available
           let pricingDetails = null;
           if (service === 'digital' || service === 'gloss' || service === 'jumbo' || service === 'goldenemboss' || service === 'passport' || service === 'photo') {
@@ -7025,7 +7298,10 @@
             }
             
           try {
-            const amountRs = pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0;
+            // Use final amount after points applied, fallback to total_price if no points applied
+            const isPointsApplied = modal.dataset.pointsApplied === 'true';
+            const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : (pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0);
+            const amountRs = finalAmountAfterPoints;
             if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
             const orderResp = await fetch('/payments/create-order/', {
               method: 'POST',
@@ -7529,6 +7805,9 @@
         if (pricingSummary) {
           pricingSummary.classList.add('active');
         }
+
+        // Show points section if user has points
+        showPointsSection(service);
       }
       async function calculateDigitalPrintPrice(service) {
         const modal = document.getElementById(`service-modal-${service}`);
@@ -7686,6 +7965,9 @@
             
             pricingDetails.innerHTML = html;
             pricingSummary.classList.add('active');
+            
+            // Show points section if user has points
+            showPointsSection(service);
             
             // Store the calculated price (including commission)
             modal.dataset.calculatedPrice = commission.total;
@@ -8266,6 +8548,7 @@
   <!-- Data from backend - OPTIMIZED for instant loading -->
   <script>
     window.userJobsData = [];
+    window.userEmail = '{{ user.email }}';
     
     // INSTANT JOBS RENDERING - Use preloaded data
     document.addEventListener('DOMContentLoaded', function() {
@@ -8809,6 +9092,30 @@
           <div class="summary-item summary-total">
             <span class="summary-label">Total:</span>
             <span class="summary-value"><span id="totalAmount">Calculate Price</span></span>
+          </div>
+        </div>
+
+        <!-- Points Application Section -->
+        <div class="points-section" id="printModal-points-section" style="display: none;">
+          <div class="points-header">
+            <div class="points-icon">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="points-title">Apply Points</div>
+          </div>
+          <div class="points-content">
+            <div class="points-info">
+              <span class="points-available">Available Points: <span id="printModal-available-points">0</span></span>
+              <span class="points-balance">Balance after payment: <span id="printModal-points-balance">0</span></span>
+            </div>
+            <div class="points-actions">
+              <button type="button" class="btn-apply-points" id="printModal-apply-points-btn" onclick="applyPoints('printModal')">
+                <i class="fas fa-star"></i> Apply Points
+              </button>
+              <button type="button" class="btn-remove-points" id="printModal-remove-points-btn" onclick="removePoints('printModal')" style="display: none;">
+                <i class="fas fa-times"></i> Remove Points
+              </button>
+            </div>
           </div>
         </div>
 
@@ -9361,6 +9668,9 @@
         pricingDetails.innerHTML = html;
         pricingSummary.classList.add('active');
 
+        // Show points section if user has points
+        showPointsSection(service);
+
         // Persist values for submission
         modal.dataset.calculatedPrice = commission.total;
         modal.dataset.pricingBreakdown = JSON.stringify({
@@ -9522,6 +9832,8 @@
     document.addEventListener('DOMContentLoaded', function() {
       // OPTIMIZED: Load jobs instantly without any delay
       loadUserJobs();
+      // Load user points
+      loadUserPoints();
       // WebSocket removed - not used
       
       // Load other components asynchronously to not block job rendering
@@ -10364,6 +10676,244 @@
           setTimeout(() => notification.remove(), 300);
         }
       }, 5000);
+    }
+
+    // Points Application Functions
+    let userPoints = 0;
+    let pointsApplied = false;
+    let pointsUsed = 0;
+
+    // Load user points on page load
+    async function loadUserPoints() {
+      try {
+        console.log('🔄 Loading user points...');
+        const response = await fetch('/get-user-points/', {
+          method: 'GET',
+          headers: {
+            'X-CSRFToken': window.csrfToken
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          userPoints = data.total_points || 0;
+          console.log('✅ User points loaded:', userPoints);
+          updatePointsDisplay();
+        } else {
+          console.log('❌ Failed to load user points:', data.error);
+        }
+      } catch (error) {
+        console.error('❌ Error loading user points:', error);
+      }
+    }
+
+    // Update points display in all modals
+    function updatePointsDisplay() {
+      const pointsSections = document.querySelectorAll('.points-section');
+      console.log('🔄 Updating points display. Found sections:', pointsSections.length, 'User points:', userPoints);
+      pointsSections.forEach(section => {
+        const availablePoints = section.querySelector('.points-available span');
+        const pointsBalance = section.querySelector('.points-balance span');
+        
+        if (availablePoints) {
+          availablePoints.textContent = userPoints;
+        }
+        
+        if (pointsBalance) {
+          const remainingPoints = Math.max(0, userPoints - pointsUsed);
+          pointsBalance.textContent = remainingPoints;
+        }
+      });
+    }
+
+    // Apply points to a specific service modal
+    async function applyPoints(service) {
+      let modal;
+      if (service === 'printModal') {
+        modal = document.getElementById('printModal');
+      } else if (service === 'photoprint') {
+        modal = document.querySelector('.card-modal');
+      } else {
+        modal = document.getElementById(`service-modal-${service}`);
+      }
+      if (!modal) return;
+
+      const calculatedPrice = parseFloat(modal.dataset.calculatedPrice || document.body.dataset.calculatedPrice);
+      if (!calculatedPrice || calculatedPrice <= 0) {
+        alert('Please calculate the price first');
+        return;
+      }
+
+      // Calculate maximum points that can be used (ensure at least 1 rupee remains)
+      const maxPointsToUse = Math.min(userPoints, Math.floor(calculatedPrice - 1));
+      
+      if (maxPointsToUse <= 0) {
+        alert('Not enough points to apply. You need at least 1 rupee remaining after applying points.');
+        return;
+      }
+
+      // Use all available points up to the maximum
+      pointsUsed = maxPointsToUse;
+      const finalAmount = calculatedPrice - pointsUsed;
+
+      // Update local userPoints variable immediately
+      userPoints = Math.max(0, userPoints - pointsUsed);
+
+      // Update the pricing display
+      updatePricingWithPoints(service, calculatedPrice, pointsUsed, finalAmount);
+
+      // Update points section
+      const pointsSection = modal.querySelector(`#${service}-points-section`);
+      if (pointsSection) {
+        pointsSection.style.display = 'block';
+        pointsSection.classList.add('points-applied');
+        
+        const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
+        const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
+        
+        if (applyBtn) applyBtn.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'flex';
+      }
+
+      // Update points display immediately
+      updatePointsDisplay();
+
+      // Store points application data
+      modal.dataset.pointsApplied = 'true';
+      modal.dataset.pointsUsed = pointsUsed.toString();
+      modal.dataset.finalAmount = finalAmount.toString();
+
+      showToast('Points Applied', `Applied ${pointsUsed} points. Final amount: ₹${finalAmount.toFixed(2)}`);
+    }
+
+    // Remove points from a specific service modal
+    function removePoints(service) {
+      let modal;
+      if (service === 'printModal') {
+        modal = document.getElementById('printModal');
+      } else if (service === 'photoprint') {
+        modal = document.querySelector('.card-modal');
+      } else {
+        modal = document.getElementById(`service-modal-${service}`);
+      }
+      if (!modal) return;
+
+      const originalPrice = parseFloat(modal.dataset.calculatedPrice || document.body.dataset.calculatedPrice);
+      if (!originalPrice) return;
+
+      // Get the points that were used to restore them
+      const pointsToRestore = parseInt(modal.dataset.pointsUsed || '0');
+      
+      // Reset points
+      pointsUsed = 0;
+
+      // Restore points to userPoints variable
+      userPoints = userPoints + pointsToRestore;
+
+      // Update the pricing display back to original
+      updatePricingWithPoints(service, originalPrice, 0, originalPrice);
+
+      // Update points section
+      const pointsSection = modal.querySelector(`#${service}-points-section`);
+      if (pointsSection) {
+        pointsSection.classList.remove('points-applied');
+        
+        const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
+        const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
+        
+        if (applyBtn) applyBtn.style.display = 'flex';
+        if (removeBtn) removeBtn.style.display = 'none';
+      }
+
+      // Update points display immediately
+      updatePointsDisplay();
+
+      // Clear points application data
+      modal.dataset.pointsApplied = 'false';
+      modal.dataset.pointsUsed = '0';
+      modal.dataset.finalAmount = originalPrice.toString();
+
+      showToast('Points Removed', 'Points removed. Original amount restored.');
+    }
+
+    // Update pricing display with points applied
+    function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount) {
+      let pricingDetails;
+      if (service === 'printModal') {
+        // For regular print modal, update the order summary
+        const totalAmountElement = document.getElementById('totalAmount');
+        if (totalAmountElement) {
+          totalAmountElement.textContent = `₹${finalAmount.toFixed(2)}`;
+        }
+        return; // Regular print modal doesn't have detailed pricing breakdown
+      } else if (service === 'photoprint') {
+        // For photoprint modal, update the pricing details
+        pricingDetails = document.getElementById('pricingDetails');
+        if (!pricingDetails) return;
+      } else {
+        pricingDetails = document.querySelector(`#${service}-pricing-details`);
+        if (!pricingDetails) return;
+      }
+
+      // Find the total amount line and update it
+      const totalItem = pricingDetails.querySelector('.pricing-item.total');
+      if (totalItem) {
+        let html = totalItem.innerHTML;
+        
+        // Remove any existing points line
+        const existingPointsLine = pricingDetails.querySelector('.pricing-item.points-applied');
+        if (existingPointsLine) {
+          existingPointsLine.remove();
+        }
+
+        // Add points applied line before total
+        if (pointsUsed > 0) {
+          const pointsLine = document.createElement('li');
+          pointsLine.className = 'pricing-item points-applied';
+          pointsLine.innerHTML = `
+            <span class="pricing-label">Points Applied</span>
+            <span class="pricing-value">-₹${pointsUsed.toFixed(2)}</span>
+          `;
+          totalItem.parentNode.insertBefore(pointsLine, totalItem);
+        }
+
+        // Update total amount
+        const totalValue = totalItem.querySelector('.pricing-value');
+        if (totalValue) {
+          totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+        }
+      }
+    }
+
+    // Show points section when pricing is calculated
+    function showPointsSection(service) {
+      let modal;
+      if (service === 'printModal') {
+        modal = document.getElementById('printModal');
+      } else if (service === 'photoprint') {
+        modal = document.querySelector('.card-modal');
+      } else {
+        modal = document.getElementById(`service-modal-${service}`);
+      }
+      if (!modal) {
+        console.log('❌ Modal not found for service:', service);
+        return;
+      }
+
+      const pointsSection = modal.querySelector(`#${service}-points-section`);
+      if (pointsSection) {
+        console.log('✅ Points section found for service:', service, 'User points:', userPoints);
+        pointsSection.style.display = 'block !important';
+        pointsSection.style.visibility = 'visible !important';
+        pointsSection.style.opacity = '1 !important';
+        pointsSection.classList.add('active');
+        updatePointsDisplay();
+      } else {
+        console.log('❌ Points section not found for service:', service);
+        // Let's also check if the modal has any points-related elements
+        const allPointsSections = modal.querySelectorAll('[id*="points"]');
+        console.log('🔍 Found points-related elements:', allPointsSections.length);
+        allPointsSections.forEach(el => console.log('  -', el.id, el.className));
+      }
     }
 
     // Function to load user jobs from backend - OPTIMIZED for instant loading
@@ -12109,6 +12659,9 @@
             const orderSummaryEl = document.getElementById('orderSummary');
             if (orderSummaryEl) orderSummaryEl.style.display = 'block';
           }
+
+          // Show points section if user has points
+          showPointsSection('printModal');
           
         } else {
           alert('Error calculating price: ' + (result.error || 'Unknown error'));
@@ -12215,6 +12768,16 @@
         const vendorId = selectedVendorData ? selectedVendorData.vendor_id : 'vendor1';
         formData.append('vendor_id', vendorId);
         
+        // Add points information if points were applied (for regular print modal)
+        const printModal = document.getElementById('printModal');
+        const pointsApplied = printModal.dataset.pointsApplied === 'true';
+        const pointsUsed = printModal.dataset.pointsUsed || '0';
+        const finalAmount = printModal.dataset.finalAmount || printModal.dataset.calculatedPrice;
+        
+        formData.append('points_applied', pointsApplied.toString());
+        formData.append('points_used', pointsUsed);
+        formData.append('final_amount', finalAmount);
+        
         // Get pricing details from modal metadata if available
         let pricingDetails = null;
         const calculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
@@ -12247,8 +12810,10 @@
           console.log('⚠️ No pricing details available for A4 print job');
         }
 
-        // 1) Create Razorpay order from server using calculated price
-        const totalAmountRupees = parseFloat(calculatedPrice);
+        // 1) Create Razorpay order from server using final amount after points applied
+        const isPointsApplied = printModal.dataset.pointsApplied === 'true';
+        const finalAmountAfterPoints = isPointsApplied ? parseFloat(printModal.dataset.finalAmount || '0') : parseFloat(calculatedPrice);
+        const totalAmountRupees = finalAmountAfterPoints;
         const amountPaise = Math.round(totalAmountRupees * 100);
 
         const orderResp = await fetch('/payments/create-order/', {
@@ -12767,80 +13332,117 @@
 
     // Initialize UI
     updateUI();
-    // Add after the main print modal JS and before updateUI();
-    // Completed Jobs Modal Logic
-    const historyBtn = document.getElementById('historyBtn');
-    const completedJobsModal = document.getElementById('completedJobsModal');
-    const closeCompletedJobsModal = document.getElementById('closeCompletedJobsModal');
-    const completedJobsList = document.getElementById('completedJobsList');
+    
+    // Completed Jobs Modal Logic - wrapped in DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', function() {
+      const historyBtn = document.getElementById('historyBtn');
+      const completedJobsModal = document.getElementById('completedJobsModal');
+      const closeCompletedJobsModal = document.getElementById('closeCompletedJobsModal');
+      const completedJobsList = document.getElementById('completedJobsList');
 
-    function openCompletedJobsModal() {
-      renderCompletedJobs();
-      completedJobsModal.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeCompletedJobsModalFunc() {
-      completedJobsModal.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-    historyBtn.addEventListener('click', openCompletedJobsModal);
-    closeCompletedJobsModal.addEventListener('click', closeCompletedJobsModalFunc);
-    completedJobsModal.addEventListener('click', (e) => {
-      if (e.target === completedJobsModal) closeCompletedJobsModalFunc();
+      if (historyBtn && completedJobsModal && closeCompletedJobsModal && completedJobsList) {
+        function renderCompletedJobs() {
+          // Show loading state
+          completedJobsList.innerHTML = '<div class="loading-message"><i class="fas fa-spinner fa-spin"></i><p>Loading completed jobs...</p></div>';
+          
+          // Get user email from the page data
+          const userEmail = window.userEmail || '{{ user.email }}';
+          
+          if (!userEmail) {
+            completedJobsList.innerHTML = '<div class="no-jobs-message">User email not found.</div>';
+            return;
+          }
+          
+          // Fetch completed jobs from API
+          fetch('/get-user-completed-jobs/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ 
+              user_email: userEmail
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              const completedJobs = data.jobs || [];
+              
+              if (completedJobs.length === 0) {
+                completedJobsList.innerHTML = '<div class="no-jobs-message"><i class="fas fa-history"></i><p>No completed print jobs found.</p></div>';
+                return;
+              }
+              
+              completedJobsList.innerHTML = completedJobs.map(job => {
+                const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+                const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+                const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+                const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
+                const resolvedCopies = copiesFromMetadata || job.copies || '1';
+                const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3) + (job.spiralBinding==='Yes'?20:0) + (job.lamination==='Yes'?parseInt(job.pages||1)*parseInt(job.copies||1)*15:0));
+                return `
+                <div class="completed-job-card">
+                  <div class="completed-job-header">
+                    <i class="fas fa-file-${job.file_extension === 'pdf' ? 'pdf pdf-red' : (['jpg','jpeg','png','gif','bmp','tiff','svg'].includes(job.file_extension) ? 'image' : 'alt')}"></i>
+                    <span class="completed-job-filename">${job.filename.length > 28 ? job.filename.substring(0, 28) + '...' : job.filename}</span>
+                    <span class="completed-job-status">COMPLETED</span>
+                  </div>
+                  <div class="completed-job-date">${job.uploaded_at}</div>
+                  <div class="completed-job-section">
+                    <div class="completed-job-section-title"><i class="fas fa-cog"></i> Print Settings</div>
+                    <div class="completed-job-details">
+                      <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${resolvedPages}</span></div>
+                      <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${resolvedCopies}</span></div>
+                      <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</span></div>
+                      <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
+                    </div>
+                  </div>
+                  <div class="completed-job-section">
+                    <div class="completed-job-section-title"><i class="fas fa-rupee-sign"></i> Cost Details</div>
+                    <div class="completed-job-details">
+                      <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${totalPrice}</span></div>
+                      <div><span class="completed-job-details-label">Status</span><br><span class="completed-job-details-value">Paid</span></div>
+                    </div>
+                  </div>
+                  <div class="completed-job-actions">
+                    <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
+                    <button class="completed-job-btn track-vendor-btn" 
+                            data-lat="${job.vendor_lat || ''}" 
+                            data-lng="${job.vendor_lng || ''}"
+                            data-vendor="${job.vendor || ''}"
+                            onclick="trackVendorLocation('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
+                  </div>
+                </div>
+              `}).join('');
+            } else {
+              completedJobsList.innerHTML = '<div class="no-jobs-message"><i class="fas fa-exclamation-triangle"></i><p>Error loading completed jobs: ' + (data.error || 'Unknown error') + '</p></div>';
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching completed jobs:', error);
+            completedJobsList.innerHTML = '<div class="no-jobs-message"><i class="fas fa-exclamation-triangle"></i><p>Error loading completed jobs. Please try again.</p></div>';
+          });
+        }
+
+        function openCompletedJobsModal() {
+          renderCompletedJobs();
+          completedJobsModal.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        }
+        function closeCompletedJobsModalFunc() {
+          completedJobsModal.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+        historyBtn.addEventListener('click', openCompletedJobsModal);
+        closeCompletedJobsModal.addEventListener('click', closeCompletedJobsModalFunc);
+        completedJobsModal.addEventListener('click', (e) => {
+          if (e.target === completedJobsModal) closeCompletedJobsModalFunc();
+        });
+      } else {
+        console.error('History modal elements not found');
+      }
     });
-
-    function renderCompletedJobs() {
-      if (!userJobs || userJobs.length === 0) {
-        completedJobsList.innerHTML = '<div class="no-jobs-message">No completed print jobs found.</div>';
-        return;
-      }
-      const completedJobs = userJobs.filter(job => job.job_completed === 'YES');
-      if (completedJobs.length === 0) {
-        completedJobsList.innerHTML = '<div class="no-jobs-message">No completed print jobs found.</div>';
-        return;
-      }
-      completedJobsList.innerHTML = completedJobs.map(job => {
-        const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
-        const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
-        const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
-        const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
-        const resolvedCopies = copiesFromMetadata || job.copies || '1';
-        const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3) + (job.spiralBinding==='Yes'?20:0) + (job.lamination==='Yes'?parseInt(job.pages||1)*parseInt(job.copies||1)*15:0));
-        return `
-        <div class="completed-job-card">
-          <div class="completed-job-header">
-            <i class="fas fa-file-${job.file_extension === 'pdf' ? 'pdf pdf-red' : (['jpg','jpeg','png','gif','bmp','tiff','svg'].includes(job.file_extension) ? 'image' : 'alt')}"></i>
-            <span class="completed-job-filename">${job.filename.length > 28 ? job.filename.substring(0, 28) + '...' : job.filename}</span>
-            <span class="completed-job-status">COMPLETED</span>
-          </div>
-          <div class="completed-job-date">${job.uploaded_at}</div>
-          <div class="completed-job-section">
-            <div class="completed-job-section-title"><i class="fas fa-cog"></i> Print Settings</div>
-            <div class="completed-job-details">
-              <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${resolvedPages}</span></div>
-              <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${resolvedCopies}</span></div>
-              <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</span></div>
-              <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
-            </div>
-          </div>
-          <div class="completed-job-section">
-            <div class="completed-job-section-title"><i class="fas fa-rupee-sign"></i> Cost Details</div>
-            <div class="completed-job-details">
-              <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${totalPrice}</span></div>
-              <div><span class="completed-job-details-label">Status</span><br><span class="completed-job-details-value">Paid</span></div>
-            </div>
-          </div>
-          <div class="completed-job-actions">
-            <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
-            <button class="completed-job-btn track-vendor-btn" 
-                    data-lat="${job.vendor_lat || ''}" 
-                    data-lng="${job.vendor_lng || ''}"
-                    data-vendor="${job.vendor || ''}"
-                    onclick="trackVendorLocation('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
-          </div>
-        </div>
-      `}).join('');
-    }
 
     function hideNotification(notificationId) {
       let hidden = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');

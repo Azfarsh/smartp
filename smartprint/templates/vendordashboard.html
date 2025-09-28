@@ -15,6 +15,15 @@
             --primary-dark: #0d47a1;
             --secondary: #2e7d32;
             --secondary-light: #43a047;
+            --info: #2196f3;
+            --info-light: #42a5f5;
+            --info-dark: #1976d2;
+            --success: #4caf50;
+            --success-light: #66bb6a;
+            --success-dark: #388e3c;
+            --error: #f44336;
+            --error-light: #ef5350;
+            --error-dark: #d32f2f;
             --accent: #6a1b9a;
             --accent-light: #8e24aa;
             
@@ -28,6 +37,9 @@
             --on-surface-variant: #475569;
             --on-primary: #ffffff;
             --on-secondary: #ffffff;
+            --on-info: #ffffff;
+            --on-success: #ffffff;
+            --on-error: #ffffff;
             
             --outline: #cbd5e1;
             --outline-variant: #e2e8f0;
@@ -64,6 +76,15 @@
             --primary-dark: #3b82f6;
             --secondary: #34d399;
             --secondary-light: #6ee7b7;
+            --info: #60a5fa;
+            --info-light: #93c5fd;
+            --info-dark: #3b82f6;
+            --success: #34d399;
+            --success-light: #6ee7b7;
+            --success-dark: #059669;
+            --error: #f87171;
+            --error-light: #fca5a5;
+            --error-dark: #ef4444;
             --accent: #c084fc;
             --accent-light: #d8b4fe;
             
@@ -77,6 +98,9 @@
             --on-surface-variant: #cbd5e1;
             --on-primary: #0f172a;
             --on-secondary: #0f172a;
+            --on-info: #0f172a;
+            --on-success: #0f172a;
+            --on-error: #0f172a;
             
             --outline: #475569;
             --outline-variant: #334155;
@@ -230,6 +254,156 @@
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        /* Notification System */
+        .notification-bell {
+            position: relative;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: 2px solid var(--surface);
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            color: var(--on-surface);
+            font-size: 1.2rem;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-btn:hover {
+            background: var(--surface-variant);
+            transform: translateY(-1px);
+        }
+
+        .notification-panel {
+            position: fixed;
+            top: 72px;
+            right: 1rem;
+            width: 400px;
+            max-height: 500px;
+            background: var(--surface);
+            border: 1px solid var(--outline);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px var(--shadow);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .notification-panel.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .notification-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--outline);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface-variant);
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--on-surface);
+            font-size: 1rem;
+        }
+
+        .notification-count {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .notification-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--outline-variant);
+            transition: background 0.2s ease;
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .notification-item:hover {
+            background: var(--surface-variant);
+        }
+
+        .notification-item.unread {
+            background: var(--surface-variant);
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-message {
+            color: var(--on-surface);
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 0.5rem;
+        }
+
+        .notification-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--on-surface-variant);
+        }
+
+        .notification-time {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .notification-empty {
+            padding: 2rem 1.5rem;
+            text-align: center;
+            color: var(--on-surface-variant);
+        }
+
+        .notification-empty i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
         }
 
         .theme-toggle {
@@ -1718,6 +1892,76 @@
             flex-shrink: 0; /* Prevent shrinking */
         }
 
+        .manual-job-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 8px;
+            flex-shrink: 0;
+        }
+
+        .manual-job-actions .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .manual-job-actions .btn-small i {
+            font-size: 11px;
+        }
+
+        .manual-job-actions .btn-primary {
+            background: var(--primary);
+            color: var(--on-primary);
+            border: none;
+        }
+
+        .manual-job-actions .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .manual-job-actions .btn-info {
+            background: var(--info);
+            color: var(--on-info);
+            border: none;
+        }
+
+        .manual-job-actions .btn-info:hover {
+            background: var(--info-dark);
+            transform: translateY(-1px);
+        }
+
+        .manual-job-actions .btn-danger {
+            background: var(--error);
+            color: var(--on-error);
+            border: none;
+        }
+
+        .manual-job-actions .btn-danger:hover {
+            background: var(--error-dark);
+            transform: translateY(-1px);
+        }
+
+        .manual-job-actions .btn-success {
+            background: var(--success);
+            color: var(--on-success);
+            border: none;
+        }
+
+        .manual-job-actions .btn-success:hover {
+            background: var(--success-dark);
+            transform: translateY(-1px);
+        }
+
         .service-type-badge {
             position: absolute;
             top: 8px; /* Reduced from 12px */
@@ -2818,6 +3062,12 @@
         </div>
         
         <div class="header-actions">
+            <div class="notification-bell">
+                <button class="header-btn" id="notificationToggle" onclick="toggleNotificationPanel()">
+                    <i class="fas fa-bell"></i>
+                    <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
+                </button>
+            </div>
             <div class="connection-status" id="connectionStatus">
                 <div class="connection-indicator" id="connectionIndicator">
                     <i class="fas fa-circle"></i>
@@ -2833,6 +3083,20 @@
             </button>
         </div>
     </header>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <span class="notification-title">Notifications</span>
+            <span class="notification-count" id="notificationCount">0</span>
+        </div>
+        <div class="notification-list" id="notificationList">
+            <div class="notification-empty">
+                <i class="fas fa-bell-slash"></i>
+                <p>No notifications yet</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
@@ -3109,6 +3373,7 @@
                 </div>
             </div>
         </section>
+
     </main>
 
     <!-- Preview Modal -->
@@ -3346,6 +3611,7 @@
             loadJobs();
             setInterval(loadJobs, 30000);
             initResponsiveLayout();
+            initializeNotifications();
             
             // Initialize connection monitoring
             initConnectionMonitoring();
@@ -3728,6 +3994,125 @@
             }
         }
 
+        // Notification System
+        let notifications = [];
+        let unreadCount = 0;
+
+        async function initializeNotifications() {
+            await loadNotifications();
+            setupNotificationListeners();
+        }
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/get-vendor-notifications/');
+                const data = await response.json();
+                if (!data.success) {
+                    notifications = [];
+                    unreadCount = 0;
+                    updateNotificationUI();
+                    return;
+                }
+                const vendorNotifications = data.notifications || {};
+                const days = Object.keys(vendorNotifications).sort().reverse();
+                
+                // Convert vendor notifications to simple format
+                notifications = [];
+                for (const day of days) {
+                    const entries = vendorNotifications[day] || [];
+                    for (const entry of entries) {
+                        notifications.push({
+                            id: `${day}_${entry.time || Date.now()}`,
+                            message: entry.message || 'Notification',
+                            time: entry.time || 'Unknown time',
+                            level: entry.level || 'info',
+                            read: true // Mark all as read for now
+                        });
+                    }
+                }
+                
+                unreadCount = 0; // No unread count for vendor notifications
+                updateNotificationUI();
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                notifications = [];
+                unreadCount = 0;
+                updateNotificationUI();
+            }
+        }
+
+        function setupNotificationListeners() {
+            // Close notification panel when clicking outside
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('notificationPanel');
+                const toggle = document.getElementById('notificationToggle');
+                if (panel && !panel.contains(e.target) && !toggle.contains(e.target)) {
+                    closeNotificationPanel();
+                }
+            });
+        }
+
+        function toggleNotificationPanel() {
+            const panel = document.getElementById('notificationPanel');
+            if (panel.classList.contains('active')) {
+                closeNotificationPanel();
+            } else {
+                openNotificationPanel();
+            }
+        }
+
+        function openNotificationPanel() {
+            const panel = document.getElementById('notificationPanel');
+            panel.classList.add('active');
+        }
+
+        function closeNotificationPanel() {
+            const panel = document.getElementById('notificationPanel');
+            panel.classList.remove('active');
+        }
+
+        function updateNotificationUI() {
+            const badge = document.getElementById('notificationBadge');
+            const count = document.getElementById('notificationCount');
+            const list = document.getElementById('notificationList');
+
+            // Update badge
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+
+            // Update count
+            count.textContent = notifications.length;
+
+            // Update list
+            if (notifications.length === 0) {
+                list.innerHTML = `
+                    <div class="notification-empty">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>No notifications yet</p>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = notifications.map(notification => `
+                    <div class="notification-item ${!notification.read ? 'unread' : ''}">
+                        <div class="notification-content">
+                            <div class="notification-message">${notification.message}</div>
+                            <div class="notification-meta">
+                                <div class="notification-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${notification.time}</span>
+                                </div>
+                                <span class="notification-type">${notification.level.toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
         function formatMonthDisplay(month) {
             const date = new Date(month + '-01');
             return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
@@ -3947,7 +4332,7 @@
                 console.error('Error updating profile:', error);
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
-                showToast('Error updating profile: ' + error.message);
+                showToast(`Error updating profile: ${formatErrorMessage(error.message)}`, 'error');
             }
         });
 
@@ -4062,7 +4447,7 @@
                 }
             } catch (error) {
                 console.error('Error updating availability:', error);
-                showToast('Error updating availability');
+                showToast(`Error updating availability: ${formatErrorMessage(error.message)}`, 'error');
             }
         }
 
@@ -4154,7 +4539,7 @@
                 }
             } catch (error) {
                 console.error('Error loading jobs:', error);
-                showToast('Error loading jobs');
+                showToast(`Error loading jobs: ${formatErrorMessage(error.message)}`, 'error');
                 // Show empty state on error
                 allJobs = [];
                 categorizeJobs();
@@ -4330,14 +4715,22 @@
             let actions = '';
             
             if (type === 'manual') {
-                // Manual jobs: Only show Completed button and Print Info
+                // Manual jobs: Show Print, Print Info, Cancel, and Completed buttons
                 actions = `
-                    <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
-                        <i class="fas fa-check"></i> Completed
-                    </button>
-                    <button class="btn-print-info" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="View print information">
-                        <i class="fas fa-info-circle"></i> Print Info
-                    </button>`;
+                    <div class="manual-job-actions">
+                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); printJob('${job.filename}', '${job.preview_url || job.download_url}', '${job.service_type || ''}')" title="Open print dialog">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="View print information">
+                            <i class="fas fa-info-circle"></i> Print Info
+                        </button>
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); cancelManualJob('${job.filename}')" title="Cancel job">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
+                            <i class="fas fa-check"></i> Completed
+                        </button>
+                    </div>`;
             } else if (type === 'requests') {
                 if (isFailed) {
                     // Failed jobs: Show Accept and Cancel buttons
@@ -4972,6 +5365,79 @@
             }
         }
 
+        // Manual Job Functions
+        function printJob(filename, downloadUrl, serviceType) {
+            try {
+                // Open the file in a new window/tab for printing
+                if (downloadUrl) {
+                    window.open(downloadUrl, '_blank');
+                    showToast(`Opening ${filename} for printing...`, 'info');
+                } else {
+                    showToast(`No download URL available for ${filename}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error opening print dialog:', error);
+                showToast(`Error opening print dialog: ${error.message}`, 'error');
+            }
+        }
+
+        async function cancelManualJob(filename) {
+            try {
+                // Find the job to get user email and price
+                const job = allJobs.find(job => job.filename === filename);
+                if (!job) {
+                    showToast('Job not found', 'error');
+                    return;
+                }
+
+                const userEmail = job.user_email || job.metadata?.user || 'Unknown';
+                const jobPrice = getJobPrice(job);
+                const points = Math.round(jobPrice);
+
+                const confirmMessage = `Are you sure you want to cancel this manual print job?\n\n` +
+                                     `Job: ${filename}\n` +
+                                     `User will be compensated with ${points} points (₹${jobPrice})\n\n` +
+                                     `This action cannot be undone.`;
+                
+                if (confirm(confirmMessage)) {
+                    // INSTANTLY remove the job from manual section
+                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                    if (jobIndex !== -1) {
+                        allJobs.splice(jobIndex, 1);
+                        categorizeJobs(); // Refresh the display immediately
+                    }
+
+                    // Make API call to cancel job and compensate user
+                    const response = await fetch('/cancel-print-job/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            filename: filename,
+                            user_email: userEmail,
+                            job_price: jobPrice
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        showToast(`Job cancelled and user compensated with ${points} points`, 'success');
+                    } else {
+                        showToast(`Error cancelling job: ${data.error}`, 'error');
+                        // Reload jobs to restore the cancelled job
+                        loadJobs();
+                    }
+                }
+            } catch (error) {
+                console.error('Error cancelling manual job:', error);
+                showToast(`Error cancelling job: ${error.message}`, 'error');
+                // Reload jobs to restore the cancelled job
+                loadJobs();
+            }
+        }
+
         // Cancel job function
         async function cancelJob(filename, userEmail, jobPrice) {
             try {
@@ -5260,17 +5726,64 @@
         }
 
         // Toast Notification
+        function formatErrorMessage(error) {
+            // Convert technical error messages to user-friendly messages
+            if (typeof error !== 'string') {
+                error = String(error);
+            }
+            
+            // Common error patterns and their user-friendly equivalents
+            const errorMappings = {
+                'ConnectionError': 'Connection failed - please check your internet connection',
+                'TimeoutError': 'Request timed out - please try again',
+                'Authentication failed': 'Login failed - please check your credentials',
+                'Authentication expired': 'Your session has expired - please log in again',
+                'Invalid JSON': 'Server response error - please try again',
+                'Missing vendor_id': 'System error - please refresh the page',
+                'Vendor not authenticated': 'Please log in to continue',
+                'Vendor details not found': 'Account not found - please contact support',
+                'Vendor ID not found': 'Account error - please contact support',
+                'Connection check failed': 'Unable to verify connection - please check your internet',
+                'Authentication connection error': 'Cannot connect to server - please check your internet',
+                'Authentication timeout': 'Server is taking too long to respond - please try again',
+                'Authentication request error': 'Server error - please try again later',
+                'Heartbeat failed': 'Connection lost - please check your internet',
+                'Heartbeat request failed': 'Cannot maintain connection - please check your internet',
+                'Error sending heartbeat': 'Connection problem - please check your internet',
+                'Error updating connection status': 'Connection status update failed - please try again',
+                'Connection status update failed': 'Cannot update connection status - please try again',
+                'Error updating connection status': 'Connection problem - please check your internet'
+            };
+            
+            // Check for exact matches first
+            for (const [technical, friendly] of Object.entries(errorMappings)) {
+                if (error.includes(technical)) {
+                    return friendly;
+                }
+            }
+            
+            // If no specific mapping found, return a generic friendly message
+            if (error.length > 100) {
+                return 'An unexpected error occurred - please try again or contact support if the problem persists';
+            }
+            
+            return error;
+        }
+
         function showToast(message, type = 'info') {
             // Remove existing toasts
             const existingToasts = document.querySelectorAll('.toast');
             existingToasts.forEach(toast => toast.remove());
+            
+            // Format error messages to be more user-friendly
+            const displayMessage = type === 'error' ? formatErrorMessage(message) : message;
             
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
             toast.innerHTML = `
                 <div class="toast-content">
                     <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle'}"></i>
-                    <span>${message}</span>
+                    <span>${displayMessage}</span>
                 </div>
                 <button class="toast-close" onclick="this.parentElement.remove()" title="Close notification">
                     <i class="fas fa-times"></i>
@@ -5279,13 +5792,14 @@
             
             document.body.appendChild(toast);
             
-            // Auto remove after 5 seconds
+            // Auto remove after 5 seconds (longer for errors)
+            const timeout = type === 'error' ? 8000 : 5000;
             setTimeout(() => {
                 if (toast.parentNode) {
                     toast.style.animation = 'slideInTop 0.5s ease reverse';
                     setTimeout(() => toast.remove(), 500);
                 }
-            }, 5000);
+            }, timeout);
         }
 
         // Event Listeners
@@ -5434,7 +5948,8 @@
                     if (connectionStatus !== 'disconnected') {
                         connectionStatus = 'disconnected';
                         updateConnectionUI();
-                        showToast('⚠️ Connection check failed - services may be disabled', 'warning');
+                        const errorMsg = data.error || 'Connection check failed';
+                        showToast(`⚠️ ${formatErrorMessage(errorMsg)} - services may be disabled`, 'warning');
                     }
                 }
             } catch (error) {
@@ -5443,6 +5958,7 @@
                 if (connectionStatus !== 'disconnected') {
                     connectionStatus = 'disconnected';
                     updateConnectionUI();
+                    showToast(`⚠️ ${formatErrorMessage(error.message)} - services may be disabled`, 'warning');
                 }
             }
         }
@@ -5463,15 +5979,19 @@
             if (connectionStatus === 'connected') {
                 connectionStatusEl.classList.add('connected');
                 connectionTextEl.textContent = 'Connected';
+                connectionStatusEl.title = 'Vendor client is connected and ready to process jobs';
             } else if (connectionStatus === 'disconnected') {
                 connectionStatusEl.classList.add('disconnected');
                 connectionTextEl.textContent = 'Disconnected';
+                connectionStatusEl.title = 'Vendor client is disconnected - services are disabled';
             } else if (connectionStatus === 'auth_expired') {
                 connectionStatusEl.classList.add('auth_expired');
                 connectionTextEl.textContent = 'Auth Expired';
+                connectionStatusEl.title = 'Vendor authentication has expired - please re-authenticate';
             } else {
                 connectionStatusEl.classList.add('checking');
                 connectionTextEl.textContent = 'Checking...';
+                connectionStatusEl.title = 'Checking vendor client connection status...';
             }
         }
 
