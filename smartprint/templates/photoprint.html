@@ -359,6 +359,113 @@
             color: #059669;
             font-size: 1.2em;
         }
+
+        .points-section {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .points-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .points-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .points-title {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.95rem;
+        }
+
+        .points-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .points-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
+        }
+
+        .points-available, .points-balance {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .points-available span, .points-balance span {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .points-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-apply-points, .btn-remove-points {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-apply-points {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-apply-points:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-remove-points {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-remove-points:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .points-applied {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-color: #059669;
+        }
+
+        .points-applied .points-icon {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
         /* Shop dropdown (beautiful design from print modal) */
         .shop-dropdown2 { position: relative; width: 100%; }
         .shop-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; background:#fff; border:1px solid #e5e7eb; padding:12px; border-radius:10px; box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor:pointer; }
@@ -473,6 +580,30 @@
                 <div class="pricing-summary" id="pricingSummary" style="display: none;">
                     <h3><i class="fas fa-receipt"></i> Pricing Summary</h3>
                     <ul class="pricing-breakdown-list" id="pricingDetails"></ul>
+                </div>
+                
+                <!-- Points Application Section -->
+                <div class="points-section" id="photoprint-points-section" style="display: none;">
+                    <div class="points-header">
+                        <div class="points-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="points-title">Apply Points</div>
+                    </div>
+                    <div class="points-content">
+                        <div class="points-info">
+                            <span class="points-available">Available Points: <span id="photoprint-available-points">0</span></span>
+                            <span class="points-balance">Balance after payment: <span id="photoprint-points-balance">0</span></span>
+                        </div>
+                        <div class="points-actions">
+                            <button type="button" class="btn-apply-points" id="photoprint-apply-points-btn" onclick="applyPoints('photoprint')">
+                                <i class="fas fa-star"></i> Apply Points
+                            </button>
+                            <button type="button" class="btn-remove-points" id="photoprint-remove-points-btn" onclick="removePoints('photoprint')" style="display: none;">
+                                <i class="fas fa-times"></i> Remove Points
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1056,6 +1187,9 @@ async function calculatePhotoPrintPrice() {
             pricingDetails.innerHTML = html;
             pricingSummary.style.display = 'block';
 
+            // Show points section if user has points
+            showPointsSection('photoprint');
+
             // Store calculated price + breakdown in page dataset for submit
             const finalBreakdown = { ...breakdown };
             finalBreakdown.total_price = Number(commission.total).toFixed(2);
@@ -1170,10 +1304,22 @@ async function handlePrint() {
         formData.append('settings_0', JSON.stringify(metadata));
         formData.append('selected_vendor', selectedShop);
         formData.append('vendor_id', vendorId);
+        
+        // Add points information if points were applied
+        const modal = document.querySelector('.card-modal');
+        const pointsApplied = modal.dataset.pointsApplied === 'true';
+        const pointsUsed = modal.dataset.pointsUsed || '0';
+        const finalAmount = modal.dataset.finalAmount || document.body.dataset.calculatedPrice;
+        
+        formData.append('points_applied', pointsApplied.toString());
+        formData.append('points_used', pointsUsed);
+        formData.append('final_amount', finalAmount);
         // Always use vendor_print_jobs for storage to match dashboard
         // formData.append('storage_folder', 'vendor_manual_print_jobs'); // Remove this line if present
-        // Payment-first: create Razorpay order
-        const amountRs = pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0;
+        // Payment-first: create Razorpay order using final amount after points applied
+        const isPointsApplied = modal.dataset.pointsApplied === 'true';
+        const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : (pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0);
+        const amountRs = finalAmountAfterPoints;
         if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
 
         const orderResp = await fetch('/payments/create-order/', {
@@ -1243,7 +1389,191 @@ function getGridLayoutString(layout, orientation) {
     }
     return `${cols}x${rows}`;
 }
+// Points Application Functions
+let userPoints = 0;
+let pointsApplied = false;
+let pointsUsed = 0;
+
+// Load user points on page load
+async function loadUserPoints() {
+    try {
+        const response = await fetch('/get-user-points/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            userPoints = data.total_points || 0;
+            updatePointsDisplay();
+        }
+    } catch (error) {
+        console.error('Error loading user points:', error);
+    }
+}
+
+// Update points display in all modals
+function updatePointsDisplay() {
+    const pointsSections = document.querySelectorAll('.points-section');
+    pointsSections.forEach(section => {
+        const availablePoints = section.querySelector('.points-available span');
+        const pointsBalance = section.querySelector('.points-balance span');
+        
+        if (availablePoints) {
+            availablePoints.textContent = userPoints;
+        }
+        
+        if (pointsBalance) {
+            const remainingPoints = Math.max(0, userPoints - pointsUsed);
+            pointsBalance.textContent = remainingPoints;
+        }
+    });
+}
+
+// Apply points to a specific service modal
+async function applyPoints(service) {
+    let modal = document.querySelector('.card-modal');
+    if (!modal) return;
+
+    const calculatedPrice = parseFloat(document.body.dataset.calculatedPrice);
+    if (!calculatedPrice || calculatedPrice <= 0) {
+        alert('Please calculate the price first');
+        return;
+    }
+
+    // Calculate maximum points that can be used (ensure at least 1 rupee remains)
+    const maxPointsToUse = Math.min(userPoints, Math.floor(calculatedPrice - 1));
+    
+    if (maxPointsToUse <= 0) {
+        alert('Not enough points to apply. You need at least 1 rupee remaining after applying points.');
+        return;
+    }
+
+    // Use all available points up to the maximum
+    pointsUsed = maxPointsToUse;
+    const finalAmount = calculatedPrice - pointsUsed;
+
+    // Update local userPoints variable immediately
+    userPoints = Math.max(0, userPoints - pointsUsed);
+
+    // Update the pricing display
+    updatePricingWithPoints(service, calculatedPrice, pointsUsed, finalAmount);
+
+    // Update points section
+    const pointsSection = modal.querySelector(`#${service}-points-section`);
+    if (pointsSection) {
+        pointsSection.style.display = 'block';
+        pointsSection.classList.add('points-applied');
+        
+        const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
+        const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
+        
+        if (applyBtn) applyBtn.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'flex';
+    }
+
+    // Update points display immediately
+    updatePointsDisplay();
+
+    // Store points application data
+    modal.dataset.pointsApplied = 'true';
+    modal.dataset.pointsUsed = pointsUsed.toString();
+    modal.dataset.finalAmount = finalAmount.toString();
+
+    alert(`Points Applied: ${pointsUsed} points. Final amount: ₹${finalAmount.toFixed(2)}`);
+}
+
+// Remove points from a specific service modal
+function removePoints(service) {
+    let modal = document.querySelector('.card-modal');
+    if (!modal) return;
+
+    const originalPrice = parseFloat(document.body.dataset.calculatedPrice);
+    if (!originalPrice) return;
+
+    // Get the points that were used to restore them
+    const pointsToRestore = parseInt(modal.dataset.pointsUsed || '0');
+    
+    // Reset points
+    pointsUsed = 0;
+
+    // Restore points to userPoints variable
+    userPoints = userPoints + pointsToRestore;
+
+    // Update the pricing display back to original
+    updatePricingWithPoints(service, originalPrice, 0, originalPrice);
+
+    // Update points section
+    const pointsSection = modal.querySelector(`#${service}-points-section`);
+    if (pointsSection) {
+        pointsSection.classList.remove('points-applied');
+        
+        const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
+        const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
+        
+        if (applyBtn) applyBtn.style.display = 'flex';
+        if (removeBtn) removeBtn.style.display = 'none';
+    }
+
+    // Update points display immediately
+    updatePointsDisplay();
+
+    // Clear points application data
+    modal.dataset.pointsApplied = 'false';
+    modal.dataset.pointsUsed = '0';
+    modal.dataset.finalAmount = originalPrice.toString();
+
+    alert('Points removed. Original amount restored.');
+}
+
+// Update pricing display with points applied
+function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount) {
+    const pricingDetails = document.getElementById('pricingDetails');
+    if (!pricingDetails) return;
+
+    // Find the total amount line and update it
+    const totalItem = pricingDetails.querySelector('.pricing-item.total');
+    if (totalItem) {
+        // Remove any existing points line
+        const existingPointsLine = pricingDetails.querySelector('.pricing-item.points-applied');
+        if (existingPointsLine) {
+            existingPointsLine.remove();
+        }
+
+        // Add points applied line before total
+        if (pointsUsed > 0) {
+            const pointsLine = document.createElement('li');
+            pointsLine.className = 'pricing-item points-applied';
+            pointsLine.innerHTML = `
+                <span class="pricing-label">Points Applied</span>
+                <span class="pricing-value">-₹${pointsUsed.toFixed(2)}</span>
+            `;
+            totalItem.parentNode.insertBefore(pointsLine, totalItem);
+        }
+
+        // Update total amount
+        const totalValue = totalItem.querySelector('.pricing-value');
+        if (totalValue) {
+            totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+        }
+    }
+}
+
+// Show points section when pricing is calculated
+function showPointsSection(service) {
+    let modal = document.querySelector('.card-modal');
+    if (!modal) return;
+
+    const pointsSection = modal.querySelector(`#${service}-points-section`);
+    if (pointsSection && userPoints > 0) {
+        pointsSection.style.display = 'block';
+        updatePointsDisplay();
+    }
+}
+
 loadShops();
+loadUserPoints();
 updatePreview();
 updateThumbnails();
 setupShopDropdownHandlers();

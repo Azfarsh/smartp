@@ -97,14 +97,16 @@ urlpatterns += [
     path('vendor-dashboard-notification/', views.vendor_dashboard_notification, name='vendor_dashboard_notification'),
     # Notification endpoints
     path('get-user-notifications/', views.get_user_notifications, name='get_user_notifications'),
+    path('get-user-points/', views.get_user_points, name='get_user_points'),
+    path('get-user-completed-jobs/', views.get_user_completed_jobs, name='get_user_completed_jobs'),
     # Accept print job endpoints
     path('accept-print-job/', views.accept_print_job, name='accept_print_job'),
-    path('mark-job-completed/', views.mark_job_completed, name='mark_job_completed'),
     path('hide-completed-job/', views.hide_completed_job, name='hide_completed_job'),
     path('debug-file-locations/', views.debug_file_locations, name='debug_file_locations'),
     # Connection monitoring endpoints
     path('vendor-connection-heartbeat/', views.vendor_connection_heartbeat, name='vendor_connection_heartbeat'),
     path('get-vendor-connection-status/', views.get_vendor_connection_status, name='get_vendor_connection_status'),
+    path('get-vendor-notifications/', views.get_vendor_notifications, name='get_vendor_notifications'),
     # Admin dashboard endpoints
     path('admin-dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
     path('admin-dashboard/users/', admin_views.admin_users_data, name='admin_users_data'),
