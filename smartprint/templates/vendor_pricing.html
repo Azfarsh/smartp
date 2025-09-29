@@ -1680,9 +1680,18 @@
                 
                 // Only include printer data that has actual values
                 const filteredPrinterData = {};
+                // Preserve counts object if present
+                if (printerData.counts && typeof printerData.counts === 'object') {
+                    filteredPrinterData.counts = { ...printerData.counts };
+                }
+                // Only include actual printer name fields (strings), skip counts object
                 Object.entries(printerData).forEach(([key, value]) => {
-                    if (value && value.trim() !== '' && value !== 'NA') {
-                        filteredPrinterData[key] = value;
+                    if (key === 'counts') return;
+                    if (typeof value === 'string') {
+                        const trimmed = value.trim();
+                        if (trimmed !== '' && trimmed !== 'NA') {
+                            filteredPrinterData[key] = trimmed;
+                        }
                     }
                 });
                 // Update printerData by clearing and repopulating it
@@ -1732,8 +1741,12 @@
             console.log('📊 Collected pricing data:', pricingData);
             console.log('🖨️ Collected printer data:', printerData);
             console.log('📋 Number of services configured:', Object.keys(pricingData).length);
-            console.log('🖨️ Number of printers configured:', Object.keys(printerData).length);
-            console.log('🖨️ Actual printers (non-NA):', Object.values(printerData).filter(p => p && p !== 'NA').length);
+            const printerNameKeys = Object.keys(printerData).filter(k => k !== 'counts');
+            console.log('🖨️ Number of printers configured:', printerNameKeys.length);
+            const actualPrintersCount = Object.entries(printerData)
+                .filter(([k, v]) => k !== 'counts' && typeof v === 'string' && v.trim() !== '' && v !== 'NA')
+                .length;
+            console.log('🖨️ Actual printers (non-NA):', actualPrintersCount);
 
             const requestData = {
                 vendor_email: vendorEmail || '{{ vendor_email }}',
