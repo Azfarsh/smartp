@@ -662,6 +662,8 @@ def vendordashboard(request):
         completed_jobs = []
         
         for job in files:
+            # Default rendered_status
+            job['rendered_status'] = job.get('rendered_status') or job.get('metadata', {}).get('rendered_status', 'NO')
             # Get job status - prioritize job_completed over job_completed_status
             job_completed = job.get('job_completed', 'NO').upper()
             if job_completed == 'NO' and 'job_completed_status' in job:
@@ -1371,6 +1373,10 @@ def get_print_requests(request):
         
         # Get vendor-specific jobs and categorize them properly
         files = get_vendor_specific_jobs(vendor_id)
+        # Ensure rendered_status present by default
+        for job in files:
+            if 'rendered_status' not in job:
+                job['rendered_status'] = job.get('metadata', {}).get('rendered_status', 'NO')
         
         # Assign printers per job using alternating rules
         for job in files:
@@ -1608,7 +1614,8 @@ def get_vendor_print_jobs(request):
                             'service_type': 'regular print',
                             'vendor': vendor_id,
                             'user': 'Unknown',
-                            'timestamp': obj["LastModified"].isoformat()
+                            'timestamp': obj["LastModified"].isoformat(),
+                            'rendered_status': 'NO'
                         }
 
                     # Filter only desired services and statuses - ONLY ACCEPTED JOBS
@@ -1648,7 +1655,8 @@ def get_vendor_print_jobs(request):
                             'token': metadata.get('token', filename.split('.')[0]),
                             'vendor_id': vendor_id,
                             'vendor_status': 'sended',
-                            'assigned_printer': assigned
+                            'assigned_printer': assigned,
+                            'rendered_status': metadata.get('rendered_status', 'NO')
                         },
                         'assigned_printer': assigned
                     }
@@ -1658,6 +1666,9 @@ def get_vendor_print_jobs(request):
                     try:
                         current_metadata = metadata.copy()
                         current_metadata['vendor_status'] = 'sended'
+                        # Initialize rendered_status if missing
+                        if 'rendered_status' not in current_metadata:
+                            current_metadata['rendered_status'] = 'NO'
                         # Keep original keys lowercase as in R2 metadata
                         copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
                         s3.copy_object(
@@ -2660,6 +2671,10 @@ def upload_to_r2(request):
                         user_file_key = f'users/{user_email}/{file.name}'
                         file_metadata['storage_folder'] = 'vendor_print_jobs'
                         print(f"📁 Storing {service_type} job in vendor_print_jobs folder")
+
+                    # Ensure a default render flag so dashboard can avoid double-rendering
+                    if 'rendered_status' not in file_metadata:
+                        file_metadata['rendered_status'] = 'NO'
 
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
@@ -3774,6 +3789,10 @@ def verify_razorpay_payment(request):
                                   'payment_id': payment_id,
                                   'order_id': order_id
                 }
+
+                # Ensure default rendered_status
+                if 'rendered_status' not in metadata:
+                    metadata['rendered_status'] = 'NO'
 
                 # Resolve vendor email for printer assignment and assign by lowest count
                 assigned_printer_name = ''
@@ -9346,8 +9365,8 @@ def check_vendor_connection_timeout():
     """
     with connection_lock:
         current_time = datetime.datetime.now()
-        # Allow up to 120 seconds of inactivity before declaring disconnected
-        timeout_threshold = timedelta(seconds=120)
+        # Flip to disconnected if no heartbeat/poll within 10 seconds
+        timeout_threshold = timedelta(seconds=10)
         
         for vendor_id, connection_info in vendor_connections.items():
             if connection_info['is_connected']:
@@ -9623,6 +9642,53 @@ def get_vendor_notifications(request):
             notifications = {}
 
         return JsonResponse({'success': True, 'notifications': notifications})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+def mark_job_rendered(request):
+    """Mark given filenames' rendered_status to YES in vendor folders for current vendor session."""
+    try:
+        data = json.loads(request.body)
+        filenames = data.get('filenames', [])
+        if not filenames:
+            return JsonResponse({'success': False, 'error': 'No filenames provided'}, status=400)
+
+        vendor_email = request.session.get('vendor_email')
+        vendor_id = request.session.get('vendor_id')
+        if not vendor_id and vendor_email:
+            vd = get_vendor_details_by_email(vendor_email)
+            vendor_id = vd.get('vendor_id') if vd else None
+        if not vendor_id:
+            return JsonResponse({'success': False, 'error': 'Vendor not authenticated'}, status=401)
+
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        updated = 0
+        for fn in filenames:
+            for base in [f'vendor_print_jobs/{vendor_id}/', f'vendor_manual_print_jobs/{vendor_id}/']:
+                key = f"{base}{fn}"
+                try:
+                    head = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                    md = head.get('Metadata', {})
+                    if md.get('rendered_status', 'NO').upper() != 'YES':
+                        md['rendered_status'] = 'YES'
+                        s3.copy_object(CopySource={'Bucket': settings.R2_BUCKET, 'Key': key},
+                                       Bucket=settings.R2_BUCKET,
+                                       Key=key,
+                                       Metadata=md,
+                                       MetadataDirective='REPLACE')
+                        updated += 1
+                    break
+                except Exception:
+                    continue
+
+        return JsonResponse({'success': True, 'updated': updated})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

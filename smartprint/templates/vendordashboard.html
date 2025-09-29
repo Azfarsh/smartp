@@ -3612,8 +3612,13 @@
             try {
                 const embedded = {{ initial_jobs|default:'[]'|safe }};
                 if (Array.isArray(embedded) && embedded.length > 0) {
-                    allJobs = embedded;
+                    // Render only jobs with rendered_status !== 'YES'
+                    allJobs = embedded.filter(j => String((j.rendered_status || j.metadata?.rendered_status || 'NO')).toUpperCase() !== 'YES');
                     categorizeJobs();
+                    // Immediately mark these rendered jobs as YES
+                    if (allJobs.length > 0) {
+                        markJobsRendered(allJobs.map(j => j.filename));
+                    }
                 } else {
                     loadJobs();
                 }
@@ -4550,8 +4555,13 @@
                             unique.push(j);
                         }
                     }
-                    allJobs = unique;
+                    // Only render those not yet rendered
+                    allJobs = unique.filter(j => String((j.rendered_status || j.metadata?.rendered_status || 'NO')).toUpperCase() !== 'YES');
                     categorizeJobs();
+                    // Immediately mark these rendered jobs as YES
+                    if (allJobs.length > 0) {
+                        markJobsRendered(allJobs.map(j => j.filename));
+                    }
                     showToast('Jobs refreshed successfully');
                 } else {
                     // If no jobs found, show empty state
@@ -4676,6 +4686,23 @@
             }
 
             container.innerHTML = jobs.map(job => createJobCard(job, type)).join('');
+            // After rendering, mark these jobs as rendered on the server
+            try {
+                if (jobs.length > 0) {
+                    markJobsRendered(jobs.map(j => j.filename));
+                }
+            } catch (e) {}
+        }
+        async function markJobsRendered(filenames) {
+            try {
+                await fetch('/mark-job-rendered/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filenames })
+                });
+            } catch (e) {
+                // Silent fail; will re-attempt next load
+            }
         }
 
         function createJobCard(job, type) {
@@ -5939,6 +5966,10 @@
             updateConnectionUI();
         }
 
+        // Debounce connection flips: require 2 consecutive checks before changing UI
+        let _pendingConnectionStatus = null;
+        let _consecutiveStatusCount = 0;
+
         async function checkConnectionStatus() {
             try {
                 const response = await fetch('/get-vendor-connection-status/');
@@ -5951,12 +5982,16 @@
                     } else {
                         newStatus = data.is_connected ? 'connected' : 'disconnected';
                     }
-                    
-                    if (newStatus !== connectionStatus) {
+                    // Debounced transition
+                    if (_pendingConnectionStatus === newStatus) {
+                        _consecutiveStatusCount++;
+                    } else {
+                        _pendingConnectionStatus = newStatus;
+                        _consecutiveStatusCount = 1;
+                    }
+                    if (_consecutiveStatusCount >= 2 && newStatus !== connectionStatus) {
                         connectionStatus = newStatus;
                         updateConnectionUI();
-                        
-                        // Show appropriate notifications
                         if (connectionStatus === 'auth_expired') {
                             showToast('🔐 Vendor authentication expired - please re-authenticate', 'warning');
                         } else if (connectionStatus === 'disconnected') {
