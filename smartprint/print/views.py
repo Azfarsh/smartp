@@ -701,6 +701,8 @@ def vendordashboard(request):
             'manual_print_count': len(manual_print_jobs),
             'print_requests_count': len(print_requests),
             'completed_jobs_count': len(completed_jobs),
+            # Provide a flat list for initial render JS to consume without extra fetch
+            'initial_jobs': manual_print_jobs + print_requests + completed_jobs,
         }
         
         # Cache the context for faster subsequent loads
