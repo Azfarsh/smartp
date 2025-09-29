@@ -1504,6 +1504,13 @@ def get_vendor_print_jobs(request):
                 region_name='auto'
             )
 
+            # Treat successful polling as connection activity to prevent UI flapping
+            try:
+                if get_vendor_auth_status(vendor_id):
+                    update_vendor_connection_status(vendor_id, 'connected')
+            except Exception:
+                pass
+
             # HARDCODED PATH: Only fetch from vendor_print_jobs/<vendor_id>/
             prefix = f'vendor_print_jobs/{vendor_id}/'
             print(f"🔍 HARDCODED PATH - Searching for jobs in: {prefix}")
@@ -9333,10 +9340,14 @@ def get_vendor_connection_info(vendor_id):
         })
 
 def check_vendor_connection_timeout():
-    """Check if vendor connections have timed out (3x polling interval = 30 seconds)"""
+    """Check if vendor connections have timed out.
+
+    Use a generous inactivity window to avoid flapping on slow/unstable networks.
+    """
     with connection_lock:
         current_time = datetime.datetime.now()
-        timeout_threshold = timedelta(seconds=30)  # 3 * 10 seconds polling interval
+        # Allow up to 120 seconds of inactivity before declaring disconnected
+        timeout_threshold = timedelta(seconds=120)
         
         for vendor_id, connection_info in vendor_connections.items():
             if connection_info['is_connected']:
