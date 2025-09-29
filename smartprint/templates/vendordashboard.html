@@ -3608,7 +3608,18 @@
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();
             loadVendorAvailability();
-            loadJobs();
+            // Bootstrap jobs from server-rendered context to avoid initial spinner
+            try {
+                const embedded = {{ initial_jobs|default:'[]'|safe }};
+                if (Array.isArray(embedded) && embedded.length > 0) {
+                    allJobs = embedded;
+                    categorizeJobs();
+                } else {
+                    loadJobs();
+                }
+            } catch (e) {
+                loadJobs();
+            }
             setInterval(loadJobs, 30000);
             initResponsiveLayout();
             initializeNotifications();
@@ -4528,7 +4539,18 @@
                 const data = await response.json();
 
                 if (data.print_requests) {
-                    allJobs = data.print_requests;
+                    // Deduplicate by filename+token
+                    const incoming = data.print_requests;
+                    const seen = new Set();
+                    const unique = [];
+                    for (const j of incoming) {
+                        const key = `${j.filename || ''}__${(j.token || j.metadata?.token || '')}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            unique.push(j);
+                        }
+                    }
+                    allJobs = unique;
                     categorizeJobs();
                     showToast('Jobs refreshed successfully');
                 } else {
