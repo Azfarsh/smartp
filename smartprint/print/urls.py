@@ -107,6 +107,7 @@ urlpatterns += [
     path('vendor-connection-heartbeat/', views.vendor_connection_heartbeat, name='vendor_connection_heartbeat'),
     path('get-vendor-connection-status/', views.get_vendor_connection_status, name='get_vendor_connection_status'),
     path('get-vendor-notifications/', views.get_vendor_notifications, name='get_vendor_notifications'),
+    path('mark-job-rendered/', views.mark_job_rendered, name='mark_job_rendered'),
     # Admin dashboard endpoints
     path('admin-dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
     path('admin-dashboard/users/', admin_views.admin_users_data, name='admin_users_data'),
