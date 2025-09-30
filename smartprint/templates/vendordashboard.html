@@ -3603,6 +3603,12 @@
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
         let vendorAvailability = 'online'; // Default to online
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
+        let jobPrinterMap = {};
+
+        // Load persistent printer map
+        try {
+            jobPrinterMap = JSON.parse(localStorage.getItem('jobPrinterMap') || '{}') || {};
+        } catch (e) { jobPrinterMap = {}; }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -4587,7 +4593,7 @@
             });
 
             // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
-            // AND vendor_status is 'not sended' or 'accepted' or 'sended' (include already sent to client)
+            // AND vendor_status is 'not sended' or 'accepted' (show both pending and accepted jobs)
             // Also include failed jobs (job_failed = 'YES')
             // EXCLUDE cancelled jobs (vendor_status = 'cancelled')
             const requests = allJobs.filter(job => {
@@ -4602,8 +4608,8 @@
                 // Include regular print jobs and specific service types
                 const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
                 
-                // Show jobs that are either not sent, accepted, sended, or failed
-                const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted' || vendorStatus === 'sended';
+                // Show jobs that are either not sent, accepted, or failed
+                const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted';
                 const isFailed = jobFailed === 'yes';
                 
                 return isRegularPrint && (isPendingOrAccepted || isFailed);
@@ -4812,14 +4818,16 @@
                     <i class="fas fa-times"></i>
                 </button>` : '';
 
-            // Get printer name for display (prefer assigned_printer from metadata)
-            const printerName = (
-                job.assigned_printer ||
-                (job.metadata && job.metadata.assigned_printer) ||
-                job.printer_name ||
-                (job.metadata && job.metadata.printer_name) ||
-                'No Printer Configured'
-            );
+            // Get printer name for display - stabilize using metadata then persist per job
+            const stableKey = job.filename || job.job_id || `${job.vendor_id || ''}:${job.filename || ''}`;
+            if (!jobPrinterMap[stableKey]) {
+                const metaPrinter = (job.metadata && (job.metadata.assigned_printer || job.metadata.printer_name))
+                    || job.assigned_printer || job.printer_name;
+                if (metaPrinter && metaPrinter.trim()) {
+                    jobPrinterMap[stableKey] = metaPrinter.trim();
+                }
+            }
+            const printerName = jobPrinterMap[stableKey] || job.printer_name || 'No Printer Configured';
             const isNoPrinter = printerName === 'No Printer Configured';
             const printerIcon = isNoPrinter ? 'fa-exclamation-triangle' : 'fa-print';
             
@@ -4990,40 +4998,53 @@
         // Job Actions
         async function acceptJob(filename) {
             try {
-                // Optimistically update UI
+                // INSTANTLY update the job status locally BEFORE API call
                 const jobIndex = allJobs.findIndex(job => job.filename === filename);
                 if (jobIndex !== -1) {
                     allJobs[jobIndex].vendor_status = 'accepted';
+                    // Reset failed status for retry
                     allJobs[jobIndex].job_failed = 'NO';
                     allJobs[jobIndex].status = 'pending';
-                    categorizeJobs();
+                    categorizeJobs(); // Refresh the display immediately
                 }
-
-                // Mark accepted on server FIRST to avoid race with vendor client poll
-                const resp = await fetch('/accept-print-job/', {
+                
+                showToast(`Job "${filename}" accepted successfully!`);
+                
+                // Trigger immediate polling in vendor client
+                triggerVendorClientPoll();
+                
+                // Call the API in background (don't wait for response)
+                fetch('/accept-print-job/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({ filename })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    showToast(`Job "${filename}" accepted successfully!`);
-                } else {
+                    body: JSON.stringify({
+                        filename: filename
+                    })
+                }).then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        // If API call fails, revert the change
+                        const jobIndex = allJobs.findIndex(job => job.filename === filename);
                         if (jobIndex !== -1) {
                             allJobs[jobIndex].vendor_status = 'not sended';
                             categorizeJobs();
                         }
                         showToast(`Error accepting job: ${data.error || 'Unknown error'}`);
                     }
-            } catch (error) {
+                })
+                .catch(error => {
+                    // If API call fails, revert the change
                     const jobIndex = allJobs.findIndex(job => job.filename === filename);
                     if (jobIndex !== -1) {
                         allJobs[jobIndex].vendor_status = 'not sended';
                         categorizeJobs();
                     }
+                    showToast(`Error accepting job: ${error.message}`);
+                });
+            } catch (error) {
                 console.error('Error accepting job:', error);
                 showToast(`Error accepting job: ${error.message}`);
             }
@@ -5718,8 +5739,8 @@
             const printers = await fetchPrintersForService(normalized);
             if (printers.length > 0) {
                 updatePrinterSelectionModalOptions(printers);
-                } else {
-                    showToast('No printers available for this service type', 'warning');
+            } else {
+                showToast('No printers available for this service type', 'warning');
             }
         }
 
@@ -5778,25 +5799,6 @@
                     this.style.borderColor = 'var(--outline)';
                 });
             });
-
-            // Click handling via delegation to avoid inline onclick issues
-            const listContainer = document.getElementById('printerListContainer');
-            if (listContainer && !listContainer.__clickBound) {
-                listContainer.addEventListener('click', function(e) {
-                    const item = e.target.closest('.printer-option');
-                    if (!item) return;
-                    const idxAttr = item.getAttribute('data-printer-index');
-                    let nameAttr = item.getAttribute('data-printer-name');
-                    const index = idxAttr ? parseInt(idxAttr, 10) : 0;
-                    try { nameAttr = decodeURIComponent(nameAttr || ''); } catch(_) {}
-                    const fname = this.getAttribute('data-filename') || '';
-                    const svc = this.getAttribute('data-servicetype') || serviceType;
-                    if (nameAttr) {
-                        selectPrinter(fname, svc, nameAttr, index);
-                    }
-                });
-                listContainer.__clickBound = true;
-            }
         }
 
         // Update the options inside the already open printer selection modal
@@ -5825,7 +5827,7 @@
 
             const filename = container.dataset.filename || '';
             container.innerHTML = Array.isArray(printers) && printers.length > 0 ? printers.map((printer, index) => `
-                <div class="printer-option" data-printer-index="${index}" data-printer-name="${encodeURIComponent(printer.name)}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--surface-container); border: 1px solid var(--outline); border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                <div class="printer-option" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--surface-container); border: 1px solid var(--outline); border-radius: 8px; cursor: pointer; transition: all 0.3s ease;" onclick="selectPrinter('${filename}', '${serviceType}', '${printer.name}', ${index})">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <i class="fas fa-print" style="color: var(--primary); font-size: 18px;"></i>
                         <div>
@@ -5843,8 +5845,8 @@
             `;
 
             // Re-bind hover effects
-            const printerOptions2 = document.querySelectorAll('.printer-option');
-            printerOptions2.forEach(option => {
+            const printerOptions = document.querySelectorAll('.printer-option');
+            printerOptions.forEach(option => {
                 option.addEventListener('mouseenter', function() {
                     this.style.background = 'var(--surface-container-high)';
                     this.style.borderColor = 'var(--primary)';
@@ -5854,24 +5856,6 @@
                     this.style.borderColor = 'var(--outline)';
                 });
             });
-
-            // Ensure click delegation exists
-            if (!container.__clickBound) {
-                container.addEventListener('click', function(e) {
-                    const item = e.target.closest('.printer-option');
-                    if (!item) return;
-                    const idxAttr = item.getAttribute('data-printer-index');
-                    let nameAttr = item.getAttribute('data-printer-name');
-                    const index = idxAttr ? parseInt(idxAttr, 10) : 0;
-                    try { nameAttr = decodeURIComponent(nameAttr || ''); } catch(_) {}
-                    const fname = container.getAttribute('data-filename') || filename;
-                    const svc = container.getAttribute('data-servicetype') || serviceType;
-                    if (nameAttr) {
-                        selectPrinter(fname, svc, nameAttr, index);
-                    }
-                });
-                container.__clickBound = true;
-            }
         }
 
         // Select printer function
@@ -5923,13 +5907,21 @@
                     printerContainer.classList.remove('no-printer');
                 }
             }
-            // Persist into local jobs state to avoid reverting on re-render
+
+            // Persist into local map and state to avoid fluctuation on refresh
             try {
+                const job = allJobs.find(j => j.filename === filename);
+                const stableKey = job?.filename || job?.job_id || `${job?.vendor_id || ''}:${job?.filename || ''}`;
+                if (stableKey) {
+                    jobPrinterMap[stableKey] = printerName;
+                    localStorage.setItem('jobPrinterMap', JSON.stringify(jobPrinterMap));
+                }
                 const idx = allJobs.findIndex(j => j.filename === filename);
                 if (idx !== -1) {
                     if (!allJobs[idx].metadata) allJobs[idx].metadata = {};
                     allJobs[idx].assigned_printer = printerName;
                     allJobs[idx].metadata.assigned_printer = printerName;
+                    allJobs[idx].printer_name = printerName;
                 }
             } catch (e) { /* ignore */ }
         }
@@ -6130,12 +6122,11 @@
             // Check connection status every 3 seconds
             setInterval(checkConnectionStatus, 3000);
             
-            // Watchdog: mark disconnected if no successful check within 4 seconds
+            // Watchdog: mark disconnected if no successful check within 5 seconds
             setInterval(() => {
-                const nowTs = Date.now();
-                if (!window._lastConnectionOkTs) return;
-                if (nowTs - window._lastConnectionOkTs > 4000) {
-                    window.connectionStatus = 'disconnected';
+                const lastOk = window._lastConnectionOkTs || 0;
+                if (Date.now() - lastOk > 5000 && connectionStatus !== 'disconnected') {
+                    connectionStatus = 'disconnected';
                     updateConnectionUI();
                 }
             }, 1000);
@@ -6154,6 +6145,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Successful poll timestamp
+                    window._lastConnectionOkTs = Date.now();
                     let newStatus;
                     if (!data.is_authenticated) {
                         newStatus = 'auth_expired';
@@ -6170,7 +6163,6 @@
                     if (_consecutiveStatusCount >= 2 && newStatus !== connectionStatus) {
                         connectionStatus = newStatus;
                         updateConnectionUI();
-                        window._lastConnectionOkTs = Date.now();
                         if (connectionStatus === 'auth_expired') {
                             showToast('🔐 Vendor authentication expired - please re-authenticate', 'warning');
                         } else if (connectionStatus === 'disconnected') {
