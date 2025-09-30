@@ -4587,7 +4587,7 @@
             });
 
             // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
-            // AND vendor_status is 'not sended' or 'accepted' (show both pending and accepted jobs)
+            // AND vendor_status is 'not sended' or 'accepted' or 'sended' (include already sent to client)
             // Also include failed jobs (job_failed = 'YES')
             // EXCLUDE cancelled jobs (vendor_status = 'cancelled')
             const requests = allJobs.filter(job => {
@@ -4602,8 +4602,8 @@
                 // Include regular print jobs and specific service types
                 const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
                 
-                // Show jobs that are either not sent, accepted, or failed
-                const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted';
+                // Show jobs that are either not sent, accepted, sended, or failed
+                const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted' || vendorStatus === 'sended';
                 const isFailed = jobFailed === 'yes';
                 
                 return isRegularPrint && (isPendingOrAccepted || isFailed);
@@ -5011,8 +5011,6 @@
                 const data = await resp.json();
                 if (data.success) {
                     showToast(`Job "${filename}" accepted successfully!`);
-                    // Now trigger immediate polling in vendor client so it sees the accepted job
-                    triggerVendorClientPoll();
                 } else {
                         if (jobIndex !== -1) {
                             allJobs[jobIndex].vendor_status = 'not sended';
