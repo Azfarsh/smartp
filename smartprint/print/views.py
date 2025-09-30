@@ -6013,12 +6013,12 @@ def get_available_printers(request):
     """
     Get available printers for a specific service type from vendor pricing data
     """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
     try:
-        if request.method == 'POST':
-            data = json.loads(request.body)
-            service_type = (data.get('service_type') or '').strip().lower()
-        else:
-            service_type = (request.GET.get('service_type') or '').strip().lower()
+        data = json.loads(request.body)
+        service_type = (data.get('service_type') or '').strip().lower()
         
         if not service_type:
             return JsonResponse({'success': False, 'error': 'Service type is required'}, status=400)
