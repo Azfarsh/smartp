@@ -5717,10 +5717,35 @@
 
             // No fresh cache: open fast-loading modal then populate asynchronously
             showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
-            const printers = await fetchPrintersForService(normalized);
-            if (printers.length > 0) {
+            let printers = await fetchPrintersForService(normalized);
+
+            // Fallback: try GET if POST path has issues in some environments
+            if (!Array.isArray(printers) || printers.length === 0) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
+                    const resp = await fetch(`/get-available-printers/?service_type=${encodeURIComponent(normalized)}`, { method: 'GET', signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && data.success && Array.isArray(data.printers)) {
+                            printers = data.printers;
+                            printersCache[normalized] = { printers, ts: Date.now() };
+                            savePrintersCacheToStorage();
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            // If still empty, but we have any stale cache, use it so UI isn't blank
+            if ((!Array.isArray(printers) || printers.length === 0) && cacheEntry && Array.isArray(cacheEntry.printers) && cacheEntry.printers.length > 0) {
+                printers = cacheEntry.printers;
+            }
+
+            if (Array.isArray(printers) && printers.length > 0) {
                 updatePrinterSelectionModalOptions(printers);
                 } else {
+                updatePrinterSelectionModalOptions([]);
                     showToast('No printers available for this service type', 'warning');
             }
         }
