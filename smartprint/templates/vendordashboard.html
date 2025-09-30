@@ -3603,12 +3603,6 @@
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
         let vendorAvailability = 'online'; // Default to online
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
-        let jobPrinterMap = {};
-
-        // Load persistent printer map
-        try {
-            jobPrinterMap = JSON.parse(localStorage.getItem('jobPrinterMap') || '{}') || {};
-        } catch (e) { jobPrinterMap = {}; }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -3631,8 +3625,7 @@
             } catch (e) {
                 loadJobs();
             }
-            // Poll print jobs every 3 seconds
-            setInterval(loadJobs, 3000);
+            setInterval(loadJobs, 30000);
             initResponsiveLayout();
             initializeNotifications();
             
@@ -4819,16 +4812,8 @@
                     <i class="fas fa-times"></i>
                 </button>` : '';
 
-            // Get printer name for display - stabilize using metadata then persist per job
-            const stableKey = job.filename || job.job_id || `${job.vendor_id || ''}:${job.filename || ''}`;
-            if (!jobPrinterMap[stableKey]) {
-                const metaPrinter = (job.metadata && (job.metadata.assigned_printer || job.metadata.printer_name))
-                    || job.assigned_printer || job.printer_name;
-                if (metaPrinter && metaPrinter.trim()) {
-                    jobPrinterMap[stableKey] = metaPrinter.trim();
-                }
-            }
-            const printerName = jobPrinterMap[stableKey] || job.printer_name || 'No Printer Configured';
+            // Get printer name for display
+            const printerName = job.printer_name || 'No Printer Configured';
             const isNoPrinter = printerName === 'No Printer Configured';
             const printerIcon = isNoPrinter ? 'fa-exclamation-triangle' : 'fa-print';
             
@@ -5725,7 +5710,11 @@
             // Prefer cached printers for instant UI
             const cacheEntry = printersCache[normalized];
             if (isCacheFresh(cacheEntry)) {
-                showPrinterSelectionModal(filename, normalized, cacheEntry.printers);
+                try {
+                    showPrinterSelectionModal(filename, normalized, cacheEntry.printers);
+                } catch (e) {
+                    console.error('Printer modal error:', e);
+                }
                 // Revalidate in background to keep fresh
                 fetchPrintersForService(normalized).then((fresh) => {
                     if (Array.isArray(fresh) && fresh.length > 0) {
@@ -5736,7 +5725,11 @@
             }
 
             // No fresh cache: open fast-loading modal then populate asynchronously
-            showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
+            try {
+                showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
+            } catch (e) {
+                console.error('Printer modal error:', e);
+            }
             const printers = await fetchPrintersForService(normalized);
             if (printers.length > 0) {
                 updatePrinterSelectionModalOptions(printers);
@@ -5907,23 +5900,6 @@
                     printerIcon.className = 'fas fa-print';
                     printerContainer.classList.remove('no-printer');
                 }
-
-                // Persist into local map and state to avoid fluctuation on refresh
-                try {
-                    const job = allJobs.find(j => j.filename === filename);
-                    const stableKey = job?.filename || job?.job_id || `${job?.vendor_id || ''}:${job?.filename || ''}`;
-                    if (stableKey) {
-                        jobPrinterMap[stableKey] = printerName;
-                        localStorage.setItem('jobPrinterMap', JSON.stringify(jobPrinterMap));
-                    }
-                    const idx = allJobs.findIndex(j => j.filename === filename);
-                    if (idx !== -1) {
-                        if (!allJobs[idx].metadata) allJobs[idx].metadata = {};
-                        allJobs[idx].assigned_printer = printerName;
-                        allJobs[idx].metadata.assigned_printer = printerName;
-                        allJobs[idx].printer_name = printerName;
-                    }
-                } catch (e) { /* ignore */ }
             }
         }
 
@@ -6120,17 +6096,8 @@
             // Start checking connection status immediately
             checkConnectionStatus();
             
-            // Check connection status every 3 seconds
-            setInterval(checkConnectionStatus, 3000);
-            
-            // Heartbeat timeout watchdog: mark disconnected if no successful check within 4 seconds
-            setInterval(() => {
-                const lastOk = window._lastConnectionOkTs || 0;
-                if (Date.now() - lastOk > 4000 && connectionStatus !== 'disconnected') {
-                    connectionStatus = 'disconnected';
-                    updateConnectionUI();
-                }
-            }, 1000);
+            // Check connection status every 5 seconds
+            setInterval(checkConnectionStatus, 5000);
             
             // Update connection UI
             updateConnectionUI();
@@ -6142,15 +6109,10 @@
 
         async function checkConnectionStatus() {
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2500);
-                const response = await fetch('/get-vendor-connection-status/', { signal: controller.signal });
-                clearTimeout(timeoutId);
+                const response = await fetch('/get-vendor-connection-status/');
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Successful poll timestamp for watchdog
-                    window._lastConnectionOkTs = Date.now();
                     let newStatus;
                     if (!data.is_authenticated) {
                         newStatus = 'auth_expired';
@@ -6170,7 +6132,7 @@
                         if (connectionStatus === 'auth_expired') {
                             showToast('🔐 Vendor authentication expired - please re-authenticate', 'warning');
                         } else if (connectionStatus === 'disconnected') {
-                            showToast('⚠️ Vendor client disconnected - services may be disabled', 'warning');
+                            showToast('⚠️ Vendor client disconnected - services auto-disabled', 'warning');
                         } else if (connectionStatus === 'connected') {
                             showToast('✅ Vendor client connected', 'success');
                         }
@@ -6185,10 +6147,12 @@
                     }
                 }
             } catch (error) {
-                // Timeout or network error: let watchdog flip after 4s; still update UI now
+                console.error('Error checking connection status:', error);
+                // If error, mark as disconnected
                 if (connectionStatus !== 'disconnected') {
                     connectionStatus = 'disconnected';
                     updateConnectionUI();
+                    showToast(`⚠️ ${formatErrorMessage(error.message)} - services may be disabled`, 'warning');
                 }
             }
         }
