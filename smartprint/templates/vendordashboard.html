@@ -4812,8 +4812,14 @@
                     <i class="fas fa-times"></i>
                 </button>` : '';
 
-            // Get printer name for display
-            const printerName = job.printer_name || 'No Printer Configured';
+            // Get printer name for display (prefer assigned_printer from metadata)
+            const printerName = (
+                job.assigned_printer ||
+                (job.metadata && job.metadata.assigned_printer) ||
+                job.printer_name ||
+                (job.metadata && job.metadata.printer_name) ||
+                'No Printer Configured'
+            );
             const isNoPrinter = printerName === 'No Printer Configured';
             const printerIcon = isNoPrinter ? 'fa-exclamation-triangle' : 'fa-print';
             
@@ -4984,53 +4990,42 @@
         // Job Actions
         async function acceptJob(filename) {
             try {
-                // INSTANTLY update the job status locally BEFORE API call
+                // Optimistically update UI
                 const jobIndex = allJobs.findIndex(job => job.filename === filename);
                 if (jobIndex !== -1) {
                     allJobs[jobIndex].vendor_status = 'accepted';
-                    // Reset failed status for retry
                     allJobs[jobIndex].job_failed = 'NO';
                     allJobs[jobIndex].status = 'pending';
-                    categorizeJobs(); // Refresh the display immediately
+                    categorizeJobs();
                 }
-                
-                showToast(`Job "${filename}" accepted successfully!`);
-                
-                // Trigger immediate polling in vendor client
-                triggerVendorClientPoll();
-                
-                // Call the API in background (don't wait for response)
-                fetch('/accept-print-job/', {
+
+                // Mark accepted on server FIRST to avoid race with vendor client poll
+                const resp = await fetch('/accept-print-job/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({
-                        filename: filename
-                    })
-                }).then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        // If API call fails, revert the change
-                        const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                    body: JSON.stringify({ filename })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showToast(`Job "${filename}" accepted successfully!`);
+                    // Now trigger immediate polling in vendor client so it sees the accepted job
+                    triggerVendorClientPoll();
+                } else {
                         if (jobIndex !== -1) {
                             allJobs[jobIndex].vendor_status = 'not sended';
                             categorizeJobs();
                         }
                         showToast(`Error accepting job: ${data.error || 'Unknown error'}`);
                     }
-                })
-                .catch(error => {
-                    // If API call fails, revert the change
+            } catch (error) {
                     const jobIndex = allJobs.findIndex(job => job.filename === filename);
                     if (jobIndex !== -1) {
                         allJobs[jobIndex].vendor_status = 'not sended';
                         categorizeJobs();
                     }
-                    showToast(`Error accepting job: ${error.message}`);
-                });
-            } catch (error) {
                 console.error('Error accepting job:', error);
                 showToast(`Error accepting job: ${error.message}`);
             }
@@ -5725,8 +5720,8 @@
             const printers = await fetchPrintersForService(normalized);
             if (printers.length > 0) {
                 updatePrinterSelectionModalOptions(printers);
-            } else {
-                showToast('No printers available for this service type', 'warning');
+                } else {
+                    showToast('No printers available for this service type', 'warning');
             }
         }
 
@@ -5893,6 +5888,15 @@
                     printerContainer.classList.remove('no-printer');
                 }
             }
+            // Persist into local jobs state to avoid reverting on re-render
+            try {
+                const idx = allJobs.findIndex(j => j.filename === filename);
+                if (idx !== -1) {
+                    if (!allJobs[idx].metadata) allJobs[idx].metadata = {};
+                    allJobs[idx].assigned_printer = printerName;
+                    allJobs[idx].metadata.assigned_printer = printerName;
+                }
+            } catch (e) { /* ignore */ }
         }
 
         // Close printer selection modal
@@ -6088,8 +6092,18 @@
             // Start checking connection status immediately
             checkConnectionStatus();
             
-            // Check connection status every 5 seconds
-            setInterval(checkConnectionStatus, 5000);
+            // Check connection status every 3 seconds
+            setInterval(checkConnectionStatus, 3000);
+            
+            // Watchdog: mark disconnected if no successful check within 4 seconds
+            setInterval(() => {
+                const nowTs = Date.now();
+                if (!window._lastConnectionOkTs) return;
+                if (nowTs - window._lastConnectionOkTs > 4000) {
+                    window.connectionStatus = 'disconnected';
+                    updateConnectionUI();
+                }
+            }, 1000);
             
             // Update connection UI
             updateConnectionUI();
@@ -6121,6 +6135,7 @@
                     if (_consecutiveStatusCount >= 2 && newStatus !== connectionStatus) {
                         connectionStatus = newStatus;
                         updateConnectionUI();
+                        window._lastConnectionOkTs = Date.now();
                         if (connectionStatus === 'auth_expired') {
                             showToast('🔐 Vendor authentication expired - please re-authenticate', 'warning');
                         } else if (connectionStatus === 'disconnected') {
