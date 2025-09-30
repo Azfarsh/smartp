@@ -4578,16 +4578,6 @@
             }
         }
 
-        // Ensure dashboard connection status reflects real heartbeats by polling status endpoint every 3s
-        setInterval(async () => {
-            try {
-                const res = await fetch('/vendor-connection-heartbeat/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vendor_id: '{{ vendor_details.vendor_id|default:VENDOR_ID }}' }) });
-                // we don't need response; backend updates status
-            } catch (e) {
-                // ignore
-            }
-        }, 3000);
-
         function categorizeJobs() {
             // Manual Jobs: job_completed = 'NO' AND service_type in ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing']
             const manual = allJobs.filter(job => {
@@ -4822,13 +4812,8 @@
                     <i class="fas fa-times"></i>
                 </button>` : '';
 
-            // Get printer name for display (prefer same source family as where pages are read)
-            const printerName = (
-                job.printer_name ||
-                job.assigned_printer ||
-                (job.metadata && (job.metadata.printer_name || job.metadata.assigned_printer)) ||
-                'No Printer Configured'
-            );
+            // Get printer name for display
+            const printerName = job.printer_name || 'No Printer Configured';
             const isNoPrinter = printerName === 'No Printer Configured';
             const printerIcon = isNoPrinter ? 'fa-exclamation-triangle' : 'fa-print';
             
@@ -5725,11 +5710,7 @@
             // Prefer cached printers for instant UI
             const cacheEntry = printersCache[normalized];
             if (isCacheFresh(cacheEntry)) {
-                try {
-                    showPrinterSelectionModal(filename, normalized, cacheEntry.printers);
-                } catch (e) {
-                    console.error('Printer modal error:', e);
-                }
+                showPrinterSelectionModal(filename, normalized, cacheEntry.printers);
                 // Revalidate in background to keep fresh
                 fetchPrintersForService(normalized).then((fresh) => {
                     if (Array.isArray(fresh) && fresh.length > 0) {
@@ -5740,11 +5721,7 @@
             }
 
             // No fresh cache: open fast-loading modal then populate asynchronously
-            try {
-                showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
-            } catch (e) {
-                console.error('Printer modal error:', e);
-            }
+            showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
             const printers = await fetchPrintersForService(normalized);
             if (printers.length > 0) {
                 updatePrinterSelectionModalOptions(printers);
