@@ -1517,10 +1517,9 @@ def get_vendor_print_jobs(request):
             except Exception:
                 pass
 
-            # Search both standard and manual vendor job folders
+            # HARDCODED PATH: Only fetch from vendor_print_jobs/<vendor_id>/
             prefix = f'vendor_print_jobs/{vendor_id}/'
-            manual_prefix = f'vendor_manual_print_jobs/{vendor_id}/'
-            print(f"🔍 Searching for jobs in: {prefix} and {manual_prefix}")
+            print(f"🔍 HARDCODED PATH - Searching for jobs in: {prefix}")
             print(f"🔑 Vendor ID: '{vendor_id}' (type: {type(vendor_id)})")
 
             # First, let's list all objects under vendor_print_jobs/ to debug
@@ -1531,7 +1530,6 @@ def get_vendor_print_jobs(request):
                 print(f"   📁 {obj['Key']}")
 
             response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-            manual_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=manual_prefix)
             jobs = []
             # Load vendor printer configuration for assignment
             try:
@@ -1546,9 +1544,8 @@ def get_vendor_print_jobs(request):
             print(f"   - IsTruncated: {response.get('IsTruncated', False)}")
             print(f"   - KeyCount: {response.get('KeyCount', 0)}")
             print(f"   - Contents count: {len(response.get('Contents', []))}")
-            print(f"   - Manual Contents count: {len(manual_response.get('Contents', []))}")
 
-            if (not response.get('Contents')) and (not manual_response.get('Contents')):
+            if 'Contents' not in response or len(response.get('Contents', [])) == 0:
                 print(f"📭 No objects found in {prefix}")
                 print(f"📊 Available vendors in vendor_print_jobs/:")
 
@@ -1570,15 +1567,9 @@ def get_vendor_print_jobs(request):
                     }
                 })
 
-            combined_objects = []
-            if response.get('Contents'):
-                combined_objects.extend(response.get('Contents', []))
-            if manual_response.get('Contents'):
-                combined_objects.extend(manual_response.get('Contents', []))
+            print(f"🎯 Found {len(response.get('Contents', []))} objects in {prefix}")
 
-            print(f"🎯 Found {len(combined_objects)} objects across vendor folders")
-
-            for obj in combined_objects:
+            for obj in response.get('Contents', []):
                 key = obj['Key']
                 filename = key.split('/')[-1]
 
@@ -1631,14 +1622,7 @@ def get_vendor_print_jobs(request):
                     service_type = (metadata.get('service_type') or '').strip().lower()
                     job_completed = (metadata.get('job_completed') or 'NO').upper()
                     vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
-                    # Accept multiple variants to avoid missing jobs
-                    allowed_services = {
-                        'regular print','regular_print','a4 print','a4_print',
-                        'photo print','photo_print',
-                        'passport photo','passport_photo','passport print','passport_print',
-                        'digital print','digital_print','project binding','project_binding',
-                        'gloss print','gloss_print','jumbo print','jumbo_print'
-                    }
+                    allowed_services = {'regular print', 'passport_photo', 'photo_print'}
 
                     # Only process jobs that are accepted by vendor and not completed
                     if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
@@ -1647,15 +1631,10 @@ def get_vendor_print_jobs(request):
                     
                     print(f"   ✅ Found accepted job: {filename} (service: {service_type}, vendor_status: {vendor_status})")
 
-                    # Force job to be pending for processing and preserve assigned printer if present
+                    # Force job to be pending for processing and assign printer
                     pages_value = metadata.get('pages', '0')
                     service_value = metadata.get('service_type', 'regular print')
-                    assigned_existing = (
-                        metadata.get('assigned_printer') or
-                        metadata.get('printer_name') or
-                        metadata.get('printer') or None
-                    )
-                    assigned = assigned_existing or _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
+                    assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
                     job_info = {
                         'filename': filename,
                         'download_url': download_url,
@@ -1687,9 +1666,6 @@ def get_vendor_print_jobs(request):
                     try:
                         current_metadata = metadata.copy()
                         current_metadata['vendor_status'] = 'sended'
-                        # Preserve assigned printer in metadata
-                        if assigned:
-                            current_metadata['assigned_printer'] = assigned
                         # Initialize rendered_status if missing
                         if 'rendered_status' not in current_metadata:
                             current_metadata['rendered_status'] = 'NO'
