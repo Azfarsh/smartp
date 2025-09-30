@@ -5717,35 +5717,10 @@
 
             // No fresh cache: open fast-loading modal then populate asynchronously
             showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
-            let printers = await fetchPrintersForService(normalized);
-
-            // Fallback: try GET if POST path has issues in some environments
-            if (!Array.isArray(printers) || printers.length === 0) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 4000);
-                    const resp = await fetch(`/get-available-printers/?service_type=${encodeURIComponent(normalized)}`, { method: 'GET', signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        if (data && data.success && Array.isArray(data.printers)) {
-                            printers = data.printers;
-                            printersCache[normalized] = { printers, ts: Date.now() };
-                            savePrintersCacheToStorage();
-                        }
-                    }
-                } catch (e) { /* ignore */ }
-            }
-
-            // If still empty, but we have any stale cache, use it so UI isn't blank
-            if ((!Array.isArray(printers) || printers.length === 0) && cacheEntry && Array.isArray(cacheEntry.printers) && cacheEntry.printers.length > 0) {
-                printers = cacheEntry.printers;
-            }
-
-            if (Array.isArray(printers) && printers.length > 0) {
+            const printers = await fetchPrintersForService(normalized);
+            if (printers.length > 0) {
                 updatePrinterSelectionModalOptions(printers);
                 } else {
-                updatePrinterSelectionModalOptions([]);
                     showToast('No printers available for this service type', 'warning');
             }
         }
@@ -5805,6 +5780,25 @@
                     this.style.borderColor = 'var(--outline)';
                 });
             });
+
+            // Click handling via delegation to avoid inline onclick issues
+            const listContainer = document.getElementById('printerListContainer');
+            if (listContainer && !listContainer.__clickBound) {
+                listContainer.addEventListener('click', function(e) {
+                    const item = e.target.closest('.printer-option');
+                    if (!item) return;
+                    const idxAttr = item.getAttribute('data-printer-index');
+                    let nameAttr = item.getAttribute('data-printer-name');
+                    const index = idxAttr ? parseInt(idxAttr, 10) : 0;
+                    try { nameAttr = decodeURIComponent(nameAttr || ''); } catch(_) {}
+                    const fname = this.getAttribute('data-filename') || '';
+                    const svc = this.getAttribute('data-servicetype') || serviceType;
+                    if (nameAttr) {
+                        selectPrinter(fname, svc, nameAttr, index);
+                    }
+                });
+                listContainer.__clickBound = true;
+            }
         }
 
         // Update the options inside the already open printer selection modal
@@ -5833,7 +5827,7 @@
 
             const filename = container.dataset.filename || '';
             container.innerHTML = Array.isArray(printers) && printers.length > 0 ? printers.map((printer, index) => `
-                <div class="printer-option" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--surface-container); border: 1px solid var(--outline); border-radius: 8px; cursor: pointer; transition: all 0.3s ease;" onclick="selectPrinter('${filename}', '${serviceType}', '${printer.name}', ${index})">
+                <div class="printer-option" data-printer-index="${index}" data-printer-name="${encodeURIComponent(printer.name)}" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--surface-container); border: 1px solid var(--outline); border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <i class="fas fa-print" style="color: var(--primary); font-size: 18px;"></i>
                         <div>
@@ -5851,8 +5845,8 @@
             `;
 
             // Re-bind hover effects
-            const printerOptions = document.querySelectorAll('.printer-option');
-            printerOptions.forEach(option => {
+            const printerOptions2 = document.querySelectorAll('.printer-option');
+            printerOptions2.forEach(option => {
                 option.addEventListener('mouseenter', function() {
                     this.style.background = 'var(--surface-container-high)';
                     this.style.borderColor = 'var(--primary)';
@@ -5862,6 +5856,24 @@
                     this.style.borderColor = 'var(--outline)';
                 });
             });
+
+            // Ensure click delegation exists
+            if (!container.__clickBound) {
+                container.addEventListener('click', function(e) {
+                    const item = e.target.closest('.printer-option');
+                    if (!item) return;
+                    const idxAttr = item.getAttribute('data-printer-index');
+                    let nameAttr = item.getAttribute('data-printer-name');
+                    const index = idxAttr ? parseInt(idxAttr, 10) : 0;
+                    try { nameAttr = decodeURIComponent(nameAttr || ''); } catch(_) {}
+                    const fname = container.getAttribute('data-filename') || filename;
+                    const svc = container.getAttribute('data-servicetype') || serviceType;
+                    if (nameAttr) {
+                        selectPrinter(fname, svc, nameAttr, index);
+                    }
+                });
+                container.__clickBound = true;
+            }
         }
 
         // Select printer function
