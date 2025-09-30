@@ -9365,8 +9365,8 @@ def check_vendor_connection_timeout():
     """
     with connection_lock:
         current_time = datetime.datetime.now()
-        # Flip to disconnected if no heartbeat/poll within 10 seconds
-        timeout_threshold = timedelta(seconds=10)
+        # Flip to disconnected if no heartbeat/poll within 5 seconds
+        timeout_threshold = timedelta(seconds=5)
         
         for vendor_id, connection_info in vendor_connections.items():
             if connection_info['is_connected']:
