@@ -1378,14 +1378,21 @@ def get_print_requests(request):
             if 'rendered_status' not in job:
                 job['rendered_status'] = job.get('metadata', {}).get('rendered_status', 'NO')
         
-        # Assign printers per job using alternating rules
+        # Preserve metadata-provided printer selection; do not override in dashboard list
         for job in files:
-            service_type = job.get('service_type', '').strip()
-            pages = job.get('pages') or job.get('metadata', {}).get('pages', '0')
-            assigned = _assign_printer_alternating(vendor_id, printer_config, service_type, pages)
-            job['assigned_printer'] = assigned
-            # Preserve original field for UI if used elsewhere
-            job['printer_name'] = assigned
+            meta = job.get('metadata', {}) or {}
+            # Keep an assigned_printer only if metadata already has a printer
+            preferred = (
+                meta.get('printer_name') or meta.get('assigned_printer') or meta.get('printer') or
+                meta.get('service_printer') or meta.get('target_printer') or meta.get('printer_device')
+            )
+            if preferred:
+                job['assigned_printer'] = preferred
+                job['printer_name'] = preferred
+            else:
+                # If nothing present, leave fields unset so UI shows unassigned
+                job.pop('assigned_printer', None)
+                job.pop('printer_name', None)
         
         # Define service types for categorization (same as vendordashboard)
         manual_services = [
@@ -1624,8 +1631,8 @@ def get_vendor_print_jobs(request):
                     vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
                     allowed_services = {'regular print', 'passport_photo', 'photo_print'}
 
-                    # Only process jobs that are accepted by vendor and not completed
-                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
+                    # Only process jobs that are pending (NO) and vendor_status in allowed states
+                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status in ('accepted', 'not sended')):
                         print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
                         continue
                     
@@ -1634,7 +1641,12 @@ def get_vendor_print_jobs(request):
                     # Force job to be pending for processing and assign printer
                     pages_value = metadata.get('pages', '0')
                     service_value = metadata.get('service_type', 'regular print')
-                    assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
+                    # Preserve any metadata-provided printer name if exists; otherwise leave unassigned
+                    preferred_printer = (
+                        metadata.get('printer_name') or metadata.get('assigned_printer') or metadata.get('printer') or
+                        metadata.get('service_printer') or metadata.get('target_printer') or metadata.get('printer_device')
+                    )
+                    assigned = preferred_printer
                     job_info = {
                         'filename': filename,
                         'download_url': download_url,
@@ -1654,7 +1666,7 @@ def get_vendor_print_jobs(request):
                             'job_id': metadata.get('job_id', filename.split('.')[0]),
                             'token': metadata.get('token', filename.split('.')[0]),
                             'vendor_id': vendor_id,
-                            'vendor_status': 'sended',
+                            'vendor_status': metadata.get('vendor_status', vendor_status),
                             'assigned_printer': assigned,
                             'rendered_status': metadata.get('rendered_status', 'NO')
                         },
@@ -1662,10 +1674,10 @@ def get_vendor_print_jobs(request):
                     }
 
                     jobs.append(job_info)
-                    # Update metadata in R2 to mark vendor_status as sended
+                    # Do not flip vendor_status here; preserve current vendor_status
                     try:
                         current_metadata = metadata.copy()
-                        current_metadata['vendor_status'] = 'sended'
+                        current_metadata['vendor_status'] = metadata.get('vendor_status', vendor_status)
                         # Initialize rendered_status if missing
                         if 'rendered_status' not in current_metadata:
                             current_metadata['rendered_status'] = 'NO'
