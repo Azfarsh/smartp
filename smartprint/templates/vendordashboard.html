@@ -3610,7 +3610,7 @@
             loadVendorAvailability();
             // Bootstrap jobs from server-rendered context to avoid initial spinner
             try {
-                const embedded = {{ initial_jobs|default:'[]'|safe }};
+                const embedded = JSON.parse('{{ initial_jobs|default:"[]"|escapejs }}');
                 if (Array.isArray(embedded) && embedded.length > 0) {
                     // Render only jobs with rendered_status !== 'YES'
                     allJobs = embedded.filter(j => String((j.rendered_status || j.metadata?.rendered_status || 'NO')).toUpperCase() !== 'YES');
@@ -5621,35 +5621,112 @@
             }
         }
 
-        // Printer Switching Function
-        async function switchPrinter(filename, serviceType) {
+        // Printers cache with localStorage persistence for instant modals
+        const PRINTERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+        let printersCache = {}; // { service_type: { printers: [], ts: number } }
+
+        function _normalizeServiceType(serviceType) {
+            if (!serviceType) return 'a4_print';
+            let normalized = (serviceType || '').toString().trim().toLowerCase().replace(/\s+/g, '_');
+            if (normalized === 'gloss_printing') normalized = 'gloss_print';
+            if (normalized === 'jumbo_printing') normalized = 'jumbo_print';
+            if (normalized === 'regular_print' || normalized === 'regular') normalized = 'a4_print';
+            return normalized || 'a4_print';
+        }
+
+        function loadPrintersCacheFromStorage() {
             try {
-                // Show loading state
-                showToast('Loading available printers...', 'info');
-                
-                // Get available printers for this service type
+                const raw = localStorage.getItem('vendor_printers_cache');
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    printersCache = parsed;
+                }
+            } catch (e) {
+                // ignore parse errors
+            }
+        }
+
+        function savePrintersCacheToStorage() {
+            try {
+                localStorage.setItem('vendor_printers_cache', JSON.stringify(printersCache));
+            } catch (e) {
+                // storage might be full; ignore
+            }
+        }
+
+        function isCacheFresh(entry) {
+            return entry && Array.isArray(entry.printers) && entry.printers.length > 0 && (Date.now() - (entry.ts || 0)) < PRINTERS_CACHE_TTL_MS;
+        }
+
+        async function fetchPrintersForService(serviceType) {
+            const normalized = _normalizeServiceType(serviceType);
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000); // hard timeout 4s
                 const response = await fetch('/get-available-printers/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({
-                        service_type: serviceType
-                    })
+                    body: JSON.stringify({ service_type: normalized }),
+                    signal: controller.signal
                 });
-                
+                clearTimeout(timeoutId);
                 const data = await response.json();
-                
-                if (data.success && data.printers && data.printers.length > 0) {
-                    // Show printer selection modal
-                    showPrinterSelectionModal(filename, serviceType, data.printers);
-                } else {
-                    showToast('No printers available for this service type', 'warning');
+                if (data && data.success && Array.isArray(data.printers)) {
+                    printersCache[normalized] = { printers: data.printers, ts: Date.now() };
+                    savePrintersCacheToStorage();
+                    return data.printers;
                 }
-            } catch (error) {
-                console.error('Error getting printers:', error);
-                showToast('Error loading printers', 'error');
+                return [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        async function prefetchAllPrinters() {
+            loadPrintersCacheFromStorage();
+            const services = ['digital_print','project_binding','jumbo_print','gloss_print','photo_print','passport_print','a4_print'];
+            const fetches = services.map(async (svc) => {
+                const entry = printersCache[_normalizeServiceType(svc)];
+                if (!isCacheFresh(entry)) {
+                    await fetchPrintersForService(svc);
+                }
+            });
+            await Promise.allSettled(fetches);
+        }
+
+        // Kick off prefetch shortly after load without blocking UI
+        window.addEventListener('load', () => {
+            setTimeout(prefetchAllPrinters, 100);
+        });
+
+        // Printer Switching Function - now instant using cache, with background refresh
+        async function switchPrinter(filename, serviceType) {
+            const normalized = _normalizeServiceType(serviceType);
+
+            // Prefer cached printers for instant UI
+            const cacheEntry = printersCache[normalized];
+            if (isCacheFresh(cacheEntry)) {
+                showPrinterSelectionModal(filename, normalized, cacheEntry.printers);
+                // Revalidate in background to keep fresh
+                fetchPrintersForService(normalized).then((fresh) => {
+                    if (Array.isArray(fresh) && fresh.length > 0) {
+                        updatePrinterSelectionModalOptions(fresh);
+                    }
+                });
+                return;
+            }
+
+            // No fresh cache: open fast-loading modal then populate asynchronously
+            showPrinterSelectionModal(filename, normalized, [] /* empty initially */);
+            const printers = await fetchPrintersForService(normalized);
+            if (printers.length > 0) {
+                updatePrinterSelectionModalOptions(printers);
+            } else {
+                showToast('No printers available for this service type', 'warning');
             }
         }
 
@@ -5669,19 +5746,9 @@
                             <p style="margin-bottom: 20px; color: var(--on-surface-variant);">
                                 Choose a printer for this ${serviceType.replace('_', ' ')} job:
                             </p>
-                            <div class="printer-list" style="display: flex; flex-direction: column; gap: 12px;">
-                                ${printers.map((printer, index) => `
-                                    <div class="printer-option" style="
-                                        display: flex; 
-                                        align-items: center; 
-                                        justify-content: space-between; 
-                                        padding: 16px; 
-                                        background: var(--surface-container); 
-                                        border: 1px solid var(--outline); 
-                                        border-radius: 8px; 
-                                        cursor: pointer;
-                                        transition: all 0.3s ease;
-                                    " onclick="selectPrinter('${filename}', '${serviceType}', '${printer.name}', ${index})">
+                            <div id="printerListContainer" data-filename="${filename}" class="printer-list" style="display: flex; flex-direction: column; gap: 12px;">
+                                ${Array.isArray(printers) && printers.length > 0 ? printers.map((printer, index) => `
+                                    <div class="printer-option" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--surface-container); border: 1px solid var(--outline); border-radius: 8px; cursor: pointer; transition: all 0.3s ease;" onclick="selectPrinter('${filename}', '${serviceType}', '${printer.name}', ${index})">
                                         <div style="display: flex; align-items: center; gap: 12px;">
                                             <i class="fas fa-print" style="color: var(--primary); font-size: 18px;"></i>
                                             <div>
@@ -5691,7 +5758,12 @@
                                         </div>
                                         <i class="fas fa-chevron-right" style="color: var(--on-surface-variant);"></i>
                                     </div>
-                                `).join('')}
+                                `).join('') : `
+                                    <div style="display:flex; align-items:center; gap:10px; color: var(--on-surface-variant); padding: 8px 0;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <span>Loading printers...</span>
+                                    </div>
+                                `}
                             </div>
                         </div>
                     </div>
@@ -5702,6 +5774,63 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
             // Add hover effects
+            const printerOptions = document.querySelectorAll('.printer-option');
+            printerOptions.forEach(option => {
+                option.addEventListener('mouseenter', function() {
+                    this.style.background = 'var(--surface-container-high)';
+                    this.style.borderColor = 'var(--primary)';
+                });
+                option.addEventListener('mouseleave', function() {
+                    this.style.background = 'var(--surface-container)';
+                    this.style.borderColor = 'var(--outline)';
+                });
+            });
+        }
+
+        // Update the options inside the already open printer selection modal
+        function updatePrinterSelectionModalOptions(printers) {
+            const container = document.getElementById('printerListContainer');
+            const modal = document.getElementById('printerSelectionModal');
+            if (!container || !modal) return;
+
+            // We need filename and serviceType from the header text
+            const titleEl = modal.querySelector('.modal-title');
+            const titleText = titleEl ? titleEl.textContent || '' : '';
+            const serviceUpper = titleText.replace('Select Printer for ', '').trim();
+            const serviceType = serviceUpper.toLowerCase().replace(/\s+/g, '_');
+
+            // Try to extract filename stored in a data attribute; if not present, we can no-op
+            // Enhance: when creating modal, attach filename to container dataset
+            // Backward-compat: infer by reading onclicks is brittle, so attach now if missing
+            if (!container.dataset.filename) {
+                const anyOption = document.querySelector('.printer-option');
+                if (anyOption) {
+                    const onclickStr = anyOption.getAttribute('onclick') || '';
+                    const match = onclickStr.match(/selectPrinter\('([^']+)'/);
+                    if (match) container.dataset.filename = match[1];
+                }
+            }
+
+            const filename = container.dataset.filename || '';
+            container.innerHTML = Array.isArray(printers) && printers.length > 0 ? printers.map((printer, index) => `
+                <div class="printer-option" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--surface-container); border: 1px solid var(--outline); border-radius: 8px; cursor: pointer; transition: all 0.3s ease;" onclick="selectPrinter('${filename}', '${serviceType}', '${printer.name}', ${index})">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-print" style="color: var(--primary); font-size: 18px;"></i>
+                        <div>
+                            <div style="font-weight: 600; color: var(--on-surface);">${printer.name}</div>
+                            <div style="font-size: 12px; color: var(--on-surface-variant);">${printer.type || 'Standard Printer'}</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--on-surface-variant);"></i>
+                </div>
+            `).join('') : `
+                <div style="display:flex; align-items:center; gap:10px; color: var(--on-surface-variant); padding: 8px 0;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>No printers available for this service type</span>
+                </div>
+            `;
+
+            // Re-bind hover effects
             const printerOptions = document.querySelectorAll('.printer-option');
             printerOptions.forEach(option => {
                 option.addEventListener('mouseenter', function() {
