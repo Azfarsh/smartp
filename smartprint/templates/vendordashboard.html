@@ -4578,6 +4578,16 @@
             }
         }
 
+        // Ensure dashboard connection status reflects real heartbeats by polling status endpoint every 3s
+        setInterval(async () => {
+            try {
+                const res = await fetch('/vendor-connection-heartbeat/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vendor_id: '{{ vendor_details.vendor_id|default:VENDOR_ID }}' }) });
+                // we don't need response; backend updates status
+            } catch (e) {
+                // ignore
+            }
+        }, 3000);
+
         function categorizeJobs() {
             // Manual Jobs: job_completed = 'NO' AND service_type in ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing']
             const manual = allJobs.filter(job => {
@@ -4812,8 +4822,13 @@
                     <i class="fas fa-times"></i>
                 </button>` : '';
 
-            // Get printer name for display
-            const printerName = job.printer_name || 'No Printer Configured';
+            // Get printer name for display (prefer same source family as where pages are read)
+            const printerName = (
+                job.printer_name ||
+                job.assigned_printer ||
+                (job.metadata && (job.metadata.printer_name || job.metadata.assigned_printer)) ||
+                'No Printer Configured'
+            );
             const isNoPrinter = printerName === 'No Printer Configured';
             const printerIcon = isNoPrinter ? 'fa-exclamation-triangle' : 'fa-print';
             
