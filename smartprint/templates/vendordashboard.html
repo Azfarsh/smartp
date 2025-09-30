@@ -3631,7 +3631,8 @@
             } catch (e) {
                 loadJobs();
             }
-            setInterval(loadJobs, 30000);
+            // Poll print jobs every 3 seconds
+            setInterval(loadJobs, 3000);
             initResponsiveLayout();
             initializeNotifications();
             
@@ -5906,24 +5907,24 @@
                     printerIcon.className = 'fas fa-print';
                     printerContainer.classList.remove('no-printer');
                 }
-            }
 
-            // Persist into local map and state to avoid fluctuation on refresh
-            try {
-                const job = allJobs.find(j => j.filename === filename);
-                const stableKey = job?.filename || job?.job_id || `${job?.vendor_id || ''}:${job?.filename || ''}`;
-                if (stableKey) {
-                    jobPrinterMap[stableKey] = printerName;
-                    localStorage.setItem('jobPrinterMap', JSON.stringify(jobPrinterMap));
-                }
-                const idx = allJobs.findIndex(j => j.filename === filename);
-                if (idx !== -1) {
-                    if (!allJobs[idx].metadata) allJobs[idx].metadata = {};
-                    allJobs[idx].assigned_printer = printerName;
-                    allJobs[idx].metadata.assigned_printer = printerName;
-                    allJobs[idx].printer_name = printerName;
-                }
-            } catch (e) { /* ignore */ }
+                // Persist into local map and state to avoid fluctuation on refresh
+                try {
+                    const job = allJobs.find(j => j.filename === filename);
+                    const stableKey = job?.filename || job?.job_id || `${job?.vendor_id || ''}:${job?.filename || ''}`;
+                    if (stableKey) {
+                        jobPrinterMap[stableKey] = printerName;
+                        localStorage.setItem('jobPrinterMap', JSON.stringify(jobPrinterMap));
+                    }
+                    const idx = allJobs.findIndex(j => j.filename === filename);
+                    if (idx !== -1) {
+                        if (!allJobs[idx].metadata) allJobs[idx].metadata = {};
+                        allJobs[idx].assigned_printer = printerName;
+                        allJobs[idx].metadata.assigned_printer = printerName;
+                        allJobs[idx].printer_name = printerName;
+                    }
+                } catch (e) { /* ignore */ }
+            }
         }
 
         // Close printer selection modal
@@ -6122,10 +6123,10 @@
             // Check connection status every 3 seconds
             setInterval(checkConnectionStatus, 3000);
             
-            // Watchdog: mark disconnected if no successful check within 5 seconds
+            // Heartbeat timeout watchdog: mark disconnected if no successful check within 4 seconds
             setInterval(() => {
                 const lastOk = window._lastConnectionOkTs || 0;
-                if (Date.now() - lastOk > 5000 && connectionStatus !== 'disconnected') {
+                if (Date.now() - lastOk > 4000 && connectionStatus !== 'disconnected') {
                     connectionStatus = 'disconnected';
                     updateConnectionUI();
                 }
@@ -6141,11 +6142,14 @@
 
         async function checkConnectionStatus() {
             try {
-                const response = await fetch('/get-vendor-connection-status/');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2500);
+                const response = await fetch('/get-vendor-connection-status/', { signal: controller.signal });
+                clearTimeout(timeoutId);
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Successful poll timestamp
+                    // Successful poll timestamp for watchdog
                     window._lastConnectionOkTs = Date.now();
                     let newStatus;
                     if (!data.is_authenticated) {
@@ -6166,7 +6170,7 @@
                         if (connectionStatus === 'auth_expired') {
                             showToast('🔐 Vendor authentication expired - please re-authenticate', 'warning');
                         } else if (connectionStatus === 'disconnected') {
-                            showToast('⚠️ Vendor client disconnected - services auto-disabled', 'warning');
+                            showToast('⚠️ Vendor client disconnected - services may be disabled', 'warning');
                         } else if (connectionStatus === 'connected') {
                             showToast('✅ Vendor client connected', 'success');
                         }
@@ -6181,12 +6185,10 @@
                     }
                 }
             } catch (error) {
-                console.error('Error checking connection status:', error);
-                // If error, mark as disconnected
+                // Timeout or network error: let watchdog flip after 4s; still update UI now
                 if (connectionStatus !== 'disconnected') {
                     connectionStatus = 'disconnected';
                     updateConnectionUI();
-                    showToast(`⚠️ ${formatErrorMessage(error.message)} - services may be disabled`, 'warning');
                 }
             }
         }
