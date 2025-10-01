@@ -5036,34 +5036,11 @@
             }
         }
 
-        // Trigger immediate polling in vendor client
-        async function triggerVendorClientPoll() {
-            try {
-                const response = await fetch('http://localhost:8080/trigger-poll', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'immediate_poll',
-                        timestamp: Date.now()
-                    })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        console.log('✅ Immediate poll triggered successfully');
-                    } else {
-                        console.log('⚠️ Immediate poll failed:', data.message);
-                    }
-                } else {
-                    console.log('⚠️ Vendor client not responding, will use regular polling');
-                }
-            } catch (error) {
-                console.log('⚠️ Could not connect to vendor client:', error.message);
-                // This is not critical - regular polling will handle it
-            }
+        // Trigger immediate polling in vendor client (disabled in web due to CORS)
+        function triggerVendorClientPoll() {
+            // No-op in web context to avoid CORS errors.
+            // The vendor client runs continuous polling against the server.
+            return;
         }
 
         // Function to extract job price from multiple possible fields
