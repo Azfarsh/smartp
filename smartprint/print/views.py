@@ -1622,7 +1622,18 @@ def get_vendor_print_jobs(request):
                     service_type = (metadata.get('service_type') or '').strip().lower()
                     job_completed = (metadata.get('job_completed') or 'NO').upper()
                     vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
-                    allowed_services = {'regular print', 'passport_photo', 'photo_print'}
+                    # Accept both underscore and space variants to avoid skipping jobs
+                    allowed_services = {
+                        'regular print', 'regular_print',
+                        'passport photo', 'passport_photo', 'passport print', 'passport_print',
+                        'photo print', 'photo_print'
+                    }
+                    # Accept both underscore and space variants to avoid skipping jobs
+                    allowed_services = {
+                        'regular print', 'regular_print',
+                        'passport photo', 'passport_photo', 'passport print', 'passport_print',
+                        'photo print', 'photo_print'
+                    }
 
                     # Only process jobs that are accepted by vendor and not completed
                     if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
@@ -8716,6 +8727,13 @@ def accept_print_job(request):
             success = update_vendor_status_in_r2(filename, 'accepted', vendor_id)
             
             if success:
+                # Ensure the accepted job exists under vendor_print_jobs/<vendor_id>/ so vendor client can poll it
+                try:
+                    ensured = ensure_job_in_vendor_folder(filename, vendor_id)
+                    if not ensured:
+                        print(f"⚠️ Could not ensure vendor folder copy for {filename}")
+                except Exception as _e:
+                    print(f"⚠️ ensure_job_in_vendor_folder error: {_e}")
                 # Reset failed status for retry
                 update_job_failed_status_in_r2(filename, vendor_id, 'NO')
                 
@@ -8843,6 +8861,78 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                 
     except Exception as e:
         print(f"❌ Error updating vendor status: {str(e)}")
+        return False
+
+def ensure_job_in_vendor_folder(filename: str, vendor_id: str) -> bool:
+    """Copy the job object to vendor_print_jobs/<vendor_id>/ if it is not already there.
+    Preserve existing metadata and force vendor_status='accepted', job_completed='NO', rendered_status default.
+    """
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        # If already exists in vendor folder, nothing to do
+        try:
+            s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+            return True
+        except Exception:
+            pass
+
+        # Find source key from likely locations
+        search_prefixes = [
+            f'vendor_manual_print_jobs/{vendor_id}/',
+            f'users/',
+        ]
+        source_key = None
+        src_metadata = {}
+        # Try manual jobs first
+        try:
+            mk = f'vendor_manual_print_jobs/{vendor_id}/{filename}'
+            head = s3.head_object(Bucket=settings.R2_BUCKET, Key=mk)
+            source_key = mk
+            src_metadata = head.get('Metadata', {})
+        except Exception:
+            # Search users tree
+            resp = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='users/')
+            for obj in resp.get('Contents', []):
+                if obj['Key'].endswith(f'/{filename}'):
+                    source_key = obj['Key']
+                    try:
+                        head = s3.head_object(Bucket=settings.R2_BUCKET, Key=source_key)
+                        src_metadata = head.get('Metadata', {})
+                    except Exception:
+                        src_metadata = {}
+                    break
+
+        if not source_key:
+            print(f"❌ ensure_job_in_vendor_folder: source not found for {filename}")
+            return False
+
+        # Prepare metadata for vendor folder
+        md = dict(src_metadata or {})
+        md['vendor_status'] = 'accepted'
+        md['job_completed'] = md.get('job_completed', 'NO') or 'NO'
+        if md.get('rendered_status') is None:
+            md['rendered_status'] = 'NO'
+        md['vendor'] = vendor_id
+        md['updated_at'] = datetime.datetime.now().isoformat()
+
+        # Perform server-side copy to vendor folder with metadata replace
+        s3.copy_object(
+            CopySource={'Bucket': settings.R2_BUCKET, 'Key': source_key},
+            Bucket=settings.R2_BUCKET,
+            Key=vendor_key,
+            Metadata=md,
+            MetadataDirective='REPLACE'
+        )
+        print(f"✅ ensure_job_in_vendor_folder: copied {source_key} -> {vendor_key}")
+        return True
+    except Exception as e:
+        print(f"❌ ensure_job_in_vendor_folder error: {e}")
         return False
 
 def update_job_completed_status_in_r2(filename, status, vendor_id):
