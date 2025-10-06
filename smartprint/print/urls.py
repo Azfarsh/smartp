@@ -13,7 +13,6 @@ from .views import (
     update_vendor_service_availability, get_vendor_service_availability, 
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
     create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations,
-    vendor_appointment_page, vendor_appointment_get_availability, vendor_appointment_book
 )
 
 urlpatterns = [
@@ -85,10 +84,7 @@ urlpatterns += [
     path('test-r2-url-generation/', test_r2_url_generation, name='test_r2_url_generation'),
     path('test-r2-simple/', test_r2_simple, name='test_r2_simple'),
     path('list-vendor-folder/', list_vendor_folder, name='list_vendor_folder'),
-    # Vendor appointment booking
-    path('vendor-appointment/', vendor_appointment_page, name='vendor_appointment_page'),
-    path('vendor-appointment/availability/', vendor_appointment_get_availability, name='vendor_appointment_get_availability'),
-    path('vendor-appointment/book/', vendor_appointment_book, name='vendor_appointment_book'),
+    # Appointment booking removed
     # New job management endpoints
     path('accept-job/', views.accept_job, name='accept_job'),
     path('mark-job-completed/', views.mark_job_completed, name='mark_job_completed'),

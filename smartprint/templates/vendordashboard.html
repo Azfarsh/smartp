@@ -130,8 +130,8 @@
         /* Swap logo images based on theme */
         .logo .logo-img-light { display: inline-block; }
         .logo .logo-img-dark { display: none; }
-        [data-theme="dark"] .logo .logo-img-light { display: none; }
-        [data-theme="dark"] .logo .logo-img-dark { display: inline-block; }
+        [data-theme="dark"] .logo .logo-img-light { display: none !important; }
+        [data-theme="dark"] .logo .logo-img-dark { display: inline-block !important; }
 
         /* PRINTMAX wordmark beside logo */
         .logo .brand-wordmark {
@@ -152,8 +152,9 @@
             background-clip: initial;
         }
         [data-theme="dark"] .logo .brand-wordmark {
-            color: #ffffff; /* solid white in dark */
+            color: #e5e7eb; /* brighter for readability in dark */
             -webkit-text-fill-color: currentColor;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
         }
 
         * {
@@ -243,10 +244,8 @@
             transform: scale(1.05);
         }
 
-        .page-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--on-surface);
+        .page-title { /* hide navbar page title */
+            display: none;
         }
 
         .header-actions {
@@ -255,6 +254,16 @@
             align-items: center;
             gap: 12px;
         }
+
+        /* Circular notification button with strong border */
+        .notification-bell .header-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1.5px solid #111827;
+            background: var(--surface);
+        }
+        [data-theme="dark"] .notification-bell .header-btn { border-color: #ffffff; background: transparent; }
 
         /* Notification System */
         .notification-bell {
@@ -408,7 +417,7 @@
 
         .theme-toggle {
             background: var(--surface-container);
-            border: 1px solid var(--outline);
+            border: 1.5px solid #111827; /* clearer in light */
             color: var(--on-surface-variant);
             padding: 10px;
             border-radius: 50%;
@@ -421,6 +430,10 @@
             align-items: center;
             justify-content: center;
         }
+        [data-theme="dark"] .theme-toggle { border-color: #ffffff; background: transparent; }
+
+        /* Hide connection checker chip from navbar */
+        .header .connection-status { display: none !important; }
 
         .theme-toggle:hover {
             background: var(--surface-container-high);
@@ -721,7 +734,7 @@
         .nav-link {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             padding: 10px 12px;
             color: var(--on-surface-variant);
             text-decoration: none;
@@ -733,7 +746,7 @@
             text-overflow: unset;
             min-width: 0;
             position: relative;
-            justify-content: space-between;
+            justify-content: space-between; /* label left, count right aligned */
         }
 
         .nav-link:hover {
@@ -772,13 +785,21 @@
             flex-shrink: 0;
         }
 
-        .nav-link span {
-            flex: 1;
-            overflow: visible;
-            text-overflow: unset;
-            white-space: nowrap;
-            min-width: 0;
+        .nav-link span { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+        /* Sidebar count style: single blue number aligned in one column */
+        .nav-badge {
+            display: inline-flex !important; 
+            background: transparent !important; 
+            color: var(--primary); 
+            font-weight: 800; 
+            margin-left: 12px; 
+            min-width: 24px; 
+            justify-content: flex-end; 
+            text-align: right; 
         }
+        /* Remove any gray inline counts next to names */
+        .nav-link span .inline-count { display: none !important; }
 
         /* Navigation scrollbar styling */
         .nav-menu::-webkit-scrollbar {
@@ -799,28 +820,19 @@
         }
 
         .nav-badge {
-            background: var(--surface-container);
+            background: transparent !important;
             color: var(--primary);
             font-size: 12px;
-            padding: 2px 6px;
             margin-left: auto;
-            font-weight: 700;
-            min-width: 18px;
-            height: 18px;
-            text-align: center;
+            font-weight: 800;
+            width: auto;
+            height: auto;
+            text-align: right;
             flex-shrink: 0;
             line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 1;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', monospace;
-            border-radius: 9px;
-            border: 1px solid var(--outline);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
+            display: inline;
+            border: none;
+            box-shadow: none;
         }
 
         .nav-badge::before {
@@ -885,20 +897,20 @@
         /* Statistics Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* was 250px */
-            gap: 12px; /* was 20px */
-            margin-bottom: 24px; /* was 32px */
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 14px; /* better spacing between cards */
+            margin-bottom: 16px;
         }
 
         .stat-card {
             background: var(--surface);
             border: 1px solid var(--outline);
-            border-radius: 8px; /* was 12px */
-            padding: 10px 12px; /* was 16px */
+            border-radius: 10px;
+            padding: 10px 12px;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            min-height: 70px; /* new: ensure compactness */
+            min-height: 60px; /* reduce height */
         }
 
         .stat-card::before {
@@ -944,16 +956,16 @@
         .stat-icon.total { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
 
         .stat-number {
-            font-size: 18px; /* was 24px */
+            font-size: 17px;
             font-weight: 700;
             color: var(--on-surface);
             margin-bottom: 2px; /* was 4px */
         }
 
         .stat-label {
-            font-size: 12px; /* was 14px */
+            font-size: 11px;
             color: var(--on-surface-variant);
-            font-weight: 500;
+            font-weight: 600;
         }
 
         /* Job Sections */
@@ -1157,19 +1169,23 @@
             hyphens: auto; /* Add hyphens for long words */
         }
         .job-card.compact .job-meta { 
-            gap: 4px; 
-            margin-bottom: 8px; 
+            gap: 6px; 
+            margin-bottom: 10px; 
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
+            color: #000; /* more visible */
+            font-size: 14px; /* slightly bigger */
+            font-weight: 600;
         }
         .job-card.compact .job-meta-item { 
-            gap: 3px; 
-            font-size: 10px; 
-            padding: 3px 5px;
+            gap: 6px; 
+            font-size: 12px; 
+            padding: 6px 8px;
             flex: 1;
             min-width: 0;
             text-align: center;
+            color: #000;
         }
         .job-card.compact .job-meta-item i { 
             font-size: 10px; 
@@ -1675,6 +1691,16 @@
             text-transform: uppercase;
         }
 
+        /* Explicit states for dynamic status changes */
+        .status-pending {
+            background: var(--requests-bg);
+            color: var(--requests-color);
+        }
+        .status-processing {
+            background: #DBEAFE; /* light blue */
+            color: #1E40AF;      /* dark blue */
+        }
+
         .status-manual {
             background: var(--manual-bg);
             color: var(--manual-color);
@@ -1730,10 +1756,19 @@
             text-align: center;
         }
 
-        .job-meta-item i {
-            font-size: 12px;
-            color: var(--primary);
-        }
+        .job-meta-item i { font-size: 12px; color: var(--primary); }
+
+        /* Dark/Light readability inside job card */
+        [data-theme="dark"] .job-card .job-filename,
+        [data-theme="dark"] .job-card .job-meta,
+        [data-theme="dark"] .job-card .job-meta span { color: #ffffff; }
+        [data-theme="dark"] .job-card .job-meta-item { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); }
+        [data-theme="dark"] .job-card .job-meta-item i { color: #dbeafe; }
+        :root:not([data-theme="dark"]) .job-card .job-filename,
+        :root:not([data-theme="dark"]) .job-card .job-meta,
+        :root:not([data-theme="dark"]) .job-card .job-meta span { color: #111827; }
+        :root:not([data-theme="dark"]) .job-card .job-meta-item { border-color: rgba(0,0,0,0.08); background: #f8fafc; }
+        :root:not([data-theme="dark"]) .job-card .job-meta-item i { color: var(--primary); }
 
         /* Printer Name Display */
         .printer-name {
@@ -1886,7 +1921,7 @@
 
         .job-actions {
             display: flex;
-            gap: 8px;
+            gap: 12px; /* more spacing between buttons */
             margin-top: auto;
             padding-top: 8px;
             flex-shrink: 0; /* Prevent shrinking */
@@ -1895,7 +1930,7 @@
         .manual-job-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 12px; /* more spacing between the 4 buttons */
             margin-top: auto;
             padding-top: 8px;
             flex-shrink: 0;
@@ -1912,6 +1947,7 @@
             gap: 4px;
             font-weight: 600;
             transition: all 0.2s ease;
+            width: 100%; /* fill grid cell so buttons sit at corners */
         }
 
         .manual-job-actions .btn-small i {
@@ -1974,25 +2010,13 @@
             letter-spacing: 0.3px; /* Reduced from 0.5px */
         }
 
-        .service-type-badge.digital-print {
-            background: var(--digital-print-bg);
-            color: white;
-        }
+        .service-type-badge.digital-print { background: var(--digital-print-bg); color: #ffffff; }
 
-        .service-type-badge.project-binding {
-            background: var(--project-binding-bg);
-            color: white;
-        }
+        .service-type-badge.project-binding { background: var(--project-binding-bg); color: #ffffff; }
 
-        .service-type-badge.gloss-printing {
-            background: var(--gloss-printing-bg);
-            color: white;
-        }
+        .service-type-badge.gloss-printing { background: var(--gloss-printing-bg); color: #ffffff; }
 
-        .service-type-badge.jumbo-printing {
-            background: var(--jumbo-printing-bg);
-            color: white;
-        }
+        .service-type-badge.jumbo-printing { background: var(--jumbo-printing-bg); color: #ffffff; }
 
         .vendor-status-badge {
             position: absolute;
@@ -2598,10 +2622,7 @@
                 --sidebar-width: 280px;
             }
             
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-                gap: 16px;
-            }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
             
             .jobs-grid {
                 grid-template-columns: repeat(3, 1fr); /* Keep 3 columns on tablets */
@@ -2637,9 +2658,20 @@
                 width: 200px;
             }
             
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            /* Mobile: stats in 2x2 compact rectangular cards */
+            .stats-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; width: 100%; }
+            .stat-card { min-height: 60px; padding: 8px 10px; }
+            .stat-header { margin-bottom: 10px; }
+            .stat-icon { width: 28px; height: 28px; font-size: 14px; }
+            .stat-number { font-size: 16px; }
+            .stat-label { font-size: 11px; }
+            
+            /* Prevent nav badge overlap on small screens */
+            .nav-link {
+                justify-content: flex-start; /* let label take space, badge moves with auto margin */
+                gap: 10px;
             }
+            .nav-badge { margin-left: auto; flex-shrink: 0; font-size: 11px; width: 20px; height: 20px; line-height: 20px; }
             
             .jobs-grid {
                 grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
@@ -2681,6 +2713,14 @@
             .search-input {
                 width: 160px;
             }
+            
+            /* Extra small screens: keep 4-up layout, shrink */
+            .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+            .stat-card { padding: 8px; min-height: 64px; }
+            
+            /* Tighten nav link spacing further, keep badge readable */
+            .nav-link { gap: 8px; }
+            .nav-badge { font-size: 10px; padding: 2px 6px; }
             
             .job-card {
                 padding: 10px 12px; /* Reduced from 16px 18px */
@@ -3055,10 +3095,10 @@
             </button>
             <div class="logo" style="display:flex; align-items:center; gap:8px;">
                 <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle;" />
-                <img class="logo-img-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle; display:none;" />
+                <img class="logo-img-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax dark" style="height:36px; width:auto; vertical-align:middle; display:none; filter: none;" />
                 <span class="brand-wordmark">PRINTMAX</span>
             </div>
-            <h1 class="page-title">Vendor Dashboard</h1>
+            <h1 class="page-title">VendorDashboard</h1>
         </div>
         
         <div class="header-actions">
@@ -3074,7 +3114,7 @@
                 </div>
                 <span class="connection-text" id="connectionText">Checking...</span>
             </div>
-            <button class="availability-toggle" id="availabilityToggle" onclick="toggleAvailability()" aria-label="Toggle availability">
+            <button class="availability-toggle" id="availabilityToggle" aria-label="Toggle availability" style="display:none">
                 <span class="toggle-text online-text">Online</span>
                 <span class="toggle-text offline-text">Offline</span>
             </button>
@@ -3125,29 +3165,57 @@
         <!-- Navigation Menu -->
         <nav class="nav-menu">
             <div class="nav-item">
-                <a href="#overview" class="nav-link active" onclick="setActiveNav(this)">
+                <a href="#" class="nav-link active" onclick="return false;" style="pointer-events: none; opacity: 0.9;">
                     <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
+                    <span>VendorDashboard</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#manual-jobs" class="nav-link" onclick="setActiveNav(this); scrollToSection('manual-section')" title="Manual Print Jobs">
-                    <i class="fas fa-tools"></i>
-                    <span>Manual Jobs</span>
-                    <span class="nav-badge" id="manualNavBadge">0</span>
+                <a href="#document-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('doc-section')" title="Document Printing">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Document Printing</span>
+                    <span class="nav-badge" id="docNavBadge">0</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#print-requests" class="nav-link" onclick="setActiveNav(this); scrollToSection('requests-section')" title="Print Requests">
-                    <i class="fas fa-file-import"></i>
-                    <span>Print Requests</span>
-                    <span class="nav-badge" id="requestsNavBadge">0</span>
+                <a href="#photo-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('photo-section')" title="Photo Printing">
+                    <i class="fas fa-camera"></i>
+                    <span>Photo Printing</span>
+                    <span class="nav-badge" id="photoNavBadge">0</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#completed-jobs" class="nav-link" onclick="setActiveNav(this); scrollToSection('completed-section')" title="Completed Jobs">
+                <a href="#passport-photo" class="nav-link" onclick="setActiveNav(this); scrollToSection('passport-section')" title="Passport Photo Printing">
+                    <i class="fas fa-passport"></i>
+                    <span>Passport Photo</span>
+                    <span class="nav-badge" id="passportNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#jumbo-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('jumbo-section')" title="Jumbo Paper Printing">
+                    <i class="fas fa-expand"></i>
+                    <span>Jumbo Printing</span>
+                    <span class="nav-badge" id="jumboNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#golden-embossing" class="nav-link" onclick="setActiveNav(this); scrollToSection('golden-section')" title="Golden Embossing / Black Book">
+                    <i class="fas fa-book"></i>
+                    <span>Golden/Black Book</span>
+                    <span class="nav-badge" id="goldenNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#digital-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('digital-section')" title="Digital Paper Printing">
+                    <i class="fas fa-print"></i>
+                    <span>Digital Printing</span>
+                    <span class="nav-badge" id="digitalNavBadge">0</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#completed-jobs" class="nav-link" onclick="setActiveNav(this); scrollToSection('completed-section')" title="Completed">
                     <i class="fas fa-check-circle"></i>
-                    <span>Completed Jobs</span>
+                    <span>Completed</span>
                     <span class="nav-badge" id="completedNavBadge">0</span>
                 </a>
             </div>
@@ -3205,8 +3273,8 @@
                         <i class="fas fa-tools"></i>
                     </div>
                 </div>
-                <div class="stat-number" id="manualStatCount">{{ manual_print_count|default:0 }}</div>
-                <div class="stat-label">Manual Print Jobs</div>
+                <div class="stat-number" id="manualStatCount">0</div>
+                <div class="stat-label">Pending Prints</div>
             </div>
             <div class="stat-card requests">
                 <div class="stat-header">
@@ -3214,8 +3282,8 @@
                         <i class="fas fa-file-import"></i>
                     </div>
                 </div>
-                <div class="stat-number" id="requestsStatCount">{{ print_requests_count|default:0 }}</div>
-                <div class="stat-label">Print Requests</div>
+                <div class="stat-number" id="requestsStatCount">0</div>
+                <div class="stat-label">Total Print Requests</div>
             </div>
             <div class="stat-card completed">
                 <div class="stat-header">
@@ -3223,8 +3291,8 @@
                         <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
-                <div class="stat-number" id="completedStatCount">{{ completed_jobs_count|default:0 }}</div>
-                <div class="stat-label">Completed Jobs</div>
+                <div class="stat-number" id="completedStatCount">0</div>
+                <div class="stat-label">Completed Prints</div>
             </div>
             <div class="stat-card total">
                 <div class="stat-header">
@@ -3232,19 +3300,19 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                 </div>
-                <div class="stat-number" id="totalStatCount">{{ total_jobs|default:0 }}</div>
-                <div class="stat-label">Total Jobs</div>
+                <div class="stat-number" id="totalStatCount">₹0</div>
+                <div class="stat-label">Total Earnings</div>
             </div>
         </div>
 
-        <!-- Manual Print Jobs Section -->
-        <section class="job-section" id="manual-section">
+        <!-- Document Printing Section -->
+        <section class="job-section" id="doc-section">
             <div class="section-header">
                 <div class="section-title-group">
-                    <div class="section-icon manual">
-                        <i class="fas fa-tools"></i>
+                    <div class="section-icon requests">
+                        <i class="fas fa-file-alt"></i>
                     </div>
-                    <h2 class="section-title">Manual Print Jobs</h2>
+                    <h2 class="section-title">Document Printing</h2>
                 </div>
                 <div class="section-controls">
                     <div class="search-container">
@@ -3253,32 +3321,32 @@
                             type="text" 
                             class="search-input" 
                             placeholder="Search by token, filename, user..."
-                            oninput="searchJobs('manual', this.value)"
+                            oninput="searchJobs('document', this.value)"
                             title="Search by token number, PDF filename, user email, or service type"
                         >
                     </div>
-                    <div class="job-count" id="manualCount">0</div>
+                    <div class="job-count" id="docCount">0</div>
                 </div>
             </div>
             <div class="jobs-container">
-                <div id="manualJobs" class="jobs-grid">
+                <div id="docJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <h3>Loading Manual Jobs</h3>
-                        <p>Please wait while we fetch your manual print jobs...</p>
+                        <h3>Loading Document Printing Jobs</h3>
+                        <p>Please wait while we fetch your document print jobs...</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Print Requests Section -->
-        <section class="job-section" id="requests-section">
+        <!-- Photo Printing Section -->
+        <section class="job-section" id="photo-section">
             <div class="section-header">
                 <div class="section-title-group">
                     <div class="section-icon requests">
-                        <i class="fas fa-file-import"></i>
+                        <i class="fas fa-camera"></i>
                     </div>
-                    <h2 class="section-title">Print Requests</h2>
+                    <h2 class="section-title">Photo Printing</h2>
                 </div>
                 <div class="section-controls">
                     <div class="search-container">
@@ -3287,19 +3355,155 @@
                             type="text" 
                             class="search-input" 
                             placeholder="Search by token, filename, user..."
-                            oninput="searchJobs('requests', this.value)"
+                            oninput="searchJobs('photo', this.value)"
                             title="Search by token number, PDF filename, user email, or service type"
                         >
                     </div>
-                    <div class="job-count" id="requestsCount">0</div>
+                    <div class="job-count" id="photoCount">0</div>
                 </div>
             </div>
             <div class="jobs-container">
-                <div id="printRequests" class="jobs-grid">
+                <div id="photoJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <h3>Loading Print Requests</h3>
-                        <p>Please wait while we fetch your print requests...</p>
+                        <h3>Loading Photo Printing Jobs</h3>
+                        <p>Please wait while we fetch your photo print jobs...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Passport Photo Printing Section -->
+        <section class="job-section" id="passport-section">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon requests">
+                        <i class="fas fa-passport"></i>
+                    </div>
+                    <h2 class="section-title">Passport Photo Printing</h2>
+                </div>
+                <div class="section-controls">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Search by token, filename, user..."
+                            oninput="searchJobs('passport', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
+                        >
+                    </div>
+                    <div class="job-count" id="passportCount">0</div>
+                </div>
+            </div>
+            <div class="jobs-container">
+                <div id="passportJobs" class="jobs-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Loading Passport Photo Jobs</h3>
+                        <p>Please wait while we fetch your passport photo jobs...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Jumbo Paper Printing Section -->
+        <section class="job-section" id="jumbo-section">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon requests">
+                        <i class="fas fa-expand"></i>
+                    </div>
+                    <h2 class="section-title">Jumbo Paper Printing</h2>
+                </div>
+                <div class="section-controls">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Search by token, filename, user..."
+                            oninput="searchJobs('jumbo', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
+                        >
+                    </div>
+                    <div class="job-count" id="jumboCount">0</div>
+                </div>
+            </div>
+            <div class="jobs-container">
+                <div id="jumboJobs" class="jobs-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Loading Jumbo Printing Jobs</h3>
+                        <p>Please wait while we fetch your jumbo printing jobs...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Golden Embossing / Black Book Section -->
+        <section class="job-section" id="golden-section">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon requests">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h2 class="section-title">Golden Embossing / Black Book</h2>
+                </div>
+                <div class="section-controls">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Search by token, filename, user..."
+                            oninput="searchJobs('golden', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
+                        >
+                    </div>
+                    <div class="job-count" id="goldenCount">0</div>
+                </div>
+            </div>
+            <div class="jobs-container">
+                <div id="goldenJobs" class="jobs-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Loading Golden/Black Book Jobs</h3>
+                        <p>Please wait while we fetch your golden embossing and black book jobs...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Digital Paper Printing Section -->
+        <section class="job-section" id="digital-section">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon requests">
+                        <i class="fas fa-print"></i>
+                    </div>
+                    <h2 class="section-title">Digital Paper Printing</h2>
+                </div>
+                <div class="section-controls">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Search by token, filename, user..."
+                            oninput="searchJobs('digital', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
+                        >
+                    </div>
+                    <div class="job-count" id="digitalCount">0</div>
+                </div>
+            </div>
+            <div class="jobs-container">
+                <div id="digitalJobs" class="jobs-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Loading Digital Printing Jobs</h3>
+                        <p>Please wait while we fetch your digital print jobs...</p>
                     </div>
                 </div>
             </div>
@@ -3598,7 +3802,7 @@
     <script>
         // Global variables
         let allJobs = [];
-        let filteredJobs = { manual: [], completed: [], requests: [] };
+        let filteredJobs = { document: [], photo: [], passport: [], jumbo: [], golden: [], digital: [], completed: [] };
         let sidebarCollapsed = false;
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
         let vendorAvailability = 'online'; // Default to online
@@ -3607,10 +3811,11 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();
-            loadVendorAvailability();
+            // loadVendorAvailability disabled
+            try { if (false) loadVendorAvailability(); } catch (e) {}
             // Bootstrap jobs from server-rendered context to avoid initial spinner
             try {
-                const embedded = {{ initial_jobs|default:'[]'|safe }};
+                const embedded = JSON.parse('{{ initial_jobs|default:"[]"|escapejs }}');
                 if (Array.isArray(embedded) && embedded.length > 0) {
                     // Render only jobs with rendered_status !== 'YES'
                     allJobs = embedded.filter(j => String((j.rendered_status || j.metadata?.rendered_status || 'NO')).toUpperCase() !== 'YES');
@@ -3630,7 +3835,7 @@
             initializeNotifications();
             
             // Initialize connection monitoring
-            initConnectionMonitoring();
+            // initConnectionMonitoring disabled
             
             // History month selector event listener
             const historyMonthSelect = document.getElementById('history-month-select');
@@ -4472,7 +4677,7 @@
             const sectionTitles = document.querySelectorAll('.section-title');
             const jobContainers = document.querySelectorAll('.jobs-container');
             
-            if (vendorAvailability === 'offline') {
+            if (false && vendorAvailability === 'offline') {
                 // Update toggle button
                 toggleBtn.classList.add('offline');
                 toggleBtn.setAttribute('aria-label', 'Click to go online');
@@ -4579,76 +4784,114 @@
         }
 
         function categorizeJobs() {
-            // Manual Jobs: job_completed = 'NO' AND service_type in ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing']
-            const manual = allJobs.filter(job => {
-                if (job.job_completed !== 'NO') return false;
-                const serviceType = (job.service_type || '').trim().toLowerCase();
-                return ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'].includes(serviceType);
-            });
+            // Map jobs into explicit sections by service_type
+            const documentJobs = allJobs.filter(j => j.job_completed === 'NO' && ['regular_print', 'regular print', ''].includes((j.service_type || '').trim().toLowerCase()));
+            const photoJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'photo_print');
+            const passportJobs = allJobs.filter(j => j.job_completed === 'NO' && ['passport_print','passport_photo'].includes((j.service_type || '').trim().toLowerCase()));
+            const jumboJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'jumbo_printing');
+            const goldenJobs = allJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase()));
+            const digitalJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print');
 
-            // Print Requests: job_completed = 'NO' AND service_type in ['regular_print', 'passport_print', 'photo_print'] OR regular print jobs
-            // AND vendor_status is 'not sended' or 'accepted' (show both pending and accepted jobs)
-            // Also include failed jobs (job_failed = 'YES')
-            // EXCLUDE cancelled jobs (vendor_status = 'cancelled')
-            const requests = allJobs.filter(job => {
-                if (job.job_completed !== 'NO') return false;
-                const serviceType = (job.service_type || '').trim().toLowerCase();
-                const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
-                const jobFailed = (job.job_failed || 'NO').toLowerCase();
-                
-                // Exclude cancelled jobs
-                if (vendorStatus === 'cancelled') return false;
-                
-                // Include regular print jobs and specific service types
-                const isRegularPrint = serviceType === 'regular_print' || serviceType === 'passport_print' || serviceType === 'photo_print' || serviceType === '' || serviceType === 'regular print';
-                
-                // Show jobs that are either not sent, accepted, or failed
-                const isPendingOrAccepted = vendorStatus === 'not sended' || vendorStatus === 'accepted';
-                const isFailed = jobFailed === 'yes';
-                
-                return isRegularPrint && (isPendingOrAccepted || isFailed);
-            });
-
-            // Completed Jobs: job_completed = 'YES' AND not hidden
             const completed = allJobs.filter(job => {
                 if (job.job_completed !== 'YES') return false;
-                // Check if job is hidden
                 const jobKey = `${job.filename}_${job.token || 'no_token'}`;
                 return !hiddenCompletedJobs.has(jobKey);
             });
 
-            filteredJobs = { manual, completed, requests };
+            filteredJobs = { document: documentJobs, photo: photoJobs, passport: passportJobs, jumbo: jumboJobs, golden: goldenJobs, digital: digitalJobs, completed };
 
-            // Update counts
-            updateCounts(manual.length, requests.length, completed.length);
-            
-            // Render jobs
-            renderJobs('manual', manual);
-            renderJobs('requests', requests);
+            updateCounts({
+                document: documentJobs.length,
+                photo: photoJobs.length,
+                passport: passportJobs.length,
+                jumbo: jumboJobs.length,
+                golden: goldenJobs.length,
+                digital: digitalJobs.length,
+                completed: completed.length
+            });
+
+            renderJobs('document', documentJobs);
+            renderJobs('photo', photoJobs);
+            renderJobs('passport', passportJobs);
+            renderJobs('jumbo', jumboJobs);
+            renderJobs('golden', goldenJobs);
+            renderJobs('digital', digitalJobs);
             renderJobs('completed', completed);
         }
 
-        function updateCounts(manualCount, requestsCount, completedCount) {
-            // Update main stats
-            document.getElementById('manualStatCount').textContent = manualCount;
-            document.getElementById('requestsStatCount').textContent = requestsCount;
-            document.getElementById('completedStatCount').textContent = completedCount;
-            document.getElementById('totalStatCount').textContent = allJobs.length;
+        function updateCounts(counts) {
+            const totalPending = counts.document + counts.photo + counts.passport + counts.jumbo + counts.golden + counts.digital;
+            const totalRequests = totalPending + counts.completed;
+            // Overview cards: Total Requests, Pending, Completed, Total Earnings
+            document.getElementById('requestsStatCount').textContent = totalRequests;
+            document.getElementById('manualStatCount').textContent = totalPending;
+            document.getElementById('completedStatCount').textContent = counts.completed;
+            // Earnings placeholder (sum not computed yet) => keep as ₹0
 
-            // Update section counts
-            document.getElementById('manualCount').textContent = manualCount;
-            document.getElementById('requestsCount').textContent = requestsCount;
-            document.getElementById('completedCount').textContent = completedCount;
+            // Section counts
+            if (document.getElementById('docCount')) document.getElementById('docCount').textContent = counts.document;
+            if (document.getElementById('photoCount')) document.getElementById('photoCount').textContent = counts.photo;
+            if (document.getElementById('passportCount')) document.getElementById('passportCount').textContent = counts.passport;
+            if (document.getElementById('jumboCount')) document.getElementById('jumboCount').textContent = counts.jumbo;
+            if (document.getElementById('goldenCount')) document.getElementById('goldenCount').textContent = counts.golden;
+            if (document.getElementById('digitalCount')) document.getElementById('digitalCount').textContent = counts.digital;
+            document.getElementById('completedCount').textContent = counts.completed;
 
-            // Update nav badges
-            document.getElementById('manualNavBadge').textContent = manualCount;
-            document.getElementById('requestsNavBadge').textContent = requestsCount;
-            document.getElementById('completedNavBadge').textContent = completedCount;
+            // Sidebar badges
+            document.getElementById('docNavBadge').textContent = counts.document;
+            document.getElementById('photoNavBadge').textContent = counts.photo;
+            document.getElementById('passportNavBadge').textContent = counts.passport;
+            document.getElementById('jumboNavBadge').textContent = counts.jumbo;
+            document.getElementById('goldenNavBadge').textContent = counts.golden;
+            document.getElementById('digitalNavBadge').textContent = counts.digital;
+            document.getElementById('completedNavBadge').textContent = counts.completed;
+
+            // Also reflect counts inline in the sidebar labels for readability
+            try {
+                updateSidebarLabels({
+                    document: counts.document,
+                    photo: counts.photo,
+                    passport: counts.passport,
+                    jumbo: counts.jumbo,
+                    golden: counts.golden,
+                    digital: counts.digital,
+                    completed: counts.completed
+                });
+            } catch (_) {}
+        }
+
+        function updateSidebarLabels(counts) {
+            const mapping = [
+                { badgeId: 'docNavBadge', labelText: 'Document Printing', count: counts.document },
+                { badgeId: 'photoNavBadge', labelText: 'Photo Printing', count: counts.photo },
+                { badgeId: 'passportNavBadge', labelText: 'Passport Printing', count: counts.passport },
+                { badgeId: 'jumboNavBadge', labelText: 'Jumbo Printing', count: counts.jumbo },
+                { badgeId: 'goldenNavBadge', labelText: 'Golden/Black Book', count: counts.golden },
+                { badgeId: 'digitalNavBadge', labelText: 'Digital Print', count: counts.digital },
+                { badgeId: 'completedNavBadge', labelText: 'Completed', count: counts.completed }
+            ];
+
+            mapping.forEach(({ badgeId, labelText, count }) => {
+                const badge = document.getElementById(badgeId);
+                if (badge && badge.previousElementSibling) {
+                    // The previous span is the label
+                    const labelSpan = badge.previousElementSibling;
+                    labelSpan.textContent = `${labelText} ${count}`;
+                }
+            });
         }
 
         function renderJobs(type, jobs) {
-            const containerId = type === 'manual' ? 'manualJobs' : 
-                               type === 'completed' ? 'completedJobs' : 'printRequests';
+            const containerIdMap = {
+                document: 'docJobs',
+                photo: 'photoJobs',
+                passport: 'passportJobs',
+                jumbo: 'jumboJobs',
+                golden: 'goldenJobs',
+                digital: 'digitalJobs',
+                completed: 'completedJobs'
+            };
+            const containerId = containerIdMap[type] || 'docJobs';
             const container = document.getElementById(containerId);
 
             // If vendor is offline, show offline message instead of jobs
@@ -4668,12 +4911,12 @@
             }
 
             if (jobs.length === 0) {
-                const emptyIcon = type === 'manual' ? 'fa-tools' : 
-                                 type === 'completed' ? 'fa-check-circle' : 'fa-file-import';
-                const emptyTitle = type === 'manual' ? 'No Manual Jobs' : 
-                                  type === 'completed' ? 'No Completed Jobs' : 'No Print Requests';
-                const emptyDesc = type === 'manual' ? 'All manual print jobs will appear here' : 
-                                 type === 'completed' ? 'Completed jobs will be shown here' : 'New print requests will appear here';
+                const iconMap = { document: 'fa-file-alt', photo: 'fa-camera', passport: 'fa-passport', jumbo: 'fa-expand', golden: 'fa-book', digital: 'fa-print', completed: 'fa-check-circle' };
+                const titleMap = { document: 'No Document Printing Jobs', photo: 'No Photo Printing Jobs', passport: 'No Passport Photo Jobs', jumbo: 'No Jumbo Printing Jobs', golden: 'No Golden/Black Book Jobs', digital: 'No Digital Printing Jobs', completed: 'No Completed Jobs' };
+                const descMap = { document: 'Document print jobs will appear here', photo: 'Photo print jobs will appear here', passport: 'Passport photo jobs will appear here', jumbo: 'Jumbo printing jobs will appear here', golden: 'Golden embossing and black book jobs will appear here', digital: 'Digital print jobs will appear here', completed: 'Completed jobs will be shown here' };
+                const emptyIcon = iconMap[type] || 'fa-file-alt';
+                const emptyTitle = titleMap[type] || 'No Jobs';
+                const emptyDesc = descMap[type] || '';
                 
                 container.innerHTML = `
                     <div class="empty-state">
@@ -4706,16 +4949,21 @@
         }
 
         function createJobCard(job, type) {
+            const manualServiceTypes = ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'golden_embossing'];
+            const serviceTypeForBadge = (job.service_type || '').trim().toLowerCase();
+            const sectionTypesManualStyle = ['document','photo','passport','jumbo','golden','digital'];
+            const isManualStyleRequest = sectionTypesManualStyle.includes(type) || ((type === 'requests') && manualServiceTypes.includes(serviceTypeForBadge));
+
+            // Force requests containing manual services to use manual styling classes
             const statusClass = type === 'completed' ? 'status-completed' : 
-                               type === 'manual' ? 'status-manual' : 'status-requests';
-            const statusText = type === 'completed' ? 'Done' : 
-                              type === 'manual' ? '' : ''; // Remove 'Pending' text completely
+                               (type === 'manual' || isManualStyleRequest) ? 'status-manual' : 'status-requests';
+            const statusText = type === 'completed' ? 'Done' : '';
             const cardClass = type === 'completed' ? 'completed' : 
-                              type === 'manual' ? 'manual' : 'requests';
+                              (type === 'manual' || isManualStyleRequest) ? 'manual' : 'requests';
 
             const tokenNumber = job.token ? `#${job.token}` : '';
 
-            // Get vendor status for display - only show badge for requests section
+            // Get vendor status for display - hide for manual-styled requests to match manual design
             const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
             // Detect failure from multiple possible fields
             const rawStatus = (job.status || job.metadata?.status || '').toLowerCase();
@@ -4723,31 +4971,23 @@
             const printingStatus = (job.printing_status || '').toLowerCase();
             const isFailed = rawStatus === 'failed' || rawStatus === 'timeout' || vendorStatus === 'failed' || jobFailedFlag === true || printingStatus === 'failed';
             let vendorStatusBadge = '';
-            if (type === 'requests') {
-                if (isFailed) {
-                    vendorStatusBadge = `<div class="vendor-status-badge failed" title="Job failed or printer issue">FAILED</div>`;
-                } else if (vendorStatus === 'accepted') {
-                    vendorStatusBadge = `<div class="vendor-status-badge accepted" title="Job accepted by vendor">ACCEPTED</div>`;
-                } else if (vendorStatus === 'not sended') {
-                    vendorStatusBadge = `<div class="vendor-status-badge pending" title="Waiting for vendor acceptance">PENDING</div>`;
-                }
-            }
+            // hide vendor status badges for simplified cards
 
-            // Get service type for badge
-            const serviceTypeForBadge = (job.service_type || '').trim().toLowerCase();
             let serviceTypeBadge = '';
-            if (type === 'manual' && serviceTypeForBadge) {
+            if ((type === 'manual' || isManualStyleRequest) && serviceTypeForBadge) {
                 const serviceTypeDisplay = {
                     'digital_print': 'DIGITAL PRINT',
                     'project_binding': 'PROJECT BINDING', 
                     'gloss_printing': 'GLOSS PRINTING',
-                    'jumbo_printing': 'JUMBO PRINTING'
+                    'jumbo_printing': 'JUMBO PRINTING',
+                    'golden_embossing': 'GOLDEN EMBOSSING'
                 };
                 const serviceTypeClass = {
                     'digital_print': 'digital-print',
                     'project_binding': 'project-binding',
                     'gloss_printing': 'gloss-printing', 
-                    'jumbo_printing': 'jumbo-printing'
+                    'jumbo_printing': 'jumbo-printing',
+                    'golden_embossing': 'golden-embossing'
                 };
                 if (serviceTypeDisplay[serviceTypeForBadge]) {
                     serviceTypeBadge = `<div class="service-type-badge ${serviceTypeClass[serviceTypeForBadge]}">${serviceTypeDisplay[serviceTypeForBadge]}</div>`;
@@ -4762,9 +5002,9 @@
 
             // Actions: Only show appropriate buttons based on job status
             let actions = '';
-            
-            if (type === 'manual') {
-                // Manual jobs: Show Print, Print Info, Cancel, and Completed buttons
+
+            // Use identical action layout for manual and manual-styled requests
+            if (isManualStyleRequest) {
                 actions = `
                     <div class="manual-job-actions">
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); printJob('${job.filename}', '${job.preview_url || job.download_url}', '${job.service_type || ''}')" title="Open print dialog">
@@ -4773,7 +5013,7 @@
                         <button class="btn-small btn-info" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="View print information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); cancelManualJob('${job.filename}')" title="Cancel job">
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); ${type === 'manual' ? `cancelManualJob('${job.filename}')` : `confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})`}" title="Cancel job">
                             <i class="fas fa-times"></i> Cancel
                         </button>
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
@@ -4781,8 +5021,8 @@
                         </button>
                     </div>`;
             } else if (type === 'requests') {
+                // Preserve non-manual-style request flows (e.g., regular accept flow)
                 if (isFailed) {
-                    // Failed jobs: Show Accept and Cancel buttons
                     actions = `
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); acceptJob('${job.filename}')" title="Retry failed job">
                             <i class="fas fa-redo"></i> Retry
@@ -4791,13 +5031,11 @@
                             <i class="fas fa-times"></i> Cancel
                         </button>`;
                 } else if (vendorStatus === 'accepted') {
-                    // Accepted jobs: Only show Completed button
                     actions = `
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
                             <i class="fas fa-check"></i> Completed
                         </button>`;
                 } else {
-                    // Pending jobs: Only show Accept button
                     actions = `
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); acceptJob('${job.filename}')" title="Accept job">
                             <i class="fas fa-thumbs-up"></i> Accept
@@ -4813,9 +5051,10 @@
                 </button>` : '';
 
             // Get printer name for display
-            const printerName = job.printer_name || 'No Printer Configured';
-            const isNoPrinter = printerName === 'No Printer Configured';
-            const printerIcon = isNoPrinter ? 'fa-exclamation-triangle' : 'fa-print';
+            // Remove printer display per new requirement
+            const printerName = '';
+            const isNoPrinter = true;
+            const printerIcon = 'fa-print';
             
             // Get service type for printer switching
             const serviceType = (job.service_type || '').trim().toLowerCase();
@@ -4864,29 +5103,6 @@
                             <span>${serviceTypeForBadge.replace('_', ' ').toUpperCase() || 'PRINT'}</span>
                         </div>
                     </div>
-                    ${type === 'requests' ? `
-                        <div class="printer-switch-container ${isNoPrinter ? 'no-printer' : ''}" title="${isNoPrinter ? 'No printer configured for this service type' : 'Assigned printer for this job'}">
-                            <div class="printer-info">
-                                <i class="fas ${printerIcon}"></i>
-                                <span class="printer-name-text">${printerName}</span>
-                            </div>
-                            <div class="printer-actions">
-                                <button class="printer-switch-btn" onclick="event.stopPropagation(); switchPrinter('${job.filename}', '${serviceType}')" title="Switch printer for this service type">
-                                    <i class="fas fa-exchange-alt"></i>
-                                    <span>Switch</span>
-                                </button>
-                                <button class="printer-cancel-btn" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})" title="Cancel job and refund user">
-                                    <i class="fas fa-times"></i>
-                                    <span>Cancel</span>
-                                </button>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="printer-name ${isNoPrinter ? 'no-printer' : ''}" title="${isNoPrinter ? 'No printer configured for this service type' : 'Assigned printer for this job'}">
-                            <i class="fas ${printerIcon}"></i>
-                            <span>${printerName}</span>
-                        </div>
-                    `}
                     <div class="job-actions compact" onclick="event.stopPropagation()">
                         ${actions}
                     </div>
@@ -4929,7 +5145,9 @@
                     }
                     showToast(`Error marking job as completed: ${data.error || 'Unknown error'}`);
                 } else {
-                    showToast(`Job "${filename}" marked as completed successfully!`);
+                    // Extract document name for better display
+                    const documentName = filename.split('_')[0] || filename;
+                    showToast(`✅ Job completed successfully!\nDocument: ${documentName}\nStatus: Ready for pickup`, 'success');
                 }
             })
             .catch(err => {
@@ -5394,9 +5612,50 @@
         // Manual Job Functions
         function printJob(filename, downloadUrl, serviceType) {
             try {
-                // Open the file in a new window/tab for printing
+                // 1) Update UI status to processing immediately (non-destructive, local only)
+                const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                if (jobIndex !== -1) {
+                    // track a transient printing state without altering backend fields
+                    allJobs[jobIndex].printing_status = 'processing';
+                }
+                // Update badge text in the rendered card if present
+                const card = document.querySelector(`.job-card[data-filename="${CSS.escape(filename)}"]`);
+                if (card) {
+                    const header = card.querySelector('.job-header');
+                    let statusEl = header?.querySelector('.job-status');
+                    if (!statusEl) {
+                        statusEl = document.createElement('div');
+                        statusEl.className = 'job-status';
+                        header?.appendChild(statusEl);
+                    }
+                    statusEl.textContent = 'Processing';
+                    statusEl.classList.remove('status-manual', 'status-requests', 'status-completed', 'status-pending');
+                    statusEl.classList.add('status-processing');
+                }
+
+                // 2) Open document. On mobile, try to open explicitly in Chrome if available
                 if (downloadUrl) {
-                    window.open(downloadUrl, '_blank');
+                    const ua = navigator.userAgent || navigator.vendor || '';
+                    const isAndroid = /Android/i.test(ua);
+                    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+                    // Attempt Chrome intent on Android mobile
+                    if (isAndroid && /Mobile/i.test(ua)) {
+                        try {
+                            const chromeIntent = `intent://${downloadUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+                            // Open Chrome if installed; most Androids will fallback gracefully
+                            window.location.href = chromeIntent;
+                            // Also open as fallback in a new tab in case intent is blocked
+                            setTimeout(() => window.open(downloadUrl, '_blank'), 400);
+                        } catch (_) {
+                            window.open(downloadUrl, '_blank');
+                        }
+                    } else if (isIOS) {
+                        // iOS: cannot force Chrome reliably; open in new tab
+                        window.open(downloadUrl, '_blank');
+                    } else {
+                        // Desktop or unknown: default behavior
+                        window.open(downloadUrl, '_blank');
+                    }
                     showToast(`Opening ${filename} for printing...`, 'info');
                 } else {
                     showToast(`No download URL available for ${filename}`, 'error');
@@ -5505,8 +5764,11 @@
 
         // Search Functionality
         function searchJobs(type, term) {
-            const jobs = filteredJobs[type];
-            const searchInput = document.querySelector(`input[placeholder*="${type === 'manual' ? 'manual' : type === 'completed' ? 'completed' : 'requests'}"]`);
+            const jobs = filteredJobs[type] || [];
+            const sectionIdMap = { document: 'doc-section', photo: 'photo-section', passport: 'passport-section', jumbo: 'jumbo-section', golden: 'golden-section', digital: 'digital-section', completed: 'completed-section' };
+            const containerIdMap = { document: 'docJobs', photo: 'photoJobs', passport: 'passportJobs', jumbo: 'jumboJobs', golden: 'goldenJobs', digital: 'digitalJobs', completed: 'completedJobs' };
+            const section = document.getElementById(sectionIdMap[type]);
+            const searchInput = section ? section.querySelector('.search-input') : null;
             
             if (!term.trim()) {
                 // Clear search - restore original jobs
@@ -5566,8 +5828,7 @@
             renderJobs(type, filtered);
             
             // Show search results count and feedback
-            const containerId = type === 'manual' ? 'manualJobs' : 
-                               type === 'completed' ? 'completedJobs' : 'printRequests';
+            const containerId = containerIdMap[type] || 'docJobs';
             const container = document.getElementById(containerId);
             
             if (filtered.length === 0 && searchTerm) {
