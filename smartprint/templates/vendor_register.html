@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
 <head>
@@ -5,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join PrintMax - Partner Registration</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for better icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             /* Modern Color Palette */
@@ -62,16 +65,18 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--white);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            color: var(--gray-900);
-            line-height: 1.6;
-        }
+         background: var(--surface);
+         border-radius: 20px;
+         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+         padding: 2rem;
+         margin: 2rem auto;
+         max-width: 1000px;
+         width: 95%;
+         border: 1px solid var(--divider);
+         position: relative;
+         z-index: 10;
+         text-align: center;
+       }
 
         .container {
             width: 100%;
@@ -138,6 +143,13 @@
             color: var(--white);
         }
 
+         .hero-logo {
+             width: 100%;
+             height: 100%;
+             object-fit: contain;
+             filter: brightness(0) invert(1);
+        }
+
         .hero-title {
             font-family: 'Poppins', sans-serif;
             font-size: 2rem;
@@ -147,6 +159,7 @@
         }
 
         .hero-subtitle {
+            font-family: 'Inter', sans-serif;
             font-size: 1rem;
             opacity: 0.9;
             margin-bottom: 1.5rem;
@@ -166,6 +179,7 @@
             margin-bottom: 0.75rem;
             font-size: 0.875rem;
             opacity: 0.9;
+            font-family: 'Inter', sans-serif;
         }
 
         .hero-features .material-icons {
@@ -195,6 +209,7 @@
         }
 
         .form-subtitle {
+            font-family: 'Inter', sans-serif;
             color: var(--gray-600);
             font-size: 0.875rem;
         }
@@ -224,8 +239,11 @@
             color: var(--gray-700);
             margin-bottom: 0.375rem;
             font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            text-align: left;
+            width: 100%;
         }
 
         .input-wrapper {
@@ -238,6 +256,7 @@
             border: 2px solid var(--gray-200);
             border-radius: var(--radius-lg);
             font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
             background: var(--white);
             color: var(--gray-900);
             transition: var(--transition);
@@ -286,31 +305,6 @@
             background: var(--gray-100);
         }
 
-        .location-button {
-            position: absolute;
-            right: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            background: var(--primary);
-            border: none;
-            color: var(--white);
-            cursor: pointer;
-            padding: 0.375rem;
-            border-radius: var(--radius-md);
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .location-button:hover {
-            background: var(--primary-dark);
-            transform: translateY(-50%) scale(1.05);
-        }
-
-        .location-button .material-icons {
-            font-size: 1.1rem;
-        }
 
         .error-message {
             color: var(--error);
@@ -355,6 +349,7 @@
         }
 
         .strength-text {
+            font-family: 'Inter', sans-serif;
             font-size: 0.75rem;
             color: var(--gray-600);
             font-weight: 500;
@@ -369,6 +364,7 @@
             border-radius: var(--radius-lg);
             font-size: 1rem;
             font-weight: 600;
+            font-family: 'Inter', sans-serif;
             cursor: pointer;
             transition: var(--transition);
             display: flex;
@@ -420,6 +416,7 @@
             color: var(--primary);
             text-decoration: none;
             font-weight: 500;
+            font-family: 'Inter', sans-serif;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -445,6 +442,436 @@
             box-shadow: var(--shadow-lg);
         }
 
+        /* Timeline Styles - Matching Vendor Pricing Page (adapted) */
+        .timeline-container {
+            display: none;
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 1000px;
+            width: 95%;
+            border: 1px solid var(--gray-200);
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .timeline-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .timeline-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary, var(--gray-900));
+            margin: 0;
+        }
+
+        .timeline-subtitle {
+            color: var(--text-secondary, var(--gray-600));
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            margin-top: 0.5rem;
+        }
+
+        .timeline {
+            display: flex;
+            align-items: center; /* ensure all items sit on the same horizontal line */
+            justify-content: space-between;
+            position: relative;
+            padding: 2rem 0;
+            gap: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .timeline-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 250px;
+            z-index: 2;
+        }
+
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 50px;
+            left: calc(50% + 25px);
+            right: calc(-80% + 10px);
+            height: 2px;
+            background: var(--gray-300);
+            z-index: 1;
+        }
+
+        .timeline-item.completed:not(:last-child)::after {
+            background: linear-gradient(90deg, var(--success) 0%, var(--primary) 100%);
+        }
+
+        .timeline-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 4px solid;
+            z-index: 3;
+        }
+
+        .timeline-item.completed .timeline-icon {
+            background: var(--success);
+            color: var(--white);
+            border-color: var(--success);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .timeline-item.current .timeline-icon {
+            background: var(--primary);
+            color: var(--white);
+            border-color: var(--primary);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .timeline-item.pending .timeline-icon {
+            background: var(--gray-300);
+            color: var(--gray-500);
+            border-color: var(--gray-300);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .timeline-content {
+            background: var(--white);
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            text-align: center;
+            width: 100%;
+            max-width: 250px;
+            min-height: 160px;
+            height: 160px; /* normalize card height to keep all items aligned */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center; /* ensure inner text/buttons centered */
+        }
+
+        .timeline-item.completed .timeline-content {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            border-color: var(--success);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .timeline-item.current .timeline-content {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-color: var(--primary);
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .timeline-item.pending .timeline-content {
+            background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+            color: white;
+            border-color: var(--warning);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .timeline-title-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.01em;
+        }
+
+        .timeline-description {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            margin-bottom: 0.75rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .timeline-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .timeline-button {
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--white);
+            background: var(--white);
+            color: var(--primary);
+            border-radius: var(--radius-lg);
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            font-size: 0.85rem;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .timeline-button:hover {
+            background: transparent;
+            color: var(--white);
+            transform: translateY(-2px);
+        }
+
+        .timeline-button.secondary {
+            background: transparent;
+            color: var(--white);
+        }
+
+        .timeline-button.secondary:hover {
+            background: var(--white);
+            color: var(--primary);
+        }
+
+        .timeline-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+         /* Registration Animation */
+         .registration-animation {
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             background: rgba(0, 0, 0, 0.8);
+             display: none;
+             align-items: center;
+             justify-content: center;
+             z-index: 9999;
+             backdrop-filter: blur(5px);
+         }
+
+         .animation-content {
+             background: var(--white);
+             border-radius: var(--radius-2xl);
+             padding: 3rem;
+             text-align: center;
+             box-shadow: var(--shadow-2xl);
+             max-width: 400px;
+             width: 90%;
+         }
+
+         .animation-icon {
+             width: 100px;
+             height: 100px;
+             border-radius: 50%;
+             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             margin: 0 auto 1.5rem;
+             box-shadow: 0 0 30px rgba(37, 99, 235, 0.4);
+             border: 4px solid var(--white);
+         }
+
+         .animation-icon .material-icons {
+             font-size: 3rem;
+             color: var(--white);
+             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+             /* Removed animation to make printer icon static during vendor registration */
+         }
+
+         .animation-title {
+             font-family: 'Poppins', sans-serif;
+             font-size: 1.5rem;
+             font-weight: 700;
+             color: var(--gray-900);
+             margin-bottom: 0.5rem;
+         }
+
+         .animation-description {
+             font-family: 'Inter', sans-serif;
+             color: var(--gray-600);
+             font-size: 1rem;
+             margin-bottom: 1.5rem;
+         }
+
+         .animation-progress {
+             width: 100%;
+             height: 6px;
+             background: var(--gray-200);
+             border-radius: 3px;
+             overflow: hidden;
+             margin-bottom: 1rem;
+         }
+
+         .animation-progress-bar {
+             height: 100%;
+             background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
+             border-radius: 3px;
+             animation: progress 3s ease-in-out;
+         }
+
+         @keyframes progress {
+             0% { width: 0%; }
+             50% { width: 70%; }
+             100% { width: 100%; }
+         }
+
+         /* Mobile Timeline - Vertical Layout */
+         @media (max-width: 768px) {
+             .timeline-container {
+                 padding: 1.5rem;
+                 margin: 1.5rem auto;
+                 width: 95%;
+                 max-width: 100%;
+             }
+
+             .timeline {
+                 flex-direction: column;
+                 align-items: center;
+                 padding: 1rem 0;
+                 gap: 2rem;
+             }
+
+             .timeline-item {
+                 max-width: 300px;
+                 width: 100%;
+             }
+
+             .timeline-item:not(:last-child)::after {
+                 top: 100%;
+                 left: 50%;
+                 right: auto;
+                 width: 2px;
+                 height: 2rem;
+                 transform: translateX(-50%);
+             }
+
+             .timeline-icon {
+                 width: 60px;
+                 height: 60px;
+                 font-size: 1.5rem;
+             }
+
+             .timeline-content {
+                 max-width: 280px;
+                 min-height: 100px;
+                 padding: 0.8rem;
+             }
+
+             .timeline-title-text {
+                 font-size: 0.9rem;
+                 font-weight: 700;
+             }
+
+             .timeline-description {
+                 font-size: 0.8rem;
+                 font-weight: 400;
+             }
+
+             .timeline-button {
+                 padding: 0.4rem 0.6rem;
+                 font-size: 0.7rem;
+             }
+
+             .timeline-header .timeline-title {
+                 font-size: 1.2rem;
+             }
+
+             .timeline-header img {
+                 height: 30px !important;
+             }
+         }
+
+         @media (max-width: 480px) {
+             .timeline-container {
+                 padding: 1rem;
+                 margin: 1rem auto;
+                 width: 98%;
+                 max-width: 100%;
+             }
+
+             .timeline {
+                 padding: 0.5rem 0;
+                 gap: 0.5rem;
+                 justify-content: center;
+                 flex-wrap: wrap;
+             }
+
+             .timeline-item {
+                 min-width: 120px;
+                 max-width: 200px;
+                 flex: 0 0 auto;
+             }
+
+             .timeline-icon {
+                 width: 45px;
+                 height: 45px;
+                 font-size: 0.5rem;
+             }
+
+             .timeline-content {
+                 padding: 0.75rem;
+                 max-width: 150px;
+                 min-height: 160px;
+             }
+
+             .timeline-title-text {
+                 font-size: 0.85rem;
+                 font-weight: 700;
+             }
+
+             .timeline-description {
+                 font-size: 0.75rem;
+                 font-weight: 400;
+             }
+
+             .timeline-button {
+                 padding: 0.4rem 0.6rem;
+                 font-size: 0.7rem;
+                 min-width: 70px;
+             }
+
+             .timeline-header .timeline-title {
+                 font-size: 1rem;
+             }
+
+             .timeline-header img {
+                 height: 25px !important;
+             }
+        }
+
         .success-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
@@ -459,6 +886,7 @@
         }
 
         .success-description {
+            font-family: 'Inter', sans-serif;
             font-size: 1rem;
             opacity: 0.9;
             margin-bottom: 1.5rem;
@@ -479,6 +907,7 @@
             color: var(--success);
             border-radius: var(--radius-lg);
             font-weight: 600;
+            font-family: 'Inter', sans-serif;
             text-decoration: none;
             transition: var(--transition);
             display: inline-flex;
@@ -678,64 +1107,6 @@
             background: var(--gray-400);
         }
 
-        /* Submit overlay */
-        .submit-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(17, 24, 39, 0.55);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            backdrop-filter: blur(2px);
-        }
-
-        .submit-card {
-            background: var(--white);
-            border-radius: var(--radius-2xl);
-            box-shadow: var(--shadow-2xl);
-            padding: 1.5rem 1.75rem;
-            width: 100%;
-            max-width: 420px;
-            border: 1px solid var(--gray-200);
-            text-align: center;
-        }
-
-        .submit-loader {
-            width: 48px;
-            height: 48px;
-            border: 4px solid var(--primary-light);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            margin: 0 auto 1rem auto;
-            animation: spin 1s linear infinite;
-        }
-
-        .submit-title {
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.25rem;
-        }
-
-        .submit-subtitle {
-            color: var(--gray-600);
-            font-size: 0.95rem;
-        }
-
-        .dot-ellipsis::after {
-            content: '';
-            display: inline-block;
-            width: 1.5em;
-            text-align: left;
-            animation: dots 1.2s steps(4, end) infinite;
-        }
-
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
     </style>
 </head>
 <body>
@@ -745,7 +1116,7 @@
             <div class="hero-section">
                 <div class="hero-content">
                     <div class="hero-icon">
-                        <span class="material-icons">store</span>
+                         <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" class="hero-logo">
                     </div>
                     <h1 class="hero-title">Join PrintMax</h1>
                     <p class="hero-subtitle">Register your printing shop with us and reach more customers</p>
@@ -779,13 +1150,10 @@
                         <span class="material-icons success-icon">check_circle</span>
                         <h3 class="success-title">Welcome to PrintMax!</h3>
                         <p class="success-description">
-                            Your account has been created successfully. Our engineer will help you get started with setting up your services and pricing.
+                            Your account has been created successfully. Follow the steps below to complete your setup.
                         </p>
-                        <div class="success-actions">
-                            <a href="/" class="success-button">Back to Home</a>
-                            <a href="/login/" class="success-button secondary">Login to Dashboard</a>
-                        </div>
                     </div>
+
 
                     <!-- Registration Form -->
                     <form id="vendorRegisterForm" onsubmit="handleRegistration(event)">
@@ -854,26 +1222,61 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="city" class="form-label">City</label>
+                                <label for="state" class="form-label">State</label>
                                 <div class="input-wrapper">
-                                    <input type="text" class="form-input" id="city" name="city" required>
-                                    <span class="material-icons input-icon">location_city</span>
+                                    <select class="form-input" id="state" name="state" required>
+                                        <option value="">--Select State--</option>
+                                        <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                        <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                                        <option value="Assam">Assam</option>
+                                        <option value="Bihar">Bihar</option>
+                                        <option value="Chhattisgarh">Chhattisgarh</option>
+                                        <option value="Goa">Goa</option>
+                                        <option value="Gujarat">Gujarat</option>
+                                        <option value="Haryana">Haryana</option>
+                                        <option value="Himachal Pradesh">Himachal Pradesh</option>
+                                        <option value="Jharkhand">Jharkhand</option>
+                                        <option value="Karnataka">Karnataka</option>
+                                        <option value="Kerala">Kerala</option>
+                                        <option value="Madhya Pradesh">Madhya Pradesh</option>
+                                        <option value="Maharashtra">Maharashtra</option>
+                                        <option value="Manipur">Manipur</option>
+                                        <option value="Meghalaya">Meghalaya</option>
+                                        <option value="Mizoram">Mizoram</option>
+                                        <option value="Nagaland">Nagaland</option>
+                                        <option value="Odisha">Odisha</option>
+                                        <option value="Punjab">Punjab</option>
+                                        <option value="Rajasthan">Rajasthan</option>
+                                        <option value="Sikkim">Sikkim</option>
+                                        <option value="Tamil Nadu">Tamil Nadu</option>
+                                        <option value="Telangana">Telangana</option>
+                                        <option value="Tripura">Tripura</option>
+                                        <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                        <option value="Uttarakhand">Uttarakhand</option>
+                                        <option value="West Bengal">West Bengal</option>
+                                        <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                                        <option value="Chandigarh">Chandigarh</option>
+                                        <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                                        <option value="Delhi">Delhi</option>
+                                        <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                                        <option value="Ladakh">Ladakh</option>
+                                        <option value="Lakshadweep">Lakshadweep</option>
+                                        <option value="Puducherry">Puducherry</option>
+                                    </select>
+                                    <span class="material-icons input-icon">map</span>
                                 </div>
-                                <div class="error-message" id="cityError"></div>
+                                <div class="error-message" id="stateError"></div>
                             </div>
                         </div>
 
+                        <div class="form-grid">
                         <div class="form-group">
-                            <label for="shopAddress" class="form-label">Shop Address</label>
+                                <label for="city" class="form-label">City/District/Town</label>
                             <div class="input-wrapper">
-                                <input type="text" class="form-input" id="shopAddress" name="shopAddress" required 
-                                       placeholder="Enter your complete shop address">
-                                <span class="material-icons input-icon">location_on</span>
-                                <button type="button" class="location-button" id="locationIcon" title="Get current location">
-                                    <span class="material-icons">my_location</span>
-                                </button>
+                                    <input type="text" class="form-input" id="city" name="city" required>
+                                    <span class="material-icons input-icon">location_city</span>
                             </div>
-                            <div class="error-message" id="shopAddressError"></div>
+                                <div class="error-message" id="cityError"></div>
                         </div>
 
                         <div class="form-group">
@@ -883,6 +1286,39 @@
                                 <span class="material-icons input-icon">markunread_mailbox</span>
                             </div>
                             <div class="error-message" id="pincodeError"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="locality" class="form-label">Locality/Area</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="locality" name="locality" required 
+                                           placeholder="Enter your locality or area">
+                                    <span class="material-icons input-icon">place</span>
+                                </div>
+                                <div class="error-message" id="localityError"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="landmark" class="form-label">Landmark (Optional)</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="landmark" name="landmark" 
+                                           placeholder="Nearby landmark or reference point">
+                                    <span class="material-icons input-icon">flag</span>
+                                </div>
+                                <div class="error-message" id="landmarkError"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="shopAddress" class="form-label">Complete Address</label>
+                            <div class="input-wrapper">
+                                <input type="text" class="form-input" id="shopAddress" name="shopAddress" required 
+                                       placeholder="Enter your complete shop address">
+                                <span class="material-icons input-icon">location_on</span>
+                            </div>
+                            <div class="error-message" id="shopAddressError"></div>
                         </div>
 
                         <input type="hidden" id="latitude" name="latitude">
@@ -901,17 +1337,92 @@
                             Back to Login
                         </a>
                     </div>
+            </div>
+        </div>
+    </div>
+
+         <!-- Registration Animation Overlay -->
+         <div class="registration-animation" id="registrationAnimation">
+             <div class="animation-content">
+                   <div class="animation-icon">
+                       <span class="material-icons">print</span>
+                   </div>
+                 <h3 class="animation-title">Registering You as Vendor</h3>
+                 <p class="animation-description">Please wait while we set up your vendor account...</p>
+                 <div class="animation-progress">
+                     <div class="animation-progress-bar"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Submit Overlay -->
-    <div id="submitOverlay" class="submit-overlay" aria-hidden="true">
-        <div class="submit-card" role="status" aria-live="polite">
-            <div class="submit-loader" aria-hidden="true"></div>
-            <div class="submit-title" id="submitOverlayTitle">Creating your account</div>
-            <div class="submit-subtitle" id="submitOverlayMsg">Setting up your PrintMax vendor profile<span class="dot-ellipsis"></span></div>
+    <!-- Timeline Container - Outside registration card -->
+    <div class="timeline-container" id="timelineContainer">
+        <div class="timeline-header">
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" style="height: 40px; margin-right: 10px;">
+                <h2 class="timeline-title" style="margin: 0;">3 Phase Timeline for Vendor Onboarding</h2>
+            </div>
+            <p class="timeline-subtitle">Complete these steps to start receiving orders from customers</p>
+        </div>
+        
+        <div class="timeline">
+            <!-- Phase 1: Registration (Completed) -->
+            <div class="timeline-item completed">
+                <div class="timeline-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title-text">Registration Complete</h3>
+                    <p class="timeline-description">
+                        Account created and verified
+                    </p>
+                    <div class="timeline-actions">
+                        <span class="timeline-button" style="background: var(--success); color: white; cursor: default;">
+                            <span class="material-icons">check_circle</span>
+                            Done
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 2: Pricing Setup (Current) -->
+            <div class="timeline-item current">
+                <div class="timeline-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title-text">Setup Pricing</h3>
+                    <p class="timeline-description">
+                        Configure your service rates
+                    </p>
+                    <div class="timeline-actions">
+                        <a href="#" class="timeline-button" id="continuePricingBtn">
+                            <span class="material-icons">arrow_forward</span>
+                            Continue
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 3: Dashboard Login (Pending) -->
+            <div class="timeline-item pending">
+                <div class="timeline-icon">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title-text">Login to Dashboard</h3>
+                    <p class="timeline-description">
+                        Check email for login details
+                    </p>
+                    <div class="timeline-actions">
+                        <a href="/vendor-login/" class="timeline-button">
+                            <span class="material-icons">login</span>
+                            Login to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -973,13 +1484,26 @@
                 if (!phoneRegex.test(value.replace(/\D/g, ''))) return { isValid: false, message: 'Please enter a valid 10-digit phone number' };
                 return { isValid: true };
             },
+            state: (value) => {
+                if (!value) return { isValid: false, message: 'State is required' };
+                return { isValid: true };
+            },
             city: (value) => {
                 if (!value.trim()) return { isValid: false, message: 'City is required' };
                 if (value.trim().length < 2) return { isValid: false, message: 'Please enter a valid city name' };
                 return { isValid: true };
             },
+            locality: (value) => {
+                if (!value.trim()) return { isValid: false, message: 'Locality is required' };
+                if (value.trim().length < 2) return { isValid: false, message: 'Please enter a valid locality' };
+                return { isValid: true };
+            },
+            landmark: (value) => {
+                // Landmark is optional, so always valid
+                return { isValid: true };
+            },
             shopAddress: (value) => {
-                if (!value.trim()) return { isValid: false, message: 'Shop address is required' };
+                if (!value.trim()) return { isValid: false, message: 'Complete address is required' };
                 if (value.trim().length < 10) return { isValid: false, message: 'Please enter a complete address' };
                 return { isValid: true };
             },
@@ -1078,9 +1602,108 @@
                 }
             });
 
-            // Remove geolocation usage: keep lat/long default to 0
+             // Mandatory geolocation fetching with user permission request
+             function requestLocationPermission() {
+                 if (navigator.geolocation) {
+                     // Show permission request message
+                     showNotification('📍 Location access is required for accurate service delivery. Please allow location access.', 'info');
+                     
+                     navigator.geolocation.getCurrentPosition(
+                         position => {
+                             const lat = position.coords.latitude;
+                             const lng = position.coords.longitude;
+                             const accuracy = position.coords.accuracy;
+                             
+                              // Store coordinates in hidden fields
+                              document.getElementById('latitude').value = lat;
+                              document.getElementById('longitude').value = lng;
+                             
+                             // Show success notification
+                             showNotification('✅ Location detected successfully! Your shop location has been recorded.', 'success');
+                         },
+                         error => {
+                             let errorMessage;
+                             let allowContinue = false;
+                             
+                             switch(error.code) {
+                                 case error.PERMISSION_DENIED:
+                                     errorMessage = "❌ Location access denied. This is required for accurate service delivery. Please enable location access and refresh the page.";
+                                     allowContinue = false;
+                                     break;
+                                 case error.POSITION_UNAVAILABLE:
+                                     errorMessage = "⚠️ Location information unavailable. Please check your GPS/WiFi settings and try again.";
+                                     allowContinue = true;
+                                     break;
+                                 case error.TIMEOUT:
+                                     errorMessage = "⏰ Location request timed out. Please try again or check your internet connection.";
+                                     allowContinue = true;
+                                     break;
+                                 default:
+                                     errorMessage = "❌ Location error occurred. Please refresh the page and try again.";
+                                     allowContinue = true;
+                             }
+                             
+                             console.error(`❌ Geolocation Error: ${errorMessage}, Code: ${error.code}`);
+                             
+                             if (allowContinue) {
+                                 // Set default coordinates but warn user
             document.getElementById('latitude').value = '0';
             document.getElementById('longitude').value = '0';
+                                 showNotification(errorMessage + ' You can continue with registration, but location services may be limited.', 'warning');
+                             } else {
+                                 // Don't allow registration without location
+                                 showNotification(errorMessage, 'error');
+                                 
+                                 // Disable submit button
+                                 const submitBtn = document.getElementById('submitBtn');
+                                 submitBtn.disabled = true;
+                                 submitBtn.innerHTML = '<span class="material-icons">location_off</span>Location Required';
+                                 submitBtn.style.background = 'var(--error)';
+                                 
+                                 // Add retry button
+                                 const retryBtn = document.createElement('button');
+                                 retryBtn.type = 'button';
+                                 retryBtn.className = 'submit-button';
+                                 retryBtn.style.marginTop = '0.5rem';
+                                 retryBtn.innerHTML = '<span class="material-icons">refresh</span>Retry Location';
+                                 retryBtn.onclick = () => {
+                                     location.reload();
+                                 };
+                                 
+                                 submitBtn.parentNode.insertBefore(retryBtn, submitBtn.nextSibling);
+                             }
+                         },
+                         {
+                             enableHighAccuracy: true,
+                             timeout: 15000,
+                             maximumAge: 0
+                         }
+                     );
+                 } else {
+                     console.error("❌ Geolocation is not supported by this browser.");
+                     showNotification('❌ Your browser does not support location services. Please use a modern browser.', 'error');
+                     
+                     // Disable submit button
+                     const submitBtn = document.getElementById('submitBtn');
+                     submitBtn.disabled = true;
+                     submitBtn.innerHTML = '<span class="material-icons">error</span>Browser Not Supported';
+                     submitBtn.style.background = 'var(--error)';
+                 }
+             }
+             
+             // Request location permission on page load
+             requestLocationPermission();
+
+            // Timeline continue button functionality
+            document.getElementById('continuePricingBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                if (email) {
+                    window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(email)}`;
+                } else {
+                    showNotification('Email not found. Please try registering again.', 'error');
+                }
+            });
         });
 
         // Get CSRF token
@@ -1110,7 +1733,10 @@
                 validateField('password', 'passwordError', validations.password),
                 validateField('confirmPassword', 'confirmPasswordError', validations.confirmPassword),
                 validateField('phoneNumber', 'phoneNumberError', validations.phoneNumber),
+                validateField('state', 'stateError', validations.state),
                 validateField('city', 'cityError', validations.city),
+                validateField('locality', 'localityError', validations.locality),
+                validateField('landmark', 'landmarkError', validations.landmark),
                 validateField('shopAddress', 'shopAddressError', validations.shopAddress),
                 validateField('pincode', 'pincodeError', validations.pincode)
             ];
@@ -1119,30 +1745,42 @@
                 return;
             }
 
-            // Set default latitude and longitude to 0 (no geolocation)
-            const latitude = '0';
-            const longitude = '0';
+            // Get latitude and longitude from hidden fields (set by geolocation)
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            
+             // Coordinates are ready to be sent
+            
+            // Validate that we have actual coordinates (not default 0,0)
+            if (latitude === '0' && longitude === '0') {
+                showNotification('⚠️ Location not detected. Please enable location access and try again.', 'warning');
+                return;
+            }
 
             // Prevent duplicate submits without changing button design
             if (window.__registerSubmitting) return;
             window.__registerSubmitting = true;
 
-            // Show overlay with friendly message
-            const overlay = document.getElementById('submitOverlay');
-            const overlayTitle = document.getElementById('submitOverlayTitle');
-            const overlayMsg = document.getElementById('submitOverlayMsg');
-            overlayTitle.textContent = 'Creating your account';
-            overlayMsg.textContent = '';
-            overlayMsg.innerHTML = 'Setting up your PrintMax vendor profile<span class="dot-ellipsis"></span>';
-            overlay.style.display = 'flex';
+             // Show registration animation
+             const animation = document.getElementById('registrationAnimation');
+             animation.style.display = 'flex';
+
+             // Show loading state on button
+             const submitBtn = document.getElementById('submitBtn');
+             const loadingSpinner = document.getElementById('loadingSpinner');
+             submitBtn.disabled = true;
+             loadingSpinner.style.display = 'inline-block';
 
             const formData = {
                 email: document.getElementById('email').value,
                 password: document.getElementById('password').value,
                 vendor_name: document.getElementById('vendorName').value,
                 phone_number: document.getElementById('phoneNumber').value,
-                shop_address: document.getElementById('shopAddress').value,
+                state: document.getElementById('state').value,
                 city: document.getElementById('city').value,
+                locality: document.getElementById('locality').value,
+                landmark: document.getElementById('landmark').value,
+                shop_address: document.getElementById('shopAddress').value,
                 pincode: document.getElementById('pincode').value,
                 latitude: latitude,
                 longitude: longitude
@@ -1161,22 +1799,45 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Redirect to appointment booking page with vendor email
-                    const email = document.getElementById('email').value;
-                    window.location.href = `/vendor-appointment/?email=${encodeURIComponent(email)}`;
+                     // Hide animation
+                     const animation = document.getElementById('registrationAnimation');
+                     animation.style.display = 'none';
+                     
+                     // Hide the entire registration card and show only timeline
+                     document.querySelector('.registration-card').style.display = 'none';
+                     document.getElementById('timelineContainer').style.display = 'block';
+                     
+                     // Center the timeline on the page exactly like pricing page
+                     document.getElementById('timelineContainer').style.margin = '2rem auto';
+                     document.getElementById('timelineContainer').style.position = 'relative';
+                     document.getElementById('timelineContainer').style.left = '50%';
+                     document.getElementById('timelineContainer').style.transform = 'translateX(-50%)';
+                     document.getElementById('timelineContainer').style.width = '95%';
+                     document.getElementById('timelineContainer').style.maxWidth = '1000px';
+                     document.getElementById('timelineContainer').style.textAlign = 'center';
+                     
+                     // Scroll to timeline
+                     document.getElementById('timelineContainer').scrollIntoView({ 
+                         behavior: 'smooth', 
+                         block: 'center' 
+                     });
                 } else {
                     throw new Error(data.message || 'Registration failed');
                 }
             } catch (error) {
                 console.error('Registration error:', error);
                 showNotification(error.message || 'Registration failed. Please try again.', 'error');
+                 
+                 // Hide animation
+                 const animation = document.getElementById('registrationAnimation');
+                 animation.style.display = 'none';
                 
                 // Allow resubmit
                 window.__registerSubmitting = false;
 
-                // Hide overlay on error
-                const overlay = document.getElementById('submitOverlay');
-                if (overlay) overlay.style.display = 'none';
+                 // Reset button state
+                 submitBtn.disabled = false;
+                 loadingSpinner.style.display = 'none';
             }
         }
     </script>

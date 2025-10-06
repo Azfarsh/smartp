@@ -739,16 +739,16 @@
     }
     .stat-card {
       background: var(--surface);
-      border-radius: 12px; /* more rounded for modern look */
-      padding: 0.08rem; /* ultra minimal padding */
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); /* very subtle shadow */
-      border: 1px solid #6b7280; /* gray border for contrast */
+      border-radius: 18px; /* rounder, friendlier */
+      padding: 0.04rem; /* smaller pad to shrink card */
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      border: 1px solid #6b7280;
       transition: all var(--transition-standard);
       position: relative;
       overflow: hidden;
       backdrop-filter: blur(10px);
-      aspect-ratio: 1; /* Perfect square for all viewports */
-      min-height: 35px; /* ultra small height for professional look */
+      aspect-ratio: 1;
+      min-height: 32px; /* slightly reduced */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -759,10 +759,10 @@
     /* Mobile compact stat cards */
     @media (max-width: 768px) {
       .stat-card {
-        padding: 0.08rem; /* ultra minimal padding for mobile */
-        aspect-ratio: 1; /* Perfect square for mobile */
-        min-height: 40px; /* ultra small height for mobile */
-        border-radius: 12px; /* more rounded for modern look */
+        padding: 0.03rem; /* more compact */
+        aspect-ratio: 1;
+        min-height: 34px;
+        border-radius: 20px; /* extra friendly on mobile */
       }
     }
 
@@ -1030,7 +1030,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-  margin-bottom: 0.35rem; /* reduced margin to bring list up */
+      margin-bottom: 0.15rem; /* further reduced gap to cards */
     }
 
     .view-all-btn {
@@ -1097,16 +1097,16 @@
 
     .jobs-row {
       display: flex;
-      gap: 1.5rem;
+      gap: 0.9rem; /* further reduce spacing between cards */
       min-width: max-content;
-      padding: 0.5rem 0;
+      padding: 0.2rem 0;
     }
 
     /* Mobile layout for new job cards */
     @media (max-width: 768px) {
       .jobs-row {
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 0.8rem;
         min-width: auto;
         padding: 0;
       }
@@ -1173,10 +1173,10 @@
       position: relative;
       overflow: hidden;
       display: flex;
-      min-height: 90px; /* slightly increased height */
+      min-height: 110px; /* consistent fixed height */
       backdrop-filter: blur(10px); /* glass effect */
-      min-width: 320px; /* increased minimum width to prevent badge overlap */
-      max-width: 100%; /* ensure it doesn't exceed container */
+      min-width: 320px; /* consistent width */
+      max-width: 360px; /* cap width to keep cards uniform */
     }
 
     .job-card-mobile:hover {
@@ -1186,13 +1186,14 @@
     }
 
     .job-card-left-border {
-      width: 4px;
+      width: 3px; /* slightly thinner and consistent */
       min-height: 100%;
       border-radius: 2px 0 0 2px;
+      background: var(--primary); /* default fallback to ensure all cards show color */
     }
 
     /* Status fallback colors (when service is unknown) */
-    .status-color-pending { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+    .status-color-pending { background: #fbbf24; }
     .status-color-processing { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
     .status-color-completed { background: linear-gradient(135deg, var(--success), #16a34a); }
     .status-color-failed { background: linear-gradient(135deg, var(--error), #ef4444); }
@@ -1267,9 +1268,9 @@
       border: 1px solid rgba(255, 255, 255, 0.2); /* subtle border */
     }
 
-    .status-pending { background: color-mix(in oklab, var(--warning) 16%, transparent); color: var(--warning); }
+    .status-pending { background: #fbbf24; color: #1f2937; border: 1px solid #f59e0b; }
     .status-processing { background: color-mix(in oklab, var(--info) 16%, transparent); color: var(--info); }
-    .status-completed { background: color-mix(in oklab, var(--success) 16%, transparent); color: var(--success); }
+    .status-completed { background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; }
     .status-failed { background: color-mix(in oklab, var(--error) 16%, transparent); color: var(--error); }
 
     .job-card-details {
@@ -1360,27 +1361,30 @@
 
     .job-card-actions {
       display: flex;
-      gap: 12px; /* increased gap for better spacing between buttons */
-      justify-content: flex-end;
+      gap: 8px; /* tighter spacing to help keep on one line */
+      justify-content: center;
       margin-top: auto;
+      width: 100%;
+      flex-wrap: nowrap;
     }
 
     .job-action-btn {
-      height: 32px; /* slightly increased height */
-      padding: 0 .6rem; /* slightly increased padding */
-      border-radius: 12px; /* rounded corners */
+      height: 30px; /* equal size */
+      padding: 0 .6rem; /* equal padding */
+      border-radius: 10px;
       border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       transition: all 0.2s ease;
-      font-size: 11px; /* slightly increased font */
-      gap: .4rem; /* increased gap for better spacing */
-      font-weight: 700; /* bold text */
-      color: white; /* white text */
-      text-transform: uppercase; /* uppercase text */
-      letter-spacing: 0.5px; /* letter spacing */
+      font-size: 11px;
+      gap: .35rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.3px;
+      flex: 1 1 0; /* equal widths across three buttons */
+      min-width: 90px;
     }
 
     .view-btn {
@@ -1460,21 +1464,17 @@
     @media (max-width: 480px) {
       .job-card-mobile {
         min-height: 100px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
 
-      .job-card-content {
-        padding: 12px;
-        gap: 6px;
-      }
+      .job-card-content { padding: 10px; gap: 4px; }
 
-      .job-card-filename {
-        font-size: 14px;
-      }
+      .job-card-filename { font-size: 14px; }
+      .job-card-actions { gap: 6px; }
+      .job-action-btn { height: 30px; padding: 0 .55rem; min-width: 90px; max-width: none; }
+      .job-action-label { display: inline-block; }
 
-      .job-detail-text {
-        font-size: 12px;
-      }
+      .job-detail-text { font-size: 12px; }
 
       .job-action-btn {
         width: 28px; /* increased width for better touch targets */
@@ -1483,10 +1483,7 @@
         padding: 0.2rem 0.4rem; /* added padding */
       }
 
-      .job-card-status-badge {
-        font-size: 11px;
-        padding: 3px 6px;
-      }
+      .job-card-status-badge { font-size: 11px; padding: 3px 6px; }
     }
 
     .job-card:hover {
@@ -1563,8 +1560,9 @@
     }
 
     .status-pending {
-      background: linear-gradient(135deg, var(--info), #3b82f6);
-      color: white;
+      background: #fbbf24;
+      color: #1f2937;
+      border: 1px solid #f59e0b;
     }
 
     .status-failed {
@@ -1873,20 +1871,22 @@
           gap: 1rem;
         }
 
-        .service-card {
-          min-height: 100px;
-          height: auto;
-        }
+      .service-card {
+        min-height: 92px; /* tighter */
+        height: auto;
+        padding: 0.6rem; /* reduce inner whitespace */
+        max-width: 360px; /* match job card cap width */
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+      }
 
-        .service-image {
-          width: 100px;
-          height: 100px;
-          border-radius: 0 16px 16px 0;
-        }
+      .service-image {
+        width: 72px; /* smaller image */
+        height: 72px;
+        border-radius: 0 16px 16px 0;
+      }
 
-        .service-content {
-          padding: 1rem;
-        }
+      .service-content { padding: 0.75rem; }
 
         .service-name {
           font-size: 1.1rem;
@@ -1902,13 +1902,15 @@
           font-size: 1.2rem;
         }
 
-        .service-card .service-arrow {
-          width: 32px;
-          height: 32px;
-          font-size: 1rem;
-          top: 0.5rem;
-          right: 0.5rem;
-        }
+      .service-card .service-arrow {
+        width: 36px; /* brighter, more visible */
+        height: 36px;
+        font-size: 1rem;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: #2563eb; /* brighter */
+        color: #ffffff;
+      }
       }
 
     /* Hover effects removed for mobile optimization */
@@ -2531,6 +2533,27 @@
       }
     }
 
+    /* Centered Pricing Summary Modal (Invoice Style) */
+    .pricing-invoice-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 99999; }
+    .pricing-invoice-overlay.show { display: flex; }
+    .pricing-invoice { width: min(620px, 92vw); background: #fff; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-xl); }
+    [data-theme="dark"] .pricing-invoice { background: #0f172a; color: #e5e7eb; }
+    .pricing-invoice-header { position: relative; height: 110px; display: block; }
+    .pricing-invoice-header img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.85); }
+    .pricing-invoice-doc { display:flex; align-items:center; gap:8px; padding: 8px 14px 0 14px; }
+    .pricing-invoice-doc .pdf-red { color:#e53935; background:rgba(229,57,53,.12); border:1px solid rgba(229,57,53,.25); border-radius:6px; width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; }
+    .pricing-invoice-doc .title-text { display:inline-block; font-weight:700; color:#111827; background:#f3f4f6; padding:6px 10px; border-radius:8px; }
+    [data-theme="dark"] .pricing-invoice-doc .title-text { color:#e5e7eb; background:#111827; }
+    .pricing-invoice-body { padding: 18px 20px; }
+    .pricing-invoice-items { margin-top: 10px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .pricing-invoice-row, .pricing-invoice-head { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; padding: 10px 14px; }
+    .pricing-invoice-head { background: #f8fafc; font-weight: 700; color: #1f2937; }
+    .pricing-invoice-row { border-top: 1px solid #eef2f7; }
+    .pricing-invoice-total { display:flex; justify-content: space-between; align-items: center; padding: 14px; margin-top: 12px; background: linear-gradient(135deg,#2563eb,#1d4ed8); color: #fff; border-radius: 10px; font-weight: 800; }
+    .pricing-invoice-footer { display:flex; justify-content: flex-end; gap: 10px; padding: 14px 20px 20px; }
+    .invoice-close-btn { background:#f3f4f6; border:1px solid #e5e7eb; color:#374151; border-radius:10px; padding:10px 14px; cursor:pointer; }
+    .invoice-pay-btn { background: linear-gradient(135deg,#059669,#047857); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
+
     /* Upload Area Styles */
     .upload-area {
       border: 2px dashed #93c5fd;
@@ -3014,6 +3037,243 @@
         font-size: 0.9rem;
         font-weight: 600;
         color: #1f2937;
+      }
+    }
+
+    /* Professional Bill Styles */
+    .professional-bill {
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      margin: 0.75rem 0; /* slightly tighter */
+    }
+
+    .bill-header {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      padding: 0.8rem 1rem; /* smaller header */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .bill-logo {
+      width: 36px; /* small thumbnail */
+      height: 36px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      overflow: hidden;
+    }
+
+    .bill-title h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+
+    .bill-subtitle { margin: 0.15rem 0 0 0; opacity: 0.9; font-size: 0.8rem; }
+
+    .bill-date {
+      text-align: right;
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .bill-date p {
+      margin: 0.25rem 0;
+    }
+
+    .bill-content { padding: 1rem; }
+
+    .service-info {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #f3f4f6;
+    }
+
+    .service-info h4 {
+      margin: 0 0 0.75rem 0;
+      color: #374151;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .service-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+    }
+
+    .service-name {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .service-status {
+      background: #10b981;
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .bill-items { margin-bottom: 1rem; }
+
+    .bill-item-header {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      font-weight: 600;
+      color: #374151;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .bill-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #e5e7eb;
+      align-items: center;
+    }
+
+    .bill-item:last-of-type {
+      border-bottom: none;
+    }
+
+    .item-desc {
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .item-qty, .item-rate, .item-amount {
+      text-align: center;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .item-amount {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .bill-subtotal {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      margin: 1rem 0;
+      font-weight: 600;
+    }
+
+    .subtotal-label {
+      color: #374151;
+      font-size: 1rem;
+    }
+
+    .subtotal-amount {
+      color: #1f2937;
+      font-size: 1.1rem;
+    }
+
+    .bill-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+
+    .total-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .total-amount {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .bill-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 2px solid #f3f4f6;
+    }
+
+    .payment-info p {
+      margin: 0.5rem 0;
+      color: #374151;
+      font-size: 0.9rem;
+    }
+
+    .status-pending {
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    .contact-info p {
+      margin: 0.5rem 0;
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+
+    .contact-info p:first-child {
+      color: #374151;
+      font-weight: 500;
+    }
+
+    /* Mobile responsive bill */
+    @media (max-width: 768px) {
+      .bill-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+      }
+
+      .bill-date {
+        text-align: center;
+      }
+
+      .bill-item-header,
+      .bill-item {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        text-align: left;
+      }
+
+      .bill-item-header span,
+      .bill-item span {
+        text-align: left;
+      }
+
+      .bill-footer {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .service-row {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
       }
     }
 
@@ -3677,12 +3937,7 @@
       <span class="notification-title">Notifications</span>
       <span class="notification-count" id="notificationCount">0</span>
     </div>
-    <div class="notification-list" id="notificationList">
-      <div class="notification-empty">
-        <i class="fas fa-bell-slash"></i>
-        <p>No notifications yet</p>
-      </div>
-    </div>
+    <div class="notification-list" id="notificationList"></div>
   </div>
 
   <!-- Sliding Toast Notification -->
@@ -3707,7 +3962,7 @@
     <section class="stats-section">
       <h2 class="section-title">
         <span class="material-icons">dashboard</span>
-        Dashboard Overview
+        Printing Overview
       </h2>
       <div class="stats-grid">
         <div class="stat-card">
@@ -3860,17 +4115,16 @@
         .jobs-row { 
           gap: 2rem; 
           display: grid;
-          grid-template-columns: repeat(auto-fit, 300px);
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
           justify-content: start;
           margin: 0 1rem;
         }
         .job-card { 
-          width: 300px; 
-          height: 200px; 
-          min-width: 300px; 
-          max-width: 300px; 
+          width: 100%; 
+          min-width: 320px; 
+          max-width: 540px; 
           min-height: 200px; 
-          max-height: 200px;
+          height: auto; 
           display: flex;
           flex-direction: column;
         }
@@ -8714,7 +8968,7 @@
         if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
         if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
         if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
-        return { cls: 'service-color-print icon-tint-print', name: 'Print Job' };
+        return { cls: 'service-color-print icon-tint-print', name: 'Document Print' };
       };
 
       const calculateEstimatedCost = (job) => {
@@ -8777,10 +9031,10 @@
                   })()}
                 </span>
               </div>
-              <div class="job-card-badges">
-                <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
-                <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
-              </div>
+          <div class="job-card-badges">
+            <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
+            <div class="job-card-status-badge ${job.job_completed === 'YES' ? 'status-completed' : getStatusClass(job.status)}">${job.job_completed === 'YES' ? 'COMPLETED' : job.status}</div>
+          </div>
             </div>
             
             <div class="job-card-details">
@@ -9225,7 +9479,7 @@
         if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
         if (type.includes('gloss')) return { cls: 'service-color-gloss icon-tint-gloss', name: 'Gloss Paper' };
         if (type.includes('jumbo') || type.includes('a0') || type.includes('a1') || type.includes('a2')) return { cls: 'service-color-jumbo icon-tint-jumbo', name: 'Jumbo Print' };
-        return { cls: 'service-color-print icon-tint-print', name: 'Print Job' };
+        return { cls: 'service-color-print icon-tint-print', name: 'Document Print' };
       };
 
       const calculateEstimatedCost = (job) => {
@@ -9288,10 +9542,10 @@
                   })()}
                 </span>
               </div>
-              <div class="job-card-badges">
-                <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
-                <div class="job-card-status-badge ${getStatusClass(job.status)}">${job.status}</div>
-              </div>
+          <div class="job-card-badges">
+            <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
+            <div class="job-card-status-badge ${job.job_completed === 'YES' ? 'status-completed' : getStatusClass(job.status)}">${job.job_completed === 'YES' ? 'COMPLETED' : job.status}</div>
+          </div>
             </div>
             
             <div class="job-card-details">
@@ -9579,14 +9833,66 @@
         const vendorPrice = Number(breakdown.total_price || 0);
         const commission = calculatePlatformCommission(serviceKey, vendorPrice);
 
-        let html = '';
+        // Get service display name
+        const serviceNames = {
+          'digital': 'Digital Printing',
+          'gloss': 'Gloss Printing', 
+          'jumbo': 'Jumbo Printing',
+          'passport': 'Passport Photo',
+          'photo': 'Photo Printing',
+          'goldenemboss': 'Golden Emboss Printing'
+        };
+        const serviceDisplayName = serviceNames[service] || 'Printing Service';
+
+        let html = `
+          <div class="professional-bill">
+            <div class="bill-header">
+              <div class="bill-logo">
+                <i class="fas fa-print"></i>
+              </div>
+              <div class="bill-title">
+                <h3>PrintMax Invoice</h3>
+                <p class="bill-subtitle">Professional Printing Services</p>
+              </div>
+              <div class="bill-date">
+                <p>Date: ${new Date().toLocaleDateString()}</p>
+                <p>Time: ${new Date().toLocaleTimeString()}</p>
+              </div>
+            </div>
+            
+            <div class="bill-content">
+              <div class="service-info">
+                <h4>Service Details</h4>
+                <div class="service-row">
+                  <span class="service-name">${serviceDisplayName}</span>
+                  <span class="service-status">Ready to Process</span>
+                </div>
+              </div>
+              
+              <div class="bill-items">
+                <div class="bill-item-header">
+                  <span class="item-desc">Description</span>
+                  <span class="item-qty">Qty</span>
+                  <span class="item-rate">Rate</span>
+                  <span class="item-amount">Amount</span>
+                </div>
+        `;
 
         // Service specifics
         if (breakdown.pricing_key_used) {
+          const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          const qty = breakdown.page_count || breakdown.print_quantity || 1;
+          const copies = breakdown.num_copies || 1;
+          const totalQty = qty * copies;
+          const rate = Number(breakdown.base_price || 0);
+          const amount = rate * totalQty;
+          
           html += `
-            <div class="pricing-item">
-              <span class="pricing-label">${breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase()}</span>
-              <span class="pricing-value">₹${Number(breakdown.base_price || 0)}</span>
+            <div class="bill-item">
+              <span class="item-desc">${serviceDesc}</span>
+              <span class="item-qty">${totalQty}</span>
+              <span class="item-rate">₹${rate.toFixed(2)}</span>
+              <span class="item-amount">₹${amount.toFixed(2)}</span>
             </div>
           `;
         }
@@ -9594,9 +9900,11 @@
         // Optional extras
         if (Number(breakdown.quality_upgrade || 0) > 0) {
           html += `
-            <div class="pricing-item">
-              <span class="pricing-label">High Quality Upgrade</span>
-              <span class="pricing-value">₹${Number(breakdown.quality_upgrade).toFixed(2)}</span>
+            <div class="bill-item">
+              <span class="item-desc">High Quality Upgrade</span>
+              <span class="item-qty">1</span>
+              <span class="item-rate">₹${Number(breakdown.quality_upgrade).toFixed(2)}</span>
+              <span class="item-amount">₹${Number(breakdown.quality_upgrade).toFixed(2)}</span>
             </div>
           `;
         }
@@ -9605,63 +9913,79 @@
         if (service === 'photo') {
           if (breakdown.photo_size) {
             html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Photo Size</span>
-                <span class="pricing-value">${breakdown.photo_size}</span>
-              </div>
-            `;
-          }
-          if (breakdown.print_quantity) {
-            html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Number of Photos</span>
-                <span class="pricing-value">${breakdown.print_quantity}</span>
+              <div class="bill-item">
+                <span class="item-desc">Photo Size: ${breakdown.photo_size}</span>
+                <span class="item-qty">-</span>
+                <span class="item-rate">-</span>
+                <span class="item-amount">-</span>
               </div>
             `;
           }
           if (breakdown.paper_type) {
             html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Paper Type</span>
-                <span class="pricing-value">${breakdown.paper_type}</span>
+              <div class="bill-item">
+                <span class="item-desc">Paper Type: ${breakdown.paper_type}</span>
+                <span class="item-qty">-</span>
+                <span class="item-rate">-</span>
+                <span class="item-amount">-</span>
               </div>
             `;
           }
           if (breakdown.finish) {
             html += `
-              <div class="pricing-item">
-                <span class="pricing-label">Finish</span>
-                <span class="pricing-value">${breakdown.finish}</span>
+              <div class="bill-item">
+                <span class="item-desc">Finish: ${breakdown.finish}</span>
+                <span class="item-qty">-</span>
+                <span class="item-rate">-</span>
+                <span class="item-amount">-</span>
               </div>
             `;
           }
         }
 
-        // Effective per-page after adding commission silently
-        const pagesTimesCopies = (breakdown.page_count || breakdown.print_quantity || 1) * (breakdown.num_copies || 1);
-        const basePerPage = Number(breakdown.price_per_page || 0);
-        const effectivePerPage = (basePerPage + (pagesTimesCopies ? (commission.amount / pagesTimesCopies) : 0)).toFixed(2);
-        if (basePerPage) {
+        // Add subtotal
+        const subtotal = vendorPrice;
           html += `
-            <div class="pricing-item">
-              <span class="pricing-label">Price per page</span>
-              <span class="pricing-value">₹${effectivePerPage}</span>
+          <div class="bill-subtotal">
+            <span class="subtotal-label">Subtotal</span>
+            <span class="subtotal-amount">₹${subtotal.toFixed(2)}</span>
             </div>
           `;
-        }
-        if (breakdown.page_count && breakdown.num_copies) {
+
+        // Add service charge (commission)
+        if (commission.amount > 0) {
           html += `
-            <div class="pricing-item">
-              <span class="pricing-label">Pages × Copies</span>
-              <span class="pricing-value">${breakdown.page_count} × ${breakdown.num_copies}</span>
+            <div class="bill-item">
+              <span class="item-desc">Service Charge</span>
+              <span class="item-qty">-</span>
+              <span class="item-rate">-</span>
+              <span class="item-amount">₹${commission.amount.toFixed(2)}</span>
             </div>
           `;
         }
 
+        // Add total
         html += `
-          <div class="pricing-item total">
-            <span class="pricing-label">Total Amount</span>
-            <span class="pricing-value">₹${Number(commission.total).toFixed(2)}</span>
+          <div class="bill-total">
+            <span class="total-label">Total Amount</span>
+            <span class="total-amount">₹${Number(commission.total).toFixed(2)}</span>
+          </div>
+        `;
+
+        html += `
+              </div>
+              
+              <div class="bill-footer">
+                <div class="payment-info">
+                  <p><strong>Payment Method:</strong> Online Payment</p>
+                  <p><strong>Status:</strong> <span class="status-pending">Pending Payment</span></p>
+                </div>
+                <div class="contact-info">
+                  <p>Thank you for choosing PrintMax!</p>
+                  <p>For queries, contact: support@printmax.com</p>
+                </div>
+              </div>
+            </div>
           </div>
         `;
 
@@ -9918,19 +10242,21 @@
           unreadCount = newUnreadCount;
           updateNotificationUI();
           
-          // Show toast for new notifications
+          // Show toast only for NEW vendor-sent completion notifications based on lastSeen
           if (hasNewNotifications && newUnreadCount > 0) {
-            const latestUnread = notifications.find(n => !n.read);
-            if (latestUnread && latestUnread.type === 'job_completed') {
-              const tokenMatch = latestUnread.message.match(/Token #(\d+)/);
-              const token = tokenMatch ? tokenMatch[1] : '';
-              const serviceMatch = latestUnread.message.match(/- (.+) completed/);
-              const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job';
-              
-              const toastTitle = 'Print Job Ready!';
-              const toastMessage = `Token #${token} - ${serviceType} completed`;
-              
-              showToast(toastTitle, toastMessage);
+            const latestUnread = notifications
+              .filter(n => !n.read && n.type === 'job_completed')
+              .sort((a,b)=> new Date(b.created_at||b.timestamp||0) - new Date(a.created_at||a.timestamp||0))[0];
+            if (latestUnread) {
+              const lastSeen = Number(localStorage.getItem('notifications:lastSeenTs') || '0');
+              const createdTs = Date.parse(latestUnread.created_at || latestUnread.timestamp || '');
+              if (!Number.isNaN(createdTs) && createdTs > lastSeen) {
+                const token = latestUnread.token || (latestUnread.filename ? latestUnread.filename.replace(/\.[^/.]+$/, '') : '');
+                const status = (latestUnread.status || 'completed').toString().toUpperCase();
+                const filename = latestUnread.filename || 'Document';
+                showToast('Print Job Ready!', `${filename} • Token #${token} • ${status}`);
+                localStorage.setItem('notifications:lastSeenTs', String(createdTs));
+              }
             }
           }
         }
@@ -9971,27 +10297,18 @@
       // Update count
       count.textContent = uniqueNotifications.length;
 
-      // Update list
-      if (uniqueNotifications.length === 0) {
-        list.innerHTML = `
-          <div class="notification-empty">
-            <i class="fas fa-bell-slash"></i>
-            <p>No notifications yet</p>
-          </div>
-        `;
-      } else {
-        list.innerHTML = uniqueNotifications.map(notification => createNotificationItem(notification)).join('');
-      }
+      // Update list (no placeholder when empty)
+      list.innerHTML = uniqueNotifications.map(notification => createNotificationItem(notification)).join('');
     }
 
     function createNotificationItem(notification) {
       const isUnread = !notification.read;
       const timeAgo = formatTimeAgo(notification.created_at);
       const typeClass = notification.type === 'job_completed' ? 'success' : 'info';
-      const tokenMatch = notification.message.match(/Token #(\d+)/);
-      const token = tokenMatch ? tokenMatch[1] : '';
-      const serviceMatch = notification.message.match(/- (.+) completed/);
-      const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job ';
+      const tokenMatch = notification.message && notification.message.match(/Token #(\d+)/);
+      const token = tokenMatch ? tokenMatch[1] : (notification.token || '');
+      const filename = notification.filename || 'Document';
+      const status = (notification.status || 'completed').toString().toUpperCase();
       return `
         <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${notification.notification_id}" onclick="handleNotificationClick('${notification.notification_id}')">
           <button class="notification-close" onclick="event.stopPropagation(); hideNotification('${notification.notification_id}')" title="Dismiss notification">
@@ -9999,15 +10316,14 @@
           </button>
           <div class="notification-content">
             <div class="notification-title-text">${notification.title}</div>
-            <div class="notification-message">
-              <strong>Token #${token}</strong> - ${serviceType}
-            </div>
+            <div class="notification-message"><i class="fas fa-file-pdf" style="color:#e53935"></i> ${filename}</div>
+            <div class="notification-message"><strong>Token #${token}</strong> • ${status}</div>
             <div class="notification-meta">
               <div class="notification-time">
                 <i class="fas fa-clock"></i>
                 <span>${timeAgo}</span>
               </div>
-              <div class="notification-type ${typeClass}">COMPLETED</div>
+              <div class="notification-type ${typeClass}">${status}</div>
             </div>
           </div>
         </div>
@@ -10058,7 +10374,7 @@
           const tokenMatch = notification.message.match(/Token #(\d+)/);
           const token = tokenMatch ? tokenMatch[1] : '';
           const serviceMatch = notification.message.match(/- (.+) completed/);
-          const serviceType = serviceMatch ? serviceMatch[1] : 'Print Job';
+          const serviceType = serviceMatch ? serviceMatch[1] : 'Document Print';
           
           const toastTitle = 'Print Job Ready!';
           const toastMessage = `Token #${token} - ${serviceType} completed`;
@@ -11313,26 +11629,73 @@
       }
 
       const pricing = job.pricing_details;
-      const breakdown = pricing.pricing_breakdown;
-      
-      let pricingMessage = `💰 Pricing Details for ${job.filename}\n\n`;
-      pricingMessage += `Total Price: Rs${pricing.total_price}\n`;
-      pricingMessage += `Vendor: ${pricing.vendor_email || 'Unknown'}\n`;
-      pricingMessage += `Calculated: ${new Date(pricing.calculation_timestamp).toLocaleString()}\n\n`;
-      
-      if (breakdown) {
-        pricingMessage += `📊 Breakdown:\n`;
-        pricingMessage += `• Base Price: Rs${breakdown.base_price}\n`;
-        if (breakdown.quality_upgrade > 0) {
-          pricingMessage += `• Quality Upgrade: Rs${breakdown.quality_upgrade}\n`;
-        }
-        pricingMessage += `• Price per page: Rs${breakdown.price_per_page}\n`;
-        pricingMessage += `• Number of pages: ${breakdown.page_count}\n`;
-        pricingMessage += `• Number of copies: ${breakdown.num_copies}\n`;
-        pricingMessage += `• Pricing Key: ${breakdown.pricing_key_used}\n`;
+      const breakdown = pricing.pricing_breakdown || {};
+
+      // Create overlay container if not exists
+      let overlay = document.getElementById('pricingInvoiceOverlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'pricingInvoiceOverlay';
+        overlay.className = 'pricing-invoice-overlay';
+        overlay.innerHTML = `
+          <div class="pricing-invoice" role="dialog" aria-modal="true" aria-label="Pricing Summary">
+            <div class="pricing-invoice-header">
+              <img id="invoiceServiceImage" alt="Service image" />
+            </div>
+            <div class="pricing-invoice-doc" id="invoiceTitle"></div>
+            <div class="pricing-invoice-body">
+              <div id="invoiceItems" class="pricing-invoice-items"></div>
+              <div class="pricing-invoice-total"><span>Total</span><span id="invoiceTotal"></span></div>
+            </div>
+            <div class="pricing-invoice-footer">
+              <button class="invoice-close-btn" id="closeInvoiceBtn">Close</button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e)=>{ if(e.target===overlay){ overlay.classList.remove('show'); document.body.style.overflow=''; }});
+        overlay.querySelector('#closeInvoiceBtn').addEventListener('click', ()=>{ overlay.classList.remove('show'); document.body.style.overflow=''; });
       }
-      
-      alert(pricingMessage);
+
+      // Set service image from service type
+      const serviceType = (breakdown.service_type || job.service_type || 'print').toLowerCase();
+      const imgEl = overlay.querySelector('#invoiceServiceImage');
+      const imageMap = {
+        'digital': '{% static "images/Documents.png" %}',
+        'print': '{% static "images/Documents.png" %}',
+        'gloss': '{% static "images/Gloss print.png" %}',
+        'jumbo': '{% static "images/Jumbo printing.png" %}',
+        'passport': '{% static "images/Passport photo.png" %}',
+        'photo': '{% static "images/photo print.png" %}'
+      };
+      imgEl.src = imageMap[serviceType] || '{% static "images/Documents.png" %}';
+
+      // Title below image (readable)
+      overlay.querySelector('#invoiceTitle').innerHTML = `<span class=\"pdf-red\"><i class=\"fas fa-file-pdf\"></i></span><span class=\"title-text\">${job.filename}</span>`;
+
+      // Items
+      const items = [];
+      if (breakdown.pricing_key_used) {
+        const qty = (breakdown.page_count || breakdown.pages || 1) * (breakdown.num_copies || 1);
+        const rate = Number(breakdown.base_price || breakdown.price_per_page || 0);
+        items.push({ desc: String(breakdown.pricing_key_used).replace(/_/g,' ').toUpperCase(), qty, rate, amount: rate*qty });
+      }
+      if (Number(breakdown.quality_upgrade || 0) > 0) {
+        items.push({ desc: 'High Quality Upgrade', qty: 1, rate: Number(breakdown.quality_upgrade), amount: Number(breakdown.quality_upgrade) });
+      }
+
+      let itemsHtml = `<div class=\"pricing-invoice-head\"><span>Description</span><span>Qty</span><span>Rate</span><span>Amount</span></div>`;
+      itemsHtml += items.map(i => `<div class=\"pricing-invoice-row\"><span>${i.desc}</span><span>${i.qty}</span><span>₹${i.rate.toFixed(2)}</span><span>₹${i.amount.toFixed(2)}</span></div>`).join('');
+      if ((pricing.points_applied === true || pricing.points_applied === 'true') && Number(pricing.points_used || 0) > 0) {
+        const discount = Number(pricing.points_used);
+        itemsHtml += `<div class=\"pricing-invoice-row\"><span>Points Discount</span><span>-</span><span>-</span><span>-₹${discount.toFixed(2)}</span></div>`;
+      }
+      overlay.querySelector('#invoiceItems').innerHTML = itemsHtml;
+
+      overlay.querySelector('#invoiceTotal').textContent = `₹${Number(pricing.total_price || 0).toFixed(2)}`;
+
+      // Show overlay centered
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
     }
     // Function to track vendor location and open Google Maps navigation
     window.trackVendorLocation = function(filename) {

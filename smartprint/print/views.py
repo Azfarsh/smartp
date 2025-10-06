@@ -4488,14 +4488,17 @@ def vendor_register_api(request):
             password = data.get('password')
             vendor_name = data.get('vendor_name')
             phone_number = data.get('phone_number')
-            shop_address = data.get('shop_address')
+            state = data.get('state')
             city = data.get('city')
+            locality = data.get('locality')
+            landmark = data.get('landmark')
+            shop_address = data.get('shop_address')
             pincode = data.get('pincode')
             latitude = data.get('latitude')
             longitude = data.get('longitude')
 
             # Validate required fields
-            if not all([email, password, vendor_name, phone_number, shop_address, city, pincode]):
+            if not all([email, password, vendor_name, phone_number, state, city, locality, shop_address, pincode]):
                 return JsonResponse({
                     'success': False,
                     'message': 'All fields are required'
@@ -4563,8 +4566,11 @@ def vendor_register_api(request):
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
                 'phone_number': phone_number,
-                'shop_address': shop_address,
+                'state': state,
                 'city': city,
+                'locality': locality,
+                'landmark': landmark or '',
+                'shop_address': shop_address,
                 'pincode': pincode,
                 'latitude': latitude,
                 'longitude': longitude,
@@ -4612,9 +4618,9 @@ def vendor_register_api(request):
 
             print(f"✅ Successfully registered vendor {email} with shop folder: {shop_folder_name}")
             
-            # Send welcome email
+            # Send welcome email with password
             try:
-                send_welcome_email(email, vendor_name)
+                send_welcome_email(email, vendor_name, password, vendor_id)
             except Exception as e:
                 print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
 
@@ -6655,42 +6661,294 @@ def send_password_reset_email(email, verification_code, vendor_name):
         print(f"❌ Error sending password reset email to {email}: {str(e)}")
         return False
 
-def send_welcome_email(email, vendor_name):
+def send_welcome_email(email, vendor_name, password, vendor_id):
     """
-    Send welcome email to new vendors
+    Send welcome email to new vendors with login credentials
     """
     try:
         subject = 'Welcome to PrintMax - Your Vendor Account is Ready!'
         
         html_message = f"""
+        <!DOCTYPE html>
         <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to PrintMax</title>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <meta name="format-detection" content="telephone=no">
+            <meta name="format-detection" content="date=no">
+            <meta name="format-detection" content="address=no">
+            <meta name="format-detection" content="email=no">
+            <!--[if mso]>
+            <noscript>
+                <xml>
+                    <o:OfficeDocumentSettings>
+                        <o:PixelsPerInch>96</o:PixelsPerInch>
+                    </o:OfficeDocumentSettings>
+                </xml>
+            </noscript>
+            <![endif]-->
+            <style>
+                body {{
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: #f8f9fa;
+                }}
+                /* Prevent email clients from treating content as quoted */
+                .email-content {{
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                }}
+                /* Override any potential quoted text hiding */
+                [data-ogsc] {{
+                    display: block !important;
+                }}
+                /* Ensure all content is visible */
+                * {{
+                    max-height: none !important;
+                    overflow: visible !important;
+                }}
+                .container {{
+                    background: white;
+                    border-radius: 10px;
+                    padding: 30px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 30px;
+                    padding-bottom: 20px;
+                    border-bottom: 3px solid #1976d2;
+                }}
+                .logo {{
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #1976d2;
+                    margin-bottom: 10px;
+                }}
+                .credentials-box {{
+                    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+                    border: 2px solid #1976d2;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 20px 0;
+                    text-align: center;
+                }}
+                .credentials-title {{
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #1976d2;
+                    margin-bottom: 15px;
+                }}
+                .credential-item {{
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    padding: 12px;
+                    margin: 10px 0;
+                    font-family: 'Courier New', monospace;
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #2e7d32;
+                }}
+                .credential-label {{
+                    font-size: 14px;
+                    color: #666;
+                    margin-bottom: 5px;
+                    font-weight: normal;
+                }}
+                .steps {{
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 20px 0;
+                }}
+                .step {{
+                    margin: 15px 0;
+                    padding: 10px;
+                    background: white;
+                    border-left: 4px solid #4caf50;
+                    border-radius: 0 5px 5px 0;
+                }}
+                .step-number {{
+                    font-weight: bold;
+                    color: #4caf50;
+                    margin-right: 10px;
+                }}
+                .footer {{
+                    text-align: center;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #eee;
+                    color: #666;
+                    font-size: 14px;
+                }}
+                .button {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #1976d2, #1565c0);
+                    color: white;
+                    padding: 12px 25px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin: 10px 5px;
+                }}
+                .warning {{
+                    background: #fff3cd;
+                    border: 1px solid #ffeaa7;
+                    border-radius: 5px;
+                    padding: 15px;
+                    margin: 20px 0;
+                    color: #856404;
+                }}
+            </style>
+        </head>
         <body>
-            <h2>🚀 Welcome to PrintMax, {vendor_name}!</h2>
-            <p>Your vendor account has been successfully created and is ready to use.</p>
-            <p>You can now:</p>
-            <ul>
-                <li>Login to your vendor dashboard</li>
-                <li>Manage print jobs</li>
-                <li>Track your earnings</li>
-                <li>Update your shop information</li>
-            </ul>
-            <p>Thank you for choosing PrintMax!</p>
+            <div class="email-content">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa;">
+                <tr>
+                    <td align="center" style="padding: 20px;">
+                        <table class="container" cellpadding="0" cellspacing="0" border="0" style="background: white; border-radius: 10px; padding: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); max-width: 600px; width: 100%;">
+                            <tr>
+                                <td>
+                                    <div class="header" style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #1976d2;">
+                                        <div class="logo" style="font-size: 28px; font-weight: bold; color: #1976d2; margin-bottom: 10px;">🖨️ PrintMax</div>
+                                        <h2 style="margin: 0; color: #333;">Welcome to PrintMax, {vendor_name}!</h2>
+                                        <p style="margin: 10px 0; color: #666;">Your vendor account has been successfully created and is ready to use.</p>
+                                        <div style="background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); color: white; padding: 10px 20px; border-radius: 25px; display: inline-block; margin-top: 15px; font-weight: bold;">
+                                            ✅ Registration Completed Successfully
+                                        </div>
+                                        
+                                        <!-- Login Credentials directly below success message -->
+                                        <div style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border: 2px solid #1976d2; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+                                            <div style="font-size: 18px; font-weight: bold; color: #1976d2; margin-bottom: 15px;">🔐 Your Login Credentials</div>
+                                            <p style="margin-bottom: 20px; color: #666;">Please save these credentials securely. You'll need them to access your vendor dashboard.</p>
+                                            
+                                            <div style="background: white; border: 1px solid #ddd; border-radius: 5px; padding: 12px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; color: #2e7d32;">
+                                                <div style="font-size: 14px; color: #666; margin-bottom: 5px; font-weight: normal;">Vendor Email:</div>
+                                                {email}
+                                            </div>
+                                            
+                                            <div style="background: white; border: 1px solid #ddd; border-radius: 5px; padding: 12px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; color: #2e7d32;">
+                                                <div style="font-size: 14px; color: #666; margin-bottom: 5px; font-weight: normal;">Password:</div>
+                                                {password}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <div class="warning" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 20px 0; color: #856404;">
+                                        <strong>⚠️ Important Security Notice:</strong><br>
+                                        This is your PrintMax vendor password. Please keep it secure and do not share it with anyone. 
+                                        Use these credentials to login to your vendor dashboard.
+                                    </div>
+
+                                    <div class="steps" style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                                        <h3 style="color: #1976d2; margin-top: 0;">Next Steps:</h3>
+                                        
+                                        <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
+                                            <span class="step-number" style="font-weight: bold; color: #4caf50; margin-right: 10px;">1.</span>
+                                            <strong>Set Up Your Pricing:</strong> Configure your service rates to start receiving orders from customers.
+                                        </div>
+                                        
+                                        <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
+                                            <span class="step-number" style="font-weight: bold; color: #4caf50; margin-right: 10px;">2.</span>
+                                            <strong>Access Your Dashboard:</strong> Use the credentials above to login to your vendor dashboard.
+                                        </div>
+                                        
+                                        <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
+                                            <span class="step-number" style="font-weight: bold; color: #4caf50; margin-right: 10px;">3.</span>
+                                            <strong>Start Receiving Orders:</strong> Once pricing is set, customers can place orders with your shop.
+                                        </div>
+                                    </div>
+
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="/vendor-pricing/?vendorEmail={email}" style="display: inline-block; background: linear-gradient(135deg, #1976d2, #1565c0); color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 5px;">Set Up Pricing</a>
+                                        <a href="/vendor-login/" style="display: inline-block; background: linear-gradient(135deg, #1976d2, #1565c0); color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 5px;">Login to Dashboard</a>
+                                    </div>
+
+                                    <div class="footer" style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
+                                        <p>Thank you for choosing PrintMax as your printing partner!</p>
+                                        <p>If you have any questions, please contact our support team.</p>
+                                        <p style="font-size: 12px; color: #999;">
+                                            This email was sent to {email}. Please do not reply to this email.
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            </div>
         </body>
         </html>
         """
         
-        plain_message = strip_tags(html_message)
+        plain_message = f"""
+        Welcome to PrintMax, {vendor_name}!
+
+        Your vendor account has been successfully created and is ready to use.
+
+        LOGIN CREDENTIALS:
+        ==================
+        Vendor Email: {email}
+        Password: {password}
+
+        IMPORTANT: This is your PrintMax vendor password. Please keep it secure and do not share it with anyone. 
+        Use these credentials to login to your vendor dashboard.
+
+        NEXT STEPS:
+        1. Set Up Your Pricing: Configure your service rates to start receiving orders from customers.
+        2. Access Your Dashboard: Use the credentials above to login to your vendor dashboard.
+        3. Start Receiving Orders: Once pricing is set, customers can place orders with your shop.
+
+        Quick Links:
+        - Set Up Pricing: /vendor-pricing/?vendorEmail={email}
+        - Login to Dashboard: /vendor-login/
+
+        Thank you for choosing PrintMax as your printing partner!
+
+        If you have any questions, please contact our support team.
+
+        This email was sent to {email}. Please do not reply to this email.
+        """
         
-        send_mail(
+        # Create email message with additional headers to prevent quoted text issues
+        from django.core.mail import EmailMultiAlternatives
+        
+        msg = EmailMultiAlternatives(
             subject=subject,
-            message=plain_message,
+            body=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=html_message,
-            fail_silently=False,
+            to=[email]
         )
         
-        print(f"✅ Welcome email sent successfully to {email}")
+        # Add headers to prevent email clients from treating content as quoted
+        msg.extra_headers = {
+            'X-Mailer': 'PrintMax Vendor System',
+            'X-Priority': '1',
+            'X-MSMail-Priority': 'High',
+            'Importance': 'high',
+            'X-Original-Sender': settings.DEFAULT_FROM_EMAIL,
+            'X-Auto-Response-Suppress': 'All',
+            'Precedence': 'bulk',
+            'X-Entity-Ref-ID': f'vendor-welcome-{vendor_id}',
+        }
+        
+        msg.attach_alternative(html_message, "text/html")
+        msg.send(fail_silently=False)
+        
+        print(f"✅ Welcome email with credentials sent successfully to {email}")
         return True
         
     except Exception as e:
@@ -8656,6 +8914,20 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         
         # Create notification data in format expected by user dashboard
         notification_id = f"{filename}_{int(time.time())}"
+        
+        # Format service type for better display
+        formatted_service_type = service_type.replace('_', ' ').title()
+        if formatted_service_type == 'Print Job':
+            formatted_service_type = 'Document Printing'
+        
+        # Extract document name from filename (remove extension and token)
+        document_name = os.path.splitext(filename)[0]
+        if '_' in document_name:
+            # Remove token part if present
+            parts = document_name.split('_')
+            if len(parts) > 1:
+                document_name = '_'.join(parts[:-1])
+        
         notification_data = {
             'notification_id': notification_id,
             'user_email': user_email,
@@ -8667,9 +8939,12 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'created_at': datetime.datetime.now().isoformat(),
             'read': False,
             'type': 'job_completed',
-            'title': 'Print Job Completed!',
-            'message': f'Token #{token} - {service_type} completed',
-            'token': token
+            'title': '🎉 Print Job Successfully Completed!',
+            'message': f'Your {formatted_service_type} order for "{document_name}" has been completed and is ready for pickup. Token: #{token}',
+            'detailed_message': f'Document: {document_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: #{token}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
+            'token': token,
+            'document_name': document_name,
+            'service_type': formatted_service_type
         }
         
         # Store notification in R2 for user to see
