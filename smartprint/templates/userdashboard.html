@@ -3855,6 +3855,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="/contact/" class="nav-link">
+          <i class="fas fa-envelope"></i>
+          Contact Us
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="/logout/?next=/login/" class="nav-link">
           <i class="fas fa-sign-out-alt"></i>
           Sign Out
@@ -5329,7 +5335,7 @@
         box-shadow: none;
       }
       
-      .btn-calculate {
+      .btn-send-to-print {
         flex: 1;
         padding: 1rem 1.5rem;
         border: 2px solid #059669;
@@ -5348,13 +5354,13 @@
         margin: 0.25rem;
       }
 
-      .btn-calculate:hover {
+      .btn-send-to-print:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(5, 150, 105, 0.4);
         border-color: #047857;
       }
 
-      .btn-calculate:disabled {
+      .btn-send-to-print:disabled {
         background: #9ca3af;
         border-color: #9ca3af;
         cursor: not-allowed;
@@ -6422,8 +6428,40 @@
         const modal = document.getElementById(`service-modal-${service}`);
         if (modal) {
           modal.classList.remove('active');
-          // Reset the modal after closing
-          setTimeout(() => resetServiceModal(service), 300);
+          // Reset the modal immediately
+          resetServiceModal(service);
+        }
+      }
+
+      // Function to close all modals and clear all data instantly
+      function closeAllModalsAndClearData() {
+        // Close print modal
+        const printModal = document.getElementById('printModal');
+        if (printModal) {
+          printModal.classList.remove('active');
+          document.body.style.overflow = '';
+          resetPrintModal();
+        }
+        
+        // Close all service modals
+        const serviceModals = document.querySelectorAll('.service-modal-overlay');
+        serviceModals.forEach(modal => {
+          modal.classList.remove('active');
+          const service = modal.id.replace('service-modal-', '');
+          resetServiceModal(service);
+        });
+        
+        // Close completed jobs modal
+        const completedJobsModal = document.getElementById('completedJobsModal');
+        if (completedJobsModal) {
+          completedJobsModal.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+        
+        // Close pricing invoice modal
+        const pricingModal = document.querySelector('.pricing-invoice-overlay');
+        if (pricingModal) {
+          pricingModal.classList.remove('show');
         }
       }
 
@@ -6437,12 +6475,56 @@
           modalContent.classList.add('resetting');
         }
 
-        // Show brief loading state for reset
+        // Clear all form data in the modal
+        const form = modal.querySelector('form');
+        if (form) {
+          form.reset();
+        }
+
+        // Clear all input fields
+        const inputs = modal.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+          if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = false;
+          } else if (input.type === 'file') {
+            input.value = '';
+          } else {
+            input.value = '';
+          }
+        });
+
+        // Reset submit button
         const submitBtn = modal.querySelector('.btn-submit');
         if (submitBtn) {
-          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request';
+          submitBtn.disabled = false;
         }
+
+        // Reset send to print button if exists
+        const sendToPrintBtn = modal.querySelector('.btn-send-to-print');
+        if (sendToPrintBtn) {
+          sendToPrintBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send to Print';
+          sendToPrintBtn.disabled = false;
+        }
+
+        // Clear any price displays
+        const priceDisplays = modal.querySelectorAll('.price-display, .total-price, .calculated-price');
+        priceDisplays.forEach(display => {
+          display.textContent = '';
+          display.style.display = 'none';
+        });
+
+        // Clear any file previews
+        const filePreviews = modal.querySelectorAll('.file-preview, .uploaded-file');
+        filePreviews.forEach(preview => {
+          preview.remove();
+        });
+
+        // Reset any progress indicators
+        const progressBars = modal.querySelectorAll('.progress-bar, .loading-indicator');
+        progressBars.forEach(bar => {
+          bar.style.display = 'none';
+        });
 
         // Reset after a brief delay to show the loading state
         setTimeout(() => {
@@ -6779,39 +6861,39 @@
                     Cancel
                   </button>
                   ${service === 'digital' ? `
-                    <button type="button" class="btn-calculate" onclick="calculateDigitalPrintPrice('${service}')">
-                      <i class="fas fa-calculator"></i>
-                      Calculate Price
+                    <button type="button" class="btn-send-to-print" onclick="calculateDigitalPrintPrice('${service}')">
+                      <i class="fas fa-paper-plane"></i>
+                      Send to Print
                     </button>
                   ` : ''}
                   ${service === 'gloss' ? `
-                    <button type="button" class="btn-calculate" onclick="calculateGlossPrintPrice('${service}')">
-                      <i class="fas fa-calculator"></i>
-                      Calculate Price
+                    <button type="button" class="btn-send-to-print" onclick="calculateGlossPrintPrice('${service}')">
+                      <i class="fas fa-paper-plane"></i>
+                      Send to Print
                     </button>
                   ` : ''}
                   ${service === 'jumbo' ? `
-                    <button type="button" class="btn-calculate" onclick="calculateJumboPrintPrice('${service}')">
-                      <i class="fas fa-calculator"></i>
-                      Calculate Price
+                    <button type="button" class="btn-send-to-print" onclick="calculateJumboPrintPrice('${service}')">
+                      <i class="fas fa-paper-plane"></i>
+                      Send to Print
                     </button>
                   ` : ''}
                   ${service === 'goldenemboss' ? `
-                    <button type="button" class="btn-calculate" onclick="calculateGoldenEmbossPrice('${service}')">
-                      <i class="fas fa-calculator"></i>
-                      Calculate Price
+                    <button type="button" class="btn-send-to-print" onclick="calculateGoldenEmbossPrice('${service}')">
+                      <i class="fas fa-paper-plane"></i>
+                      Send to Print
                     </button>
                   ` : ''}
                   ${service === 'passport' ? `
-                    <button type="button" class="btn-calculate" onclick="calculatePassportPhotoPrice('${service}')">
-                      <i class="fas fa-calculator"></i>
-                      Calculate Price
+                    <button type="button" class="btn-send-to-print" onclick="calculatePassportPhotoPrice('${service}')">
+                      <i class="fas fa-paper-plane"></i>
+                      Send to Print
                     </button>
                   ` : ''}
                   ${service === 'photo' ? `
-                    <button type="button" class="btn-calculate" onclick="calculatePhotoPrintPrice('${service}')">
-                      <i class="fas fa-calculator"></i>
-                      Calculate Price
+                    <button type="button" class="btn-send-to-print" onclick="calculatePhotoPrintPrice('${service}')">
+                      <i class="fas fa-paper-plane"></i>
+                      Send to Print
                     </button>
                   ` : ''}
                   <button type="submit" class="btn-submit">
@@ -7316,6 +7398,12 @@
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           
+          // Hide modal immediately when payment button is clicked
+          closeServiceModal(service);
+          
+          // Show loading state while processing payment
+          showPaymentProcessingState();
+          
           // Get files from modal instance (File objects)
           const files = modal._uploadedFiles || [];
           
@@ -7589,11 +7677,16 @@
                   if (!verifyResp.ok || !verifyData.success) {
                     throw new Error(verifyData.error || 'Payment verification failed');
                   }
-                  // Close modal and redirect to dashboard after success
-                  try { closeModalFunc(); } catch (e) {}
-                  window.location.href = '/userdashboard/';
+                  // Hide processing state and show success message immediately
+                  hidePaymentProcessingState();
+                  // Show success message immediately without page reload
+                  showSuccessModalWithAnimation();
+                  // Update job list dynamically
+                  updateJobListAfterPayment();
                   return;
                 } catch (err) {
+                  // Hide processing state on error
+                  hidePaymentProcessingState();
                   alert('Verification error: ' + err.message);
                 } finally {
                   if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Request'; }
@@ -7604,6 +7697,8 @@
             const rzp = new Razorpay(options);
             rzp.open();
           } catch (err) {
+            // Hide processing state on error
+            hidePaymentProcessingState();
             alert('Error: ' + err.message);
           }
         });
@@ -8052,16 +8147,25 @@
           </div>
         `;
 
-        pricingDetails.innerHTML = html;
-        
-        // Show the pricing summary
-        const pricingSummary = pricingDetails.closest('.pricing-summary');
-        if (pricingSummary) {
-          pricingSummary.classList.add('active');
-        }
+        // Build pricing data for modal
+        const pricingData = {
+          breakdown: {
+            'Service Type': breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase(),
+            'Number of Pages': breakdown.pages,
+            'Number of Copies': breakdown.copies,
+            'Price per Page': breakdown.price_per_page ? `₹${(Number(breakdown.price_per_page) + (commission.amount / ((Number(breakdown.pages || 1) * Number(breakdown.copies || 1)) || 1))).toFixed(2)}` : null
+          },
+          total_price: Number(totalWithCommission).toFixed(2)
+        };
 
-        // Show points section if user has points
-        showPointsSection(service);
+        // Store calculated price + breakdown in page dataset for submit
+        const finalBreakdown = { ...breakdown };
+        finalBreakdown.total_price = Number(totalWithCommission).toFixed(2);
+        document.body.dataset.calculatedPrice = finalBreakdown.total_price;
+        document.body.dataset.pricingBreakdown = JSON.stringify(finalBreakdown);
+
+        // Show pricing summary modal
+        showPricingSummary(pricingData);
       }
       async function calculateDigitalPrintPrice(service) {
         const modal = document.getElementById(`service-modal-${service}`);
@@ -9378,9 +9482,9 @@
         <!-- Action Buttons -->
         <div class="action-buttons" id="actionButtons" style="display: none;">
           <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
-          <button class="btn-calculate" id="calculatePriceBtn" style="display: none;">
-            <i class="fas fa-calculator"></i>
-            Calculate Price
+          <button class="btn-send-to-print" id="sendToPrintBtn" style="display: none;">
+            <i class="fas fa-paper-plane"></i>
+            Send to Print
           </button>
           <button class="btn btn-primary" id="proceedBtn">
             <i class="fas fa-print"></i>
@@ -9408,8 +9512,8 @@
     </div>
   </div>
   <script>
-    // Function to create a job card - OPTIMIZED for performance
-    function createJobCard(job) {
+    // Function to build job card HTML string - OPTIMIZED for performance
+    function buildJobCardHtml(job) {
       // Cache status class calculation for better performance
       const getStatusClass = (status) => {
         const statusLower = status.toLowerCase();
@@ -9580,6 +9684,8 @@
         </div>
       `;
     }
+    // Preserve previous global API used elsewhere
+    window.createJobCard = buildJobCardHtml;
 
     // Global state management (Complete R2 Integration)
     let uploadedFiles = [];
@@ -11022,6 +11128,23 @@
       }
     }
 
+    // Pay Now button event listener
+    document.addEventListener('DOMContentLoaded', function() {
+      const payNowBtn = document.getElementById('payNowBtn');
+      if (payNowBtn) {
+        payNowBtn.addEventListener('click', function() {
+          // Hide pricing summary modal
+          hidePricingSummary();
+          
+          // Trigger the proceed to print functionality
+          const proceedBtn = document.getElementById('proceedBtn');
+          if (proceedBtn && !proceedBtn.disabled) {
+            proceedBtn.click();
+          }
+        });
+      }
+    });
+
     // Update points display in all modals
     function updatePointsDisplay() {
       const pointsSections = document.querySelectorAll('.points-section');
@@ -11825,6 +11948,72 @@
     function closeModalFunc() {
       printModal.classList.remove('active');
       document.body.style.overflow = '';
+      resetPrintModal();
+    }
+
+    function resetPrintModal() {
+      // Clear all form data
+      const fileInput = document.getElementById('fileInput');
+      const fileList = document.getElementById('fileList');
+      const uploadArea = document.getElementById('uploadArea');
+      const copiesInput = document.getElementById('copies');
+      const colorSelect = document.getElementById('color');
+      const pageSizeSelect = document.getElementById('pageSize');
+      const vendorSelect = document.getElementById('vendor');
+      const summaryContainer = document.getElementById('summaryContainer');
+      const proceedBtn = document.getElementById('proceedBtn');
+      const uploadBtn = document.getElementById('uploadBtn');
+      const addMoreBtn = document.getElementById('addMoreBtn');
+
+      // Reset file input and list
+      if (fileInput) fileInput.value = '';
+      if (fileList) fileList.innerHTML = '';
+      if (uploadArea) {
+        uploadArea.innerHTML = `
+          <div class="upload-icon">
+            <i class="fas fa-cloud-upload-alt"></i>
+          </div>
+          <div class="upload-text">
+            <h3>Drop files here or click to browse</h3>
+            <p>Supported formats: PDF, DOC, DOCX, JPG, PNG, GIF</p>
+          </div>
+        `;
+      }
+
+      // Reset form inputs to defaults
+      if (copiesInput) copiesInput.value = '1';
+      if (colorSelect) colorSelect.value = 'black';
+      if (pageSizeSelect) pageSizeSelect.value = 'A4';
+      if (vendorSelect) vendorSelect.value = '';
+
+      // Hide summary and proceed button
+      if (summaryContainer) summaryContainer.style.display = 'none';
+      if (proceedBtn) {
+        proceedBtn.style.display = 'none';
+        proceedBtn.disabled = false;
+        proceedBtn.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
+      }
+
+      // Reset upload and add more buttons
+      if (uploadBtn) {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Files';
+      }
+      if (addMoreBtn) {
+        addMoreBtn.style.display = 'none';
+        addMoreBtn.disabled = false;
+        addMoreBtn.innerHTML = '<i class="fas fa-plus"></i> Add More Files';
+      }
+
+      // Clear global variables
+      window.uploadedFiles = [];
+      window.lastCalculatedPages = 0;
+      window.lastCalculatedPrice = 0;
+
+      // Reattach event listeners
+      if (uploadArea) {
+        uploadArea.addEventListener('click', triggerFileInput);
+      }
     }
 
     // Complete file management functions (R2 Integration)
@@ -13046,6 +13235,12 @@
       const proceedBtn = document.getElementById('proceedBtn');
       proceedBtn.disabled = true;
       proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      
+      // Hide modal immediately when payment button is clicked
+      closeModalFunc();
+      
+      // Show loading state while processing payment
+      showPaymentProcessingState();
 
       try {
         if (uploadedFiles.length === 0) {
@@ -13208,81 +13403,92 @@
               formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
               formData.append('razorpay_signature', paymentResponse.razorpay_signature);
 
-              // 3) Verify payment on server and upload files atomically
-              const verifyResp = await fetch('/payments/verify/', {
-          method: 'POST',
-          body: formData,
-          headers: { 'X-CSRFToken': getCookie('csrftoken') }
-        });
-
-              const verifyData = await safeParseJson(verifyResp);
-              if (!verifyResp.ok || !verifyData.success) {
-                throw new Error(verifyData.error || 'Payment verification failed');
-              }
-
-              // Finalize Google Drive files after successful payment
-              if (driveFiles.size > 0) {
+              // Show success immediately after payment (before storage)
+              hidePaymentProcessingState();
+              showSuccessModalWithAnimation();
+              
+              // Continue with storage in background (non-blocking)
+              (async () => {
                 try {
-                  await finalizeDriveFiles();
-                  console.log('Google Drive files finalized successfully');
-                } catch (error) {
-                  console.error('Error finalizing Drive files:', error);
-                  // Don't fail the payment for Drive finalization errors
+                  // 3) Verify payment on server and upload files atomically
+                  const verifyResp = await fetch('/payments/verify/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                  });
+
+                  const verifyData = await safeParseJson(verifyResp);
+                  if (!verifyResp.ok || !verifyData.success) {
+                    throw new Error(verifyData.error || 'Payment verification failed');
+                  }
+
+                  // Finalize Google Drive files after successful payment
+                  if (driveFiles.size > 0) {
+                    try {
+                      await finalizeDriveFiles();
+                      console.log('Google Drive files finalized successfully');
+                    } catch (error) {
+                      console.error('Error finalizing Drive files:', error);
+                      // Don't fail the payment for Drive finalization errors
+                    }
+                  }
+
+                  // Update job list dynamically
+                  updateJobListAfterPayment();
+
+                  // Try to prepend a new job card instantly (without waiting for refresh)
+                  try {
+                    const firstFile = uploadedFiles && uploadedFiles[0];
+                    const newJob = {
+                      filename: firstFile ? (firstFile.name || firstFile.file?.name || 'New Job') : 'New Job',
+                      uploaded_at: new Date().toISOString().slice(0,16).replace('T',' '),
+                      pages: (window.lastCalculatedPages) || (firstFile?.pages || 1),
+                      copies: (window.lastCalculatedCopies) || 1,
+                      color: (window.lastSelectedColor) || 'Black and White',
+                      pageSize: (window.lastSelectedPageSize) || 'A4',
+                      status: 'Pending',
+                      job_completed: 'NO',
+                      service_type: 'regular',
+                      vendor: selectedVendorData?.vendor_email || selectedVendorData?.shop_name || '',
+                      vendor_lat: selectedVendorData?.latitude || '',
+                      vendor_lng: selectedVendorData?.longitude || '',
+                      pricing_details: pricingDetails || null,
+                      token: verifyData.token || ''
+                    };
+                    if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
+                    userJobs = [newJob, ...userJobs];
+                    const container = document.getElementById('jobsContainer');
+                    if (container && typeof window.createJobCard === 'function') {
+                      const cardHTML = window.createJobCard(newJob);
+                      const temp = document.createElement('div');
+                      temp.innerHTML = cardHTML;
+                      const node = temp.firstElementChild;
+                      if (node) container.insertBefore(node, container.firstChild);
+                    }
+                    
+                    // Update layout when new job is added
+                    updateLayoutBasedOnJobs();
+                  } catch (e) { console.warn('Could not prepend new job card:', e); }
+                } catch (err) {
+                  console.error('Background storage error:', err);
+                  // Don't show error to user since payment succeeded
                 }
-              }
+              })();
 
-              // Success → notify, inject job card instantly, reset, and refresh
-              // Close modal instantly and show professional toast
-              try { closeModalFunc(); } catch (e) {}
-              const successMsg = pricingDetails
-                ? `Your print job has been sent to print. Paid Rs${pricingDetails.total_price}.`
-                : 'Your print job has been sent to print.';
-              if (typeof showToast === 'function') { showToast('Payment successful', successMsg); }
-
-              // Try to prepend a new job card instantly (without waiting for refresh)
-              try {
-                const firstFile = uploadedFiles && uploadedFiles[0];
-                const newJob = {
-                  filename: firstFile ? (firstFile.name || firstFile.file?.name || 'New Job') : 'New Job',
-                  uploaded_at: new Date().toISOString().slice(0,16).replace('T',' '),
-                  pages: (window.lastCalculatedPages) || (firstFile?.pages || 1),
-                  copies: (window.lastCalculatedCopies) || 1,
-                  color: (window.lastSelectedColor) || 'Black and White',
-                  pageSize: (window.lastSelectedPageSize) || 'A4',
-                  status: 'Pending',
-                  job_completed: 'NO',
-                  service_type: 'regular',
-                  vendor: selectedVendorData?.vendor_email || selectedVendorData?.shop_name || '',
-                  vendor_lat: selectedVendorData?.latitude || '',
-                  vendor_lng: selectedVendorData?.longitude || '',
-                  pricing_details: pricingDetails || null,
-                  token: verifyData.token || ''
-                };
-                if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
-                userJobs = [newJob, ...userJobs];
-                const container = document.getElementById('jobsContainer');
-                if (container && typeof window.createJobCard === 'function') {
-                  const cardHTML = window.createJobCard(newJob);
-                  const temp = document.createElement('div');
-                  temp.innerHTML = cardHTML;
-                  const node = temp.firstElementChild;
-                  if (node) container.insertBefore(node, container.firstChild);
-                }
-                
-                // Update layout when new job is added
-                updateLayoutBasedOnJobs();
-              } catch (e) { console.warn('Could not prepend new job card:', e); }
-
-          uploadedFiles = [];
-          selectedFileIndex = -1;
-          fileSettings = {};
-          updateFileList();
-          updateUI();
-            refreshJobs();
+              // Reset UI immediately after showing success
+              uploadedFiles = [];
+              selectedFileIndex = -1;
+              fileSettings = {};
+              updateFileList();
+              updateUI();
+              
+              // Reset button state
+              proceedBtn.disabled = false;
+              proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
             } catch (err) {
-              console.error('Verification/upload error:', err);
-              alert(err.message || 'Payment verification failed. You were not charged.');
-            } finally {
+              console.error('Payment handler error:', err);
+              hidePaymentProcessingState();
+              alert(err.message || 'Payment processing failed. Please try again.');
               proceedBtn.disabled = false;
               proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
             }
@@ -13290,16 +13496,30 @@
         };
 
         const rzp = new Razorpay(options);
+        // Ensure processing overlay is not shown on failure/cancel
         rzp.on('payment.failed', function (response) {
           console.error('Payment failed:', response.error);
-          alert('Payment failed: ' + (response.error && response.error.description ? response.error.description : 'Please try again.'));
+          hidePaymentProcessingState();
+          // Simple, quick failure message
+          alert('Payment failed. Please try again.');
           proceedBtn.disabled = false;
           proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
         });
+        // Also handle checkout close without payment
+        if (rzp && rzp.on) {
+          rzp.on('payment.cancel', function(){
+            hidePaymentProcessingState();
+            alert('Payment cancelled.');
+            proceedBtn.disabled = false;
+            proceedBtn.innerHTML = '<i class="fas fa-print"></i> Proceed to print';
+          });
+        }
 
         rzp.open();
       } catch (error) {
         console.error('Error submitting print job:', error);
+        // Hide processing state on error
+        hidePaymentProcessingState();
         alert(`Error: ${error.message || 'Failed to submit print job. Please try again.'}`);
       } finally {
         // Button state is reset in success/failure handlers. Keep a safety reset here if checkout did not open.
@@ -13796,6 +14016,10 @@
         function closeCompletedJobsModalFunc() {
           completedJobsModal.classList.remove('active');
           document.body.style.overflow = '';
+          // Clear the completed jobs list to free memory
+          if (completedJobsList) {
+            completedJobsList.innerHTML = '';
+          }
         }
         historyBtn.addEventListener('click', openCompletedJobsModal);
         closeCompletedJobsModal.addEventListener('click', closeCompletedJobsModalFunc);
@@ -14030,6 +14254,665 @@
       previewContainer.dataset.enhancedReady = 'false';
     }
   }
+  </script>
+
+  <!-- Success Modal with Lottie Animation -->
+  <div id="successModal" class="success-modal-overlay">
+    <div class="success-modal">
+      <div class="success-modal-content">
+        <div class="success-animation-container">
+          <div id="lottie-animation" class="lottie-animation"></div>
+        </div>
+        <div class="success-message">
+          <h3>Payment Successful!</h3>
+          <p>Your print job has been sent to print successfully</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Summary Modal -->
+  <div id="pricingSummaryModal" class="modal-overlay">
+    <div class="modal-content pricing-summary-modal">
+      <div class="pricing-header">
+        <h2><i class="fas fa-receipt"></i> Pricing Summary</h2>
+        <button class="close-btn" onclick="hidePricingSummary()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="pricing-content">
+        <div class="pricing-breakdown" id="pricingBreakdown">
+          <!-- Pricing details will be populated here -->
+        </div>
+        
+        <!-- Points Application Section -->
+        <div class="points-section" id="points-section" style="display: none;">
+          <div class="points-header">
+            <div class="points-icon">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="points-title">Apply Points for Discount</div>
+          </div>
+          <div class="points-content">
+            <div class="points-info">
+              <span class="points-available">Available Points: <span id="available-points">0</span></span>
+              <span class="points-balance">Balance after payment: <span id="points-balance">0</span></span>
+            </div>
+            <div class="points-actions">
+              <button type="button" class="btn-apply-points" id="apply-points-btn">
+                <i class="fas fa-star"></i> Apply Points
+              </button>
+              <button type="button" class="btn-remove-points" id="remove-points-btn" style="display: none;">
+                <i class="fas fa-times"></i> Remove Points
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pricing-footer">
+        <button class="btn btn-secondary" onclick="hidePricingSummary()">Cancel</button>
+        <button class="btn btn-primary" id="payNowBtn">
+          <i class="fas fa-credit-card"></i> Pay Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lottie Animation Library -->
+  <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+
+  <style>
+    /* Pricing Summary Modal Styles */
+    .pricing-summary-modal {
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .pricing-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 24px 16px 24px;
+      border-bottom: 1px solid #e5e7eb;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .pricing-header h2 {
+      margin: 0;
+      color: #1e293b;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pricing-header h2 i {
+      color: #059669;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .close-btn:hover {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .pricing-content {
+      padding: 24px;
+    }
+
+    .pricing-breakdown {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .pricing-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 1rem;
+    }
+
+    .pricing-item:last-child {
+      border-bottom: none;
+    }
+
+    .pricing-item.total {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #059669;
+      background: #ecfdf5;
+      border-radius: 8px;
+      margin-top: 12px;
+      padding: 16px;
+      border-bottom: none;
+    }
+
+    .pricing-label {
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .pricing-value {
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .points-section {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 1px solid #f59e0b;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .points-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .points-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+    }
+
+    .points-title {
+      font-weight: 600;
+      color: #92400e;
+      font-size: 1.1rem;
+    }
+
+    .points-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .points-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .points-available, .points-balance {
+      font-size: 0.9rem;
+      color: #92400e;
+    }
+
+    .points-available span, .points-balance span {
+      font-weight: 600;
+      color: #78350f;
+    }
+
+    .points-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-apply-points, .btn-remove-points {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-apply-points {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+
+    .btn-apply-points:hover {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-remove-points {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-remove-points:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    .pricing-footer {
+      display: flex;
+      gap: 12px;
+      padding: 20px 24px;
+      border-top: 1px solid #e5e7eb;
+      background: #f8fafc;
+      border-radius: 0 0 16px 16px;
+    }
+
+    .pricing-footer .btn {
+      flex: 1;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .pricing-footer .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .pricing-footer .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .pricing-footer .btn-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .pricing-footer .btn-primary:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Success Modal Styles */
+    .success-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    .success-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .success-modal {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 400px;
+      transform: scale(0.8);
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    .success-modal-overlay.active .success-modal {
+      transform: scale(1);
+    }
+
+    .success-modal-content {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .success-animation-container {
+      margin-bottom: 1.5rem;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lottie-animation {
+      width: 200px;
+      height: 200px;
+    }
+
+    .success-message h3 {
+      color: #10b981;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .success-message p {
+      color: #6b7280;
+      font-size: 1rem;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      .success-modal {
+        width: 95%;
+        margin: 1rem;
+      }
+      
+      .success-modal-content {
+        padding: 1.5rem;
+      }
+      
+      .lottie-animation {
+        width: 150px;
+        height: 150px;
+      }
+      
+      .success-animation-container {
+        height: 150px;
+      }
+    }
+  </style>
+
+  <script>
+    // Pricing Summary Modal Functions
+    function showPricingSummary(pricingData) {
+      const modal = document.getElementById('pricingSummaryModal');
+      const breakdown = document.getElementById('pricingBreakdown');
+      
+      if (!modal || !breakdown) return;
+      
+      // Build pricing breakdown HTML
+      let html = '';
+      if (pricingData.breakdown) {
+        Object.entries(pricingData.breakdown).forEach(([key, value]) => {
+          if (key !== 'total_price' && value !== null && value !== '') {
+            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            html += `
+              <div class="pricing-item">
+                <span class="pricing-label">${label}</span>
+                <span class="pricing-value">₹${value}</span>
+              </div>
+            `;
+          }
+        });
+        
+        // Add total
+        html += `
+          <div class="pricing-item total">
+            <span class="pricing-label">Total Amount</span>
+            <span class="pricing-value">₹${pricingData.total_price || pricingData.breakdown.total_price}</span>
+          </div>
+        `;
+      }
+      
+      breakdown.innerHTML = html;
+      
+      // Show points section if user has points
+      const pointsSection = document.getElementById('points-section');
+      if (pointsSection && userPoints > 0) {
+        pointsSection.style.display = 'block';
+        updatePointsDisplay();
+      }
+      
+      // Store pricing data for payment
+      modal.dataset.pricingData = JSON.stringify(pricingData);
+      
+      modal.classList.add('active');
+    }
+
+    function hidePricingSummary() {
+      const modal = document.getElementById('pricingSummaryModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Success Modal Functions
+    function showSuccessModal() {
+      const modal = document.getElementById('successModal');
+      if (modal) {
+        modal.classList.add('active');
+        
+        // Auto-close modal after 3 seconds
+        setTimeout(() => {
+          hideSuccessModal();
+        }, 3000);
+      }
+    }
+
+    function hideSuccessModal() {
+      const modal = document.getElementById('successModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Initialize Lottie animation when modal is shown
+    function initializeLottieAnimation() {
+      const animationContainer = document.getElementById('lottie-animation');
+      if (animationContainer && !animationContainer.hasChildNodes()) {
+        // Create dotLottie player element
+        const player = document.createElement('dotlottie-player');
+        player.setAttribute('src', '/static/images/success confetti.lottie');
+        player.setAttribute('background', 'transparent');
+        player.setAttribute('speed', '1');
+        player.setAttribute('loop', 'false');
+        player.setAttribute('autoplay', 'true');
+        player.style.width = '100%';
+        player.style.height = '100%';
+        
+        animationContainer.appendChild(player);
+      }
+    }
+
+    // Enhanced showSuccessModal with animation initialization
+    function showSuccessModalWithAnimation() {
+      showSuccessModal();
+      // Initialize animation immediately
+      initializeLottieAnimation();
+      
+      // Update job list dynamically after a short delay
+      setTimeout(() => {
+        updateJobListAfterPayment();
+      }, 2000); // Update job list while success modal is still showing
+    }
+
+    // Function to update job list after payment without page reload
+    async function updateJobListAfterPayment() {
+      try {
+        // Fetch updated job list
+        const response = await fetch('/get-user-jobs/');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.jobs) {
+            // Update the job list in the UI
+            updateJobListUI(data.jobs);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating job list:', error);
+        // Fallback to page reload if dynamic update fails
+        window.location.reload();
+      }
+    }
+
+    // Function to update job list UI
+    function updateJobListUI(jobs) {
+      const jobListContainer = document.querySelector('.jobs-grid');
+      if (!jobListContainer) return;
+
+      // Clear existing jobs
+      jobListContainer.innerHTML = '';
+
+      // Add new jobs
+      jobs.forEach(job => {
+        const jobCard = createJobCardElement(job);
+        jobListContainer.appendChild(jobCard);
+      });
+
+      // Update job count
+      const jobCountElement = document.querySelector('.job-count');
+      if (jobCountElement) {
+        jobCountElement.textContent = jobs.length;
+      }
+    }
+
+    // Function to create job card element (DOM node)
+    function createJobCardElement(job) {
+      const jobCard = document.createElement('div');
+      jobCard.className = 'job-card';
+      jobCard.innerHTML = `
+        <div class="job-header">
+          <div class="job-title">${job.filename || 'Print Job'}</div>
+          <div class="job-status status-${job.status}">${job.status}</div>
+        </div>
+        <div class="job-details">
+          <div class="job-info">
+            <span class="job-pages">${job.pages || 1} pages</span>
+            <span class="job-copies">${job.copies || 1} copies</span>
+            <span class="job-color">${job.color || 'Black & White'}</span>
+          </div>
+          <div class="job-meta">
+            <span class="job-date">${new Date(job.uploaded_at).toLocaleDateString()}</span>
+            <span class="job-price">₹${job.total_price || 0}</span>
+          </div>
+        </div>
+      `;
+      return jobCard;
+    }
+
+    // Function to show payment processing state
+    function showPaymentProcessingState() {
+      // Create a processing overlay
+      const processingOverlay = document.createElement('div');
+      processingOverlay.id = 'paymentProcessingOverlay';
+      processingOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        backdrop-filter: blur(5px);
+      `;
+      
+      processingOverlay.innerHTML = `
+        <div style="
+          background: white;
+          padding: 2rem;
+          border-radius: 16px;
+          text-align: center;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          max-width: 400px;
+          width: 90%;
+        ">
+          <div style="
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+          "></div>
+          <h3 style="margin: 0 0 0.5rem 0; color: #1f2937; font-size: 1.25rem;">Processing Payment</h3>
+          <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">Please wait while we process your payment...</p>
+        </div>
+      `;
+      
+      // Add CSS animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      document.body.appendChild(processingOverlay);
+      // Auto-hide after 10s as a safety net to avoid loops
+      processingOverlay.dataset.timeout = setTimeout(() => {
+        hidePaymentProcessingState();
+      }, 10000);
+    }
+
+    // Function to hide payment processing state
+    function hidePaymentProcessingState() {
+      const processingOverlay = document.getElementById('paymentProcessingOverlay');
+      if (processingOverlay) {
+        const t = processingOverlay.dataset.timeout;
+        if (t) { try { clearTimeout(t); } catch(e) {} }
+        processingOverlay.remove();
+      }
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+      const modal = document.getElementById('successModal');
+      if (e.target === modal) {
+        hideSuccessModal();
+      }
+    });
+
+    // Check for payment success parameter on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('payment_success') === 'true') {
+        // Ensure all modals are closed first
+        closeAllModalsAndClearData();
+        
+        // Brief processing animation then success (2s)
+        showPaymentProcessingState();
+        setTimeout(() => {
+          hidePaymentProcessingState();
+          showSuccessModalWithAnimation();
+        }, 2000);
+        
+        // Clean up URL by removing the parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    });
   </script>
 
 

@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PrintMax - Terms & Conditions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+  <style>
+    :root {
+      /* Professional Color System with Enhanced Contrast */
+      --primary: #2563eb;
+      --primary-variant: #1d4ed8;
+      --primary-light: #eff6ff;
+      --secondary: #059669;
+      --secondary-variant: #047857;
+      --accent: #7c3aed;
+      --accent-light: #f3f4f6;
+      --success: #059669;
+      --warning: #d97706;
+      --error: #dc2626;
+      --info: #0284c7;
+
+      /* Background Colors - Clean & Professional */
+      --background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      --background-solid: #ffffff;
+      --surface: rgba(255, 255, 255, 0.95);
+      --surface-variant: rgba(248, 250, 252, 0.9);
+      --surface-elevated: rgba(255, 255, 255, 0.98);
+
+      /* Text Colors - Enhanced Readability */
+      --on-primary: #ffffff;
+      --on-secondary: #ffffff;
+      --on-background: #111827;
+      --on-surface: #1f2937;
+      --on-surface-variant: #6b7280;
+
+      /* Border & Outline - Professional */
+      --outline: rgba(209, 213, 219, 0.8);
+      --outline-variant: rgba(243, 244, 246, 0.9);
+
+      /* Professional Gradients - Modern */
+      --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      --gradient-secondary: linear-gradient(135deg, #059669 0%, #047857 100%);
+      --gradient-accent: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      --gradient-surface: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+      --gradient-header: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+
+      /* Border radius */
+      --radius-xs: 4px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-2xl: 20px;
+
+      /* Enhanced Shadows - Premium Depth */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.12);
+      --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.16);
+      --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.2);
+
+      /* Transitions */
+      --transition-fast: 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-standard: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-slow: 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      /* Dark Mode - Professional & High Contrast */
+      --primary: #60a5fa;
+      --primary-variant: #3b82f6;
+      --primary-light: #1e3a8a;
+      --secondary: #34d399;
+      --secondary-variant: #10b981;
+      --accent: #a78bfa;
+      --accent-light: #312e81;
+      --background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+      --background-solid: #111827;
+      --surface: rgba(31, 41, 55, 0.95);
+      --surface-variant: rgba(55, 65, 81, 0.9);
+      --surface-elevated: rgba(75, 85, 99, 0.95);
+      --on-primary: #000000;
+      --on-secondary: #000000;
+      --on-background: #f9fafb;
+      --on-surface: #f3f4f6;
+      --on-surface-variant: #d1d5db;
+      --outline: rgba(107, 114, 128, 0.8);
+      --outline-variant: rgba(75, 85, 99, 0.9);
+      --gradient-header: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--on-background);
+      line-height: 1.6;
+      transition: all var(--transition-standard);
+      min-height: 100vh;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--background);
+      z-index: -1;
+      opacity: 0.95;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: var(--backdrop-blur);
+    }
+
+    /* Header layout - keep horizontal on all screens */
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .nav-links::-webkit-scrollbar { display: none; }
+
+    .nav-link {
+      color: var(--on-surface);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      flex: 0 0 auto;
+    }
+    .nav-links .theme-toggle { flex: 0 0 auto; }
+
+    .nav-link:hover {
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .nav-link.active {
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      background: var(--surface-variant);
+      border: 1px solid var(--outline);
+      color: var(--on-surface-variant);
+      padding: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-standard);
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface);
+      transform: scale(1.05);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      width: 100%;
+    }
+
+    .content-card {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      padding: 24px 20px;
+      margin: 16px 0 32px 0;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .content-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient-primary);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 16px;
+      letter-spacing: -0.8px;
+    }
+
+    h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin: 32px 0 16px 0;
+      letter-spacing: -0.4px;
+    }
+
+    h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin: 24px 0 12px 0;
+      letter-spacing: -0.2px;
+    }
+
+    p {
+      color: var(--on-surface-variant);
+      font-size: 16px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    ul, ol {
+      color: var(--on-surface-variant);
+      font-size: 16px;
+      line-height: 1.7;
+      margin: 16px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .last-updated {
+      color: var(--on-surface-variant);
+      font-size: 14px;
+      font-style: italic;
+      margin-bottom: 32px;
+      padding: 12px 16px;
+      background: var(--surface-variant);
+      border-radius: var(--radius-md);
+      border-left: 4px solid var(--primary);
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--surface);
+      border-top: 1px solid var(--outline);
+      padding: 24px 0;
+      margin-top: 32px;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+      text-align: center;
+    }
+
+    .footer-nav {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .footer-link {
+      color: var(--on-surface-variant);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+
+    .footer-link:hover {
+      color: var(--primary);
+    }
+
+    .footer-text {
+      color: var(--on-surface-variant);
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Mobile Responsive */
+    /* Desktop and larger tablets */
+    @media (min-width: 769px) {
+      .header-content {
+        padding: 0 24px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        gap: 24px;
+      }
+
+      .nav-links {
+        flex-direction: row;
+        align-items: center;
+        gap: 24px;
+        width: auto;
+      }
+
+      .nav-link {
+        width: auto;
+        padding: 8px 16px;
+        text-align: left;
+      }
+
+      .main-content {
+        padding: 48px 24px;
+      }
+
+      .content-card {
+        padding: 48px;
+        margin: 32px 0;
+      }
+
+      .footer-nav {
+        flex-direction: row;
+        gap: 32px;
+        align-items: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .content-card {
+        padding: 20px 16px;
+        margin: 12px 0;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      h3 {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body data-theme="light" data-bs-theme="light">
+  <!-- Minimal header removed for legal pages per request -->
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="content-card">
+      <h1>Terms & Conditions</h1>
+      <div class="last-updated">Last updated: January 2025</div>
+
+      <h2>1. Acceptance of Terms</h2>
+      <p>By accessing and using PrintMax services, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>
+
+      <h2>2. Description of Service</h2>
+      <p>PrintMax provides digital printing services including but not limited to:</p>
+      <ul>
+        <li>Document printing and photocopying</li>
+        <li>Photo printing and enhancement</li>
+        <li>Passport photo services</li>
+        <li>Large format printing</li>
+        <li>Specialty printing services</li>
+      </ul>
+
+      <h2>3. User Responsibilities</h2>
+      <p>Users are responsible for:</p>
+      <ul>
+        <li>Providing accurate and complete information</li>
+        <li>Ensuring uploaded files are legally owned or properly licensed</li>
+        <li>Complying with all applicable laws and regulations</li>
+        <li>Maintaining the confidentiality of their account credentials</li>
+      </ul>
+
+      <h2>4. Payment Terms</h2>
+      <p>Payment for services must be made in advance or as agreed upon. PrintMax reserves the right to modify pricing with 30 days' notice. Refunds are subject to our refund policy outlined in section 7.</p>
+
+      <h3>4.1 Pricing</h3>
+      <p>All prices are displayed in the local currency and are subject to applicable taxes. Prices may vary based on:</p>
+      <ul>
+        <li>Print quality and specifications</li>
+        <li>Paper type and size</li>
+        <li>Urgency of service</li>
+        <li>Location and vendor availability</li>
+      </ul>
+
+      <h2>5. Intellectual Property</h2>
+      <p>Users retain ownership of their uploaded content. By using our services, you grant PrintMax a limited license to process, store, and print your files solely for the purpose of providing the requested services.</p>
+
+      <h2>6. Privacy and Data Protection</h2>
+      <p>We are committed to protecting your privacy. Please review our Privacy Policy for detailed information about how we collect, use, and protect your personal information.</p>
+
+      <h2>7. Refund Policy</h2>
+      <p>Refunds may be provided under the following circumstances:</p>
+      <ul>
+        <li>Service failure due to technical issues on our end</li>
+        <li>Quality issues that do not meet our standards</li>
+        <li>Cancellation of service before processing begins</li>
+      </ul>
+      <p>Refund requests must be submitted within 7 days of service completion.</p>
+
+      <h2>8. Limitation of Liability</h2>
+      <p>PrintMax shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses resulting from your use of the service.</p>
+
+      <h2>9. Service Availability</h2>
+      <p>While we strive to maintain continuous service availability, PrintMax does not guarantee uninterrupted access to our services. We reserve the right to modify or discontinue services with reasonable notice.</p>
+
+      <h2>10. Governing Law</h2>
+      <p>These terms shall be governed by and construed in accordance with applicable local laws. Any disputes arising from these terms or the use of our services shall be resolved through appropriate legal channels.</p>
+
+      <h2>11. Changes to Terms</h2>
+      <p>PrintMax reserves the right to modify these terms at any time. Users will be notified of significant changes via email or through our website. Continued use of the service after changes constitutes acceptance of the new terms.</p>
+
+      <h2>12. Contact Information</h2>
+      <p>If you have any questions about these Terms & Conditions, please contact us at:</p>
+      <ul>
+        <li>Email: legal@printmax.com</li>
+        <li>Phone: +1 (555) 123-4567</li>
+        <li>Address: 123 Print Street, Digital City, DC 12345</li>
+      </ul>
+    </div>
+  </main>
+
+  <!-- Footer intentionally removed for a distraction-free legal page -->
+
+  <!-- Scripts -->
+  <script>
+    // Theme Toggle Functionality
+    function toggleTheme() {
+      const doc = document.documentElement;
+      const current = doc.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      doc.setAttribute('data-theme', next);
+      doc.setAttribute('data-bs-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    }
+
+    function updateThemeButton(theme) {
+      const icon = document.getElementById('theme-icon');
+      if (theme === 'dark') {
+        icon.className = 'fas fa-sun';
+      } else {
+        icon.className = 'fas fa-moon';
+      }
+    }
+
+    // Initialize theme on load
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.documentElement.setAttribute('data-bs-theme', savedTheme);
+      updateThemeButton(savedTheme);
+    }
+
+    // Initialize everything when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeTheme();
+    });
+  </script>
+</body>
+</html>

@@ -126,8 +126,8 @@
         }
 
         .hero-icon {
-            width: 60px;
-            height: 60px;
+            width: 48px;
+            height: 48px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             display: flex;
@@ -1360,7 +1360,7 @@
     <div class="timeline-container" id="timelineContainer">
         <div class="timeline-header">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" style="height: 40px; margin-right: 10px;">
+                <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" style="height: 36px; width: auto; margin-right: 10px;">
                 <h2 class="timeline-title" style="margin: 0;">3 Phase Timeline for Vendor Onboarding</h2>
             </div>
             <p class="timeline-subtitle">Complete these steps to start receiving orders from customers</p>
@@ -1796,7 +1796,24 @@
                     body: JSON.stringify(formData)
                 });
 
-                const data = await response.json();
+                // Check if response is ok
+                if (!response.ok) {
+                    if (response.status === 500) {
+                        throw new Error('Server error occurred. Please try again later or contact support.');
+                    } else if (response.status === 400) {
+                        throw new Error('Invalid request. Please check your information and try again.');
+                    } else {
+                        throw new Error(`Server error (${response.status}). Please try again.`);
+                    }
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    console.error('JSON parsing error:', jsonError);
+                    throw new Error('Server returned invalid response. Please try again.');
+                }
                 
                 if (data.success) {
                      // Hide animation
@@ -1826,7 +1843,21 @@
                 }
             } catch (error) {
                 console.error('Registration error:', error);
-                showNotification(error.message || 'Registration failed. Please try again.', 'error');
+                
+                // Try to parse error message from response
+                let errorMessage = 'Registration failed. Please try again.';
+                try {
+                    if (error.message && error.message.includes('JSON')) {
+                        // If it's a JSON parsing error, show a more helpful message
+                        errorMessage = 'Server error occurred. Please check your internet connection and try again.';
+                    } else {
+                        errorMessage = error.message || errorMessage;
+                    }
+                } catch (e) {
+                    // Use default error message
+                }
+                
+                showNotification(errorMessage, 'error');
                  
                  // Hide animation
                  const animation = document.getElementById('registrationAnimation');

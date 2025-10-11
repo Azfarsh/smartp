@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PrintMax - Privacy Policy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+  <style>
+    :root {
+      /* Professional Color System with Enhanced Contrast */
+      --primary: #2563eb;
+      --primary-variant: #1d4ed8;
+      --primary-light: #eff6ff;
+      --secondary: #059669;
+      --secondary-variant: #047857;
+      --accent: #7c3aed;
+      --accent-light: #f3f4f6;
+      --success: #059669;
+      --warning: #d97706;
+      --error: #dc2626;
+      --info: #0284c7;
+
+      /* Background Colors - Clean & Professional */
+      --background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      --background-solid: #ffffff;
+      --surface: rgba(255, 255, 255, 0.95);
+      --surface-variant: rgba(248, 250, 252, 0.9);
+      --surface-elevated: rgba(255, 255, 255, 0.98);
+
+      /* Text Colors - Enhanced Readability */
+      --on-primary: #ffffff;
+      --on-secondary: #ffffff;
+      --on-background: #111827;
+      --on-surface: #1f2937;
+      --on-surface-variant: #6b7280;
+
+      /* Border & Outline - Professional */
+      --outline: rgba(209, 213, 219, 0.8);
+      --outline-variant: rgba(243, 244, 246, 0.9);
+
+      /* Professional Gradients - Modern */
+      --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      --gradient-secondary: linear-gradient(135deg, #059669 0%, #047857 100%);
+      --gradient-accent: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      --gradient-surface: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+      --gradient-header: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+
+      /* Border radius */
+      --radius-xs: 4px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-2xl: 20px;
+
+      /* Enhanced Shadows - Premium Depth */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.12);
+      --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.16);
+      --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.2);
+
+      /* Transitions */
+      --transition-fast: 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-standard: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      --transition-slow: 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      /* Dark Mode - Professional & High Contrast */
+      --primary: #60a5fa;
+      --primary-variant: #3b82f6;
+      --primary-light: #1e3a8a;
+      --secondary: #34d399;
+      --secondary-variant: #10b981;
+      --accent: #a78bfa;
+      --accent-light: #312e81;
+      --background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+      --background-solid: #111827;
+      --surface: rgba(31, 41, 55, 0.95);
+      --surface-variant: rgba(55, 65, 81, 0.9);
+      --surface-elevated: rgba(75, 85, 99, 0.95);
+      --on-primary: #000000;
+      --on-secondary: #000000;
+      --on-background: #f9fafb;
+      --on-surface: #f3f4f6;
+      --on-surface-variant: #d1d5db;
+      --outline: rgba(107, 114, 128, 0.8);
+      --outline-variant: rgba(75, 85, 99, 0.9);
+      --gradient-header: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--on-background);
+      line-height: 1.6;
+      transition: all var(--transition-standard);
+      min-height: 100vh;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--background);
+      z-index: -1;
+      opacity: 0.95;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: var(--backdrop-blur);
+    }
+
+    /* Header layout - keep horizontal on all screens */
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .nav-links::-webkit-scrollbar { display: none; }
+
+    .nav-link {
+      color: var(--on-surface);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      flex: 0 0 auto;
+    }
+    .nav-links .theme-toggle { flex: 0 0 auto; }
+
+    .nav-link:hover {
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .nav-link.active {
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      background: var(--surface-variant);
+      border: 1px solid var(--outline);
+      color: var(--on-surface-variant);
+      padding: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-standard);
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface);
+      transform: scale(1.05);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      width: 100%;
+    }
+
+    .content-card {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      padding: 24px 20px;
+      margin: 16px 0 32px 0;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .content-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient-primary);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 16px;
+      letter-spacing: -0.8px;
+    }
+
+    h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin: 32px 0 16px 0;
+      letter-spacing: -0.4px;
+    }
+
+    h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--on-surface);
+      margin: 24px 0 12px 0;
+      letter-spacing: -0.2px;
+    }
+
+    p {
+      color: var(--on-surface-variant);
+      font-size: 16px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    ul, ol {
+      color: var(--on-surface-variant);
+      font-size: 16px;
+      line-height: 1.7;
+      margin: 16px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .last-updated {
+      color: var(--on-surface-variant);
+      font-size: 14px;
+      font-style: italic;
+      margin-bottom: 32px;
+      padding: 12px 16px;
+      background: var(--surface-variant);
+      border-radius: var(--radius-md);
+      border-left: 4px solid var(--primary);
+    }
+
+    .highlight-box {
+      background: var(--primary-light);
+      border: 1px solid var(--primary);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .highlight-box h3 {
+      color: var(--primary);
+      margin-top: 0;
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--surface);
+      border-top: 1px solid var(--outline);
+      padding: 24px 0;
+      margin-top: 32px;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+      text-align: center;
+    }
+
+    .footer-nav {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .footer-link {
+      color: var(--on-surface-variant);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+
+    .footer-link:hover {
+      color: var(--primary);
+    }
+
+    .footer-text {
+      color: var(--on-surface-variant);
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Desktop and larger tablets */
+    @media (min-width: 769px) {
+      .header-content {
+        padding: 0 24px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        gap: 24px;
+      }
+
+      .nav-links {
+        flex-direction: row;
+        align-items: center;
+        gap: 24px;
+        width: auto;
+      }
+
+      .nav-link {
+        width: auto;
+        padding: 8px 16px;
+        text-align: left;
+      }
+
+      .main-content {
+        padding: 48px 24px;
+      }
+
+      .content-card {
+        padding: 48px;
+        margin: 32px 0;
+      }
+
+      .footer-nav {
+        flex-direction: row;
+        gap: 32px;
+        align-items: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .content-card {
+        padding: 20px 16px;
+        margin: 12px 0;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      h3 {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body data-theme="light" data-bs-theme="light">
+  <!-- Minimal header removed for legal pages per request -->
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="content-card">
+      <h1>Privacy Policy</h1>
+      <div class="last-updated">Last updated: January 2025</div>
+
+      <div class="highlight-box">
+        <h3>Your Privacy Matters</h3>
+        <p>At PrintMax, we are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, and safeguard your data when you use our printing services.</p>
+      </div>
+
+      <h2>1. Information We Collect</h2>
+      <p>We collect information you provide directly to us and information we obtain automatically when you use our services.</p>
+
+      <h3>1.1 Personal Information</h3>
+      <p>When you create an account or use our services, we may collect:</p>
+      <ul>
+        <li>Name and contact information (email address, phone number)</li>
+        <li>Billing and shipping addresses</li>
+        <li>Payment information (processed securely through third-party providers)</li>
+        <li>Account preferences and settings</li>
+      </ul>
+
+      <h3>1.2 Files and Documents</h3>
+      <p>To provide printing services, we collect and temporarily store:</p>
+      <ul>
+        <li>Files you upload for printing</li>
+        <li>Print specifications and preferences</li>
+        <li>Order history and printing requests</li>
+      </ul>
+
+      <h3>1.3 Usage Information</h3>
+      <p>We automatically collect certain information when you use our services:</p>
+      <ul>
+        <li>Device information (IP address, browser type, operating system)</li>
+        <li>Usage patterns and service interactions</li>
+        <li>Location data (if you enable location services)</li>
+        <li>Cookies and similar tracking technologies</li>
+      </ul>
+
+      <h2>2. How We Use Your Information</h2>
+      <p>We use the information we collect to:</p>
+      <ul>
+        <li>Provide, maintain, and improve our printing services</li>
+        <li>Process your orders and deliver printed materials</li>
+        <li>Communicate with you about your orders and our services</li>
+        <li>Process payments and prevent fraud</li>
+        <li>Personalize your experience and provide customer support</li>
+        <li>Comply with legal obligations and protect our rights</li>
+      </ul>
+
+      <h2>3. Information Sharing and Disclosure</h2>
+      <p>We do not sell, trade, or rent your personal information to third parties. We may share your information only in the following circumstances:</p>
+
+      <h3>3.1 Service Providers</h3>
+      <p>We may share information with trusted third-party service providers who assist us in:</p>
+      <ul>
+        <li>Payment processing</li>
+        <li>File storage and processing</li>
+        <li>Printing and delivery services</li>
+        <li>Customer support and communication</li>
+      </ul>
+
+      <h3>3.2 Legal Requirements</h3>
+      <p>We may disclose your information if required to do so by law or in response to valid legal requests from government authorities.</p>
+
+      <h3>3.3 Business Transfers</h3>
+      <p>In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of the transaction.</p>
+
+      <h2>4. Data Security</h2>
+      <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. These measures include:</p>
+      <ul>
+        <li>Encryption of data in transit and at rest</li>
+        <li>Regular security assessments and updates</li>
+        <li>Access controls and authentication mechanisms</li>
+        <li>Secure data centers and infrastructure</li>
+      </ul>
+
+      <h2>5. Data Retention</h2>
+      <p>We retain your personal information for as long as necessary to provide our services and fulfill the purposes outlined in this Privacy Policy. Specifically:</p>
+      <ul>
+        <li>Account information: Until you delete your account</li>
+        <li>Order and transaction data: 7 years for tax and legal compliance</li>
+        <li>Uploaded files: Deleted within 30 days after order completion</li>
+        <li>Usage data: Aggregated and anonymized after 2 years</li>
+      </ul>
+
+      <h2>6. Your Rights and Choices</h2>
+      <p>You have certain rights regarding your personal information:</p>
+
+      <h3>6.1 Access and Portability</h3>
+      <p>You can request access to your personal information and receive a copy in a portable format.</p>
+
+      <h3>6.2 Correction and Updates</h3>
+      <p>You can update or correct your personal information through your account settings or by contacting us.</p>
+
+      <h3>6.3 Deletion</h3>
+      <p>You can request deletion of your personal information, subject to certain legal and operational requirements.</p>
+
+      <h3>6.4 Communication Preferences</h3>
+      <p>You can opt out of marketing communications while still receiving essential service-related messages.</p>
+
+      <h2>7. Cookies and Tracking Technologies</h2>
+      <p>We use cookies and similar technologies to enhance your experience, analyze usage patterns, and provide personalized content. You can control cookie preferences through your browser settings.</p>
+
+      <h3>7.1 Types of Cookies</h3>
+      <ul>
+        <li><strong>Essential Cookies:</strong> Required for basic website functionality</li>
+        <li><strong>Analytics Cookies:</strong> Help us understand how you use our services</li>
+        <li><strong>Preference Cookies:</strong> Remember your settings and preferences</li>
+        <li><strong>Marketing Cookies:</strong> Used for targeted advertising (with your consent)</li>
+      </ul>
+
+      <h2>8. International Data Transfers</h2>
+      <p>Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place to protect your information in accordance with applicable data protection laws.</p>
+
+      <h2>9. Children's Privacy</h2>
+      <p>Our services are not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13. If we become aware that we have collected such information, we will take steps to delete it promptly.</p>
+
+      <h2>10. Changes to This Privacy Policy</h2>
+      <p>We may update this Privacy Policy from time to time to reflect changes in our practices or applicable laws. We will notify you of any material changes by posting the updated policy on our website and updating the "Last updated" date.</p>
+
+      <h2>11. Contact Us</h2>
+      <p>If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
+      <ul>
+        <li>Email: privacy@printmax.com</li>
+        <li>Phone: +1 (555) 123-4567</li>
+        <li>Address: 123 Print Street, Digital City, DC 12345</li>
+        <li>Data Protection Officer: dpo@printmax.com</li>
+      </ul>
+
+      <div class="highlight-box">
+        <h3>Your Consent</h3>
+        <p>By using our services, you consent to the collection and use of your information as described in this Privacy Policy. If you do not agree with any part of this policy, please do not use our services.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer intentionally removed for a distraction-free legal page -->
+
+  <!-- Scripts -->
+  <script>
+    // Theme Toggle Functionality
+    function toggleTheme() {
+      const doc = document.documentElement;
+      const current = doc.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      doc.setAttribute('data-theme', next);
+      doc.setAttribute('data-bs-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    }
+
+    function updateThemeButton(theme) {
+      const icon = document.getElementById('theme-icon');
+      if (theme === 'dark') {
+        icon.className = 'fas fa-sun';
+      } else {
+        icon.className = 'fas fa-moon';
+      }
+    }
+
+    // Initialize theme on load
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.documentElement.setAttribute('data-bs-theme', savedTheme);
+      updateThemeButton(savedTheme);
+    }
+
+    // Initialize everything when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeTheme();
+    });
+  </script>
+</body>
+</html>

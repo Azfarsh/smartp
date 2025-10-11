@@ -205,7 +205,7 @@
             align-items: center;
             margin-left: 6px;
             transform: translateY(2px); /* optical alignment with logo */
-            color: #111827; /* solid black in day mode */
+            color: #0f172a; /* dark navy in day mode to match header */
             -webkit-text-fill-color: currentColor; /* override parent's transparent fill */
             -webkit-background-clip: initial; /* reset any background clip from parent */
             background-clip: initial;
@@ -838,8 +838,8 @@
     <nav class="navbar navbar-expand-lg" role="navigation">
         <div class="container">
             <a class="navbar-brand" href="#" aria-label="Printmax homepage" style="display: flex; align-items: center; gap: 10px;">
-                <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="PrintMax" style="height: 36px; width: auto; vertical-align: middle; image-rendering: auto;" />
-                <img class="logo-img-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax" style="height: 36px; width: auto; vertical-align: middle; image-rendering: auto;" />
+                <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="PrintMax" style="height: 32px; width: auto; vertical-align: middle; image-rendering: auto;" />
+                <img class="logo-img-dark" src="{% static 'images/printmaxdarklogo.png' %}" alt="PrintMax" style="height: 38px; width: auto; vertical-align: middle; image-rendering: auto;" />
                 <span class="brand-wordmark">PRINTMAX</span>
             </a>
 
@@ -869,7 +869,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#contact">
+                        <a class="nav-link" href="/contact/">
                             <i class="bi bi-chat-fill me-2"></i>Contact
                         </a>
                     </li>
@@ -1312,44 +1312,57 @@
         </div>
     </footer>
 
-    <!-- Vendor Login Modal (full two-column vendor-only layout) -->
+    <!-- Full Screen Welcome Animation (outside modal) -->
+    <div id="welcomeScreen" style="display:none;">
+      <div class="logo-container">
+        <div class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="welcome-content">
+        <h1 id="welcomeMessage">Welcome to Print Shop Dashboard</h1>
+        <p id="welcomeStatusText">Preparing your workspace...</p>
+        <div class="loading-container">
+          <div class="loading-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vendor Login Modal (redesigned to match test.html) -->
     <div class="modal fade" id="vendorLoginModal" tabindex="-1" aria-labelledby="vendorLoginModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content vendor-modal-content">
           <div class="row g-0">
-            <!-- Left: Brand, dynamic tagline, features -->
+            <!-- Left: Image Section -->
             <div class="col-md-6 vendor-modal-left">
-              <div class="brand-logo">
-                <span class="material-icons">bolt</span>
-                PrintMax
+              <div class="vendor-image-wrapper">
+                <img src="{% static 'images/vendor-login.png' %}" alt="Vendor Login Illustration" class="vendor-image">
               </div>
-              <div class="tagline" id="vendor-modal-tagline">
-                🚀 Where Innovation Meets Print Perfection
               </div>
-              <ul class="feature-list">
-                <li><span class="material-icons">rocket_launch</span> Lightning-Fast AI Processing</li>
-                <li><span class="material-icons">security</span> Military-Grade Security</li>
-                <li><span class="material-icons">auto_awesome</span> Smart Quality Enhancement</li>
-                <li><span class="material-icons">schedule</span> 24/7 Automated Service</li>
-              </ul>
-            </div>
-            <!-- Right: Vendor login form only -->
+            <!-- Right: Vendor login form -->
             <div class="col-md-6 vendor-modal-right">
               <button type="button" class="btn-close vendor-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              <!-- Welcome Screen (hidden by default) -->
-              <div id="welcomeScreen" style="display:none; flex-direction:column; align-items:center; justify-content:center; min-height:300px;">
-                <div id="welcomeMessage">🚀 Welcome to the Future!</div>
-                <div class="spinner" style="margin:2rem 0;"></div>
-                <div class="status-text" id="welcomeStatusText">⚡ Initializing AI-powered experience...</div>
-              </div>
               <!-- Vendor Login Form -->
               <div id="vendor-form-modal">
+                <div class="login-header">
+                  <h2>Vendor Login</h2>
+                  <p>Access your vendor dashboard</p>
+                </div>
                 <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
                   {% csrf_token %}
                   <div class="form-group">
-                    <label for="vendorEmail" class="form-label"> Email</label>
+                    <label for="vendorEmail" class="form-label">Email</label>
                     <div class="input-container">
-                      <input type="email" class="form-control" id="vendorEmail" placeholder="Enter your command email" required autocomplete="username" />
+                      <input type="email" class="form-control" id="vendorEmail" placeholder="example@domain.com" required autocomplete="username" />
                       <span class="material-icons">email</span>
                     </div>
                   </div>
@@ -1357,22 +1370,26 @@
                     <label for="vendorPassword" class="form-label">Password</label>
                     <div class="input-container">
                       <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your secret code" required autocomplete="current-password" />
-                      <span class="material-icons">lock</span>
+                      <span class="material-icons lock-icon">lock</span>
+                      <span class="material-icons eye-icon" id="togglePassword" onclick="togglePasswordVisibility()" style="cursor: pointer; right: 1rem; left: auto;">visibility</span>
                     </div>
                   </div>
                   <button type="submit" class="btn-primary" id="vendorSignInBtn">
-                    <span class="material-icons" id="vendorBtnIcon">rocket_launch</span>
-                    <span id="vendorBtnText">🚀 Vendor login</span>
+                    <span class="material-icons" id="vendorBtnIcon">print</span>
+                    <span id="vendorBtnText">Vendor login</span>
                   </button>
                   <div class="forgot-password">
-                    <a href="#" onclick="resetVendorPassword()">🔐 Forgot your access code?</a>
+                    <a href="#" onclick="resetVendorPassword()">
+                      <span class="material-icons">lock_reset</span>
+                      <span>Forgot your password?</span>
+                    </a>
                   </div>
                 </form>
-                <div class="text-center mt-3">
+                <div class="text-center">
                   <p class="text-muted">Ready to build your print empire?</p>
                   <button type="button" class="btn-outline-primary btn-register-vendor" onclick="window.location.href='/vendor-about/'">
                     <span class="material-icons">business</span>
-                    🏪 Learn About Vendor Benefits
+                    <span>Learn About Vendor Benefits</span>
                   </button>
                 </div>
               </div>
@@ -1418,387 +1435,705 @@
       });
     </script>
     <style>
-      /* Vendor login modal two-column layout and styles */
+      /* Vendor login modal redesigned to match test.html */
       #vendorLoginModal .vendor-modal-content {
-        background: #fff; /* Solid background for light mode */
-        border: 1.5px solid var(--modal-border);
-        border-radius: 28px;
-        box-shadow: var(--glass-shadow);
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 32px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         padding: 0;
         overflow: hidden;
-        min-height: 520px;
-        max-width: 950px;
+        min-height: 95vh;
+        max-width: 98vw;
+        width: 98vw;
+        height: 95vh;
       }
       #vendorLoginModal .row { margin: 0; }
+      
+      /* Image Section */
       #vendorLoginModal .vendor-modal-left {
-        background: linear-gradient(135deg, #23272f 0%, #181a1b 100%);
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 3rem 2.5rem;
-        min-height: 520px;
-        text-align: center;
-      }
-      #vendorLoginModal .brand-logo {
+        background: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 2.2rem;
-        background: var(--brand-gradient);
-        -webkit-background-clip: text;
-        background-clip: text;
-        font-size: 2.7rem;
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 800;
-        gap: 10px;
-      }
-      #vendorLoginModal .brand-logo .material-icons {
-        font-size: 2.5rem;
-        background: var(--brand-gradient);
-        -webkit-background-clip: text;
-        background-clip: text;
-        margin-right: 8px;
-      }
-      #vendorLoginModal .printmax-logo-img {
-        max-width: 240px;
-        width: 100%;
-        height: auto;
-        display: none;
-      }
-      [data-bs-theme="dark"] #vendorLoginModal .printmax-logo-dark {
-        display: block;
-      }
-      [data-bs-theme="light"] #vendorLoginModal .printmax-logo-light {
-        display: block;
-      }
-      #vendorLoginModal .tagline {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-bottom: 2.2rem;
-        color: #fff;
-        text-align: center;
-        letter-spacing: -0.01em;
-        line-height: 1.3;
-      }
-      #vendorLoginModal .feature-list {
-        margin-top: 1.5rem;
-        list-style: none;
-        padding-left: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 1.2rem;
-        align-items: center;
-      }
-      #vendorLoginModal .feature-list li {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 1.15rem;
-        color: #fff;
-        font-weight: 500;
-        justify-content: center;
-      }
-      #vendorLoginModal .feature-list .material-icons {
-        font-family: 'Material Icons' !important;
-        font-size: 1.5rem;
-        color: #a385ff;
-        background: var(--brand-gradient);
-        -webkit-background-clip: text;
-        background-clip: text;
-        margin-right: 2px;
-        vertical-align: middle;
-        display: inline-block;
-        line-height: 1;
-        font-weight: 700;
-      }
-      /* Fallback: show emoji if Material Icons font fails */
-      #vendorLoginModal .brand-logo .material-icons.logo-bolt:empty + .icon-fallback {
-        display: inline;
-      }
-      #vendorLoginModal .vendor-modal-right {
-        background: transparent;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 3rem 2.5rem 2.5rem 2.5rem;
-        position: relative;
-      }
-      #vendorLoginModal .vendor-modal-close {
-        position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
-        z-index: 10;
-      }
-      #vendorLoginModal .login-header {
-        text-align: left;
-        margin-bottom: 2.5rem;
-      }
-      #vendorLoginModal .login-header h2 {
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.1rem;
-        font-weight: 700;
-        color: var(--heading-color);
-        background: var(--brand-gradient);
-        -webkit-background-clip: text;
-        background-clip: text;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 0.5rem;
-      }
-      #vendorLoginModal .login-header p {
-        color: var(--text-secondary);
-        font-size: 1.1rem;
-        font-weight: 500;
-        margin-bottom: 0;
-      }
-      #vendorLoginModal .form-group {
-        margin-bottom: 1.5rem;
-      }
-      #vendorLoginModal .form-label {
-        display: block;
-        font-weight: 600;
-        color: var(--text-color);
-        margin-bottom: 8px;
-        font-size: 1rem;
-      }
-      #vendorLoginModal .input-container {
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-      #vendorLoginModal .input-container .material-icons {
-        position: absolute;
-        left: 16px;
-        color: var(--text-secondary);
-        font-size: 20px;
-        z-index: 2;
-        transition: var(--transition-smooth);
-      }
-      #vendorLoginModal .form-control {
-        width: 100%;
-        padding: 18px 18px 18px 52px;
-        border: 2px solid var(--border-color);
-        border-radius: 12px;
-        font-size: 1rem;
-        background: var(--card-bg);
-        color: var(--text-color);
-        outline: none;
-        box-shadow: none !important;
-        transition: none !important;
-      }
-      #vendorLoginModal .form-control:focus {
-        border-color: var(--border-color);
-        background: var(--card-bg);
-        box-shadow: none;
-      }
-      #vendorLoginModal .form-control:focus + .material-icons {
-        background: none;
-        -webkit-background-clip: initial;
-        -webkit-text-fill-color: initial;
-        background-clip: initial;
-        color: var(--text-secondary);
-      }
-      #vendorLoginModal .btn-primary {
-        width: 100%;
-        padding: 14px;
-        background: #181a1b;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: var(--transition-bounce);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
+        padding: 0;
+        min-height: 95vh;
+        height: 95vh;
         position: relative;
         overflow: hidden;
+        border-radius: 32px 0 0 32px;
       }
-      #vendorLoginModal .btn-primary::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
+      
+      #vendorLoginModal .vendor-image-wrapper {
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-        transition: left 0.5s ease;
-      }
-      #vendorLoginModal .btn-primary:hover::before {
-        left: 100%;
-      }
-      #vendorLoginModal .btn-primary:hover {
-        background: #3a86ff;
-        color: #fff;
-      }
-      #vendorLoginModal .btn-outline-primary {
-        width: 100%;
-        padding: 12px;
-        background: transparent;
-        color: #fff;
-        border: 2px solid #3a86ff;
-        border-radius: 10px;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: var(--transition-bounce);
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        margin-top: 1rem;
         position: relative;
-        overflow: hidden;
+        padding: 0;
+      }
+      
+      #vendorLoginModal .vendor-image {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center;
+        border-radius: 0;
+        transition: transform 0.3s ease;
+        background: transparent;
         box-shadow: none;
+        display: block;
       }
-      #vendorLoginModal .btn-outline-primary:hover {
-        background: #3a86ff;
-        color: #fff;
+      
+      #vendorLoginModal .vendor-image:hover {
+        transform: scale(1.02);
       }
+      
+      /* Form Section */
+      #vendorLoginModal .vendor-modal-right {
+        background: #ffffff;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 95vh;
+        min-height: 95vh;
+        position: relative;
+        border-radius: 0 32px 32px 0;
+      }
+      
+      #vendorLoginModal .vendor-modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1000;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+        transition: all 0.3s ease;
+      }
+      
+      #vendorLoginModal .vendor-modal-close:hover {
+        opacity: 1;
+        background: #f1f5f9;
+        transform: scale(1.1);
+      }
+      
+      #vendorLoginModal .login-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        width: 100%;
+        max-width: 400px;
+        padding: 0.5rem 0;
+        position: relative;
+        z-index: 10;
+      }
+      
+      #vendorLoginModal .login-header h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.025em;
+        line-height: 1.2;
+      }
+      
+      #vendorLoginModal .login-header p {
+        color: #000000;
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.5;
+        margin-bottom: 0;
+        opacity: 1;
+        visibility: visible;
+        display: block;
+        min-height: 1.5rem;
+        white-space: nowrap;
+        overflow: visible;
+      }
+      
+      #vendorLoginModal .form-group {
+        margin-bottom: 1rem;
+        width: 100%;
+        max-width: 400px;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      #vendorLoginModal .form-label {
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.9rem;
+        letter-spacing: 0.025em;
+        line-height: 1.4;
+      }
+      
+      #vendorLoginModal .input-container {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      
+      #vendorLoginModal .form-control {
+        width: 100%;
+        padding: 0.875rem 1rem 0.875rem 2.75rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #f9fafb;
+        min-height: 48px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        font-weight: 400;
+        letter-spacing: 0.025em;
+        line-height: 1.4;
+      }
+      
+      #vendorLoginModal .form-control:hover {
+        border-color: #3B82F6;
+        background: #ffffff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      #vendorLoginModal .form-control:focus {
+        outline: none;
+        border-color: #3B82F6;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05);
+        transform: translateY(-1px);
+      }
+      
+      #vendorLoginModal .form-control:focus + .material-icons {
+        color: #6b7280;
+      }
+      
+      #vendorLoginModal .input-container .material-icons {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        font-size: 1.1rem;
+        transition: color 0.3s ease;
+        z-index: 1;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      #vendorLoginModal .input-container .eye-icon {
+        pointer-events: auto !important;
+        color: #6b7280 !important;
+        transition: color 0.3s ease;
+      }
+      
+      #vendorLoginModal .input-container .eye-icon:hover {
+        color: #374151 !important;
+      }
+      
+      #vendorLoginModal .btn-primary {
+        width: 100%;
+        max-width: 400px;
+        padding: 0.75rem 1.5rem;
+        background: #374151;
+        border: 2px solid #374151;
+        border-radius: 20px;
+        color: #ffffff;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        min-height: 48px;
+        letter-spacing: 0.025em;
+        line-height: 1.4;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      #vendorLoginModal .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        background: #1f2937;
+        border-color: #1f2937;
+      }
+      
+      #vendorLoginModal .btn-primary:active {
+        transform: translateY(0);
+      }
+      
+      #vendorLoginModal .btn-primary:focus {
+        outline: 2px solid #6b7280;
+        outline-offset: 2px;
+      }
+      
       #vendorLoginModal .forgot-password {
         text-align: center;
-        margin-top: 1.5rem;
+        margin-top: 0.75rem;
+        width: 100%;
+        max-width: 400px;
+        display: flex;
+        justify-content: center;
+      }
+      
+      #vendorLoginModal .forgot-password a {
+        color: #6b7280;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 52px;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      
+      #vendorLoginModal .forgot-password a:hover {
+        color: #3B82F6;
+        background: #eef2ff;
+      }
+      
+      #vendorLoginModal .forgot-password a:focus {
+        outline: 2px solid #6b7280;
+        outline-offset: 2px;
+      }
+      
+      #vendorLoginModal .text-center {
+        margin-top: 1.25rem;
+        text-align: center;
+        width: 100%;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      #vendorLoginModal .text-muted {
+        color: #000000;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        text-align: center;
+        width: 100%;
+      }
+      
+      #vendorLoginModal .btn-outline-primary {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: 2px solid #3B82F6;
+        border-radius: 20px;
+        color: #3B82F6;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        min-height: 48px;
+        letter-spacing: 0.025em;
+        line-height: 1.4;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      
+      #vendorLoginModal .btn-outline-primary:hover {
+        background: #3B82F6;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      }
+      
+      #vendorLoginModal .btn-outline-primary:active {
+        transform: translateY(0);
+      }
+      
+      #vendorLoginModal .btn-outline-primary:focus {
+        outline: 2px solid #6b7280;
+        outline-offset: 2px;
+      }
+      
+      /* Responsive Design for Vendor Modal */
+      @media (max-width: 1024px) {
+        #vendorLoginModal .vendor-modal-content {
+          max-width: 100%;
+          width: 100vw;
+          height: 100vh;
+          border-radius: 28px;
+        }
+        #vendorLoginModal .vendor-modal-left,
+        #vendorLoginModal .vendor-modal-right {
+          min-height: 50%;
+          height: 50vh;
+        }
+        #vendorLoginModal .vendor-modal-left {
+          border-radius: 28px 28px 0 0;
+        }
+        #vendorLoginModal .vendor-modal-right {
+          border-radius: 0 0 28px 28px;
+        }
+      }
+      
+      @media (max-width: 768px) {
+        #vendorLoginModal .vendor-modal-content {
+          border-radius: 24px;
+          width: 100vw;
+          height: 100vh;
+          min-height: 100vh;
+        }
+        #vendorLoginModal .vendor-modal-left {
+          min-height: 200px;
+          height: 200px;
+          border-radius: 24px 24px 0 0;
+        }
+        #vendorLoginModal .vendor-modal-right {
+          min-height: calc(100vh - 200px);
+          height: calc(100vh - 200px);
+          border-radius: 0 0 24px 24px;
+        }
+        #vendorLoginModal .login-header h2 {
+        font-size: 1.5rem;
+        }
+        #vendorLoginModal .form-control {
+          padding: 1rem 1.25rem 1rem 3rem;
+          font-size: 1rem;
+          min-height: 52px;
+        }
+        #vendorLoginModal .btn-primary,
+        #vendorLoginModal .btn-outline-primary {
+          padding: 1rem 1.5rem;
+          font-size: 1rem;
+          min-height: 56px;
       }
       #vendorLoginModal .forgot-password a {
-        color: transparent;
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-decoration: none;
-        font-weight: 600;
-        transition: var(--transition-smooth);
+          padding: 0.9rem 1.25rem;
+          font-size: 0.95rem;
+          min-height: 52px;
+        }
       }
-      #vendorLoginModal .forgot-password a:hover {
-        filter: brightness(1.2);
-      }
-      #vendorLoginModal .text-muted {
-        color: var(--text-secondary);
+      
+      @media (max-width: 480px) {
+        #vendorLoginModal .vendor-modal-content {
+          border-radius: 20px;
+        }
+        #vendorLoginModal .vendor-modal-left {
+          min-height: 180px;
+          border-radius: 20px 20px 0 0;
+        }
+        #vendorLoginModal .vendor-modal-right {
+          min-height: calc(100vh - 260px);
+          border-radius: 0 0 20px 20px;
+        }
+        #vendorLoginModal .login-header h2 {
+          font-size: 1.25rem;
+        }
+        #vendorLoginModal .form-control {
+          padding: 0.875rem 1rem 0.875rem 2.75rem;
         font-size: 0.95rem;
-        margin-bottom: 1rem;
+          min-height: 52px;
+        }
+        #vendorLoginModal .btn-primary,
+        #vendorLoginModal .btn-outline-primary {
+          padding: 0.875rem 1.25rem;
+          font-size: 0.95rem;
+          min-height: 52px;
+        }
+        #vendorLoginModal .forgot-password a {
+          padding: 0.875rem 1.25rem;
+          font-size: 0.95rem;
+          min-height: 52px;
+        }
       }
-      #vendorLoginModal .btn-register-vendor {
-        color: #fff !important;
-        font-weight: 700;
-        background: #3a86ff;
-        border: 2px solid #3a86ff;
+      
+      @media (max-width: 360px) {
+        #vendorLoginModal .vendor-modal-content {
+          border-radius: 16px;
+        }
+        #vendorLoginModal .vendor-modal-left {
+          min-height: 160px;
+          border-radius: 16px 16px 0 0;
+        }
+        #vendorLoginModal .vendor-modal-right {
+          min-height: calc(100vh - 240px);
+          border-radius: 0 0 16px 16px;
+        }
+        #vendorLoginModal .login-header h2 {
+          font-size: 1.1rem;
+        }
+        #vendorLoginModal .form-control {
+          padding: 0.75rem 0.875rem 0.75rem 2.5rem;
+          font-size: 0.9rem;
+          min-height: 48px;
+        }
+        #vendorLoginModal .btn-primary,
+        #vendorLoginModal .btn-outline-primary {
+          padding: 0.75rem 1rem;
+          font-size: 0.9rem;
+          min-height: 48px;
+        }
+        #vendorLoginModal .forgot-password a {
+          padding: 0.75rem 1rem;
+          font-size: 0.9rem;
+          min-height: 48px;
+        }
       }
-      #vendorLoginModal .btn-register-vendor:hover {
-        background: #3a86ff;
-        color: #fff !important;
+      
+      /* Full Screen Welcome Animation - Matching test.html */
+      #welcomeScreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
       }
-      #vendorLoginModal .status-text {
-        font-size: 1.2rem;
-        font-weight: 500;
-        color: rgba(255,255,255,0.9);
-        animation: statusFadeIn 1s cubic-bezier(0.19, 1, 0.22, 1) 2s forwards;
+
+      #welcomeScreen.show {
+        display: flex !important;
+          opacity: 1;
+        visibility: visible;
+      }
+
+      /* Prevent body scroll when animation is showing */
+      body.animation-active {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+      }
+
+      #welcomeScreen.hidden {
         opacity: 0;
-        transform: translateY(20px);
+        visibility: hidden;
       }
-      @keyframes statusFadeIn {
+
+      #welcomeScreen .logo-container {
+        margin-bottom: 40px;
+        animation: fadeInDown 0.8s ease;
+      }
+
+      #welcomeScreen .logo {
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      #welcomeScreen .logo svg {
+        width: 50px;
+        height: 50px;
+        fill: #667eea;
+      }
+
+      #welcomeScreen .welcome-content {
+        text-align: center;
+        color: white;
+        animation: fadeInUp 0.8s ease;
+      }
+
+      #welcomeScreen .welcome-content h1 {
+        font-size: 32px;
+        font-weight: 600;
+        margin-bottom: 15px;
+      }
+
+      #welcomeScreen .welcome-content p {
+        font-size: 18px;
+        opacity: 0.9;
+        margin-bottom: 40px;
+      }
+
+      /* Loading Animation */
+      #welcomeScreen .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+
+      #welcomeScreen .loading-dots {
+        display: flex;
+        gap: 10px;
+      }
+
+      #welcomeScreen .dot {
+        width: 12px;
+        height: 12px;
+        background: white;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+      }
+
+      #welcomeScreen .dot:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+
+      #welcomeScreen .dot:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+
+      /* Progress Bar */
+      #welcomeScreen .progress-bar {
+        width: 250px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      #welcomeScreen .progress-fill {
+        height: 100%;
+        background: white;
+        border-radius: 10px;
+        animation: progress 2s ease-in-out;
+      }
+
+      /* Animations */
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-30px);
+        }
         to {
           opacity: 1;
           transform: translateY(0);
         }
       }
-      #vendorLoginModal .spinner {
-        width: 80px;
-        height: 80px;
-        position: relative;
-        margin: 2rem 0;
-      }
-      #vendorLoginModal .spinner::before,
-      #vendorLoginModal .spinner::after {
-        content: '';
-        position: absolute;
-        border-radius: 50%;
-        border: 3px solid transparent;
-      }
-      #vendorLoginModal .spinner::before {
-        width: 100%;
-        height: 100%;
-        border-top-color: rgba(255,255,255,0.8);
-        border-right-color: rgba(255,255,255,0.4);
-        animation: spin 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-      }
-      #vendorLoginModal .spinner::after {
-        width: 70%;
-        height: 70%;
-        top: 15%;
-        left: 15%;
-        border-top-color: rgba(255,255,255,0.6);
-        border-left-color: rgba(255,255,255,0.3);
-        animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite reverse;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      /* Dark mode adjustments for modal */
-      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-content {
-        background: linear-gradient(90deg, #35363a 0%, #181a1b 100%);
-        border: 1.5px solid #44474f;
-      }
-      [data-bs-theme="dark"] #vendorLoginModal .form-control {
-        background: #232526;
-        border-color: #414345;
-        color: #fff;
-      }
-      [data-bs-theme="dark"] #vendorLoginModal .form-control:focus {
-        background: #232526;
-      }
-      @media (max-width: 900px) {
-        #vendorLoginModal .vendor-modal-content {
-          max-width: 99vw;
-          border-radius: 12px;
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
         }
-        #vendorLoginModal .vendor-modal-left, #vendorLoginModal .vendor-modal-right {
-          padding: 2rem 1.2rem;
-        }
-        #vendorLoginModal .brand-logo {
-          font-size: 2rem;
-        }
-        #vendorLoginModal .login-header h2 {
-          font-size: 1.5rem;
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
       }
-      @media (max-width: 600px) {
-        #vendorLoginModal .vendor-modal-content {
-          flex-direction: column;
-          min-width: unset;
+
+      @keyframes bounce {
+        0%, 80%, 100% {
+          transform: scale(0);
+          opacity: 0.5;
         }
-        #vendorLoginModal .vendor-modal-left, #vendorLoginModal .vendor-modal-right {
-          padding: 1.2rem 0.7rem;
+        40% {
+          transform: scale(1);
+          opacity: 1;
         }
-        #vendorLoginModal .brand-logo {
-          font-size: 1.2rem;
+      }
+
+      @keyframes progress {
+        0% {
+          width: 0%;
         }
-        #vendorLoginModal .login-header h2 {
-          font-size: 1.1rem;
+        100% {
+          width: 100%;
         }
+      }
+
+      /* Responsive Design for Welcome Screen */
+      @media (max-width: 768px) {
+        #welcomeScreen .welcome-content h1 {
+          font-size: 24px;
+        }
+        #welcomeScreen .welcome-content p {
+          font-size: 16px;
+        }
+        #welcomeScreen .logo {
+          width: 60px;
+          height: 60px;
+        }
+        #welcomeScreen .logo svg {
+          width: 35px;
+          height: 35px;
+        }
+      }
+
+      /* Fallback: show emoji if Material Icons font fails */
+      #vendorLoginModal .brand-logo .material-icons.logo-bolt:empty + .icon-fallback {
+        display: inline;
       }
     </style>
     <script>
+      function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('vendorPassword');
+        const eyeIcon = document.getElementById('togglePassword');
+        
+        if (passwordInput.type === 'password') {
+          passwordInput.type = 'text';
+          eyeIcon.textContent = 'visibility_off';
+        } else {
+          passwordInput.type = 'password';
+          eyeIcon.textContent = 'visibility';
+        }
+      }
+
       function showWelcome(name, isVendor = false) {
         const welcomeMessage = document.getElementById('welcomeMessage');
         const welcomeStatusText = document.getElementById('welcomeStatusText');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        
         if (isVendor) {
-          welcomeMessage.innerHTML = `👑 Welcome Back, <span style='color:#3a86ff'>${name}</span>!`;
-          welcomeStatusText.innerHTML = '🚀 Launching your print command center...';
-          setTimeout(() => { welcomeStatusText.innerHTML = '💼 Loading your business empire...'; }, 1500);
-          setTimeout(() => { welcomeStatusText.innerHTML = '⚡ Optimizing your dashboard...'; }, 3000);
-          setTimeout(() => { welcomeStatusText.innerHTML = '🎯 Ready to dominate!'; }, 4000);
+          welcomeMessage.innerHTML = `Welcome to Print Shop Dashboard`;
+          welcomeStatusText.innerHTML = 'Preparing your workspace...';
         } else {
-          welcomeMessage.innerHTML = `🎉 Welcome, <span style='color:#3a86ff'>${name}</span>!`;
-          welcomeStatusText.innerHTML = '⚡ Initializing AI-powered experience...';
+          welcomeMessage.innerHTML = `Welcome to Print Shop Dashboard`;
+          welcomeStatusText.innerHTML = 'Preparing your workspace...';
         }
-        document.getElementById('welcomeScreen').style.display = 'flex';
-        document.getElementById('vendor-form-modal').style.display = 'none';
+        
+        // Prevent body scroll and show animation
+        document.body.classList.add('animation-active');
+        welcomeScreen.style.display = 'flex';
+        welcomeScreen.classList.add('show');
+        welcomeScreen.classList.remove('hidden');
+      }
+
+      function hideWelcomeScreen() {
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        document.body.classList.remove('animation-active');
+        welcomeScreen.classList.add('hidden');
+        setTimeout(() => {
+          welcomeScreen.style.display = 'none';
+        }, 500);
       }
       async function vendorLogin(event) {
         event.preventDefault();
@@ -1811,6 +2146,7 @@
         btnIcon.textContent = 'hourglass_empty';
         btnIcon.style.animation = 'spin 1s linear infinite';
         btnText.innerHTML = '🚀 loging in Successfully...';
+        
         try {
           const response = await fetch('/vendor-login/', {
             method: 'POST',
@@ -1822,23 +2158,40 @@
           });
           const data = await response.json();
           if (data.success) {
-            showWelcome(data.vendor?.vendor_name || 'Vendor', true);
+            // Show welcome screen immediately (full-screen overlay)
+            showWelcome(email || 'Vendor', true);
+            
+            // Hide the modal after showing animation
+            const modal = bootstrap.Modal.getInstance(document.getElementById('vendorLoginModal'));
+            if (modal) {
+              modal.hide();
+            }
+            
+            // Show animation for 3 seconds then redirect directly
             setTimeout(() => {
+              // Clean up and redirect
+              document.body.classList.remove('animation-active');
               window.location.href = '/vendordashboard/';
-            }, 5000);
+            }, 3000);
           } else {
+            // Clean up on login failure
+            document.body.classList.remove('animation-active');
+            hideWelcomeScreen();
             submitBtn.disabled = false;
-            btnIcon.textContent = 'rocket_launch';
+            btnIcon.textContent = 'print';
             btnIcon.style.animation = 'none';
-            btnText.innerHTML = '🚀 Launch Control Panel';
+            btnText.innerHTML = 'Vendor login';
             alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
           }
         } catch (err) {
           console.error(err);
+          // Clean up on error
+          document.body.classList.remove('animation-active');
+          hideWelcomeScreen();
           submitBtn.disabled = false;
-          btnIcon.textContent = 'rocket_launch';
+          btnIcon.textContent = 'print';
           btnIcon.style.animation = 'none';
-          btnText.innerHTML = '🚀 Launch Control Panel';
+          btnText.innerHTML = 'Vendor login';
           alert('🚫 Connection failed. Please try again.');
         }
       }
@@ -1868,11 +2221,10 @@
         if (vendorModal) {
           vendorModal.addEventListener('hidden.bs.modal', function () {
             document.getElementById('vendor-form-modal').style.display = '';
-            document.getElementById('welcomeScreen').style.display = 'none';
             document.getElementById('vendorSignInBtn').disabled = false;
-            document.getElementById('vendorBtnIcon').textContent = 'rocket_launch';
+            document.getElementById('vendorBtnIcon').textContent = 'print';
             document.getElementById('vendorBtnIcon').style.animation = 'none';
-            document.getElementById('vendorBtnText').innerHTML = '🚀 Vendor login';
+            document.getElementById('vendorBtnText').innerHTML = 'Vendor login';
             document.getElementById('vendorEmail').value = '';
             document.getElementById('vendorPassword').value = '';
           });

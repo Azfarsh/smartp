@@ -7,11 +7,17 @@
     <title>About Printmax - Empowering Print Businesses</title>
     <!-- Bootstrap CSS for classic look and footer consistency -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons for consistent iconography -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
         :root {
             --primary-blue: #3f51b5;
             --primary-blue-light: #5c6bc0;
@@ -44,8 +50,12 @@
             font-family: 'Inter', sans-serif;
             background: var(--surface-grey-light);
             color: var(--text-primary);
-            line-height: 1.6;
+            line-height: 1.65;
+            font-size: clamp(1rem, 0.25vw + 1rem, 1.125rem);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
+        p { line-height: 1.7; }
 
         .container {
             max-width: 1200px;
@@ -55,43 +65,56 @@
 
         /* Hero Section */
         .hero {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
             color: var(--text-white);
-            padding: 80px 0 60px;
+            padding: 0;
             position: relative;
             overflow: hidden;
+            min-height: 70vh;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
         }
-
-        .hero::before {
-            content: '';
+        .hero-media {
             position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 600px;
-            height: 600px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            z-index: 1;
+            inset: 0;
+            z-index: 0;
         }
-
-        .hero::after {
-            content: '';
+        .hero-media video, .hero-media img {
             position: absolute;
-            bottom: -30%;
-            left: -10%;
-            width: 400px;
-            height: 400px;
-            background: rgba(255, 167, 38, 0.15);
-            border-radius: 50%;
-            z-index: 1;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.6) saturate(1.1);
+            transform: scale(1.05);
         }
-
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(70% 60% at 50% 35%, rgba(124,77,255,0.35), transparent 60%),
+                        linear-gradient(180deg, rgba(40,53,147,0.75) 0%, rgba(63,81,181,0.25) 60%, rgba(63,81,181,0.0) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
         .hero-content {
             position: relative;
             z-index: 2;
             text-align: center;
+            padding: 96px 0 72px;
         }
-
+        .hero-shapes { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+        .floating-shape {
+            position: absolute; width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(124,77,255,0.35), rgba(63,81,181,0.15));
+            filter: blur(0.2px);
+            animation: float 12s ease-in-out infinite;
+        }
+        .floating-shape.small { width: 90px; height: 90px; animation-duration: 14s; }
+        .floating-shape.tiny { width: 60px; height: 60px; animation-duration: 16s; opacity: .8; }
+        .floating-shape.s1 { top: 12%; left: 8%; }
+        .floating-shape.s2 { bottom: 18%; right: 12%; }
+        .floating-shape.s3 { top: 26%; right: 25%; }
+        .floating-shape.s4 { bottom: 10%; left: 20%; }
+        @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-12px) } }
         .hero-badge {
             display: inline-block;
             background: var(--accent-gradient);
@@ -107,14 +130,15 @@
 
         .hero-title {
             font-family: 'Poppins', sans-serif;
-            font-size: 3.5rem;
+            font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
             font-weight: 700;
             margin-bottom: 24px;
             line-height: 1.2;
+            letter-spacing: 0.2px;
         }
 
         .hero-subtitle {
-            font-size: 1.4rem;
+            font-size: clamp(1rem, 1vw + 0.8rem, 1.4rem);
             font-weight: 400;
             margin-bottom: 32px;
             opacity: 0.9;
@@ -135,7 +159,7 @@
             font-weight: 600;
             font-size: 1.1rem;
             box-shadow: var(--shadow-medium);
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
             overflow: hidden;
         }
@@ -159,16 +183,25 @@
             transform: translateY(-2px);
             box-shadow: var(--shadow-heavy);
         }
+        .hero-cta:focus-visible, .cta-button:focus-visible, .footer-link:focus-visible, .social-icon:focus-visible {
+            outline: 3px solid rgba(124,77,255,0.6);
+            outline-offset: 2px;
+        }
 
         /* Section Styles */
         .section {
-            padding: 80px 0;
+            padding: 96px 0;
             background: var(--surface-white);
         }
 
         .section-alt {
             background: linear-gradient(135deg, #e3e6f3 0%, #f8f9fa 100%);
         }
+        /* Section separator */
+        .section-separator { position: relative; height: 64px; overflow: hidden; }
+        .section-separator svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+        .section-separator .sep-fill { fill: url(#sepGrad); opacity: 0.9; }
+        .section-tight { padding-top: 56px; padding-bottom: 56px; }
 
         .section-header {
             text-align: center;
@@ -177,10 +210,11 @@
 
         .section-title {
             font-family: 'Poppins', sans-serif;
-            font-size: 2.5rem;
+            font-size: clamp(1.6rem, 2.2vw + 1rem, 2.5rem);
             font-weight: 600;
             color: var(--primary-blue);
             margin-bottom: 16px;
+            letter-spacing: 0.2px;
         }
 
         .section-subtitle {
@@ -190,24 +224,57 @@
             margin: 0 auto;
         }
 
+        /* Mission / Story */
+        .story {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+            align-items: center;
+        }
+        .story-text { grid-column: span 6; }
+        .story-media { grid-column: span 6; }
+        .story-media-inner {
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow-medium);
+        }
+        .story-media-inner::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(63,81,181,0.25), rgba(124,77,255,0.15));
+            pointer-events: none;
+        }
+        @media (max-width: 992px) {
+            .story { grid-template-columns: 1fr; }
+            .story-text, .story-media { grid-column: 1 / -1; }
+        }
+
         /* How It Works */
         .workflow-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 40px;
+            gap: clamp(20px, 3vw, 40px);
             margin-top: 40px;
         }
 
         .workflow-step {
             background: var(--surface-white);
-            padding: 40px 30px;
+            padding: 32px 24px;
             border-radius: var(--border-radius-large);
             text-align: center;
             box-shadow: var(--shadow-light);
-            transition: all 0.3s ease;
+            transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease;
             position: relative;
             overflow: hidden;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
+        .workflow-step:hover .step-number { transform: translateY(-2px) scale(1.05); }
+        .workflow-step .step-number { transition: transform .25s ease; }
 
         .workflow-step::before {
             content: '';
@@ -237,10 +304,10 @@
         }
 
         .step-icon {
-            font-size: 3rem;
-            color: var(--accent-gradient);
             margin-bottom: 20px;
+            color: var(--primary-blue);
         }
+        .step-icon .material-icons { font-size: 40px; line-height: 1; }
 
         .step-title {
             font-family: 'Poppins', sans-serif;
@@ -255,27 +322,70 @@
             line-height: 1.6;
         }
 
+        /* Journey Timeline */
+        .timeline {
+            position: relative;
+            margin-top: 24px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e5e7eb;
+        }
+        .timeline-item {
+            position: relative;
+            padding: 16px 16px 16px 64px;
+        }
+        .timeline-marker {
+            position: absolute;
+            left: 24px;
+            top: 24px;
+            transform: translate(-50%, -50%);
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3f51b5, #7c4dff);
+            box-shadow: 0 0 0 4px rgba(124,77,255,0.15);
+        }
+        .timeline-title { font-weight: 600; color: var(--primary-blue); }
+        .timeline-desc { color: var(--text-secondary); }
+        @media (min-width: 992px) {
+            .timeline.horizontal { padding-top: 16px; }
+            .timeline.horizontal::before { top: 24px; left: 0; right: 0; height: 2px; width: auto; }
+            .timeline.horizontal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+            .timeline.horizontal .timeline-item { padding: 56px 16px 0 16px; text-align: center; }
+            .timeline.horizontal .timeline-marker { left: 50%; top: 24px; }
+        }
+
         /* Benefits Grid */
         .benefits-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
+            gap: clamp(16px, 3vw, 30px);
             margin-top: 40px;
         }
 
         .benefit-card {
             background: var(--surface-white);
-            padding: 40px 30px;
+            padding: 32px 24px;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-light);
             transition: all 0.3s ease;
-            border-left: 4px solid var(--accent-gradient);
+            border: 1px solid #eef1f7;
+            background-image: linear-gradient(180deg, rgba(124,77,255,0.06), rgba(124,77,255,0));
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
         .benefit-card:hover {
             transform: translateY(-5px);
             box-shadow: var(--shadow-medium);
-            border-left-color: var(--primary-blue);
+            border-color: rgba(124,77,255,0.25);
         }
 
         .benefit-icon {
@@ -287,9 +397,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
             margin-bottom: 20px;
         }
+        .benefit-icon .material-icons { font-size: 36px; line-height: 1; }
+        .step-icon svg, .benefit-icon svg { width: 36px; height: 36px; }
+        .hero-cta .material-icons { font-size: 22px; }
+        .rating .material-icons { color: #FFD600; font-size: 20px; }
 
         .benefit-title {
             font-family: 'Poppins', sans-serif;
@@ -303,6 +416,62 @@
             color: var(--text-secondary);
             line-height: 1.6;
         }
+
+        /* Workflow Progress (Order → Notify → Print → Update) */
+        .workflow-wrapper { background: #ffffff; border-radius: 20px; padding: 40px 20px; margin: 0 auto; box-shadow: 0 8px 24px rgba(63,81,181,0.08); border: 1px solid #eef1f7; }
+        .workflow-nav { max-width: 1100px; margin: 0 auto; position: relative; }
+        .workflow-steps { list-style: decimal; list-style-position: inside; padding: 0; margin: 0; position: relative; }
+        .workflow-step-item { list-style: none; position: relative; }
+        /* Marker (circle) */
+        .step-marker {
+            width: clamp(36px, 4.5vw, 44px); height: clamp(36px, 4.5vw, 44px);
+            border-radius: 999px; background: #ffffff; border: 1px solid #e5e5e5;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        .step-marker .material-icons { font-size: 26px; line-height: 1; color: #4b5563; }
+        .workflow-step-item.is-complete .step-marker .material-icons { color: #ffffff; }
+        .workflow-step-item:hover .step-marker, .workflow-step-item:focus-within .step-marker { transform: scale(1.05); box-shadow: 0 8px 22px rgba(0,0,0,0.10); }
+        .workflow-step-item:focus-within .step-marker { outline: 3px solid rgba(124,77,255,0.35); outline-offset: 2px; }
+        .step-title { font-weight: 600; font-size: clamp(1rem, .6vw + .9rem, 1.15rem); color: #0f172a; }
+        .step-desc { color: #6b7280; font-size: 0.9rem; line-height: 1.6; margin-top: 2px; }
+        /* Mobile: vertical timeline (default) */
+        .workflow-steps { padding-left: 0; }
+        .workflow-steps::before { content: ''; position: absolute; left: 22px; top: 0; bottom: 0; width: 2px; background: #e5e5e5; }
+        .workflow-step-item { padding: 18px 0 18px 72px; position: relative; }
+        .workflow-step-item .step-marker { position: absolute; left: 22px; top: 0; transform: translate(-50%, 2px); }
+        .workflow-step-item .step-content { max-width: 420px; }
+        /* Completed state (optional) */
+        .workflow-step-item.is-complete .step-marker { background: linear-gradient(135deg, #3f51b5, #7c4dff); color: #fff; border-color: transparent; }
+        .workflow-step-item.is-complete::before { background: #c5cae9; }
+        /* Tablet & Desktop: horizontal progress bar */
+        @media (min-width: 768px) {
+            .workflow-steps { display: flex; justify-content: space-between; align-items: flex-start; padding-left: 0; padding-right: 0; }
+            .workflow-steps::before { content: ''; position: absolute; left: 7%; right: 7%; top: 22px; height: 2px; background: #e5e5e5; }
+            .workflow-step-item { width: 25%; display: block; text-align: center; padding: 0; }
+            .workflow-step-item::before { display: none; }
+            .workflow-step-item .step-marker { position: static; transform: none; margin: 0 auto 12px; }
+            .workflow-step-item .step-content { max-width: 240px; margin: 0 auto; }
+            .step-title { font-size: clamp(1.05rem, .6vw + .95rem, 1.2rem); }
+            .step-desc { font-size: 0.9rem; }
+        }
+        /* Reveal for workflow items */
+        .workflow-step-item.reveal-item { opacity: 0; transform: translateY(16px); }
+        .workflow-step-item.reveal-item.is-visible { opacity: 1; transform: none; transition: opacity .45s ease, transform .45s ease; }
+
+        /* Impact Section */
+        .impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+        .impact-card {
+            background: var(--surface-white);
+            border-radius: 16px;
+            padding: 28px 20px;
+            text-align: center;
+            box-shadow: var(--shadow-light);
+            border: 1px solid #eef1f7;
+        }
+        .impact-number { font-family: 'Poppins', sans-serif; font-size: clamp(2rem, 2.5vw + 1rem, 3rem); font-weight: 700; color: var(--primary-blue); }
+        .impact-label { color: var(--text-secondary); font-weight: 500; }
 
         /* Trust Section */
         .trust-section {
@@ -332,9 +501,9 @@
 
         .trust-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
+            gap: clamp(16px, 3vw, 30px);
             margin-top: 40px;
+            align-items: stretch;
         }
 
         .trust-point {
@@ -345,6 +514,10 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            height: 100%;
         }
 
         .trust-point:hover {
@@ -387,24 +560,46 @@
             font-weight: 600;
         }
 
+        /* Avatar + Rating */
+        .avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, #3f51b5, #7c4dff);
+            color: #fff; display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            box-shadow: var(--shadow-light);
+        }
+        .review-header { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 8px; }
+
         /* Call to Action Section */
         .cta-section {
-            background: var(--accent-gradient);
-            padding: 60px 0;
+            background: linear-gradient(135deg, #3f51b5, #7c4dff);
+            padding: 64px 0;
             text-align: center;
+            position: relative;
+            overflow: hidden;
         }
+        .cta-section::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(80% 80% at 50% -10%, rgba(255,255,255,0.12), transparent 60%),
+                        radial-gradient(60% 60% at 110% 50%, rgba(0,0,0,0.08), transparent 60%);
+            pointer-events: none;
+        }
+        .cta-section .container { max-width: 720px; }
 
         .cta-title {
             font-family: 'Poppins', sans-serif;
-            font-size: 2.2rem;
+            font-size: clamp(2rem, 3vw, 3rem);
             font-weight: 600;
-            color: var(--text-primary);
+            color: #FFFFFF;
             margin-bottom: 16px;
+            letter-spacing: 0.2px;
         }
 
         .cta-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
+            font-size: clamp(1rem, 1.2vw, 1.25rem);
+            color: rgba(255,255,255,0.85);
             margin-bottom: 32px;
         }
 
@@ -415,12 +610,13 @@
             background: var(--primary-blue);
             color: var(--text-white);
             padding: 16px 32px;
-            border-radius: var(--border-radius);
+            border-radius: 12px;
             text-decoration: none;
             font-weight: 600;
             font-size: 1.1rem;
             box-shadow: var(--shadow-medium);
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+            min-height: 48px; /* touch target */
         }
 
         .cta-button:hover {
@@ -429,18 +625,84 @@
             box-shadow: var(--shadow-heavy);
         }
 
+        /* Values (glassmorphism) */
+        .values-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+        .value-card {
+            position: relative; padding: 24px; border-radius: 16px;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(124,77,255,0.2);
+            box-shadow: 0 8px 24px rgba(63,81,181,0.08);
+            transition: transform .25s ease, box-shadow .25s ease;
+        }
+        .value-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-medium); }
+        .value-icon { color: var(--primary-blue); }
+
+        /* Team */
+        .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+        .team-card { background: #fff; border: 1px solid #eef1f7; border-radius: 16px; padding: 20px; text-align: center; box-shadow: var(--shadow-light); transition: transform .25s ease; }
+        .team-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-medium); }
+        .team-photo { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; background: linear-gradient(135deg, #3f51b5, #7c4dff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
+        .team-social { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
+        .team-social a { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(124,77,255,0.1); color: var(--primary-blue); transition: transform .2s; }
+        .team-social a:hover { transform: translateY(-2px); }
+
+        /* Careers teaser */
+        .careers-banner { position: relative; overflow: hidden; background: linear-gradient(135deg, #3f51b5, #7c4dff); color: #fff; border-radius: 20px; padding: 36px 24px; }
+        .careers-banner::after { content: ""; position: absolute; inset: -20%; background: radial-gradient(200px 200px at 20% 40%, rgba(255,255,255,0.2), transparent 60%), radial-gradient(260px 260px at 80% 60%, rgba(0,0,0,0.12), transparent 60%); pointer-events:none; }
+
+        /* Hero scroll indicator */
+        .scroll-indicator { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2; color: #fff; opacity: .85; animation: pulse 1.8s infinite; }
+        @keyframes pulse { 0%,100%{ transform: translate(-50%,0) } 50%{ transform: translate(-50%,6px) } }
+
+        /* Top progress bar */
+        .progress-bar { position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: linear-gradient(90deg, #7c4dff, #3f51b5); z-index: 9999; box-shadow: 0 1px 6px rgba(124,77,255,0.5); }
+
+        /* Quick CTA */
+        .quick-cta { position: fixed; right: 16px; bottom: 16px; z-index: 999; background: linear-gradient(135deg, #3f51b5, #7c4dff); color: #fff; border: none; border-radius: 999px; padding: 12px 16px; display: inline-flex; align-items: center; gap: 8px; box-shadow: var(--shadow-medium); text-decoration: none; font-weight: 600; }
+        .quick-cta:hover { transform: translateY(-2px); box-shadow: var(--shadow-heavy); }
+
         /* Responsive Design */
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1200px;
+            }
+        }
+        /* Large mobile / small tablet */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .hero-title { font-size: 2.2rem; }
+            .grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        /* Tablets */
+        @media (min-width: 769px) and (max-width: 992px) {
+            .grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+            .section { padding: 48px; }
+        }
+        /* Laptops */
+        @media (min-width: 993px) and (max-width: 1200px) {
+            .grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        /* Desktops */
+        @media (min-width: 1201px) {
+            .grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 992px) {
+            .hero { padding: 84px 0 60px; }
+            .section { padding: 72px 0; }
+            .cta-section { padding: 48px 0; }
+            .footer .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+        }
         @media (max-width: 768px) {
             .hero-title {
-                font-size: 2.5rem;
+                font-size: 2.25rem;
             }
             
             .hero-subtitle {
-                font-size: 1.2rem;
+                font-size: 1.05rem;
             }
             
             .section-title {
-                font-size: 2rem;
+                font-size: 1.75rem;
             }
             
             .benefits-grid {
@@ -451,13 +713,29 @@
                 grid-template-columns: 1fr;
             }
             
-            .trust-grid {
-                grid-template-columns: 1fr;
-            }
+            .trust-grid { grid-template-columns: 1fr; overflow: visible; grid-auto-flow: row; }
             
             .section {
                 padding: 60px 0;
             }
+            .footer .row > [class^="col-"], .footer .row > [class*=" col-"] {
+                margin-bottom: 1rem;
+            }
+            .footer .d-flex.gap-3 {
+                justify-content: center;
+            }
+            .workflow-step, .benefit-card { min-height: 200px; padding: 20px 16px !important; }
+            /* no horizontal scroll on small screens */
+        }
+
+        /* Enable horizontal snapping for medium screens (optional) */
+        @media (min-width: 769px) and (max-width: 991px) {
+            .trust-grid { grid-auto-flow: column; grid-auto-columns: minmax(300px, 1fr); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+            .trust-point { scroll-snap-align: start; }
+        }
+        /* Desktop: neat 3-column grid, no scroll */
+        @media (min-width: 992px) {
+            .trust-grid { grid-auto-flow: initial; grid-auto-columns: initial; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; scroll-snap-type: none; }
         }
 
         @media (max-width: 480px) {
@@ -476,19 +754,30 @@
             .container {
                 padding: 0 16px;
             }
+            .cta-section { padding: 32px 0; }
+            .cta-button, .hero-cta { width: 100%; justify-content: center; }
+            .footer { text-align: center; }
+            .footer .text-md-end { text-align: center !important; margin-top: 8px; }
+            .footer .row { display: grid; grid-template-columns: 1fr; }
+            body { font-size: 0.95rem; }
+            .section { padding: 32px 16px; }
+        }
+        @media (max-width: 360px) {
+            .hero { padding: 48px 0 32px; }
+            .hero-title { font-size: 1.8rem; }
+            .hero-subtitle { font-size: 0.95rem; }
+            .workflow-step, .benefit-card { padding: 16px 12px; }
         }
         .workflow-step, .benefit-card, .trust-point {
-            padding: 24px 16px !important;
+            padding: 28px 20px;
             font-size: 1rem;
-            max-width: 340px;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
             background: var(--surface-white);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-light);
             transition: box-shadow 0.3s, transform 0.3s, background 0.3s;
-            opacity: 0;
-            transform: translateY(40px);
-            animation: fadeInUp 1s forwards;
+            will-change: transform, opacity;
         }
         .workflow-step:hover, .benefit-card:hover, .trust-point:hover {
             box-shadow: var(--shadow-medium);
@@ -510,15 +799,14 @@
         @media (max-width: 768px) {
             .workflow-step, .benefit-card, .trust-point {
                 max-width: 100%;
-                padding: 18px 8px !important;
+                padding: 18px 12px;
             }
         }
-        /* Fade-in-up animation */
-        @keyframes fadeInUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* Scroll reveal animations */
+        .reveal-item { opacity: 0; transform: translateY(32px); }
+        .reveal-item.is-visible { opacity: 1; transform: translateY(0); transition: opacity 500ms ease, transform 500ms ease; }
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
         }
         /* Classic section backgrounds */
         .section {
@@ -534,130 +822,251 @@
         .footer {
             background: #23272b;
             color: white;
-            padding: 3rem 0 1rem;
-            border-top: 1px solid var(--divider);
+            padding: 60px 0 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            position: relative;
+        }
+        .footer::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 8px;
+            background: linear-gradient(90deg, rgba(124,77,255,0.25), rgba(63,81,181,0.25));
         }
         .footer-link {
-            color: #ffffff;
+            color: rgba(255, 255, 255, 0.7);
             text-decoration: none;
-            transition: color 0.3s, transform 0.3s;
+            transition: color 0.3s, transform 0.3s, text-decoration-color 0.3s;
         }
         .footer-link:hover {
-            color: #ffffff;
+            color: #fff;
             transform: translateX(5px);
+            text-decoration: underline;
+            text-decoration-color: rgba(255,255,255,0.6);
         }
         .social-icon {
             color: #fff;
             font-size: 1.3rem;
             margin-right: 10px;
-            transition: color 0.3s;
+            transition: color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
         }
         .social-icon:hover {
             color: #b388ff;
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.15);
         }
+        /* Button ripple/active feedback */
+        .hero-cta, .cta-button { position: relative; overflow: hidden; }
+        .hero-cta::after, .cta-button::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(120px 120px at 50% 50%, rgba(255,255,255,0.25), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .hero-cta:active::after, .cta-button:active::after { opacity: 1; }
+        .hero-cta:focus-visible, .cta-button:focus-visible { outline: 3px solid rgba(124,77,255,0.6); outline-offset: 2px; }
+        .footer-link:focus-visible, .social-icon:focus-visible { outline: 2px solid rgba(124,77,255,0.6); outline-offset: 2px; }
+        .social-icon i { font-size: 1.25rem; }
+        .footer .social-icon i { display: inline-block; line-height: 1; }
+        /* Media & SVG scaling */
+        img { max-width: 100%; height: auto; }
+        svg.workflow-diagram { width: 100%; height: auto; }
+        .footer .row { row-gap: 8px; }
+        /* Media & SVG scaling */
+        img { max-width: 100%; height: auto; }
+        svg.workflow-diagram { width: 100%; height: auto; }
+        .footer .social-icon i { display: inline-block; line-height: 1; }
+        .footer .row { row-gap: 8px; }
+
+        /* Mobile-first helpers */
+        .grid { display: grid; gap: 16px; }
+        .tap-target { min-height: 44px; padding: 12px 16px; }
+        .click-area { padding: 8px; }
+
+        /* Accessibility focus */
+        :focus-visible { outline: 3px solid rgba(124,77,255,0.6); outline-offset: 2px; }
     </style>
 </head>
 <body>
+    <div class="progress-bar" aria-hidden="true"></div>
     <!-- Hero Section -->
     <section class="hero">
+        <div class="hero-media" aria-hidden="true">
+            <video autoplay muted loop playsinline poster="{% static 'images/aboutimage.png' %}">
+                <source src="{% static 'images/hero-video.mp4' %}" type="video/mp4">
+            </video>
+            <img src="{% static 'images/aboutimage.png' %}" alt="Printmax background" loading="lazy">
+        </div>
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="hero-shapes" aria-hidden="true">
+            <span class="floating-shape s1" data-speed="0.2"></span>
+            <span class="floating-shape small s2" data-speed="0.15"></span>
+            <span class="floating-shape tiny s3" data-speed="0.12"></span>
+            <span class="floating-shape small s4" data-speed="0.1"></span>
+        </div>
         <div class="container">
             <div class="hero-content">
                 <div class="hero-badge">Trusted by Print Businesses</div>
                 <h1 class="hero-title">Empowering Print Businesses for the Digital Era</h1>
-                <p class="hero-subtitle">Transform your print shop with modern technology, streamlined operations, and enhanced customer experiences</p>
-                <a href="/vendor-register/" class="hero-cta">
-                    <span class="material-icons">rocket_launch</span>
-                    Start Your Journey Today
+                <p class="hero-subtitle">Transform your print shop with automation, AI-driven insights, and a digital-first workflow that delights customers.</p>
+                <a href="/vendor-register/" class="hero-cta" role="button" aria-label="Start your vendor registration">
+                    <span class="material-icons" aria-hidden="true">rocket_launch</span>
+                    <span>Start Your Journey Today</span>
                 </a>
             </div>
         </div>
-    </section>
-
-    <!-- About Image Section -->
-    <section class="section section-alt" style="padding: 40px 0 0 0; background: transparent;">
-        <div class="container" style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
-            <img src="{% static 'images/aboutimage.png' %}" alt="About PrintMe Partner" style="max-width: 420px; width: 100%; border-radius: 32px; box-shadow: 0 8px 32px rgba(0,150,136,0.18); margin-bottom: 24px;">
-            <div style="font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; text-align: center;">Our platform is designed to empower print businesses with the latest technology and a human touch.</div>
+        <div class="scroll-indicator" aria-hidden="true">
+            <span class="material-icons">expand_more</span>
         </div>
     </section>
+    <a href="/vendor-register/" class="quick-cta" aria-label="Join now">
+        <span class="material-icons">rocket_launch</span>
+        Join Now
+    </a>
 
-    <!-- SVG Workflow Diagram -->
-    <div class="container" style="margin: 0 auto; text-align: center; margin-bottom: 32px;">
-        <svg width="320" height="60" viewBox="0 0 320 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="10" y="20" width="60" height="20" rx="10" fill="#009688"/>
-            <text x="40" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Order</text>
-            <polygon points="70,30 90,30 80,40" fill="#009688"/>
-            <rect x="90" y="20" width="60" height="20" rx="10" fill="#009688"/>
-            <text x="120" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Notify</text>
-            <polygon points="150,30 170,30 160,40" fill="#009688"/>
-            <rect x="170" y="20" width="60" height="20" rx="10" fill="#009688"/>
-            <text x="200" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Print</text>
-            <polygon points="230,30 250,30 240,40" fill="#009688"/>
-            <rect x="250" y="20" width="60" height="20" rx="10" fill="#009688"/>
-            <text x="280" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Poppins">Update</text>
-        </svg>
-    </div>
-
-    <!-- How It Works Section -->
+    <!-- Mission / Story Section -->
     <section class="section section-alt">
         <div class="container">
             <div class="section-header">
-                <h2 class="section-title">How Printmax Works</h2>
-                <p class="section-subtitle">A seamless, automated workflow that transforms how you manage print jobs and serve customers</p>
+                <h2 class="section-title">Our Mission</h2>
+                <p class="section-subtitle">We exist to modernize printing — making every print job fast, reliable, and delightful for businesses and their customers.</p>
             </div>
-            <div class="workflow-container">
-                <div class="row g-4 justify-content-center">
-                    <div class="col-12 col-md-6 col-lg-3 d-flex">
-                        <div class="workflow-step flex-fill">
-                            <div class="step-number">1</div>
-                            <div class="step-icon">
-                                <!-- 3D-style SVG icon -->
-                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" fill="#009688"/><path d="M20 10v14m0 0l-6-6m6 6l6-6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </div>
-                            <h3 class="step-title">Order Placement</h3>
-                            <p class="step-description">Customers easily upload documents and specify print requirements through our intuitive platform, available anytime</p>
-                        </div>
+            <div class="story">
+                <div class="story-text reveal-item">
+                    <h3 class="step-title" style="font-size:1.6rem">Printmax Story</h3>
+                    <p class="step-description" style="margin-top:12px">Printmax brings the power of automation, AI, and cloud-native workflows to local print shops. From instant order intake to one‑click processing and live customer updates, we help vendors operate like modern, digital-first businesses.</p>
+                    <p class="step-description" style="margin-top:12px">Our platform streamlines operations, reduces errors, and gives you analytics that matter — so you can focus on quality and growth.</p>
+                    <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap">
+                        <span class="hero-badge" style="margin:0">Automation</span>
+                        <span class="hero-badge" style="margin:0">AI Insights</span>
+                        <span class="hero-badge" style="margin:0">Customer Delight</span>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-3 d-flex">
-                        <div class="workflow-step flex-fill">
-                            <div class="step-number">2</div>
-                            <div class="step-icon">
-                                <!-- 3D-style SVG icon -->
-                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="6" y="10" width="28" height="20" rx="6" fill="#009688"/><circle cx="20" cy="20" r="6" fill="#fff"/><circle cx="20" cy="20" r="3" fill="#009688"/></svg>
-                            </div>
-                            <h3 class="step-title">Instant Notifications</h3>
-                            <p class="step-description">Receive immediate alerts with complete job details, file previews, and customer specifications in your dashboard</p>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 d-flex">
-                        <div class="workflow-step flex-fill">
-                            <div class="step-number">3</div>
-                            <div class="step-icon">
-                                <!-- 3D-style SVG icon -->
-                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="8" y="12" width="24" height="16" rx="4" fill="#009688"/><rect x="14" y="18" width="12" height="4" rx="2" fill="#fff"/></svg>
-                            </div>
-                            <h3 class="step-title">One-Click Processing</h3>
-                            <p class="step-description">Accept jobs instantly and send them directly to your printer with our streamlined workflow system</p>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3 d-flex">
-                        <div class="workflow-step flex-fill">
-                            <div class="step-number">4</div>
-                            <div class="step-icon">
-                                <!-- 3D-style SVG icon -->
-                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" fill="#009688"/><path d="M20 12v8l6 4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </div>
-                            <h3 class="step-title">Customer Updates</h3>
-                            <p class="step-description">Automated notifications keep customers informed about their order status, ensuring smooth communication</p>
-                        </div>
+                </div>
+                <div class="story-media reveal-item">
+                    <div class="story-media-inner">
+                        <img src="{% static 'images/aboutimage.png' %}" alt="Printmax mission" loading="lazy" decoding="async">
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Benefits Section -->
+    <!-- Journey Timeline -->
     <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Our Journey</h2>
+                <p class="section-subtitle">From an idea to an intelligent print platform powering businesses</p>
+            </div>
+            <div class="timeline horizontal">
+                <div class="timeline-item reveal-item">
+                    <span class="timeline-marker" aria-hidden="true"></span>
+                    <div class="step-icon" aria-hidden="true"><span class="material-icons">lightbulb</span></div>
+                    <div class="timeline-title">2024: Idea</div>
+                    <p class="timeline-desc">Sparked by everyday challenges in traditional printing — manual tracking, delays, and silos.</p>
+                </div>
+                <div class="timeline-item reveal-item">
+                    <span class="timeline-marker" aria-hidden="true"></span>
+                    <div class="step-icon" aria-hidden="true"><span class="material-icons">construction</span></div>
+                    <div class="timeline-title">2024 Q2: Prototype</div>
+                    <p class="timeline-desc">Built with real vendors; fast workflows, real‑time notifications, and secure handling.</p>
+                </div>
+                <div class="timeline-item reveal-item">
+                    <span class="timeline-marker" aria-hidden="true"></span>
+                    <div class="step-icon" aria-hidden="true"><span class="material-icons">storefront</span></div>
+                    <div class="timeline-title">2024 Q4: Vendors Onboarded</div>
+                    <p class="timeline-desc">Launched with partners; refined UX, stabilized performance across devices.</p>
+                </div>
+                <div class="timeline-item reveal-item">
+                    <span class="timeline-marker" aria-hidden="true"></span>
+                    <div class="step-icon" aria-hidden="true"><span class="material-icons">smart_toy</span></div>
+                    <div class="timeline-title">2025: Scaling AI</div>
+                    <p class="timeline-desc">AI-powered automation and insights driving growth for vendors at scale.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Decorative separator between Journey and Workflow -->
+    <div class="section-separator" aria-hidden="true">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id="sepGrad" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stop-color="#7c4dff" stop-opacity="0.25"></stop>
+                    <stop offset="100%" stop-color="#3f51b5" stop-opacity="0.25"></stop>
+                </linearGradient>
+            </defs>
+            <path class="sep-fill" d="M0,96 C240,48 480,48 720,96 C960,144 1200,144 1440,96 L1440,120 L0,120 Z"></path>
+        </svg>
+    </div>
+
+    <!-- Workflow Progress Stepper (Order → Notify → Print → Update) -->
+    <section class="section section-tight" style="background: #f7f8fc;">
+        <div class="container">
+            <div class="section-header" style="margin-bottom:28px;">
+                <h2 class="section-title" style="margin-bottom:8px;">How Printmax Works</h2>
+                <p class="section-subtitle">A clear journey from order to update</p>
+            </div>
+        </div>
+        <div class="workflow-wrapper" aria-label="Workflow steps">
+        <div class="container">
+            <nav class="workflow-nav">
+                <ol class="workflow-steps" role="list">
+                    <li class="workflow-step-item reveal-item is-complete" role="listitem" aria-label="Step 1: Order">
+                        <div class="step-marker" aria-hidden="true"><span class="material-icons" aria-hidden="true">cloud_upload</span></div>
+                        <div class="step-content">
+                            <h4 class="step-title">Order</h4>
+                            <p class="step-desc">Users upload files and set print options.</p>
+                        </div>
+                    </li>
+                    <li class="workflow-step-item reveal-item is-complete" role="listitem" aria-label="Step 2: Notify">
+                        <div class="step-marker" aria-hidden="true"><span class="material-icons" aria-hidden="true">notifications</span></div>
+                        <div class="step-content">
+                            <h4 class="step-title">Notify</h4>
+                            <p class="step-desc">Vendors receive instant alerts with details.</p>
+                        </div>
+                    </li>
+                    <li class="workflow-step-item reveal-item" role="listitem" aria-label="Step 3: Print">
+                        <div class="step-marker" aria-hidden="true"><span class="material-icons" aria-hidden="true">local_printshop</span></div>
+                        <div class="step-content">
+                            <h4 class="step-title">Print</h4>
+                            <p class="step-desc">Jobs are processed and printed efficiently.</p>
+                        </div>
+                    </li>
+                    <li class="workflow-step-item reveal-item" role="listitem" aria-label="Step 4: Update">
+                        <div class="step-marker" aria-hidden="true"><span class="material-icons" aria-hidden="true">autorenew</span></div>
+                        <div class="step-content">
+                            <h4 class="step-title">Update</h4>
+                            <p class="step-desc">Customers get status updates automatically.</p>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+        </div>
+        </div>
+    </section>
+
+    
+
+    <!-- Decorative separator before Benefits -->
+    <div class="section-separator" aria-hidden="true">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path class="sep-fill" d="M0,24 C240,72 480,72 720,24 C960,-24 1200,-24 1440,24 L1440,120 L0,120 Z"></path>
+        </svg>
+    </div>
+
+    <!-- Benefits Section -->
+    <section class="section section-alt">
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title">Why Choose Printmax?</h2>
@@ -665,47 +1074,166 @@
             </div>
             <div class="benefits-grid">
                 <div class="benefit-card">
-                    <div class="benefit-icon">
-                        <!-- 3D-style SVG icon -->
-                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" fill="#009688"/><path d="M12 24l6-6 6 6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div class="benefit-icon" aria-hidden="true">
+                        <span class="material-icons">trending_up</span>
                     </div>
                     <h3 class="benefit-title">Business Growth</h3>
                     <p class="benefit-description">Expand your customer base and increase revenue with our digital-first approach that attracts modern consumers</p>
+                    <div class="step-desc" style="margin-top:8px; color:#3f51b5; font-weight:600">20% avg growth</div>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">
-                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="8" y="12" width="20" height="12" rx="6" fill="#009688"/><rect x="14" y="18" width="8" height="4" rx="2" fill="#fff"/></svg>
+                    <div class="benefit-icon" aria-hidden="true">
+                        <span class="material-icons">schedule</span>
                     </div>
                     <h3 class="benefit-title">Always Open</h3>
                     <p class="benefit-description">Accept orders around the clock with our automated system, ensuring your business never misses an opportunity</p>
+                    <div class="step-desc" style="margin-top:8px; color:#3f51b5; font-weight:600">24/7 intake</div>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">
-                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" fill="#009688"/><rect x="12" y="12" width="12" height="12" rx="6" fill="#fff"/></svg>
+                    <div class="benefit-icon" aria-hidden="true">
+                        <span class="material-icons">security</span>
                     </div>
                     <h3 class="benefit-title">Enterprise Security</h3>
                     <p class="benefit-description">Protect your business and customer data with bank-level security protocols and encrypted transactions</p>
+                    <div class="step-desc" style="margin-top:8px; color:#3f51b5; font-weight:600">AES-256</div>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">
-                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="8" y="8" width="20" height="20" rx="10" fill="#009688"/><circle cx="18" cy="18" r="6" fill="#fff"/></svg>
+                    <div class="benefit-icon" aria-hidden="true">
+                        <span class="material-icons">devices</span>
                     </div>
                     <h3 class="benefit-title">Modern Experience</h3>
                     <p class="benefit-description">Offer customers a premium, digital-first experience that sets your business apart from competitors</p>
+                    <div class="step-desc" style="margin-top:8px; color:#3f51b5; font-weight:600">Omni-device</div>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">
-                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="8" y="8" width="20" height="20" rx="10" fill="#009688"/><rect x="14" y="14" width="8" height="8" rx="4" fill="#fff"/></svg>
+                    <div class="benefit-icon" aria-hidden="true">
+                        <span class="material-icons">insights</span>
                     </div>
                     <h3 class="benefit-title">Smart Analytics</h3>
                     <p class="benefit-description">Make data-driven decisions with detailed insights into your business performance and customer behavior</p>
+                    <div class="step-desc" style="margin-top:8px; color:#3f51b5; font-weight:600">Real-time</div>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">
-                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" fill="#009688"/><rect x="14" y="14" width="8" height="8" rx="4" fill="#fff"/></svg>
+                    <div class="benefit-icon" aria-hidden="true">
+                        <span class="material-icons">support_agent</span>
                     </div>
                     <h3 class="benefit-title">Dedicated Support</h3>
                     <p class="benefit-description">Access expert assistance whenever you need it, with our committed support team ready to help you succeed</p>
+                    <div class="step-desc" style="margin-top:8px; color:#3f51b5; font-weight:600">Priority</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform at a Glance (formerly extra How It Works) -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Platform at a Glance</h2>
+                <p class="section-subtitle">The everyday experience for vendors using Printmax</p>
+            </div>
+            <div class="workflow-container">
+                <div class="row g-4 justify-content-center">
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">1</div>
+                            <div class="step-icon" aria-hidden="true">
+                                <span class="material-icons">upload_file</span>
+                            </div>
+                            <h3 class="step-title">Order Placement</h3>
+                            <p class="step-description">Customers upload documents and choose print options right from their device.</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">2</div>
+                            <div class="step-icon" aria-hidden="true">
+                                <span class="material-icons">notifications_active</span>
+                            </div>
+                            <h3 class="step-title">Instant Notifications</h3>
+                            <p class="step-description">Real‑time alerts with file previews and job details in your dashboard.</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">3</div>
+                            <div class="step-icon" aria-hidden="true">
+                                <span class="material-icons">print</span>
+                            </div>
+                            <h3 class="step-title">One‑Click Processing</h3>
+                            <p class="step-description">Accept and send jobs to your printer with a streamlined, reliable flow.</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3 d-flex">
+                        <div class="workflow-step flex-fill">
+                            <div class="step-number">4</div>
+                            <div class="step-icon" aria-hidden="true">
+                                <span class="material-icons">update</span>
+                            </div>
+                            <h3 class="step-title">Customer Updates</h3>
+                            <p class="step-description">Automated status notifications keep your customers informed without effort.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact Section -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Numbers that Matter</h2>
+                <p class="section-subtitle">Real impact across our vendor network</p>
+            </div>
+            <div class="impact-grid">
+                <div class="impact-card reveal-item">
+                    <div class="impact-number" data-counter="100" data-suffix="+">0</div>
+                    <div class="impact-label">Vendors Onboarded</div>
+                </div>
+                <div class="impact-card reveal-item">
+                    <div class="impact-number" data-counter="10000" data-suffix="+">0</div>
+                    <div class="impact-label">Orders Processed</div>
+                </div>
+                <div class="impact-card reveal-item">
+                    <div class="impact-number" data-counter="99.9" data-decimals="1" data-suffix="%">0</div>
+                    <div class="impact-label">Uptime</div>
+                </div>
+                <div class="impact-card reveal-item">
+                    <div class="impact-number" data-counter="10" data-suffix="+">0</div>
+                    <div class="impact-label">Cities with AI-Powered Printing</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Values Section (moved up for better narrative flow) -->
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">What We Stand For</h2>
+                <p class="section-subtitle">Principles that guide our products and partnerships</p>
+            </div>
+            <div class="values-grid">
+                <div class="value-card reveal-item">
+                    <div class="value-icon"><span class="material-icons">lightbulb</span></div>
+                    <h3 class="benefit-title" style="margin-top:8px">Innovation First</h3>
+                    <p class="benefit-description">We build modern tools that simplify printing and enable new possibilities.</p>
+                </div>
+                <div class="value-card reveal-item">
+                    <div class="value-icon"><span class="material-icons">handshake</span></div>
+                    <h3 class="benefit-title" style="margin-top:8px">Customer Trust</h3>
+                    <p class="benefit-description">Security, reliability, and transparency are at the heart of Printmax.</p>
+                </div>
+                <div class="value-card reveal-item">
+                    <div class="value-icon"><span class="material-icons">trending_up</span></div>
+                    <h3 class="benefit-title" style="margin-top:8px">Vendor Growth</h3>
+                    <p class="benefit-description">We focus relentlessly on features that help vendors grow sustainably.</p>
+                </div>
+                <div class="value-card reveal-item">
+                    <div class="value-icon"><span class="material-icons">eco</span></div>
+                    <h3 class="benefit-title" style="margin-top:8px">Sustainability</h3>
+                    <p class="benefit-description">Optimized workflows reduce waste and encourage responsible printing.</p>
                 </div>
             </div>
         </div>
@@ -721,26 +1249,51 @@
                 </div>
                 <div class="trust-grid">
                     <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
-                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Ayesha K.</div>
-                        <div style="color:#FFD600; margin-bottom:8px;">★★★★★</div>
+                        <div class="review-header"><span class="avatar" aria-hidden="true">AK</span><div style="font-weight:600">Ayesha K., Pune</div></div>
+                        <div class="rating" style="margin-bottom:8px;">
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                        </div>
                         <p class="trust-text">"Super easy to use and the print quality is always top-notch. Customer support is very responsive!"</p>
                     </div>
                     <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
-                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Rahul S.</div>
-                        <div style="color:#FFD600; margin-bottom:8px;">★★★★★</div>
+                        <div class="review-header"><span class="avatar" aria-hidden="true">RS</span><div style="font-weight:600">Rahul S., Mumbai</div></div>
+                        <div class="rating" style="margin-bottom:8px;">
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                        </div>
                         <p class="trust-text">"Printmax helped me grow my business. The analytics and instant notifications are game changers."</p>
                     </div>
                     <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
-                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Sneha P.</div>
-                        <div style="color:#FFD600; margin-bottom:8px;">★★★★☆</div>
+                        <div class="review-header"><span class="avatar" aria-hidden="true">SP</span><div style="font-weight:600">Sneha P., Bengaluru</div></div>
+                        <div class="rating" style="margin-bottom:8px;">
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star_half</span>
+                        </div>
                         <p class="trust-text">"Love the modern interface and how fast I can process orders. Would recommend to any print shop owner!"</p>
                     </div>
                     <div class="trust-point" style="background: #fff; color: #23272b; box-shadow: 0 2px 8px rgba(63,81,181,0.08);">
-                        <div style="font-weight:600; font-size:1.1rem; margin-bottom:6px;">Vikram D.</div>
-                        <div style="color:#FFD600; margin-bottom:8px;">★★★★★</div>
+                        <div class="review-header"><span class="avatar" aria-hidden="true">VD</span><div style="font-weight:600">Vikram D., Delhi</div></div>
+                        <div class="rating" style="margin-bottom:8px;">
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                            <span class="material-icons" aria-hidden="true">star</span>
+                        </div>
                         <p class="trust-text">"The automation and customer updates save me so much time. My customers are happier too!"</p>
                     </div>
                 </div>
+                <div style="text-align:center; margin-top:16px; color:#6b7280; font-size:0.95rem">Verified vendor reviews</div>
             </div>
         </div>
     </section>
@@ -762,30 +1315,31 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-4 mb-4">
-                    <h5 class="fw-bold mb-3" style="color:#ffffff;">
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-lightning-charge-fill me-2" style="color: #667eea;"></i>
                         Printmax
                     </h5>
-                    <p class="mb-4" style="color:#ffffff;">
+                    <p class="text-white-50 mb-4">
                         Revolutionary AI-powered printing that's changing the world, 
                         one document at a time. The future is here, and it's automated.
                     </p>
-                    <div class="d-flex gap-3">
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-twitter"></i>
+                    <div class="d-flex gap-3" aria-label="Social links">
+                        <a href="#" class="social-icon" aria-label="Twitter">
+                            <i class="bi bi-twitter" aria-hidden="true"></i>
                         </a>
-                        <a href="#" class="social-icon"
-                            <i class="bi bi-linkedin"></i>
+                        <a href="#" class="social-icon" aria-label="LinkedIn">
+                            <i class="bi bi-linkedin" aria-hidden="true"></i>
                         </a>
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-instagram"></i>
+                        <a href="#" class="social-icon" aria-label="Instagram">
+                            <i class="bi bi-instagram" aria-hidden="true"></i>
                         </a>
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-github"></i>
+                        <a href="#" class="social-icon" aria-label="GitHub">
+                            <i class="bi bi-github" aria-hidden="true"></i>
                         </a>
                     </div>
                 </div>
                 <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3" style="color:#ffffff;">Platform</h6>
+                    <h6 class="fw-bold mb-3">Platform</h6>
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="#" class="footer-link">Upload Files</a></li>
                         <li class="mb-2"><a href="#" class="footer-link">AI Optimization</a></li>
@@ -794,7 +1348,7 @@
                     </ul>
                 </div>
                 <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3" style="color:#ffffff;">Support</h6>
+                    <h6 class="fw-bold mb-3">Support</h6>
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="#" class="footer-link">Help Center</a></li>
                         <li class="mb-2"><a href="#" class="footer-link">AI Chat</a></li>
@@ -803,7 +1357,7 @@
                     </ul>
                 </div>
                 <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3" style="color:#ffffff;">Company</h6>
+                    <h6 class="fw-bold mb-3">Company</h6>
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="#" class="footer-link">About Us</a></li>
                         <li class="mb-2"><a href="#" class="footer-link">Careers</a></li>
@@ -812,7 +1366,7 @@
                     </ul>
                 </div>
                 <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3" style="color:#ffffff;">Legal</h6>
+                    <h6 class="fw-bold mb-3">Legal</h6>
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="#" class="footer-link">Privacy</a></li>
                         <li class="mb-2"><a href="#" class="footer-link">Terms</a></li>
@@ -824,10 +1378,10 @@
             <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <p class="mb-0" style="color:#ffffff;">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
+                    <p class="mb-0 text-white-50">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <p class="mb-0" style="color:#ffffff;">
+                    <p class="mb-0 text-white-50">
                         <i class="bi bi-envelope-fill me-2"></i>
                         <a href="mailto:hello@printmax.com" class="footer-link">hello@printmax.com</a>
                     </p>
@@ -835,5 +1389,92 @@
             </div>
         </div>
     </footer>
+    <script>
+    (function() {
+        // Reveal on scroll
+        if ('IntersectionObserver' in window) {
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+
+            var items = document.querySelectorAll('.workflow-step, .benefit-card, .trust-point, .section-header, .workflow-step-item, .timeline-item, .story-text, .story-media, .impact-card, .value-card, .team-card');
+            items.forEach(function(el) {
+                el.classList.add('reveal-item');
+                observer.observe(el);
+            });
+        }
+
+        // Animated counters in Impact section
+        function animateCounter(el) {
+            var target = parseFloat(el.getAttribute('data-counter')) || 0;
+            var decimals = parseInt(el.getAttribute('data-decimals')||'0', 10);
+            var suffix = el.getAttribute('data-suffix') || '';
+            var duration = 1200;
+            var start = 0;
+            var startTime = null;
+            function tick(ts) {
+                if (!startTime) startTime = ts;
+                var progress = Math.min((ts - startTime) / duration, 1);
+                var value = start + (target - start) * progress;
+                el.textContent = value.toFixed(decimals) + suffix;
+                if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+        if ('IntersectionObserver' in window) {
+            var nums = document.querySelectorAll('.impact-number');
+            var numObs = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        animateCounter(entry.target);
+                        numObs.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.4 });
+            nums.forEach(function(n) { numObs.observe(n); });
+        }
+
+        // Simple drag scroll for reviews on desktop
+        var grid = document.querySelector('.trust-grid');
+        if (grid) {
+            var isDown = false, startX = 0, scrollLeft = 0;
+            grid.addEventListener('mousedown', function(e){ isDown = true; startX = e.pageX - grid.offsetLeft; scrollLeft = grid.scrollLeft; });
+            grid.addEventListener('mouseleave', function(){ isDown = false; });
+            grid.addEventListener('mouseup', function(){ isDown = false; });
+            grid.addEventListener('mousemove', function(e){ if(!isDown) return; e.preventDefault(); var x = e.pageX - grid.offsetLeft; var walk = (x - startX) * 1.2; grid.scrollLeft = scrollLeft - walk; });
+        }
+
+        // Scroll progress bar
+        var prog = document.querySelector('.progress-bar');
+        function updateProgress(){
+            var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            var docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            var percent = docHeight ? (scrollTop / docHeight) * 100 : 0;
+            if (prog) prog.style.width = percent + '%';
+        }
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        updateProgress();
+        
+        // Parallax hover for hero shapes
+        var shapes = document.querySelectorAll('.floating-shape');
+        var hero = document.querySelector('.hero');
+        if (hero && shapes.length) {
+            hero.addEventListener('mousemove', function(e){
+                var rect = hero.getBoundingClientRect();
+                var cx = e.clientX - rect.left - rect.width/2;
+                var cy = e.clientY - rect.top - rect.height/2;
+                shapes.forEach(function(s){
+                    var speed = parseFloat(s.getAttribute('data-speed')||'0.1');
+                    s.style.transform = 'translate(' + (-cx*speed/10) + 'px,' + (-cy*speed/10) + 'px)';
+                });
+            });
+        }
+    })();
+    </script>
 </body>
 </html>
