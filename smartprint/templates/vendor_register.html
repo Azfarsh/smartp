@@ -1787,6 +1787,7 @@
             };
 
             try {
+                console.log('Sending registration request...', formData);
                 const response = await fetch('/vendor-register-api/', {
                     method: 'POST',
                     headers: {
@@ -1795,15 +1796,25 @@
                     },
                     body: JSON.stringify(formData)
                 });
+                console.log('Registration response status:', response.status);
 
                 // Check if response is ok
                 if (!response.ok) {
+                    // Try to get error details from response
+                    let errorDetails = '';
+                    try {
+                        const errorData = await response.json();
+                        errorDetails = errorData.message || '';
+                    } catch (e) {
+                        // If we can't parse the error response, use default messages
+                    }
+                    
                     if (response.status === 500) {
-                        throw new Error('Server error occurred. Please try again later or contact support.');
+                        throw new Error(errorDetails || 'Server error occurred. Please try again later or contact support.');
                     } else if (response.status === 400) {
-                        throw new Error('Invalid request. Please check your information and try again.');
+                        throw new Error(errorDetails || 'Invalid request. Please check your information and try again.');
                     } else {
-                        throw new Error(`Server error (${response.status}). Please try again.`);
+                        throw new Error(errorDetails || `Server error (${response.status}). Please try again.`);
                     }
                 }
 
@@ -1816,6 +1827,7 @@
                 }
                 
                 if (data.success) {
+                     console.log('Registration successful:', data);
                      // Hide animation
                      const animation = document.getElementById('registrationAnimation');
                      animation.style.display = 'none';

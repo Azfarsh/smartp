@@ -3958,7 +3958,7 @@
           <i class="fas fa-times"></i>
         </button>
       </div>
-      <div class="toast-message" id="toastMessage">Token #123 - Digital Print completed</div>
+      <div class="toast-message" id="toastMessage">Job: Document.pdf | Token: #123 | Status: COMPLETED</div>
     </div>
     <div class="toast-progress" id="toastProgress"></div>
   </div>
@@ -10357,10 +10357,10 @@
               const lastSeen = Number(localStorage.getItem('notifications:lastSeenTs') || '0');
               const createdTs = Date.parse(latestUnread.created_at || latestUnread.timestamp || '');
               if (!Number.isNaN(createdTs) && createdTs > lastSeen) {
-                const token = latestUnread.token || (latestUnread.filename ? latestUnread.filename.replace(/\.[^/.]+$/, '') : '');
+                const token = latestUnread.token || 'Unknown';
                 const status = (latestUnread.status || 'completed').toString().toUpperCase();
                 const filename = latestUnread.filename || 'Document';
-                showToast('Print Job Ready!', `${filename} • Token #${token} • ${status}`);
+                showToast('Print Job Ready!', `Job: ${filename} | Token: #${token} | Status: ${status}`);
                 localStorage.setItem('notifications:lastSeenTs', String(createdTs));
               }
             }
@@ -10376,15 +10376,24 @@
       const count = document.getElementById('notificationCount');
       const list = document.getElementById('notificationList');
 
+      // Filter for today's completed print job notifications only
+      const today = new Date().toDateString();
+      const todayNotifications = notifications.filter(n => {
+        const notificationDate = new Date(n.created_at || n.timestamp || 0).toDateString();
+        return notificationDate === today && 
+               n.type === 'job_completed' && 
+               n.status === 'completed';
+      });
+
       // Filter out hidden notifications
       const hiddenIds = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');
-      const visibleNotifications = notifications.filter(n => !hiddenIds.includes(n.notification_id));
+      const visibleNotifications = todayNotifications.filter(n => !hiddenIds.includes(n.notification_id || n.id));
 
       // Remove redundant notifications (same token and type)
       const uniqueMap = {};
       const uniqueNotifications = [];
       for (const n of visibleNotifications) {
-        const key = `${n.type}_${n.token}`;
+        const key = `${n.type}_${n.token || n.filename}`;
         if (!uniqueMap[key]) {
           uniqueMap[key] = true;
           uniqueNotifications.push(n);
@@ -10409,21 +10418,34 @@
 
     function createNotificationItem(notification) {
       const isUnread = !notification.read;
-      const timeAgo = formatTimeAgo(notification.created_at);
+      const timeAgo = formatTimeAgo(notification.created_at || notification.timestamp);
       const typeClass = notification.type === 'job_completed' ? 'success' : 'info';
-      const tokenMatch = notification.message && notification.message.match(/Token #(\d+)/);
-      const token = tokenMatch ? tokenMatch[1] : (notification.token || '');
+      const token = notification.token || 'Unknown';
       const filename = notification.filename || 'Document';
       const status = (notification.status || 'completed').toString().toUpperCase();
+      
+      // Create a more descriptive title
+      const title = notification.title || 'Print Job Completed';
+      
       return `
-        <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${notification.notification_id}" onclick="handleNotificationClick('${notification.notification_id}')">
-          <button class="notification-close" onclick="event.stopPropagation(); hideNotification('${notification.notification_id}')" title="Dismiss notification">
+        <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${notification.notification_id || notification.id}" onclick="handleNotificationClick('${notification.notification_id || notification.id}')">
+          <button class="notification-close" onclick="event.stopPropagation(); hideNotification('${notification.notification_id || notification.id}')" title="Dismiss notification">
             <i class="fas fa-times"></i>
           </button>
           <div class="notification-content">
-            <div class="notification-title-text">${notification.title}</div>
-            <div class="notification-message"><i class="fas fa-file-pdf" style="color:#e53935"></i> ${filename}</div>
-            <div class="notification-message"><strong>Token #${token}</strong> • ${status}</div>
+            <div class="notification-title-text">${title}</div>
+            <div class="notification-message">
+              <i class="fas fa-file-pdf" style="color:#e53935; margin-right: 8px;"></i> 
+              <strong>Job:</strong> ${filename}
+            </div>
+            <div class="notification-message">
+              <i class="fas fa-tag" style="color:#3f51b5; margin-right: 8px;"></i> 
+              <strong>Token:</strong> #${token}
+            </div>
+            <div class="notification-message">
+              <i class="fas fa-check-circle" style="color:#10b981; margin-right: 8px;"></i> 
+              <strong>Status:</strong> ${status}
+            </div>
             <div class="notification-meta">
               <div class="notification-time">
                 <i class="fas fa-clock"></i>

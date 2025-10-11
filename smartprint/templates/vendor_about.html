@@ -90,8 +90,7 @@
         .hero-overlay {
             position: absolute;
             inset: 0;
-            background: radial-gradient(70% 60% at 50% 35%, rgba(124,77,255,0.35), transparent 60%),
-                        linear-gradient(180deg, rgba(40,53,147,0.75) 0%, rgba(63,81,181,0.25) 60%, rgba(63,81,181,0.0) 100%);
+            background: linear-gradient(180deg, rgba(40,53,147,0.3) 0%, rgba(63,81,181,0.1) 60%, rgba(63,81,181,0.0) 100%);
             z-index: 1;
             pointer-events: none;
         }
@@ -354,7 +353,13 @@
         .timeline-desc { color: var(--text-secondary); }
         @media (min-width: 992px) {
             .timeline.horizontal { padding-top: 16px; }
-            .timeline.horizontal::before { top: 24px; left: 0; right: 0; height: 2px; width: auto; }
+            .timeline.horizontal::before { 
+                top: 24px; 
+                left: 12.5%; 
+                right: 12.5%; 
+                height: 2px; 
+                width: auto; 
+            }
             .timeline.horizontal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
             .timeline.horizontal .timeline-item { padding: 56px 16px 0 16px; text-align: center; }
             .timeline.horizontal .timeline-marker { left: 50%; top: 24px; }
@@ -445,6 +450,16 @@
         /* Completed state (optional) */
         .workflow-step-item.is-complete .step-marker { background: linear-gradient(135deg, #3f51b5, #7c4dff); color: #fff; border-color: transparent; }
         .workflow-step-item.is-complete::before { background: #c5cae9; }
+        
+        /* Make all workflow step markers have purple background */
+        .workflow-step-item .step-marker { 
+            background: linear-gradient(135deg, #3f51b5, #7c4dff); 
+            color: #fff; 
+            border-color: transparent; 
+        }
+        .workflow-step-item .step-marker .material-icons { 
+            color: #fff; 
+        }
         /* Tablet & Desktop: horizontal progress bar */
         @media (min-width: 768px) {
             .workflow-steps { display: flex; justify-content: space-between; align-items: flex-start; padding-left: 0; padding-right: 0; }
@@ -693,39 +708,286 @@
             .footer .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
         }
         @media (max-width: 768px) {
+            .hero {
+                min-height: 60vh;
+                padding: 40px 0;
+            }
+            
             .hero-title {
                 font-size: 2.25rem;
+                margin-bottom: 16px;
             }
             
             .hero-subtitle {
                 font-size: 1.05rem;
+                margin-bottom: 24px;
+            }
+            
+            .hero-cta {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+                padding: 14px 24px;
+                font-size: 1rem;
             }
             
             .section-title {
                 font-size: 1.75rem;
+                margin-bottom: 12px;
+            }
+            
+            .section-subtitle {
+                font-size: 1rem;
+                margin-bottom: 32px;
             }
             
             .benefits-grid {
                 grid-template-columns: 1fr;
+                gap: 20px;
             }
             
             .workflow-container {
                 grid-template-columns: 1fr;
+                gap: 20px;
             }
             
-            .trust-grid { grid-template-columns: 1fr; overflow: visible; grid-auto-flow: row; }
+            .workflow-step {
+                min-height: 180px;
+                padding: 24px 16px;
+                text-align: center;
+            }
+            
+            .step-number {
+                width: 36px;
+                height: 36px;
+                line-height: 36px;
+                font-size: 0.9rem;
+                margin: 0 auto 16px;
+            }
+            
+            .step-icon .material-icons {
+                font-size: 32px;
+            }
+            
+            .step-title {
+                font-size: 1.1rem;
+                margin-bottom: 12px;
+            }
+            
+            .step-description {
+                font-size: 0.9rem;
+                line-height: 1.5;
+            }
+            
+            .benefit-card {
+                min-height: 180px;
+                padding: 20px 16px;
+                text-align: center;
+            }
+            
+            .benefit-icon {
+                width: 50px;
+                height: 50px;
+                margin: 0 auto 16px;
+            }
+            
+            .benefit-icon .material-icons {
+                font-size: 28px;
+            }
+            
+            .benefit-title {
+                font-size: 1.1rem;
+                margin-bottom: 10px;
+            }
+            
+            .benefit-description {
+                font-size: 0.9rem;
+                line-height: 1.5;
+            }
+            
+            .trust-grid { 
+                grid-template-columns: 1fr; 
+                overflow: visible; 
+                grid-auto-flow: row;
+                gap: 16px;
+            }
+            
+            .trust-point {
+                padding: 20px 16px;
+                text-align: center;
+            }
+            
+            .trust-icon {
+                font-size: 2rem;
+                margin: 0 auto 12px;
+            }
+            
+            .trust-text {
+                font-size: 1rem;
+            }
+            
+            .impact-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+            
+            .impact-card {
+                padding: 20px 12px;
+            }
+            
+            .impact-number {
+                font-size: 2rem;
+            }
+            
+            .impact-label {
+                font-size: 0.9rem;
+            }
+            
+            .values-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .value-card {
+                padding: 20px 16px;
+                text-align: center;
+            }
+            
+            .value-icon {
+                margin: 0 auto 12px;
+            }
+            
+            .cta-button {
+                width: 100%;
+                max-width: 280px;
+                justify-content: center;
+                padding: 14px 24px;
+                font-size: 1rem;
+            }
             
             .section {
                 padding: 60px 0;
             }
+            
             .footer .row > [class^="col-"], .footer .row > [class*=" col-"] {
                 margin-bottom: 1rem;
             }
+            
             .footer .d-flex.gap-3 {
                 justify-content: center;
             }
-            .workflow-step, .benefit-card { min-height: 200px; padding: 20px 16px !important; }
-            /* no horizontal scroll on small screens */
+            
+            /* Timeline mobile improvements */
+            .timeline.horizontal {
+                display: block;
+                padding: 0 16px;
+            }
+            
+            .timeline.horizontal::before {
+                display: none;
+            }
+            
+            .timeline-item {
+                padding: 20px 0;
+                text-align: center;
+                margin-bottom: 24px;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+            .timeline-marker {
+                position: static;
+                transform: none;
+                margin: 0 auto 16px;
+                display: inline-block;
+                width: 24px;
+                height: 24px;
+            }
+            
+            .step-icon {
+                margin: 0 auto 16px;
+                font-size: 2rem;
+            }
+            
+            .timeline-title {
+                font-size: 1.2rem;
+                margin-bottom: 12px;
+                color: var(--primary-blue);
+                font-weight: 600;
+            }
+            
+            .timeline-desc {
+                font-size: 0.95rem;
+                line-height: 1.5;
+                color: var(--text-secondary);
+                padding: 0 16px;
+            }
+            
+            /* Badges container mobile alignment */
+            .badges-container {
+                justify-content: center !important;
+                gap: 8px !important;
+            }
+            
+            .badges-container .hero-badge {
+                font-size: 12px !important;
+                padding: 6px 12px !important;
+                margin: 2px !important;
+            }
+            
+            /* Story section mobile improvements */
+            .story-media .hero-cta {
+                width: 100%;
+                max-width: 280px;
+                margin: 0 auto;
+                display: flex;
+                justify-content: center;
+                padding: 12px 20px;
+                font-size: 0.95rem;
+            }
+            
+            /* Workflow wrapper mobile */
+            .workflow-wrapper {
+                padding: 24px 16px;
+                margin: 0 16px;
+            }
+            
+            .workflow-steps {
+                display: block;
+                padding: 0;
+            }
+            
+            .workflow-steps::before {
+                display: none;
+            }
+            
+            .workflow-step-item {
+                width: 100%;
+                padding: 16px 0;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            
+            .workflow-step-item .step-marker {
+                position: static;
+                transform: none;
+                margin: 0 auto 12px;
+                display: inline-flex;
+            }
+            
+            .workflow-step-item .step-content {
+                max-width: 100%;
+            }
+            
+            .step-title {
+                font-size: 1.1rem;
+                margin-bottom: 8px;
+            }
+            
+            .step-desc {
+                font-size: 0.9rem;
+            }
         }
 
         /* Enable horizontal snapping for medium screens (optional) */
@@ -740,33 +1002,271 @@
 
         @media (max-width: 480px) {
             .hero {
-                padding: 60px 0 40px;
+                padding: 40px 0 30px;
+                min-height: 50vh;
             }
             
             .hero-title {
-                font-size: 2rem;
+                font-size: 1.8rem;
+                line-height: 1.2;
+                margin-bottom: 12px;
+            }
+            
+            .hero-subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 20px;
+            }
+            
+            .hero-cta {
+                width: 100%;
+                max-width: 280px;
+                padding: 12px 20px;
+                font-size: 0.95rem;
             }
             
             .section-title {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
+                margin-bottom: 10px;
+            }
+            
+            .section-subtitle {
+                font-size: 0.9rem;
+                margin-bottom: 24px;
             }
             
             .container {
-                padding: 0 16px;
+                padding: 0 12px;
             }
-            .cta-section { padding: 32px 0; }
-            .cta-button, .hero-cta { width: 100%; justify-content: center; }
-            .footer { text-align: center; }
-            .footer .text-md-end { text-align: center !important; margin-top: 8px; }
-            .footer .row { display: grid; grid-template-columns: 1fr; }
-            body { font-size: 0.95rem; }
-            .section { padding: 32px 16px; }
+            
+            .section {
+                padding: 40px 0;
+            }
+            
+            .workflow-step, .benefit-card, .trust-point, .value-card {
+                padding: 16px 12px;
+                min-height: 160px;
+            }
+            
+            .step-number {
+                width: 32px;
+                height: 32px;
+                line-height: 32px;
+                font-size: 0.8rem;
+            }
+            
+            .step-icon .material-icons, .benefit-icon .material-icons {
+                font-size: 24px;
+            }
+            
+            .step-title, .benefit-title {
+                font-size: 1rem;
+                margin-bottom: 8px;
+            }
+            
+            .step-description, .benefit-description {
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+            
+            .impact-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .impact-card {
+                padding: 16px 8px;
+            }
+            
+            .impact-number {
+                font-size: 1.8rem;
+            }
+            
+            .impact-label {
+                font-size: 0.8rem;
+            }
+            
+            .cta-section { 
+                padding: 32px 0; 
+            }
+            
+            .cta-title {
+                font-size: 1.6rem;
+                margin-bottom: 12px;
+            }
+            
+            .cta-subtitle {
+                font-size: 0.9rem;
+                margin-bottom: 24px;
+            }
+            
+            .cta-button { 
+                width: 100%; 
+                max-width: 260px;
+                justify-content: center; 
+                padding: 12px 20px;
+                font-size: 0.95rem;
+            }
+            
+            .footer { 
+                text-align: center; 
+                padding: 40px 0 16px;
+            }
+            
+            .footer .text-md-end { 
+                text-align: center !important; 
+                margin-top: 8px; 
+            }
+            
+            .footer .row { 
+                display: grid; 
+                grid-template-columns: 1fr; 
+                gap: 16px;
+            }
+            
+            .footer .social-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 1.1rem;
+            }
+            
+            body { 
+                font-size: 0.9rem; 
+            }
+            
+            .hero-badge {
+                font-size: 12px;
+                padding: 6px 16px;
+                margin-bottom: 16px;
+            }
+            
+            .quick-cta {
+                right: 12px;
+                bottom: 12px;
+                padding: 10px 14px;
+                font-size: 0.9rem;
+            }
+            
+            .quick-cta .material-icons {
+                font-size: 18px;
+            }
+            
+            /* Badges container for very small mobile */
+            .badges-container {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 4px !important;
+            }
+            
+            .badges-container .hero-badge {
+                font-size: 10px !important;
+                padding: 4px 8px !important;
+                margin: 0 !important;
+                width: fit-content;
+            }
+            
+            /* Story section very small mobile */
+            .story-media .hero-cta {
+                max-width: 200px;
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+            
         }
         @media (max-width: 360px) {
-            .hero { padding: 48px 0 32px; }
-            .hero-title { font-size: 1.8rem; }
-            .hero-subtitle { font-size: 0.95rem; }
-            .workflow-step, .benefit-card { padding: 16px 12px; }
+            .hero { 
+                padding: 32px 0 24px; 
+                min-height: 45vh;
+            }
+            
+            .hero-title { 
+                font-size: 1.6rem; 
+                line-height: 1.1;
+            }
+            
+            .hero-subtitle { 
+                font-size: 0.9rem; 
+                margin-bottom: 16px;
+            }
+            
+            .hero-cta {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+                max-width: 240px;
+            }
+            
+            .section-title {
+                font-size: 1.4rem;
+            }
+            
+            .section-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .workflow-step, .benefit-card, .trust-point, .value-card { 
+                padding: 14px 8px; 
+                min-height: 140px;
+            }
+            
+            .step-number {
+                width: 28px;
+                height: 28px;
+                line-height: 28px;
+                font-size: 0.75rem;
+            }
+            
+            .step-icon .material-icons, .benefit-icon .material-icons {
+                font-size: 20px;
+            }
+            
+            .step-title, .benefit-title {
+                font-size: 0.95rem;
+            }
+            
+            .step-description, .benefit-description {
+                font-size: 0.8rem;
+            }
+            
+            .impact-number {
+                font-size: 1.6rem;
+            }
+            
+            .impact-label {
+                font-size: 0.75rem;
+            }
+            
+            .cta-title {
+                font-size: 1.4rem;
+            }
+            
+            .cta-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .cta-button {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+                max-width: 220px;
+            }
+            
+            .container {
+                padding: 0 8px;
+            }
+            
+            .section {
+                padding: 32px 0;
+            }
+            
+            .hero-badge {
+                font-size: 11px;
+                padding: 5px 12px;
+            }
+            
+            .quick-cta {
+                right: 8px;
+                bottom: 8px;
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
         }
         .workflow-step, .benefit-card, .trust-point {
             padding: 28px 20px;
@@ -892,6 +1392,23 @@
         .grid { display: grid; gap: 16px; }
         .tap-target { min-height: 44px; padding: 12px 16px; }
         .click-area { padding: 8px; }
+        
+        /* Enhanced mobile touch targets */
+        @media (max-width: 768px) {
+            .hero-cta, .cta-button, .quick-cta {
+                min-height: 44px;
+                touch-action: manipulation;
+            }
+            
+            .benefit-card, .workflow-step, .trust-point, .value-card {
+                touch-action: manipulation;
+            }
+            
+            .social-icon {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
 
         /* Accessibility focus */
         :focus-visible { outline: 3px solid rgba(124,77,255,0.6); outline-offset: 2px; }
@@ -946,7 +1463,7 @@
                     <h3 class="step-title" style="font-size:1.6rem">Printmax Story</h3>
                     <p class="step-description" style="margin-top:12px">Printmax brings the power of automation, AI, and cloud-native workflows to local print shops. From instant order intake to one‑click processing and live customer updates, we help vendors operate like modern, digital-first businesses.</p>
                     <p class="step-description" style="margin-top:12px">Our platform streamlines operations, reduces errors, and gives you analytics that matter — so you can focus on quality and growth.</p>
-                    <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap">
+                    <div class="badges-container" style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center">
                         <span class="hero-badge" style="margin:0">Automation</span>
                         <span class="hero-badge" style="margin:0">AI Insights</span>
                         <span class="hero-badge" style="margin:0">Customer Delight</span>
@@ -955,6 +1472,12 @@
                 <div class="story-media reveal-item">
                     <div class="story-media-inner">
                         <img src="{% static 'images/aboutimage.png' %}" alt="Printmax mission" loading="lazy" decoding="async">
+                    </div>
+                    <div style="margin-top: 24px; text-align: center;">
+                        <a href="/vendor-register/" class="hero-cta" role="button" aria-label="Start your vendor registration">
+                            <span class="material-icons" aria-hidden="true">rocket_launch</span>
+                            <span>Start Your Journey</span>
+                        </a>
                     </div>
                 </div>
             </div>
