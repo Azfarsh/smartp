@@ -98,19 +98,49 @@
             margin-top: 2px;
         }
         .upload-btn {
-            background: #2563eb;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: #fff;
             border: none;
-            padding: 12px 0;
-            border-radius: 6px;
+            padding: 16px 24px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 1rem;
+            font-weight: 600;
             width: 100%;
-            margin-bottom: 12px;
-            transition: background 0.2s;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
         }
         .upload-btn:hover {
-            background: #1d4ed8;
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+        .upload-btn i {
+            font-size: 1.1em;
+            margin-right: 6px;
+        }
+        .upload-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .upload-btn:hover::before {
+            left: 100%;
         }
         .photos-count {
             font-size: 1rem;
@@ -120,14 +150,14 @@
         }
         .thumbnails-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
             margin-bottom: 18px;
         }
         .thumb {
             position: relative;
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 6px;
             overflow: hidden;
             background: #f1f5f9;
@@ -140,20 +170,21 @@
         }
         .remove-thumb {
             position: absolute;
-            top: 2px;
-            right: 2px;
+            top: 1px;
+            right: 1px;
             background: #ef4444;
             color: #fff;
             border: none;
             border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 13px;
+            width: 14px;
+            height: 14px;
+            font-size: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 2;
+            line-height: 1;
         }
         .layout-row {
             display: flex;
@@ -525,7 +556,10 @@
         </div>
         <div class="modal-content">
             <div class="left-panel">
-                <button class="upload-btn" id="uploadBtn">Upload Photos</button>
+                <button class="upload-btn" id="uploadBtn">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Upload Photos
+                </button>
                 <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
                 <div class="photos-count" id="photosCount">0 photos uploaded</div>
                 <div class="thumbnails-grid" id="thumbnailsGrid"></div>
@@ -795,12 +829,14 @@ function positionPhotoPanel() {
 function handleFileUpload(e) {
     const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
     if (files.length === 0) return;
+    
+    // Don't clear existing images - append new ones
     let loadedCount = 0;
     files.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = (event) => {
             uploadedImages.push({
-                id: Date.now() + index,
+                id: Date.now() + index + Math.random(), // Ensure unique IDs
                 data: event.target.result,
                 file: file,
                 name: file.name
@@ -813,6 +849,9 @@ function handleFileUpload(e) {
         };
         reader.readAsDataURL(file);
     });
+    
+    // Clear the file input to allow re-uploading the same files
+    e.target.value = '';
 }
 function removePhoto(id) {
     uploadedImages = uploadedImages.filter(img => img.id !== id);
@@ -822,12 +861,30 @@ function removePhoto(id) {
 function autoSelectLayout() {
     const n = uploadedImages.length;
     const valid = [1,2,4,6,9];
-    if(valid.includes(n)) {
+    
+    // Auto-select layout based on number of images
+    if (n === 0) {
+        currentLayout = 1;
+    } else if (valid.includes(n)) {
         currentLayout = n;
-        layoutBtns.forEach(b=>b.classList.remove('active'));
-        const btn = Array.from(layoutBtns).find(b=>parseInt(b.dataset.layout)===n);
-        if(btn) btn.classList.add('active');
+    } else if (n > 9) {
+        currentLayout = 9; // Max layout
+    } else if (n > 6) {
+        currentLayout = 9;
+    } else if (n > 4) {
+        currentLayout = 6;
+    } else if (n > 2) {
+        currentLayout = 4;
+    } else if (n > 1) {
+        currentLayout = 2;
+    } else {
+        currentLayout = 1;
     }
+    
+    // Update layout buttons
+    layoutBtns.forEach(b=>b.classList.remove('active'));
+    const btn = Array.from(layoutBtns).find(b=>parseInt(b.dataset.layout)===currentLayout);
+    if(btn) btn.classList.add('active');
 }
 function updateUI() {
     photosCount.textContent = `${uploadedImages.length} photos uploaded`;
@@ -870,6 +927,10 @@ function updatePreview() {
     const slotW = dims.canvasW/cols;
     const slotH = dims.canvasH/rows;
     
+    // Track loaded images to ensure all are rendered
+    let imagesToLoad = 0;
+    let imagesLoaded = 0;
+    
     for(let i=0; i<currentLayout; i++){
         const x = (i%cols)*slotW;
         const y = Math.floor(i/cols)*slotH;
@@ -885,6 +946,8 @@ function updatePreview() {
             const img = uploadedImages[i];
             const image = new window.Image();
             image.src = img.data;
+            imagesToLoad++;
+            
             image.onload = function() {
                 // Fit image in slot, keep aspect ratio
                 const aspect = image.width/image.height;
@@ -900,7 +963,12 @@ function updatePreview() {
                 dx = x+((slotW-drawW)/2);
                 dy = y+((slotH-drawH)/2);
                 ctx.drawImage(image,dx,dy,drawW,drawH);
-            }
+                imagesLoaded++;
+            };
+            
+            image.onerror = function() {
+                imagesLoaded++;
+            };
         } else {
             // Draw empty slot with dashed border
             ctx.strokeStyle = '#d1d5db';
@@ -1037,12 +1105,22 @@ function resetPhotoPrintModal() {
     if (shopSelect) shopSelect.value = selectedShop || '';
     layoutBtns.forEach(b => b.classList.remove('active'));
     layoutBtns[0].classList.add('active');
+    
+    // Clear file input to allow re-uploading same files
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.value = '';
+    
     updateUI();
 }
-// Replace cancel behavior to instantly go back to dashboard
+// Replace cancel behavior to go back without reloading
 cancelBtn.addEventListener('click', () => {
-        // Instantly redirect to userdashboard
-        window.location.href = '/userdashboard/';
+        // Go back in browser history instead of reloading
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            // Fallback to dashboard if no history
+            window.location.href = '/userdashboard/';
+        }
 });
 layoutBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1352,8 +1430,12 @@ async function handlePrint() {
                         } else {
                             alert(`Photo print job submitted successfully! Token: ${serverToken}`);
                         }
-                        // Redirect to dashboard so the new request appears immediately
-                        window.location.href = '/userdashboard/';
+                        // Go back to dashboard without full reload
+                        if (window.history.length > 1) {
+                            window.history.back();
+                        } else {
+                            window.location.href = '/userdashboard/';
+                        }
                         return;
                     } catch (err) {
                         alert(err.message || 'Payment verified but upload failed');

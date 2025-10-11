@@ -1,0 +1,491 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Contact Printmax | AI-Powered Printing. We'd love to hear from you.">
+    <meta name="keywords" content="Contact, Printmax, support, help, AI printing">
+    <meta name="author" content="Printmax">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#6366f1">
+    <title>Contact Printmax | AI-Powered Printing</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        /* Global typography */
+        html { font-size: 15px; }
+        @media (max-width: 575.98px){ html { font-size: 14.5px; } }
+        body { line-height: 1.6; }
+        /* Reuse variables from home.html for perfect theme consistency */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            --neon-gradient: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
+            --cyber-gradient: linear-gradient(135deg, #00d4ff 0%, #090979 50%, #020024 100%);
+            --primary-bg: #ffffff; --secondary-bg: #f8fafc; --text-color: #1e293b; --text-secondary: #64748b; --card-bg: #ffffff; --navbar-bg: rgba(255,255,255,0.95); --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04);
+            --shadow-neon: 0 0 20px rgba(102, 126, 234, 0.4);
+            --glass-bg: rgba(255,255,255,0.25); --glass-border: rgba(255,255,255,0.18); --glass-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
+            --transition-smooth: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--primary-bg); color: var(--text-color); line-height: 1.6; overflow-x: hidden; }
+        body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(circle at 20% 20%, rgba(102,126,234,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(249,147,251,0.1) 0%, transparent 50%), radial-gradient(circle at 40% 60%, rgba(75,172,254,0.1) 0%, transparent 50%); animation: bgFloat 20s ease-in-out infinite; z-index: -2; }
+        @keyframes bgFloat { 0%,100%{transform:translateY(0) rotate(0)} 33%{transform:translateY(-20px) rotate(1deg)} 66%{transform:translateY(10px) rotate(-1deg)} }
+
+        .desktop-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background: var(--navbar-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow); }
+        /* Navbar removed on this page */
+        .mobile-header { display:none; }
+        .brand { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; text-decoration: none; display:flex; align-items:center; }
+        .mobile-theme-toggle { min-width: 75px; width: 75px; height: 36px; border-radius: 18px; background: var(--primary-gradient); border:none; color:#fff; display:flex; align-items:center; justify-content: space-between; position:relative; }
+        .mobile-theme-toggle::before { content:''; position:absolute; width:28px; height:28px; border-radius:50%; background:#fff; right:4px; top:4px; transition:var(--transition-smooth); }
+        .mobile-theme-toggle.dark { background: var(--dark-gradient); }
+        .mobile-theme-toggle.dark::before { right: calc(100% - 32px); }
+        .sidebar { display:none; }
+
+        main { padding-top: 0; }
+        .gradient-text { background: var(--neon-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; animation: gradientShift 3s ease-in-out infinite; }
+        @keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+        .glass-card { background: var(--glass-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); transition: var(--transition-smooth); }
+        .glass-card.hover-glow:hover { box-shadow: var(--shadow-neon); transform: translateY(-6px); }
+        .btn-gradient { background: var(--primary-gradient); border: none; color: white; padding: 1rem 2rem; border-radius: 50px; font-weight: 600; transition: var(--transition-smooth); box-shadow: var(--shadow-lg); }
+        .btn-gradient:hover { transform: translateY(-3px) scale(1.02); box-shadow: var(--shadow-neon); color: #fff; }
+        .form-floating > label { color: var(--text-secondary); }
+
+        .fade-in-up { opacity:0; transform: translateY(30px); transition: var(--transition-smooth); }
+        .fade-in-up.animate { opacity:1; transform: translateY(0); }
+        .fade-in-left { opacity:0; transform: translateX(-30px); transition: var(--transition-smooth); }
+        .fade-in-left.animate { opacity:1; transform: translateX(0); }
+        .fade-in-right { opacity:0; transform: translateX(30px); transition: var(--transition-smooth); }
+        .fade-in-right.animate { opacity:1; transform: translateX(0); }
+
+        @media (max-width: 1023px) { .desktop-nav{display:none;} body{padding-top:0;} }
+        @media (min-width: 1024px) { .mobile-header{display:none;} body{padding-top:0;} }
+    </style>
+</head>
+<body>
+
+    {% if messages %}
+    <div class="visually-hidden" aria-hidden="true">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    
+
+    <main>
+        <!-- Hero: Zomato-like banner with image -->
+        <section class="hero-banner py-5 py-lg-6 position-relative overflow-hidden">
+            <img src="{% static 'images/contact.png' %}" alt="PrintMax contact banner" class="hero-bg" loading="lazy">
+            <div class="hero-overlay"></div>
+            <div class="container container-narrow position-relative">
+                <div class="text-center fade-in-up text-white">
+                    <h1 class="fw-bold mb-3 hero-title">We’re Always Here for Your Printing Needs.</h1>
+                    <p class="hero-subtext text-white-75">Tell us how we can help — orders, billing, partnerships, or feedback. We reply within one business day.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content -->
+        <section class="pb-5 content-section" style="min-height: 60vh;">
+            <div class="container container-narrow">
+                <div class="row g-4 align-items-start">
+                    <!-- Left: Contact Form -->
+                    <div class="col-lg-6 fade-in-up">
+                        <div class="card contact-card h-100">
+                            <div class="card-body p-4 p-lg-5">
+                                <h2 class="h4 fw-bold mb-4">Send us a message</h2>
+                                <div class="mb-3">
+                                    <label for="helpTopic" class="form-label small text-muted">How can we help you?</label>
+                                    <select id="helpTopic" class="form-select form-select-lg topic-select" aria-label="Select a help topic to prefill subject">
+                                        <option value="General Support" selected>General Support</option>
+                                        <option value="Order / Printing Issue">Order / Printing Issue</option>
+                                        <option value="Billing & Payments">Billing & Payments</option>
+                                        <option value="Partnerships & Business">Partnerships & Business</option>
+                                        <option value="Security / Report a Vulnerability">Security / Report a Vulnerability</option>
+                                        <option value="Feedback & Suggestions">Feedback & Suggestions</option>
+                                    </select>
+                                </div>
+                                <form method="post" action="" novalidate id="contactForm" autocomplete="off">
+                                    {% csrf_token %}
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <div class="form-floating input-elevated">
+                                                <input type="text" class="form-control" id="name" name="name" placeholder=" " value="" aria-label="Your Name" required autocomplete="off" autocapitalize="off" spellcheck="false">
+                                                <label for="name">Name</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-floating input-elevated">
+                                                <input type="email" class="form-control" id="email" name="email" placeholder=" " value="" aria-label="Your Email" required autocomplete="off" autocapitalize="off" spellcheck="false">
+                                                <label for="email">Email</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-floating input-elevated">
+                                                <input type="text" class="form-control" id="subject" name="subject" placeholder=" " value="" aria-label="Subject" required readonly style="cursor: not-allowed; background-color: var(--secondary-bg);" autocomplete="off">
+                                                <label for="subject">Subject</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-floating input-elevated">
+                                                <textarea class="form-control" placeholder=" " id="message" name="message" style="height: 180px" aria-label="Your Message" required autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+                                                <label for="message">Message</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 d-grid d-sm-inline-flex gap-3 align-items-center">
+                                        <button type="submit" class="btn btn-gradient hover-glow btn-lg" aria-label="Send Message" id="contactSubmit">
+                                            <i class="bi bi-send-fill me-2"></i>Send Message
+                                        </button>
+                                        <small class="text-muted" aria-live="polite">We respect your privacy. Your data is never shared.</small>
+                                    </div>
+                                </form>
+
+                                
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Contact Options + Map -->
+                    <div class="col-lg-6 fade-in-up">
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <div class="tile p-3 d-flex align-items-start gap-3">
+                                    <div class="tile-icon" aria-hidden="true"><i class="bi bi-shield-lock-fill"></i></div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold">Report a Security Issue</div>
+                                        <div class="text-muted small mb-1">Help us keep PrintMax safe for everyone. Send details to our security team.</div>
+                                        <a href="mailto:security@printmax.com?subject=Security%20Report" class="stretched-link small">Report here</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="tile p-3 d-flex align-items-start gap-3">
+                                    <div class="tile-icon" aria-hidden="true"><i class="bi bi-chat-left-text-fill"></i></div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold">Issue with your order?</div>
+                                        <div class="text-muted small mb-1">For file uploads, payment, contact our support team.</div>
+                                        <a href="mailto:support@printmax.com?subject=Order%20Issue" class="stretched-link small">Contact support</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- FAQs -->
+                        <div class="mt-3">
+                            <h2 class="h5 fw-bold mb-3">FAQs</h2>
+                            <div class="accordion" id="contactFaq">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faqOneHeading">
+                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faqOne" aria-expanded="true" aria-controls="faqOne">
+                                            How quickly will you respond to my message?
+                                        </button>
+                                    </h2>
+                                    <div id="faqOne" class="accordion-collapse collapse show" aria-labelledby="faqOneHeading" data-bs-parent="#contactFaq">
+                                        <div class="accordion-body">
+                                            We typically reply within one business day. For urgent issues, mention it in the subject.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faqTwoHeading">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwo" aria-expanded="false" aria-controls="faqTwo">
+                                            What file formats are best for printing?
+                                        </button>
+                                    </h2>
+                                    <div id="faqTwo" class="accordion-collapse collapse" aria-labelledby="faqTwoHeading" data-bs-parent="#contactFaq">
+                                        <div class="accordion-body">
+                                            We accept PDF, PNG, JPG, and DOCX. PDFs give the most reliable results.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faqThreeHeading">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqThree" aria-expanded="false" aria-controls="faqThree">
+                                            Can I modify or cancel an order after submission?
+                                        </button>
+                                    </h2>
+                                    <div id="faqThree" class="accordion-collapse collapse" aria-labelledby="faqThreeHeading" data-bs-parent="#contactFaq">
+                                        <div class="accordion-body">
+                                            Yes—contact support ASAP with your order ID. Changes are possible until printing starts.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="faqFourHeading">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqFour" aria-expanded="false" aria-controls="faqFour">
+                                            Where can I get an invoice or GST bill?
+                                        </button>
+                                    </h2>
+                                    <div id="faqFour" class="accordion-collapse collapse" aria-labelledby="faqFourHeading" data-bs-parent="#contactFaq">
+                                        <div class="accordion-body">
+                                            Invoices are emailed automatically after payment. You can also request one via the contact form.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer (copied from home for consistency) -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge-fill me-2" style="color: #667eea;"></i>Printmax</h5>
+                    <p class="text-white-50 mb-4">Revolutionary AI-powered printing that's changing the world, one document at a time. The future is here, and it's automated.</p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="social-icon"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="bi bi-linkedin"></i></a>
+                        <a href="#" class="social-icon"><i class="bi bi-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="bi bi-github"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Platform</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Upload Files</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">AI Optimization</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Smart Printing</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Token System</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Support</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Help Center</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">AI Chat</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Track Order</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Status</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Company</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">About Us</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Careers</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Press</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="fw-bold mb-3">Legal</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="footer-link">Privacy</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Terms</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Security</a></li>
+                        <li class="mb-2"><a href="#" class="footer-link">Compliance</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-white-50">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0 text-white-50"><i class="bi bi-envelope-fill me-2"></i><a href="mailto:hello@printmax.com" class="footer-link">hello@printmax.com</a></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+        function initAnimations(){ const observer=new IntersectionObserver((entries)=>{ entries.forEach((e)=>{ if(e.isIntersecting){ e.target.classList.add('animate'); } }); }, {threshold:0.1, rootMargin:'0px 0px -50px 0px'}); document.querySelectorAll('.fade-in-up,.fade-in-left,.fade-in-right').forEach(el=>observer.observe(el)); }
+        function initializeNavbar(){
+            const navbar=document.querySelector('.navbar');
+            if(!navbar) return;
+            window.addEventListener('scroll',()=>{
+                const scrollTop=window.pageYOffset||document.documentElement.scrollTop;
+                if(scrollTop>100){
+                    navbar.style.background='rgba(255, 255, 255, 0.98)';
+                } else {
+                    navbar.style.background='var(--navbar-bg)';
+                }
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+            initAnimations();
+            initializeNavbar();
+            setTimeout(function(){ document.querySelectorAll('.alert').forEach(function(a){ let bs=new bootstrap.Alert(a); bs.close(); }); }, 3000);
+            const topic=document.getElementById('helpTopic');
+            const subject=document.getElementById('subject');
+            const form = document.getElementById('contactForm');
+
+            function syncSubject(){ if(topic && subject){ subject.value = topic.value || ''; } }
+            function clearForm(){ if(form){ try{ form.reset(); }catch(_){} } ['name','email','message'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.value=''; el.dispatchEvent(new Event('input',{bubbles:true})); } }); syncSubject(); }
+
+            if(topic && subject){ subject.readOnly = true; subject.style.cursor = 'not-allowed'; topic.addEventListener('change', syncSubject); }
+
+            // Clear on load and on BFCache restore
+            clearForm();
+            window.addEventListener('pageshow', function(e){ if(e.persisted){ clearForm(); } });
+
+            // Intercept form submit: AJAX only
+            if(form){
+                form.addEventListener('submit', async function(e){
+                    e.preventDefault();
+                    const loader = document.getElementById('submitLoader');
+                    try{
+                        const name = document.getElementById('name')?.value?.trim() || '';
+                        const email = document.getElementById('email')?.value?.trim() || '';
+                        const subjectVal = subject?.value?.trim() || topic?.value?.trim() || '';
+                        const message = document.getElementById('message')?.value?.trim() || '';
+                        if(!name || !email || !subjectVal || !message){ showResultModal('Please fill out all fields before submitting.', 'error'); return; }
+                        if(loader){ loader.removeAttribute('aria-hidden'); loader.classList.add('show'); }
+                        await fetch('{% url "save_contact_details" %}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                            body: JSON.stringify({ name, email, subject: subjectVal, message })
+                        }).catch(()=>{});
+                        await new Promise(res=>setTimeout(res, 1200));
+                        if(loader){ loader.classList.remove('show'); loader.setAttribute('aria-hidden','true'); }
+                        showResultModal('Thanks! Your message has been sent successfully.', 'success');
+                        clearForm();
+                    } catch(err) {
+                        if(loader){ loader.classList.remove('show'); loader.setAttribute('aria-hidden','true'); }
+                        showResultModal('Something went wrong. Please try again.', 'error');
+                    }
+                });
+            }
+
+            function showResultModal(text, type){
+                const modal = document.getElementById('resultModal');
+                const icon = modal?.querySelector('.result-icon');
+                const msg = modal?.querySelector('.result-text');
+                if(!modal || !icon || !msg) return;
+                msg.textContent = text;
+                icon.className = 'result-icon bi ' + (type==='success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill');
+                modal.setAttribute('data-type', type);
+                modal.classList.add('show');
+                setTimeout(()=>{ modal.classList.remove('show'); }, 3500);
+            }
+        });
+    </script>
+    <!-- Submit Loader -->
+    <div id="submitLoader" class="submit-loader" aria-hidden="true" style="position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,0.35); z-index: 1050;">
+        <div style="background: #fff; color:#111; border-radius: 14px; padding: 1.25rem 1.5rem; width: min(92vw, 420px); text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,.2);">
+            <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+            <div style="font-weight:700; margin-top:.75rem;">Submitting your message…</div>
+            <div style="font-size:.9rem; color:#64748b;">Please wait a moment</div>
+        </div>
+    </div>
+    <!-- Top-centered result modal -->
+    <div id="resultModal" class="result-modal" role="status" aria-live="polite" aria-atomic="true">
+        <div class="result-card">
+            <i class="result-icon bi"></i>
+            <span class="result-text">Message</span>
+        </div>
+    </div>
+    <style>
+        .message-alert.alert-success { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .message-alert.alert-error { background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%); }
+        .message-alert.alert-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .message-alert.alert-info { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        /* Loader visibility */
+        .submit-loader.show { display: grid !important; }
+        .footer { background: var(--dark-gradient); color: white; padding: 3rem 0 1rem; border-top: 1px solid var(--border-color); }
+        .footer-link { color: rgba(255,255,255,0.7); text-decoration: none; transition: var(--transition-smooth); }
+        .footer-link:hover { color: #fff; transform: translateX(5px); }
+        .social-icon { width: 45px; height: 45px; border-radius: 50%; background: var(--primary-gradient); color: #fff; display:flex; align-items:center; justify-content:center; text-decoration:none; transition: var(--transition-smooth); }
+        .social-icon:hover { transform: scale(1.2) rotate(10deg); box-shadow: var(--shadow-neon); }
+
+        /* New styles for Zomato-inspired layout */
+        .py-lg-6 { padding-top: 4.5rem!important; padding-bottom: 4.5rem!important; }
+        .hero-title { font-size: clamp(1.8rem, 2.8vw + 1rem, 3rem); letter-spacing: -0.02em; }
+        .hero-subtext { color: var(--text-secondary); max-width: 720px; margin: 0 auto; }
+
+        .contact-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+        .tile { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; transition: var(--transition-smooth); box-shadow: 0 2px 8px rgba(0,0,0,0.03); color: inherit; position: relative; transform: translateZ(0); will-change: transform; }
+        .tile:hover { transform: translateY(-3px) translateZ(0); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .tile-icon { width: 42px; height: 42px; border-radius: 10px; display:flex; align-items:center; justify-content:center; color:#fff; background: var(--primary-gradient); box-shadow: var(--shadow); }
+        .map-card { background: var(--card-bg); border: 1px solid var(--border-color); }
+
+        .input-elevated .form-control { border-radius: 12px; border: 1px solid var(--border-color); padding: 1rem 1rem; background: var(--card-bg); color: var(--text-color); }
+        .input-elevated .form-control:focus { border-color: rgba(102,126,234,.6); box-shadow: 0 0 0 .25rem rgba(102,126,234,.15); }
+
+        .message-inline { border: none; border-radius: 10px; color: #fff; }
+        .message-inline.alert-success { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .message-inline.alert-error { background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%); }
+        .message-inline.alert-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color:#222; }
+        .message-inline.alert-info { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+
+        /* Hero banner visuals */
+        .hero-banner { min-height: 380px; margin-bottom: 20px; }
+        .hero-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 70%; filter: brightness(0.75) saturate(1.05); }
+        .hero-overlay { position:absolute; inset:0; background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,.5)); }
+        .hero-title { color:#fff; text-shadow: 0 2px 10px rgba(0,0,0,.55); font-size: clamp(1.6rem, 2.2vw + .8rem, 2.5rem); letter-spacing: -0.02em; font-weight: 800; }
+        .hero-subtext { color: rgba(255,255,255,.9); text-shadow: 0 1px 6px rgba(0,0,0,.45); font-size: clamp(.95rem, 1vw + .7rem, 1.1rem); max-width: 45rem; margin-left:auto; margin-right:auto; line-height: 1.6; }
+        .hero-banner .container-narrow { padding-top: 2.5rem; padding-bottom: 2rem; }
+        @media (max-width: 576px){
+            .hero-banner { min-height: 300px; }
+            .hero-banner .container-narrow { padding-top: 1.75rem; padding-bottom: 1.5rem; }
+        }
+        @media (min-width: 992px){ .hero-banner { margin-bottom: 28px; } }
+        .container-narrow { max-width: 1200px; }
+
+        /* Topic select */
+        .topic-select { border-radius: 12px; padding:.75rem .9rem; border:1px solid var(--border-color); font-size: .95rem; }
+        .topic-select:focus { border-color: rgba(102,126,234,.6); box-shadow: 0 0 0 .25rem rgba(102,126,234,.12); }
+
+        /* Content alignment improvements */
+        .content-section .row { --bs-gutter-x: 1.75rem; }
+        @media (min-width: 992px){
+            .content-section .col-lg-6:first-child { padding-right: .5rem; }
+            .content-section .col-lg-6:last-child { padding-left: .5rem; }
+        }
+        .contact-card .card-body { padding: 1.5rem; }
+        @media (min-width: 992px){ .contact-card .card-body { padding: 2rem; } }
+        /* Form labels & inputs */
+        .form-floating > label { font-size: .95rem; font-weight: 500; }
+        @media (max-width: 575.98px){ .form-floating > label { font-size: .9rem; } }
+        .input-elevated .form-control { font-size: 1rem; line-height: 1.4; }
+        .input-elevated .form-control::placeholder { color: var(--text-secondary); opacity: .9; }
+
+        /* Tiles */
+        .tile { padding: 1rem; }
+        .tile .fw-semibold { font-size: clamp(.95rem, .25vw + .9rem, 1.05rem); font-weight: 600; }
+        .tile .text-muted.small { font-size: .875rem; line-height: 1.5; }
+
+        /* Buttons */
+        .btn.btn-gradient.btn-lg { padding: .85rem 1.4rem; border-radius: 999px; font-size: clamp(.95rem, .2vw + .85rem, 1.05rem); }
+
+        /* Section headings inside cards */
+        .h4 { font-size: clamp(1.05rem, .6vw + .9rem, 1.25rem); }
+
+        /* Footer */
+        .footer h5, .footer h6 { font-size: clamp(1rem, .2vw + .95rem, 1.125rem); }
+        .footer .footer-link { font-size: clamp(.875rem, .2vw + .8rem, 1rem); }
+        .footer p.mb-0 { font-size: clamp(.75rem, .2vw + .72rem, .875rem); }
+
+        /* Result modal at top center */
+        .result-modal { position: fixed; inset: 0; display: none; z-index: 1060; padding: 1rem; align-items: start; justify-items: center; }
+        .result-modal.show { display: grid; }
+        .result-card { margin-top: 18px; width: min(92vw, 600px); border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 20px 50px rgba(0,0,0,.15); padding: 1rem 1.25rem; text-align:center; }
+        .result-icon { font-size: 1.35rem; vertical-align: middle; margin-right: .5rem; }
+        .result-text { font-weight: 700; letter-spacing: .2px; font-size: clamp(.95rem, .4vw + .9rem, 1.05rem); }
+        #resultModal[data-type="success"] .result-card { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #0b3328; }
+        #resultModal[data-type="error"] .result-card { background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%); color: #3b0d0d; }
+    </style>
+</body>
+</html>
+

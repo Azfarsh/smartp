@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PrintMax - Revolutionary AI-Powered Printing Login</title>
+  <title>PrintMax - Login</title>
 
   <!-- Material Design Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -15,27 +15,16 @@
 
   <style>
     :root {
-      --brand-gradient: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
-      --primary-bg: #f3f6fa;
-      --secondary-bg: #f7f7fa;
-      --modal-bg: #eaf4fb;
-      --text-color: #181a1b;
-      --text-secondary: #444;
-      --heading-color: #181a1b;
-      --card-bg: #fff;
-      --border-color: #e0e0e0;
-      --modal-border: #b6d0e2;
-      --shadow: 0 4px 24px 0 rgba(50, 50, 93, 0.07);
-      --shadow-lg: 0 20px 25px -5px rgba(50, 50, 93, 0.10);
-      --shadow-neon: 0 0 20px rgba(131, 56, 236, 0.10);
-      --glass-bg: #eaf4fb;
-      --glass-border: var(--modal-border);
-      --glass-shadow: 0 8px 32px 0 rgba(50, 50, 93, 0.07);
-      --toggle-bg: #e0e0e0;
-      --toggle-knob: #fff;
-      --toggle-icon: #181a1b;
-      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      --brand-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --primary-bg: #f3f4f6; /* grey background like screenshot */
+      --secondary-bg: #f8fafc;
+      --text-color: #1f2937;
+      --text-secondary: #6b7280;
+      --heading-color: #111827;
+      --card-bg: #ffffff;
+      --border-color: #e5e7eb;
+      --shadow: 0 10px 25px rgba(0,0,0,0.08);
+      --transition-smooth: all 0.25s ease;
     }
 
     [data-bs-theme="dark"] {
@@ -79,18 +68,7 @@
     }
 
     /* Animated background particles */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: var(--secondary-gradient);
-      pointer-events: none;
-      opacity: 0.5;
-      z-index: 0;
-    }
+    body::before { display: none; }
 
     @keyframes backgroundShift {
       0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
@@ -159,23 +137,7 @@
       color: var(--toggle-icon);
     }
 
-    .login-container {
-      background: var(--modal-bg);
-      border: 1.5px solid var(--modal-border);
-      border-radius: clamp(16px, 3vw, 28px);
-      box-shadow: var(--glass-shadow);
-      max-width: min(950px, 95vw);
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      min-height: clamp(480px, 60vh, 520px);
-      overflow: hidden;
-      position: relative;
-      z-index: 1;
-      animation: containerSlideIn 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-      transform: translateY(30px);
-      opacity: 0;
-    }
+    .login-container { display: contents; }
 
     @keyframes containerSlideIn {
       to {
@@ -322,22 +284,9 @@
       opacity: 1;
     }
 
-    .login-right {
-      padding: clamp(2rem, 4vw, 2.5rem) clamp(1.5rem, 3vw, 2rem);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: transparent;
-      box-shadow: none;
-    }
+    .login-right { padding: 0; }
 
-    .login-header {
-      text-align: center;
-      margin-bottom: clamp(2rem, 4vw, 3rem);
-      width: 100%;
-      max-width: 400px;
-    }
+    .login-header { display: none; }
 
     .login-header h2 {
       font-family: 'Space Grotesk', sans-serif;
@@ -454,13 +403,15 @@
     }
     .user-login-btn,
     .google-signin-container > #g_id_signin {
-      width: min(340px, 100%);
+      width: min(400px, 100%);
       max-width: 100%;
       margin: 0 auto;
       border-radius: 999px !important;
-      font-size: clamp(1rem, 2.5vw, 1.1rem);
+      font-size: clamp(1.1rem, 2.8vw, 1.3rem);
       font-weight: 600;
       box-shadow: 0 4px 16px 0 rgba(58,134,255,0.08);
+      min-height: 56px;
+      height: 56px;
     }
     #g_id_signin {
       margin: 0 auto;
@@ -1460,6 +1411,102 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
       }
     }
+
+    /* ===== Old login modal-style card (scoped to user area) ===== */
+    .user-card {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .user-card .login-card {
+      width: 100%;
+      max-width: 500px;
+      background: #f3f4f6;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 40px 32px;
+      text-align: center;
+    }
+    .user-card .brand-logo-card {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #000000;
+      margin-bottom: 20px;
+      letter-spacing: -0.3px;
+    }
+    .user-card h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #000000;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+    /* Focused minimal layout: hide left panel and vendor form */
+    .login-left, .feature-list, .tagline { display: none !important; }
+    #vendor-form { display: none !important; }
+    .agreement-text { color: #000000; font-size: 13px; margin-top: 8px; }
+    .agreement-text a { color: #2563eb; text-decoration: none; font-weight: 600; }
+    .agreement-text a:hover { text-decoration: underline; }
+    .user-card p {
+      color: #000000;
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    /* Make Google button full-width like old modal */
+    .user-card .google-signin-container { width: 100%; margin: 0 0 16px 0; }
+    .user-card #g_id_signin { width: 100% !important; display: block !important; }
+    .user-card #g_id_signin > div { width: 100% !important; max-width: 100% !important; display: block !important; }
+    .user-card #g_id_signin > div > div {
+      border-radius: 999px !important;
+      height: 56px !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 16px 24px !important;
+      background: transparent !important;
+      border: none !important;
+      font-size: 18px !important;
+      font-weight: 600 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+      box-shadow: none !important;
+    }
+    /* Fallback Google button to match modal style */
+    .user-card .user-login-btn {
+      width: 100%;
+      padding: 16px 24px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: var(--card-bg);
+      color: #000000;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 18px;
+      height: 56px;
+      box-shadow: var(--shadow);
+    }
+    .user-card .user-login-btn:hover {
+      background: var(--secondary-bg);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
+    }
+    @media (max-width: 480px) {
+      .user-card .login-card { padding: 20px 16px; }
+      .user-card h1 { font-size: 20px; }
+      .user-card #g_id_signin > div > div { height: 52px !important; }
+      .user-card .user-login-btn { height: 52px; font-size: 16px; }
+    }
   </style>
 </head>
 <body data-bs-theme="light">
@@ -1521,13 +1568,21 @@
 
     <!-- User Login Form -->
     <div id="user-form" class="login-form active">
-      <div class="login-btns-group">
-        <button class="btn-primary user-login-btn" type="button" disabled>
-          <span class="material-icons">person</span>
-          User Login
-        </button>
-        <div class="google-signin-container">
-          <div id="g_id_signin"></div>
+      <div class="user-card">
+        <div class="login-card">
+          <div class="brand-logo-card">PrintMax</div>
+          <h1>Sign up or Log in</h1>
+          <p>Get started with your PrintMax account</p>
+          <div class="google-signin-container">
+            <div id="g_id_signin"></div>
+          </div>
+          <button class="user-login-btn" type="button" onclick="handleGoogleSignInFallback()" style="display:none;">
+            <span class="material-icons">login</span>
+            Sign in with Google
+          </button>
+          <div class="agreement-text">
+            By signing in, you agree to our <a href="/terms/" target="_blank">Terms of Service</a> and <a href="/privacy/" target="_blank">Privacy Policy</a>
+          </div>
         </div>
       </div>
     </div>

@@ -30,6 +30,19 @@ import io
 from django.views.decorators.http import require_POST
 from django.views.decorators.http import require_http_methods
 
+
+def terms(request):
+    """
+    Terms & Conditions page view
+    """
+    return render(request, 'terms.html')
+
+def privacy(request):
+    """
+    Privacy Policy page view
+    """
+    return render(request, 'privacy.html')
+
 # Token management for sequential token generation (100-200)
 _used_tokens = set()
 
@@ -105,6 +118,91 @@ def get_next_sequential_token():
         print(f"Error generating token: {e}")
         # Fallback to random token
         return str(random.randint(100, 200))
+
+def contact_view(request):
+    """
+    Render Contact page and handle basic form POST.
+    On success, show a Django success message and stay on the page.
+    """
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        subject = request.POST.get('subject', '').strip()
+        message_text = request.POST.get('message', '').strip()
+
+        if not name or not email or not subject or not message_text:
+            messages.error(request, 'Please fill out all fields before submitting.')
+        else:
+            messages.success(request, 'Thanks for contacting us ! Your message has been sent successfully.')
+
+        return render(request, 'contact.html', {
+            'prefill': {
+                'name': name,
+                'email': email,
+                'subject': subject,
+                'message': message_text,
+            }
+        })
+
+    return render(request, 'contact.html')
+
+@csrf_exempt
+def save_contact_details(request):
+    """
+    Save contact form details to Cloudflare R2 at path:
+    printme/contact_details/<timestamp>.json
+
+    Accepts JSON or form-encoded data. Returns JSON response.
+    """
+    try:
+        if request.method != 'POST':
+            return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+        try:
+            if request.content_type and 'application/json' in request.content_type:
+                payload = json.loads(request.body or '{}')
+            else:
+                payload = {
+                    'name': request.POST.get('name', ''),
+                    'email': request.POST.get('email', ''),
+                    'subject': request.POST.get('subject', ''),
+                    'message': request.POST.get('message', ''),
+                }
+        except Exception:
+            payload = {}
+
+        timestamp_iso = datetime.datetime.now().isoformat()
+        record = {
+            'name': (payload.get('name') or '').strip(),
+            'email': (payload.get('email') or '').strip(),
+            'subject': (payload.get('subject') or '').strip(),
+            'message': (payload.get('message') or '').strip(),
+            'submitted_at': timestamp_iso,
+        }
+
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=settings.R2_ENDPOINT,
+            region_name='auto'
+        )
+
+        safe_email = (record['email'] or 'anonymous').replace('@', '_at_').replace('.', '_')
+        key = f"contact_details/{timestamp_iso.replace(':', '-').replace('T', '_')}_{safe_email}.json"
+
+        s3.put_object(
+            Bucket='printme',
+            Key=key,
+            Body=json.dumps(record, ensure_ascii=False, indent=2),
+            ContentType='application/json'
+        )
+
+        return JsonResponse({'success': True, 'key': key})
+
+    except Exception as e:
+        print(f"Error saving contact details: {str(e)}")
+        return JsonResponse({'success': False, 'error': 'Failed to save contact details'}, status=500)
 
 def assign_token_from_vendor_pool(vendor_email):
     """
@@ -4540,12 +4638,26 @@ def vendor_register_api(request):
             # Hash password
             password_hash = make_password(password)
 
+            # Validate R2 environment variables
+            if not all([settings.R2_ACCESS_KEY, settings.R2_SECRET_KEY, settings.R2_ENDPOINT, settings.R2_BUCKET]):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Server configuration error. Please contact support.'
+                }, status=500)
+
             # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
+            try:
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
+            except Exception as e:
+                print(f"❌ Error initializing S3 client: {str(e)}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Server configuration error. Please contact support.'
+                }, status=500)
 
             # Check if email already exists
             try:
@@ -4558,6 +4670,7 @@ def vendor_register_api(request):
                         })
             except Exception as e:
                 print(f"Warning: Could not check for existing email: {str(e)}")
+                # Continue with registration even if we can't check for duplicates
 
             # Prepare registration details
             registration_details = {
@@ -4580,7 +4693,14 @@ def vendor_register_api(request):
                 'hashed_password': password_hash
             }
             reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
-            s3.put_object(Bucket=settings.R2_BUCKET, Key=reg_key, Body=json.dumps(registration_details), ContentType='application/json')
+            try:
+                s3.put_object(Bucket=settings.R2_BUCKET, Key=reg_key, Body=json.dumps(registration_details), ContentType='application/json')
+            except Exception as e:
+                print(f"❌ Error saving registration details: {str(e)}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Failed to save registration details. Please try again.'
+                }, status=500)
 
             # Prepare login details
             login_details = {
@@ -4589,32 +4709,50 @@ def vendor_register_api(request):
                 'last_login': None
             }
             login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
-            s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(login_details), ContentType='application/json')
+            try:
+                s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(login_details), ContentType='application/json')
+            except Exception as e:
+                print(f"❌ Error saving login details: {str(e)}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Failed to save login details. Please try again.'
+                }, status=500)
 
             # Create shop folder with vendor name
             shop_folder_name = sanitize_shop_name(vendor_name)
             shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
 
             # Create shop info file with hashed vendor ID and token
-            s3.put_object(
-                Bucket=settings.R2_BUCKET,
-                Key=f'{shop_folder_key}shop_info.json',
-                Body=json.dumps({
-                    'shop_name': vendor_name,
-                    'vendor_id_hash': make_password(vendor_id),
-                    'vendor_token_hash': make_password(vendor_token),
-                    'created_at': timezone.now().isoformat(),
-                    'folder_created': True
-                }),
-                ContentType='application/json'
-            )
+            try:
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=f'{shop_folder_key}shop_info.json',
+                    Body=json.dumps({
+                        'shop_name': vendor_name,
+                        'vendor_id_hash': make_password(vendor_id),
+                        'vendor_token_hash': make_password(vendor_token),
+                        'created_at': timezone.now().isoformat(),
+                        'folder_created': True
+                    }),
+                    ContentType='application/json'
+                )
+            except Exception as e:
+                print(f"❌ Error creating shop info: {str(e)}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Failed to create shop folder. Please try again.'
+                }, status=500)
 
             # Prepare pricing details if present
             pricing_entries = data.get('pricing_entries', [])
             for entry in pricing_entries:
-                pricing_id = str(uuid.uuid4())
-                key = f'vendor_register_details/{sanitize_email(email)}/pricing_details/pricing_{pricing_id}.json'
-                s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
+                try:
+                    pricing_id = str(uuid.uuid4())
+                    key = f'vendor_register_details/{sanitize_email(email)}/pricing_details/pricing_{pricing_id}.json'
+                    s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
+                except Exception as e:
+                    print(f"❌ Error saving pricing details: {str(e)}")
+                    # Continue with registration even if pricing fails
 
             print(f"✅ Successfully registered vendor {email} with shop folder: {shop_folder_name}")
             
@@ -4623,6 +4761,7 @@ def vendor_register_api(request):
                 send_welcome_email(email, vendor_name, password, vendor_id)
             except Exception as e:
                 print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
+                # Continue with registration even if email fails
 
             return JsonResponse({
                 'success': True,
