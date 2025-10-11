@@ -4745,27 +4745,32 @@ def vendor_register_api(request):
 
             # Prepare pricing details if present
             pricing_entries = data.get('pricing_entries', [])
+            pricing_saved = 0
             for entry in pricing_entries:
                 try:
                     pricing_id = str(uuid.uuid4())
                     key = f'vendor_register_details/{sanitize_email(email)}/pricing_details/pricing_{pricing_id}.json'
                     s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
+                    pricing_saved += 1
                 except Exception as e:
-                    print(f"❌ Error saving pricing details: {str(e)}")
+                    print(f"⚠️ Warning: Could not save pricing entry: {str(e)}")
                     # Continue with registration even if pricing fails
 
             print(f"✅ Successfully registered vendor {email} with shop folder: {shop_folder_name}")
             
             # Send welcome email with password
+            email_sent = False
             try:
                 send_welcome_email(email, vendor_name, password, vendor_id)
+                email_sent = True
             except Exception as e:
                 print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
                 # Continue with registration even if email fails
 
+            # Always return success if registration data was saved
             return JsonResponse({
                 'success': True,
-                'message': 'Registration successful',
+                'message': 'Registration successful' + (' (Welcome email sent)' if email_sent else ' (Welcome email will be sent later)'),
                 'vendor_email': email,
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
@@ -4774,10 +4779,18 @@ def vendor_register_api(request):
 
         except Exception as e:
             print(f"❌ Error during vendor registration: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'message': f'Registration error: {str(e)}'
-            })
+            # Check if this is a critical error that prevents registration
+            error_message = str(e).lower()
+            if any(keyword in error_message for keyword in ['json', 'decode', 'parse', 'invalid', 'malformed']):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid request data. Please check your information and try again.'
+                }, status=400)
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Registration failed due to a server error. Please try again or contact support.'
+                }, status=500)
 
     return JsonResponse({
         'success': False,
@@ -8829,7 +8842,7 @@ def add_user_points(user_email, points, reason):
 
 @csrf_exempt
 def get_user_notifications(request):
-    """Get user notifications"""
+    """Get user notifications - only daily completed print job notifications"""
     try:
         if not request.user.is_authenticated:
             return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
@@ -8850,11 +8863,51 @@ def get_user_notifications(request):
             
             response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
             
+            # Get today's date for filtering
+            today = datetime.datetime.now().date()
+            
             for obj in response.get('Contents', []):
                 try:
                     result = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
                     notification_data = json.loads(result['Body'].read().decode('utf-8'))
-                    notifications.append(notification_data)
+                    
+                    # Filter for completed print job notifications only
+                    if (notification_data.get('type') == 'job_completed' and 
+                        notification_data.get('status') == 'completed'):
+                        
+                        # Check if notification is from today
+                        notification_date = None
+                        if 'created_at' in notification_data:
+                            try:
+                                notification_date = datetime.datetime.fromisoformat(
+                                    notification_data['created_at'].replace('Z', '+00:00')
+                                ).date()
+                            except:
+                                pass
+                        elif 'timestamp' in notification_data:
+                            try:
+                                notification_date = datetime.datetime.fromtimestamp(
+                                    int(notification_data['timestamp'])
+                                ).date()
+                            except:
+                                pass
+                        
+                        # Only include notifications from today
+                        if notification_date == today:
+                            # Ensure job name and token are included
+                            if 'filename' not in notification_data:
+                                notification_data['filename'] = 'Document'
+                            if 'token' not in notification_data:
+                                # Extract token from filename if available
+                                filename = notification_data.get('filename', '')
+                                if filename:
+                                    import re
+                                    notification_data['token'] = re.sub(r'\.[^/.]+$', '', filename)
+                                else:
+                                    notification_data['token'] = 'Unknown'
+                            
+                            notifications.append(notification_data)
+                            
                 except Exception as e:
                     print(f"Error reading notification {obj['Key']}: {e}")
                     continue
