@@ -4660,17 +4660,35 @@ def vendor_register_api(request):
                 }, status=500)
 
             # Check if email already exists
+            existing_vendor = None
             try:
                 objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=f'vendor_register_details/{sanitize_email(email)}/')
                 for obj in objects.get("Contents", []):
                     if obj["Key"].endswith('registration_details.json'):
-                        return JsonResponse({
-                            'success': False,
-                            'message': 'Email already registered'
-                        })
+                        # Get existing vendor details
+                        try:
+                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                            existing_vendor = json.loads(response['Body'].read().decode('utf-8'))
+                            break
+                        except Exception as e:
+                            print(f"Warning: Could not read existing vendor details: {str(e)}")
+                            continue
             except Exception as e:
                 print(f"Warning: Could not check for existing email: {str(e)}")
                 # Continue with registration even if we can't check for duplicates
+
+            # If vendor already exists, return success with existing details
+            if existing_vendor:
+                print(f"✅ Vendor {email} already registered, allowing continuation to pricing")
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Registration already completed. Continuing to pricing setup.',
+                    'vendor_email': email,
+                    'vendor_id': existing_vendor.get('vendor_id'),
+                    'vendor_token': existing_vendor.get('vendor_token'),
+                    'shop_folder': sanitize_shop_name(existing_vendor.get('vendor_name', 'Unknown Shop')),
+                    'already_registered': True
+                })
 
             # Prepare registration details
             registration_details = {
