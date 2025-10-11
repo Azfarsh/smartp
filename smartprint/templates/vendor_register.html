@@ -1163,7 +1163,7 @@
                             <div class="form-group">
                                 <label for="email" class="form-label">Email Address</label>
                                 <div class="input-wrapper">
-                                    <input type="email" class="form-input" id="email" name="email" required>
+                                    <input type="email" class="form-input" id="email" name="email" required autocomplete="email">
                                     <span class="material-icons input-icon">email</span>
                                 </div>
                                 <div class="error-message" id="emailError"></div>
@@ -1183,7 +1183,7 @@
                             <div class="form-group">
                                 <label for="password" class="form-label">Password</label>
                                 <div class="input-wrapper">
-                                    <input type="password" class="form-input" id="password" name="password" required>
+                                    <input type="password" class="form-input" id="password" name="password" required autocomplete="new-password">
                                     <span class="material-icons input-icon">lock</span>
                                     <button type="button" class="password-toggle" id="togglePassword">
                                         <span class="material-icons">visibility_off</span>
@@ -1201,7 +1201,7 @@
                             <div class="form-group">
                                 <label for="confirmPassword" class="form-label">Confirm Password</label>
                                 <div class="input-wrapper">
-                                    <input type="password" class="form-input" id="confirmPassword" name="confirmPassword" required>
+                                    <input type="password" class="form-input" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
                                     <span class="material-icons input-icon">lock</span>
                                     <button type="button" class="password-toggle" id="toggleConfirmPassword">
                                         <span class="material-icons">visibility_off</span>
@@ -1215,7 +1215,7 @@
                             <div class="form-group">
                                 <label for="phoneNumber" class="form-label">Phone Number</label>
                                 <div class="input-wrapper">
-                                    <input type="tel" class="form-input" id="phoneNumber" name="phoneNumber" required>
+                                    <input type="tel" class="form-input" id="phoneNumber" name="phoneNumber" required autocomplete="tel">
                                     <span class="material-icons input-icon">phone</span>
                                 </div>
                                 <div class="error-message" id="phoneNumberError"></div>
@@ -1699,7 +1699,10 @@
                 e.preventDefault();
                 const email = document.getElementById('email').value;
                 if (email) {
-                    window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(email)}`;
+                    // Add a small delay to ensure the notification is visible
+                    setTimeout(() => {
+                        window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(email)}`;
+                    }, 1000);
                 } else {
                     showNotification('Email not found. Please try registering again.', 'error');
                 }
@@ -1828,6 +1831,14 @@
                 
                 if (data.success) {
                      console.log('Registration successful:', data);
+                     
+                     // Show appropriate message based on registration status
+                     if (data.already_registered) {
+                         showNotification('✅ You are already registered! Continuing to pricing setup...', 'success');
+                     } else {
+                         showNotification('✅ Registration successful! Proceeding to pricing setup...', 'success');
+                     }
+                     
                      // Hide animation
                      const animation = document.getElementById('registrationAnimation');
                      animation.style.display = 'none';
