@@ -4581,77 +4581,129 @@ def vendor_register_api(request):
     """
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            email = data.get('email')
-            password = data.get('password')
-            vendor_name = data.get('vendor_name')
-            phone_number = data.get('phone_number')
-            state = data.get('state')
-            city = data.get('city')
-            locality = data.get('locality')
-            landmark = data.get('landmark')
-            shop_address = data.get('shop_address')
-            pincode = data.get('pincode')
-            latitude = data.get('latitude')
-            longitude = data.get('longitude')
-
-            # Validate required fields
-            if not all([email, password, vendor_name, phone_number, state, city, locality, shop_address, pincode]):
+            print(f"🔍 Starting vendor registration process...")
+            
+            # Parse JSON data
+            try:
+                data = json.loads(request.body)
+                print(f"📝 Received registration data: {list(data.keys())}")
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON decode error: {str(e)}")
                 return JsonResponse({
                     'success': False,
-                    'message': 'All fields are required'
-                })
+                    'message': 'Invalid JSON data. Please check your request.'
+                }, status=400)
+            
+            # Extract form data
+            email = data.get('email', '').strip()
+            password = data.get('password', '')
+            vendor_name = data.get('vendor_name', '').strip()
+            phone_number = data.get('phone_number', '').strip()
+            state = data.get('state', '').strip()
+            city = data.get('city', '').strip()
+            locality = data.get('locality', '').strip()
+            landmark = data.get('landmark', '').strip()
+            shop_address = data.get('shop_address', '').strip()
+            pincode = data.get('pincode', '').strip()
+            latitude = data.get('latitude', '0')
+            longitude = data.get('longitude', '0')
+
+            print(f"📧 Processing registration for: {email}")
+
+            # Validate required fields
+            required_fields = {
+                'email': email,
+                'password': password,
+                'vendor_name': vendor_name,
+                'phone_number': phone_number,
+                'state': state,
+                'city': city,
+                'locality': locality,
+                'shop_address': shop_address,
+                'pincode': pincode
+            }
+            
+            missing_fields = [field for field, value in required_fields.items() if not value]
+            if missing_fields:
+                print(f"❌ Missing required fields: {missing_fields}")
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Missing required fields: {", ".join(missing_fields)}'
+                }, status=400)
 
             # Validate email format
             email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
             if not re.match(email_regex, email):
+                print(f"❌ Invalid email format: {email}")
                 return JsonResponse({
                     'success': False,
                     'message': 'Please enter a valid email address'
-                })
+                }, status=400)
 
             # Validate password strength
             if len(password) < 8:
+                print(f"❌ Password too short: {len(password)} characters")
                 return JsonResponse({
                     'success': False,
                     'message': 'Password must be at least 8 characters long'
-                })
+                }, status=400)
 
             if not re.search(r'[a-zA-Z]', password) or not re.search(r'\d', password):
+                print(f"❌ Password doesn't meet complexity requirements")
                 return JsonResponse({
                     'success': False,
                     'message': 'Password must contain at least one letter and one number'
-                })
+                }, status=400)
 
             # Validate phone number (10 digits)
             phone_clean = re.sub(r'\D', '', phone_number)
             if len(phone_clean) != 10:
+                print(f"❌ Invalid phone number: {phone_number} (cleaned: {phone_clean})")
                 return JsonResponse({
                     'success': False,
                     'message': 'Please enter a valid 10-digit phone number'
-                })
+                }, status=400)
+
+            # Validate PIN code (6 digits)
+            if not re.match(r'^\d{6}$', pincode):
+                print(f"❌ Invalid PIN code: {pincode}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please enter a valid 6-digit PIN code'
+                }, status=400)
 
             # Generate unique 10-digit vendor ID and token
             vendor_id = str(random.randint(1000000000, 9999999999))
             vendor_token = str(random.randint(1000000000, 9999999999))
+            print(f"🆔 Generated vendor ID: {vendor_id}")
 
             # Hash password
             password_hash = make_password(password)
 
-            # Validate R2 environment variables
-            if not all([settings.R2_ACCESS_KEY, settings.R2_SECRET_KEY, settings.R2_ENDPOINT, settings.R2_BUCKET]):
+            # Check R2 configuration
+            r2_configured = all([
+                settings.R2_ACCESS_KEY, 
+                settings.R2_SECRET_KEY, 
+                settings.R2_ENDPOINT, 
+                settings.R2_BUCKET
+            ])
+            
+            if not r2_configured:
+                print(f"❌ R2 configuration incomplete")
                 return JsonResponse({
                     'success': False,
                     'message': 'Server configuration error. Please contact support.'
                 }, status=500)
 
             # Initialize S3 client
+            s3 = None
             try:
                 s3 = boto3.client('s3',
                                   aws_access_key_id=settings.R2_ACCESS_KEY,
                                   aws_secret_access_key=settings.R2_SECRET_KEY,
                                   endpoint_url=settings.R2_ENDPOINT,
                                   region_name='auto')
+                print(f"✅ S3 client initialized successfully")
             except Exception as e:
                 print(f"❌ Error initializing S3 client: {str(e)}")
                 return JsonResponse({
@@ -4662,19 +4714,20 @@ def vendor_register_api(request):
             # Check if email already exists
             existing_vendor = None
             try:
+                print(f"🔍 Checking for existing vendor: {email}")
                 objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=f'vendor_register_details/{sanitize_email(email)}/')
                 for obj in objects.get("Contents", []):
                     if obj["Key"].endswith('registration_details.json'):
-                        # Get existing vendor details
                         try:
                             response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
                             existing_vendor = json.loads(response['Body'].read().decode('utf-8'))
+                            print(f"✅ Found existing vendor: {email}")
                             break
                         except Exception as e:
-                            print(f"Warning: Could not read existing vendor details: {str(e)}")
+                            print(f"⚠️ Warning: Could not read existing vendor details: {str(e)}")
                             continue
             except Exception as e:
-                print(f"Warning: Could not check for existing email: {str(e)}")
+                print(f"⚠️ Warning: Could not check for existing email: {str(e)}")
                 # Continue with registration even if we can't check for duplicates
 
             # If vendor already exists, return success with existing details
@@ -4710,9 +4763,13 @@ def vendor_register_api(request):
                 'registration_date': timezone.now().isoformat(),
                 'hashed_password': password_hash
             }
+            
+            # Save registration details
             reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
             try:
+                print(f"💾 Saving registration details to: {reg_key}")
                 s3.put_object(Bucket=settings.R2_BUCKET, Key=reg_key, Body=json.dumps(registration_details), ContentType='application/json')
+                print(f"✅ Registration details saved successfully")
             except Exception as e:
                 print(f"❌ Error saving registration details: {str(e)}")
                 return JsonResponse({
@@ -4728,7 +4785,9 @@ def vendor_register_api(request):
             }
             login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
             try:
+                print(f"💾 Saving login details to: {login_key}")
                 s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(login_details), ContentType='application/json')
+                print(f"✅ Login details saved successfully")
             except Exception as e:
                 print(f"❌ Error saving login details: {str(e)}")
                 return JsonResponse({
@@ -4742,6 +4801,7 @@ def vendor_register_api(request):
 
             # Create shop info file with hashed vendor ID and token
             try:
+                print(f"📁 Creating shop folder: {shop_folder_name}")
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=f'{shop_folder_key}shop_info.json',
@@ -4754,6 +4814,7 @@ def vendor_register_api(request):
                     }),
                     ContentType='application/json'
                 )
+                print(f"✅ Shop folder created successfully")
             except Exception as e:
                 print(f"❌ Error creating shop info: {str(e)}")
                 return JsonResponse({
@@ -4779,13 +4840,16 @@ def vendor_register_api(request):
             # Send welcome email with password
             email_sent = False
             try:
+                print(f"📧 Sending welcome email to: {email}")
                 send_welcome_email(email, vendor_name, password, vendor_id)
                 email_sent = True
+                print(f"✅ Welcome email sent successfully")
             except Exception as e:
                 print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
                 # Continue with registration even if email fails
 
             # Always return success if registration data was saved
+            print(f"🎉 Registration completed successfully for {email}")
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful' + (' (Welcome email sent)' if email_sent else ' (Welcome email will be sent later)'),
@@ -4796,7 +4860,12 @@ def vendor_register_api(request):
             })
 
         except Exception as e:
-            print(f"❌ Error during vendor registration: {str(e)}")
+            print(f"❌ Unexpected error during vendor registration: {str(e)}")
+            print(f"❌ Error type: {type(e).__name__}")
+            print(f"❌ Error details: {str(e)}")
+            import traceback
+            print(f"❌ Traceback: {traceback.format_exc()}")
+            
             # Check if this is a critical error that prevents registration
             error_message = str(e).lower()
             if any(keyword in error_message for keyword in ['json', 'decode', 'parse', 'invalid', 'malformed']):
@@ -4807,7 +4876,7 @@ def vendor_register_api(request):
             else:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Registration failed due to a server error. Please try again or contact support.'
+                    'message': f'Registration failed due to a server error: {str(e)}'
                 }, status=500)
 
     return JsonResponse({
