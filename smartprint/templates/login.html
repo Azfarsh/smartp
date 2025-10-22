@@ -1,10 +1,18 @@
 
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PrintMax - Login</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+  <link rel="manifest" href="{% static 'site.webmanifest' %}">
 
   <!-- Material Design Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -477,7 +485,7 @@
     .btn-primary {
       width: 100%;
       padding: 14px;
-      background: #181a1b;
+      background: #3a86ff;
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -509,8 +517,10 @@
     }
 
     .btn-primary:hover {
-      background: #3a86ff;
+      background: #2563eb;
       color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(58, 134, 255, 0.3);
     }
 
     .btn-outline-primary {
@@ -1832,40 +1842,41 @@
   function handleCredentialResponse(response) {
     const payload = JSON.parse(atob(response.credential.split('.')[1]));
     const userName = payload.name || "User login";
+    
+    // Show welcome screen immediately for better UX
     showWelcome(userName);
     
-    // Show authentication progress
-    const welcomeTitle = document.querySelector('#welcomeTitle');
-    if (welcomeTitle) {
-      welcomeTitle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
-    }
-    
-    fetch('/auth-receiver/', {
+    // Start authentication immediately
+    const authPromise = fetch('/auth-receiver/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'X-CSRFToken': getCookie('csrftoken')
       },
       body: 'credential=' + encodeURIComponent(response.credential)
-    })
+    });
+    
+    // Set a timeout for the authentication
+    const authTimeout = setTimeout(() => {
+      console.warn('Authentication taking longer than expected...');
+    }, 2000);
+    
+    authPromise
     .then(res => res.json())
     .then(data => {
+      clearTimeout(authTimeout);
       if (data.status === 'success') {
-        // Show instant redirect message
-        const welcomeTitle = document.querySelector('#welcomeTitle');
-        if (welcomeTitle) {
-          welcomeTitle.innerHTML = '<i class="fas fa-check-circle"></i> Redirecting to Dashboard...';
-        }
-        // Smooth redirect with 2 second delay
-        setTimeout(() => {
-          window.location.href = '/userdashboard/';
-        }, 1000); // 1 second delay for smooth transition
+        // Mark that we just logged in to show splash on dashboard
+        try { sessionStorage.setItem('justLoggedIn', '1'); } catch (_) {}
+        // Redirect immediately to user dashboard
+        window.location.href = '/userdashboard/';
       } else {
         alert('🚫 Access denied: ' + data.message);
         document.getElementById('welcomeScreen').style.display = 'none';
       }
     })
     .catch(err => {
+      clearTimeout(authTimeout);
       console.error('Auth error:', err);
       alert('🚫 Connection failed. Please try again.');
       document.getElementById('welcomeScreen').style.display = 'none';

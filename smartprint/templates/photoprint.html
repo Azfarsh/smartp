@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="user-email" content="{{ user.email|default:'anonymous' }}">
     <title>Photo Print Service</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'site.webmanifest' %}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
@@ -611,6 +619,10 @@
                     <label for="copies">Copies:</label>
                     <input type="number" id="copies" value="1" min="1" max="50" style="width:100%;">
                 </div>
+                <div class="form-group">
+                    <label for="pages">Pages:</label>
+                    <input type="number" id="pages" value="1" min="1" max="50" style="width:100%;" readonly>
+                </div>
                 <div class="pricing-summary" id="pricingSummary" style="display: none;">
                     <h3><i class="fas fa-receipt"></i> Pricing Summary</h3>
                     <ul class="pricing-breakdown-list" id="pricingDetails"></ul>
@@ -699,6 +711,8 @@ const shopSelect = document.getElementById('shopSelect');
 const pricingSummary = document.getElementById('pricingSummary');
 const pricingDetails = document.getElementById('pricingDetails');
 const orientationSelect = document.getElementById('orientation');
+const copiesInput = document.getElementById('copies');
+const pagesInput = document.getElementById('pages');
 function loadShops() {
     fetch('/get-available-shops/', {headers: {'X-CSRFToken': getCookie('csrftoken')}})
         .then(r=>r.json())
@@ -1079,16 +1093,7 @@ async function createPDF() {
         }
     }
     
-    // Add title and info
-    pdf.setFontSize(14);
-    pdf.setTextColor(0, 0, 0);
-    const title = `Photo Print Layout (${availableImages} photos in ${currentLayout} slots)`;
-    pdf.text(title, dims.w/2, 30, { align: 'center' });
-    
-    pdf.setFontSize(10);
-    pdf.setTextColor(100, 100, 100);
-    const info = `A4 ${currentOrientation.charAt(0).toUpperCase() + currentOrientation.slice(1)} • ${cols}x${rows} Grid Layout • Print Ready`;
-    pdf.text(info, dims.w/2, dims.h - 20, { align: 'center' });
+    // No text added to PDF - clean layout only
     
     return pdf.output('blob');
 }
@@ -1101,6 +1106,7 @@ function resetPhotoPrintModal() {
     selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : '';
     document.getElementById('color').value = 'Color';
     document.getElementById('copies').value = 1;
+    document.getElementById('pages').value = 1;
     document.getElementById('orientation').value = 'portrait';
     if (shopSelect) shopSelect.value = selectedShop || '';
     layoutBtns.forEach(b => b.classList.remove('active'));
@@ -1133,6 +1139,12 @@ layoutBtns.forEach(btn => {
 orientationSelect.addEventListener('change', ()=>{
     currentOrientation = orientationSelect.value;
     updatePreview();
+});
+
+// Sync pages with copies
+copiesInput.addEventListener('input', () => {
+    const copiesValue = parseInt(copiesInput.value) || 1;
+    pagesInput.value = copiesValue;
 });
 function getCookie(name) {
     let cookieValue = null;
@@ -1366,7 +1378,7 @@ async function handlePrint() {
             is_manual_job: 'YES',
             vendor: vendorId,
             user: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
-            pages: '1',
+            pages: String(document.getElementById('pages').value || '1'),
             layout_created: 'YES',
             image_mode: 'individual_placement',
             total_images: String(uploadedImages.length),

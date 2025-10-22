@@ -10,6 +10,13 @@
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#6366f1">
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'site.webmanifest' %}">
+
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Printmax - Revolutionary AI-Powered Printing">
     <meta property="og:description" content="Experience the future of printing with our AI-powered automated system. Upload, customize, and collect your prints instantly.">
@@ -791,23 +798,49 @@
 <body>
     <!-- Django Messages -->
     {% if messages %}
-    <div class="messages-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+    <div class="messages-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; max-width: 520px; width: calc(100% - 32px); padding: 0 16px; display: flex; justify-content: center;">
         {% for message in messages %}
         <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-lg 
-             {% if 'success' in message.tags %}alert-bg-success{% elif 'error' in message.tags or 'danger' in message.tags %}alert-bg-error{% elif 'warning' in message.tags %}alert-bg-warning{% else %}alert-bg-default{% endif %}"
-             role="alert" 
-             style="margin-bottom: 10px; border: none; border-radius: 12px; color: white; font-weight: 500;">
+             {% if 'success' in message.tags %}alert-bg-success-center{% elif 'error' in message.tags or 'danger' in message.tags %}alert-bg-error{% elif 'warning' in message.tags %}alert-bg-warning{% else %}alert-bg-default{% endif %}"
+             role="alert"
+             style="margin: 0 auto 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); font-weight: 600; text-align: center;">
             <i class="bi bi-{% if 'success' in message.tags %}check-circle-fill{% elif 'error' in message.tags or 'danger' in message.tags %}exclamation-triangle-fill{% elif 'warning' in message.tags %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
             {{ message }}
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
     </div>
     <style>
-      .alert-bg-success { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important; }
+      /* Centered, readable success banner for logout */
+      .alert-bg-success-center { background: #d1fae5 !important; color: #111 !important; border-color: #a7f3d0 !important; }
       .alert-bg-error { background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%) !important; }
       .alert-bg-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important; }
       .alert-bg-default { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+
+      /* Dark mode: make close (×) button red for logout/success messages */
+      [data-bs-theme="dark"] .alert-bg-success-center .btn-close,
+      [data-bs-theme="dark"] .alert-bg-default .btn-close,
+      [data-bs-theme="dark"] .alert-bg-error .btn-close,
+      [data-bs-theme="dark"] .alert-bg-warning .btn-close {
+        --bs-btn-close-color: #ef4444;
+        --bs-btn-close-opacity: 1;
+        background: transparent;
+        opacity: 1 !important;
+        filter: none !important;
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
+      [data-bs-theme="dark"] .alert-bg-success-center .btn-close::before,
+      [data-bs-theme="dark"] .alert-bg-default .btn-close::before,
+      [data-bs-theme="dark"] .alert-bg-error .btn-close::before,
+      [data-bs-theme="dark"] .alert-bg-warning .btn-close::before {
+        content: '';
+        display: block;
+        width: 1em; height: 1em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ef4444'%3e%3cpath d='M4.646 4.646a.5.5 0 1 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+      }
     </style>
     <script>
         // Auto-hide messages after 5 seconds (works even if Bootstrap JS hasn't loaded yet)
@@ -865,7 +898,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#vendorLoginModal" id="vendorLoginNav">
-                            <i class="bi bi-shop me-2"></i>Vendor
+                            <i class="bi bi-shop me-2"></i>Print shop
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1350,12 +1383,12 @@
               </div>
             <!-- Right: Vendor login form -->
             <div class="col-md-6 vendor-modal-right">
-              <button type="button" class="btn-close vendor-modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <button type="button" class="vendor-modal-close" data-bs-dismiss="modal" aria-label="Close">×</button>
               <!-- Vendor Login Form -->
-              <div id="vendor-form-modal">
+              <div id="vendor-form-modal" style="width: 100%; max-width: 380px; margin: 0 auto;">
                 <div class="login-header">
-                  <h2>Vendor Login</h2>
-                  <p>Access your vendor dashboard</p>
+                  <h2>Print Shop Login</h2>
+                  <p>Access your print shop dashboard</p>
                 </div>
                 <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
                   {% csrf_token %}
@@ -1376,7 +1409,7 @@
                   </div>
                   <button type="submit" class="btn-primary" id="vendorSignInBtn">
                     <span class="material-icons" id="vendorBtnIcon">print</span>
-                    <span id="vendorBtnText">Vendor login</span>
+                    <span id="vendorBtnText">Print shop login</span>
                   </button>
                   <div class="forgot-password">
                     <a href="#" onclick="resetVendorPassword()">
@@ -1389,7 +1422,7 @@
                   <p class="text-muted">Ready to build your print empire?</p>
                   <button type="button" class="btn-outline-primary btn-register-vendor" onclick="window.location.href='/vendor-about/'">
                     <span class="material-icons">business</span>
-                    <span>Learn About Vendor Benefits</span>
+                    <span>Register your shop</span>
                   </button>
                 </div>
               </div>
@@ -1435,10 +1468,10 @@
       });
     </script>
     <style>
-      /* Vendor login modal redesigned to match test.html */
+      /* Vendor login modal redesigned to match test.html - Force light mode */
       #vendorLoginModal .vendor-modal-content {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
         border-radius: 32px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         padding: 0;
@@ -1447,6 +1480,58 @@
         max-width: 98vw;
         width: 98vw;
         height: 95vh;
+      }
+      
+      /* Force light mode for all vendor modal elements */
+      #vendorLoginModal * {
+        color: inherit !important;
+      }
+      
+      /* Override dark mode for vendor modal */
+      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-content,
+      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-left,
+      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-right {
+        background: #ffffff !important;
+        color: #111827 !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .login-header h2,
+      [data-bs-theme="dark"] #vendorLoginModal .login-header p,
+      [data-bs-theme="dark"] #vendorLoginModal .form-label,
+      [data-bs-theme="dark"] #vendorLoginModal .text-muted {
+        color: #111827 !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .form-control {
+        background: #ffffff !important;
+        border-color: #e5e7eb !important;
+        color: #000000 !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .form-control:focus {
+        background: #ffffff !important;
+        border-color: #3B82F6 !important;
+        color: #000000 !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .btn-primary {
+        background: #3B82F6 !important;
+        border-color: #3B82F6 !important;
+        color: #ffffff !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .btn-outline-primary {
+        background: transparent !important;
+        border-color: #3B82F6 !important;
+        color: #3B82F6 !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .forgot-password a {
+        color: #6b7280 !important;
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .input-container .material-icons {
+        color: #000000 !important;
       }
       #vendorLoginModal .row { margin: 0; }
       
@@ -1511,29 +1596,45 @@
         top: 1rem;
         right: 1rem;
         z-index: 1000;
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        width: 32px;
-        height: 32px;
+        background: #ef4444;
+        border: 2px solid #dc2626;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
-        opacity: 0.7;
+        opacity: 0.9;
         transition: all 0.3s ease;
+        color: #ffffff !important;
+        font-size: 18px;
+        font-weight: bold;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+      }
+      
+      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-close {
+        background: #ef4444 !important;
+        border-color: #dc2626 !important;
+        color: #ffffff !important;
       }
       
       #vendorLoginModal .vendor-modal-close:hover {
         opacity: 1;
-        background: #f1f5f9;
+        background: #dc2626;
+        border-color: #b91c1c;
         transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+      }
+      
+      #vendorLoginModal .vendor-modal-close:active {
+        transform: scale(0.95);
       }
       
       #vendorLoginModal .login-header {
         text-align: center;
         margin-bottom: 1.5rem;
         width: 100%;
-        max-width: 400px;
+        max-width: 380px;
         padding: 0.5rem 0;
         position: relative;
         z-index: 10;
@@ -1565,7 +1666,7 @@
       #vendorLoginModal .form-group {
         margin-bottom: 1rem;
         width: 100%;
-        max-width: 400px;
+        max-width: 380px;
         text-align: left;
         display: flex;
         flex-direction: column;
@@ -1650,10 +1751,10 @@
       
       #vendorLoginModal .btn-primary {
         width: 100%;
-        max-width: 400px;
+        max-width: 380px;
         padding: 0.75rem 1.5rem;
-        background: #374151;
-        border: 2px solid #374151;
+        background: #3B82F6;
+        border: 2px solid #3B82F6;
         border-radius: 20px;
         color: #ffffff;
         font-size: 0.9rem;
@@ -1674,8 +1775,8 @@
       #vendorLoginModal .btn-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-        background: #1f2937;
-        border-color: #1f2937;
+        background: #3B82F6;
+        border-color: #3B82F6;
       }
       
       #vendorLoginModal .btn-primary:active {
@@ -1691,7 +1792,7 @@
         text-align: center;
         margin-top: 0.75rem;
         width: 100%;
-        max-width: 400px;
+        max-width: 380px;
         display: flex;
         justify-content: center;
       }
@@ -1728,7 +1829,7 @@
         margin-top: 1.25rem;
         text-align: center;
         width: 100%;
-        max-width: 400px;
+        max-width: 380px;
         margin-left: auto;
         margin-right: auto;
         display: flex;
@@ -1811,6 +1912,9 @@
           height: 100vh;
           min-height: 100vh;
         }
+        #vendorLoginModal .vendor-modal-right {
+          padding: 1rem;
+        }
         #vendorLoginModal .vendor-modal-left {
           min-height: 200px;
           height: 200px;
@@ -1829,6 +1933,9 @@
           font-size: 1rem;
           min-height: 52px;
         }
+        #vendorLoginModal #vendor-form-modal {
+          max-width: 380px;
+        }
         #vendorLoginModal .btn-primary,
         #vendorLoginModal .btn-outline-primary {
           padding: 1rem 1.5rem;
@@ -1846,6 +1953,9 @@
         #vendorLoginModal .vendor-modal-content {
           border-radius: 20px;
         }
+        #vendorLoginModal .vendor-modal-right {
+          padding: 1.5rem 1rem;
+        }
         #vendorLoginModal .vendor-modal-left {
           min-height: 180px;
           border-radius: 20px 20px 0 0;
@@ -1862,6 +1972,9 @@
         font-size: 0.95rem;
           min-height: 52px;
         }
+        #vendorLoginModal #vendor-form-modal {
+          max-width: 380px;
+        }
         #vendorLoginModal .btn-primary,
         #vendorLoginModal .btn-outline-primary {
           padding: 0.875rem 1.25rem;
@@ -1873,11 +1986,22 @@
           font-size: 0.95rem;
           min-height: 52px;
         }
+        /* Ensure close button is always at corner for mobile */
+        #vendorLoginModal .vendor-modal-close {
+          top: 0.75rem !important;
+          right: 0.75rem !important;
+          width: 32px !important;
+          height: 32px !important;
+          font-size: 16px !important;
+        }
       }
       
       @media (max-width: 360px) {
         #vendorLoginModal .vendor-modal-content {
           border-radius: 16px;
+        }
+        #vendorLoginModal .vendor-modal-right {
+          padding: 1.5rem 0.75rem;
         }
         #vendorLoginModal .vendor-modal-left {
           min-height: 160px;
@@ -1895,6 +2019,9 @@
           font-size: 0.9rem;
           min-height: 48px;
         }
+        #vendorLoginModal #vendor-form-modal {
+          max-width: 380px;
+        }
         #vendorLoginModal .btn-primary,
         #vendorLoginModal .btn-outline-primary {
           padding: 0.75rem 1rem;
@@ -1905,6 +2032,14 @@
           padding: 0.75rem 1rem;
           font-size: 0.9rem;
           min-height: 48px;
+        }
+        /* Ensure close button is always at corner for mobile */
+        #vendorLoginModal .vendor-modal-close {
+          top: 0.5rem !important;
+          right: 0.5rem !important;
+          width: 30px !important;
+          height: 30px !important;
+          font-size: 14px !important;
         }
       }
       
@@ -2145,7 +2280,7 @@
         submitBtn.disabled = true;
         btnIcon.textContent = 'hourglass_empty';
         btnIcon.style.animation = 'spin 1s linear infinite';
-        btnText.innerHTML = '🚀 loging in Successfully...';
+            btnText.innerHTML = '🚀 logging in successfully...';
         
         try {
           const response = await fetch('/vendor-login/', {
@@ -2180,7 +2315,7 @@
             submitBtn.disabled = false;
             btnIcon.textContent = 'print';
             btnIcon.style.animation = 'none';
-            btnText.innerHTML = 'Vendor login';
+            btnText.innerHTML = 'Print shop login';
             alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
           }
         } catch (err) {
@@ -2191,7 +2326,7 @@
           submitBtn.disabled = false;
           btnIcon.textContent = 'print';
           btnIcon.style.animation = 'none';
-          btnText.innerHTML = 'Vendor login';
+          btnText.innerHTML = 'Print shop login';
           alert('🚫 Connection failed. Please try again.');
         }
       }
@@ -2224,7 +2359,7 @@
             document.getElementById('vendorSignInBtn').disabled = false;
             document.getElementById('vendorBtnIcon').textContent = 'print';
             document.getElementById('vendorBtnIcon').style.animation = 'none';
-            document.getElementById('vendorBtnText').innerHTML = 'Vendor login';
+            document.getElementById('vendorBtnText').innerHTML = 'Print shop login';
             document.getElementById('vendorEmail').value = '';
             document.getElementById('vendorPassword').value = '';
           });

@@ -1,9 +1,17 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartPrint Admin Dashboard</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'site.webmanifest' %}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -920,7 +928,7 @@
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Passport Photo</span>
-                                <span class="rate-value">25%</span>
+                                <span class="rate-value">15%</span>
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Jumbo Print</span>
@@ -928,15 +936,15 @@
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Gloss Print</span>
-                                <span class="rate-value">22%</span>
+                                <span class="rate-value">12%</span>
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Digital Print</span>
                                 <span class="rate-value">16%</span>
                             </div>
                             <div class="rate-item">
-                                <span class="service-name">A4 Print</span>
-                                <span class="rate-value">14%</span>
+                                <span class="service-name">Lamination</span>
+                                <span class="rate-value">12%</span>
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Golden Emboss</span>
@@ -1158,10 +1166,36 @@
                 </div>
 
                 <div id="contacts-category" class="category-content hidden">
-                    <div class="empty-state">
-                        <i class="fas fa-address-book"></i>
-                        <h3>Contact Data</h3>
-                        <p>Contact management section coming soon...</p>
+                    <div class="data-container">
+                        <div class="data-header">
+                            <i class="fas fa-address-book"></i> Contact Details
+                        </div>
+                        <div class="data-content">
+                            <div id="contacts-loading" class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <p>Loading contact details from R2...</p>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="contacts-table" style="display: none;">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Subject</th>
+                                            <th>Message</th>
+                                            <th>Submitted At</th>
+                                            <th style="text-align:right;">Solve Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="contacts-table-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="contacts-empty" class="empty-state" style="display: none;">
+                                <i class="fas fa-address-book"></i>
+                                <h3>No contacts found</h3>
+                                <p>No contact submissions available.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1988,6 +2022,8 @@
                 // Ensure installations UI is initialized and vendors shown
                 initAvailabilityUI();
                 loadInstallationsVendors();
+            } else if (category === 'contacts') {
+                loadContacts();
             }
         }
 
@@ -2310,6 +2346,100 @@
                     console.error('Error loading transactions:', err);
                     loading.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error loading transactions. Please try again.</p>';
                 });
+        }
+
+        // Load contact details from R2
+        function loadContacts() {
+            const loading = document.getElementById('contacts-loading');
+            const table = document.getElementById('contacts-table');
+            const empty = document.getElementById('contacts-empty');
+
+            if (!loading || !table || !empty) { return; }
+
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            empty.style.display = 'none';
+
+            fetch('/admin-dashboard/contacts/')
+                .then(r => r.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    if (data && data.success && Array.isArray(data.contacts) && data.contacts.length) {
+                        displayContacts(data.contacts);
+                    } else {
+                        empty.style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading contacts:', err);
+                    loading.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error loading contacts. Please try again.</p>';
+                });
+        }
+
+        // Render contacts table
+        function displayContacts(items) {
+            const tbody = document.getElementById('contacts-table-body');
+            const table = document.getElementById('contacts-table');
+            if (!tbody || !table) { return; }
+
+            if (!items || items.length === 0) {
+                document.getElementById('contacts-empty').style.display = 'block';
+                table.style.display = 'none';
+                return;
+            }
+
+            table.style.display = 'table';
+            document.getElementById('contacts-empty').style.display = 'none';
+
+            tbody.innerHTML = items.map(item => `
+                <tr>
+                    <td>${(item.name || '').replace(/</g,'&lt;')}</td>
+                    <td>${(item.email || '').replace(/</g,'&lt;')}</td>
+                    <td>${(item.subject || '').replace(/</g,'&lt;')}</td>
+                    <td>${(item.message || '').replace(/</g,'&lt;')}</td>
+                    <td>${(item.submitted_at || '').replace('T',' ').replace('Z','')}</td>
+                    <td style="text-align:right;">
+                        <button class="primary-btn" onclick="markContactSolved(this)" data-key="${(item.key||'').replace(/'/g, "&#39;")}"><i class=\"fas fa-check\"></i>&nbsp;Mark Solved</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function markContactSolved(btn) {
+            const key = btn.getAttribute('data-key');
+            const row = btn.closest('tr');
+
+            btn.disabled = true;
+            const prev = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>&nbsp;Saving...';
+
+            fetch('/admin-dashboard/contacts/mark-solved/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ key })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove row from table after marking solved
+                    if (row) row.remove();
+                    // If table becomes empty, show empty state
+                    const tbody = document.getElementById('contacts-table-body');
+                    if (tbody && tbody.children.length === 0) {
+                        document.getElementById('contacts-table').style.display = 'none';
+                        document.getElementById('contacts-empty').style.display = 'block';
+                    }
+                } else {
+                    alert('Failed to mark solved: ' + (data.error || 'unknown error'));
+                    btn.disabled = false;
+                    btn.innerHTML = prev;
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = prev;
+            });
         }
 
         // Display transactions in table

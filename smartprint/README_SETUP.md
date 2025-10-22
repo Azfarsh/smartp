@@ -131,6 +131,20 @@ To modify settings after installation:
 - All network communications use the same security as the original script
 - No additional security risks are introduced
 
+## Important Configuration Notes
+
+### Website URL Updates
+Before deploying to production, ensure you update all localhost references to your production domain:
+- Update email templates in `print/views.py` (send_welcome_email function)
+- Update any hardcoded localhost URLs in templates
+- Update API endpoints in vendor client configuration
+- Current production URL: `https://printmax.onrender.com/`
+
+### Email Setup
+- Update the website name and URLs in all email templates
+- Ensure all links point to the production domain instead of localhost
+- Test email functionality after deployment
+
 ## Support
 
 If you encounter issues:
