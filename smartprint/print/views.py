@@ -2883,6 +2883,10 @@ def upload_to_r2(request):
                             "key": pricing_key,
                             "quality": breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
                         }
+                        
+                        # Include platform_profit if available in original pricing_details
+                        if 'platform_profit' in pricing_details:
+                            compact_pricing['platform_profit'] = pricing_details['platform_profit']
                         file_metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
                         
                         # Also store individual fields for better visibility
@@ -4105,6 +4109,10 @@ def verify_razorpay_payment(request):
                             'key': pricing_key,
                             'quality': breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
                         }
+                        
+                        # Include platform_profit if available in original pricing_details
+                        if 'platform_profit' in pricing_details:
+                            compact_pricing['platform_profit'] = pricing_details['platform_profit']
                         metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
                         metadata['total_price'] = str(pricing_details.get('total_price', 0))
                     except Exception:
