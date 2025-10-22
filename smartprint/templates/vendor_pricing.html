@@ -2,9 +2,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- dotLottie player for .lottie animations -->
+    <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Pricing Setup - PrintMax</title>
+    <title>Print Shop Pricing Setup - PrintMax</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'site.webmanifest' %}">
 
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -1335,22 +1344,81 @@
     </style>
 </head>
 <body>
+    <!-- Success Overlay (shared) -->
+    <div id="successOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter: blur(3px); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:20px; padding:24px 28px; box-shadow:0 12px 40px rgba(0,0,0,0.2); width:min(92vw,440px); text-align:center;">
+            <dotlottie-player id="successAnim" src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto 8px;"></dotlottie-player>
+            <div id="successText" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; color:#111827; margin-top:4px;">Success</div>
+        </div>
+    </div>
+    <!-- Timeline wrapper hidden until pricing submit success (mirrors register/documents) -->
+    <!-- Post-submit timeline identical to register page design -->
+    <div class="timeline-container" id="timelineContainer" style="display:none;">
+        <div class="timeline-header">
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" style="height: 36px; width: auto; margin-right: 10px;">
+                <h2 class="timeline-title" style="margin: 0;">3 Phase Timeline for Print Shop Onboarding</h2>
+            </div>
+            <p class="timeline-subtitle">Complete these steps to start receiving orders from customers</p>
+        </div>
+        <div class="timeline">
+            <div class="timeline-item completed">
+                <div class="timeline-icon"><i class="fas fa-user-check"></i></div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title-text">Registration Complete</h3>
+                    <p class="timeline-description">Account created and verified</p>
+                    <div class="timeline-actions">
+                        <span class="timeline-button" style="background: var(--success); color: white; cursor: default;">
+                            <span class="material-icons">check_circle</span>
+                            Done
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item current">
+                <div class="timeline-icon"><i class="fas fa-calculator"></i></div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title-text">Setup Pricing</h3>
+                    <p class="timeline-description">Configure your service rates</p>
+                    <div class="timeline-actions">
+                        <span class="timeline-button" style="background:#ffffff; color: var(--primary); cursor: default;">
+                            <span class="material-icons">check_circle</span>
+                            Saved
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item pending">
+                <div class="timeline-icon"><i class="fas fa-file-upload"></i></div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title-text">Upload Documents</h3>
+                    <p class="timeline-description">Submit KYC and bank details</p>
+                    <div class="timeline-actions">
+                        <a href="/vendor_documents" class="timeline-button" id="continueDocumentsBtn">
+                            <span class="material-icons">arrow_forward</span>
+                            Continue
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container">
         <!-- Header -->
         <div class="header">
             <div class="header-content">
             <h1>
                     <i class="fas fa-calculator icon"></i>
-                Vendor Pricing Setup
+                Print Shop Pricing Setup
             </h1>
             <p>Configure your service pricing to start receiving orders from customers</p>
             </div>
         </div>
 
-        <!-- Vendor Information -->
+        <!-- Print Shop Information -->
         <div class="vendor-info">
             <div class="vendor-image" id="vendorImageContainer">
-                <img src="{% static 'images/priceimage.png' %}" alt="Vendor Shop" id="vendorImage" onerror="showDefaultAvatar()">
+                <img src="{% static 'images/priceimage.png' %}" alt="Print Shop" id="vendorImage" onerror="showDefaultAvatar()">
             </div>
             <div class="vendor-details">
                 <h3>
@@ -1385,7 +1453,7 @@
                     </div>
                     <div class="detail-item">
                         <i class="fas fa-id-card icon"></i>
-                        <span class="label">Vendor ID:</span>
+                        <span class="label">Print Shop ID:</span>
                         <span class="value">{% if vendor_details %}{{ vendor_details.vendor_id }}{% else %}-{% endif %}</span>
                     </div>
                 </div>
@@ -2012,7 +2080,7 @@
         <div class="timeline-header">
             <img src="{% static 'images/printmaxdaylogo.png' %}" alt="PrintMax Logo" style="height: 36px; width: auto;">
             <div>
-                <h2 class="timeline-title">3 Phase Timeline for Vendor Onboarding</h2>
+                <h2 class="timeline-title">3 Phase Timeline for Print Shop Onboarding</h2>
                 <p class="timeline-subtitle">Complete these steps to start receiving orders from customers</p>
             </div>
         </div>
@@ -2099,7 +2167,7 @@
         // Function to show default avatar when image fails to load
         function showDefaultAvatar() {
             const container = document.getElementById('vendorImageContainer');
-            const vendorName = document.querySelector('#vendorName')?.textContent || 'Vendor';
+            const vendorName = document.querySelector('#vendorName')?.textContent || 'Print Shop';
             const initials = vendorName.split(' ').map(word => word.charAt(0)).join('').toUpperCase().substring(0, 2);
             
             container.innerHTML = `
@@ -2115,7 +2183,7 @@
                 // Try to get vendor email from Django template context
                 vendorEmail = '{{ vendor_email }}';
                 if (!vendorEmail && !isFromDashboard()) {
-                    alert('Vendor not found. Please complete registration first.');
+                    alert('Print shop not found. Please complete registration first.');
                     window.location.href = '/vendor-register/';
                     return;
                 }
@@ -2712,12 +2780,56 @@ window.addEventListener('DOMContentLoaded', function() {
                     vendorImage.onerror = showDefaultAvatar;
                 }
             }
+            // Fallback: if email in URL but fields missing, still inject email
+            if (!data.vendor_email && vendorEmail) {
+                const emailSpan = document.getElementById('vendorEmail');
+                if (emailSpan) emailSpan.textContent = vendorEmail;
+            }
         })
         .catch(() => {
-            document.getElementById('vendorDetails').innerHTML = '<span style="color: var(--text-secondary);">Could not load vendor details.</span>';
+            const vendorDetailsDiv = document.getElementById('vendorDetails');
+            if (vendorDetailsDiv) {
+                vendorDetailsDiv.innerHTML = '<span style="color: var(--text-secondary);">Could not load vendor details.</span>';
+            }
         });
 });
 </script>
+
+<script>
+// Show success overlay when redirected back with success flag after pricing save
+(function(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const done = params.get('success') === '1' || params.get('status') === 'ok';
+    const vendorEmail = params.get('vendorEmail') || '';
+    // Wire Continue to Documents with vendor email param so documents POST has email
+    const cont = document.getElementById('continueDocumentsBtn');
+    if (cont) {
+      let href = '/vendor_documents';
+      if (vendorEmail) href += ('?email=' + encodeURIComponent(vendorEmail));
+      cont.setAttribute('href', href);
+    }
+    if(done){
+      const overlay = document.getElementById('successOverlay');
+      const txt = document.getElementById('successText');
+      if(overlay){
+        if(txt) txt.textContent = 'Pricing saved successfully';
+        overlay.style.display = 'flex';
+        setTimeout(()=>{ overlay.style.display='none'; }, 2200);
+      }
+      // reveal the post-submit timeline
+      try{
+        var tl = document.getElementById('timelineContainer');
+        if(tl){ tl.style.display = 'block'; tl.scrollIntoView({behavior:'smooth', block:'center'}); }
+      }catch(_){ }
+    }
+  }catch(_){ }
+})();
+</script>
+
+<!-- After pricing submit, you should redirect back with ?success=1 to show overlay.
+     Additionally, if you need to render the 3-stage timeline after pricing, ensure
+     your DOM has the same timeline block as register/documents and toggle display here. -->
 </body>
 </html>
 </script>

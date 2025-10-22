@@ -694,10 +694,10 @@ def generate_vendor_reports():
                     # Generate report for this vendor
                     generate_single_vendor_report(vendor_id, current_time)
             
-            print("✅ All vendor reports generated successfully")
+            print("All vendor reports generated successfully")
             
     except Exception as e:
-        print(f"❌ Error generating vendor reports: {str(e)}")
+        print(f"Error generating vendor reports: {str(e)}")
 
 
 def generate_single_vendor_report(vendor_id, start_date, end_date, vendor_name, vendor_email):
@@ -748,11 +748,11 @@ def generate_single_vendor_report(vendor_id, start_date, end_date, vendor_name, 
             print(f"📊 Generated report for vendor {vendor_id}: {vendor_docs_data.get('total_documents', 0)} documents, ₹{vendor_docs_data.get('total_cost', 0.0)}")
             return True
         else:
-            print(f"⚠️ No documents found for vendor {vendor_id} in period {start_date} to {end_date}, skipping report generation")
+            print(f"No documents found for vendor {vendor_id} in period {start_date} to {end_date}, skipping report generation")
             return False
             
     except Exception as e:
-        print(f"❌ Error generating report for vendor {vendor_id}: {str(e)}")
+        print(f"Error generating report for vendor {vendor_id}: {str(e)}")
         return False
 
 
@@ -1120,7 +1120,7 @@ def get_existing_reports(s3, vendor_email):
 def generate_comprehensive_reports():
     """Generate comprehensive reports for all vendors from pricing.json creation date"""
     try:
-        print("🔄 Generating comprehensive reports for all vendors...")
+        print("Generating comprehensive reports for all vendors...")
         
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -1147,7 +1147,7 @@ def generate_comprehensive_reports():
                 print(f"  ⚠️ No pricing.json found for {vendor_email}, skipping")
                 continue
             
-            print(f"  📅 Pricing created on: {pricing_creation_date}")
+            print(f"  Pricing created on: {pricing_creation_date}")
             
             # Get existing reports
             existing_reports = get_existing_reports(s3, vendor_email)
@@ -1170,7 +1170,7 @@ def generate_comprehensive_reports():
                 
                 # Check if report already exists
                 if period_filename in existing_reports:
-                    print(f"  ✅ Report for {period_filename} already exists, skipping")
+                    print(f"  Report for {period_filename} already exists, skipping")
                 else:
                     # Generate report for this period
                     success = generate_single_vendor_report(
@@ -1186,12 +1186,12 @@ def generate_comprehensive_reports():
                 # Move to next period (2 days after the start of current period)
                 current_period_start = current_period_start + datetime.timedelta(days=2)
             
-            print(f"  ✅ Generated {reports_generated} new reports for {vendor_name}")
+            print(f"  Generated {reports_generated} new reports for {vendor_name}")
         
-        print("\n✅ Comprehensive report generation completed!")
+        print("\nComprehensive report generation completed!")
         
     except Exception as e:
-        print(f"❌ Error generating comprehensive reports: {str(e)}")
+        print(f"Error generating comprehensive reports: {str(e)}")
 
 
 def trigger_report_generation():
@@ -1201,7 +1201,7 @@ def trigger_report_generation():
         generate_comprehensive_reports()
         return True
     except Exception as e:
-        print(f"❌ Error in manual report generation: {str(e)}")
+        print(f"Error in manual report generation: {str(e)}")
         return False
 
 
@@ -1437,21 +1437,98 @@ def admin_update_report_payment_status(request):
 def admin_contacts_data(request):
     """Get all contacts data for admin dashboard"""
     try:
-        # This would typically come from a contacts model
-        # For now, return placeholder data
-        contacts_data = []
-        
-        return JsonResponse({
-            'success': True,
-            'contacts': contacts_data,
-            'total_count': len(contacts_data)
-        })
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        # Contacts stored as individual JSON files under contact_details/
+        prefix = 'contact_details/'
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
+
+        contacts = []
+        if 'Contents' in objects:
+            for obj in objects['Contents']:
+                key = obj['Key']
+                if not key.endswith('.json'):
+                    continue
+                try:
+                    resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                    data = json.loads(resp['Body'].read().decode('utf-8'))
+                    solved_status = data.get('solved_status', '')
+                    # Strictly include only those with explicit solved_status == 'no'
+                    if str(solved_status).lower() == 'no':
+                        contacts.append({
+                            'name': data.get('name', ''),
+                            'email': data.get('email', ''),
+                            'subject': data.get('subject', ''),
+                            'message': data.get('message', ''),
+                            'submitted_at': data.get('submitted_at', ''),
+                            'solved_status': solved_status,
+                            'key': key
+                        })
+                except Exception as e:
+                    # Skip unreadable items
+                    continue
+
+        # Sort newest first by submitted_at or by LastModified fallback
+        try:
+            contacts.sort(key=lambda x: x.get('submitted_at', ''), reverse=True)
+        except Exception:
+            pass
+
+        return JsonResponse({'success': True, 'contacts': contacts, 'total_count': len(contacts)})
         
     except Exception as e:
         return JsonResponse({
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@staff_member_required
+@csrf_exempt
+def admin_mark_contact_solved(request):
+    """Mark a contact record as solved."""
+    try:
+        if request.method != 'POST':
+            return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+        try:
+            payload = json.loads(request.body or '{}')
+        except Exception:
+            payload = {}
+
+        key = (payload.get('key') or '').strip()
+        if not key:
+            return JsonResponse({'success': False, 'error': 'Missing key'}, status=400)
+
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        # Fetch existing contact json
+        resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        data = json.loads(resp['Body'].read().decode('utf-8'))
+
+        # Update fields
+        data['solved_status'] = 'yes'
+        data['solved_at'] = datetime.datetime.now().isoformat()
+
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=key,
+            Body=json.dumps(data, ensure_ascii=False, indent=2),
+            ContentType='application/json'
+        )
+
+        return JsonResponse({'success': True, 'key': key})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @staff_member_required

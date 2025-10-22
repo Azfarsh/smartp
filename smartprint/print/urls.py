@@ -36,6 +36,7 @@ urlpatterns = [
     path('vendor-register/', views.vendor_register, name='vendor_register'),
     path('vendor-about/', views.vendor_about, name='vendor-about'),
     path('vendor-pricing/', vendor_pricing, name='vendor_pricing'),
+    path('upload-vendor-documents/', views.upload_vendor_documents, name='upload_vendor_documents'),
     path('contact/', contact_view, name='contact'),
     path('save-contact-details/', save_contact_details, name='save_contact_details'),
     path('vendor-info/<str:vendor_id>/', vendor_info, name='vendor_info'),
@@ -47,7 +48,7 @@ urlpatterns = [
     path('assign-printer-to-job/', views.assign_printer_to_job, name='assign_printer_to_job'),
     path('debug-vendor-registrations/', views.debug_vendor_registrations, name='debug_vendor_registrations'),
     path('get-vendor-pricing/', get_vendor_pricing, name='get_vendor_pricing'),
-    #path('get-user-notifications/', get_user_notifications_api, name='get_user_notifications'),
+    path('get-user-notifications/', views.get_user_notifications, name='get_user_notifications'),
     path('mark-notification-read/', mark_notification_read, name='mark_notification_read'),
     path('get-vendor-details/', views.get_vendor_details, name='get_vendor_details'),
     path('enhance-passport-photo/', enhance_passport_photo, name='enhance_passport_photo'),
@@ -64,7 +65,7 @@ urlpatterns = [
     path('calculate-passport-photo-pricing/', calculate_passport_photo_pricing, name='calculate_passport_photo_pricing'),
     path('calculate-a4-print-pricing/', calculate_a4_print_pricing, name='calculate_a4_print_pricing'),
     path('calculate-golden-emboss-pricing/', calculate_golden_emboss_pricing, name='calculate_golden_emboss_pricing'),
-    # Razorpay payment endpoints
+     path('vendor_documents', views.vendor_documents, name='vendor_documents'),
     path('payments/create-order/', create_razorpay_order, name='create_razorpay_order'),
     path('payments/verify/', verify_razorpay_payment, name='verify_razorpay_payment'),
     # Google Drive integration endpoints
@@ -86,6 +87,7 @@ urlpatterns += [
     path('test-profile-image-url/', test_profile_image_url, name='test_profile_image_url'),
     path('test-r2-url-generation/', test_r2_url_generation, name='test_r2_url_generation'),
     path('test-r2-simple/', test_r2_simple, name='test_r2_simple'),
+    path('generate-fresh-preview-url/', views.generate_fresh_preview_url, name='generate_fresh_preview_url'),
     path('list-vendor-folder/', list_vendor_folder, name='list_vendor_folder'),
     # Appointment booking removed
     # New job management endpoints
@@ -105,7 +107,6 @@ urlpatterns += [
     # Connection monitoring endpoints
     path('vendor-connection-heartbeat/', views.vendor_connection_heartbeat, name='vendor_connection_heartbeat'),
     path('get-vendor-connection-status/', views.get_vendor_connection_status, name='get_vendor_connection_status'),
-    path('get-vendor-notifications/', views.get_vendor_notifications, name='get_vendor_notifications'),
     path('mark-job-rendered/', views.mark_job_rendered, name='mark_job_rendered'),
     # Admin dashboard endpoints
     path('admin-dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
@@ -114,6 +115,7 @@ urlpatterns += [
     path('admin-dashboard/transactions/', admin_views.admin_transactions_data, name='admin_transactions_data'),
     path('admin-dashboard/transactions/update-payment-status/', admin_views.admin_update_report_payment_status, name='admin_update_report_payment_status'),
     path('admin-dashboard/contacts/', admin_views.admin_contacts_data, name='admin_contacts_data'),
+    path('admin-dashboard/contacts/mark-solved/', admin_views.admin_mark_contact_solved, name='admin_mark_contact_solved'),
     path('admin-dashboard/installations/', admin_views.admin_installations_data, name='admin_installations_data'),
     path('admin-dashboard/installations/list/', admin_views.admin_installations_list, name='admin_installations_list'),
     path('admin-dashboard/installations/update/', admin_views.admin_installations_update, name='admin_installations_update'),

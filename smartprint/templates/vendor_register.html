@@ -4,7 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Join PrintMax - Partner Registration</title>
+    <title>Join PrintMax - Print Shop Registration</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'site.webmanifest' %}">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome for better icons -->
@@ -1108,8 +1115,17 @@
         }
 
     </style>
+    <!-- dotLottie player for .lottie animations -->
+    <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
 </head>
 <body>
+    <!-- Success Overlay (shared) -->
+    <div id="successOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter: blur(3px); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:20px; padding:24px 28px; box-shadow:0 12px 40px rgba(0,0,0,0.2); width:min(92vw,440px); text-align:center;">
+            <dotlottie-player id="successAnim" src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto 8px;"></dotlottie-player>
+            <div id="successText" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; color:#111827; margin-top:4px;">Success</div>
+        </div>
+    </div>
     <div class="container">
         <div class="registration-card">
             <!-- Hero Section -->
@@ -1119,7 +1135,7 @@
                          <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" class="hero-logo">
                     </div>
                     <h1 class="hero-title">Join PrintMax</h1>
-                    <p class="hero-subtitle">Register your printing shop with us and reach more customers</p>
+                    <p class="hero-subtitle">Register your print shop with us and reach more customers</p>
                     <ul class="hero-features">
                         <li>
                             <span class="material-icons">check_circle</span>
@@ -1332,9 +1348,9 @@
                     </form>
 
                     <div class="back-link">
-                        <a href="/login/">
+                        <a href="/">
                             <span class="material-icons">arrow_back</span>
-                            Back to Login
+                            Back to Home
                         </a>
                     </div>
             </div>
@@ -1347,8 +1363,8 @@
                    <div class="animation-icon">
                        <span class="material-icons">print</span>
                    </div>
-                 <h3 class="animation-title">Registering You as Vendor</h3>
-                 <p class="animation-description">Please wait while we set up your vendor account...</p>
+                 <h3 class="animation-title">Registering Your Print Shop</h3>
+                 <p class="animation-description">Please wait while we set up your print shop account...</p>
                  <div class="animation-progress">
                      <div class="animation-progress-bar"></div>
                 </div>
@@ -1356,12 +1372,12 @@
         </div>
     </div>
 
-    <!-- Timeline Container - Outside registration card -->
-    <div class="timeline-container" id="timelineContainer">
+    <!-- Timeline Container - Outside registration card (hidden initially; only shown after registration success) -->
+    <div class="timeline-container" id="timelineContainer" style="display:none;">
         <div class="timeline-header">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
                 <img src="{% static 'images/Printmaxdarklogo.png' %}" alt="PrintMax Logo" style="height: 36px; width: auto; margin-right: 10px;">
-                <h2 class="timeline-title" style="margin: 0;">3 Phase Timeline for Vendor Onboarding</h2>
+                <h2 class="timeline-title" style="margin: 0;">3 Phase Timeline for Print Shop Onboarding</h2>
             </div>
             <p class="timeline-subtitle">Complete these steps to start receiving orders from customers</p>
         </div>
@@ -1405,21 +1421,21 @@
                 </div>
             </div>
 
-            <!-- Phase 3: Dashboard Login (Pending) -->
+            <!-- Phase 3: Documents Upload (Pending) -->
             <div class="timeline-item pending">
                 <div class="timeline-icon">
-                    <i class="fas fa-tachometer-alt"></i>
+                    <i class="fas fa-file-upload"></i>
                 </div>
                 <div class="timeline-content">
-                    <h3 class="timeline-title-text">Login to Dashboard</h3>
+                    <h3 class="timeline-title-text">Upload Documents</h3>
                     <p class="timeline-description">
-                        Check email for login details
+                        Submit KYC and bank details
                     </p>
                     <div class="timeline-actions">
-                        <a href="/vendor-login/" class="timeline-button">
-                            <span class="material-icons">login</span>
-                            Login to Dashboard
-                        </a>
+                        <span class="timeline-button" style="opacity:0.8; cursor: not-allowed;">
+                            <span class="material-icons">lock</span>
+                            Pending
+                        </span>
                     </div>
                 </div>
             </div>
@@ -1592,13 +1608,21 @@
                 updatePasswordStrength(this.value);
             });
 
-            // Add validation on input
+            // Add validation on input and turn fields green when valid
             Object.keys(validations).forEach(fieldId => {
                 const field = document.getElementById(fieldId);
                 if (field) {
-                    field.addEventListener('blur', () => {
-                        validateField(fieldId, fieldId + 'Error', validations[fieldId]);
-                    });
+                    const run = () => {
+                        const isValid = validateField(fieldId, fieldId + 'Error', validations[fieldId]);
+                        if (isValid) {
+                            field.style.borderColor = 'var(--success)';
+                            field.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.12)';
+                        } else {
+                            field.style.boxShadow = '';
+                        }
+                    };
+                    field.addEventListener('input', run);
+                    field.addEventListener('blur', run);
                 }
             });
 
@@ -1694,14 +1718,15 @@
              // Request location permission on page load
              requestLocationPermission();
 
-            // Timeline continue button functionality
-            document.getElementById('continuePricingBtn').addEventListener('click', function(e) {
+            // Timeline continue button functionality (to Pricing)
+            const continuePricingBtn = document.getElementById('continuePricingBtn');
+            if (continuePricingBtn) continuePricingBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const email = document.getElementById('email').value;
                 if (email) {
                     // Add a small delay to ensure the notification is visible
                     setTimeout(() => {
-                        window.location.href = `/vendor-pricing/?vendorEmail=${encodeURIComponent(email)}`;
+                        window.location.href = `/vendor-pricing?vendorEmail=${encodeURIComponent(email)}`;
                     }, 1000);
                 } else {
                     showNotification('Email not found. Please try registering again.', 'error');
@@ -1754,11 +1779,7 @@
             
              // Coordinates are ready to be sent
             
-            // Validate that we have actual coordinates (not default 0,0)
-            if (latitude === '0' && longitude === '0') {
-                showNotification('⚠️ Location not detected. Please enable location access and try again.', 'warning');
-                return;
-            }
+            // Allow submit even if location is unavailable (non-blocking like contact form)
 
             // Prevent duplicate submits without changing button design
             if (window.__registerSubmitting) return;
@@ -1835,6 +1856,8 @@
                      // Show appropriate message based on registration status
                      if (data.already_registered) {
                          showNotification('✅ You are already registered! Continuing to pricing setup...', 'success');
+                     } else if (data.fallback_mode) {
+                         showNotification('✅ Registration successful! (Basic mode - proceeding to pricing setup...)', 'success');
                      } else {
                          showNotification('✅ Registration successful! Proceeding to pricing setup...', 'success');
                      }
@@ -1843,6 +1866,17 @@
                      const animation = document.getElementById('registrationAnimation');
                      animation.style.display = 'none';
                      
+                     // Success overlay
+                     try {
+                         const overlay = document.getElementById('successOverlay');
+                         const txt = document.getElementById('successText');
+                         if (overlay) {
+                             if (txt) txt.textContent = 'Registration successful';
+                             overlay.style.display = 'flex';
+                             setTimeout(()=>{ overlay.style.display='none'; }, 2200);
+                         }
+                     } catch(_) {}
+
                      // Hide the entire registration card and show only timeline
                      document.querySelector('.registration-card').style.display = 'none';
                      document.getElementById('timelineContainer').style.display = 'block';

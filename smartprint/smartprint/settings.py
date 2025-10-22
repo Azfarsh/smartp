@@ -124,11 +124,11 @@ try:
         # For now, we'll initialize without credentials since we don't have the service account file
         # You'll need to get the service account key from Firebase Console
         firebase_admin.initialize_app()
-        print("✅ Firebase Admin SDK initialized successfully (without credentials)")
+        print("Firebase Admin SDK initialized successfully (without credentials)")
     else:
-        print("✅ Firebase Admin SDK already initialized")
+        print("Firebase Admin SDK already initialized")
 except Exception as e:
-    print(f"❌ Error initializing Firebase Admin SDK: {str(e)}")
+    print(f"Error initializing Firebase Admin SDK: {str(e)}")
 
 # Channel layers configuration
 CHANNEL_LAYERS = {

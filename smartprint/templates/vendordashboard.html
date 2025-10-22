@@ -1,10 +1,24 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PrintMax Vendor Dashboard - Manage print jobs efficiently">
-    <title>PrintMax Vendor Dashboard</title>
+    <meta name="description" content="PrintMax Print Shop Dashboard - Manage print jobs efficiently">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    <title>PrintMax Print Shop Dashboard</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'site.webmanifest' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Material+Icons&display=swap" rel="stylesheet">
     <style>
@@ -140,7 +154,7 @@
             font-style: italic;
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            font-size: 1.1rem; /* slightly smaller */
+            font-size: 1.4rem; /* match home page */
             line-height: 1;
             margin-left: 8px;
             display: inline-flex;
@@ -182,7 +196,7 @@
             border-bottom: 1px solid var(--outline);
             display: flex;
             align-items: center;
-            padding: 0 24px;
+            padding: 0 14px;
             z-index: 1000;
             transition: all 0.3s ease;
         }
@@ -252,13 +266,72 @@
             margin-left: auto;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 480px) {
+            .header-actions {
+                gap: 4px;
+            }
+            
+            /* Mobile logo adjustments */
+            .logo {
+                gap: 6px;
+                font-size: 18px;
+            }
+            
+            .logo .logo-img-light,
+            .logo .logo-img-dark {
+                height: 20px !important;
+            }
+            
+            .logo .brand-wordmark {
+                font-size: 20px;
+            }
+            
+            /* Mobile theme toggle adjustments */
+            .theme-toggle {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+                padding: 4px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .header-actions {
+                gap: 2px;
+            }
+            
+            /* Extra small mobile logo adjustments */
+            .logo {
+                gap: 4px;
+                font-size: 16px;
+            }
+            
+            .logo .logo-img-light,
+            .logo .logo-img-dark {
+                height: 18px !important;
+            }
+            
+            .logo .brand-wordmark {
+                font-size: 18px;
+            }
+            
+            /* Extra small mobile theme toggle */
+            .theme-toggle {
+                width: 24px;
+                height: 24px;
+                font-size: 10px;
+                padding: 3px;
+            }
         }
 
         /* Circular notification button with strong border */
         .notification-bell .header-btn {
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             border: 1.5px solid #111827;
             background: var(--surface);
@@ -291,8 +364,8 @@
             background: none;
             border: none;
             color: var(--on-surface);
-            font-size: 1.2rem;
-            padding: 8px;
+            font-size: 1rem;
+            padding: 6px;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -435,6 +508,269 @@
         /* Hide connection checker chip from navbar */
         .header .connection-status { display: none !important; }
 
+        /* Availability Toggle Styles */
+        .availability-toggle {
+            position: relative;
+            width: 70px;
+            height: 32px;
+            background: #10B981;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 6px;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 11px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            margin-right: 8px;
+            flex-shrink: 0; /* Prevent shrinking in flexbox */
+        }
+
+        .availability-toggle:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .availability-toggle::before {
+            content: '';
+            position: absolute;
+            right: 3px;
+            width: 26px;
+            height: 26px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        .availability-toggle.offline {
+            background: #e74c3c;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+
+        .availability-toggle.offline:hover {
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+        }
+
+        .availability-toggle.offline::before {
+            right: calc(100% - 29px);
+            animation: pulse-red 2s infinite;
+        }
+
+        .availability-toggle .toggle-text {
+            position: relative;
+            z-index: 3;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-size: 11px;
+        }
+
+        .availability-toggle .toggle-text.online-text {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .availability-toggle .toggle-text.offline-text {
+            opacity: 0;
+            transform: translateX(15px);
+            position: absolute;
+            right: 8px;
+        }
+
+        .availability-toggle.offline .toggle-text.online-text {
+            opacity: 0;
+            transform: translateX(-15px);
+        }
+
+        .availability-toggle.offline .toggle-text.offline-text {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Offline state styling */
+        .section-title.offline {
+            color: #e74c3c;
+        }
+
+        .section-title.offline i {
+            animation: pulse-red 2s infinite;
+        }
+
+        .jobs-container.offline::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(231, 76, 60, 0.05);
+            border: 2px dashed rgba(231, 76, 60, 0.3);
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .jobs-container.offline {
+            position: relative;
+            opacity: 0.7;
+        }
+
+        /* Mobile responsiveness for availability toggle */
+        @media (max-width: 768px) {
+            .availability-toggle {
+                width: 55px !important;
+                height: 30px !important;
+                font-size: 7px !important;
+                margin-right: 1px !important;
+                padding: 0 3px !important;
+                min-width: 55px !important;
+                max-width: 35px !important;
+            }
+            
+            /* Tablet mobile logo adjustments */
+            .logo {
+                gap: 8px;
+                font-size: 20px;
+            }
+            
+            .logo .logo-img-light,
+            .logo .logo-img-dark {
+                height: 22px !important;
+            }
+            
+            .logo .brand-wordmark {
+                font-size: 18px;
+            }
+            
+            /* Tablet mobile theme toggle */
+            .theme-toggle {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+                padding: 8px;
+            }
+            
+            .availability-toggle::before {
+                width: 22px;
+                height: 22px;
+                right: 3px;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 25px);
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .availability-toggle {
+                width: 55px !important;
+                height: 30px !important;
+                font-size: 7px !important;
+                margin-right: 1px !important;
+                padding: 0 3px !important;
+                min-width: 55px !important;
+                max-width: 35px !important;
+                flex-shrink: 1 !important;
+                flex-grow: 0 !important;
+                flex-basis: 55px !important;
+            }
+            
+            .availability-toggle::before {
+                width: 10px !important;
+                height: 10px !important;
+                right: 1px !important;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 11px) !important;
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .availability-toggle {
+                width: 55px !important;
+                height: 30px !important;
+                font-size: 7px !important;
+                margin-right: 1px !important;
+                padding: 0 3px !important;
+                min-width: 55px !important;
+                max-width: 35px !important;
+                flex-shrink: 1 !important;
+                flex-grow: 0 !important;
+                flex-basis: 55px !important;
+            }
+            
+            .availability-toggle::before {
+                width: 8px !important;
+                height: 8px !important;
+                right: 1px !important;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 9px) !important;
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+        }
+
+        @media (max-width: 320px) {
+            .availability-toggle {
+                width: 55px !important;
+                height: 30px !important;
+                font-size: 7px !important;
+                margin-right: 1px !important;
+                padding: 0 3px !important;
+                min-width: 55px !important;
+                max-width: 35px !important;
+                flex-shrink: 1 !important;
+                flex-grow: 0 !important;
+                flex-basis: 55px !important;
+            }
+            
+            .availability-toggle::before {
+                width: 6px !important;
+                height: 6px !important;
+                right: 1px !important;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 7px) !important;
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+        }
+
         .theme-toggle:hover {
             background: var(--surface-container-high);
             transform: scale(1.1);
@@ -442,7 +778,7 @@
 
         .availability-toggle {
             position: relative;
-            width: 120px;
+            width: 100px;
             height: 40px;
             background: #10B981;
             border: none;
@@ -526,6 +862,103 @@
         @keyframes pulse-red {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        /* Mobile Override for Availability Toggle - Must be after duplicate rules */
+        @media (max-width: 480px) {
+            .availability-toggle {
+                width: 55px !important;
+                height: 30px !important;
+                font-size: 7px !important;
+                margin-right: 1px !important;
+                padding: 0 3px !important;
+                min-width: 55px !important;
+                max-width: 35px !important;
+                flex-shrink: 1 !important;
+                flex-grow: 0 !important;
+                flex-basis: 35px !important;
+                border-radius: 10px !important;
+            }
+            
+            .availability-toggle::before {
+                width: 14px !important;
+                height: 14px !important;
+                right: 2px !important;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 16px) !important;
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .availability-toggle {
+                width: 32px !important;
+                height: 25px !important;
+                font-size: 6px !important;
+                margin-right: 1px !important;
+                padding: 0 2px !important;
+                min-width: 40px !important;
+                max-width: 32px !important;
+                flex-shrink: 1 !important;
+                flex-grow: 0 !important;
+                flex-basis: 32px !important;
+                border-radius: 9px !important;
+            }
+            
+            .availability-toggle::before {
+                width: 12px !important;
+                height: 12px !important;
+                right: 2px !important;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 14px) !important;
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+        }
+
+        @media (max-width: 320px) {
+            .availability-toggle {
+                width: 30px !important;
+                height: 25px !important;
+                font-size: 5px !important;
+                margin-right: 1px !important;
+                padding: 0 2px !important;
+                min-width: 40px !important;
+                max-width: 30px !important;
+                flex-shrink: 1 !important;
+                flex-grow: 0 !important;
+                flex-basis: 30px !important;
+                border-radius: 8px !important;
+            }
+            
+            .availability-toggle::before {
+                width: 10px !important;
+                height: 10px !important;
+                right: 2px !important;
+            }
+            
+            .availability-toggle.offline::before {
+                right: calc(100% - 12px) !important;
+            }
+            
+            .availability-toggle .toggle-text {
+                font-size: 8px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
         }
 
         /* Connection Status Indicator */
@@ -1152,7 +1585,12 @@
         }
         .job-card.compact .job-token { 
             font-size: 11px; 
-            padding: 4px 8px; 
+            padding: 6px 10px; 
+            border-radius: 16px;
+        }
+
+        .job-card.compact .job-token::before {
+            font-size: 12px;
         }
         .job-card.compact .job-status { 
             font-size: 10px; 
@@ -1207,6 +1645,121 @@
             justify-content: center;
             font-weight: 600;
         }
+
+        /* Completed job actions styling */
+        .job-card.completed .job-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 12px;
+        }
+
+        .job-card.completed .btn-small {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Completed job hide button removed - using Clear button instead */
+
+        /* General btn-info styling for completed jobs */
+        .job-card.completed .btn-info {
+            background: var(--info);
+            color: var(--on-info);
+            border: none;
+        }
+
+        .job-card.completed .btn-info:hover {
+            background: var(--info-dark);
+            transform: translateY(-1px);
+        }
+
+        /* Job cards - no sliding animation */
+        .job-card {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Animation only for initial load */
+        .job-card.animate-on-load {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideInUp 0.6s ease-out forwards;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Staggered animation delays for job cards - only on initial load */
+        .job-card.animate-on-load:nth-child(1) { animation-delay: 0.1s; }
+        .job-card.animate-on-load:nth-child(2) { animation-delay: 0.2s; }
+        .job-card.animate-on-load:nth-child(3) { animation-delay: 0.3s; }
+        .job-card.animate-on-load:nth-child(4) { animation-delay: 0.4s; }
+        .job-card.animate-on-load:nth-child(5) { animation-delay: 0.5s; }
+        .job-card.animate-on-load:nth-child(6) { animation-delay: 0.6s; }
+        .job-card.animate-on-load:nth-child(7) { animation-delay: 0.7s; }
+        .job-card.animate-on-load:nth-child(8) { animation-delay: 0.8s; }
+        .job-card.animate-on-load:nth-child(9) { animation-delay: 0.9s; }
+        .job-card.animate-on-load:nth-child(10) { animation-delay: 1.0s; }
+        .job-card.animate-on-load:nth-child(11) { animation-delay: 1.1s; }
+        .job-card.animate-on-load:nth-child(12) { animation-delay: 1.2s; }
+
+        /* Loading animation for job sections */
+        .jobs-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 200px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--outline);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Section loading state */
+        .section-loading .jobs-grid {
+            display: none;
+        }
+
+        .section-loading .jobs-loading {
+            display: flex;
+        }
+
+        /* Hide loading when jobs are rendered */
+        .section-loaded .jobs-loading {
+            display: none;
+        }
+
+        .section-loaded .jobs-grid {
+            display: grid;
+        }
+
         @media (max-width: 1400px) { .jobs-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
         @media (max-width: 1200px) { .jobs-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
         @media (max-width: 768px) { .jobs-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
@@ -1673,14 +2226,24 @@
         }
 
         .job-token {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: var(--on-primary);
+            background: #2563eb;
+            color: #ffffff;
             font-size: 12px;
-            font-weight: 700;
-            padding: 6px 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            letter-spacing: 0.5px;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+
+        .job-token::before {
+            content: "🎫";
+            font-size: 14px;
+            filter: grayscale(1) brightness(0) invert(1);
         }
 
         .job-status {
@@ -1770,122 +2333,6 @@
         :root:not([data-theme="dark"]) .job-card .job-meta-item { border-color: rgba(0,0,0,0.08); background: #f8fafc; }
         :root:not([data-theme="dark"]) .job-card .job-meta-item i { color: var(--primary); }
 
-        /* Printer Name Display */
-        .printer-name {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--surface-container);
-            border: 1px solid var(--outline);
-            border-radius: 6px;
-            padding: 6px 8px;
-            margin: 6px 0;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--on-surface);
-            transition: all 0.3s ease;
-        }
-
-        .printer-name i {
-            color: var(--primary);
-            font-size: 12px;
-        }
-
-        .printer-name:hover {
-            background: var(--surface-container-high);
-            border-color: var(--primary);
-        }
-
-        .printer-name.no-printer {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: #ef4444;
-            color: #ef4444;
-        }
-
-        .printer-name.no-printer i {
-            color: #ef4444;
-        }
-
-        /* Printer Switch Styles */
-        .printer-switch-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--surface-container);
-            border: 1px solid var(--outline);
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin: 8px 0;
-            transition: all 0.3s ease;
-        }
-
-        .printer-switch-container:hover {
-            background: var(--surface-container-high);
-            border-color: var(--primary);
-        }
-
-        .printer-info {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex: 1;
-        }
-
-        .printer-info i {
-            color: var(--primary);
-            font-size: 14px;
-        }
-
-        .printer-name-text {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--on-surface);
-        }
-
-        .printer-switch-btn {
-            background: var(--primary);
-            color: var(--on-primary);
-            border: none;
-            border-radius: 6px;
-            padding: 6px 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .printer-switch-btn:hover {
-            background: var(--primary-light);
-            transform: scale(1.05);
-        }
-
-        .printer-switch-btn i {
-            font-size: 10px;
-        }
-
-        .printer-switch-container.no-printer {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: #ef4444;
-        }
-
-        .printer-switch-container.no-printer .printer-info i {
-            color: #ef4444;
-        }
-
-        .printer-switch-container.no-printer .printer-name-text {
-            color: #ef4444;
-        }
-
-        .printer-switch-container.no-printer .printer-switch-btn {
-            background: #ef4444;
-        }
-
-        .printer-switch-container.no-printer .printer-switch-btn:hover {
-            background: #dc2626;
-        }
 
         /* Printer Actions Layout */
         .printer-actions {
@@ -2231,7 +2678,7 @@
 
         .print-preview-container {
             width: 100%;
-            height: 180px;
+            height: 400px; /* Increased from 300px for even better readability */
             border: 1px solid var(--outline);
             border-radius: 8px;
             overflow: hidden;
@@ -2312,41 +2759,7 @@
             font-size: 16px;
         }
 
-        .job-hide-btn {
-            position: absolute;
-            top: 6px; /* Reduced from 8px */
-            right: 6px; /* Reduced from 8px */
-            background: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 20px; /* Reduced from 24px */
-            height: 20px; /* Reduced from 24px */
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px; /* Reduced from 12px */
-            transition: all 0.3s ease;
-            z-index: 5;
-            opacity: 0;
-            transform: scale(0.8);
-        }
-
-        .job-card.completed:hover .job-hide-btn {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .job-hide-btn:hover {
-            opacity: 1;
-            transform: scale(1.1);
-            background: #c0392b;
-        }
-
-        .job-hide-btn:active {
-            transform: scale(0.95);
-        }
+        /* Hide button removed for completed jobs - using Clear button instead */
 
         .btn-print-info {
             background: var(--surface-container);
@@ -2456,7 +2869,7 @@
 
         .preview-container {
             width: 100%;
-            height: 400px;
+            height: 700px; /* Increased from 600px for even better readability */
             border: 1px solid var(--outline);
             border-radius: 12px;
             overflow: hidden;
@@ -2608,11 +3021,7 @@
 
         @media (max-width: 480px) {
             .toast {
-                max-width: 95vw;
-                min-width: 250px;
-                padding: 14px 20px;
-                font-size: 14px;
-                gap: 12px;
+                display: none !important;
             }
         }
 
@@ -2982,6 +3391,63 @@
             width: 95%;
             padding: 32px 24px 24px 24px;
         }
+
+        /* Rules Modal Styles */
+        .rules-modal-content {
+            max-width: 800px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 32px 24px 24px 24px;
+        }
+        .rules-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .rules-section {
+            background: var(--surface);
+            border: 1px solid var(--outline-variant);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .rules-section h4 {
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rules-section h4 i {
+            color: var(--primary);
+            font-size: 16px;
+        }
+        .rules-section ul {
+            margin: 0;
+            padding-left: 20px;
+            list-style: none;
+        }
+        .rules-section li {
+            color: var(--on-surface);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .rules-section li:before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+        .rules-section li strong {
+            color: var(--error);
+            font-weight: 700;
+        }
         .services-list {
             display: flex;
             flex-direction: column;
@@ -3094,56 +3560,37 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="logo" style="display:flex; align-items:center; gap:8px;">
-                <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="Printmax" style="height:36px; width:auto; vertical-align:middle;" />
-                <img class="logo-img-dark" src="{% static 'images/Printmaxdarklogo.png' %}" alt="Printmax dark" style="height:36px; width:auto; vertical-align:middle; display:none; filter: none;" />
+                <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="Printmax" style="height:28px; width:auto; vertical-align:middle;" />
+                <img class="logo-img-dark" src="{% static 'images/printmaxdarklogo.png' %}" alt="Printmax dark" style="height:28px; width:auto; vertical-align:middle; display:none; filter: none;" />
                 <span class="brand-wordmark">PRINTMAX</span>
             </div>
-            <h1 class="page-title">VendorDashboard</h1>
+            <h1 class="page-title">Print Shop Dashboard</h1>
         </div>
         
         <div class="header-actions">
-            <div class="notification-bell">
-                <button class="header-btn" id="notificationToggle" onclick="toggleNotificationPanel()">
-                    <i class="fas fa-bell"></i>
-                    <div class="notification-badge" id="notificationBadge" style="display: none;">0</div>
-                </button>
-            </div>
             <div class="connection-status" id="connectionStatus">
                 <div class="connection-indicator" id="connectionIndicator">
                     <i class="fas fa-circle"></i>
                 </div>
                 <span class="connection-text" id="connectionText">Checking...</span>
             </div>
-            <button class="availability-toggle" id="availabilityToggle" aria-label="Toggle availability" style="display:none">
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                <i class="fas fa-sun" id="themeIcon"></i>
+            </button>
+            <button class="availability-toggle" id="availabilityToggle" onclick="toggleAvailability()" aria-label="Toggle availability">
                 <span class="toggle-text online-text">Online</span>
                 <span class="toggle-text offline-text">Offline</span>
-            </button>
-            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                <i class="fas fa-moon"></i>
             </button>
         </div>
     </header>
 
-    <!-- Notification Panel -->
-    <div class="notification-panel" id="notificationPanel">
-        <div class="notification-header">
-            <span class="notification-title">Notifications</span>
-            <span class="notification-count" id="notificationCount">0</span>
-        </div>
-        <div class="notification-list" id="notificationList">
-            <div class="notification-empty">
-                <i class="fas fa-bell-slash"></i>
-                <p>No notifications yet</p>
-            </div>
-        </div>
-    </div>
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-        <!-- Vendor Profile -->
+        <!-- Print Shop Profile -->
         <div class="vendor-profile">
             <div class="vendor-avatar">
                 {% if vendor_details and vendor_details.profile_image_url %}
@@ -3153,12 +3600,8 @@
                 {% endif %}
             </div>
             <div class="vendor-info">
-                <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Vendor{% endif %}</h3>
+                <h3>{% if vendor_details %}{{ vendor_details.vendor_name }}{% else %}Print Shop{% endif %}</h3>
                 <p class="vendor-email" title="{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@example.com{% endif %}">{% if vendor_details %}{{ vendor_details.vendor_email }}{% else %}vendor@example.com{% endif %}</p>
-                <div class="vendor-status">
-                    <div class="status-dot"></div>
-                    Online
-                </div>
             </div>
         </div>
 
@@ -3167,7 +3610,7 @@
             <div class="nav-item">
                 <a href="#" class="nav-link active" onclick="return false;" style="pointer-events: none; opacity: 0.9;">
                     <i class="fas fa-home"></i>
-                    <span>VendorDashboard</span>
+                    <span>Print Shop Dashboard</span>
                 </a>
             </div>
             <div class="nav-item">
@@ -3247,9 +3690,21 @@
                 </a>
             </div>
             <div class="nav-item">
+                <a href="#" class="nav-link" onclick="toggleTheme(); return false;" title="Toggle Theme">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                    <span id="themeText">Dark Mode</span>
+                </a>
+            </div>
+            <div class="nav-item">
                 <a href="/contact/" class="nav-link" onclick="setActiveNav(this)">
                     <i class="fas fa-envelope"></i>
                     <span>Contact Us</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="#rules" class="nav-link" onclick="setActiveNav(this); showRulesModal(); return false;">
+                    <i class="fas fa-gavel"></i>
+                    <span>Rules & Guidelines</span>
                 </a>
             </div>
         </nav>
@@ -3334,7 +3789,11 @@
                     <div class="job-count" id="docCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Document Printing Jobs...</div>
+                </div>
                 <div id="docJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3368,7 +3827,11 @@
                     <div class="job-count" id="photoCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Photo Printing Jobs...</div>
+                </div>
                 <div id="photoJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3402,7 +3865,11 @@
                     <div class="job-count" id="passportCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Passport Photo Jobs...</div>
+                </div>
                 <div id="passportJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3436,7 +3903,11 @@
                     <div class="job-count" id="jumboCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Jumbo Printing Jobs...</div>
+                </div>
                 <div id="jumboJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3470,7 +3941,11 @@
                     <div class="job-count" id="goldenCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Golden/Black Book Jobs...</div>
+                </div>
                 <div id="goldenJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3504,7 +3979,11 @@
                     <div class="job-count" id="digitalCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Digital Printing Jobs...</div>
+                </div>
                 <div id="digitalJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3538,7 +4017,11 @@
                     <div class="job-count" id="completedCount">0</div>
                 </div>
             </div>
-            <div class="jobs-container">
+            <div class="jobs-container section-loading">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Completed Jobs...</div>
+                </div>
                 <div id="completedJobs" class="jobs-grid">
                     <div class="empty-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -3621,6 +4104,7 @@
                     </div>
                     <div class="print-preview-container">
                         <iframe id="printInfoPreviewFrame" class="preview-frame"></iframe>
+                        <canvas id="printInfoPreviewCanvas" class="preview-frame" style="display:none; background:#333;"></canvas>
                         <img id="printInfoPreviewImage" class="preview-frame" style="display: none; object-fit: contain;" alt="Preview">
                     </div>
                 </div>
@@ -3667,23 +4151,18 @@
                         <span class="print-info-label">Service Type:</span>
                         <span class="print-info-value" id="printInfoServiceType">-</span>
                     </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">User Email:</span>
+                        <span class="print-info-value highlight" id="printInfoUserEmail">-</span>
+                    </div>
                     <div class="print-info-item" id="printInfoFeedbackItem" style="display: none;">
                         <span class="print-info-label">Feedback:</span>
                         <span class="print-info-value" id="printInfoFeedback">-</span>
                     </div>
-                    <div class="print-info-item" id="printInfoPrinterItem" style="display: none;">
-                        <span class="print-info-label">Printer:</span>
-                        <span class="print-info-value" id="printInfoPrinter">-</span>
-                    </div>
                 </div>
             </div>
 
-            <!-- Print Actions -->
-            <div class="print-actions">
-                <button class="btn-print-modal" id="printInfoPrintBtn" onclick="printFromInfoModal()">
-                    <i class="fas fa-print"></i> Send to Printer
-                </button>
-            </div>
+            <!-- Print Actions removed as per requirement -->
         </div>
     </div>
 
@@ -3805,6 +4284,86 @@
         </div>
     </div>
 
+    <!-- Rules Modal -->
+    <div class="modal" id="rulesModal">
+        <div class="modal-content rules-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-gavel"></i>
+                    Rules & Guidelines
+                </h3>
+                <button class="modal-close" onclick="closeRulesModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="rules-content">
+                <div class="rules-section">
+                    <h4><i class="fas fa-clock"></i> Timely Printing Rules</h4>
+                    <ul>
+                        <li>Complete all print jobs within 24 hours of receiving them</li>
+                        <li>Update job status immediately when printing starts</li>
+                        <li>Mark jobs as completed as soon as printing finishes</li>
+                        <li>Notify customers of any delays immediately</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4><i class="fas fa-cog"></i> Service Management</h4>
+                    <ul>
+                        <li>If any service is not available, disable it instantly from Settings</li>
+                        <li>Keep your service availability updated in real-time</li>
+                        <li>Don't accept jobs for unavailable services</li>
+                        <li>Re-enable services only when fully operational</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4><i class="fas fa-smile"></i> Customer Service</h4>
+                    <ul>
+                        <li>Always greet customers with a smile</li>
+                        <li>Maintain calm and professional behavior at all times</li>
+                        <li>Handle complaints with patience and understanding</li>
+                        <li>Never show anger or frustration to customers</li>
+                        <li>Provide clear explanations for any issues</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4><i class="fas fa-shield-alt"></i> Legal & Safety Rules</h4>
+                    <ul>
+                        <li><strong>NEVER print licensed books, copyrighted materials, or official documents</strong></li>
+                        <li>Do not print any government-issued documents (passports, licenses, etc.)</li>
+                        <li>Refuse any suspicious or illegal printing requests</li>
+                        <li>Report any inappropriate content to management immediately</li>
+                        <li>Only print personal documents, photos, and educational materials</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4><i class="fas fa-chart-line"></i> Marketing & Growth</h4>
+                    <ul>
+                        <li>Build strong relationships with regular customers</li>
+                        <li>Offer quality service to encourage repeat business</li>
+                        <li>Ask satisfied customers for referrals</li>
+                        <li>Maintain clean and professional workspace</li>
+                        <li>Keep updated with latest printing technologies</li>
+                    </ul>
+                </div>
+
+                <div class="rules-section">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Important Reminders</h4>
+                    <ul>
+                        <li>Check your dashboard regularly for new jobs</li>
+                        <li>Keep your profile information updated</li>
+                        <li>Maintain good communication with the support team</li>
+                        <li>Follow all platform policies and guidelines</li>
+                        <li>Report any technical issues immediately</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let allJobs = [];
@@ -3813,30 +4372,344 @@
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
         let vendorAvailability = 'online'; // Default to online
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
+        
+        // Availability toggle variables
+        let previousAvailabilityBeforeOptimistic = null;
+        let lastRequestedAvailability = null;
+        let availabilityUpdateTimer = null;
+        let availabilityUpdateAbortController = null;
+        const availabilityUpdateDebounceMs = 500;
+
+        // Show loading states for all sections
+        function showAllLoadingStates() {
+            const sections = ['docJobs', 'photoJobs', 'passportJobs', 'jumboJobs', 'goldenJobs', 'digitalJobs', 'completedJobs'];
+            sections.forEach(sectionId => {
+                const container = document.getElementById(sectionId);
+                const jobsContainer = container.closest('.jobs-container');
+                if (jobsContainer) {
+                    jobsContainer.classList.add('section-loading');
+                    jobsContainer.classList.remove('section-loaded');
+                }
+            });
+        }
+
+        // Process new jobs instantly as they are rendered
+        async function processNewJobsProgressively(newJobs, showAnimation = false) {
+            // Process each new job instantly
+            for (const job of newJobs) {
+                // Add job to allJobs
+                allJobs.push(job);
+                
+                // Categorize and render this single job instantly (no await)
+                categorizeAndRenderSingleJob(job, showAnimation);
+                
+                // Very small delay for smooth animation (50ms) only if showing animation
+                if (showAnimation) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            }
+            
+            // Mark non-completed jobs as rendered
+            const nonCompletedJobs = newJobs.filter(j => j.job_completed !== 'YES');
+            if (nonCompletedJobs.length > 0) {
+                markJobsRendered(nonCompletedJobs.map(j => j.filename));
+            }
+        }
+
+        // Categorize and render a single job
+        function categorizeAndRenderSingleJob(job, showAnimation = false) {
+            const serviceType = (job.service_type || '').trim().toLowerCase();
+            const isCompleted = job.job_completed === 'YES';
+            const vendorStatus = (job.vendor_status || '').toLowerCase();
+            
+            let jobType = null;
+            
+            if (isCompleted) {
+                // Completed job - show only if vendor_status is 'not sended'
+                if (vendorStatus === 'not sended') {
+                jobType = 'completed';
+                }
+            } else if (!isCompleted) {
+                // Pending job - categorize by service type
+                if (['regular_print', 'regular print', ''].includes(serviceType)) {
+                    jobType = 'document';
+                } else if (serviceType === 'photo_print') {
+                    jobType = 'photo';
+                } else if (['passport_print', 'passport_photo'].includes(serviceType)) {
+                    jobType = 'passport';
+                } else if (serviceType === 'jumbo_printing') {
+                    jobType = 'jumbo';
+                } else if (['golden_embossing', 'project_binding'].includes(serviceType)) {
+                    jobType = 'golden';
+                } else if (serviceType === 'digital_print') {
+                    jobType = 'digital';
+                }
+            }
+            
+            if (jobType) {
+                // Get current jobs for this type
+                const currentJobs = filteredJobs[jobType] || [];
+                
+                // Check if job already exists (avoid duplicates)
+                const exists = currentJobs.some(j => 
+                    j.filename === job.filename && j.token === job.token
+                );
+                
+                if (!exists) {
+                    // Add job to filtered jobs
+                    if (!filteredJobs[jobType]) {
+                        filteredJobs[jobType] = [];
+                    }
+                    filteredJobs[jobType].push(job);
+                    
+                    // Update count for this type
+                    updateSingleCount(jobType, filteredJobs[jobType].length);
+                    
+                    // Render this single job immediately
+                    // Never show animation for completed jobs
+                    const shouldAnimate = showAnimation && jobType !== 'completed';
+                    renderSingleJob(jobType, job, shouldAnimate);
+                }
+            }
+        }
+
+        // Update count for a single job type
+        function updateSingleCount(type, count) {
+            const countMap = {
+                document: 'docCount',
+                photo: 'photoCount', 
+                passport: 'passportCount',
+                jumbo: 'jumboCount',
+                golden: 'goldenCount',
+                digital: 'digitalCount',
+                completed: 'completedCount'
+            };
+            
+            const countElement = document.getElementById(countMap[type]);
+            if (countElement) {
+                countElement.textContent = count;
+            }
+            
+            // Update navigation badges
+            const navBadgeMap = {
+                document: 'docNavBadge',
+                photo: 'photoNavBadge',
+                passport: 'passportNavBadge', 
+                jumbo: 'jumboNavBadge',
+                golden: 'goldenNavBadge',
+                digital: 'digitalNavBadge',
+                completed: 'completedNavBadge'
+            };
+            
+            const navBadge = document.getElementById(navBadgeMap[type]);
+            if (navBadge) {
+                navBadge.textContent = count;
+            }
+            
+            // Update overview stats
+            const totalPending = (filteredJobs.document?.length || 0) + 
+                               (filteredJobs.photo?.length || 0) + 
+                               (filteredJobs.passport?.length || 0) + 
+                               (filteredJobs.jumbo?.length || 0) + 
+                               (filteredJobs.golden?.length || 0) + 
+                               (filteredJobs.digital?.length || 0);
+            const totalCompleted = filteredJobs.completed?.length || 0;
+            const totalRequests = totalPending + totalCompleted;
+            
+            document.getElementById('requestsStatCount').textContent = totalRequests;
+            document.getElementById('manualStatCount').textContent = totalPending;
+            document.getElementById('completedStatCount').textContent = totalCompleted;
+        }
+
+        // Render a single job with animation (only on initial load)
+        function renderSingleJob(type, job, showAnimation = false) {
+            const containerIdMap = {
+                document: 'docJobs',
+                photo: 'photoJobs',
+                passport: 'passportJobs',
+                jumbo: 'jumboJobs',
+                golden: 'goldenJobs',
+                digital: 'digitalJobs',
+                completed: 'completedJobs'
+            };
+            const containerId = containerIdMap[type] || 'docJobs';
+            const container = document.getElementById(containerId);
+            const jobsContainer = container.closest('.jobs-container');
+            
+            // Remove loading state for this section
+            if (jobsContainer) {
+                jobsContainer.classList.remove('section-loading');
+                jobsContainer.classList.add('section-loaded');
+            }
+            
+            // Remove empty state if it exists
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            // Create job card (use unified completed design for completed type)
+            const jobCard = document.createElement('div');
+            jobCard.innerHTML = (type === 'completed') ? createCompletedJobCard(job) : createJobCard(job, type);
+            const cardElement = jobCard.firstElementChild;
+            
+            // Add job card class - no animation by default
+            cardElement.classList.add('job-card');
+            
+            // Only add animation class for initial load
+            if (showAnimation) {
+                cardElement.classList.add('animate-on-load');
+            }
+            
+            container.appendChild(cardElement);
+        }
+
+        // Create completed job card with Print Info and Clear buttons
+        function createCompletedJobCard(job) {
+            const tokenNumber = job.token ? `Token ${job.token}` : '';
+            // Prefer pages/copies from pricing metadata when available
+            const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
+            const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
+            const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
+            const resolvedPages = pagesFromMetadata || job.pages || 1;
+            const resolvedCopies = copiesFromMetadata || job.copies || 1;
+            const serviceTypeDisplay = {
+                'digital_print': 'DIGITAL PRINT',
+                'project_binding': 'PROJECT BINDING',
+                'gloss_printing': 'GLOSS PRINTING',
+                'jumbo_printing': 'JUMBO PRINTING',
+                'regular_print': 'REGULAR PRINT',
+                'photo_print': 'PHOTO PRINT',
+                'passport_print': 'PASSPORT PRINT'
+            }[(job.service_type || '').trim().toLowerCase()] || 'REGULAR PRINT';
+            
+            return `
+                <div class="job-card completed compact" data-filename="${job.filename}" style="padding:10px 10px 8px; border-radius:10px; min-height:160px;">
+                    <div class="job-header compact" style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--outline-variant);">
+                        <div class="job-token" title="Job Token" style="font-size:11px; padding:4px 8px; border-radius:6px;">${tokenNumber}</div>
+                        <div class="job-status status-completed" style="font-size:10px; padding:4px 8px; border-radius:6px;">DONE</div>
+                    </div>
+                    <div class="job-content" style="margin:0;">
+                        <div class="job-title" title="${job.filename}" style="display:flex; align-items:center; gap:6px; font-size:15px; font-weight:700; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            <i class="fas fa-file-pdf" style="color:#ef4444; min-width:14px;"></i>
+                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${job.filename}</span>
+                        </div>
+                        <div class="job-meta" style="display:flex; gap:8px; align-items:center; margin:6px 0 0 0; flex-wrap:nowrap;">
+                            <span class="job-meta-pill" style="background:#f1f5f9;border:1px solid #e5e7eb;color:#334155;border-radius:8px;padding:5px 8px;font-weight:600;font-size:11px;display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-file-alt"></i> ${resolvedPages} pages
+                            </span>
+                            <span class="job-meta-pill" style="background:#f1f5f9;border:1px solid #e5e7eb;color:#334155;border-radius:8px;padding:5px 8px;font-weight:600;font-size:11px;display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-copy"></i> ${resolvedCopies} copies
+                            </span>
+                            <span class="job-meta-pill" style="background:#f1f5f9;border:1px solid #e5e7eb;color:#334155;border-radius:8px;padding:5px 8px;font-weight:700;font-size:11px;display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-tags"></i> ${serviceTypeDisplay}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="job-actions" style="display:flex; gap:8px; align-items:center; margin-top:0;">
+                        <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
+                            <i class="fas fa-info-circle"></i> Print Info
+                        </button>
+                        <button class="btn-small btn-danger" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render all completed jobs quickly in the same location
+        function renderAllCompletedJobs() {
+            const completedJobs = allJobs.filter(job => {
+                if (job.job_completed !== 'YES') return false;
+                const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
+                // Show all completed jobs except those explicitly cleared by vendor (persist until Cancel pressed)
+                if (vendorStatus === 'clear') return false;
+                const jobKey = `${job.filename}_${job.token || 'no_token'}`;
+                return !hiddenCompletedJobs.has(jobKey);
+            });
+
+            const container = document.getElementById('completedJobs');
+            const jobsContainer = container.closest('.jobs-container');
+            
+            // Remove loading state
+            if (jobsContainer) {
+                jobsContainer.classList.remove('section-loading');
+                jobsContainer.classList.add('section-loaded');
+            }
+            
+            // Clear existing content
+            container.innerHTML = '';
+            
+            if (completedJobs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>No Completed Jobs</h3>
+                        <p>Completed jobs will be shown here</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Render all completed jobs at once - NO ANIMATION
+            completedJobs.forEach((job) => {
+                const jobCard = document.createElement('div');
+                jobCard.innerHTML = createCompletedJobCard(job);
+                const cardElement = jobCard.firstElementChild;
+                
+                // No animation - instant display
+                cardElement.classList.add('job-card');
+                cardElement.style.opacity = '1';
+                cardElement.style.transform = 'translateY(0)';
+                
+                container.appendChild(cardElement);
+            });
+            
+            // Update count
+            updateSingleCount('completed', completedJobs.length);
+        }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();
-            // loadVendorAvailability disabled
-            try { if (false) loadVendorAvailability(); } catch (e) {}
-            // Bootstrap jobs from server-rendered context to avoid initial spinner
-            try {
-                const embedded = JSON.parse('{{ initial_jobs|default:"[]"|escapejs }}');
-                if (Array.isArray(embedded) && embedded.length > 0) {
-                    // Render only jobs with rendered_status !== 'YES'
-                    allJobs = embedded.filter(j => String((j.rendered_status || j.metadata?.rendered_status || 'NO')).toUpperCase() !== 'YES');
-                    categorizeJobs();
-                    // Immediately mark these rendered jobs as YES
-                    if (allJobs.length > 0) {
-                        markJobsRendered(allJobs.map(j => j.filename));
-                    }
-                } else {
+            // Load vendor availability status
+            try { loadVendorAvailability(); } catch (e) { console.error('Error loading vendor availability:', e); }
+            
+            // Load jobs from cache first, then fetch new ones
                     loadJobs();
-                }
-            } catch (e) {
+
+            // After login/load, ensure loaders stop after 10s if no jobs found
+            setTimeout(() => {
+                const sectionIds = ['docJobs','photoJobs','passportJobs','jumboJobs','goldenJobs','digitalJobs','completedJobs'];
+                sectionIds.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (!container) return;
+                    const jobsContainer = container.closest('.jobs-container');
+                    if (!jobsContainer) return;
+                    const hasJobCards = container.querySelector('.job-card');
+                    // If still loading and no jobs, stop loader and show empty state
+                    if (jobsContainer.classList.contains('section-loading') && !hasJobCards) {
+                        jobsContainer.classList.remove('section-loading');
+                        jobsContainer.classList.add('section-loaded');
+                        // If container is empty, show its default empty-state
+                        if (!container.innerHTML.trim()) {
+                            container.innerHTML = `
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <h3>No Jobs</h3>
+                                    <p>Nothing here yet. Jobs will appear when available.</p>
+                                </div>`;
+                        }
+                    }
+                });
+            }, 10000);
+            
+            // Background rendering every 1 minute without refreshing existing jobs
+            setInterval(() => {
                 loadJobs();
-            }
-            setInterval(loadJobs, 30000);
+            }, 60000);
+            
             initResponsiveLayout();
             initializeNotifications();
             
@@ -4003,7 +4876,7 @@
                     container.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <h3>Vendor ID Not Found</h3>
+                            <h3>Print Shop ID Not Found</h3>
                             <p>Unable to load transaction history. Please contact support.</p>
                         </div>
                     `;
@@ -4231,41 +5104,10 @@
         }
 
         async function loadNotifications() {
-            try {
-                const response = await fetch('/get-vendor-notifications/');
-                const data = await response.json();
-                if (!data.success) {
-                    notifications = [];
-                    unreadCount = 0;
-                    updateNotificationUI();
-                    return;
-                }
-                const vendorNotifications = data.notifications || {};
-                const days = Object.keys(vendorNotifications).sort().reverse();
-                
-                // Convert vendor notifications to simple format
-                notifications = [];
-                for (const day of days) {
-                    const entries = vendorNotifications[day] || [];
-                    for (const entry of entries) {
-                        notifications.push({
-                            id: `${day}_${entry.time || Date.now()}`,
-                            message: entry.message || 'Notification',
-                            time: entry.time || 'Unknown time',
-                            level: entry.level || 'info',
-                            read: true // Mark all as read for now
-                        });
-                    }
-                }
-                
-                unreadCount = 0; // No unread count for vendor notifications
-                updateNotificationUI();
-            } catch (error) {
-                console.error('Error loading notifications:', error);
-                notifications = [];
-                unreadCount = 0;
-                updateNotificationUI();
-            }
+            // Notification functionality removed
+            notifications = [];
+            unreadCount = 0;
+            updateNotificationUI();
         }
 
         function setupNotificationListeners() {
@@ -4580,13 +5422,15 @@
         }
 
         function updateThemeButton(theme) {
-            const btn = document.getElementById('themeToggle');
-            const icon = btn.querySelector('i');
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
             
             if (theme === 'dark') {
                 icon.className = 'fas fa-sun';
+                text.textContent = 'Light Mode';
             } else {
                 icon.className = 'fas fa-moon';
+                text.textContent = 'Dark Mode';
             }
         }
 
@@ -4702,11 +5546,7 @@
                     container.classList.add('offline');
                 });
                 
-                // Update vendor status in sidebar
-                const vendorStatus = document.querySelector('.vendor-status');
-                if (vendorStatus) {
-                    vendorStatus.innerHTML = '<div class="status-dot" style="background: #e74c3c;"></div>Offline';
-                }
+                // Vendor status removed from sidebar - status is now only shown in navbar toggle button
             } else {
                 // Update toggle button
                 toggleBtn.classList.remove('offline');
@@ -4734,11 +5574,7 @@
                     container.classList.remove('offline');
                 });
                 
-                // Update vendor status in sidebar
-                const vendorStatus = document.querySelector('.vendor-status');
-                if (vendorStatus) {
-                    vendorStatus.innerHTML = '<div class="status-dot"></div>Online';
-                }
+                // Vendor status removed from sidebar - status is now only shown in navbar toggle button
             }
             
             // Re-render jobs to show/hide based on availability
@@ -4750,12 +5586,22 @@
         // Data Loading
         async function loadJobs() {
             try {
+                // Check if we have cached jobs first
+                const cachedJobs = localStorage.getItem('vendorJobs');
+                const isInitialLoad = !cachedJobs || JSON.parse(cachedJobs).length === 0;
+                
+                if (cachedJobs && JSON.parse(cachedJobs).length > 0) {
+                    // Load from cache first
+                    const jobs = JSON.parse(cachedJobs);
+                    allJobs = jobs;
+                    categorizeJobs();
+                }
+
                 // The backend will automatically filter jobs based on the vendor's session
                 const response = await fetch('/get-print-requests/');
                 const data = await response.json();
 
-                if (data.print_requests) {
-                    // Deduplicate by filename+token
+                if (data.print_requests && data.print_requests.length > 0) {
                     const incoming = data.print_requests;
                     const seen = new Set();
                     const unique = [];
@@ -4766,19 +5612,58 @@
                             unique.push(j);
                         }
                     }
-                    // Only render those not yet rendered
-                    allJobs = unique.filter(j => String((j.rendered_status || j.metadata?.rendered_status || 'NO')).toUpperCase() !== 'YES');
+                    
+                    // Check if there are new jobs not in cache
+                    const cachedJobKeys = new Set((allJobs || []).map(j => `${j.filename || ''}__${(j.token || j.metadata?.token || '')}`));
+                    const newJobs = unique.filter(j => !cachedJobKeys.has(`${j.filename || ''}__${(j.token || j.metadata?.token || '')}`));
+                    
+                    if (newJobs.length > 0) {
+                        // Only show loading states on initial load or if there are many new jobs
+                        if (isInitialLoad || newJobs.length > 5) {
+                            showAllLoadingStates();
+                        }
+                        
+                        // Process new jobs instantly - only show animation on initial load
+                        await processNewJobsProgressively(newJobs, isInitialLoad);
+                        
+                        if (newJobs.length > 0) {
+                            showToast(`${newJobs.length} new jobs loaded successfully`);
+                        }
+                    } else {
+                        // No new jobs, merge with existing jobs to preserve local changes
+                        const existingJobMap = new Map();
+                        allJobs.forEach(job => {
+                            const key = `${job.filename}_${job.token || 'no_token'}`;
+                            existingJobMap.set(key, job);
+                        });
+                        
+                        // Update with server data but preserve local changes
+                        unique.forEach(serverJob => {
+                            const key = `${serverJob.filename}_${serverJob.token || 'no_token'}`;
+                            const existingJob = existingJobMap.get(key);
+                            if (existingJob) {
+                                // Preserve local completion status if it was set locally
+                                if (existingJob.job_completed === 'YES' && serverJob.job_completed === 'NO') {
+                                    serverJob.job_completed = 'YES';
+                                    serverJob.completion_time = existingJob.completion_time;
+                                }
+                                // Update other fields from server
+                                Object.assign(existingJob, serverJob);
+                            } else {
+                                allJobs.push(serverJob);
+                            }
+                        });
+                        
                     categorizeJobs();
-                    // Immediately mark these rendered jobs as YES
-                    if (allJobs.length > 0) {
-                        markJobsRendered(allJobs.map(j => j.filename));
                     }
-                    showToast('Jobs refreshed successfully');
+                    
+                    // Cache all jobs
+                    localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
                 } else {
-                    // If no jobs found, show empty state
+                    // If no jobs found, show empty state without loading
                     allJobs = [];
                     categorizeJobs();
-                    showToast('No jobs found for this vendor');
+                    localStorage.removeItem('vendorJobs');
                 }
             } catch (error) {
                 console.error('Error loading jobs:', error);
@@ -4798,8 +5683,11 @@
             const goldenJobs = allJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase()));
             const digitalJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print');
 
+            // FIXED: Completed jobs should remain visible until vendor explicitly clears them
             const completed = allJobs.filter(job => {
                 if (job.job_completed !== 'YES') return false;
+                const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
+                if (vendorStatus === 'clear') return false; // hide only when cleared
                 const jobKey = `${job.filename}_${job.token || 'no_token'}`;
                 return !hiddenCompletedJobs.has(jobKey);
             });
@@ -4822,7 +5710,9 @@
             renderJobs('jumbo', jumboJobs);
             renderJobs('golden', goldenJobs);
             renderJobs('digital', digitalJobs);
-            renderJobs('completed', completed);
+            
+            // Render completed jobs quickly
+            renderAllCompletedJobs();
         }
 
         function updateCounts(counts) {
@@ -4851,41 +5741,8 @@
             document.getElementById('goldenNavBadge').textContent = counts.golden;
             document.getElementById('digitalNavBadge').textContent = counts.digital;
             document.getElementById('completedNavBadge').textContent = counts.completed;
-
-            // Also reflect counts inline in the sidebar labels for readability
-            try {
-                updateSidebarLabels({
-                    document: counts.document,
-                    photo: counts.photo,
-                    passport: counts.passport,
-                    jumbo: counts.jumbo,
-                    golden: counts.golden,
-                    digital: counts.digital,
-                    completed: counts.completed
-                });
-            } catch (_) {}
         }
 
-        function updateSidebarLabels(counts) {
-            const mapping = [
-                { badgeId: 'docNavBadge', labelText: 'Document Printing', count: counts.document },
-                { badgeId: 'photoNavBadge', labelText: 'Photo Printing', count: counts.photo },
-                { badgeId: 'passportNavBadge', labelText: 'Passport Printing', count: counts.passport },
-                { badgeId: 'jumboNavBadge', labelText: 'Jumbo Printing', count: counts.jumbo },
-                { badgeId: 'goldenNavBadge', labelText: 'Golden/Black Book', count: counts.golden },
-                { badgeId: 'digitalNavBadge', labelText: 'Digital Print', count: counts.digital },
-                { badgeId: 'completedNavBadge', labelText: 'Completed', count: counts.completed }
-            ];
-
-            mapping.forEach(({ badgeId, labelText, count }) => {
-                const badge = document.getElementById(badgeId);
-                if (badge && badge.previousElementSibling) {
-                    // The previous span is the label
-                    const labelSpan = badge.previousElementSibling;
-                    labelSpan.textContent = `${labelText} ${count}`;
-                }
-            });
-        }
 
         function renderJobs(type, jobs) {
             const containerIdMap = {
@@ -4899,6 +5756,7 @@
             };
             const containerId = containerIdMap[type] || 'docJobs';
             const container = document.getElementById(containerId);
+            const jobsContainer = container.closest('.jobs-container');
 
             // If vendor is offline, show offline message instead of jobs
             if (vendorAvailability === 'offline') {
@@ -4913,6 +5771,11 @@
                         <p>${offlineDesc}</p>
                     </div>
                 `;
+                // Remove loading state
+                if (jobsContainer) {
+                    jobsContainer.classList.remove('section-loading');
+                    jobsContainer.classList.add('section-loaded');
+                }
                 return;
             }
 
@@ -4931,10 +5794,39 @@
                         <p>${emptyDesc}</p>
                     </div>
                 `;
+                // Remove loading state
+                if (jobsContainer) {
+                    jobsContainer.classList.remove('section-loading');
+                    jobsContainer.classList.add('section-loaded');
+                }
                 return;
             }
 
-            container.innerHTML = jobs.map(job => createJobCard(job, type)).join('');
+            // Remove loading state and show jobs with progressive animation
+            if (jobsContainer) {
+                jobsContainer.classList.remove('section-loading');
+                jobsContainer.classList.add('section-loaded');
+            }
+
+            // Clear container and render jobs progressively
+            container.innerHTML = '';
+            
+            // Render jobs - NO ANIMATIONS on refresh, keep static
+            jobs.forEach((job, index) => {
+                    const jobCard = document.createElement('div');
+                    jobCard.innerHTML = createJobCard(job, type);
+                    const cardElement = jobCard.firstElementChild;
+                    
+                // Add job card class
+                cardElement.classList.add('job-card');
+                
+                // NO ANIMATIONS - instant static display for all job types
+                        cardElement.style.opacity = '1';
+                        cardElement.style.transform = 'translateY(0)';
+                
+                container.appendChild(cardElement);
+            });
+
             // After rendering, mark these jobs as rendered on the server
             try {
                 if (jobs.length > 0) {
@@ -4967,7 +5859,7 @@
             const cardClass = type === 'completed' ? 'completed' : 
                               (type === 'manual' || isManualStyleRequest) ? 'manual' : 'requests';
 
-            const tokenNumber = job.token ? `#${job.token}` : '';
+            const tokenNumber = job.token ? `Token ${job.token}` : '';
 
             // Get vendor status for display - hide for manual-styled requests to match manual design
             const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
@@ -5048,13 +5940,23 @@
                         </button>`;
                 }
             }
-            // Completed jobs have no action buttons (handled by hide button)
+            // Completed jobs have print info and clear buttons
+            let completedActions = '';
+            if (type === 'completed') {
+                completedActions = `
+                    <div class="job-actions">
+                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
+                            <i class="fas fa-info-circle"></i> Print Info
+                        </button>
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                `;
+            }
 
-            // Add hide button for completed jobs
-            const hideButton = type === 'completed' ? 
-                `<button class="job-hide-btn" onclick="event.stopPropagation(); hideCompletedJob('${job.filename}', '${job.token || ''}')" title="Hide from completed jobs">
-                    <i class="fas fa-times"></i>
-                </button>` : '';
+            // Remove hide button from all cards (no cross button anywhere)
+            const hideButton = '';
 
             // Get printer name for display
             // Remove printer display per new requirement
@@ -5081,8 +5983,9 @@
             }
             
             // Main info block (compact)
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
-                <div class="job-card ${cardClass} compact" onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')" data-filename="${job.filename}">
+                <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}">
                     ${hideButton}
                     ${serviceTypeBadge}
                     ${vendorStatusBadge}
@@ -5110,7 +6013,7 @@
                         </div>
                     </div>
                     <div class="job-actions compact" onclick="event.stopPropagation()">
-                        ${actions}
+                        ${type === 'completed' ? completedActions : actions}
                     </div>
                 </div>
             `;
@@ -5124,9 +6027,52 @@
                 // Update job status immediately
                 allJobs[jobIndex].job_completed = 'YES';
                 allJobs[jobIndex].completion_time = Date.now() / 1000;
+                allJobs[jobIndex].vendor_status = 'not sended';
                 
-                // Instantly re-categorize and render jobs - NO DELAY
-                categorizeJobs();
+                // Update cache immediately
+                localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                
+                // Remove job from current section immediately
+                const currentJob = allJobs[jobIndex];
+                const serviceType = (currentJob.service_type || '').trim().toLowerCase();
+                let currentSection = null;
+                
+                if (['regular_print', 'regular print', ''].includes(serviceType)) {
+                    currentSection = 'docJobs';
+                } else if (serviceType === 'photo_print') {
+                    currentSection = 'photoJobs';
+                } else if (['passport_print', 'passport_photo'].includes(serviceType)) {
+                    currentSection = 'passportJobs';
+                } else if (serviceType === 'jumbo_printing') {
+                    currentSection = 'jumboJobs';
+                } else if (['golden_embossing', 'project_binding'].includes(serviceType)) {
+                    currentSection = 'goldenJobs';
+                } else if (serviceType === 'digital_print') {
+                    currentSection = 'digitalJobs';
+                }
+                
+                // Remove from current section
+                if (currentSection) {
+                    const currentContainer = document.getElementById(currentSection);
+                    const jobCard = currentContainer.querySelector(`[data-filename="${filename}"]`);
+                    if (jobCard) {
+                        jobCard.remove();
+                    }
+                }
+                
+                // Add to completed section instantly - NO ANIMATION
+                renderSingleJob('completed', currentJob, false);
+                
+                // Update counts
+                updateCounts({
+                    document: allJobs.filter(j => j.job_completed === 'NO' && ['regular_print', 'regular print', ''].includes((j.service_type || '').trim().toLowerCase())).length,
+                    photo: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'photo_print').length,
+                    passport: allJobs.filter(j => j.job_completed === 'NO' && ['passport_print','passport_photo'].includes((j.service_type || '').trim().toLowerCase())).length,
+                    jumbo: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'jumbo_printing').length,
+                    golden: allJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase())).length,
+                    digital: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print').length,
+                    completed: allJobs.filter(j => j.job_completed === 'YES' && !hiddenCompletedJobs.has(`${j.filename}_${j.token || 'no_token'}`)).length
+                });
             }
             
             // Make API call in background (don't wait for response)
@@ -5153,7 +6099,16 @@
                 } else {
                     // Extract document name for better display
                     const documentName = filename.split('_')[0] || filename;
-                    showToast(`✅ Job completed successfully!\nDocument: ${documentName}\nStatus: Ready for pickup`, 'success');
+                    let successMessage = `✅ Job completed successfully!\nDocument: ${documentName}\nStatus: Ready for pickup`;
+                    
+                    // Add token status information if available
+                    if (data.token_freed && data.token_number) {
+                        successMessage += `\n🔓 Token ${data.token_number} freed and available for new jobs`;
+                    } else if (data.token_freed === false) {
+                        successMessage += `\n⚠️ Job completed but token status could not be updated`;
+                    }
+                    
+                    showToast(successMessage, 'success');
                 }
             })
             .catch(err => {
@@ -5389,19 +6344,23 @@
 
             title.textContent = filename;
             const ext = filename.split('.').pop().toLowerCase();
+            const safeUrl = url ? `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}` : '';
 
             if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = url;
+                frame.src = safeUrl;
+                frame.onerror = () => {
+                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                };
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 frame.style.display = 'none';
                 image.style.display = 'block';
-                image.src = url;
+                image.src = safeUrl;
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
             }
 
             modal.classList.add('show');
@@ -5411,8 +6370,33 @@
             document.getElementById('previewModal').classList.remove('show');
         }
 
+        // Generate fresh URL for preview
+        async function generateFreshPreviewUrl(filename, jobData) {
+            try {
+                const response = await fetch('/generate-fresh-preview-url/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        job_data: jobData
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.preview_url || previewUrl;
+                }
+            } catch (error) {
+                console.error('Error generating fresh URL:', error);
+            }
+            return previewUrl; // Fallback to original URL
+        }
+
         // Print Info Modal Functions
-        function showPrintInfo(filename, previewUrl, jobData) {
+        async function showPrintInfo(filename, previewUrl, jobData) {
             const modal = document.getElementById('printInfoModal');
             const title = document.getElementById('printInfoTitle');
             
@@ -5421,7 +6405,7 @@
             
             // Populate print settings
             document.getElementById('printInfoFilename').textContent = jobData.filename || '-';
-            document.getElementById('printInfoToken').textContent = jobData.token ? `#${jobData.token}` : '-';
+            document.getElementById('printInfoToken').textContent = jobData.token ? `${jobData.token}` : '-';
             document.getElementById('printInfoCopies').textContent = jobData.copies || '1';
             document.getElementById('printInfoColor').textContent = jobData.color || 'Black and White';
             document.getElementById('printInfoOrientation').textContent = formatOrientation(jobData.orientation || 'portrait');
@@ -5463,25 +6447,23 @@
                 feedbackItem.style.display = 'none';
             }
             
-            // Show printer name if available
-            const printerItem = document.getElementById('printInfoPrinterItem');
-            const printerValue = document.getElementById('printInfoPrinter');
-            if (jobData.printer_name && jobData.printer_name.trim()) {
-                printerItem.style.display = 'flex';
-                printerValue.textContent = jobData.printer_name;
-            } else {
-                printerItem.style.display = 'none';
-            }
+            // Show user email
+            document.getElementById('printInfoUserEmail').textContent = jobData.user_email || jobData.email || '-';
             
-            // Load document preview
-            loadPrintInfoPreview(previewUrl, filename);
+            // Generate fresh URL to avoid expiration issues
+            const freshPreviewUrl = await generateFreshPreviewUrl(filename, jobData);
+            const isSignedUrl = typeof freshPreviewUrl === 'string' && /X-Amz-Algorithm|X-Amz-Signature/i.test(freshPreviewUrl);
+            const safePreviewUrl = freshPreviewUrl ? (isSignedUrl ? freshPreviewUrl : `${freshPreviewUrl}${freshPreviewUrl.includes('?') ? '&' : '?'}ts=${Date.now()}`) : '';
+            loadPrintInfoPreview(safePreviewUrl, filename);
             
             // Store job data for print action
             modal.dataset.jobData = JSON.stringify(jobData);
-            modal.dataset.previewUrl = previewUrl;
+            modal.dataset.previewUrl = safePreviewUrl;
             
             // Show modal
+            console.log('Showing print info modal for:', filename);
             modal.classList.add('show');
+            console.log('Modal classes after show:', modal.className);
         }
 
         function closePrintInfoModal() {
@@ -5489,22 +6471,119 @@
         }
 
         function loadPrintInfoPreview(url, filename) {
+            console.log('loadPrintInfoPreview called with:', { url, filename });
             const frame = document.getElementById('printInfoPreviewFrame');
             const image = document.getElementById('printInfoPreviewImage');
+            const canvas = document.getElementById('printInfoPreviewCanvas');
             const ext = filename.split('.').pop().toLowerCase();
 
+            console.log('Preview elements found:', { frame: !!frame, image: !!image, canvas: !!canvas, ext });
+
+            // Reset any previous content
+            frame.src = 'about:blank';
+            image.src = '';
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.style.display = 'none';
+            }
+
             if (ext === 'pdf') {
-                frame.style.display = 'block';
+                // Prefer PDF.js; then iframe; then Google Docs viewer
+                frame.style.display = 'none';
                 image.style.display = 'none';
-                frame.src = url;
-            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                if (canvas) {
+                    canvas.style.display = 'block';
+                    const pdfUrl = url || '';
+                    (async () => {
+                        try {
+                            await ensurePdfJsLoaded();
+                            await renderPdfToCanvas(pdfUrl, canvas);
+                        } catch (e) {
+                            console.log('PDF.js failed, trying iframe fallback:', e);
+                            // Fallback 1: iframe
+                            canvas.style.display = 'none';
+                            frame.style.display = 'block';
+                            frame.style.width = '100%';
+                            frame.style.height = '400px';
+                            frame.style.border = 'none';
+                            frame.src = pdfUrl;
+                            frame.onerror = () => {
+                                console.log('Direct iframe failed, trying Google Docs viewer');
+                                // Fallback 2: Google Docs viewer
+                                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+                            };
+                        }
+                    })();
+                } else {
+                    console.log('Canvas not available, using iframe fallback');
+                    // If canvas not available, fallback to iframe with Google Docs viewer fallback
+                    frame.style.display = 'block';
+                    frame.style.width = '100%';
+                    frame.style.height = '400px';
+                    frame.style.border = 'none';
+                    const directUrl = url || '';
+                    frame.src = directUrl;
+                    frame.onerror = () => {
+                        console.log('Direct iframe failed, trying Google Docs viewer');
+                        frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(directUrl)}&embedded=true`;
+                    };
+                }
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                // Old dashboard behavior: show image element
                 frame.style.display = 'none';
                 image.style.display = 'block';
-                image.src = url;
+                image.src = url || '';
             } else {
+                // Fallback: use Google Docs viewer for other types
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url || '')}&embedded=true`;
+            }
+        }
+
+        // Dynamically load PDF.js if not present
+        async function ensurePdfJsLoaded() {
+            if (window.pdfjsLib) {
+                return;
+            }
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            // Configure worker
+            if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+        }
+
+        // Render first page of a PDF into a canvas element
+        async function renderPdfToCanvas(pdfUrl, canvas) {
+            console.log('Rendering PDF to canvas:', pdfUrl);
+            try {
+                const pdf = await window.pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 1.2 });
+                const context = canvas.getContext('2d');
+                
+                // Set canvas dimensions
+                canvas.width = Math.floor(viewport.width);
+                canvas.height = Math.floor(viewport.height);
+                canvas.style.width = '100%';
+                canvas.style.height = 'auto';
+                canvas.style.maxHeight = '400px';
+                canvas.style.objectFit = 'contain';
+                
+                console.log('Canvas dimensions set:', { width: canvas.width, height: canvas.height });
+                
+                await page.render({ canvasContext: context, viewport }).promise;
+                console.log('PDF rendered successfully to canvas');
+            } catch (error) {
+                console.error('Error rendering PDF to canvas:', error);
+                throw error;
             }
         }
 
@@ -5557,13 +6636,42 @@
             }
         }
 
-        // Hide completed job function
-        async function hideCompletedJob(filename, token) {
+        // Clear completed job function - updates vendor status to 'clear'
+        async function clearCompletedJob(filename, token) {
             // INSTANTLY remove the job from completed section BEFORE API call
             const jobIndex = allJobs.findIndex(job => job.filename === filename);
             if (jobIndex !== -1) {
-                allJobs[jobIndex].is_hidden = true;
-                categorizeJobs(); // Refresh the display immediately
+                // Update vendor status to 'clear' instead of hiding
+                allJobs[jobIndex].vendor_status = 'clear';
+                
+                // Remove from filteredJobs immediately
+                const completedJobs = filteredJobs.completed || [];
+                const filteredIndex = completedJobs.findIndex(job => job.filename === filename);
+                if (filteredIndex !== -1) {
+                    completedJobs.splice(filteredIndex, 1);
+                    filteredJobs.completed = completedJobs;
+                    
+                    // Update counts immediately
+                    updateSingleCount('completed', completedJobs.length);
+                    
+                    // Update cache immediately
+                    localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                    
+                    // Remove from DOM immediately with animation
+                    const container = document.getElementById('completedJobs');
+                    const jobCard = container.querySelector(`[data-filename="${filename}"]`);
+                    if (jobCard) {
+                        // Add fade out animation
+                        jobCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                        jobCard.style.opacity = '0';
+                        jobCard.style.transform = 'translateX(-20px)';
+                        
+                        // Remove after animation
+                        setTimeout(() => {
+                            jobCard.remove();
+                        }, 300);
+                    }
+                }
             }
             
             // Make API call in background (don't wait for response)
@@ -5575,7 +6683,8 @@
                 },
                 body: JSON.stringify({ 
                     filename: filename,
-                    token: token
+                    token: token,
+                    action: 'clear' // Indicate we want to clear the job
                 })
             }).then(response => response.json())
             .then(data => {
@@ -5583,22 +6692,129 @@
                     // If API call fails, revert the change
                     const jobIndex = allJobs.findIndex(job => job.filename === filename);
                     if (jobIndex !== -1) {
-                        allJobs[jobIndex].is_hidden = false;
-                        categorizeJobs();
+                        allJobs[jobIndex].vendor_status = 'not sended';
+                        // Re-add to completed section
+                        if (!filteredJobs.completed) {
+                            filteredJobs.completed = [];
+                        }
+                        filteredJobs.completed.push(allJobs[jobIndex]);
+                        updateSingleCount('completed', filteredJobs.completed.length);
+                        renderSingleJob('completed', allJobs[jobIndex]);
+                        // Update cache
+                        localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
                     }
-                    showToast(`Error hiding job: ${data.error || 'Unknown error'}`);
+                    showToast(`Error clearing job: ${data.error || 'Unknown error'}`);
                 } else {
-                    showToast(`Job "${filename}" hidden from completed section`);
+                    showToast(`Job "${filename}" cleared from completed section`);
                 }
             })
             .catch(err => {
                 // If API call fails, revert the change
                 const jobIndex = allJobs.findIndex(job => job.filename === filename);
                 if (jobIndex !== -1) {
-                    allJobs[jobIndex].is_hidden = false;
-                    categorizeJobs();
+                    allJobs[jobIndex].vendor_status = 'not sended';
+                    // Re-add to completed section
+                    if (!filteredJobs.completed) {
+                        filteredJobs.completed = [];
+                    }
+                    filteredJobs.completed.push(allJobs[jobIndex]);
+                    updateSingleCount('completed', filteredJobs.completed.length);
+                    renderSingleJob('completed', allJobs[jobIndex]);
+                    // Update cache
+                    localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
                 }
-                showToast(`Error hiding job: ${err.message}`);
+                showToast(`Error clearing job: ${err.message}`);
+            });
+        }
+
+        // Clear completed job function - updates vendor status to 'clear' (legacy)
+        async function hideCompletedJob(filename, token) {
+            // INSTANTLY remove the job from completed section BEFORE API call
+            const jobIndex = allJobs.findIndex(job => job.filename === filename);
+            if (jobIndex !== -1) {
+                // Update vendor status to 'clear' instead of hiding
+                allJobs[jobIndex].vendor_status = 'clear';
+                
+                // Remove from filteredJobs immediately
+                const completedJobs = filteredJobs.completed || [];
+                const filteredIndex = completedJobs.findIndex(job => job.filename === filename);
+                if (filteredIndex !== -1) {
+                    completedJobs.splice(filteredIndex, 1);
+                    filteredJobs.completed = completedJobs;
+                    
+                    // Update counts immediately
+                    updateSingleCount('completed', completedJobs.length);
+                    
+                    // Update cache immediately
+                    localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                    
+                    // Remove from DOM immediately with animation
+                    const container = document.getElementById('completedJobs');
+                    const jobCard = container.querySelector(`[data-filename="${filename}"]`);
+                    if (jobCard) {
+                        // Add fade out animation
+                        jobCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                        jobCard.style.opacity = '0';
+                        jobCard.style.transform = 'translateX(-20px)';
+                        
+                        // Remove after animation
+                        setTimeout(() => {
+                            jobCard.remove();
+                        }, 300);
+                    }
+                }
+            }
+            
+            // Make API call in background (don't wait for response)
+            fetch('/hide-completed-job/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ 
+                    filename: filename,
+                    token: token,
+                    action: 'clear' // Indicate we want to clear the job
+                })
+            }).then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    // If API call fails, revert the change
+                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                    if (jobIndex !== -1) {
+                        allJobs[jobIndex].vendor_status = 'not sended';
+                        // Re-add to completed section
+                        if (!filteredJobs.completed) {
+                            filteredJobs.completed = [];
+                        }
+                        filteredJobs.completed.push(allJobs[jobIndex]);
+                        updateSingleCount('completed', filteredJobs.completed.length);
+                        renderSingleJob('completed', allJobs[jobIndex]);
+                        // Update cache
+                        localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                    }
+                    showToast(`Error clearing job: ${data.error || 'Unknown error'}`);
+                } else {
+                    showToast(`Job "${filename}" cleared from completed section`);
+                }
+            })
+            .catch(err => {
+                // If API call fails, revert the change
+                const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                if (jobIndex !== -1) {
+                    allJobs[jobIndex].vendor_status = 'not sended';
+                    // Re-add to completed section
+                    if (!filteredJobs.completed) {
+                        filteredJobs.completed = [];
+                    }
+                    filteredJobs.completed.push(allJobs[jobIndex]);
+                    updateSingleCount('completed', filteredJobs.completed.length);
+                    renderSingleJob('completed', allJobs[jobIndex]);
+                    // Update cache
+                    localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                }
+                showToast(`Error clearing job: ${err.message}`);
             });
         }
 
@@ -5865,158 +7081,6 @@
             }
         }
 
-        // Printer Switching Function
-        async function switchPrinter(filename, serviceType) {
-            try {
-                // Show loading state
-                showToast('Loading available printers...', 'info');
-                
-                // Get available printers for this service type
-                const response = await fetch('/get-available-printers/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        service_type: serviceType
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success && data.printers && data.printers.length > 0) {
-                    // Show printer selection modal
-                    showPrinterSelectionModal(filename, serviceType, data.printers);
-                } else {
-                    showToast('No printers available for this service type', 'warning');
-                }
-            } catch (error) {
-                console.error('Error getting printers:', error);
-                showToast('Error loading printers', 'error');
-            }
-        }
-
-        // Show printer selection modal
-        function showPrinterSelectionModal(filename, serviceType, printers) {
-            // Create modal HTML
-            const modalHtml = `
-                <div class="modal show" id="printerSelectionModal" style="display: flex;">
-                    <div class="modal-content" style="max-width: 500px; width: 90%;">
-                        <div class="modal-header">
-                            <h3 class="modal-title">Select Printer for ${serviceType.replace('_', ' ').toUpperCase()}</h3>
-                            <button class="modal-close" onclick="closePrinterSelectionModal()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div style="padding: 20px 0;">
-                            <p style="margin-bottom: 20px; color: var(--on-surface-variant);">
-                                Choose a printer for this ${serviceType.replace('_', ' ')} job:
-                            </p>
-                            <div class="printer-list" style="display: flex; flex-direction: column; gap: 12px;">
-                                ${printers.map((printer, index) => `
-                                    <div class="printer-option" style="
-                                        display: flex; 
-                                        align-items: center; 
-                                        justify-content: space-between; 
-                                        padding: 16px; 
-                                        background: var(--surface-container); 
-                                        border: 1px solid var(--outline); 
-                                        border-radius: 8px; 
-                                        cursor: pointer;
-                                        transition: all 0.3s ease;
-                                    " onclick="selectPrinter('${filename}', '${serviceType}', '${printer.name}', ${index})">
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <i class="fas fa-print" style="color: var(--primary); font-size: 18px;"></i>
-                                            <div>
-                                                <div style="font-weight: 600; color: var(--on-surface);">${printer.name}</div>
-                                                <div style="font-size: 12px; color: var(--on-surface-variant);">${printer.type || 'Standard Printer'}</div>
-                                            </div>
-                                        </div>
-                                        <i class="fas fa-chevron-right" style="color: var(--on-surface-variant);"></i>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Add modal to body
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Add hover effects
-            const printerOptions = document.querySelectorAll('.printer-option');
-            printerOptions.forEach(option => {
-                option.addEventListener('mouseenter', function() {
-                    this.style.background = 'var(--surface-container-high)';
-                    this.style.borderColor = 'var(--primary)';
-                });
-                option.addEventListener('mouseleave', function() {
-                    this.style.background = 'var(--surface-container)';
-                    this.style.borderColor = 'var(--outline)';
-                });
-            });
-        }
-
-        // Select printer function
-        async function selectPrinter(filename, serviceType, printerName, printerIndex) {
-            try {
-                showToast(`Assigning ${printerName} to job...`, 'info');
-                
-                // Update printer assignment
-                const response = await fetch('/assign-printer-to-job/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        filename: filename,
-                        service_type: serviceType,
-                        printer_name: printerName
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Update the job card immediately
-                    updateJobCardPrinter(filename, printerName);
-                    showToast(`Printer switched to ${printerName} successfully!`, 'success');
-                    closePrinterSelectionModal();
-                } else {
-                    showToast('Error switching printer: ' + (data.error || 'Unknown error'), 'error');
-                }
-            } catch (error) {
-                console.error('Error switching printer:', error);
-                showToast('Error switching printer', 'error');
-            }
-        }
-
-        // Update job card printer display
-        function updateJobCardPrinter(filename, printerName) {
-            const jobCard = document.querySelector(`[data-filename="${filename}"]`);
-            if (jobCard) {
-                const printerContainer = jobCard.querySelector('.printer-switch-container');
-                const printerText = jobCard.querySelector('.printer-name-text');
-                const printerIcon = jobCard.querySelector('.printer-info i');
-                
-                if (printerContainer && printerText && printerIcon) {
-                    printerText.textContent = printerName;
-                    printerIcon.className = 'fas fa-print';
-                    printerContainer.classList.remove('no-printer');
-                }
-            }
-        }
-
-        // Close printer selection modal
-        function closePrinterSelectionModal() {
-            const modal = document.getElementById('printerSelectionModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
 
         // Toast Notification
         function formatErrorMessage(error) {
@@ -6101,6 +7165,7 @@
             const printInfoModal = document.getElementById('printInfoModal');
             const profileModal = document.getElementById('profileModal');
             const printerSelectionModal = document.getElementById('printerSelectionModal');
+            const rulesModal = document.getElementById('rulesModal');
             
             if (event.target === modal) {
                 closeModal();
@@ -6116,6 +7181,10 @@
             
             if (event.target === printerSelectionModal) {
                 closePrinterSelectionModal();
+            }
+            
+            if (event.target === rulesModal) {
+                closeRulesModal();
             }
         });
 
@@ -6151,6 +7220,15 @@
         }
         function closeSettingsModal() {
             document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        // Rules Modal Functions
+        function showRulesModal() {
+            document.getElementById('rulesModal').classList.add('show');
+        }
+        
+        function closeRulesModal() {
+            document.getElementById('rulesModal').classList.remove('show');
         }
         // Toggle service handler - updates backend
         async function toggleService(serviceKey, isEnabled) {
@@ -6294,6 +7372,227 @@
                 connectionTextEl.textContent = 'Checking...';
                 connectionStatusEl.title = 'Checking vendor client connection status...';
             }
+        }
+
+        // Availability Toggle Functions
+        async function loadVendorAvailability() {
+            try {
+                const response = await fetch('/get-vendor-service-availability/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.data) {
+                        vendorAvailability = data.data.vendor_shop_avaliability || 'online';
+                        
+                        // If availability status is not in the data, save it automatically
+                        if (!data.data.vendor_shop_avaliability) {
+                            console.log('🔍 DEBUG - Availability status not found in data, saving automatically...');
+                            await saveAvailabilityStatus(vendorAvailability);
+                        }
+                    } else {
+                        // Fallback to localStorage
+                        vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
+                        // Save the availability status to ensure it's stored
+                        await saveAvailabilityStatus(vendorAvailability);
+                    }
+                } else {
+                    // Fallback to localStorage
+                    vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
+                    // Save the availability status to ensure it's stored
+                    await saveAvailabilityStatus(vendorAvailability);
+                }
+            } catch (error) {
+                console.error('Error loading vendor availability:', error);
+                // Fallback to localStorage
+                vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
+                // Save the availability status to ensure it's stored
+                await saveAvailabilityStatus(vendorAvailability);
+            }
+            
+            // Always update UI after loading availability
+            updateAvailabilityUI();
+        }
+
+        // Helper function to save availability status
+        async function saveAvailabilityStatus(status) {
+            try {
+                const response = await fetch('/update-vendor-availability/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        vendor_shop_avaliability: status
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ DEBUG - Availability status saved successfully:', status);
+                } else {
+                    console.error('❌ DEBUG - Failed to save availability status:', data.error);
+                }
+            } catch (error) {
+                console.error('❌ DEBUG - Error saving availability status:', error);
+            }
+        }
+
+        function toggleAvailability() {
+            const newStatus = vendorAvailability === 'online' ? 'offline' : 'online';
+            // Optimistic UI: flip immediately
+            previousAvailabilityBeforeOptimistic = previousAvailabilityBeforeOptimistic ?? vendorAvailability;
+            vendorAvailability = newStatus;
+            localStorage.setItem('vendorAvailability', newStatus);
+            updateAvailabilityUI();
+
+            // Debounce backend sync; rapid clicks collapse to the last state
+            scheduleAvailabilitySync(newStatus);
+        }
+
+        function scheduleAvailabilitySync(status) {
+            lastRequestedAvailability = status;
+            if (availabilityUpdateTimer) clearTimeout(availabilityUpdateTimer);
+            availabilityUpdateTimer = setTimeout(() => {
+                sendAvailabilityUpdate(lastRequestedAvailability)
+                    .catch(() => {});
+            }, availabilityUpdateDebounceMs);
+        }
+
+        async function sendAvailabilityUpdate(status) {
+            // Cancel any in-flight request
+            if (availabilityUpdateAbortController) {
+                availabilityUpdateAbortController.abort();
+            }
+            availabilityUpdateAbortController = new AbortController();
+            try {
+                const response = await fetch('/update-vendor-availability/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ vendor_shop_avaliability: status }),
+                    signal: availabilityUpdateAbortController.signal,
+                    keepalive: true
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to update availability');
+                }
+                // Ensure UI reflects the most recent desired state
+                if (vendorAvailability !== lastRequestedAvailability) {
+                    vendorAvailability = lastRequestedAvailability;
+                    localStorage.setItem('vendorAvailability', vendorAvailability);
+                    updateAvailabilityUI();
+                }
+                showToast(`Vendor is now ${vendorAvailability}`);
+                // Successful backend sync; clear optimistic baseline
+                previousAvailabilityBeforeOptimistic = null;
+            } catch (error) {
+                // If request was aborted due to a newer toggle, do nothing (keep optimistic state)
+                if (error && (error.name === 'AbortError' || error.code === 20)) {
+                    return;
+                }
+                // Fast, unobtrusive revert on real failure
+                vendorAvailability = previousAvailabilityBeforeOptimistic || (status === 'online' ? 'offline' : 'online');
+                localStorage.setItem('vendorAvailability', vendorAvailability);
+                updateAvailabilityUI();
+                showToast('Could not update availability. Reverted.');
+                // Clear baseline after reverting so next toggle can set it again
+                previousAvailabilityBeforeOptimistic = null;
+                throw error;
+            } finally {
+                availabilityUpdateAbortController = null;
+            }
+        }
+
+        function updateAvailabilityUI() {
+            const toggleBtn = document.getElementById('availabilityToggle');
+            const sectionTitles = document.querySelectorAll('.section-title');
+            const jobContainers = document.querySelectorAll('.jobs-container');
+            
+            if (vendorAvailability === 'offline') {
+                // Update toggle button
+                toggleBtn.classList.add('offline');
+                toggleBtn.setAttribute('aria-label', 'Click to go online');
+                
+                // Update section titles
+                sectionTitles.forEach(title => {
+                    title.classList.add('offline');
+                    const titleIcon = title.querySelector('i');
+                    if (titleIcon) {
+                        titleIcon.className = 'fas fa-times-circle';
+                    }
+                });
+                
+                // Update job containers
+                jobContainers.forEach(container => {
+                    container.classList.add('offline');
+                });
+            } else {
+                // Update toggle button
+                toggleBtn.classList.remove('offline');
+                toggleBtn.setAttribute('aria-label', 'Click to go offline');
+                
+                // Update section titles
+                sectionTitles.forEach(title => {
+                    title.classList.remove('offline');
+                    const titleIcon = title.querySelector('i');
+                    if (titleIcon) {
+                        // Restore original icon classes based on section
+                        const section = title.closest('.job-section');
+                        if (section) {
+                            const sectionId = section.id;
+                            if (sectionId.includes('doc')) {
+                                titleIcon.className = 'fas fa-file-alt';
+                            } else if (sectionId.includes('photo')) {
+                                titleIcon.className = 'fas fa-camera';
+                            } else if (sectionId.includes('passport')) {
+                                titleIcon.className = 'fas fa-passport';
+                            } else if (sectionId.includes('jumbo')) {
+                                titleIcon.className = 'fas fa-expand';
+                            } else if (sectionId.includes('golden')) {
+                                titleIcon.className = 'fas fa-book';
+                            } else if (sectionId.includes('digital')) {
+                                titleIcon.className = 'fas fa-print';
+                            } else if (sectionId.includes('completed')) {
+                                titleIcon.className = 'fas fa-check-circle';
+                            }
+                        }
+                    }
+                });
+                
+                // Update job containers
+                jobContainers.forEach(container => {
+                    container.classList.remove('offline');
+                });
+            }
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            if (name === 'csrftoken') {
+                return window.csrfToken || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+            }
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
 
 

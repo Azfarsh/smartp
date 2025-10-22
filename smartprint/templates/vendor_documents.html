@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Documents - PrintMax</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Align theme with vendor register page */
+            --primary-blue: #2563eb;
+            --primary-blue-light: #1d4ed8;
+            --primary-blue-dark: #1e40af;
+            --accent-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            --accent-gradient-light: linear-gradient(135deg, #5c6bc0 0%, #b388ff 100%);
+            --accent-gradient-dark: linear-gradient(135deg, #283593 0%, #512da8 100%);
+            --success-green: #4CAF50;
+            --surface-white: #FFFFFF;
+            --surface-grey: #F5F5F5;
+            --surface-grey-light: #FAFAFA;
+            --text-primary: #212121;
+            --text-secondary: #757575;
+            --text-white: #FFFFFF;
+            --divider: #E0E0E0;
+            --shadow-light: 0 2px 8px rgba(63,81,181,0.08);
+            --shadow-medium: 0 4px 16px rgba(63,81,181,0.13);
+            --shadow-heavy: 0 8px 32px rgba(63,81,181,0.18);
+            --border-radius: 16px;
+            --border-radius-large: 32px;
+            --success: #4CAF50;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3f51b5;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--surface-grey-light);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+        .registration-card {
+            background: var(--surface-white);
+            border-radius: var(--border-radius-large);
+            box-shadow: var(--shadow-medium);
+            overflow: hidden;
+            display: block; /* plain single-column card */
+            min-height: auto;
+            position: relative;
+            border: 1px solid var(--divider);
+        }
+
+        /* Hide previous blue hero area to keep a plain form */
+        .hero-section { display: none; }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-content { position: relative; z-index: 2; max-width: 720px; margin: 0 auto; text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+        .hero-icon {
+            width: 70px; height: 70px; background: rgba(255, 255, 255, 0.25);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem; backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.4); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: var(--transition);
+        }
+
+        .hero-icon:hover { transform: scale(1.1); background: rgba(255, 255, 255, 0.3); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); }
+        .hero-icon .material-icons { font-size: 2.5rem; color: var(--text-white); font-weight: bold; }
+
+        .hero-title { font-family: 'Poppins', sans-serif; font-size: 2rem; font-weight: 800; margin-bottom: 0.75rem; line-height: 1.2; text-align: center; }
+        .hero-subtitle { font-size: 1rem; opacity: 0.9; margin: 0 auto 1.5rem; max-width: 360px; text-align: center; }
+
+        .hero-features { list-style: disc; list-style-position: outside; padding-left: 1.25rem; margin: 0.75rem auto 0; max-width: 520px; text-align: left; }
+        .hero-features li { margin: 0.5rem 0; font-size: 0.95rem; opacity: 0.95; }
+        .hero-features li:hover { opacity: 1; transform: none; }
+
+        .form-section { padding: 1.5rem 1.5rem; background: var(--surface-white); display: flex; flex-direction: column; justify-content: flex-start; }
+        .form-header { text-align: center; margin-bottom: 1.5rem; }
+        .form-title { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem; }
+        .form-subtitle { color: var(--text-secondary); font-size: 0.875rem; }
+
+        .form-container { width: 100%; padding-bottom: 0.25rem; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; align-items: start; }
+        .form-group { margin-bottom: 0.75rem; align-self: stretch; }
+        .form-group.full-width { grid-column: 1 / -1; }
+
+        .form-label { display: flex; align-items: flex-end; font-weight: 600; color: var(--text-primary); margin-bottom: 0.375rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.2; min-height: 38px; }
+        .input-wrapper { position: relative; width: 100%; }
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+            border: 2px solid var(--divider);
+            border-radius: var(--radius-lg);
+            font-size: 0.9rem; background: var(--surface-white); color: var(--text-primary);
+            transition: var(--transition); outline: none; box-shadow: none; line-height: 1.4; min-height: 48px;
+        }
+        .form-select { height: 48px; -webkit-appearance: none; appearance: none; background-image: none; padding-right: 2.25rem; }
+        .form-textarea { min-height: 96px; resize: vertical; padding-top: 0.85rem; }
+        .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.1); }
+        .form-input:hover, .form-textarea:hover, .form-select:hover { border-color: var(--primary-blue-light); }
+
+        .input-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--primary-blue); font-size: 1.2rem; transition: var(--transition); z-index: 2; pointer-events: none; }
+        /* Better icon position for textarea */
+        .form-textarea + .input-icon { top: 1.15rem; transform: none; }
+        .form-input:focus + .input-icon, .form-textarea:focus + .input-icon, .form-select:focus + .input-icon { color: var(--primary-blue-dark); transform: translateY(-50%) scale(1.08); }
+        .form-textarea:focus + .input-icon { transform: none; }
+
+        .file-input { position: relative; display: block; }
+        .file-input input[type="file"] {
+            width: 100%;
+            padding: 0.625rem 0.75rem 0.625rem 2.5rem;
+            border: 2px solid var(--divider);
+            border-radius: var(--radius-lg);
+            background: var(--surface-white);
+            color: var(--text-primary);
+            cursor: pointer; min-height: 48px; line-height: 1.4; font-size: 0.95rem;
+        }
+        /* Align file input icon vertically */
+        .file-input .input-icon { left: 0.75rem; top: 50%; transform: translateY(-50%); }
+        .file-input input[type="file"]:hover { border-color: var(--primary-blue-light); }
+        .file-input input[type="file"]:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.1); }
+        /* Show full file name by allowing input area to grow; browsers limit styling, but we ensure enough space */
+        .file-input { min-width: 0; }
+
+        /* File status (filename + tick) */
+        .file-status { display: none; margin-top: 0.5rem; font-size: 0.85rem; align-items: center; gap: 0.4rem; color: #16a34a; font-weight: 600; }
+        .file-status .material-icons { font-size: 1rem; }
+
+        /* Ensure consistent baseline for labels and controls */
+        .form-group .form-label { margin-bottom: 0.5rem; }
+        .form-group .form-input, .form-group .form-textarea, .form-group .form-select, .form-group .file-input input[type="file"] { display: block; }
+
+        .error-message { color: var(--error); font-size: 0.75rem; margin-top: 0.375rem; display: none; padding: 0.375rem; background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-md); border-left: 3px solid var(--error); }
+
+        /* Live validity colors */
+        .form-input.valid, .form-select.valid, .form-textarea.valid { border-color: #16a34a !important; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12) !important; }
+        .form-input.invalid, .form-select.invalid, .form-textarea.invalid { border-color: var(--error) !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important; }
+
+        .submit-button { width: 100%; max-width: 320px; padding: 0.65rem 1.2rem; background: var(--accent-gradient); color: var(--text-white); border: none; border-radius: var(--radius-lg); font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0.5rem auto 0; box-shadow: var(--shadow-medium); position: relative; overflow: hidden; }
+        .submit-button .material-icons { font-size: 1.2rem; transition: var(--transition); }
+        .submit-button:hover { transform: translateY(-2px); box-shadow: var(--shadow-heavy); }
+        .submit-button:hover .material-icons { transform: translateX(3px); }
+        .submit-button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        
+        .loading-spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3); border-top: 2px solid var(--text-white); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .submit-button.loading { pointer-events: none; }
+        .submit-button.loading .loading-spinner { display: inline-block; }
+        .submit-button.loading .button-text { opacity: 0.7; }
+
+        .back-link { text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--divider); }
+        .back-link a { color: var(--primary-blue); text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: var(--transition); padding: 0.5rem 1rem; border-radius: var(--radius-md); }
+        .back-link a:hover { background: var(--primary-blue-light); color: var(--primary-blue-dark); transform: translateX(-3px); }
+        .back-link a .material-icons { font-size: 1.1rem; }
+
+        .success-message { display: none; background: var(--accent-gradient); color: var(--text-white); padding: 2rem 1.5rem; border-radius: var(--border-radius-large); text-align: center; margin: 0 auto; max-width: 520px; box-shadow: var(--shadow-medium); }
+        .success-icon { font-size: 4rem; margin-bottom: 1rem; color: var(--text-white); background: rgba(255, 255, 255, 0.2); border-radius: 50%; padding: 20px; display: inline-block; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1);} 50% { transform: scale(1.05);} 100% { transform: scale(1);} }
+        .success-title { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.75rem; }
+        .success-description { font-size: 1rem; opacity: 0.95; margin-bottom: 1.5rem; line-height: 1.5; }
+        .success-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+        .success-button { padding: 0.75rem 1.5rem; border: 2px solid var(--text-white); background: var(--text-white); color: var(--primary-blue); border-radius: var(--radius-lg); font-weight: 600; text-decoration: none; transition: var(--transition); display: inline-flex; align-items: center; gap: 0.5rem; }
+        .success-button:hover { background: transparent; color: var(--text-white); }
+        .success-button.secondary { background: transparent; color: var(--text-white); }
+        .success-button.secondary:hover { background: var(--text-white); color: var(--primary-blue); }
+
+        @media (min-width: 1025px) {
+            .registration-card { height: 88vh; }
+            .form-section { max-height: 88vh; overflow: auto; }
+        }
+
+        @media (max-width: 1024px) {
+            .registration-card { max-width: 720px; margin: 0 auto; }
+            .form-section { padding: 1.5rem 1.5rem; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 0.5rem; }
+            .hero-title { font-size: 1.75rem; }
+            .form-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+            .form-group { margin-bottom: 0.75rem; }
+            .success-actions { flex-direction: column; align-items: center; }
+            .success-button { width: 100%; max-width: 260px; justify-content: center; }
+            .form-input, .form-textarea, .form-select, .file-input input[type="file"] { font-size: 1rem; }
+            .form-label { min-height: 0; align-items: center; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-section { padding: 1.25rem 1rem; }
+            .form-section { padding: 1.25rem 1rem; }
+            .hero-title { font-size: 1.5rem; }
+            .form-title { font-size: 1.25rem; }
+        }
+
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--surface-grey); }
+        ::-webkit-scrollbar-thumb { background: var(--divider); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    </style>
+    {% load static %}
+    {% load tz %}
+    {% load i18n %}
+    <!-- dotLottie player for .lottie animations -->
+    <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Submitting Overlay (spinner only) -->
+        <div id="submittingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); backdrop-filter: blur(2px); z-index:9999; align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:16px; padding:20px 22px; box-shadow:0 12px 40px rgba(0,0,0,0.2); width:min(92vw,360px); text-align:center;">
+                <div class="loading-spinner" style="display:inline-block; width:24px; height:24px; border:3px solid rgba(0,0,0,0.15); border-top:3px solid #2563eb; border-radius:50%; animation: spin 1s linear infinite;"></div>
+                <div style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1rem; color:#111827; margin-top:10px;">Submitting documents…</div>
+            </div>
+        </div>
+
+        <!-- Success Overlay (lottie tick + message + button) -->
+        <div id="successOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter: blur(3px); z-index:9999; align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:20px; padding:24px 28px; box-shadow:0 12px 40px rgba(0,0,0,0.2); width:min(92vw,440px); text-align:center;">
+                <dotlottie-player id="successAnim" src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto 8px;"></dotlottie-player>
+                <div id="successText" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.05rem; color:#111827; margin-top:4px;">
+                    <p style="margin:0 0 10px; font-size:1.1rem;">Your shop will be verified and activated within 24 hours.</p>
+                    <div style="text-align:left; display:inline-block; margin:8px 0 0; font-weight:600;">
+                        <ul style="margin:0; padding-left:20px; line-height:1.6;">
+                            <li>We will email you when your account setup is complete and activated.</li>
+                            <li>Use the email and password sent to you to log in.</li>
+                            <li>Open your Vendor Dashboard from the "Vendor" button in the top navigation on the homepage.</li>
+                            <li>Please watch the training videos before printing customer documents.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-top:12px;">
+                    <a href="/" style="display:inline-block; padding:10px 16px; border-radius:10px; background:#2563eb; color:#fff; text-decoration:none; font-weight:600;">Back to Home</a>
+                </div>
+            </div>
+        </div>
+        <div class="registration-card">
+            <div class="hero-section">
+                <div class="hero-content">
+                    <div class="hero-icon">
+                        <span class="material-icons">assignment_turned_in</span>
+                    </div>
+                    <h1 class="hero-title">Vendor Documents Upload</h1>
+                    <p class="hero-subtitle">Upload your KYC and bank details securely</p>
+                    <ul class="hero-features">
+                        <li>Secure document storage</li>
+                        <li>Mandatory KYC verification</li>
+                        <li>Bank details for settlements</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-header">
+                    <h2 class="form-title">Submit Your Documents</h2>
+                    <p class="form-subtitle">We keep your information encrypted and safe</p>
+                </div>
+
+                <div class="form-container">
+                    <div class="success-message" id="successMessage" style="display:none;"></div>
+
+                    <form id="vendorDocumentsForm" method="POST" action="/upload-vendor-documents/" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="email" value="{{ vendor_email }}" id="vendorEmailInput">
+
+                        <div class="form-group full-width">
+                            <h3 class="form-title" style="font-size:1.1rem; margin-bottom:0.5rem;">Document Uploads</h3>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="aadharFile" class="form-label">AADHAR Card (PDF/JPEG/PNG)</label>
+                        <div class="input-wrapper file-input">
+                                    <input type="file" id="aadharFile" name="aadharFile" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <span class="material-icons input-icon">upload_file</span>
+                                </div>
+                        <div class="file-status" id="aadharFileStatus"><span class="material-icons">check_circle</span><span class="file-name"></span></div>
+                                <div class="error-message" id="aadharFileError"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="panFile" class="form-label">PAN Card (PDF/JPEG/PNG)</label>
+                        <div class="input-wrapper file-input">
+                                    <input type="file" id="panFile" name="panFile" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <span class="material-icons input-icon">upload_file</span>
+                                </div>
+                        <div class="file-status" id="panFileStatus"><span class="material-icons">check_circle</span><span class="file-name"></span></div>
+                                <div class="error-message" id="panFileError"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="chequeFile" class="form-label">Passbook / Cheque (PDF/JPEG/PNG)</label>
+                            <div class="input-wrapper file-input">
+                                <input type="file" id="chequeFile" name="chequeFile" accept=".pdf,.jpg,.jpeg,.png" required>
+                                <span class="material-icons input-icon">upload_file</span>
+                            </div>
+                            <div class="file-status" id="chequeFileStatus"><span class="material-icons">check_circle</span><span class="file-name"></span></div>
+                            <div class="error-message" id="chequeFileError"></div>
+                        </div>
+
+                        <div class="form-group full-width" style="margin-top:0.25rem;">
+                            <h3 class="form-title" style="font-size:1.1rem; margin-bottom:0.5rem;">Bank Details</h3>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="beneficiaryName" class="form-label">Beneficiary Name</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="beneficiaryName" name="beneficiaryName" required>
+                                    <span class="material-icons input-icon">person</span>
+                                </div>
+                                <div class="error-message" id="beneficiaryNameError"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="beneficiaryBank" class="form-label">Bank Name</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="beneficiaryBank" name="beneficiaryBank" required>
+                                    <span class="material-icons input-icon">account_balance</span>
+                                </div>
+                                <div class="error-message" id="beneficiaryBankError"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="accountNumber" class="form-label">Bank Account Number</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="accountNumber" name="accountNumber" required>
+                                    <span class="material-icons input-icon">numbers</span>
+                                </div>
+                                <div class="error-message" id="accountNumberError"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ifscCode" class="form-label">IFSC Code</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="ifscCode" name="ifscCode" required placeholder="e.g., HDFC0001234">
+                                    <span class="material-icons input-icon">qr_code_2</span>
+                                </div>
+                                <div class="error-message" id="ifscCodeError"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="branchCode" class="form-label">Branch Name</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="branchCode" name="branchCode" required>
+                                    <span class="material-icons input-icon">badge</span>
+                                </div>
+                                <div class="error-message" id="branchCodeError"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="postalCode" class="form-label">PIN Code</label>
+                                <div class="input-wrapper">
+                                    <input type="text" class="form-input" id="postalCode" name="postalCode" required>
+                                    <span class="material-icons input-icon">markunread_mailbox</span>
+                                </div>
+                                <div class="error-message" id="postalCodeError"></div>
+                            </div>
+                        </div>
+
+                        <!-- Removed city, country and address to keep the form minimal as requested -->
+
+                        <button type="submit" class="submit-button" id="submitBtn">
+                            <span class="loading-spinner" id="loadingSpinner"></span>
+                            <span class="material-icons">save</span>
+                            <span class="button-text">Submit Documents</span>
+                        </button>
+                    </form>
+
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline removed as requested -->
+
+    <script>
+        // Simple validators
+        function showError(id, message) {
+            const el = document.getElementById(id);
+            if (el) { el.textContent = message || ''; el.style.display = message ? 'block' : 'none'; }
+        }
+
+        function clearErrors(ids) { ids.forEach(id => showError(id, '')); }
+
+        function isValidFile(file) {
+            if (!file) return false;
+            const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+            const nameAllowed = /\.(pdf|jpg|jpeg|png)$/i.test(file.name || '');
+            return allowed.includes(file.type) || nameAllowed;
+        }
+
+        function validateIFSC(value) {
+            const re = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+            return re.test((value || '').toUpperCase().trim());
+        }
+
+        function validateNotEmpty(value) { return !!(value && value.trim().length > 0); }
+
+        // Handle URL parameters and pre-fill email
+        (function () {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const emailFromUrl = params.get('email');
+                const shouldShowSuccess = params.get('success') === '1';
+
+                // Pre-fill email from URL parameter immediately
+                if (emailFromUrl) {
+                    const emailInput = document.getElementById('vendorEmailInput');
+                    if (emailInput) {
+                        emailInput.value = emailFromUrl;
+                    }
+                }
+                // Fallback: copy email into form action as query so backend can read even if body stripped by redirect
+                try {
+                    var form = document.getElementById('vendorDocumentsForm');
+                    if (form) {
+                        var action = form.getAttribute('action') || '/upload-vendor-documents/';
+                        if (emailFromUrl && action.indexOf('email=') === -1) {
+                            var sep = action.indexOf('?') === -1 ? '?' : '&';
+                            form.setAttribute('action', action + sep + 'email=' + encodeURIComponent(emailFromUrl));
+                        }
+                    }
+                } catch(_) {}
+
+                const formEl = document.getElementById('vendorDocumentsForm');
+                if (shouldShowSuccess) {
+                    if (formEl) formEl.style.display = 'none';
+                    try{
+                        var overlay=document.getElementById('successOverlay');
+                        var txt=document.getElementById('successText');
+                        if(overlay){
+                            if(txt) txt.innerHTML = '<p style="margin:0 0 10px; font-size:1.1rem;">Your shop will be verified and activated within 24 hours.</p>'+
+                                                 '<div style="text-align:left; display:inline-block; margin:8px 0 0; font-weight:600;">'+
+                                                 '<ul style="margin:0; padding-left:20px; line-height:1.6;">'+
+                                                 '<li>We will email you when your account setup is complete and activated.</li>'+
+                                                 '<li>Use the email and password sent to you to log in.</li>'+
+                                                 '<li>Open your Vendor Dashboard from the Vendor button in the top navigation on the homepage.</li>'+
+                                                 '<li>Please watch the training videos before printing customer documents.</li>'+
+                                                 '</ul></div>';
+                            overlay.style.display='flex';
+                        }
+                        // Hide background card so the "Submit Your Documents" header isn't visible behind the success modal
+                        var card=document.querySelector('.registration-card');
+                        if(card){ card.style.display='none'; }
+                    }catch(_){ }
+                }
+            } catch (e) { /* no-op */ }
+        })();
+
+        // Note: Let the browser submit the form to the backend. Keep helpers here for future use.
+    </script>
+    <script>
+        (function () {
+            const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+            function validateRequiredField(fieldId, errorId) {
+                const input = document.getElementById(fieldId);
+                const value = (input && typeof input.value === 'string') ? input.value.trim() : '';
+                const isValid = value.length > 0;
+                showError(errorId, isValid ? '' : 'This field is required.');
+                return isValid;
+            }
+
+            function validateAccountNumber() {
+                const fieldId = 'accountNumber';
+                const errorId = 'accountNumberError';
+                const el = document.getElementById(fieldId);
+                const value = (el && el.value ? el.value.trim() : '');
+                const re = /^\d{9,18}$/;
+                const ok = re.test(value);
+                showError(errorId, ok ? '' : 'Enter 9–18 digits only.');
+                return ok;
+            }
+
+            // Uses existing validateIFSC(value)
+            function validateIFSCField() {
+                const fieldId = 'ifscCode';
+                const errorId = 'ifscCodeError';
+                const el = document.getElementById(fieldId);
+                const value = (el && el.value ? el.value : '');
+                const ok = validateIFSC(value);
+                showError(errorId, ok ? '' : 'Invalid IFSC format.');
+                return ok;
+            }
+
+            function validatePostalCode() {
+                const fieldId = 'postalCode';
+                const errorId = 'postalCodeError';
+                const el = document.getElementById(fieldId);
+                const value = (el && el.value ? el.value.trim() : '');
+                const re = /^\d{6}$/;
+                const ok = re.test(value);
+                showError(errorId, ok ? '' : 'PIN code must be exactly 6 digits.');
+                return ok;
+            }
+
+            // Country input removed in simplified form
+
+            function validateFile(fieldId, errorId) {
+                const input = document.getElementById(fieldId);
+                const file = input && input.files && input.files[0] ? input.files[0] : null;
+
+                // If nothing selected, do not show error here; browser required attribute will handle it on submit
+                if (!file) { showError(errorId, ''); return true; }
+
+                if (!isValidFile(file)) {
+                    showError(errorId, 'Invalid file type. Allowed: PDF/JPG/PNG.');
+                    return false;
+                }
+                if (file.size > MAX_FILE_BYTES) {
+                    showError(errorId, 'File size must be 2 MB or less.');
+                    return false;
+                }
+                showError(errorId, '');
+                return true;
+            }
+
+            function validateBranchCode() {
+                const fieldId = 'branchCode';
+                const errorId = 'branchCodeError';
+                const el = document.getElementById(fieldId);
+                const value = (el && el.value ? el.value.trim() : '');
+                if (!value) {
+                    showError(errorId, 'This field is required.');
+                    return false;
+                }
+                const re = /^[A-Za-z0-9 ]+$/; // allow letters, numbers and spaces
+                const ok = re.test(value);
+                showError(errorId, ok ? '' : 'Letters, numbers and spaces only.');
+                return ok;
+            }
+
+            function attachFieldHandlers() {
+                const onBlurRequired = [
+                    ['beneficiaryName', 'beneficiaryNameError'],
+                    ['beneficiaryBank', 'beneficiaryBankError']
+                ];
+                onBlurRequired.forEach(([fid, eid]) => {
+                    const el = document.getElementById(fid);
+                    if (el) el.addEventListener('blur', () => validateRequiredField(fid, eid));
+                });
+
+                function updateFileStatus(inputId, errorId, statusId) {
+                    const ok = validateFile(inputId, errorId);
+                    const input = document.getElementById(inputId);
+                    const status = document.getElementById(statusId);
+                    if (!status) return;
+                    if (ok && input && input.files && input.files[0]) {
+                        status.style.display = 'inline-flex';
+                        const nameSpan = status.querySelector('.file-name');
+                        if (nameSpan) nameSpan.textContent = input.files[0].name;
+                    } else {
+                        status.style.display = 'none';
+                        const nameSpan = status.querySelector('.file-name');
+                        if (nameSpan) nameSpan.textContent = '';
+                    }
+                }
+
+                const aadhar = document.getElementById('aadharFile');
+                if (aadhar) aadhar.addEventListener('change', () => updateFileStatus('aadharFile', 'aadharFileError', 'aadharFileStatus'));
+
+                const pan = document.getElementById('panFile');
+                if (pan) pan.addEventListener('change', () => updateFileStatus('panFile', 'panFileError', 'panFileStatus'));
+
+                const acct = document.getElementById('accountNumber');
+                if (acct) acct.addEventListener('blur', validateAccountNumber);
+
+                const ifsc = document.getElementById('ifscCode');
+                if (ifsc) ifsc.addEventListener('blur', validateIFSCField);
+
+                const postal = document.getElementById('postalCode');
+                if (postal) postal.addEventListener('blur', validatePostalCode);
+
+                const branch = document.getElementById('branchCode');
+                if (branch) branch.addEventListener('blur', validateBranchCode);
+
+                const cheque = document.getElementById('chequeFile');
+                if (cheque) cheque.addEventListener('change', () => updateFileStatus('chequeFile', 'chequeFileError', 'chequeFileStatus'));
+            }
+
+            function validateAll() {
+                const checks = [];
+                checks.push(validateFile('aadharFile', 'aadharFileError'));
+                checks.push(validateFile('panFile', 'panFileError'));
+                checks.push(validateFile('chequeFile', 'chequeFileError'));
+
+                checks.push(validateRequiredField('beneficiaryName', 'beneficiaryNameError'));
+                checks.push(validateRequiredField('beneficiaryBank', 'beneficiaryBankError'));
+                checks.push(validateBranchCode());
+
+                checks.push(validateAccountNumber());
+                checks.push(validateIFSCField());
+                checks.push(validatePostalCode());
+                // country removed
+
+                return checks.every(Boolean);
+            }
+
+            // Init
+            const form = document.getElementById('vendorDocumentsForm');
+            if (form) {
+                attachFieldHandlers();
+
+                // live validity coloring helpers
+                function markValidity(el, valid) {
+                    if (!el) return;
+                    el.classList.remove('valid', 'invalid');
+                    el.classList.add(valid ? 'valid' : 'invalid');
+                }
+
+                function attachLiveValidation(fieldId, validator) {
+                    const el = document.getElementById(fieldId);
+                    if (!el) return;
+                    const run = () => { markValidity(el, validator()); };
+                    el.addEventListener('input', run);
+                    el.addEventListener('blur', run);
+                }
+
+                attachLiveValidation('beneficiaryName', () => validateRequiredField('beneficiaryName', 'beneficiaryNameError'));
+                attachLiveValidation('beneficiaryBank', () => validateRequiredField('beneficiaryBank', 'beneficiaryBankError'));
+                attachLiveValidation('accountNumber', validateAccountNumber);
+                attachLiveValidation('ifscCode', validateIFSCField);
+                attachLiveValidation('branchCode', validateBranchCode);
+                attachLiveValidation('postalCode', validatePostalCode);
+
+                form.addEventListener('submit', function (e) {
+                    const ok = validateAll();
+                    if (!ok) {
+                        e.preventDefault();
+                        // focus first error field if possible
+                        const firstError = document.querySelector('.error-message[style*="display: block"]');
+                        if (firstError) {
+                            const related = firstError.previousElementSibling || null;
+                            try {
+                                const input = firstError.parentElement && firstError.parentElement.querySelector('input, textarea, select');
+                                if (input) input.focus();
+                            } catch (_) { /* no-op */ }
+                        }
+                    } else {
+                        // Show submitting overlay (spinner) until navigation
+                        try {
+                            const submitting = document.getElementById('submittingOverlay');
+                            const submitBtn = document.getElementById('submitBtn');
+                            const loadingSpinner = document.getElementById('loadingSpinner');
+                            if (submitBtn && loadingSpinner) {
+                                submitBtn.classList.add('loading');
+                                submitBtn.disabled = true;
+                            }
+                            if (submitting) {
+                                submitting.style.display = 'flex';
+                            }
+                        } catch(_) { }
+                    }
+                });
+            }
+        })();
+        // No continue button from documents timeline
+    </script>
+</body>
+</html>
