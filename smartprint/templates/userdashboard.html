@@ -11434,20 +11434,23 @@
         // Show the Print Requests section with smooth fade-in
         if (jobsSection) {
           jobsSection.style.display = 'block';
-          // Trigger fade-in after display is set
-          setTimeout(() => {
-            jobsSection.style.opacity = '1';
-          }, 10);
+          jobsSection.style.opacity = '1'; // Show immediately
         }
         
-        // Render actual jobs
-          const fragment = document.createDocumentFragment();
-          const tempDiv = document.createElement('div');
+        // Render actual jobs with optimized DOM manipulation
+        const fragment = document.createDocumentFragment();
+        const tempDiv = document.createElement('div');
         const jobsHTML = jobs.map(job => window.createJobCard(job)).join('');
-          tempDiv.innerHTML = jobsHTML;
-          while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
+        tempDiv.innerHTML = jobsHTML;
+        
+        // Use requestAnimationFrame for smooth rendering
+        requestAnimationFrame(() => {
+          while (tempDiv.firstChild) { 
+            fragment.appendChild(tempDiv.firstChild); 
+          }
           container.innerHTML = '';
           container.appendChild(fragment);
+        });
       } else {
         // No jobs found, let animation continue for 3 seconds, then hide Print Requests section
         console.log('📄 PDF Animation: No jobs found, animation will run for 3 seconds');
@@ -18394,11 +18397,42 @@
       }
     }
 
+    // Preload confetti animation for instant display
+    let confettiPlayer = null;
+    
+    function preloadConfettiAnimation() {
+      const animationContainer = document.getElementById('lottie-animation');
+      if (animationContainer && !confettiPlayer) {
+        // Create dotLottie player element and preload
+        confettiPlayer = document.createElement('dotlottie-player');
+        confettiPlayer.setAttribute('src', '/static/images/success confetti.lottie');
+        confettiPlayer.setAttribute('background', 'transparent');
+        confettiPlayer.setAttribute('speed', '1');
+        confettiPlayer.setAttribute('loop', 'false');
+        confettiPlayer.setAttribute('autoplay', 'false'); // Don't autoplay yet
+        confettiPlayer.style.width = '100%';
+        confettiPlayer.style.height = '100%';
+        confettiPlayer.style.display = 'none'; // Hide initially
+        
+        // Preload the animation
+        confettiPlayer.addEventListener('ready', () => {
+          console.log('🎉 Confetti animation preloaded and ready!');
+        });
+        
+        animationContainer.appendChild(confettiPlayer);
+      }
+    }
+
     // Initialize Lottie animation when modal is shown
     function initializeLottieAnimation() {
       const animationContainer = document.getElementById('lottie-animation');
-      if (animationContainer && !animationContainer.hasChildNodes()) {
-        // Create dotLottie player element
+      if (animationContainer && confettiPlayer) {
+        // Show and play the preloaded animation instantly
+        confettiPlayer.style.display = 'block';
+        confettiPlayer.setAttribute('autoplay', 'true');
+        confettiPlayer.play();
+      } else if (animationContainer && !confettiPlayer) {
+        // Fallback: create player if not preloaded
         const player = document.createElement('dotlottie-player');
         player.setAttribute('src', '/static/images/success confetti.lottie');
         player.setAttribute('background', 'transparent');
@@ -18412,16 +18446,19 @@
       }
     }
 
-    // Enhanced showSuccessModal with animation initialization
+    // Enhanced showSuccessModal with instant animation and immediate job updates
     function showSuccessModalWithAnimation() {
+      // Show modal and animation instantly
       showSuccessModal();
-      // Initialize animation immediately
       initializeLottieAnimation();
       
-      // Update job list dynamically after a short delay
+      // Update job list immediately (no delay)
+      updateJobListAfterPayment();
+      
+      // Also update job list again after a short delay to ensure fresh data
       setTimeout(() => {
         updateJobListAfterPayment();
-      }, 2000); // Update job list while success modal is still showing
+      }, 1000); // Reduced delay for faster updates
     }
 
     // Function to update job list after payment without page reload
@@ -18431,8 +18468,21 @@
         localStorage.removeItem('userJobsCache');
         localStorage.removeItem('userJobsCacheTimestamp');
         
-        // Fetch updated job list
-        const response = await fetch('/userdashboard-data/');
+        // Show loading state immediately
+        const jobsSection = document.getElementById('jobsSection');
+        if (jobsSection) {
+          jobsSection.style.display = 'block';
+          jobsSection.style.opacity = '0.7'; // Show loading state
+        }
+        
+        // Fetch updated job list with no-cache headers
+        const response = await fetch('/userdashboard-data/', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.user_jobs) {
@@ -18443,7 +18493,7 @@
             localStorage.setItem('userJobsCache', JSON.stringify(userJobs));
             localStorage.setItem('userJobsCacheTimestamp', Date.now().toString());
             
-            // Update the print requests section
+            // Update the print requests section immediately
             const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
             renderJobsWithAnimation(pendingJobs);
             
@@ -18457,6 +18507,11 @@
               const el = document.getElementById(id); 
               if (el && val !== undefined) el.textContent = val; 
             });
+            
+            // Restore full opacity
+            if (jobsSection) {
+              jobsSection.style.opacity = '1';
+            }
             
             console.log(`✅ Updated job list: ${pendingJobs.length} pending jobs displayed`);
           }
@@ -18593,6 +18648,9 @@
 
     // Check for payment success parameter on page load
     document.addEventListener('DOMContentLoaded', function() {
+      // Preload confetti animation for instant display
+      preloadConfettiAnimation();
+      
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('payment_success') === 'true') {
         // Ensure all modals are closed first
