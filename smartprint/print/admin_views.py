@@ -30,14 +30,25 @@ def admin_dashboard(request):
 def admin_users_data(request):
     """Get all users data for admin dashboard from R2 storage with month filtering"""
     try:
-        # Get selected month from request
+        # Get selected period from request (month or week)
         selected_month = request.GET.get('month')
-        if not selected_month:
-            # Default to current month
-            selected_month = datetime.datetime.now().strftime('%Y-%m')
+        selected_week = request.GET.get('week')
         
-        # Get users data from R2 storage users folder
-        users_data = get_all_users_from_r2(selected_month)
+        if selected_week:
+            # Handle week filtering
+            users_data = get_all_users_from_r2_week(selected_week)
+            period_type = 'week'
+            selected_period = selected_week
+        elif selected_month:
+            # Handle month filtering
+            users_data = get_all_users_from_r2(selected_month)
+            period_type = 'month'
+            selected_period = selected_month
+        else:
+            # Default to current month
+            selected_period = datetime.datetime.now().strftime('%Y-%m')
+            users_data = get_all_users_from_r2(selected_period)
+            period_type = 'month'
         
         # Get available months for dropdown
         available_months = get_available_months()
@@ -63,7 +74,9 @@ def admin_users_data(request):
             'success': True,
             'users': users_data,
             'overview': overview,
-            'total_count': len(users_data)
+            'total_count': len(users_data),
+            'period_type': period_type,
+            'selected_period': selected_period
         })
         
     except Exception as e:
@@ -126,6 +139,481 @@ def get_all_users_from_r2(selected_month=None):
         return []
 
 
+def get_all_users_from_r2_week(selected_week):
+    """Get all users data from R2 storage users folder with week filtering"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # Parse week format (YYYY-WW)
+        year, week_num = selected_week.split('-W')
+        year = int(year)
+        week_num = int(week_num)
+        
+        # Calculate the start and end dates for the week
+        # Get the first day of the year
+        jan_1 = datetime.datetime(year, 1, 1)
+        # Get the first Monday of the year (or the first day if it's Monday)
+        days_since_monday = jan_1.weekday()
+        first_monday = jan_1 - datetime.timedelta(days=days_since_monday)
+        
+        # Calculate the start of the requested week
+        week_start = first_monday + datetime.timedelta(weeks=week_num - 1)
+        week_end = week_start + datetime.timedelta(days=6)
+        
+        # List all objects in the users folder
+        users_prefix = "users/"
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=users_prefix)
+        
+        users_data = []
+        user_folders = set()
+        
+        if 'Contents' in objects:
+            # Group files by user email
+            for obj in objects['Contents']:
+                key = obj["Key"]
+                # Extract user email from path: users/email@domain.com/filename
+                path_parts = key.split('/')
+                if len(path_parts) >= 3 and path_parts[0] == 'users':
+                    user_email = path_parts[1]
+                    if user_email and '@' in user_email:  # Valid email format
+                        user_folders.add(user_email)
+        
+        # Process each user folder
+        for user_email in user_folders:
+            user_data = process_user_data_from_r2_week(s3, user_email, week_start, week_end)
+            if user_data and user_data['total_documents'] > 0:  # Only include users with documents in selected week
+                users_data.append(user_data)
+        
+        # Sort by last activity (most recent first)
+        users_data.sort(key=lambda x: x['last_activity_date'] or datetime.datetime.min, reverse=True)
+        
+        return users_data
+        
+    except Exception as e:
+        print(f"Error getting all users from R2 for week {selected_week}: {str(e)}")
+        return []
+
+
+def process_user_data_from_r2_week(s3, user_email, week_start, week_end):
+    """Process individual user data from R2 storage with week filtering"""
+    try:
+        user_prefix = f"users/{user_email}/"
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=user_prefix)
+        
+        if 'Contents' not in objects:
+            return None
+        
+        total_documents = 0
+        total_cost = 0.0
+        total_revenue = 0.0
+        service_breakdown = {}
+        last_activity = None
+        monthly_data = {}
+        
+        for obj in objects['Contents']:
+            key = obj["Key"]
+            filename = key.split('/')[-1]
+            
+            # Skip if it's just the folder itself
+            if filename == "":
+                continue
+            
+            try:
+                # Get file metadata
+                head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
+                metadata = head_response.get('Metadata', {})
+                
+                # Get last modified date
+                last_modified = obj.get('LastModified')
+                if not last_modified:
+                    continue
+                
+                # Filter by week if specified
+                file_date = last_modified.replace(tzinfo=None)
+                if file_date < week_start or file_date > week_end:
+                    continue
+                
+                # Count documents
+                total_documents += 1
+                
+                # Get service type
+                service_type = metadata.get('service_type', 'default')
+                if service_type not in service_breakdown:
+                    service_breakdown[service_type] = {'count': 0, 'total_cost': 0.0, 'total_revenue': 0.0}
+                
+                # Get pricing data
+                price = 0.0
+                if 'price' in metadata:
+                    try:
+                        price = float(metadata['price'])
+                    except (ValueError, TypeError):
+                        price = 0.0
+                elif 'total_price' in metadata:
+                    try:
+                        price = float(metadata['total_price'])
+                    except (ValueError, TypeError):
+                        price = 0.0
+                
+                total_cost += price
+                service_breakdown[service_type]['count'] += 1
+                service_breakdown[service_type]['total_cost'] += price
+                
+                # Calculate platform revenue (commission)
+                commission_rate = get_service_commission_rate(service_type)
+                platform_revenue = price * commission_rate
+                total_revenue += platform_revenue
+                service_breakdown[service_type]['total_revenue'] += platform_revenue
+                
+                # Update last activity
+                if not last_activity or last_modified > last_activity:
+                    last_activity = last_modified
+                    
+            except Exception as e:
+                print(f"Error processing file {key}: {e}")
+                continue
+        
+        if total_documents == 0:
+            return None
+        
+        # Format service breakdown for display
+        service_breakdown_list = []
+        for service_type, data in service_breakdown.items():
+            service_breakdown_list.append({
+                'name': service_type.replace('_', ' ').title(),
+                'count': data['count'],
+                'total_cost': data['total_cost'],
+                'total_revenue': data['total_revenue'],
+                'commission_rate': get_service_commission_rate(service_type)
+            })
+        
+        return {
+            'email': user_email,
+            'total_documents': total_documents,
+            'total_cost': total_cost,
+            'platform_revenue': total_revenue,
+            'service_breakdown': service_breakdown_list,
+            'last_activity': last_activity.strftime('%Y-%m-%d %H:%M') if last_activity else 'Never',
+            'last_activity_date': last_activity
+        }
+        
+    except Exception as e:
+        print(f"Error processing user data for {user_email} in week: {str(e)}")
+        return None
+
+
+def get_vendor_notification_data_current_date(current_date):
+    """Get vendor notification data from R2 storage for current date only"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # List all objects in the vendor_notifications folder
+        notifications_prefix = "vendor_notifications/"
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=notifications_prefix)
+        
+        vendor_data = {}
+        
+        if 'Contents' in objects:
+            for obj in objects['Contents']:
+                key = obj["Key"]
+                # Extract vendor email from path: vendor_notifications/email@domain.com/date_folder/notification_id.json
+                path_parts = key.split('/')
+                if len(path_parts) >= 4 and path_parts[0] == 'vendor_notifications':
+                    vendor_email = path_parts[1]
+                    date_folder = path_parts[2]
+                    if vendor_email and '@' in vendor_email:  # Valid email format
+                        try:
+                            # Check if current date falls within the date folder range
+                            if is_date_in_folder_range(current_date, date_folder):
+                                # Get notification data
+                                result = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                                notification_json = json.loads(result['Body'].read().decode('utf-8'))
+                                
+                                # Check if notification is from current date
+                                notification_date = None
+                                try:
+                                    if 'completion_time' in notification_json:
+                                        notification_date = datetime.datetime.fromisoformat(
+                                            notification_json['completion_time'].replace('Z', '+00:00')
+                                        ).date()
+                                    elif 'timestamp' in notification_json:
+                                        notification_date = datetime.datetime.fromisoformat(
+                                            notification_json['timestamp'].replace('Z', '+00:00')
+                                        ).date()
+                                except:
+                                    # If we can't parse the date, assume it's from current date since it's in the right folder
+                                    notification_date = current_date
+                                
+                                # Include notifications from current date
+                                if notification_date == current_date:
+                                    if vendor_email not in vendor_data:
+                                        vendor_data[vendor_email] = {
+                                            'vendor_email': vendor_email,
+                                            'vendor_id': notification_json.get('vendor_id', ''),
+                                            'total_price': 0.0,
+                                            'total_platform_profit': 0.0,
+                                            'service_types': [],
+                                            'jobs_count': 0,
+                                            'jobs': []
+                                        }
+                                    
+                                    # Extract data from notification
+                                    service_type = notification_json.get('service_type', 'Unknown')
+                                    platform_profit = float(notification_json.get('platform_profit', 0.0))
+                                    total_price = float(notification_json.get('total_price', 0.0))
+                                    
+                                    vendor_data[vendor_email]['total_price'] += total_price
+                                    vendor_data[vendor_email]['total_platform_profit'] += platform_profit
+                                    vendor_data[vendor_email]['jobs_count'] += 1
+                                    
+                                    if service_type not in vendor_data[vendor_email]['service_types']:
+                                        vendor_data[vendor_email]['service_types'].append(service_type)
+                                    
+                                    vendor_data[vendor_email]['jobs'].append({
+                                        'filename': notification_json.get('filename', ''),
+                                        'service_type': service_type,
+                                        'platform_profit': platform_profit,
+                                        'total_price': total_price,
+                                        'completion_time': notification_json.get('completion_time', ''),
+                                        'user_email': notification_json.get('user_email', ''),
+                                        'token': notification_json.get('token', ''),
+                                        'document_name': notification_json.get('document_name', '')
+                                    })
+                                    
+                        except Exception as e:
+                            print(f"Error processing vendor notification {key}: {e}")
+                            continue
+        
+        # Convert to list format for admin dashboard
+        vendor_list = []
+        for vendor_email, data in vendor_data.items():
+            vendor_info = {
+                'vendor_email': vendor_email,
+                'vendor_id': data['vendor_id'],
+                'total_price': data['total_price'],
+                'total_platform_profit': data['total_platform_profit'],
+                'service_types': ', '.join(data['service_types']),
+                'jobs_count': data['jobs_count'],
+                'jobs': data['jobs']
+            }
+            vendor_list.append(vendor_info)
+        
+        # Sort by total price (highest first)
+        vendor_list.sort(key=lambda x: x['total_price'], reverse=True)
+        
+        return vendor_list
+        
+    except Exception as e:
+        print(f"Error getting vendor notification data for current date: {str(e)}")
+        return []
+
+def is_date_in_folder_range(target_date, folder_name):
+    """Check if target date falls within the date folder range"""
+    try:
+        # Parse folder name like "2024-01-15_to_2024-01-16"
+        if '_to_' in folder_name:
+            start_str, end_str = folder_name.split('_to_')
+            start_date = datetime.datetime.strptime(start_str, '%Y-%m-%d').date()
+            end_date = datetime.datetime.strptime(end_str, '%Y-%m-%d').date()
+            return start_date <= target_date <= end_date
+        else:
+            # Fallback: try to parse as single date
+            try:
+                folder_date = datetime.datetime.strptime(folder_name, '%Y-%m-%d').date()
+                return folder_date == target_date
+            except:
+                return False
+    except Exception as e:
+        print(f"Error parsing folder date range {folder_name}: {e}")
+        return False
+
+def calculate_vendor_overview_stats_current_date(vendor_data):
+    """Calculate overview statistics for current date vendor data"""
+    try:
+        total_vendors = len(vendor_data)
+        total_documents = sum(vendor.get('jobs_count', 0) for vendor in vendor_data)
+        total_cost = sum(vendor.get('total_price', 0.0) for vendor in vendor_data)
+        total_revenue = sum(vendor.get('total_platform_profit', 0.0) for vendor in vendor_data)
+        
+        return {
+            'total_vendors': total_vendors,
+            'total_documents': total_documents,
+            'total_cost': total_cost,
+            'total_revenue': total_revenue
+        }
+        
+    except Exception as e:
+        print(f"Error calculating vendor overview stats: {str(e)}")
+        return {
+            'total_vendors': 0,
+            'total_documents': 0,
+            'total_cost': 0.0,
+            'total_revenue': 0.0
+        }
+
+def get_vendor_notification_data(selected_month=None):
+    """Get vendor notification data from R2 storage for completed jobs"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # List all objects in the vendor_notifications folder
+        notifications_prefix = "vendor_notifications/"
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=notifications_prefix)
+        
+        notification_data = []
+        
+        if 'Contents' in objects:
+            for obj in objects['Contents']:
+                key = obj["Key"]
+                # Extract vendor email from path: vendor_notifications/email@domain.com/date_folder/notification_id.json
+                path_parts = key.split('/')
+                if len(path_parts) >= 4 and path_parts[0] == 'vendor_notifications':
+                    vendor_email = path_parts[1]
+                    date_folder = path_parts[2]
+                    if vendor_email and '@' in vendor_email:  # Valid email format
+                        try:
+                            # Get notification data
+                            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                            notification_json = json.loads(result['Body'].read().decode('utf-8'))
+                            
+                            # Filter by month if specified
+                            if selected_month:
+                                notification_date = datetime.datetime.fromisoformat(notification_json.get('completion_time', '').replace('Z', '+00:00'))
+                                if notification_date.strftime('%Y-%m') != selected_month:
+                                    continue
+                            
+                            # Only include completed jobs
+                            if notification_json.get('type') == 'job_completed' or 'completion_time' in notification_json:
+                                notification_data.append({
+                                    'vendor_email': vendor_email,
+                                    'vendor_id': notification_json.get('vendor_id', ''),
+                                    'user_email': notification_json.get('user_email', ''),
+                                    'service_type': notification_json.get('service_type', 'Unknown'),
+                                    'platform_profit': float(notification_json.get('platform_profit', 0.0)),
+                                    'total_price': float(notification_json.get('total_price', 0.0)),
+                                    'completion_date': notification_json.get('completion_time', notification_json.get('timestamp', '')),
+                                    'filename': notification_json.get('filename', ''),
+                                    'token': notification_json.get('token', ''),
+                                    'document_name': notification_json.get('document_name', '')
+                                })
+                        except Exception as e:
+                            print(f"Error processing vendor notification {key}: {e}")
+                            continue
+        
+        # Sort by completion date (most recent first)
+        notification_data.sort(key=lambda x: x['completion_date'], reverse=True)
+        
+        return notification_data
+        
+    except Exception as e:
+        print(f"Error getting vendor notification data: {str(e)}")
+        return []
+
+def calculate_vendor_overview_stats(vendors_data, vendor_notification_data):
+    """Calculate overview statistics for vendors"""
+    try:
+        total_vendors = len(vendors_data)
+        total_documents = sum(vendor.get('total_documents', 0) for vendor in vendors_data)
+        total_cost = sum(vendor.get('total_cost', 0.0) for vendor in vendors_data)
+        total_revenue = sum(vendor.get('platform_revenue', 0.0) for vendor in vendors_data)
+        
+        # Add vendor notification statistics
+        total_notifications = len(vendor_notification_data)
+        total_platform_profit = sum(notification.get('platform_profit', 0.0) for notification in vendor_notification_data)
+        total_notification_revenue = sum(notification.get('total_price', 0.0) for notification in vendor_notification_data)
+        
+        return {
+            'total_vendors': total_vendors,
+            'total_documents': total_documents,
+            'total_cost': total_cost,
+            'total_revenue': total_revenue,
+            'total_notifications': total_notifications,
+            'total_platform_profit': total_platform_profit,
+            'total_notification_revenue': total_notification_revenue
+        }
+        
+    except Exception as e:
+        print(f"Error calculating vendor overview stats: {str(e)}")
+        return {
+            'total_vendors': 0,
+            'total_documents': 0,
+            'total_cost': 0.0,
+            'total_revenue': 0.0,
+            'total_notifications': 0,
+            'total_platform_profit': 0.0,
+            'total_notification_revenue': 0.0
+        }
+
+def get_user_notification_data(selected_month=None):
+    """Get user notification data from R2 storage for completed jobs"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        # List all objects in the user_notifications folder
+        notifications_prefix = "user_notifications/"
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=notifications_prefix)
+        
+        notification_data = []
+        
+        if 'Contents' in objects:
+            for obj in objects['Contents']:
+                key = obj["Key"]
+                # Extract user email from path: user_notifications/email@domain.com/notification_id.json
+                path_parts = key.split('/')
+                if len(path_parts) >= 3 and path_parts[0] == 'user_notifications':
+                    user_email = path_parts[1]
+                    if user_email and '@' in user_email:  # Valid email format
+                        try:
+                            # Get notification data
+                            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                            notification_json = json.loads(result['Body'].read().decode('utf-8'))
+                            
+                            # Filter by month if specified
+                            if selected_month:
+                                notification_date = datetime.datetime.fromisoformat(notification_json.get('timestamp', '').replace('Z', '+00:00'))
+                                if notification_date.strftime('%Y-%m') != selected_month:
+                                    continue
+                            
+                            # Only include completed jobs
+                            if notification_json.get('type') == 'job_completed':
+                                notification_data.append({
+                                    'user_email': user_email,
+                                    'service_type': notification_json.get('service_type', 'Unknown'),
+                                    'platform_profit': float(notification_json.get('platform_profit', 0.0)),
+                                    'completion_date': notification_json.get('completion_time', notification_json.get('timestamp', '')),
+                                    'filename': notification_json.get('filename', ''),
+                                    'token': notification_json.get('token', ''),
+                                    'vendor_id': notification_json.get('vendor_id', '')
+                                })
+                        except Exception as e:
+                            print(f"Error processing notification {key}: {e}")
+                            continue
+        
+        # Sort by completion date (most recent first)
+        notification_data.sort(key=lambda x: x['completion_date'], reverse=True)
+        
+        return notification_data
+        
+    except Exception as e:
+        print(f"Error getting user notification data: {str(e)}")
+        return []
+
+
 def get_available_months():
     """Get list of available months from R2 data"""
     try:
@@ -171,19 +659,54 @@ def calculate_growth_percentage(current_month_data, previous_month_data):
 
 
 def get_service_commission_rate(service_type):
-    """Get commission rate for different service types"""
+    """Get commission rate for different service types - matches user dashboard rates"""
     commission_rates = {
-        'regular print': 0.15,      # 15%
-        'photo print': 0.20,        # 20%
-        'passport photo': 0.25,     # 25%
-        'jumbo print': 0.18,        # 18%
-        'gloss print': 0.22,        # 22%
-        'digital print': 0.16,      # 16%
-        'a4 print': 0.14,           # 14%
-        'golden emboss': 0.30,      # 30%
+        # A4 Print rates
+        'regular print': 0.20,      # 20% (matches a4_print_bw and a4_print_color)
+        'a4 print': 0.20,           # 20%
+        
+        # Passport Photo rates
+        'passport photo': 0.15,     # 15% (matches passport_photo_8, 16, 30)
+        'passport_photo': 0.15,     # 15%
+        
+        # Digital Print rates
+        'digital print': 0.15,      # 15% (matches digital_print_a4 and digital_print_12x18)
+        'digital_print': 0.15,      # 15%
+        
+        # Gloss Print rates
+        'gloss print': 0.12,        # 12% (matches gloss_paper_a4)
+        'gloss_printing': 0.12,     # 12%
+        
+        # Jumbo Print rates (varies by size)
+        'jumbo print': 0.10,        # 10% (matches jumbo_a0 - using lowest rate as default)
+        'jumbo_printing': 0.10,     # 10%
+        'jumbo a0': 0.10,           # 10%
+        'jumbo a1': 0.08,           # 8%
+        'jumbo a2': 0.12,           # 12%
+        'jumbo a3': 0.20,           # 20%
+        
+        # Photo Print rates
+        'photo print': 0.20,        # 20% (using A4 print rate as default)
+        'photo_print': 0.20,        # 20%
+        
+        # Lamination rates
+        'lamination': 0.12,         # 12% (matches lamination_a4)
+        
+        # Binding rates
+        'spiral binding': 0.10,     # 10%
+        'tape binding': 0.10,       # 10%
+        
+        # Golden Emboss rates
+        'golden emboss': 0.15,      # 15% (using enhanced_image rate)
+        'golden_embossing': 0.15,   # 15%
+        
+        # Default rate
         'default': 0.15             # 15% default
     }
-    return commission_rates.get(service_type.lower(), 0.15)
+    
+    # Normalize service type for matching
+    normalized_type = service_type.lower().replace('_', ' ').strip()
+    return commission_rates.get(normalized_type, 0.15)
 
 
 def process_user_data_from_r2(s3, user_email, selected_month=None):
@@ -378,6 +901,147 @@ def get_user_total_payments_from_r2(user_email):
 
 @staff_member_required
 def admin_vendors_data(request):
+    """Get vendor data from vendor_notification folder for current date only"""
+    try:
+        # Get current date
+        current_date = datetime.datetime.now().date()
+        
+        # Get vendor notification data for current date only
+        vendor_notification_data = get_vendor_notification_data_current_date(current_date)
+        
+        # Calculate overview statistics
+        overview = calculate_vendor_overview_stats_current_date(vendor_notification_data)
+        
+        return JsonResponse({
+            'success': True,
+            'vendors': vendor_notification_data,
+            'overview': overview,
+            'total_count': len(vendor_notification_data),
+            'current_date': current_date.strftime('%Y-%m-%d')
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@staff_member_required
+def admin_store_invoice(request):
+    """Store invoice data for a vendor"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vendor_email = data.get('vendor_email')
+            amount = data.get('amount')
+            
+            if not vendor_email or not amount:
+                return JsonResponse({'success': False, 'error': 'Vendor email and amount required'}, status=400)
+            
+            # Get current date
+            current_date = datetime.datetime.now().date()
+            
+            # Get vendor data from notifications for current date
+            vendor_data = get_vendor_notification_data_current_date(current_date)
+            vendor_info = None
+            
+            for vendor in vendor_data:
+                if vendor['vendor_email'] == vendor_email:
+                    vendor_info = vendor
+                    break
+            
+            if not vendor_info:
+                return JsonResponse({'success': False, 'error': 'Vendor data not found for current date'}, status=404)
+            
+            # Create invoice data
+            invoice_data = {
+                'vendor_email': vendor_email,
+                'vendor_id': vendor_info['vendor_id'],
+                'amount': float(amount),
+                'total_price': vendor_info['total_price'],
+                'total_platform_profit': vendor_info['total_platform_profit'],
+                'service_types': vendor_info['service_types'],
+                'jobs_count': vendor_info['jobs_count'],
+                'jobs': vendor_info['jobs'],
+                'created_at': datetime.datetime.now().isoformat(),
+                'created_by': request.user.email if request.user.is_authenticated else 'admin',
+                'invoice_date': current_date.strftime('%Y-%m-%d')
+            }
+            
+            # Store invoice in vendor_notification folder
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Get current date folder
+            date_folder = get_vendor_notification_date_folder_for_date(current_date)
+            
+            # Store invoice
+            invoice_key = f'vendor_notifications/{sanitize_email(vendor_email)}/{date_folder}/invoice.json'
+            
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=invoice_key,
+                Body=json.dumps(invoice_data, indent=2),
+                ContentType='application/json'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Invoice stored successfully for {vendor_email}',
+                'invoice_key': invoice_key
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+def get_vendor_notification_date_folder_for_date(target_date):
+    """Get the appropriate 2-day date folder for a specific date"""
+    try:
+        # Calculate the 2-day folder range
+        day_of_year = target_date.timetuple().tm_yday
+        period_start_day = ((day_of_year - 1) // 2) * 2 + 1
+        
+        # Handle year boundaries
+        year = target_date.year
+        if period_start_day > 365:
+            if target_date.month == 12 and target_date.day >= 30:
+                period_start_day = 365
+            else:
+                year += 1
+                period_start_day = 1
+        
+        # Create start date
+        start_date = datetime.date(year, 1, 1) + datetime.timedelta(days=period_start_day - 1)
+        
+        # Create end date (2 days later)
+        end_date = start_date + datetime.timedelta(days=1)
+        
+        # Handle year boundaries for end date
+        if end_date.year != start_date.year:
+            end_date = datetime.date(start_date.year, 12, 31)
+        
+        # Format as folder name: YYYY-MM-DD_to_YYYY-MM-DD
+        folder_name = f"{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}"
+        
+        return folder_name
+        
+    except Exception as e:
+        print(f"Error calculating date folder: {e}")
+        # Fallback to current date
+        today = datetime.date.today()
+        return f"{today.strftime('%Y-%m-%d')}_to_{(today + datetime.timedelta(days=1)).strftime('%Y-%m-%d')}"
+
+def sanitize_email(email):
+    """Sanitize email for use in file paths"""
+    return email.replace('@', '_at_').replace('.', '_dot_')
+
+@staff_member_required
+def admin_vendors_data_old(request):
     """Get all vendors data for admin dashboard from R2 storage"""
     try:
         # Get selected month from request

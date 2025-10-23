@@ -2931,7 +2931,7 @@ def upload_to_r2(request):
                     ]
                     
                     # All other services go to vendor_print_jobs folder
-                    # These include photo_print, passport_photo, regular print, and any other services
+                    # These include photo_print, passport_photo, and any other services
                     
                     if service_type in manual_job_services:
                         # Store in vendor_manual_print_jobs folder
@@ -2940,11 +2940,11 @@ def upload_to_r2(request):
                         file_metadata['storage_folder'] = 'vendor_manual_print_jobs'
                         print(f"📁 Storing {service_type} job in vendor_manual_print_jobs folder")
                     else:
-                        # Store in regular vendor_print_jobs folder (same as document print modal)
+                        # Store in regular vendor_print_jobs folder
                         vendor_file_key = f'vendor_print_jobs/{vendor_id}/{file.name}'
                         user_file_key = f'users/{user_email}/{file.name}'
                         file_metadata['storage_folder'] = 'vendor_print_jobs'
-                        print(f"📁 Storing {service_type} job in vendor_print_jobs folder (same as document print)")
+                        print(f"📁 Storing {service_type} job in vendor_print_jobs folder")
 
                     # Ensure a default render flag so dashboard can avoid double-rendering
                     if 'rendered_status' not in file_metadata:
@@ -9661,16 +9661,14 @@ def deduct_user_points(user_email: str, points: int, reason: str) -> bool:
         return False
 
 def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time, token=None):
-    """Send job completion notification to user and vendor"""
+    """Send job completion notification to user"""
     try:
         # Use provided token or extract from filename as fallback
         if not token:
             token = os.path.splitext(filename)[0]
         
-        # Get service type and platform_profit from job metadata if available
+        # Get service type from job metadata if available
         service_type = "Print Job"
-        platform_profit = 0.0
-        total_price = 0.0
         try:
             s3 = boto3.client('s3',
                               aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -9678,31 +9676,12 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
             
-            # Try to get service type and platform_profit from vendor_print_jobs
+            # Try to get service type from vendor_print_jobs
             vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
             try:
                 result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
                 job_data = json.loads(result['Body'].read().decode('utf-8'))
                 service_type = job_data.get('service_type', 'Print Job')
-                
-                # Extract platform_profit and total_price from pricing_details if available
-                pricing_details = job_data.get('pricing_details')
-                if pricing_details:
-                    try:
-                        if isinstance(pricing_details, str):
-                            pricing_obj = json.loads(pricing_details)
-                        else:
-                            pricing_obj = pricing_details
-                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                        total_price = float(pricing_obj.get('total', 0.0))
-                    except:
-                        platform_profit = 0.0
-                        total_price = 0.0
-                
-                # If total_price not found in pricing_details, try metadata
-                if total_price == 0.0:
-                    total_price = float(job_data.get('total_price', 0.0))
-                    
             except:
                 pass
         except:
@@ -9740,9 +9719,7 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'detailed_message': f'Document: {document_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: #{token}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
             'token': token,
             'document_name': document_name,
-            'service_type': formatted_service_type,
-            'platform_profit': platform_profit,
-            'total_price': total_price
+            'service_type': formatted_service_type
         }
         
         # Store notification in R2 for user to see
@@ -9766,157 +9743,12 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         except Exception as e:
             print(f"❌ Error storing notification in R2: {e}")
         
-        # Store vendor notification in 2-day date folder
-        try:
-            store_vendor_notification(vendor_id, notification_data, completion_time)
-        except Exception as e:
-            print(f"❌ Error storing vendor notification: {e}")
-        
         # Here you could also send email, push notification, etc.
         print(f"📧 Sent {status} notification to {user_email} for job {filename}")
         return True
     except Exception as e:
         print(f"❌ Error sending notification: {e}")
         return False
-
-def store_vendor_notification(vendor_id, notification_data, completion_time):
-    """Store vendor notification in 2-day date folder structure"""
-    try:
-        # Get vendor email from vendor_id
-        vendor_email = get_vendor_email_by_id(vendor_id)
-        if not vendor_email:
-            print(f"❌ Could not find vendor email for vendor_id: {vendor_id}")
-            return False
-        
-        # Parse completion time to get date
-        completion_date = datetime.datetime.fromisoformat(completion_time.replace('Z', '+00:00')).date()
-        
-        # Get the appropriate 2-day date folder
-        date_folder = get_vendor_notification_date_folder(completion_date)
-        
-        # Create vendor notification data (optimized for vendor dashboard)
-        vendor_notification_data = {
-            'notification_id': notification_data['notification_id'],
-            'vendor_id': vendor_id,
-            'vendor_email': vendor_email,
-            'user_email': notification_data['user_email'],
-            'filename': notification_data['filename'],
-            'service_type': notification_data['service_type'],
-            'platform_profit': notification_data['platform_profit'],
-            'total_price': notification_data['total_price'],
-            'completion_time': completion_time,
-            'timestamp': notification_data['timestamp'],
-            'token': notification_data['token'],
-            'document_name': notification_data['document_name']
-        }
-        
-        # Store in vendor_notifications folder with 2-day date structure
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-        
-        vendor_notification_key = f'vendor_notifications/{sanitize_email(vendor_email)}/{date_folder}/{notification_data["notification_id"]}.json'
-        
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=vendor_notification_key,
-            Body=json.dumps(vendor_notification_data, indent=2),
-            ContentType='application/json'
-        )
-        
-        print(f"📧 Stored vendor notification for {vendor_email} in folder {date_folder}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error storing vendor notification: {e}")
-        return False
-
-def get_vendor_notification_date_folder(completion_date):
-    """Get the appropriate 2-day date folder for vendor notifications"""
-    try:
-        # Convert to date object if it's a string
-        if isinstance(completion_date, str):
-            completion_date = datetime.datetime.fromisoformat(completion_date.replace('Z', '+00:00')).date()
-        
-        # Calculate the 2-day folder range
-        # Each folder covers 2 consecutive days starting from odd days
-        # Pattern: 1-2, 3-4, 5-6, 7-8, 9-10, etc.
-        
-        # Get the day of year
-        day_of_year = completion_date.timetuple().tm_yday
-        
-        # Calculate which 2-day period this falls into
-        # Each period starts on odd days (1-2, 3-4, 5-6, etc.)
-        period_start_day = ((day_of_year - 1) // 2) * 2 + 1
-        
-        # Handle year boundaries
-        year = completion_date.year
-        if period_start_day > 365:
-            # If we're near the end of the year, adjust
-            if completion_date.month == 12 and completion_date.day >= 30:
-                # Last few days of December - create a special folder
-                period_start_day = 365
-            else:
-                # Move to next year
-                year += 1
-                period_start_day = 1
-        
-        # Create start date
-        start_date = datetime.date(year, 1, 1) + datetime.timedelta(days=period_start_day - 1)
-        
-        # Create end date (2 days later)
-        end_date = start_date + datetime.timedelta(days=1)
-        
-        # Handle year boundaries for end date
-        if end_date.year != start_date.year:
-            end_date = datetime.date(start_date.year, 12, 31)
-        
-        # Format as folder name: YYYY-MM-DD_to_YYYY-MM-DD
-        folder_name = f"{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}"
-        
-        print(f"📅 Created 2-day folder for {completion_date}: {folder_name}")
-        return folder_name
-        
-    except Exception as e:
-        print(f"❌ Error calculating date folder: {e}")
-        # Fallback to current date
-        today = datetime.date.today()
-        return f"{today.strftime('%Y-%m-%d')}_to_{(today + datetime.timedelta(days=1)).strftime('%Y-%m-%d')}"
-
-def get_vendor_email_by_id(vendor_id):
-    """Get vendor email by vendor ID"""
-    try:
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-        
-        # List all vendor registration details
-        reg_prefix = "vendor_register_details/"
-        reg_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=reg_prefix)
-        
-        if 'Contents' in reg_objects:
-            for obj in reg_objects['Contents']:
-                key = obj["Key"]
-                if key.endswith('/registration.json'):
-                    try:
-                        result = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                        vendor_data = json.loads(result['Body'].read().decode('utf-8'))
-                        
-                        if vendor_data.get('vendor_id') == vendor_id:
-                            return vendor_data.get('vendor_email')
-                    except Exception as e:
-                        print(f"Error reading vendor data from {key}: {e}")
-                        continue
-        
-        return None
-        
-    except Exception as e:
-        print(f"Error getting vendor email by ID: {e}")
-        return None
 
 @csrf_exempt
 def accept_print_job(request):

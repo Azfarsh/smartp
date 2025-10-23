@@ -919,8 +919,8 @@
                         </div>
                         <div class="commission-rates-grid">
                             <div class="rate-item">
-                                <span class="service-name">Regular Print</span>
-                                <span class="rate-value">15%</span>
+                                <span class="service-name">Regular Print (A4)</span>
+                                <span class="rate-value">20%</span>
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Photo Print</span>
@@ -931,24 +931,44 @@
                                 <span class="rate-value">15%</span>
                             </div>
                             <div class="rate-item">
-                                <span class="service-name">Jumbo Print</span>
-                                <span class="rate-value">18%</span>
+                                <span class="service-name">Digital Print</span>
+                                <span class="rate-value">15%</span>
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Gloss Print</span>
                                 <span class="rate-value">12%</span>
                             </div>
                             <div class="rate-item">
-                                <span class="service-name">Digital Print</span>
-                                <span class="rate-value">16%</span>
+                                <span class="service-name">Jumbo Print (A0)</span>
+                                <span class="rate-value">10%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Jumbo Print (A1)</span>
+                                <span class="rate-value">8%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Jumbo Print (A2)</span>
+                                <span class="rate-value">12%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Jumbo Print (A3)</span>
+                                <span class="rate-value">20%</span>
                             </div>
                             <div class="rate-item">
                                 <span class="service-name">Lamination</span>
                                 <span class="rate-value">12%</span>
                             </div>
                             <div class="rate-item">
+                                <span class="service-name">Spiral Binding</span>
+                                <span class="rate-value">10%</span>
+                            </div>
+                            <div class="rate-item">
+                                <span class="service-name">Tape Binding</span>
+                                <span class="rate-value">10%</span>
+                            </div>
+                            <div class="rate-item">
                                 <span class="service-name">Golden Emboss</span>
-                                <span class="rate-value">30%</span>
+                                <span class="rate-value">15%</span>
                             </div>
                         </div>
                     </div>
@@ -961,9 +981,14 @@
                                 <i class="fas fa-search search-icon"></i>
                             </div>
                             <div class="month-selector">
-                                <label for="month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select Month:</label>
+                                <label for="period-type" style="font-weight: 600; margin-right: 10px; color: #374151;">Period:</label>
+                                <select id="period-type" class="period-dropdown" style="margin-right: 10px; padding: 8px 12px; font-size: 14px; min-width: 120px;">
+                                    <option value="month">Month</option>
+                                    <option value="week">Week</option>
+                                </select>
+                                <label for="month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select:</label>
                                 <select id="month-select" class="month-dropdown">
-                                    <option value="">Loading months...</option>
+                                    <option value="">Loading...</option>
                                 </select>
                             </div>
                         </div>
@@ -1004,6 +1029,7 @@
                         </div>
                     </div>
                 </div>
+
 
                 <!-- Vendors Category -->
                 <div id="vendors-category" class="category-content hidden">
@@ -1090,17 +1116,16 @@
                             </div>
                             <div class="table-container">
                                 <table class="data-table" id="vendors-table" style="display: none;">
-                                    <thead>
-                                        <tr>
-                                            <th>Vendor Name</th>
-                                            <th>Email</th>
-                                            <th>Vendor ID</th>
-                                            <th style="text-align: center;">Documents</th>
-                                            <th style="text-align: center;">Service Types</th>
-                                            <th style="text-align: right;">Total Amount</th>
-                                            <th style="text-align: right;">Last Activity</th>
-                                        </tr>
-                                    </thead>
+                                     <thead>
+                                         <tr>
+                                             <th>Vendor Email</th>
+                                             <th style="text-align: right;">Total Price</th>
+                                             <th style="text-align: right;">Platform Profit</th>
+                                             <th style="text-align: center;">Service Types</th>
+                                             <th style="text-align: center;">Amount</th>
+                                             <th style="text-align: center;">Action</th>
+                                         </tr>
+                                     </thead>
                                     <tbody id="vendors-table-body">
                                         <!-- Vendor data will be loaded here via AJAX -->
                                     </tbody>
@@ -1353,12 +1378,20 @@
                 filterUsers();
             });
 
-            // Month selector
+            // Period type selector
+            const periodTypeSelect = document.getElementById('period-type');
+            periodTypeSelect.addEventListener('change', function() {
+                const periodType = this.value;
+                updatePeriodSelector(periodType);
+            });
+
+            // Month/Week selector
             const monthSelect = document.getElementById('month-select');
             monthSelect.addEventListener('change', function() {
-                const selectedMonth = this.value;
-                if (selectedMonth) {
-                    loadUsersData(selectedMonth);
+                const selectedPeriod = this.value;
+                const periodType = document.getElementById('period-type').value;
+                if (selectedPeriod) {
+                    loadUsersData(selectedPeriod, periodType);
                 }
             });
 
@@ -1368,14 +1401,17 @@
                 filterVendors();
             });
 
-            // Vendor month selector
-            const vendorMonthSelect = document.getElementById('vendor-month-select');
-            vendorMonthSelect.addEventListener('change', function() {
-                const selectedMonth = this.value;
-                if (selectedMonth) {
-                    loadVendorsData(selectedMonth);
-                }
-            });
+             // Display current date for vendor data
+             const currentDateDisplay = document.getElementById('vendor-month-select');
+             if (currentDateDisplay) {
+                 const today = new Date();
+                 currentDateDisplay.innerHTML = `<option value="">Current Date: ${today.toLocaleDateString('en-US', { 
+                     weekday: 'long', 
+                     year: 'numeric', 
+                     month: 'long', 
+                     day: 'numeric' 
+                 })}</option>`;
+             }
 
             // Filter buttons
             const filterButtons = document.querySelectorAll('.filter-btn');
@@ -2028,7 +2064,7 @@
         }
 
         // Load users data from R2
-        function loadUsersData(selectedMonth = null) {
+        function loadUsersData(selectedPeriod = null, periodType = 'month') {
             const loading = document.getElementById('users-loading');
             const table = document.getElementById('users-table');
             const empty = document.getElementById('users-empty');
@@ -2038,8 +2074,8 @@
             empty.style.display = 'none';
             
             let url = '/admin-dashboard/users/';
-            if (selectedMonth) {
-                url += `?month=${selectedMonth}`;
+            if (selectedPeriod) {
+                url += `?${periodType}=${selectedPeriod}`;
             }
             
             fetch(url)
@@ -2057,6 +2093,15 @@
                         empty.style.display = 'block';
                         updateMonthSelector(data.overview.available_months, data.overview.selected_month);
                     }
+                    
+                    // Update the period label based on the response
+                    if (data.period_type) {
+                        const periodLabel = document.querySelector('label[for="month-select"]');
+                        if (periodLabel) {
+                            periodLabel.textContent = `Select ${data.period_type === 'week' ? 'Week' : 'Month'}:`;
+                        }
+                    }
+                    
                 })
                 .catch(error => {
                     console.error('Error loading users:', error);
@@ -2094,6 +2139,7 @@
             `).join('');
         }
 
+
         // Update overview cards
         function updateOverviewCards(overview) {
             document.getElementById('total-users').textContent = overview.total_users || 0;
@@ -2113,6 +2159,66 @@
             } else {
                 growthElement.style.color = '#64748b';
             }
+        }
+
+        // Update period selector dropdown based on type (month or week)
+        function updatePeriodSelector(periodType) {
+            const monthSelect = document.getElementById('month-select');
+            monthSelect.innerHTML = '';
+            
+            if (periodType === 'week') {
+                // Generate weeks for current year
+                const currentYear = new Date().getFullYear();
+                const weeks = generateWeeksForYear(currentYear);
+                
+                weeks.forEach(week => {
+                    const option = document.createElement('option');
+                    option.value = week.value;
+                    option.textContent = week.label;
+                    monthSelect.appendChild(option);
+                });
+            } else {
+                // Default to current month
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                const option = document.createElement('option');
+                option.value = currentMonth;
+                option.textContent = formatMonthDisplay(currentMonth);
+                option.selected = true;
+                monthSelect.appendChild(option);
+                
+                // Load data for current month
+                loadUsersData(currentMonth, 'month');
+            }
+        }
+
+        // Generate weeks for a given year
+        function generateWeeksForYear(year) {
+            const weeks = [];
+            const startDate = new Date(year, 0, 1);
+            const endDate = new Date(year, 11, 31);
+            
+            let currentDate = new Date(startDate);
+            let weekNumber = 1;
+            
+            while (currentDate <= endDate) {
+                const weekStart = new Date(currentDate);
+                const weekEnd = new Date(currentDate);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                // Format: YYYY-WW
+                const weekValue = `${year}-W${weekNumber.toString().padStart(2, '0')}`;
+                const weekLabel = `Week ${weekNumber} (${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+                
+                weeks.push({
+                    value: weekValue,
+                    label: weekLabel
+                });
+                
+                currentDate.setDate(currentDate.getDate() + 7);
+                weekNumber++;
+            }
+            
+            return weeks;
         }
 
         // Update month selector dropdown
@@ -2183,20 +2289,17 @@
             }
         }
 
-        // Load vendors data from R2
-        function loadVendorsData(selectedMonth = null) {
-            const loading = document.getElementById('vendors-loading');
-            const table = document.getElementById('vendors-table');
-            const empty = document.getElementById('vendors-empty');
-            
-            loading.style.display = 'block';
-            table.style.display = 'none';
-            empty.style.display = 'none';
-            
-            let url = '/admin-dashboard/vendors/';
-            if (selectedMonth) {
-                url += `?month=${selectedMonth}`;
-            }
+         // Load vendors data from R2 (current date only)
+         function loadVendorsData() {
+             const loading = document.getElementById('vendors-loading');
+             const table = document.getElementById('vendors-table');
+             const empty = document.getElementById('vendors-empty');
+             
+             loading.style.display = 'block';
+             table.style.display = 'none';
+             empty.style.display = 'none';
+             
+             let url = '/admin-dashboard/vendors/';
             
             fetch(url)
                 .then(response => response.json())
@@ -2208,10 +2311,8 @@
                         filteredVendorsData = [...allVendorsData];
                         displayVendors(data.vendors);
                         updateVendorOverviewCards(data.overview);
-                        updateVendorMonthSelector(data.overview.available_months, data.overview.selected_month);
                     } else {
                         empty.style.display = 'block';
-                        updateVendorMonthSelector(data.overview.available_months, data.overview.selected_month);
                     }
                 })
                 .catch(error => {
@@ -2234,21 +2335,74 @@
             table.style.display = 'table';
             document.getElementById('vendors-empty').style.display = 'none';
 
-            tableBody.innerHTML = vendors.map(vendor => `
-                <tr>
-                    <td class="user-email">${vendor.vendor_name}</td>
-                    <td class="user-email">${vendor.email}</td>
-                    <td class="user-email">${vendor.vendor_id}</td>
-                    <td class="documents-count">${vendor.total_documents}</td>
-                    <td class="service-tags">
-                        ${vendor.service_breakdown.map(service => 
-                            `<span class="service-tag" title="Amount: ₹${service.total_cost}">${service.name} (${service.count})</span>`
-                        ).join('')}
-                    </td>
-                    <td class="cost-amount">₹${vendor.total_cost.toFixed(2)}</td>
-                    <td class="last-activity">${vendor.last_activity}</td>
-                </tr>
-            `).join('');
+             tableBody.innerHTML = vendors.map(vendor => `
+                 <tr>
+                     <td class="vendor-email">${vendor.vendor_email}</td>
+                     <td class="total-price" style="text-align: right;">₹${vendor.total_price.toFixed(2)}</td>
+                     <td class="platform-profit" style="text-align: right;">₹${vendor.total_platform_profit.toFixed(2)}</td>
+                     <td class="service-types" style="text-align: center;">${vendor.service_types}</td>
+                     <td class="amount-input" style="text-align: center;">
+                         <input type="number" 
+                                class="amount-field" 
+                                data-vendor-email="${vendor.vendor_email}"
+                                placeholder="Enter amount" 
+                                style="width: 100px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
+                     </td>
+                     <td class="action" style="text-align: center;">
+                         <button class="btn-submit-invoice" 
+                                 data-vendor-email="${vendor.vendor_email}"
+                                 style="background: #4CAF50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                             Submit
+                         </button>
+                     </td>
+                 </tr>
+             `).join('');
+             
+             // Add event listeners for submit buttons
+             document.querySelectorAll('.btn-submit-invoice').forEach(button => {
+                 button.addEventListener('click', function() {
+                     const vendorEmail = this.getAttribute('data-vendor-email');
+                     const amountInput = document.querySelector(`input[data-vendor-email="${vendorEmail}"]`);
+                     const amount = amountInput.value;
+                     
+                     if (!amount || amount <= 0) {
+                         alert('Please enter a valid amount');
+                         return;
+                     }
+                     
+                     // Submit invoice
+                     submitInvoice(vendorEmail, amount);
+                 });
+             });
+        }
+
+        // Submit invoice function
+        function submitInvoice(vendorEmail, amount) {
+            fetch('/admin-dashboard/store-invoice/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    vendor_email: vendorEmail,
+                    amount: amount
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Invoice stored successfully for ${vendorEmail}`);
+                    // Clear the amount input
+                    document.querySelector(`input[data-vendor-email="${vendorEmail}"]`).value = '';
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error storing invoice');
+            });
         }
 
         // Update vendor overview cards
