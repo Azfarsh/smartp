@@ -2508,11 +2508,13 @@
       }
 
         .service-name {
-          font-size: 0.9rem; /* slightly smaller */
-          font-weight: 600;
+          font-size: 1rem; /* clearer on mobile */
+          font-weight: 700;
           margin-bottom: 0;
-          line-height: 1.1; /* tighter line height */
+          line-height: 1.15; /* tighter line height */
+          color: #111827 !important; /* force readable black */
         }
+        [data-theme="dark"] .service-name { color: #f9fafb !important; }
 
         .service-description {
           font-size: 0.7rem; /* smaller font */
@@ -2567,8 +2569,11 @@
           font-size: 0.8rem; 
         }
         .service-name { 
-          font-size: 0.85rem; 
+          font-size: 0.95rem; 
+          color: #111827 !important;
+          font-weight: 800;
         }
+        [data-theme="dark"] .service-name { color: #f9fafb !important; }
         .service-description { 
           font-size: 0.65rem; 
         }
@@ -11540,83 +11545,50 @@
       }
     }
     
-    // INSTANT JOBS RENDERING - Use cached data first, then fetch async
+    // INSTANT JOBS RENDERING - Use preloaded data, else fetch async
     document.addEventListener('DOMContentLoaded', function() {
       const container = document.getElementById('jobsContainer');
       
       // Start PDF animation timer immediately
       startPdfAnimationTimer();
       
-      // 1) Try localStorage cache for instant paint (kept for 60s)
-      try {
-        const cached = JSON.parse(localStorage.getItem('userDashboardCache') || '{}');
-        const now = Date.now();
-        if (cached && cached.ts && (now - cached.ts) < 60 * 1000 && Array.isArray(cached.jobs)) {
-          window.preloadedJobs = cached.jobs;
-          window.preloadedPendingJobs = cached.jobs.filter(j => j.job_completed === 'NO');
+      // If preloaded (server provided) jobs exist, render immediately
+      if (window.preloadedJobs && window.preloadedPendingJobs) {
+        userJobs = window.preloadedJobs;
+        renderJobsWithAnimation(window.preloadedPendingJobs);
+        updateLayoutBasedOnJobs();
+      } else {
+        // Show skeletons already present; fetch lightweight JSON and render without blocking navigation
+        fetch('/userdashboard-data/', {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' }
+        })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
+        .then(data => {
+          if (!data || !data.success) return;
+          // Store globally for reuse
+          window.preloadedJobs = data.user_jobs || [];
+          window.preloadedPendingJobs = (data.user_jobs || []).filter(j => j.job_completed === 'NO');
           userJobs = window.preloadedJobs;
+          // Update KPI counters fast
+          const updates = [
+            ['totalJobsCount', data.total_jobs],
+            ['pendingJobsCount', data.pending_jobs],
+            ['completedJobsCount', data.completed_jobs]
+          ];
+          updates.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
+          
           renderJobsWithAnimation(window.preloadedPendingJobs);
-          if (cached.metrics) {
-            const u = [
-              ['totalJobsCount', cached.metrics.total_jobs],
-              ['pendingJobsCount', cached.metrics.pending_jobs],
-              ['completedJobsCount', cached.metrics.completed_jobs]
-            ];
-            u.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
-          }
           updateLayoutBasedOnJobs();
-        }
-      } catch (_) {}
-
-      // 2) Fetch fresh in background and update cache/UI if changed
-      fetch('/userdashboard-data/', {
-        method: 'GET',
-        credentials: 'same-origin',
-        headers: { 'Accept': 'application/json' }
-      })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
-      .then(data => {
-        if (!data || !data.success) return;
-        const nextJobs = data.user_jobs || [];
-        const nextPending = nextJobs.filter(j => j.job_completed === 'NO');
-        const jobsChanged = JSON.stringify(nextJobs) !== JSON.stringify(window.preloadedJobs || []);
-        window.preloadedJobs = nextJobs;
-        window.preloadedPendingJobs = nextPending;
-        userJobs = nextJobs;
-
-        // Update counters
-        const updates = [
-          ['totalJobsCount', data.total_jobs],
-          ['pendingJobsCount', data.pending_jobs],
-          ['completedJobsCount', data.completed_jobs]
-        ];
-        updates.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
-
-        // Render only if first paint didn't happen or data changed
-        if (!document.getElementById('jobsContainer').children.length || jobsChanged) {
-          renderJobsWithAnimation(nextPending);
-          updateLayoutBasedOnJobs();
-        }
-
-        // Persist cache for instant next load
-        try {
-          localStorage.setItem('userDashboardCache', JSON.stringify({
-            ts: Date.now(),
-            jobs: nextJobs,
-            metrics: {
-              total_jobs: data.total_jobs,
-              pending_jobs: data.pending_jobs,
-              completed_jobs: data.completed_jobs
-            }
-          }));
-        } catch (_) {}
-      })
-      .catch(err => {
-        console.warn('Failed to fetch dashboard data:', err);
-        // Graceful fallback to any embedded data
-        loadUserJobs();
-        setTimeout(updateLayoutBasedOnJobs, 100);
-      });
+        })
+        .catch(err => {
+          console.warn('Failed to fetch dashboard data:', err);
+          // Graceful fallback to any embedded data
+          loadUserJobs();
+          setTimeout(updateLayoutBasedOnJobs, 100);
+        });
+      }
       
       // Fix back button behavior - redirect to home instead of login
       let backButtonCount = 0;
@@ -18160,19 +18132,11 @@
         <div class="success-animation-container">
           <div id="lottie-animation" class="lottie-animation"></div>
         </div>
+        <div class="success-check" aria-hidden="true">
+          <span class="material-icons">check</span>
+        </div>
         <div class="success-message">
-            <h3>Payment Successful!</h3>
-            <p>Your print job has been sent to print successfully</p>
-            <div class="success-actions">
-              <button class="btn btn-primary" onclick="window.location.href='/vendordashboard/'">
-                <i class="fas fa-arrow-left"></i>
-                Back to Vendor Dashboard
-              </button>
-              <button class="btn btn-secondary" onclick="hideSuccessModal()">
-                <i class="fas fa-times"></i>
-                Close
-              </button>
-            </div>
+          <h3 class="success-title">Print Job Sent to Print Successfully!</h3>
         </div>
       </div>
     </div>
@@ -18506,6 +18470,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     }
 
     .lottie-animation {
@@ -18513,60 +18478,42 @@
       height: 200px;
     }
 
-    .success-message h3 {
-      color: #10b981;
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0 0 0.5rem 0;
+    /* Green success circle with check */
+    .success-check {
+      width: 88px;
+      height: 88px;
+      margin: -20px auto 16px auto;
+      background: #22c55e;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(34,197,94,0.35);
+    }
+    .success-check .material-icons {
+      color: #fff;
+      font-size: 44px;
+      line-height: 1;
     }
 
-    .success-message p {
+    .success-title {
+      margin: 8px 0 8px 0;
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #10b981 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .success-subtext {
       color: #6b7280;
       font-size: 1rem;
       margin: 0;
       line-height: 1.5;
     }
 
-    .success-actions {
-      margin-top: 1.5rem;
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .success-actions .btn {
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: all 0.2s ease;
-      border: none;
-      cursor: pointer;
-    }
-
-    .success-actions .btn-primary {
-      background: #3b82f6;
-      color: white;
-    }
-
-    .success-actions .btn-primary:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-    }
-
-    .success-actions .btn-secondary {
-      background: #e5e7eb;
-      color: #374151;
-    }
-
-    .success-actions .btn-secondary:hover {
-      background: #d1d5db;
-      transform: translateY(-1px);
-    }
+    /* No buttons for this modal; auto hide on outside click or via explicit close */
 
     @media (max-width: 768px) {
       .success-modal {
@@ -18756,10 +18703,10 @@
             initializeLottieAnimation();
           }, 100);
           
-          // Don't auto-close - let user choose with buttons
-          // setTimeout(() => {
-          //   hideSuccessModal();
-          // }, 3000);
+          // Auto-close after 2 seconds
+          setTimeout(() => {
+            hideSuccessModal();
+          }, 2000);
         }
         
         // Update job list dynamically after a short delay
@@ -19021,3 +18968,4 @@
 </html>
 </html>
 </html>
+
