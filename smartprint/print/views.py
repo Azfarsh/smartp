@@ -1139,6 +1139,15 @@ def userdashboard(request):
         })
 
 
+"""
+Lightweight, in-memory caches for ultra-fast user dashboard loads.
+These are process-local and safe to fall back to if missing.
+"""
+_user_jobs_cache = {}
+_user_jobs_cache_ts = {}
+_USER_JOBS_TTL_SECONDS = 60  # serve cached data for up to 60 seconds
+
+
 def userdashboard_data(request):
     """
     AJAX endpoint to load user dashboard data quickly
@@ -1147,9 +1156,39 @@ def userdashboard_data(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
     try:
-        # Load user data quickly
+        # Load user details quickly (small, inexpensive)
         user_details = get_user_details_from_r2(request.user.email)
-        user_jobs = get_user_jobs_from_r2(request.user.email)
+
+        # Serve cached jobs immediately if fresh
+        email_key = request.user.email
+        now_ts = time.time()
+
+        cached_jobs = None
+        last_ts = _user_jobs_cache_ts.get(email_key)
+        if last_ts and (now_ts - last_ts) < _USER_JOBS_TTL_SECONDS:
+            cached_jobs = _user_jobs_cache.get(email_key, [])
+
+        if cached_jobs is not None:
+            user_jobs = cached_jobs
+        else:
+            # Kick off a background refresh and return fastest possible response
+            try:
+                import threading
+
+                def _refresh_jobs_background(user_email: str) -> None:
+                    try:
+                        fresh_jobs = get_user_jobs_from_r2(user_email)
+                        _user_jobs_cache[user_email] = fresh_jobs
+                        _user_jobs_cache_ts[user_email] = time.time()
+                    except Exception:
+                        # Background refresh failures are non-fatal
+                        pass
+
+                threading.Thread(target=_refresh_jobs_background, args=(email_key,), daemon=True).start()
+            except Exception:
+                pass
+            # Serve whatever we have (none on first load)
+            user_jobs = _user_jobs_cache.get(email_key, [])
         
         # Calculate statistics
         total_jobs = len(user_jobs)
@@ -1183,7 +1222,8 @@ def userdashboard_data(request):
             'pending_jobs': pending_jobs,
             'completed_jobs': completed_jobs,
             'total_earnings': total_earnings,
-            'user_points': user_points
+            'user_points': user_points,
+            'cache_age_seconds': 0 if not last_ts else int(now_ts - last_ts),
         })
         
     except Exception as e:
@@ -4598,8 +4638,6 @@ def vendor_pricing(request):
                     'success': True,
                     'pricing_data': pricing_data.get('pricing_data', {}),
                     'categorized_pricing': pricing_data.get('categorized_pricing', {}),
-                    'printer_configuration': pricing_data.get('printer_configuration', {}),
-                    'printer_counts': pricing_data.get('printer_counts', {}),
                     'services_summary': pricing_data.get('services_summary', {})
                 })
             else:
@@ -4663,7 +4701,11 @@ def vendor_pricing(request):
 
             # Categorize pricing data by service type - merge with existing data
             pricing_entries = data.get('pricing_entries', [])
+            from_dashboard = data.get('from_dashboard', False)
             categorized_pricing = existing_categorized_pricing.copy()  # Start with existing data
+            
+            # Update existing pricing_data with new values
+            updated_pricing_data = existing_pricing_data.copy()
             
             # Organize pricing entries by service category - only update non-empty values
             for entry in pricing_entries:
@@ -4672,6 +4714,9 @@ def vendor_pricing(request):
                 
                 # Only update if price is provided and greater than 0
                 if price and price > 0:
+                    # Update the main pricing_data structure
+                    updated_pricing_data[service_type] = price
+                    
                     # Categorize based on service type prefix
                     if service_type.startswith('digital_print'):
                         categorized_pricing['digital_print'][service_type] = price
@@ -4681,15 +4726,15 @@ def vendor_pricing(request):
                         categorized_pricing['gloss_print'][service_type] = price
                     elif service_type.startswith('photo_print'):
                         categorized_pricing['photo_print'][service_type] = price
-                    elif service_type.startswith('emboss'):
-                        categorized_pricing['golden_embossing'][service_type] = price
-                    elif service_type.startswith('passport_photo'):
-                        categorized_pricing['passport_photo'][service_type] = price
-                    elif service_type.startswith('a4_print'):
+                    elif service_type.startswith('regular_print'):
                         categorized_pricing['a4_print'][service_type] = price
+                    elif service_type.startswith('golden_emboss'):
+                        categorized_pricing['golden_embossing'][service_type] = price
+                    elif service_type.startswith('passport_print'):
+                        categorized_pricing['passport_photo'][service_type] = price
                     elif service_type.startswith('lamination'):
                         categorized_pricing['lamination'][service_type] = price
-                    elif service_type.startswith('binding'):
+                    elif service_type.startswith('tape_binding') or service_type.startswith('spiral_binding'):
                         categorized_pricing['binding'][service_type] = price
                     else:
                         # Fallback to general category
@@ -4702,9 +4747,9 @@ def vendor_pricing(request):
             new_printer_config = data.get('printer_configuration', {})
             
             # Handle printer names and counts separately
-            printer_counts = {}
+            printer_counts = existing_data.get('printer_counts', {}).copy()  # Start with existing counts
             if 'counts' in new_printer_config:
-                printer_counts = new_printer_config['counts']
+                printer_counts.update(new_printer_config['counts'])
                 del new_printer_config['counts']  # Remove counts from main config
             
             # Only update printer fields that have actual values (not empty or NA)
@@ -4717,39 +4762,51 @@ def vendor_pricing(request):
                     if count_field not in printer_counts:
                         printer_counts[count_field] = 0
             
-            # Ensure all printer fields are included, using "NA" for empty ones
-            all_printer_fields = [
-                'digital_printer_1', 'digital_printer_2',
-                'gloss_printer_1', 'gloss_printer_2',
-                'jumbo_printer_1', 'jumbo_printer_2',
-                'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
-                'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
-            ]
-            
-            for printer_field in all_printer_fields:
-                if printer_field not in printer_configuration or not printer_configuration[printer_field] or printer_configuration[printer_field].strip() == '':
-                    printer_configuration[printer_field] = 'NA'
+            # For dashboard updates, only ensure fields that were provided are set
+            # For new registrations, ensure all printer fields are included
+            if not from_dashboard:
+                all_printer_fields = [
+                    'digital_printer_1', 'digital_printer_2',
+                    'gloss_printer_1', 'gloss_printer_2',
+                    'jumbo_printer_1', 'jumbo_printer_2',
+                    'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
+                    'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
+                ]
                 
-                # Initialize count for this printer field
-                count_field = f"{printer_field}_count"
-                if count_field not in printer_counts:
-                    printer_counts[count_field] = 0
+                for printer_field in all_printer_fields:
+                    if printer_field not in printer_configuration or not printer_configuration[printer_field] or printer_configuration[printer_field].strip() == '':
+                        printer_configuration[printer_field] = 'NA'
+                    
+                    # Initialize count for this printer field
+                    count_field = f"{printer_field}_count"
+                    if count_field not in printer_counts:
+                        printer_counts[count_field] = 0
+            
+            # Calculate services summary based on all pricing data (existing + new)
+            all_pricing_entries = list(updated_pricing_data.values())
+            total_services = len([price for price in all_pricing_entries if price and price > 0])
+            available_services = len([price for price in all_pricing_entries if price and price > 0])
+            not_available_services = len([price for price in all_pricing_entries if price == 0 or not price])
+            
+            # Check if we should store only categorized pricing
+            store_only_categorized = data.get('store_only_categorized', False)
             
             # Prepare pricing data with categorized structure
             pricing_data = {
                 'vendor_email': vendor_email,
-                'pricing_data': existing_pricing_data,  # Preserve existing pricing_data
                 'categorized_pricing': categorized_pricing,
-                'printer_configuration': printer_configuration,
-                'printer_counts': printer_counts,  # Add printer counts
                 'services_summary': {
-                    'total_services': len([e for e in pricing_entries if e.get('price', 0) > 0]),
-                    'available_services_count': len([e for e in pricing_entries if e.get('price', 0) > 0]),
-                    'not_available_services_count': len([e for e in pricing_entries if e.get('price', 0) == 0])
+                    'total_services': total_services,
+                    'available_services_count': available_services,
+                    'not_available_services_count': not_available_services
                 },
                 'created_at': existing_data.get('created_at', datetime.datetime.now().isoformat()),
                 'updated_at': datetime.datetime.now().isoformat()
             }
+            
+            # Only include pricing_data if not storing only categorized
+            if not store_only_categorized:
+                pricing_data['pricing_data'] = updated_pricing_data
 
             file_content = json.dumps(pricing_data, indent=4)
             file_key = f"vendor_register_details/{sanitize_email(vendor_email)}/pricing.json"
@@ -4782,26 +4839,29 @@ def vendor_pricing(request):
             not_available_services = pricing_data['services_summary']['not_available_services_count']
             configured_printers = len([p for p in printer_configuration.values() if p and p.strip() and p != 'NA'])
             
-            # Create detailed success message
-            success_message = f"✅ Pricing & Printer Configuration Updated Successfully!\n\n"
-            success_message += f"📊 Services Configured: {total_services}\n"
-            success_message += f"✅ Available Services: {available_services}\n"
-            success_message += f"❌ Not Available: {not_available_services}\n"
-            success_message += f"🖨️ Printers Configured: {configured_printers}\n"
-            success_message += f"🎫 Token File Created: 200 tokens generated and set to 'free'\n\n"
-            success_message += f"Your pricing is now live and customers can place orders!"
+            # Create detailed success message based on update type
+            if from_dashboard:
+                success_message = f"✅ Pricing Updated Successfully!\n\n"
+                success_message += f"📊 Services Updated: {len(pricing_entries)}\n"
+                success_message += f"🖨️ Printers Updated: {len([k for k, v in new_printer_config.items() if v and v.strip() and v != 'NA'])}\n\n"
+                success_message += f"Your pricing changes are now live!"
+            else:
+                success_message = f"✅ Pricing & Printer Configuration Updated Successfully!\n\n"
+                success_message += f"📊 Services Configured: {total_services}\n"
+                success_message += f"✅ Available Services: {available_services}\n"
+                success_message += f"❌ Not Available: {not_available_services}\n"
+                success_message += f"🖨️ Printers Configured: {configured_printers}\n"
+                success_message += f"🎫 Token File Created: 200 tokens generated and set to 'free'\n\n"
+                success_message += f"Your pricing is now live and customers can place orders!"
             
             return JsonResponse({
                 'success': True,
-                'message': 'Pricing and printer configuration saved successfully',
+                'message': 'Pricing configuration saved successfully',
                 'detailed_message': success_message,
                 'total_services': total_services,
                 'available_services_count': available_services,
                 'not_available_services_count': not_available_services,
-                'total_printers': configured_printers,
                 'categorized_pricing': categorized_pricing,
-                'printer_configuration': printer_configuration,
-                'printer_counts': printer_counts,
                 'updated_at': datetime.datetime.now().isoformat()
             })
 
@@ -5986,8 +6046,14 @@ def calculate_photo_print_pricing(request):
             photo_pricing = categorized_pricing.get('photo_print', {})
             print(f"📊 Photo pricing keys: {list(photo_pricing.keys())}")
             
-            # Construct the pricing key format: photo_print_a4_single_color
-            pricing_key_name = 'photo_print_a4_single_color'
+            # Map color to the correct pricing key format
+            # The pricing.json has: photo_print_a4_bw, photo_print_a4_color
+            color = data.get('color', 'Color')
+            if color == 'Color' or color == 'color':
+                pricing_key_name = 'photo_print_a4_color'
+            else:
+                pricing_key_name = 'photo_print_a4_bw'
+            
             print(f"🔍 Looking for pricing key: {pricing_key_name}")
             
             # Get base price from the nested photo_print object
@@ -6431,8 +6497,9 @@ def calculate_passport_photo_pricing(request):
             passport_pricing = categorized_pricing.get('passport_photo', {})
             print(f"📊 Passport photo pricing keys: {list(passport_pricing.keys())}")
             
-            # Construct the pricing key format: passport_photo_{photo_package}
-            pricing_key_name = f'passport_photo_{photo_package}'
+            # Construct the pricing key format: passport_print_{photo_package}
+            # The pricing.json has: passport_print_8, passport_print_16, passport_print_30
+            pricing_key_name = f'passport_print_{photo_package}'
             print(f"🔍 Looking for pricing key: {pricing_key_name}")
             
             # Get base price from the nested passport_photo object
@@ -6493,20 +6560,26 @@ def calculate_a4_print_pricing(request):
             print_type = data.get('print_type', 'single_bw')
             total_pages = data.get('total_pages', 1)
             total_copies = data.get('total_copies', 1)
+            total_quantity = data.get('total_quantity')  # Total pages × copies
             
-            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}")
+            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, total_quantity={total_quantity}")
             
             # Convert values to int
             try:
                 total_pages = int(total_pages)
                 total_copies = int(total_copies)
+                if total_quantity is not None:
+                    total_quantity = int(total_quantity)
             except (ValueError, TypeError):
                 total_pages = 1
                 total_copies = 1
+                total_quantity = None
             
             # Ensure values are at least 1
             if total_pages < 1: total_pages = 1
             if total_copies < 1: total_copies = 1
+            if total_quantity is not None and total_quantity < 1:
+                total_quantity = total_pages * total_copies
             
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -6548,7 +6621,7 @@ def calculate_a4_print_pricing(request):
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
                 })
             
-            # For A4 print, the pricing is nested under "categorized_pricing.a4_print" object
+            # For A4 print (document printing), the pricing is nested under "categorized_pricing.a4_print" object
             # Access the nested a4_print pricing data
             categorized_pricing = pricing_data.get('categorized_pricing', {})
             print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
@@ -6556,9 +6629,34 @@ def calculate_a4_print_pricing(request):
             a4_pricing = categorized_pricing.get('a4_print', {})
             print(f"📊 A4 print pricing keys: {list(a4_pricing.keys())}")
             
-            # Construct the pricing key format: a4_print_{print_type}
-            pricing_key_name = f'a4_print_{print_type}'
+            # Map print_type to the correct pricing key format
+            # The frontend sends: single_bw, single_color
+            # The pricing.json has: regular_print_a4_bw, regular_print_a4_color
+            # These are the ONLY keys we use for document/regular printing
+            pricing_key_map = {
+                'single_bw': 'regular_print_a4_bw',
+                'single_color': 'regular_print_a4_color',
+                'double_bw': 'regular_print_a4_bw',  # Fallback to single bw
+                'double_color': 'regular_print_a4_color'  # Fallback to single color
+            }
+            
+            pricing_key_name = pricing_key_map.get(print_type, 'regular_print_a4_bw')
             print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            
+            # If the key doesn't exist, try without 'regular_' prefix as fallback
+            if pricing_key_name not in a4_pricing:
+                print(f"⚠️ Key '{pricing_key_name}' not found. Trying fallback keys...")
+                # Try alternative key formats
+                if print_type == 'single_bw':
+                    fallback_key = 'a4_print_single_bw'
+                elif print_type == 'single_color':
+                    fallback_key = 'a4_print_single_color'
+                else:
+                    fallback_key = 'regular_print_a4_bw'
+                
+                if fallback_key in a4_pricing:
+                    print(f"✅ Found fallback key: {fallback_key}")
+                    pricing_key_name = fallback_key
             
             # Get base price from the nested a4_print object
             base_price = a4_pricing.get(pricing_key_name)
@@ -6575,10 +6673,14 @@ def calculate_a4_print_pricing(request):
             # Calculate price per page
             price_per_page = base_price
             
-            # Calculate total price (price per page * total pages * total copies)
-            total_price = price_per_page * total_pages * total_copies
-            
-            print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, total_pages={total_pages}, total_copies={total_copies}, total_price={total_price}")
+            # Calculate total price using total_quantity if available (more accurate)
+            if total_quantity is not None:
+                total_price = price_per_page * total_quantity
+                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, total_quantity={total_quantity}, total_price={total_price}")
+            else:
+                # Fallback to multiply pages × copies
+                total_price = price_per_page * total_pages * total_copies
+                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, total_pages={total_pages}, total_copies={total_copies}, total_price={total_price}")
             
             # Prepare pricing breakdown
             pricing_breakdown = {
@@ -8994,13 +9096,28 @@ def mark_job_completed(request):
                     except Exception as e:
                         print(f"⚠️ Error freeing token {job_token}: {str(e)}")
                 
-                # Send notification to user
+                # Send notification to user and store vendor notification
                 if user_email:
                     try:
                         send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time, job_token)
                         print(f"✅ Sent completion notification to user: {user_email}")
+                        
+                        # Also store vendor notification directly with vendor email from session
+                        try:
+                            store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, job_token)
+                            print(f"✅ Stored vendor notification for {vendor_email}")
+                        except Exception as e:
+                            print(f"⚠️ Error storing vendor notification: {e}")
+                            
                     except Exception as e:
                         print(f"⚠️ Error sending notification: {e}")
+                else:
+                    # Store vendor notification even if no user email (fallback)
+                    try:
+                        store_vendor_notification_direct(vendor_email, filename, vendor_id, 'unknown@user.com', completion_time, job_token)
+                        print(f"✅ Stored vendor notification for {vendor_email} (no user email)")
+                    except Exception as e:
+                        print(f"⚠️ Error storing vendor notification: {e}")
                 
                 return JsonResponse({
                     'success': True, 
@@ -9693,15 +9810,28 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
                             pricing_obj = json.loads(pricing_details)
                         else:
                             pricing_obj = pricing_details
+                        
+                        # Try multiple possible keys for platform_profit
                         platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                        total_price = float(pricing_obj.get('total', 0.0))
-                    except:
+                        
+                        # Try multiple possible keys for total_price
+                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                        
+                        print(f"📊 Extracted pricing from pricing_details: platform_profit={platform_profit}, total_price={total_price}")
+                    except Exception as e:
+                        print(f"⚠️ Error parsing pricing_details: {e}")
                         platform_profit = 0.0
                         total_price = 0.0
                 
                 # If total_price not found in pricing_details, try metadata
                 if total_price == 0.0:
                     total_price = float(job_data.get('total_price', 0.0))
+                    print(f"📊 Using total_price from metadata: {total_price}")
+                
+                # If platform_profit not found in pricing_details, try metadata
+                if platform_profit == 0.0:
+                    platform_profit = float(job_data.get('platform_profit', 0.0))
+                    print(f"📊 Using platform_profit from metadata: {platform_profit}")
                     
             except:
                 pass
@@ -9777,6 +9907,127 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         return True
     except Exception as e:
         print(f"❌ Error sending notification: {e}")
+        return False
+
+def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, token=None):
+    """Store vendor notification directly using vendor email from session"""
+    try:
+        # Parse completion time to get date
+        completion_date = datetime.datetime.fromisoformat(completion_time.replace('Z', '+00:00')).date()
+        
+        # Get the appropriate 2-day date folder
+        date_folder = get_vendor_notification_date_folder(completion_date)
+        
+        # Get service type and pricing from job metadata
+        service_type = "Print Job"
+        platform_profit = 0.0
+        total_price = 0.0
+        
+        try:
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Try to get service type and platform_profit from vendor_print_jobs
+            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+            try:
+                result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                job_data = json.loads(result['Body'].read().decode('utf-8'))
+                service_type = job_data.get('service_type', 'Print Job')
+                
+                # Extract platform_profit and total_price from pricing_details if available
+                pricing_details = job_data.get('pricing_details')
+                if pricing_details:
+                    try:
+                        if isinstance(pricing_details, str):
+                            pricing_obj = json.loads(pricing_details)
+                        else:
+                            pricing_obj = pricing_details
+                        
+                        # Try multiple possible keys for platform_profit
+                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                        
+                        # Try multiple possible keys for total_price
+                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                        
+                        print(f"📊 Extracted pricing from pricing_details: platform_profit={platform_profit}, total_price={total_price}")
+                    except Exception as e:
+                        print(f"⚠️ Error parsing pricing_details: {e}")
+                        platform_profit = 0.0
+                        total_price = 0.0
+                
+                # If total_price not found in pricing_details, try metadata
+                if total_price == 0.0:
+                    total_price = float(job_data.get('total_price', 0.0))
+                    print(f"📊 Using total_price from metadata: {total_price}")
+                
+                # If platform_profit not found in pricing_details, try metadata
+                if platform_profit == 0.0:
+                    platform_profit = float(job_data.get('platform_profit', 0.0))
+                    print(f"📊 Using platform_profit from metadata: {platform_profit}")
+                    
+            except:
+                pass
+        except:
+            pass
+        
+        # Create notification ID
+        notification_id = f"{filename}_{int(time.time())}"
+        
+        # Format service type for better display
+        formatted_service_type = service_type.replace('_', ' ').title()
+        if formatted_service_type == 'Print Job':
+            formatted_service_type = 'Document Printing'
+        
+        # Extract document name from filename (remove extension and token)
+        document_name = os.path.splitext(filename)[0]
+        if '_' in document_name:
+            # Remove token part if present
+            parts = document_name.split('_')
+            if len(parts) > 1:
+                document_name = '_'.join(parts[:-1])
+        
+        # Create vendor notification data
+        vendor_notification_data = {
+            'notification_id': notification_id,
+            'vendor_id': vendor_id,
+            'vendor_email': vendor_email,
+            'user_email': user_email,
+            'filename': filename,
+            'service_type': formatted_service_type,
+            'platform_profit': platform_profit,
+            'total_price': total_price,
+            'completion_time': completion_time,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'token': token or os.path.splitext(filename)[0],
+            'document_name': document_name
+        }
+        
+        # Store in vendor_notifications folder with 2-day date structure
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        vendor_notification_key = f'vendor_notifications/{sanitize_email(vendor_email)}/{date_folder}/{notification_id}.json'
+        
+        s3.put_object(
+            Bucket=settings.R2_BUCKET,
+            Key=vendor_notification_key,
+            Body=json.dumps(vendor_notification_data, indent=2),
+            ContentType='application/json'
+        )
+        
+        print(f"📧 Stored vendor notification for {vendor_email} in folder {date_folder}")
+        print(f"📁 Notification stored at: {vendor_notification_key}")
+        print(f"📊 Notification data: {json.dumps(vendor_notification_data, indent=2)}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error storing vendor notification: {e}")
         return False
 
 def store_vendor_notification(vendor_id, notification_data, completion_time):

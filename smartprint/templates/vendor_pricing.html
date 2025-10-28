@@ -9,11 +9,11 @@
     <title>Print Shop Pricing Setup - PrintMax</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
-    <link rel="manifest" href="{% static 'site.webmanifest' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2">
+    <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
 
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -316,6 +316,12 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            cursor: default;
+            pointer-events: none;
+        }
+        
+        .service-header * {
+            pointer-events: none;
         }
 
         .service-header .icon {
@@ -628,11 +634,22 @@
             font-weight: 500;
             color: var(--text-primary);
             background: transparent;
+            transition: all 0.2s ease;
         }
 
         .price-input::placeholder {
             color: var(--text-muted);
             font-weight: 400;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .price-input:focus::placeholder {
+            opacity: 0;
+        }
+
+        .price-input:not(:placeholder-shown)::placeholder {
+            opacity: 0;
         }
 
         .price-input:disabled {
@@ -1341,14 +1358,205 @@
             50% { width: 70%; }
             100% { width: 100%; }
         }
+
+        /* Professional Success Message Styles */
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .success-modal {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.5s ease;
+        }
+
+        .success-modal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--success) 0%, var(--primary) 100%);
+        }
+
+        .success-lottie {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1.5rem;
+            display: block;
+        }
+
+        .success-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--success) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .success-description {
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .success-stats {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-light);
+        }
+
+        .success-stats h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--success);
+            display: block;
+        }
+
+        .stat-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .success-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .success-modal {
+                padding: 2rem 1.5rem;
+                margin: 1rem;
+                max-width: calc(100% - 2rem);
+            }
+
+            .success-title {
+                font-size: 1.5rem;
+            }
+
+            .success-lottie {
+                width: 100px;
+                height: 100px;
+            }
+
+            .success-actions {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Success Overlay (shared) -->
-    <div id="successOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter: blur(3px); z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:#fff; border-radius:20px; padding:24px 28px; box-shadow:0 12px 40px rgba(0,0,0,0.2); width:min(92vw,440px); text-align:center;">
-            <dotlottie-player id="successAnim" src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto 8px;"></dotlottie-player>
-            <div id="successText" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; color:#111827; margin-top:4px;">Success</div>
+    <!-- Professional Success Modal -->
+    <div class="success-overlay" id="professionalSuccessModal">
+        <div class="success-modal">
+            <dotlottie-player 
+                class="success-lottie" 
+                src="{% static 'images/Success.lottie' %}" 
+                autoplay 
+                keep-last-frame>
+            </dotlottie-player>
+            
+            <h2 class="success-title">Pricing Setup Complete!</h2>
+            <p class="success-description">
+                Your print shop pricing has been successfully updated. 
+                Customers can now place print orders with your new pricing set.
+            </p>
+            
+            <div class="success-stats">
+                <h4>Configuration Summary</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalServices">0</span>
+                        <span class="stat-label">Total Services</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="availableServices">0</span>
+                        <span class="stat-label">Available Services</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="success-actions" style="flex-direction: column; gap: 1rem;">
+                <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 1rem;">
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; text-align: center; margin: 0;">
+                        <i class="fas fa-clock" style="margin-right: 0.5rem;"></i>
+                        You will be automatically redirected to your dashboard in <strong id="countdown">5</strong> <span id="countdownText">seconds</span>
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
     <!-- Timeline wrapper hidden until pricing submit success (mirrors register/documents) -->
@@ -1507,7 +1715,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="regular_print_a4_bw" class="price-input" name="regular_print_a4_bw" min="0" step="1" placeholder="3" disabled oninput="autoTick(this)">
+                                        <input type="number" id="regular_print_a4_bw" class="price-input" name="regular_print_a4_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1521,7 +1729,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="regular_print_a4_color" class="price-input" name="regular_print_a4_color" min="0" step="1" placeholder="5" disabled oninput="autoTick(this)">
+                                        <input type="number" id="regular_print_a4_color" class="price-input" name="regular_print_a4_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1535,7 +1743,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="photo_print_a4_bw" class="price-input" name="photo_print_a4_bw" min="0" step="1" placeholder="4" disabled oninput="autoTick(this)">
+                                        <input type="number" id="photo_print_a4_bw" class="price-input" name="photo_print_a4_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1549,7 +1757,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="photo_print_a4_color" class="price-input" name="photo_print_a4_color" min="0" step="1" placeholder="6" disabled oninput="autoTick(this)">
+                                        <input type="number" id="photo_print_a4_color" class="price-input" name="photo_print_a4_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -1585,7 +1793,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a3_bw" class="price-input" name="jumbo_print_a3_bw" min="0" step="1" placeholder="8" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a3_bw" class="price-input" name="jumbo_print_a3_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1599,7 +1807,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a3_color" class="price-input" name="jumbo_print_a3_color" min="0" step="1" placeholder="12" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a3_color" class="price-input" name="jumbo_print_a3_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1613,7 +1821,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a2_bw" class="price-input" name="jumbo_print_a2_bw" min="0" step="1" placeholder="15" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a2_bw" class="price-input" name="jumbo_print_a2_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1627,7 +1835,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a2_color" class="price-input" name="jumbo_print_a2_color" min="0" step="1" placeholder="20" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a2_color" class="price-input" name="jumbo_print_a2_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1641,7 +1849,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a1_bw" class="price-input" name="jumbo_print_a1_bw" min="0" step="1" placeholder="25" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a1_bw" class="price-input" name="jumbo_print_a1_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                         </div>
                     </div>
                                 <div class="enable-cell">
@@ -1655,7 +1863,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a1_color" class="price-input" name="jumbo_print_a1_color" min="0" step="1" placeholder="35" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a1_color" class="price-input" name="jumbo_print_a1_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1669,7 +1877,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a0_bw" class="price-input" name="jumbo_print_a0_bw" min="0" step="1" placeholder="40" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a0_bw" class="price-input" name="jumbo_print_a0_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1683,7 +1891,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="jumbo_print_a0_color" class="price-input" name="jumbo_print_a0_color" min="0" step="1" placeholder="50" disabled oninput="autoTick(this)">
+                                        <input type="number" id="jumbo_print_a0_color" class="price-input" name="jumbo_print_a0_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1719,7 +1927,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="golden_emboss_cover" class="price-input" name="golden_emboss_cover" min="0" step="1" placeholder="150" disabled oninput="autoTick(this)">
+                                        <input type="number" id="golden_emboss_cover" class="price-input" name="golden_emboss_cover" min="0" step="1" placeholder="15" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1733,7 +1941,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="golden_emboss_bond_color" class="price-input" name="golden_emboss_bond_color" min="0" step="1" placeholder="25" disabled oninput="autoTick(this)">
+                                        <input type="number" id="golden_emboss_bond_color" class="price-input" name="golden_emboss_bond_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -1769,7 +1977,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="lamination_a4_standard" class="price-input" name="lamination_a4_standard" min="0" step="1" placeholder="10" value="10" disabled oninput="autoTick(this)">
+                                        <input type="number" id="lamination_a4_standard" class="price-input" name="lamination_a4_standard" min="0" step="1" placeholder="300" value="300" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1783,7 +1991,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="lamination_a4_glossy" class="price-input" name="lamination_a4_glossy" min="0" step="1" placeholder="15" disabled oninput="autoTick(this)">
+                                        <input type="number" id="lamination_a4_glossy" class="price-input" name="lamination_a4_glossy" min="0" step="1" placeholder="30" disabled oninput="handleInputChange(this)">
                         </div>
                     </div>
                                 <div class="enable-cell">
@@ -1797,7 +2005,7 @@
                                 <div class="price-cell">
                                     <div class="price-input-container">
                                         <span class="rupee-icon">₹</span>
-                                        <input type="number" id="lamination_a3_standard" class="price-input" name="lamination_a3_standard" min="0" step="1" placeholder="15" disabled oninput="autoTick(this)">
+                                        <input type="number" id="lamination_a3_standard" class="price-input" name="lamination_a3_standard" min="0" step="1" placeholder="30" disabled oninput="handleInputChange(this)">
                         </div>
                     </div>
                                 <div class="enable-cell">
@@ -1811,7 +2019,7 @@
                                 <div class="price-cell">
                                 <div class="price-input-container">
                                     <span class="rupee-icon">₹</span>
-                                        <input type="number" id="lamination_a3_glossy" class="price-input" name="lamination_a3_glossy" min="0" step="1" placeholder="20" disabled oninput="autoTick(this)">
+                                        <input type="number" id="lamination_a3_glossy" class="price-input" name="lamination_a3_glossy" min="0" step="1" placeholder="35" disabled oninput="handleInputChange(this)">
                                 </div>
                             </div>
                                 <div class="enable-cell">
@@ -1825,7 +2033,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="lamination_a2_standard" class="price-input" name="lamination_a2_standard" min="0" step="1" placeholder="25" disabled oninput="autoTick(this)">
+                                        <input type="number" id="lamination_a2_standard" class="price-input" name="lamination_a2_standard" min="0" step="1" placeholder="45" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -1839,7 +2047,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="lamination_a2_glossy" class="price-input" name="lamination_a2_glossy" min="0" step="1" placeholder="30" value="30" disabled oninput="autoTick(this)">
+                                        <input type="number" id="lamination_a2_glossy" class="price-input" name="lamination_a2_glossy" min="0" step="1" placeholder="55" value="55" disabled oninput="handleInputChange(this)">
                                  </div>
                              </div>
                                 <div class="enable-cell">
@@ -1875,7 +2083,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="tape_binding_a4_100" class="price-input" name="tape_binding_a4_100" min="0" step="1" placeholder="40" disabled oninput="autoTick(this)">
+                                        <input type="number" id="tape_binding_a4_100" class="price-input" name="tape_binding_a4_100" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                  </div>
                              </div>
                                 <div class="enable-cell">
@@ -1889,7 +2097,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="tape_binding_a4_150" class="price-input" name="tape_binding_a4_150" min="0" step="1" placeholder="50" disabled oninput="autoTick(this)">
+                                        <input type="number" id="tape_binding_a4_150" class="price-input" name="tape_binding_a4_150" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                  </div>
                              </div>
                                 <div class="enable-cell">
@@ -1903,7 +2111,7 @@
                                 <div class="price-cell">
                                     <div class="price-input-container">
                                         <span class="rupee-icon">₹</span>
-                                        <input type="number" id="tape_binding_a3_100" class="price-input" name="tape_binding_a3_100" min="0" step="1" placeholder="60" disabled oninput="autoTick(this)">
+                                        <input type="number" id="tape_binding_a3_100" class="price-input" name="tape_binding_a3_100" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                          </div>
                      </div>
                                 <div class="enable-cell">
@@ -1917,7 +2125,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="tape_binding_a3_150" class="price-input" name="tape_binding_a3_150" min="0" step="1" placeholder="75" disabled oninput="autoTick(this)">
+                                        <input type="number" id="tape_binding_a3_150" class="price-input" name="tape_binding_a3_150" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                  </div>
                              </div>
                                 <div class="enable-cell">
@@ -1931,7 +2139,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="spiral_binding_a4_100" class="price-input" name="spiral_binding_a4_100" min="0" step="1" placeholder="60" disabled oninput="autoTick(this)">
+                                        <input type="number" id="spiral_binding_a4_100" class="price-input" name="spiral_binding_a4_100" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -1945,7 +2153,7 @@
                                 <div class="price-cell">
                                     <div class="price-input-container">
                                         <span class="rupee-icon">₹</span>
-                                        <input type="number" id="spiral_binding_a4_150" class="price-input" name="spiral_binding_a4_150" min="0" step="1" placeholder="75" disabled oninput="autoTick(this)">
+                                        <input type="number" id="spiral_binding_a4_150" class="price-input" name="spiral_binding_a4_150" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -1959,7 +2167,7 @@
                                 <div class="price-cell">
                                     <div class="price-input-container">
                                         <span class="rupee-icon">₹</span>
-                                        <input type="number" id="spiral_binding_a3_100" class="price-input" name="spiral_binding_a3_100" min="0" step="1" placeholder="90" disabled oninput="autoTick(this)">
+                                        <input type="number" id="spiral_binding_a3_100" class="price-input" name="spiral_binding_a3_100" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -1973,7 +2181,7 @@
                                 <div class="price-cell">
                                     <div class="price-input-container">
                                         <span class="rupee-icon">₹</span>
-                                        <input type="number" id="spiral_binding_a3_150" class="price-input" name="spiral_binding_a3_150" min="0" step="1" placeholder="110" disabled oninput="autoTick(this)">
+                                        <input type="number" id="spiral_binding_a3_150" class="price-input" name="spiral_binding_a3_150" min="0" step="1" placeholder="50" disabled oninput="handleInputChange(this)">
                                     </div>
                                 </div>
                                 <div class="enable-cell">
@@ -2009,7 +2217,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="passport_print_8" class="price-input" name="passport_print_8" min="0" step="1" placeholder="40" disabled oninput="autoTick(this)">
+                                        <input type="number" id="passport_print_8" class="price-input" name="passport_print_8" min="0" step="1" placeholder="30" disabled oninput="handleInputChange(this)">
                                  </div>
                              </div>
                                 <div class="enable-cell">
@@ -2023,7 +2231,7 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="passport_print_16" class="price-input" name="passport_print_16" min="0" step="1" placeholder="60" disabled oninput="autoTick(this)">
+                                        <input type="number" id="passport_print_16" class="price-input" name="passport_print_16" min="0" step="1" placeholder="60" disabled oninput="handleInputChange(this)">
                                  </div>
                              </div>
                                 <div class="enable-cell">
@@ -2037,13 +2245,197 @@
                                 <div class="price-cell">
                                  <div class="price-input-container">
                                      <span class="rupee-icon">₹</span>
-                                        <input type="number" id="passport_print_30" class="price-input" name="passport_print_30" min="0" step="1" placeholder="100" disabled oninput="autoTick(this)">
+                                        <input type="number" id="passport_print_30" class="price-input" name="passport_print_30" min="0" step="1" placeholder="90" disabled oninput="handleInputChange(this)">
                  </div>
                     </div>
                                 <div class="enable-cell">
                                     <input type="checkbox" onchange="toggleServiceInput(this, 'passport_print_30')">
                                  </div>
                              </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Digital Paper Printing Pricing -->
+                <div class="service-section">
+                    <div class="service-header">
+                        <i class="fas fa-file-alt icon"></i>
+                        <h3>Digital Paper Printing Pricing</h3>
+                    </div>
+                    <div class="service-content">
+                        <div class="service-description">
+                            <p><strong>Note:</strong> Configure pricing for digital paper printing services. This includes fast digital printing for documents and presentations in various sizes.</p>
+                        </div>
+                        <div class="pricing-table">
+                            <div class="table-header">
+                                <div class="service-column">Service</div>
+                                <div class="size-column">Size</div>
+                                <div class="color-column">Type</div>
+                                <div class="price-column">Price (₹)</div>
+                                <div class="enable-column">Enable</div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Digital Print</div>
+                                <div class="size-cell">A4</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="digital_print_a4_color" class="price-input" name="digital_print_a4_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'digital_print_a4_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Digital Print</div>
+                                <div class="size-cell">A3</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="digital_print_a3_color" class="price-input" name="digital_print_a3_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'digital_print_a3_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Digital Print</div>
+                                <div class="size-cell">A2</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="digital_print_a2_color" class="price-input" name="digital_print_a2_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'digital_print_a2_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Digital Print</div>
+                                <div class="size-cell">A1</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="digital_print_a1_color" class="price-input" name="digital_print_a1_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'digital_print_a1_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Digital Print</div>
+                                <div class="size-cell">A0</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="digital_print_a0_color" class="price-input" name="digital_print_a0_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'digital_print_a0_color')">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gloss Paper Printing Pricing -->
+                <div class="service-section">
+                    <div class="service-header">
+                        <i class="fas fa-star icon"></i>
+                        <h3>Gloss Paper Printing Pricing</h3>
+                    </div>
+                    <div class="service-content">
+                        <div class="service-description">
+                            <p><strong>Note:</strong> Configure pricing for gloss paper printing services. This includes shiny finish printing for presentations and marketing materials in various sizes.</p>
+                        </div>
+                        <div class="pricing-table">
+                            <div class="table-header">
+                                <div class="service-column">Service</div>
+                                <div class="size-column">Size</div>
+                                <div class="color-column">Type</div>
+                                <div class="price-column">Price (₹)</div>
+                                <div class="enable-column">Enable</div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Gloss Print</div>
+                                <div class="size-cell">A4</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="gloss_print_a4_color" class="price-input" name="gloss_print_a4_color" min="0" step="1" placeholder="1" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'gloss_print_a4_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Gloss Print</div>
+                                <div class="size-cell">A3</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="gloss_print_a3_color" class="price-input" name="gloss_print_a3_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'gloss_print_a3_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Gloss Print</div>
+                                <div class="size-cell">A2</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="gloss_print_a2_color" class="price-input" name="gloss_print_a2_color" min="0" step="1" placeholder="1" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'gloss_print_a2_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Gloss Print</div>
+                                <div class="size-cell">A1</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="gloss_print_a1_color" class="price-input" name="gloss_print_a1_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'gloss_print_a1_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Gloss Print</div>
+                                <div class="size-cell">A0</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                    <div class="price-input-container">
+                                        <span class="rupee-icon">₹</span>
+                                        <input type="number" id="gloss_print_a0_color" class="price-input" name="gloss_print_a0_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                    </div>
+                                </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'gloss_print_a0_color')">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2249,33 +2641,6 @@
                         }
                     });
                     
-                    // Load printer configuration if available
-                    if (data.printer_configuration) {
-                        console.log('🖨️ Loading existing printer configuration:', data.printer_configuration);
-                        Object.entries(data.printer_configuration).forEach(([printerKey, printerName]) => {
-                            const printerInput = document.getElementById(printerKey);
-                            if (printerInput) {
-                                // Show "NA" as empty field, actual names as values
-                                if (printerName && printerName !== 'NA') {
-                                    printerInput.value = printerName;
-                                } else {
-                                    printerInput.value = '';
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Load printer counts if available
-                    if (data.printer_counts) {
-                        console.log('📊 Loading existing printer counts:', data.printer_counts);
-                        Object.entries(data.printer_counts).forEach(([countKey, countValue]) => {
-                            const countInput = document.getElementById(countKey);
-                            if (countInput) {
-                                countInput.value = countValue || 0;
-                            }
-                        });
-                    }
-                    
                     console.log('✅ Existing pricing data loaded successfully');
                     console.log('📊 Services status:', data.services_summary || 'Not available');
                 }
@@ -2336,17 +2701,45 @@
              }
          }
 
-         // Function to validate integer input only
+        // Optimized function to handle input changes instantly
+        function handleInputChange(input) {
+            // Auto-tick checkbox
+            autoTick(input);
+            
+            // Validate input immediately without changing the value
+            validateIntegerInput(input);
+        }
+
+         // Function to validate integer input only - non-destructive validation
          function validateIntegerInput(input) {
-             // Remove any non-digit characters except for the minus sign at the beginning
+             // Only validate on blur to avoid interfering with typing
+             // This prevents the "2 becomes 1" issue
+             const currentValue = input.value;
+             
+             // Check if value contains only digits
+             if (currentValue && !/^\d+$/.test(currentValue)) {
+                 // Only show visual feedback, don't change the value while typing
+                 input.style.borderColor = 'var(--error)';
+                 input.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+             } else {
+                 input.style.borderColor = '';
+                 input.style.boxShadow = '';
+             }
+         }
+         
+         // Function to clean input value only on blur
+         function cleanInputOnBlur(input) {
              let value = input.value.replace(/[^\d]/g, '');
              
-             // Ensure the value is a positive integer
              if (value === '') {
                  input.value = '';
              } else {
                  input.value = parseInt(value) || 0;
              }
+             
+             // Reset styling
+             input.style.borderColor = '';
+             input.style.boxShadow = '';
          }
 
         // Function to show success notification
@@ -2403,57 +2796,123 @@
             }, 5000);
         }
 
+        // Function to show error notification
+        function showErrorNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #f44336, #d32f2f);
+                color: white;
+                padding: 20px 25px;
+                border-radius: 12px;
+                box-shadow: 0 8px 25px rgba(244, 67, 54, 0.3);
+                z-index: 10000;
+                max-width: 400px;
+                font-family: 'Roboto', sans-serif;
+                border-left: 4px solid #c62828;
+                animation: slideInFromRight 0.4s ease;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">Error!</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9; white-space: pre-line;">${message}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 7 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.animation = 'slideInFromRight 0.4s ease reverse';
+                    setTimeout(() => notification.remove(), 400);
+                }
+            }, 7000);
+        }
+
+        // Function to show professional success modal
+        function showProfessionalSuccessModal(data) {
+            const modal = document.getElementById('professionalSuccessModal');
+            
+            // Update stats (only Total Services and Available Services, no Printers Configured)
+            document.getElementById('totalServices').textContent = data.total_services || 0;
+            document.getElementById('availableServices').textContent = data.available_services_count || 0;
+            
+            // Show modal
+            modal.style.display = 'flex';
+            
+            // Start countdown timer - exactly 5 seconds
+            let countdown = 5;
+            const countdownElement = document.getElementById('countdown');
+            const countdownTextElement = document.getElementById('countdownText');
+            
+            // Update countdown every second
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                
+                if (countdown > 1) {
+                    countdownElement.textContent = countdown;
+                    countdownTextElement.textContent = 'seconds';
+                } else if (countdown === 1) {
+                    countdownElement.textContent = '1';
+                    countdownTextElement.textContent = 'second';
+                } else {
+                    countdownElement.textContent = '0';
+                    countdownTextElement.textContent = 'seconds';
+                    clearInterval(countdownInterval);
+                    redirectToDashboard();
+                }
+            }, 1000);
+        }
+
+        // Function to redirect to vendor dashboard
+        function redirectToDashboard() {
+            window.location.href = '/vendordashboard/';
+        }
+
+
+        // Function to show loading state
+        function showLoadingState(isLoading) {
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            if (isLoading) {
+                submitBtn.disabled = true;
+                loadingSpinner.style.display = 'inline-block';
+                submitBtn.innerHTML = '<span class="loading-spinner" id="loadingSpinner"></span><i class="fas fa-spinner fa-spin"></i> Saving...';
+            } else {
+                submitBtn.disabled = false;
+                loadingSpinner.style.display = 'none';
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Save All Pricing Configuration';
+            }
+        }
+
         // Function to add validation to all price inputs
         function addIntegerValidation() {
             const priceInputs = document.querySelectorAll('.price-input');
             priceInputs.forEach(input => {
-                // Check if this is a printer input (by name)
-                const isPrinterInput = input.name && (
-                    input.name.startsWith('a4_printer_') || 
-                    input.name.startsWith('passport_printer_') ||
-                    input.name.startsWith('digital_printer_') ||
-                    input.name.startsWith('gloss_printer_') ||
-                    input.name.startsWith('jumbo_printer_')
-                );
+                // Add blur event to clean input value
+                input.addEventListener('blur', function() {
+                    cleanInputOnBlur(this);
+                });
                 
-                const isPrinterCountInput = input.name && input.name.endsWith('_count');
+                // For pricing inputs, use integer validation
+                input.addEventListener('input', function() {
+                    handleInputChange(this);
+                });
                 
-                if (isPrinterInput) {
-                    // For printer inputs, allow both text and numbers
-                    input.addEventListener('input', function() {
-                        // Allow any text input for printer names
-                        // No special validation needed
-                    });
-                    
-                    input.addEventListener('keypress', function(e) {
-                        // Allow all characters for printer names (letters, numbers, spaces, special chars)
-                        // No restrictions
-                    });
-                } else if (isPrinterCountInput) {
-                    // For printer count inputs, use integer validation but allow readonly
-                    input.addEventListener('input', function() {
-                        validateIntegerInput(this);
-                    });
-                    
-                    input.addEventListener('keypress', function(e) {
-                        // Allow only digits and backspace for count inputs
-                        if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
-                            e.preventDefault();
-                        }
-                    });
-                } else {
-                    // For pricing inputs, use integer validation
-                    input.addEventListener('input', function() {
-                        validateIntegerInput(this);
-                    });
-                    
-                    input.addEventListener('keypress', function(e) {
-                        // Allow only digits and backspace for pricing
-                        if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
-                            e.preventDefault();
-                        }
-                    });
-                }
+                input.addEventListener('keypress', function(e) {
+                    // Allow only digits and backspace for pricing
+                    if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
+                        e.preventDefault();
+                    }
+                });
             });
         }
 
@@ -2461,7 +2920,7 @@
         function validateForm() {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]');
             let hasCheckedService = false;
-            let hasPrinterData = false;
+            let hasValidPricing = false;
             
             // Check if any services are selected
             checkboxes.forEach(checkbox => {
@@ -2470,41 +2929,30 @@
                     const inputId = checkbox.getAttribute('onchange').match(/'([^']+)'/)[1];
                     const input = document.getElementById(inputId);
                     
-                    // Skip validation for printer inputs and count inputs (they're optional)
-                    const isPrinterInput = input.name && (
-                        input.name.startsWith('a4_printer_') || 
-                        input.name.startsWith('passport_printer_') ||
-                        input.name.startsWith('digital_printer_') ||
-                        input.name.startsWith('gloss_printer_') ||
-                        input.name.startsWith('jumbo_printer_')
-                    );
-                    
-                    const isPrinterCountInput = input.name && input.name.endsWith('_count');
-                    
-                    if (!isPrinterInput && !isPrinterCountInput && (!input.value || input.value.trim() === '')) {
-                        alert('Please enter pricing for all selected services.');
+                    if (!input.value || input.value.trim() === '' || input.value <= 0) {
+                        showErrorNotification('Please enter valid pricing for all selected services.');
                         input.focus();
                         return false;
+                    } else {
+                        hasValidPricing = true;
                     }
                 }
             });
             
-            // Check if any printer fields have data
-            const printerInputs = document.querySelectorAll('input[name*="printer"]');
-            printerInputs.forEach(input => {
-                if (input.value && input.value.trim() !== '' && input.value.trim() !== 'NA') {
-                    hasPrinterData = true;
+            // For dashboard updates, allow submission if there's any valid data
+            const isFromDashboardUpdate = isFromDashboard();
+            if (isFromDashboardUpdate) {
+                if (!hasCheckedService) {
+                    showErrorNotification('Please select at least one service to update.');
+                    return false;
                 }
-            });
-            
-            // Allow submission if either services are selected OR printer data is provided
-            if (!hasCheckedService && !hasPrinterData) {
-                alert('Please select at least one service to set pricing or enter printer information.');
-                return false;
+            } else {
+                // For new registrations, require at least one service with valid pricing
+                if (!hasValidPricing) {
+                    showErrorNotification('Please select at least one service to set pricing.');
+                    return false;
+                }
             }
-            
-            // Note: Printer names are optional - empty ones will be stored as "NA"
-            // Printer inputs can contain any text or numbers
             
             return true;
         }
@@ -2518,155 +2966,86 @@
 
             const submitBtn = document.getElementById('submitBtn');
             const loadingSpinner = document.getElementById('loadingSpinner');
+            const isFromDashboardUpdate = isFromDashboard();
 
-            // Show animation instantly when button is clicked
-            const animation = document.getElementById('pricingAnimation');
-            animation.style.display = 'flex';
+            // Show animation for all submissions
+                const animation = document.getElementById('pricingAnimation');
+                animation.style.display = 'flex';
 
-            submitBtn.disabled = true;
-            loadingSpinner.style.display = 'inline-block';
+            showLoadingState(true);
 
-            // Collect all form data more comprehensively
-            const formData = new FormData(event.target);
+            // Optimized data collection - collect only enabled inputs
             const pricingData = {};
-            const printerData = {};
             const allPriceInputs = document.querySelectorAll('.price-input');
 
-            // First, collect from FormData
-            for (let [key, value] of formData.entries()) {
-                if (key !== 'csrfmiddlewaretoken' && key !== 'vendorId' && value && value.trim() !== '') {
-                    // Check if it's a printer field or count field
-                    if (key.startsWith('a4_printer_') || key.startsWith('passport_printer_') || 
-                        key.startsWith('digital_printer_') || key.startsWith('gloss_printer_') || 
-                        key.startsWith('jumbo_printer_') || key.endsWith('_count')) {
-                        if (key.endsWith('_count')) {
-                            // Store count fields separately
-                            if (!printerData.counts) {
-                                printerData.counts = {};
-                            }
-                            printerData.counts[key] = parseInt(value) || 0;
-                        } else {
-                            printerData[key] = value.trim();
-                        }
-                    } else {
-                        pricingData[key] = parseFloat(value);
-                    }
-                }
-            }
-
-            // Also check all price inputs directly to ensure we don't miss any
+            // Fast collection - only process enabled inputs
             allPriceInputs.forEach(input => {
                 const inputName = input.name;
                 const inputValue = input.value.trim();
                 const isEnabled = !input.disabled;
                 
                 if (isEnabled && inputValue && inputValue !== '') {
-                    // Check if it's a printer field or count field
-                    if (inputName.startsWith('a4_printer_') || 
-                        inputName.startsWith('passport_printer_') ||
-                        inputName.startsWith('digital_printer_') ||
-                        inputName.startsWith('gloss_printer_') ||
-                        inputName.startsWith('jumbo_printer_') ||
-                        inputName.endsWith('_count')) {
-                        if (inputName.endsWith('_count')) {
-                            // Store count fields separately
-                            if (!printerData.counts) {
-                                printerData.counts = {};
-                            }
-                            printerData.counts[inputName] = parseInt(inputValue) || 0;
-                        } else {
-                            printerData[inputName] = inputValue;
-                        }
-                    } else {
-                        pricingData[inputName] = parseFloat(inputValue);
-                    }
+                    pricingData[inputName] = parseFloat(inputValue);
                 }
             });
             
-            // Check if this is an update from vendor dashboard (only send changed values)
-            const isFromDashboardUpdate = isFromDashboard();
+            // Check if this is an update from vendor dashboard
             if (isFromDashboardUpdate) {
                 console.log('🔄 Update from vendor dashboard - only sending changed values');
-                // Only include pricing data that has actual values
+                
+                // Filter out empty pricing data
                 const filteredPricingData = {};
                 Object.entries(pricingData).forEach(([key, value]) => {
                     if (value && value > 0) {
                         filteredPricingData[key] = value;
                     }
                 });
-                // Update pricingData by clearing and repopulating it
+                
+                // Update the data objects
                 Object.keys(pricingData).forEach(key => delete pricingData[key]);
                 Object.assign(pricingData, filteredPricingData);
                 
-                // Only include printer data that has actual values
-                const filteredPrinterData = {};
-                // Preserve counts object if present
-                if (printerData.counts && typeof printerData.counts === 'object') {
-                    filteredPrinterData.counts = { ...printerData.counts };
-                }
-                // Only include actual printer name fields (strings), skip counts object
-                Object.entries(printerData).forEach(([key, value]) => {
-                    if (key === 'counts') return;
-                    if (typeof value === 'string') {
-                        const trimmed = value.trim();
-                        if (trimmed !== '' && trimmed !== 'NA') {
-                            filteredPrinterData[key] = trimmed;
-                        }
-                    }
-                });
-                // Update printerData by clearing and repopulating it
-                Object.keys(printerData).forEach(key => delete printerData[key]);
-                Object.assign(printerData, filteredPrinterData);
-                
                 console.log('📊 Filtered pricing data for dashboard update:', pricingData);
-                console.log('🖨️ Filtered printer data for dashboard update:', printerData);
-            }
-            
-            // Ensure all printer fields are included, using "NA" for empty ones
-            // Only do this if NOT updating from dashboard (preserve existing values)
-            if (!isFromDashboardUpdate) {
-                const allPrinterFields = [
-                    'digital_printer_1', 'digital_printer_2',
-                    'gloss_printer_1', 'gloss_printer_2',
-                    'jumbo_printer_1', 'jumbo_printer_2',
-                    'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
-                    'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
-                ];
-                
-                const allCountFields = [
-                    'digital_printer_1_count', 'digital_printer_2_count',
-                    'gloss_printer_1_count', 'gloss_printer_2_count',
-                    'jumbo_printer_1_count', 'jumbo_printer_2_count',
-                    'a4_printer_1_count', 'a4_printer_2_count', 'a4_printer_3_count',
-                    'passport_printer_1_count', 'passport_printer_2_count', 'passport_printer_3_count'
-                ];
-                
-                allPrinterFields.forEach(printerField => {
-                    if (!printerData[printerField]) {
-                        printerData[printerField] = 'NA';
-                    }
-                });
-                
-                // Initialize count fields
-                if (!printerData.counts) {
-                    printerData.counts = {};
-                }
-                allCountFields.forEach(countField => {
-                    if (!printerData.counts[countField]) {
-                        printerData.counts[countField] = 0;
-                    }
-                });
             }
 
             console.log('📊 Collected pricing data:', pricingData);
-            console.log('🖨️ Collected printer data:', printerData);
             console.log('📋 Number of services configured:', Object.keys(pricingData).length);
-            const printerNameKeys = Object.keys(printerData).filter(k => k !== 'counts');
-            console.log('🖨️ Number of printers configured:', printerNameKeys.length);
-            const actualPrintersCount = Object.entries(printerData)
-                .filter(([k, v]) => k !== 'counts' && typeof v === 'string' && v.trim() !== '' && v !== 'NA')
-                .length;
-            console.log('🖨️ Actual printers (non-NA):', actualPrintersCount);
+
+            // Organize pricing data by service categories for better JSON structure
+            const organizedPricingData = {
+                regular_print: {},
+                photo_print: {},
+                jumbo_print: {},
+                golden_embossing: {},
+                lamination: {},
+                binding: {},
+                passport_print: {},
+                digital_print: {},
+                gloss_print: {}
+            };
+
+            // Categorize pricing data
+            Object.entries(pricingData).forEach(([service, price]) => {
+                if (service.startsWith('regular_print')) {
+                    organizedPricingData.regular_print[service] = price;
+                } else if (service.startsWith('photo_print')) {
+                    organizedPricingData.photo_print[service] = price;
+                } else if (service.startsWith('jumbo_print')) {
+                    organizedPricingData.jumbo_print[service] = price;
+                } else if (service.startsWith('golden_emboss')) {
+                    organizedPricingData.golden_embossing[service] = price;
+                } else if (service.startsWith('lamination')) {
+                    organizedPricingData.lamination[service] = price;
+                } else if (service.startsWith('tape_binding') || service.startsWith('spiral_binding')) {
+                    organizedPricingData.binding[service] = price;
+                } else if (service.startsWith('passport_print')) {
+                    organizedPricingData.passport_print[service] = price;
+                } else if (service.startsWith('digital_print')) {
+                    organizedPricingData.digital_print[service] = price;
+                } else if (service.startsWith('gloss_print')) {
+                    organizedPricingData.gloss_print[service] = price;
+                }
+            });
 
             const requestData = {
                 vendor_email: vendorEmail || '{{ vendor_email }}',
@@ -2674,79 +3053,63 @@
                     service_type: service,
                     price: price
                 })),
-                printer_configuration: printerData
+                from_dashboard: isFromDashboardUpdate, // Add flag to indicate dashboard update
+                categorized_pricing: organizedPricingData, // Send only categorized pricing
+                store_only_categorized: true // Flag to tell backend to store only categorized data
             };
 
             console.log('📤 Sending request data:', requestData);
 
             try {
+                // Optimized timeout - reduced to 10 seconds for faster response
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
                 const response = await fetch('/vendor-pricing/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify(requestData)
+                    body: JSON.stringify(requestData),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const data = await response.json();
                 console.log('📥 Response received:', data);
 
                 if (data.success) {
-                    // If opened from vendor dashboard, just show a success notification and keep the user on the page
-                    if (isFromDashboard()) {
-                        showSuccessNotification(data.detailed_message || data.message || 'Pricing updated successfully.');
-                    } else {
-                        // Hide animation after 3 seconds and show timeline
-                        setTimeout(() => {
+                    // Hide animation immediately and show professional success modal
+                            const animation = document.getElementById('pricingAnimation');
                             animation.style.display = 'none';
                             
-                            // Show success message
-                            showSuccessNotification('Pricing setup completed successfully! You can now start receiving orders from customers.');
-                            
-                            // Hide the main container and show timeline
-                            document.querySelector('.container').style.display = 'none';
-                            document.getElementById('timelineContainer').style.display = 'block';
-                            
-                            // Center the timeline on the page
-                            document.getElementById('timelineContainer').style.margin = '2rem auto';
-                            
-                            // Scroll to timeline
-                            document.getElementById('timelineContainer').scrollIntoView({ 
-                                behavior: 'smooth', 
-                                block: 'center' 
-                            });
-                        }, 3000);
-                    }
+                    // Show professional success modal with stats
+                    showProfessionalSuccessModal(data);
                 } else {
                     throw new Error(data.message || 'Failed to save pricing');
                 }
             } catch (error) {
                 console.error('❌ Error saving pricing:', error);
-                alert(error.message || 'Failed to save pricing. Please try again.');
+                
+                if (error.name === 'AbortError') {
+                    showErrorNotification('Request timed out. Please check your connection and try again.');
+                } else if (error.message.includes('Failed to fetch')) {
+                    showErrorNotification('Network error. Please check your connection and try again.');
+                } else {
+                    showErrorNotification(error.message || 'Failed to save pricing. Please try again.');
+                }
             } finally {
-                submitBtn.disabled = false;
-                loadingSpinner.style.display = 'none';
+                showLoadingState(false);
             }
         }
 
                  // Initialize form when page loads
          document.addEventListener('DOMContentLoaded', function() {
-             loadVendorInfo();
-             addIntegerValidation();
-             
-             // Add smooth scrolling to service sections
-             const serviceHeaders = document.querySelectorAll('.service-header');
-             serviceHeaders.forEach(header => {
-                 header.addEventListener('click', function() {
-                     const content = this.nextElementSibling;
-                     if (content.style.display === 'none') {
-                         content.style.display = 'block';
-                     } else {
-                         content.style.display = 'none';
-                     }
-                 });
-             });
+            loadVendorInfo();
+            addIntegerValidation();
+            
+            // Service headers are now non-collapsible - fields always remain visible
          });
     </script>
 
