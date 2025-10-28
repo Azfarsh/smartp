@@ -1728,7 +1728,11 @@
               shape: 'pill',
               logo_alignment: 'left',
               text: 'signin_with',
-              type: 'standard'
+              type: 'standard',
+              // Modern approach - no One Tap, use account selection
+              use_fedcm_for_prompt: true,
+              // Ensure cross-browser compatibility
+              context: 'signin'
             }
           );
         } else {
@@ -1774,25 +1778,19 @@
       `;
     }
 
-    // Initialize Google Sign-In with error handling
+    // Initialize Google Sign-In with modern approach (no One Tap)
     try {
       if (window.google && google.accounts && google.accounts.id) {
         google.accounts.id.initialize({
           client_id: '{{ client_id }}',
           callback: handleCredentialResponse,
           auto_select: false,
-          cancel_on_tap_outside: true,
-          prompt_parent_id: 'g_id_signin'
+          cancel_on_tap_outside: false,
+          // Remove One Tap prompt completely
+          use_fedcm_for_prompt: true
         });
         
-        // Add error handling for origin issues
-        google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            console.warn('Google Sign-In not displayed:', notification.getNotDisplayedReason());
-            renderFallbackButton();
-          }
-        });
-        
+        // Don't use One Tap prompt - just render the button
         renderGoogleButton();
         
         // Re-render button on theme change
@@ -1815,11 +1813,22 @@
 
   // Fallback Google Sign-In handler
   function handleGoogleSignInFallback() {
-    // Show a message to the user
-    alert('Google Sign-In is currently unavailable. Please try again later or contact support.');
-    
-    // Optionally redirect to a manual login page or show alternative login options
-    // window.location.href = '/alternative-login/';
+    // Try to trigger Google Sign-In manually
+    try {
+      if (window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            console.warn('Google Sign-In not displayed:', notification.getNotDisplayedReason());
+            alert('Google Sign-In is currently unavailable. Please try again later or contact support.');
+          }
+        });
+      } else {
+        alert('Google Sign-In is currently unavailable. Please try again later or contact support.');
+      }
+    } catch (error) {
+      console.error('Fallback Google Sign-In failed:', error);
+      alert('Google Sign-In is currently unavailable. Please try again later or contact support.');
+    }
   }
 
   function showWelcome(name, isVendor = false) {
@@ -1840,47 +1849,68 @@
   }
 
   function handleCredentialResponse(response) {
-    const payload = JSON.parse(atob(response.credential.split('.')[1]));
-    const userName = payload.name || "User login";
+    console.log('Google Sign-In response received');
     
-    // Show welcome screen immediately for better UX
-    showWelcome(userName);
-    
-    // Start authentication immediately
-    const authPromise = fetch('/auth-receiver/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRFToken': getCookie('csrftoken')
-      },
-      body: 'credential=' + encodeURIComponent(response.credential)
-    });
-    
-    // Set a timeout for the authentication
-    const authTimeout = setTimeout(() => {
-      console.warn('Authentication taking longer than expected...');
-    }, 2000);
-    
-    authPromise
-    .then(res => res.json())
-    .then(data => {
-      clearTimeout(authTimeout);
-      if (data.status === 'success') {
-        // Mark that we just logged in to show splash on dashboard
-        try { sessionStorage.setItem('justLoggedIn', '1'); } catch (_) {}
-        // Redirect immediately to user dashboard
-        window.location.href = '/userdashboard/';
-      } else {
-        alert('🚫 Access denied: ' + data.message);
+    try {
+      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      const userName = payload.name || "User";
+      const email = payload.email || "";
+      
+      console.log('User info:', { name: userName, email: email });
+      
+      // Show welcome screen immediately for better UX
+      showWelcome(userName);
+      
+      // Start authentication immediately
+      const authPromise = fetch('/auth-receiver/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: 'credential=' + encodeURIComponent(response.credential)
+      });
+      
+      // Set a timeout for the authentication
+      const authTimeout = setTimeout(() => {
+        console.warn('Authentication taking longer than expected...');
+      }, 5000); // Increased timeout
+      
+      authPromise
+      .then(res => {
+        console.log('Auth response status:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        clearTimeout(authTimeout);
+        console.log('Auth response data:', data);
+        
+        if (data.status === 'success') {
+          // Mark that we just logged in to show splash on dashboard
+          try { sessionStorage.setItem('justLoggedIn', '1'); } catch (_) {}
+          
+          // Wait a moment for session to be established, then redirect
+          setTimeout(() => {
+            console.log('Redirecting to userdashboard...');
+            window.location.href = '/userdashboard/';
+          }, 500); // Small delay to ensure session is established
+        } else {
+          console.error('Auth failed:', data.message);
+          alert('🚫 Access denied: ' + data.message);
+          document.getElementById('welcomeScreen').style.display = 'none';
+        }
+      })
+      .catch(err => {
+        clearTimeout(authTimeout);
+        console.error('Auth error:', err);
+        alert('🚫 Connection failed. Please try again.');
         document.getElementById('welcomeScreen').style.display = 'none';
-      }
-    })
-    .catch(err => {
-      clearTimeout(authTimeout);
-      console.error('Auth error:', err);
-      alert('🚫 Connection failed. Please try again.');
+      });
+    } catch (error) {
+      console.error('Error parsing Google response:', error);
+      alert('🚫 Invalid response from Google. Please try again.');
       document.getElementById('welcomeScreen').style.display = 'none';
-    });
+    }
   }
 
   async function vendorLogin(event) {

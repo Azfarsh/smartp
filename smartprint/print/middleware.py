@@ -19,7 +19,7 @@ class SessionValidationMiddleware:
         self.exempt_urls = [
             '/',
             '/login/',
-            '/auth_receiver/',
+            '/auth-receiver/',  # Fixed: was /auth_receiver/
             '/vendor-login/',
             '/vendor-register/',
             '/vendor-pricing/',

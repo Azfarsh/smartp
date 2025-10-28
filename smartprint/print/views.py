@@ -1087,7 +1087,12 @@ def get_user_jobs_from_r2(user_email):
 
 def userdashboard(request):
     # Check if user is authenticated
+    print(f"🔍 Userdashboard access - User authenticated: {request.user.is_authenticated}")
+    print(f"🔍 User: {request.user}")
+    print(f"🔍 Session keys: {list(request.session.keys())}")
+    
     if not request.user.is_authenticated:
+        print("❌ User not authenticated, redirecting to login")
         return redirect('/login/')
 
     try:
@@ -1139,15 +1144,6 @@ def userdashboard(request):
         })
 
 
-"""
-Lightweight, in-memory caches for ultra-fast user dashboard loads.
-These are process-local and safe to fall back to if missing.
-"""
-_user_jobs_cache = {}
-_user_jobs_cache_ts = {}
-_USER_JOBS_TTL_SECONDS = 60  # serve cached data for up to 60 seconds
-
-
 def userdashboard_data(request):
     """
     AJAX endpoint to load user dashboard data quickly
@@ -1156,39 +1152,9 @@ def userdashboard_data(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
     try:
-        # Load user details quickly (small, inexpensive)
+        # Load user data quickly
         user_details = get_user_details_from_r2(request.user.email)
-
-        # Serve cached jobs immediately if fresh
-        email_key = request.user.email
-        now_ts = time.time()
-
-        cached_jobs = None
-        last_ts = _user_jobs_cache_ts.get(email_key)
-        if last_ts and (now_ts - last_ts) < _USER_JOBS_TTL_SECONDS:
-            cached_jobs = _user_jobs_cache.get(email_key, [])
-
-        if cached_jobs is not None:
-            user_jobs = cached_jobs
-        else:
-            # Kick off a background refresh and return fastest possible response
-            try:
-                import threading
-
-                def _refresh_jobs_background(user_email: str) -> None:
-                    try:
-                        fresh_jobs = get_user_jobs_from_r2(user_email)
-                        _user_jobs_cache[user_email] = fresh_jobs
-                        _user_jobs_cache_ts[user_email] = time.time()
-                    except Exception:
-                        # Background refresh failures are non-fatal
-                        pass
-
-                threading.Thread(target=_refresh_jobs_background, args=(email_key,), daemon=True).start()
-            except Exception:
-                pass
-            # Serve whatever we have (none on first load)
-            user_jobs = _user_jobs_cache.get(email_key, [])
+        user_jobs = get_user_jobs_from_r2(request.user.email)
         
         # Calculate statistics
         total_jobs = len(user_jobs)
@@ -1222,8 +1188,7 @@ def userdashboard_data(request):
             'pending_jobs': pending_jobs,
             'completed_jobs': completed_jobs,
             'total_earnings': total_earnings,
-            'user_points': user_points,
-            'cache_age_seconds': 0 if not last_ts else int(now_ts - last_ts),
+            'user_points': user_points
         })
         
     except Exception as e:
@@ -4287,6 +4252,8 @@ def auth_receiver(request):
             request.session['google_user_id'] = google_user_id
             
             print(f"✅ User {email} logged in successfully with persistent session")
+            print(f"🔍 Session after login: {request.session.keys()}")
+            print(f"🔍 User authenticated after login: {request.user.is_authenticated}")
             
             # ✅ Store R2 data asynchronously (non-blocking)
             try:
