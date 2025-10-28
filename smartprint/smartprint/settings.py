@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 # Local testing hosts + production domain
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'printmax.onrender.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'printmax.onrender.com', 'printmax.in']
 
 # Application definition
 INSTALLED_APPS = [
@@ -199,6 +199,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://0.0.0.0:8000',
     'https://printmax.onrender.com',
+    'https://printmax.in',
 ]
 
 # ✅ Security Settings for local HTTP testing
