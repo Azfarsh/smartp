@@ -6,13 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
   <title>Printmax Dashboard</title>
   <meta name="description" content="PrintMe - Your on-demand printing solution. Easily manage print jobs, track history, and find nearby print locations.">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
-  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
-  <link rel="manifest" href="{% static 'site.webmanifest' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
+  <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
+  <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -3424,22 +3430,30 @@
     .select-wrapper .select-arrow { display: none; }
     .shop-caret { display: none; }
 
-    /* Fix: ensure Document Print modal actions sit below points section and avoid overlap/jitter */
-    #printModal .modal-footer {
-      position: sticky;
+    /* Fix: ensure Document Print modal actions are fixed at bottom and only visible after file upload */
+    #printModal .modal-footer.fixed-bottom-buttons {
+      position: fixed;
       bottom: 0;
+      left: 0;
+      right: 0;
       background: var(--surface);
       border-top: 1px solid var(--outline-variant);
       padding: 1rem;
-      display: flex; /* visible when JS toggles container (inline style controls visibility) */
+      display: none; /* Hidden by default - only show after file upload */
       gap: 0.75rem;
       justify-content: space-between;
       align-items: center;
-      margin-top: 1rem;
-      z-index: 10;
+      z-index: 1000;
+      min-height: 60px;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Show buttons only when files are uploaded and scrolled to bottom */
+    #printModal .modal-footer.fixed-bottom-buttons.show {
+      display: flex !important;
     }
     #printModal .modal-body { 
-      padding-bottom: 1rem;
+      padding-bottom: 80px; /* Space for fixed buttons */
       max-height: calc(100vh - 200px);
       overflow-y: auto;
     }
@@ -3454,6 +3468,27 @@
       justify-content: center;
       gap: 0.5rem;
       transition: all 0.2s ease;
+      border: 1px solid #d1d5db;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+    }
+    
+    #printModal .modal-footer .btn-cancel {
+      background: #e5e7eb;
+      color: #374151;
+      border: 1px solid #cfd3da;
+    }
+    
+    #printModal .modal-footer .btn-submit {
+      background: #3b82f6;
+      color: white;
+      border: none;
+    }
+    
+    #printModal .modal-footer .btn-cancel:hover,
+    #printModal .modal-footer .btn-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
     /* Keep modal body scroll smooth and prevent scrollbar vibration at bottom */
@@ -3465,10 +3500,10 @@
 
     /* Mobile: stack action buttons for better visibility */
     @media (max-width: 480px) {
-      #printModal .modal-footer {
+      #printModal .modal-footer.fixed-bottom-buttons {
         flex-direction: column;
         align-items: stretch;
-        position: fixed;
+        position: fixed !important;
         bottom: 0;
         left: 0;
         right: 0;
@@ -3477,6 +3512,11 @@
         padding: 0.75rem;
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
         z-index: 1000;
+        display: none; /* Hidden by default */
+      }
+      
+      #printModal .modal-footer.fixed-bottom-buttons.show {
+        display: flex !important;
       }
       #printModal .modal-footer .btn-cancel,
       #printModal .modal-footer .btn-submit {
@@ -3490,9 +3530,23 @@
         justify-content: center;
         gap: 0.5rem;
         transition: all 0.2s ease;
+        border: 1px solid #d1d5db;
+        padding: 0.75rem 1rem;
+      }
+      
+      #printModal .modal-footer .btn-cancel {
+        background: #e5e7eb;
+        color: #374151;
+        border: 1px solid #cfd3da;
+      }
+      
+      #printModal .modal-footer .btn-submit {
+        background: #3b82f6;
+        color: white;
+        border: none;
       }
       #printModal .modal-body {
-        padding-bottom: 100px; /* Space for fixed buttons */
+        padding-bottom: 120px; /* Space for fixed buttons */
         max-height: calc(100vh - 150px);
       }
     }
@@ -3771,17 +3825,20 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 200px;
-      background: white;
+      min-height: 400px;
+      max-height: 600px;
+      background: #f8f9fa;
       border-radius: var(--radius-md);
-      border: 1px solid var(--outline-variant);
+      border: 2px solid var(--outline-variant);
       overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .preview-canvas {
       max-width: 100%;
-      max-height: 300px;
+      max-height: 100%;
       border-radius: var(--radius-sm);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
     .preview-info {
@@ -6788,6 +6845,13 @@
       .pricing-title-container {
         display: flex;
         align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .pricing-icon {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
       }
 
       .points-heading {
@@ -7357,6 +7421,9 @@
         font-weight: 700;
         font-size: 1.1rem;
         color: #111827; /* black-ish for Order Summary heading */
+        margin: 0;
+        padding: 0;
+        flex-shrink: 0;
       }
 
       .pricing-details {
@@ -8317,11 +8384,15 @@
               label: 'Paper Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (Standard)' },
+                { value: 'A4', label: 'A4 (210 x 297 mm)' },
+                { value: 'A3', label: 'A3 (297 x 420 mm)' },
+                { value: 'A2', label: 'A2 (420 x 594 mm)' },
+                { value: 'A1', label: 'A1 (594 x 841 mm)' },
+                { value: 'A0', label: 'A0 (841 x 1189 mm)' },
                 { value: '12x18', label: '12" x 18" (Custom)' }
               ], 
               required: true,
-              description: 'Choose between A4 and 12×18 only',
+              description: 'Choose from available paper sizes',
               icon: 'fas fa-file'
             },
             { 
@@ -8457,10 +8528,14 @@
               label: 'Print Size', 
               type: 'select', 
               options: [
-                { value: 'A4', label: 'A4 (210 x 297 mm)' }
+                { value: 'A4', label: 'A4 (210 x 297 mm)' },
+                { value: 'A3', label: 'A3 (297 x 420 mm)' },
+                { value: 'A2', label: 'A2 (420 x 594 mm)' },
+                { value: 'A1', label: 'A1 (594 x 841 mm)' },
+                { value: 'A0', label: 'A0 (841 x 1189 mm)' }
               ], 
               required: true,
-              description: 'A4 size for professional gloss printing',
+              description: 'Choose from available gloss paper sizes',
               icon: 'fas fa-ruler-combined'
             },
             { 
@@ -8668,33 +8743,30 @@
           modal.id = modalId;
           modal.innerHTML = renderServiceModal(service);
           document.getElementById('serviceModalsContainer').appendChild(modal);
-          setTimeout(() => attachServiceModalEvents(service, modal), 100);
+          // Attach events immediately for faster modal opening
+          attachServiceModalEvents(service, modal);
           // Ensure points section is available immediately when user has points
-          setTimeout(() => {
-            if (typeof userPoints !== 'undefined' && userPoints > 0) {
-              const pointsSection = modal.querySelector(`#${service}-points-section`);
-              if (pointsSection) {
-                pointsSection.style.display = 'block';
-                pointsSection.classList.add('active');
-                updatePointsDisplay();
-              }
+          if (typeof userPoints !== 'undefined' && userPoints > 0) {
+            const pointsSection = modal.querySelector(`#${service}-points-section`);
+            if (pointsSection) {
+              pointsSection.style.display = 'block';
+              pointsSection.classList.add('active');
+              updatePointsDisplay();
             }
-          }, 150);
+          }
         } else {
           // Reset modal before opening
           resetServiceModal(service);
           modal.classList.add('active');
-          // Re-show points if applicable
-          setTimeout(() => {
-            if (typeof userPoints !== 'undefined' && userPoints > 0) {
-              const pointsSection = modal.querySelector(`#${service}-points-section`);
-              if (pointsSection) {
-                pointsSection.style.display = 'block';
-                pointsSection.classList.add('active');
-                updatePointsDisplay();
-              }
+          // Re-show points if applicable immediately
+          if (typeof userPoints !== 'undefined' && userPoints > 0) {
+            const pointsSection = modal.querySelector(`#${service}-points-section`);
+            if (pointsSection) {
+              pointsSection.style.display = 'block';
+              pointsSection.classList.add('active');
+              updatePointsDisplay();
             }
-          }, 150);
+          }
         }
       }
 
@@ -8823,19 +8895,16 @@
           if (form) {
             form.reset();
             
-            // Reset select fields to first option
+            // Reset select fields to empty (no defaults)
             const selects = form.querySelectorAll('select');
             selects.forEach(select => {
-              if (select.options.length > 0) {
-                select.selectedIndex = 0;
-              }
+              select.selectedIndex = -1;
             });
 
-            // Reset number inputs to default values
+            // Reset number inputs to empty (no defaults)
             const numberInputs = form.querySelectorAll('input[type="number"]');
             numberInputs.forEach(input => {
-              const min = parseInt(input.min) || 1;
-              input.value = min;
+              input.value = '';
             });
 
             // Reset text inputs (including range fields)
@@ -8939,13 +9008,13 @@
               </div>
             `;
           } else if (f.type === 'select') {
-            const optionsHtml = f.options.map(opt => {
-              if (typeof opt === 'object') {
-                return `<option value="${opt.value}">${opt.label} - ${opt.price}</option>`;
-              } else {
-                return `<option value="${opt}">${opt}</option>`;
-              }
-            }).join('');
+             const optionsHtml = f.options.map(opt => {
+               if (typeof opt === 'object') {
+                 return `<option value="${opt.value}">${opt.label}</option>`;
+               } else {
+                 return `<option value="${opt}">${opt}</option>`;
+               }
+             }).join('');
             
             fieldsHtml += `
               <div class="modal-field-group">
@@ -8981,7 +9050,7 @@
                 </div>
                 <div class="field-description">${fieldDescription}</div>
                 <div class="number-input-wrapper">
-                  <input type="number" id="${service}-field-${idx}" min="${f.min || 1}" max="${f.max || 99}" value="${f.default || 1}" ${f.required ? 'required' : ''} />
+                  <input type="number" id="${service}-field-${idx}" min="${f.min || 1}" max="${f.max || 99}" placeholder="Enter ${f.label.toLowerCase()}" ${f.required ? 'required' : ''} />
                 </div>
               </div>
             `;
@@ -9112,9 +9181,7 @@
                     <div class="pricing-icon">
                       <i class="fas fa-calculator"></i>
                     </div>
-                    <div class="pricing-title-container">
-                      <div class="pricing-title">Order Summary</div>
-                    </div>
+                    <div class="pricing-title">Order Summary</div>
                   </div>
                   <div class="pricing-details" id="${service}-pricing-details">
                     <div class="loading-pricing">
@@ -9667,16 +9734,26 @@
           // Only calculate when user explicitly clicks Calculate button, so hide auto-calc
           formInputs.forEach(input => {
             input.addEventListener('change', () => {
-              const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-              if (pricingSummary) pricingSummary.classList.remove('active');
-              modal.dataset.calculatedPrice = '';
-              modal.dataset.pricingBreakdown = '';
+              // Recalculate pricing in real-time when inputs change
+              if (areAllInputsProvided(service, modal)) {
+                calculatePricing(service);
+              } else {
+                const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                if (pricingSummary) pricingSummary.classList.remove('active');
+                modal.dataset.calculatedPrice = '';
+                modal.dataset.pricingBreakdown = '';
+              }
             });
             input.addEventListener('input', () => {
-              const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-              if (pricingSummary) pricingSummary.classList.remove('active');
-              modal.dataset.calculatedPrice = '';
-              modal.dataset.pricingBreakdown = '';
+              // Recalculate pricing in real-time when inputs change
+              if (areAllInputsProvided(service, modal)) {
+                calculatePricing(service);
+              } else {
+                const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                if (pricingSummary) pricingSummary.classList.remove('active');
+                modal.dataset.calculatedPrice = '';
+                modal.dataset.pricingBreakdown = '';
+              }
             });
           });
         }, 600);
@@ -9698,10 +9775,10 @@
                 
                 // Add new options based on selected country
                 packages.forEach(pkg => {
-                  const option = document.createElement('option');
-                  option.value = pkg.value;
-                  option.textContent = `${pkg.label} - ${pkg.price}`;
-                  packageSelect.appendChild(option);
+                   const option = document.createElement('option');
+                   option.value = pkg.value;
+                   option.textContent = `${pkg.label}`;
+                   packageSelect.appendChild(option);
                 });
                 
                 // Update description based on country
@@ -11434,23 +11511,20 @@
         // Show the Print Requests section with smooth fade-in
         if (jobsSection) {
           jobsSection.style.display = 'block';
-          jobsSection.style.opacity = '1'; // Show immediately
+          // Trigger fade-in after display is set
+          setTimeout(() => {
+            jobsSection.style.opacity = '1';
+          }, 10);
         }
         
-        // Render actual jobs with optimized DOM manipulation
-        const fragment = document.createDocumentFragment();
-        const tempDiv = document.createElement('div');
+        // Render actual jobs
+          const fragment = document.createDocumentFragment();
+          const tempDiv = document.createElement('div');
         const jobsHTML = jobs.map(job => window.createJobCard(job)).join('');
-        tempDiv.innerHTML = jobsHTML;
-        
-        // Use requestAnimationFrame for smooth rendering
-        requestAnimationFrame(() => {
-          while (tempDiv.firstChild) { 
-            fragment.appendChild(tempDiv.firstChild); 
-          }
+          tempDiv.innerHTML = jobsHTML;
+          while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
           container.innerHTML = '';
           container.appendChild(fragment);
-        });
       } else {
         // No jobs found, let animation continue for 3 seconds, then hide Print Requests section
         console.log('📄 PDF Animation: No jobs found, animation will run for 3 seconds');
@@ -11466,50 +11540,83 @@
       }
     }
     
-    // INSTANT JOBS RENDERING - Use preloaded data, else fetch async
+    // INSTANT JOBS RENDERING - Use cached data first, then fetch async
     document.addEventListener('DOMContentLoaded', function() {
       const container = document.getElementById('jobsContainer');
       
       // Start PDF animation timer immediately
       startPdfAnimationTimer();
       
-      // If preloaded (server provided) jobs exist, render immediately
-      if (window.preloadedJobs && window.preloadedPendingJobs) {
-        userJobs = window.preloadedJobs;
-        renderJobsWithAnimation(window.preloadedPendingJobs);
-        updateLayoutBasedOnJobs();
-      } else {
-        // Show skeletons already present; fetch lightweight JSON and render without blocking navigation
-        fetch('/userdashboard-data/', {
-          method: 'GET',
-          credentials: 'same-origin',
-          headers: { 'Accept': 'application/json' }
-        })
-        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
-        .then(data => {
-          if (!data || !data.success) return;
-          // Store globally for reuse
-          window.preloadedJobs = data.user_jobs || [];
-          window.preloadedPendingJobs = (data.user_jobs || []).filter(j => j.job_completed === 'NO');
+      // 1) Try localStorage cache for instant paint (kept for 60s)
+      try {
+        const cached = JSON.parse(localStorage.getItem('userDashboardCache') || '{}');
+        const now = Date.now();
+        if (cached && cached.ts && (now - cached.ts) < 60 * 1000 && Array.isArray(cached.jobs)) {
+          window.preloadedJobs = cached.jobs;
+          window.preloadedPendingJobs = cached.jobs.filter(j => j.job_completed === 'NO');
           userJobs = window.preloadedJobs;
-          // Update KPI counters fast
-          const updates = [
-            ['totalJobsCount', data.total_jobs],
-            ['pendingJobsCount', data.pending_jobs],
-            ['completedJobsCount', data.completed_jobs]
-          ];
-          updates.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
-          
           renderJobsWithAnimation(window.preloadedPendingJobs);
+          if (cached.metrics) {
+            const u = [
+              ['totalJobsCount', cached.metrics.total_jobs],
+              ['pendingJobsCount', cached.metrics.pending_jobs],
+              ['completedJobsCount', cached.metrics.completed_jobs]
+            ];
+            u.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
+          }
           updateLayoutBasedOnJobs();
-        })
-        .catch(err => {
-          console.warn('Failed to fetch dashboard data:', err);
-          // Graceful fallback to any embedded data
-          loadUserJobs();
-          setTimeout(updateLayoutBasedOnJobs, 100);
-        });
-      }
+        }
+      } catch (_) {}
+
+      // 2) Fetch fresh in background and update cache/UI if changed
+      fetch('/userdashboard-data/', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' }
+      })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP '+r.status)))
+      .then(data => {
+        if (!data || !data.success) return;
+        const nextJobs = data.user_jobs || [];
+        const nextPending = nextJobs.filter(j => j.job_completed === 'NO');
+        const jobsChanged = JSON.stringify(nextJobs) !== JSON.stringify(window.preloadedJobs || []);
+        window.preloadedJobs = nextJobs;
+        window.preloadedPendingJobs = nextPending;
+        userJobs = nextJobs;
+
+        // Update counters
+        const updates = [
+          ['totalJobsCount', data.total_jobs],
+          ['pendingJobsCount', data.pending_jobs],
+          ['completedJobsCount', data.completed_jobs]
+        ];
+        updates.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
+
+        // Render only if first paint didn't happen or data changed
+        if (!document.getElementById('jobsContainer').children.length || jobsChanged) {
+          renderJobsWithAnimation(nextPending);
+          updateLayoutBasedOnJobs();
+        }
+
+        // Persist cache for instant next load
+        try {
+          localStorage.setItem('userDashboardCache', JSON.stringify({
+            ts: Date.now(),
+            jobs: nextJobs,
+            metrics: {
+              total_jobs: data.total_jobs,
+              pending_jobs: data.pending_jobs,
+              completed_jobs: data.completed_jobs
+            }
+          }));
+        } catch (_) {}
+      })
+      .catch(err => {
+        console.warn('Failed to fetch dashboard data:', err);
+        // Graceful fallback to any embedded data
+        loadUserJobs();
+        setTimeout(updateLayoutBasedOnJobs, 100);
+      });
       
       // Fix back button behavior - redirect to home instead of login
       let backButtonCount = 0;
@@ -11895,7 +12002,7 @@
             <label class="settings-label">Choose print colour</label>
             <p class="settings-subtitle">Save money with black & white or get color printouts</p>
             <div class="color-options">
-              <div class="color-option selected" data-color="Black and White">
+              <div class="color-option" data-color="Black and White">
                 <div class="color-option-icon">
                   <i class="fas fa-circle" style="color: #666;"></i>
                 </div>
@@ -11914,7 +12021,7 @@
               <label class="settings-label">Page Range Selection</label>
               <div class="page-range-options">
                 <div class="page-range-option">
-                  <input type="radio" id="allPages" name="pageRange" value="all" checked>
+                  <input type="radio" id="allPages" name="pageRange" value="all">
                   <label for="allPages">All pages</label>
                 </div>
                 <div class="page-range-option">
@@ -11942,7 +12049,7 @@
             <label class="settings-label">Choose print orientation</label>
             <p class="settings-subtitle">Direction in which a document is displayed or printed</p>
             <div class="orientation-options">
-              <div class="orientation-option selected" data-orientation="portrait">
+              <div class="orientation-option" data-orientation="portrait">
                 <div class="orientation-icon">
                   <i class="fas fa-mobile-alt"></i>
                 </div>
@@ -11962,7 +12069,7 @@
             <label class="settings-label">Choose page size</label>
             <p class="settings-subtitle">Select the paper size for printing</p>
             <div class="page-size-options">
-              <div class="page-size-option selected" data-size="a4">
+              <div class="page-size-option" data-size="a4">
                 <div class="page-size-icon">
                   <i class="fas fa-file-alt"></i>
                 </div>
@@ -12039,6 +12146,8 @@
                   <span class="detail-label">Copies</span>
                   <span class="detail-value" id="summaryCopies">0</span>
                 </div>
+                <!-- Additional options will be inserted here -->
+                <div id="additionalOptionsContainer"></div>
               </div>
               
               <div class="pricing-breakdown">
@@ -12094,8 +12203,8 @@
 
 
 
-        <!-- Action Buttons -->
-        <div class="modal-footer" id="actionButtons" style="display: none;">
+        <!-- Action Buttons - Only shown after successful file upload -->
+        <div class="modal-footer fixed-bottom-buttons" id="actionButtons" style="display: none;">
           <button type="button" class="btn-cancel" id="cancelBtn">
             <i class="fas fa-times"></i>
             Cancel
@@ -12655,6 +12764,22 @@
           `;
           subtotal += Number(breakdown.quality_upgrade);
         }
+        
+        // Additional options (spiral binding, lamination, tape binding)
+        if (breakdown.additional_options && Array.isArray(breakdown.additional_options)) {
+          breakdown.additional_options.forEach(option => {
+            const optionPrice = Number(option.price || 0);
+            if (optionPrice > 0) {
+              html += `
+                <div class="invoice-item">
+                  <span class="invoice-item-label">${option.name}</span>
+                  <span class="invoice-item-value">₹${optionPrice.toFixed(2)}</span>
+                </div>
+              `;
+              subtotal += optionPrice;
+            }
+          });
+        }
 
         // Photo-specific fields
         if (service === 'photo') {
@@ -12724,6 +12849,9 @@
 
         pricingDetails.innerHTML = html;
         pricingSummary.classList.add('active');
+
+        // Ensure buttons are visible when pricing is shown
+        ensureModalButtonsVisible();
 
         // Only scroll to pricing summary if all required inputs are provided
         if (areAllInputsProvided(service, modal)) {
@@ -14794,12 +14922,19 @@
 
       const pointsSection = modal.querySelector(`#${service}-points-section`);
       if (pointsSection) {
-        console.log('✅ Points section found for service:', service, 'User points:', userPoints);
-        pointsSection.style.display = 'block !important';
-        pointsSection.style.visibility = 'visible !important';
-        pointsSection.style.opacity = '1 !important';
-        pointsSection.classList.add('active');
-        updatePointsDisplay();
+        // Only show points section if user has at least 1 point
+        if (userPoints >= 1) {
+          console.log('✅ Points section found for service:', service, 'User points:', userPoints);
+          pointsSection.style.display = 'block !important';
+          pointsSection.style.visibility = 'visible !important';
+          pointsSection.style.opacity = '1 !important';
+          pointsSection.classList.add('active');
+          updatePointsDisplay();
+        } else {
+          console.log('ℹ️ User has no points, hiding points section for service:', service);
+          pointsSection.style.display = 'none';
+          pointsSection.classList.remove('active');
+        }
       } else {
         console.log('❌ Points section not found for service:', service);
         // Let's also check if the modal has any points-related elements
@@ -15473,6 +15608,7 @@
 
     // Modal functions
     function openModal() {
+      // Remove any delays and make modal open instantly
       printModal.classList.add('active');
       document.body.style.overflow = 'hidden';
       // Reset actions visibility on open
@@ -15505,23 +15641,40 @@
 
       // Reset file input and list
       if (fileInput) fileInput.value = '';
-      if (fileList) fileList.innerHTML = '';
+      if (fileList) {
+        fileList.innerHTML = '<div class="no-files-message" id="noFilesMessage">No files selected yet</div>';
+      }
       if (uploadArea) {
         uploadArea.innerHTML = `
           <div class="upload-icon">
             <i class="fas fa-cloud-upload-alt"></i>
           </div>
-          <div class="upload-text">
-            <h3>Drop files here or click to browse</h3>
-            <p>Supported formats: PDF, DOC, DOCX, JPG, PNG, GIF</p>
-          </div>
+          <div class="upload-text">Choose a file or drag it here</div>
+          <div class="upload-subtitle">Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, XLS, XLSX, JPG, PNG, GIF, BMP, TIFF, SVG</div>
+          <button class="upload-btn" id="uploadBtn">
+            <i class="fas fa-file-upload"></i>
+            Add files
+          </button>
         `;
       }
+      
+      // Clear image preview
+      const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+      if (imagePreviewContainer) {
+        imagePreviewContainer.style.display = 'none';
+      }
+      
+      // Clear canvas preview
+      const previewCanvas = document.getElementById('previewCanvas');
+      if (previewCanvas) {
+        const ctx = previewCanvas.getContext('2d');
+        ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      }
 
-      // Reset form inputs to defaults
-      if (copiesInput) copiesInput.value = '1';
-      if (colorSelect) colorSelect.value = 'black';
-      if (pageSizeSelect) pageSizeSelect.value = 'A4';
+      // Reset form inputs to empty (no defaults)
+      if (copiesInput) copiesInput.value = '';
+      if (colorSelect) colorSelect.value = '';
+      if (pageSizeSelect) pageSizeSelect.value = '';
       if (vendorSelect) vendorSelect.value = '';
 
       // Hide summary and proceed button
@@ -15529,7 +15682,13 @@
       if (proceedBtn) {
         proceedBtn.style.display = 'none';
         proceedBtn.disabled = false;
-        proceedBtn.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
+        proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+      }
+      
+      // Hide action buttons completely
+      if (actionButtons) {
+        actionButtons.style.display = 'none';
+        actionButtons.classList.remove('show');
       }
 
       // Reset upload and add more buttons
@@ -15547,6 +15706,25 @@
       window.uploadedFiles = [];
       window.lastCalculatedPages = 0;
       window.lastCalculatedPrice = 0;
+      window.fileSettings = {};
+      window.selectedFileIndex = -1;
+      
+      // Clear additional options display
+      const additionalOptionsContainer = document.getElementById('additionalOptionsContainer');
+      if (additionalOptionsContainer) {
+        additionalOptionsContainer.innerHTML = '';
+      }
+      
+      // Clear visual selections
+      const colorOptions = document.querySelectorAll('.color-option');
+      const orientationOptions = document.querySelectorAll('.orientation-option');
+      const pageSizeOptions = document.querySelectorAll('.page-size-option');
+      const pageRangeOptions = document.querySelectorAll('input[name="pageRange"]');
+      
+      colorOptions.forEach(option => option.classList.remove('selected'));
+      orientationOptions.forEach(option => option.classList.remove('selected'));
+      pageSizeOptions.forEach(option => option.classList.remove('selected'));
+      pageRangeOptions.forEach(option => option.checked = false);
 
       // Reattach event listeners
       if (uploadArea) {
@@ -15845,7 +16023,15 @@
       printSettings.style.display = hasFiles ? 'block' : 'none';
       // Keep order summary hidden until user explicitly calculates price
       orderSummary.style.display = 'none';
-      actionButtons.style.display = 'none';
+      
+      // Only show action buttons after successful file upload
+      if (hasFiles) {
+        actionButtons.style.display = 'flex';
+        actionButtons.classList.add('show');
+      } else {
+        actionButtons.style.display = 'none';
+        actionButtons.classList.remove('show');
+      }
 
       // Ensure points section and redeem buttons are hidden when no files
       const pointsSection = document.getElementById('printModal-points-section');
@@ -16018,9 +16204,9 @@
         const img = new Image();
 
         img.onload = function() {
-          // Set canvas size to fit the image
-          const maxWidth = 400;
-          const maxHeight = 300;
+          // Set canvas size to fit the image with better quality
+          const maxWidth = 600;
+          const maxHeight = 500;
           let { width, height } = img;
           
           if (width > maxWidth || height > maxHeight) {
@@ -16223,16 +16409,33 @@
         }
       });
 
-      // Handle Document Print modal actions
+      // Handle Document Print modal actions - only show when files uploaded and scrolled to bottom
       const printModal = document.getElementById('printModal');
       if (printModal && printModal.classList.contains('active')) {
         const body = printModal.querySelector('.modal-body');
-        const actions = printModal.querySelector('.modal-actions');
-        if (body && actions) {
-          // Show actions only when scrolled near the bottom of the body
-          const threshold = 20; // px from bottom
-          const atBottom = body.scrollHeight - body.scrollTop - body.clientHeight <= threshold;
-          actions.style.display = atBottom ? 'flex' : 'none';
+        const actionButtons = document.getElementById('actionButtons');
+        
+        if (body && actionButtons) {
+          // Only show buttons if files are uploaded
+          const hasFiles = window.uploadedFiles && window.uploadedFiles.length > 0;
+          
+          if (hasFiles) {
+            // Check if scrolled to bottom (within 50px threshold)
+            const scrollTop = body.scrollTop;
+            const scrollHeight = body.scrollHeight;
+            const clientHeight = body.clientHeight;
+            const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
+            
+            // Show/hide buttons based on scroll position
+            if (isAtBottom) {
+              actionButtons.classList.add('show');
+            } else {
+              actionButtons.classList.remove('show');
+            }
+          } else {
+            // Hide buttons if no files uploaded
+            actionButtons.classList.remove('show');
+          }
         }
       }
     }
@@ -16247,17 +16450,15 @@
         modal.id = modalId;
         modal.innerHTML = renderServiceModal(service);
         document.getElementById('serviceModalsContainer').appendChild(modal);
-        setTimeout(() => {
-          attachServiceModalEvents(service, modal);
-          fixDropdownOverflow(); // Fix dropdown overflow after modal is created
-          ensureModalButtonsVisible(); // Ensure buttons are visible
-        }, 100);
+        // Attach events and fix issues immediately for faster modal opening
+        attachServiceModalEvents(service, modal);
+        fixDropdownOverflow(); // Fix dropdown overflow after modal is created
+        ensureModalButtonsVisible(); // Ensure buttons are visible
       } else {
         modal.classList.add('active');
-        setTimeout(() => {
-          fixDropdownOverflow(); // Fix dropdown overflow when modal is opened
-          ensureModalButtonsVisible(); // Ensure buttons are visible
-        }, 100);
+        // Fix issues immediately when modal is opened
+        fixDropdownOverflow(); // Fix dropdown overflow when modal is opened
+        ensureModalButtonsVisible(); // Ensure buttons are visible
       }
     }
 
@@ -16526,6 +16727,10 @@
       if (currentCopies > 1) {
         updateCurrentFileSettings('copies', currentCopies - 1);
         copiesCount.textContent = currentCopies - 1;
+        // Recalculate pricing when copies change
+        if (selectedVendor && uploadedFiles.length > 0) {
+          debounceCalculateA4();
+        }
       }
     });
 
@@ -16535,6 +16740,10 @@
       if (currentCopies < 99) {
         updateCurrentFileSettings('copies', currentCopies + 1);
         copiesCount.textContent = currentCopies + 1;
+        // Recalculate pricing when copies change
+        if (selectedVendor && uploadedFiles.length > 0) {
+          debounceCalculateA4();
+        }
       }
     });
 
@@ -16674,12 +16883,17 @@
       // Calculate total pages and copies
       let totalPages = 0;
       let totalCopies = 0;
+      let totalQuantity = 0; // Total pages × copies
       let colorType = 'Black and White'; // Default
       
       for (const fileObj of uploadedFiles) {
         const settings = fileSettings[fileObj.id];
-        totalPages += fileObj.pages;
-        totalCopies += settings.copies;
+        const pages = fileObj.pages;
+        const copies = settings.copies;
+        
+        totalPages += pages;
+        totalCopies += copies;
+        totalQuantity += (pages * copies); // Total pages × copies for accurate pricing
         
         // If any file has color, mark as color
         if (settings.color === 'color') {
@@ -16711,6 +16925,7 @@
         print_type: printType,
         total_pages: totalPages,
         total_copies: totalCopies,
+        total_quantity: totalQuantity, // Total pages × copies for accurate pricing
         spiral_binding: spiralBinding,
         lamination: lamination,
         tape_binding: tapeBinding
@@ -16766,15 +16981,40 @@
             commission.total += tapeCommission.total;
           }
           
-          // Store the calculated price in modal metadata
-          document.getElementById('printModal').dataset.calculatedPrice = commission.total;
-          document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify({
+          // Calculate total including additional options
+          let totalSubtotal = vendorPrice;
+          const additionalOptions = [];
+          
+          if (spiralBinding) {
+            const spiralPrice = 20;
+            totalSubtotal += spiralPrice;
+            additionalOptions.push({ name: 'Spiral Binding', price: spiralPrice });
+          }
+          if (lamination) {
+            const laminationPrice = totalPages * totalCopies * 15;
+            totalSubtotal += laminationPrice;
+            additionalOptions.push({ name: 'Lamination', price: laminationPrice });
+          }
+          if (tapeBinding) {
+            const tapePrice = 25;
+            totalSubtotal += tapePrice;
+            additionalOptions.push({ name: 'Tape Binding', price: tapePrice });
+          }
+          
+          // Add additional options to pricing breakdown
+          const completeBreakdown = {
             ...breakdown,
             total_price: commission.total,
             vendor_price: vendorPrice,
             commission_amount: commission.amount,
-            commission_percentage: commission.percentage
-          });
+            commission_percentage: commission.percentage,
+            additional_options: additionalOptions,
+            subtotal: totalSubtotal
+          };
+          
+          // Store the calculated price in modal metadata
+          document.getElementById('printModal').dataset.calculatedPrice = commission.total;
+          document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify(completeBreakdown);
           
           // Update the new pricing summary fields
           const serviceNameEl = document.getElementById('serviceName');
@@ -16806,14 +17046,33 @@
           }
           
           if (subtotalAmountEl) {
-            subtotalAmountEl.textContent = `₹${vendorPrice.toFixed(2)}`;
+            subtotalAmountEl.textContent = `₹${totalSubtotal.toFixed(2)}`;
           }
           
           if (totalAmountEl) {
-            totalAmountEl.textContent = `₹${commission.total.toFixed(2)}`;
+            totalAmountEl.textContent = `₹${totalSubtotal.toFixed(2)}`;
             // Reveal the order summary only after a successful calculation
             const orderSummaryEl = document.getElementById('orderSummary');
             if (orderSummaryEl) orderSummaryEl.style.display = 'block';
+          }
+          
+          // Display additional options in the details section
+          const additionalOptionsContainer = document.getElementById('additionalOptionsContainer');
+          if (additionalOptionsContainer) {
+            if (additionalOptions.length > 0) {
+              let additionalOptionsHtml = '';
+              additionalOptions.forEach(option => {
+                additionalOptionsHtml += `
+                  <div class="detail-item">
+                    <span class="detail-label">${option.name}</span>
+                    <span class="detail-value">₹${option.price.toFixed(2)}</span>
+                  </div>
+                `;
+              });
+              additionalOptionsContainer.innerHTML = additionalOptionsHtml;
+            } else {
+              additionalOptionsContainer.innerHTML = '';
+            }
           }
 
           // Show action buttons after successful price calculation
@@ -16963,11 +17222,14 @@
         
         if (calculatedPrice && pricingBreakdown) {
           try {
+            const breakdownObj = JSON.parse(pricingBreakdown);
             pricingDetails = {
               total_price: parseFloat(calculatedPrice),
-              pricing_breakdown: JSON.parse(pricingBreakdown),
+              pricing_breakdown: breakdownObj,
               calculation_timestamp: new Date().toISOString(),
-              vendor_email: selectedVendorData ? selectedVendorData.vendor_email : null
+              vendor_email: selectedVendorData ? selectedVendorData.vendor_email : null,
+              additional_options: breakdownObj.additional_options || [],
+              subtotal: breakdownObj.subtotal || parseFloat(calculatedPrice)
             };
             // Compute and store platform profit (not displayed to user)
             try {
@@ -17762,7 +18024,7 @@
       <div class="passport-preview-flex">
         <div class="selectable-image original selected" tabindex="0">
           <div class="selectable-label">Original</div>
-          <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original" checked></span>
+          <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original"></span>
           <img src="${URL.createObjectURL(file)}" alt="Original" />
         </div>
         <div class="selectable-image enhanced" tabindex="0">
@@ -17899,8 +18161,18 @@
           <div id="lottie-animation" class="lottie-animation"></div>
         </div>
         <div class="success-message">
-          <h3>Payment Successful!</h3>
-          <p>Your print job has been sent to print successfully</p>
+            <h3>Payment Successful!</h3>
+            <p>Your print job has been sent to print successfully</p>
+            <div class="success-actions">
+              <button class="btn btn-primary" onclick="window.location.href='/vendordashboard/'">
+                <i class="fas fa-arrow-left"></i>
+                Back to Vendor Dashboard
+              </button>
+              <button class="btn btn-secondary" onclick="hideSuccessModal()">
+                <i class="fas fa-times"></i>
+                Close
+              </button>
+            </div>
         </div>
       </div>
     </div>
@@ -18255,6 +18527,47 @@
       line-height: 1.5;
     }
 
+    .success-actions {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .success-actions .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .success-actions .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .success-actions .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .success-actions .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .success-actions .btn-secondary:hover {
+      background: #d1d5db;
+      transform: translateY(-1px);
+    }
+
     @media (max-width: 768px) {
       .success-modal {
         width: 95%;
@@ -18377,18 +18690,18 @@
       }
     }
 
-    // Success Modal Functions
-    function showSuccessModal() {
-      const modal = document.getElementById('successModal');
-      if (modal) {
-        modal.classList.add('active');
-        
-        // Auto-close modal after 3 seconds
-        setTimeout(() => {
-          hideSuccessModal();
-        }, 3000);
+      // Success Modal Functions
+      function showSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+          modal.classList.add('active');
+          
+          // Don't auto-close - let user choose with buttons
+          // setTimeout(() => {
+          //   hideSuccessModal();
+          // }, 3000);
+        }
       }
-    }
 
     function hideSuccessModal() {
       const modal = document.getElementById('successModal');
@@ -18397,68 +18710,62 @@
       }
     }
 
-    // Preload confetti animation for instant display
-    let confettiPlayer = null;
-    
-    function preloadConfettiAnimation() {
-      const animationContainer = document.getElementById('lottie-animation');
-      if (animationContainer && !confettiPlayer) {
-        // Create dotLottie player element and preload
-        confettiPlayer = document.createElement('dotlottie-player');
-        confettiPlayer.setAttribute('src', '/static/images/success confetti.lottie');
-        confettiPlayer.setAttribute('background', 'transparent');
-        confettiPlayer.setAttribute('speed', '1');
-        confettiPlayer.setAttribute('loop', 'false');
-        confettiPlayer.setAttribute('autoplay', 'false'); // Don't autoplay yet
-        confettiPlayer.style.width = '100%';
-        confettiPlayer.style.height = '100%';
-        confettiPlayer.style.display = 'none'; // Hide initially
-        
-        // Preload the animation
-        confettiPlayer.addEventListener('ready', () => {
-          console.log('🎉 Confetti animation preloaded and ready!');
-        });
-        
-        animationContainer.appendChild(confettiPlayer);
-      }
-    }
-
     // Initialize Lottie animation when modal is shown
     function initializeLottieAnimation() {
       const animationContainer = document.getElementById('lottie-animation');
-      if (animationContainer && confettiPlayer) {
-        // Show and play the preloaded animation instantly
-        confettiPlayer.style.display = 'block';
-        confettiPlayer.setAttribute('autoplay', 'true');
-        confettiPlayer.play();
-      } else if (animationContainer && !confettiPlayer) {
-        // Fallback: create player if not preloaded
+      if (animationContainer) {
+        // Clear any existing animation
+        animationContainer.innerHTML = '';
+        
+        // Create dotLottie player element
         const player = document.createElement('dotlottie-player');
         player.setAttribute('src', '/static/images/success confetti.lottie');
         player.setAttribute('background', 'transparent');
-        player.setAttribute('speed', '1');
+        player.setAttribute('speed', '1.5');
         player.setAttribute('loop', 'false');
         player.setAttribute('autoplay', 'true');
         player.style.width = '100%';
         player.style.height = '100%';
+        player.style.position = 'fixed';
+        player.style.top = '50%';
+        player.style.left = '50%';
+        player.style.transform = 'translate(-50%, -50%)';
+        player.style.zIndex = '9999';
         
-        animationContainer.appendChild(player);
+        // Show animation immediately
+        document.body.appendChild(player);
+        
+        // Remove animation after it completes
+        setTimeout(() => {
+          if (player.parentNode) {
+            player.parentNode.removeChild(player);
+          }
+        }, 3000);
       }
     }
 
-    // Enhanced showSuccessModal with instant animation and immediate job updates
-    function showSuccessModalWithAnimation() {
-      // Show modal and animation instantly
-      showSuccessModal();
-      initializeLottieAnimation();
-      
-      // Update job list immediately (no delay)
-      updateJobListAfterPayment();
-      
-      // Also update job list again after a short delay to ensure fresh data
+      // Enhanced showSuccessModal with animation initialization
+      function showSuccessModalWithAnimation() {
+        // Show modal immediately with animation
+        const modal = document.getElementById('successModal');
+        if (modal) {
+          modal.classList.add('active');
+          
+          // Initialize animation after modal is shown
+          setTimeout(() => {
+            initializeLottieAnimation();
+          }, 100);
+          
+          // Don't auto-close - let user choose with buttons
+          // setTimeout(() => {
+          //   hideSuccessModal();
+          // }, 3000);
+        }
+        
+        // Update job list dynamically after a short delay
       setTimeout(() => {
         updateJobListAfterPayment();
-      }, 1000); // Reduced delay for faster updates
+      }, 1500); // Update job list while success modal is still showing
     }
 
     // Function to update job list after payment without page reload
@@ -18468,15 +18775,9 @@
         localStorage.removeItem('userJobsCache');
         localStorage.removeItem('userJobsCacheTimestamp');
         
-        // Show loading state immediately
-        const jobsSection = document.getElementById('jobsSection');
-        if (jobsSection) {
-          jobsSection.style.display = 'block';
-          jobsSection.style.opacity = '0.7'; // Show loading state
-        }
-        
-        // Fetch updated job list with no-cache headers
+        // Fetch updated job list immediately
         const response = await fetch('/userdashboard-data/', {
+          cache: 'no-cache',
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
@@ -18508,18 +18809,15 @@
               if (el && val !== undefined) el.textContent = val; 
             });
             
-            // Restore full opacity
-            if (jobsSection) {
-              jobsSection.style.opacity = '1';
-            }
-            
             console.log(`✅ Updated job list: ${pendingJobs.length} pending jobs displayed`);
           }
         }
       } catch (error) {
         console.error('Error updating job list:', error);
         // Fallback to page reload if dynamic update fails
-        window.location.reload();
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       }
     }
 
@@ -18570,7 +18868,7 @@
 
     // Function to show payment processing state
     function showPaymentProcessingState() {
-      // Create a processing overlay
+      // Create a processing overlay with enhanced 2-second animation
       const processingOverlay = document.createElement('div');
       processingOverlay.id = 'paymentProcessingOverlay';
       processingOverlay.style.cssText = `
@@ -18579,53 +18877,103 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.9);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 99999;
-        backdrop-filter: blur(5px);
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.3s ease-out;
       `;
       
       processingOverlay.innerHTML = `
         <div style="
-          background: white;
-          padding: 2rem;
-          border-radius: 16px;
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+          padding: 3rem 2rem;
+          border-radius: 20px;
           text-align: center;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-          max-width: 400px;
+          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+          max-width: 450px;
           width: 90%;
+          border: 1px solid rgba(59, 130, 246, 0.1);
+          animation: slideUp 0.4s ease-out;
         ">
           <div style="
-            width: 60px;
-            height: 60px;
-            border: 4px solid #e5e7eb;
-            border-top: 4px solid #3b82f6;
+            width: 80px;
+            height: 80px;
+            border: 5px solid #e5e7eb;
+            border-top: 5px solid #3b82f6;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-          "></div>
-          <h3 style="margin: 0 0 0.5rem 0; color: #1f2937; font-size: 1.25rem;">Processing Payment</h3>
-          <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">Please wait while we process your payment...</p>
+            margin: 0 auto 1.5rem;
+            position: relative;
+          ">
+            <div style="
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              width: 20px;
+              height: 20px;
+              background: #3b82f6;
+              border-radius: 50%;
+              animation: pulse 1.5s ease-in-out infinite;
+            "></div>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: #1f2937; font-size: 1.5rem; font-weight: 700;">Processing Payment</h3>
+          <p style="margin: 0 0 1rem 0; color: #6b7280; font-size: 1rem;">Please wait while we process your payment...</p>
+          <div style="
+            width: 100%;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 1rem;
+          ">
+            <div style="
+              width: 100%;
+              height: 100%;
+              background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+              border-radius: 2px;
+              animation: progressBar 2s ease-in-out;
+            "></div>
+          </div>
         </div>
       `;
       
-      // Add CSS animation
+      // Add enhanced CSS animations
       const style = document.createElement('style');
       style.textContent = `
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+        @keyframes pulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.7; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(30px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes progressBar {
+          0% { width: 0%; }
+          50% { width: 60%; }
+          100% { width: 100%; }
+        }
       `;
       document.head.appendChild(style);
       
       document.body.appendChild(processingOverlay);
-      // Auto-hide after 10s as a safety net to avoid loops
+      
+      // Auto-hide after 2 seconds as requested
       processingOverlay.dataset.timeout = setTimeout(() => {
         hidePaymentProcessingState();
-      }, 10000);
+      }, 2000);
     }
 
     // Function to hide payment processing state
@@ -18648,9 +18996,6 @@
 
     // Check for payment success parameter on page load
     document.addEventListener('DOMContentLoaded', function() {
-      // Preload confetti animation for instant display
-      preloadConfettiAnimation();
-      
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('payment_success') === 'true') {
         // Ensure all modals are closed first

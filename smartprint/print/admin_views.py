@@ -308,6 +308,7 @@ def process_user_data_from_r2_week(s3, user_email, week_start, week_end):
 def get_vendor_notification_data_current_date(current_date):
     """Get vendor notification data from R2 storage for current date only"""
     try:
+        print(f"🔍 Getting vendor notification data for date: {current_date}")
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,
                           aws_secret_access_key=settings.R2_SECRET_KEY,
@@ -318,74 +319,73 @@ def get_vendor_notification_data_current_date(current_date):
         notifications_prefix = "vendor_notifications/"
         objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=notifications_prefix)
         
+        print(f"📁 Found {len(objects.get('Contents', []))} objects in vendor_notifications folder")
+        
         vendor_data = {}
         
         if 'Contents' in objects:
             for obj in objects['Contents']:
                 key = obj["Key"]
+                print(f"🔍 Processing object: {key}")
                 # Extract vendor email from path: vendor_notifications/email@domain.com/date_folder/notification_id.json
                 path_parts = key.split('/')
                 if len(path_parts) >= 4 and path_parts[0] == 'vendor_notifications':
                     vendor_email = path_parts[1]
                     date_folder = path_parts[2]
-                    if vendor_email and '@' in vendor_email:  # Valid email format
+                    print(f"📧 Vendor email: {vendor_email}, Date folder: {date_folder}")
+                    if vendor_email:  # Valid email format (allow sanitized emails)
                         try:
                             # Check if current date falls within the date folder range
-                            if is_date_in_folder_range(current_date, date_folder):
+                            is_in_range = is_date_in_folder_range(current_date, date_folder)
+                            print(f"📅 Checking date folder {date_folder} for date {current_date}: {is_in_range}")
+                            if is_in_range:
+                                print(f"✅ Date folder {date_folder} matches current date {current_date}")
                                 # Get notification data
                                 result = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
                                 notification_json = json.loads(result['Body'].read().decode('utf-8'))
                                 
-                                # Check if notification is from current date
-                                notification_date = None
-                                try:
-                                    if 'completion_time' in notification_json:
-                                        notification_date = datetime.datetime.fromisoformat(
-                                            notification_json['completion_time'].replace('Z', '+00:00')
-                                        ).date()
-                                    elif 'timestamp' in notification_json:
-                                        notification_date = datetime.datetime.fromisoformat(
-                                            notification_json['timestamp'].replace('Z', '+00:00')
-                                        ).date()
-                                except:
-                                    # If we can't parse the date, assume it's from current date since it's in the right folder
-                                    notification_date = current_date
+                                # Since the notification is in the correct date folder, include it
+                                # (The date folder range check already ensures it's from the right date)
+                                print(f"✅ Processing notification for vendor: {vendor_email} (in correct date folder)")
                                 
-                                # Include notifications from current date
-                                if notification_date == current_date:
-                                    if vendor_email not in vendor_data:
-                                        vendor_data[vendor_email] = {
-                                            'vendor_email': vendor_email,
-                                            'vendor_id': notification_json.get('vendor_id', ''),
-                                            'total_price': 0.0,
-                                            'total_platform_profit': 0.0,
-                                            'service_types': [],
-                                            'jobs_count': 0,
-                                            'jobs': []
-                                        }
-                                    
-                                    # Extract data from notification
-                                    service_type = notification_json.get('service_type', 'Unknown')
-                                    platform_profit = float(notification_json.get('platform_profit', 0.0))
-                                    total_price = float(notification_json.get('total_price', 0.0))
-                                    
-                                    vendor_data[vendor_email]['total_price'] += total_price
-                                    vendor_data[vendor_email]['total_platform_profit'] += platform_profit
-                                    vendor_data[vendor_email]['jobs_count'] += 1
-                                    
-                                    if service_type not in vendor_data[vendor_email]['service_types']:
-                                        vendor_data[vendor_email]['service_types'].append(service_type)
-                                    
-                                    vendor_data[vendor_email]['jobs'].append({
-                                        'filename': notification_json.get('filename', ''),
-                                        'service_type': service_type,
-                                        'platform_profit': platform_profit,
-                                        'total_price': total_price,
-                                        'completion_time': notification_json.get('completion_time', ''),
-                                        'user_email': notification_json.get('user_email', ''),
-                                        'token': notification_json.get('token', ''),
-                                        'document_name': notification_json.get('document_name', '')
-                                    })
+                                # Convert sanitized email back to proper format for display
+                                display_email = vendor_email.replace('_at_', '@').replace('_dot_', '.')
+                                
+                                if display_email not in vendor_data:
+                                    vendor_data[display_email] = {
+                                        'vendor_email': display_email,
+                                        'vendor_id': notification_json.get('vendor_id', ''),
+                                        'total_price': 0.0,
+                                        'total_platform_profit': 0.0,
+                                        'service_types': [],
+                                        'jobs_count': 0,
+                                        'jobs': []
+                                    }
+                                
+                                # Extract data from notification
+                                service_type = notification_json.get('service_type', 'Unknown')
+                                platform_profit = float(notification_json.get('platform_profit', 0.0))
+                                total_price = float(notification_json.get('total_price', 0.0))
+                                
+                                print(f"📊 Vendor {display_email}: service_type={service_type}, platform_profit={platform_profit}, total_price={total_price}")
+                                
+                                vendor_data[display_email]['total_price'] += total_price
+                                vendor_data[display_email]['total_platform_profit'] += platform_profit
+                                vendor_data[display_email]['jobs_count'] += 1
+                                
+                                if service_type not in vendor_data[display_email]['service_types']:
+                                    vendor_data[display_email]['service_types'].append(service_type)
+                                
+                                vendor_data[display_email]['jobs'].append({
+                                    'filename': notification_json.get('filename', ''),
+                                    'service_type': service_type,
+                                    'platform_profit': platform_profit,
+                                    'total_price': total_price,
+                                    'completion_time': notification_json.get('completion_time', ''),
+                                    'user_email': notification_json.get('user_email', ''),
+                                    'token': notification_json.get('token', ''),
+                                    'document_name': notification_json.get('document_name', '')
+                                })
                                     
                         except Exception as e:
                             print(f"Error processing vendor notification {key}: {e}")
@@ -404,10 +404,12 @@ def get_vendor_notification_data_current_date(current_date):
                 'jobs': data['jobs']
             }
             vendor_list.append(vendor_info)
+            print(f"📋 Final vendor data: {vendor_email} - Total: {data['total_price']}, Profit: {data['total_platform_profit']}")
         
         # Sort by total price (highest first)
         vendor_list.sort(key=lambda x: x['total_price'], reverse=True)
         
+        print(f"🎯 Returning {len(vendor_list)} vendors for admin dashboard")
         return vendor_list
         
     except Exception as e:
@@ -422,13 +424,18 @@ def is_date_in_folder_range(target_date, folder_name):
             start_str, end_str = folder_name.split('_to_')
             start_date = datetime.datetime.strptime(start_str, '%Y-%m-%d').date()
             end_date = datetime.datetime.strptime(end_str, '%Y-%m-%d').date()
-            return start_date <= target_date <= end_date
+            is_in_range = start_date <= target_date <= end_date
+            print(f"📅 Date range check: {target_date} in {start_date} to {end_date}: {is_in_range}")
+            return is_in_range
         else:
             # Fallback: try to parse as single date
             try:
                 folder_date = datetime.datetime.strptime(folder_name, '%Y-%m-%d').date()
-                return folder_date == target_date
+                is_match = folder_date == target_date
+                print(f"📅 Single date check: {target_date} == {folder_date}: {is_match}")
+                return is_match
             except:
+                print(f"📅 Failed to parse single date: {folder_name}")
                 return False
     except Exception as e:
         print(f"Error parsing folder date range {folder_name}: {e}")
@@ -905,12 +912,18 @@ def admin_vendors_data(request):
     try:
         # Get current date
         current_date = datetime.datetime.now().date()
+        print(f"🔍 Admin vendors data request for date: {current_date}")
         
         # Get vendor notification data for current date only
         vendor_notification_data = get_vendor_notification_data_current_date(current_date)
+        print(f"📊 Found {len(vendor_notification_data)} vendors for current date")
         
         # Calculate overview statistics
         overview = calculate_vendor_overview_stats_current_date(vendor_notification_data)
+        
+        # Debug: Print vendor data
+        for vendor in vendor_notification_data:
+            print(f"📋 Vendor: {vendor['vendor_email']}, Total Price: {vendor['total_price']}, Platform Profit: {vendor['total_platform_profit']}")
         
         return JsonResponse({
             'success': True,
@@ -921,6 +934,7 @@ def admin_vendors_data(request):
         })
         
     except Exception as e:
+        print(f"❌ Error in admin_vendors_data: {str(e)}")
         return JsonResponse({
             'success': False,
             'error': str(e)
@@ -1915,8 +1929,8 @@ def start_automatic_report_generation():
         # Schedule report generation every day at 12:00 AM IST
         schedule.every().day.at("00:00").do(run_daily_report_generation)
         
-        print("✅ Automatic report generation scheduler started!")
-        print("📅 Reports will be generated daily at 12:00 AM IST")
+        print("Automatic report generation scheduler started!")
+        print("Reports will be generated daily at 12:00 AM IST")
         
         # Run the scheduler in a loop
         while True:
@@ -1930,7 +1944,7 @@ def start_automatic_report_generation():
     # Start the background thread
     scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
     scheduler_thread.start()
-    print("🚀 Background report generation scheduler initialized!")
+    print("Background report generation scheduler initialized!")
 
 
 # Initialize automatic report generation when the module is imported

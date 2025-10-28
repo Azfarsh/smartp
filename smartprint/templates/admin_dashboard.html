@@ -7,11 +7,14 @@
     <title>SmartPrint Admin Dashboard</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
-    <link rel="manifest" href="{% static 'site.webmanifest' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2?v=2">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2?v=2">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}?v=2?v=2">
+    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}?v=2?v=2">
+    <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2?v=2">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -2304,14 +2307,17 @@
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Vendor data response:', data);
                     loading.style.display = 'none';
                     
                     if (data.success && data.vendors && data.vendors.length > 0) {
+                        console.log(`Found ${data.vendors.length} vendors`);
                         allVendorsData = data.vendors;
                         filteredVendorsData = [...allVendorsData];
                         displayVendors(data.vendors);
                         updateVendorOverviewCards(data.overview);
                     } else {
+                        console.log('No vendors found or error in response');
                         empty.style.display = 'block';
                     }
                 })
@@ -2323,15 +2329,18 @@
 
         // Display vendors in the table
         function displayVendors(vendors) {
+            console.log('Displaying vendors:', vendors);
             const tableBody = document.getElementById('vendors-table-body');
             const table = document.getElementById('vendors-table');
             
             if (vendors.length === 0) {
+                console.log('No vendors to display');
                 document.getElementById('vendors-empty').style.display = 'block';
                 table.style.display = 'none';
                 return;
             }
 
+            console.log(`Displaying ${vendors.length} vendors in table`);
             table.style.display = 'table';
             document.getElementById('vendors-empty').style.display = 'none';
 
