@@ -37,6 +37,8 @@ class SessionValidationMiddleware:
             '/vendor-about/',
             '/static/',
             '/media/',
+            '/admin/',  # Django admin URLs
+            '/admin-dashboard/',  # Custom admin dashboard URLs
         ]
     
     def __call__(self, request):

@@ -9897,21 +9897,20 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
             
-            # Try to get service type and platform_profit from vendor_print_jobs
+            # Try to get service type and platform_profit from vendor_print_jobs metadata
             vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
             try:
-                result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                job_data = json.loads(result['Body'].read().decode('utf-8'))
-                service_type = job_data.get('service_type', 'Print Job')
+                # Get object metadata instead of trying to read JSON from PDF
+                result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                metadata = result.get('Metadata', {})
+                
+                service_type = metadata.get('service_type', 'Print Job')
                 
                 # Extract platform_profit and total_price from pricing_details if available
-                pricing_details = job_data.get('pricing_details')
-                if pricing_details:
+                pricing_details_str = metadata.get('pricing_details')
+                if pricing_details_str:
                     try:
-                        if isinstance(pricing_details, str):
-                            pricing_obj = json.loads(pricing_details)
-                        else:
-                            pricing_obj = pricing_details
+                        pricing_obj = json.loads(pricing_details_str)
                         
                         # Try multiple possible keys for platform_profit
                         platform_profit = float(pricing_obj.get('platform_profit', 0.0))
@@ -9927,17 +9926,19 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
                 
                 # If total_price not found in pricing_details, try metadata
                 if total_price == 0.0:
-                    total_price = float(job_data.get('total_price', 0.0))
+                    total_price = float(metadata.get('total_price', 0.0))
                     print(f"📊 Using total_price from metadata: {total_price}")
                 
                 # If platform_profit not found in pricing_details, try metadata
                 if platform_profit == 0.0:
-                    platform_profit = float(job_data.get('platform_profit', 0.0))
+                    platform_profit = float(metadata.get('platform_profit', 0.0))
                     print(f"📊 Using platform_profit from metadata: {platform_profit}")
                     
-            except:
+            except Exception as e:
+                print(f"⚠️ Error reading metadata for {vendor_key}: {e}")
                 pass
-        except:
+        except Exception as e:
+            print(f"⚠️ Error accessing S3: {e}")
             pass
         
         # Create notification ID
