@@ -5283,6 +5283,10 @@ def vendor_register_api(request):
             shop_folder_created = True
             email_sent = True
             try:
+                # Define shop_folder_name and shop_folder_key for folder creation
+                shop_folder_name = sanitize_shop_name(vendor_name)
+                shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
+
                 # Shop folder (non-blocking)
                 try:
                     print(f"📁 Creating shop folder: {shop_folder_name}")
