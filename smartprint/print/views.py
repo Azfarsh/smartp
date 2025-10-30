@@ -2701,7 +2701,6 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 # ─────────────────────────────────────────────────────────────
 # FILE UPLOAD TO CLOUDFLARE R2
 # ─────────────────────────────────────────────────────────────
-
 @csrf_exempt  # Use proper CSRF protection in production!
 def upload_to_r2(request):
     """
@@ -4197,7 +4196,6 @@ from django.http import JsonResponse
 from django.contrib.auth import login
 from django.contrib.auth.models import User
 import requests
-
 def auth_receiver(request):
     if request.method == 'POST':
         token = request.POST.get('credential')
@@ -5281,42 +5279,43 @@ def vendor_register_api(request):
                     'fallback_mode': True
                 })
 
-            # Create shop folder with vendor name, non-fatal on failure
-            shop_folder_name = sanitize_shop_name(vendor_name)
-            shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
+            # Create shop folder and send email, never fail registration for these
             shop_folder_created = True
+            email_sent = True
             try:
-                print(f"📁 Creating shop folder: {shop_folder_name}")
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=f'{shop_folder_key}shop_info.json',
-                    Body=json.dumps({
-                        'shop_name': vendor_name,
-                        'vendor_id_hash': make_password(vendor_id),
-                        'vendor_token_hash': make_password(vendor_token),
-                        'created_at': timezone.now().isoformat(),
-                        'folder_created': True
-                    }),
-                    ContentType='application/json'
-                )
-                print(f"✅ Shop folder created successfully")
-            except Exception as e:
-                shop_folder_created = False
-                print(f"❌ Error creating shop info: {str(e)}")
+                # Shop folder (non-blocking)
+                try:
+                    print(f"📁 Creating shop folder: {shop_folder_name}")
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=f'{shop_folder_key}shop_info.json',
+                        Body=json.dumps({
+                            'shop_name': vendor_name,
+                            'vendor_id_hash': make_password(vendor_id),
+                            'vendor_token_hash': make_password(vendor_token),
+                            'created_at': timezone.now().isoformat(),
+                            'folder_created': True
+                        }),
+                        ContentType='application/json'
+                    )
+                except Exception as e:
+                    shop_folder_created = False
+                    print(f"❌ Shop folder create failed: {e}")
 
-            email_sent = False
-            try:
-                print(f"📧 Sending welcome email to: {email}")
-                send_welcome_email(email, vendor_name, password, vendor_id)
-                email_sent = True
-                print(f"✅ Welcome email sent successfully")
+                # Welcome email (non-blocking)
+                try:
+                    print(f"📧 Sending welcome email to: {email}")
+                    send_welcome_email(email, vendor_name, password, vendor_id)
+                except Exception as e:
+                    email_sent = False
+                    print(f"⚠️ Welcome email failed: {e}")
+
             except Exception as e:
-                print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
-                # Not a blocker
+                print(f"[REG NON-FATAL] Error post-registration: {e}")
 
             fallback = (not shop_folder_created) or (not email_sent)
 
-            print(f"🎉 Registration completed successfully for {email}")
+            print(f"🎉 Registration completed successfully for {email} (fallback={fallback})")
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful' +
@@ -5675,7 +5674,6 @@ def calculate_gloss_print_pricing(request):
         'success': False,
         'error': 'Invalid request method'
     })
-
 @csrf_exempt
 def calculate_golden_emboss_pricing(request):
     """Calculate pricing for golden embossing service based on vendor pricing.json"""
@@ -6367,7 +6365,6 @@ def calculate_jumbo_print_pricing(request):
         'success': False,
         'error': 'Invalid request method'
     })
-
 @csrf_exempt
 def calculate_passport_photo_pricing(request):
     """Calculate pricing for passport photo service based on vendor pricing.json"""
@@ -7134,7 +7131,6 @@ def enhance_passport_photo(request):
 def forgot_password_page(request):
     """Render the forgot password page"""
     return render(request, 'forgot_password.html')
-
 @csrf_exempt
 def forgot_password(request):
     """
@@ -7879,7 +7875,6 @@ def get_vendor_coordinates_from_email(vendor_email):
     except Exception as e:
         print(f"Error getting vendor coordinates for {vendor_email}: {str(e)}")
         return None
-
 def get_vendor_coordinates(request):
     """
     Return vendor coordinates as JSON for the map, non-blocking for dashboard load with caching.
@@ -8519,7 +8514,6 @@ def get_vendor_profile_image(request):
         "success": False,
         "error": "Invalid request method"
     }, status=405)
-@csrf_exempt
 def update_vendor_profile(request):
     """
     Update vendor profile details and profile image in Cloudflare R2 under:
@@ -9268,7 +9262,6 @@ def simple_update_vendor_status(filename, vendor_id, status):
         import traceback
         traceback.print_exc()
         return False
-@csrf_exempt
 def vendor_dashboard_notification(request):
     """Handle vendor dashboard notifications including compensation requests"""
     try:
@@ -10775,7 +10768,6 @@ def update_job_hidden_status_in_r2(filename, hidden_status, vendor_id):
     except Exception as e:
         print(f"❌ Error updating hidden status: {str(e)}")
         return False
-@csrf_exempt
 def debug_file_locations(request):
     """Debug endpoint to find where files are stored"""
     if request.method == 'GET':
