@@ -5341,6 +5341,25 @@ def vendor_register_api(request):
             
             # Check if this is a critical error that prevents registration
             error_message = str(e).lower()
+            # Safety net: if registration_details.json already exists, return success so UI can proceed
+            try:
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=(settings.R2_ENDPOINT.rstrip('/') if getattr(settings, 'R2_ENDPOINT', None) else None),
+                                  region_name='auto')
+                reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+                s3.head_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                # If head_object succeeds, treat as success already
+                print("✅ Safety net: registration_details.json exists; returning success to client")
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Registration successful (post-save error ignored)',
+                    'vendor_email': email,
+                    'already_registered': True
+                })
+            except Exception:
+                pass
             if any(keyword in error_message for keyword in ['json', 'decode', 'parse', 'invalid', 'malformed']):
                 return JsonResponse({
                     'success': False,
