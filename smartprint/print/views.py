@@ -703,7 +703,6 @@ def get_vendor_specific_jobs(vendor_id):
     except Exception as e:
         print(f"Error listing vendor-specific R2 files: {str(e)}")
         return []
-
 def vendordashboard(request):
     try:
         # Get vendor details from session
@@ -2130,8 +2129,6 @@ def get_vendor_specific_print_jobs(vendor_id):
     except Exception as e:
         print(f"Error getting vendor-specific jobs: {e}")
         return []
-
-
 def update_job_status_comprehensive(filename, job_completed_status, vendor_id, completion_time):
     """
     Update job status in all relevant folders: user folder, vendor_print_jobs, vendor_manual_print_jobs
@@ -2701,8 +2698,6 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
         print(f"❌ Error updating job status for {filename}: {str(e)}")
         traceback.print_exc()
         return False
-
-
 # ─────────────────────────────────────────────────────────────
 # FILE UPLOAD TO CLOUDFLARE R2
 # ─────────────────────────────────────────────────────────────
@@ -3419,8 +3414,6 @@ def create_photo_print_layout(input_images_data, layout_config):
         print(f"❌ Error creating photo print layout: {e}")
         traceback.print_exc()
         return None
-
-
 def create_passport_photo_layout(input_image_data, total_prints=8, country='India'):
     """
     Creates passport photo layout based on selected country and specified print count
@@ -4200,7 +4193,6 @@ def verify_razorpay_payment(request):
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 from django.http import JsonResponse
 from django.contrib.auth import login
 from django.contrib.auth.models import User
@@ -4723,7 +4715,7 @@ def vendor_pricing(request):
             for printer_field, printer_name in new_printer_config.items():
                 if printer_name and printer_name.strip() and printer_name.strip() != 'NA':
                     printer_configuration[printer_field] = printer_name.strip()
-            
+                    
                     # Initialize count for this printer if not already set
                     count_field = f"{printer_field}_count"
                     if count_field not in printer_counts:
@@ -4886,8 +4878,6 @@ def vendor_info(request, vendor_id):
             'success': False,
             'message': f'Error fetching vendor info: {str(e)}'
         })
-
-
 # Add vendor login endpoint
 @csrf_exempt
 def vendor_login(request):
@@ -5291,11 +5281,10 @@ def vendor_register_api(request):
                     'fallback_mode': True
                 })
 
-            # Create shop folder with vendor name
+            # Create shop folder with vendor name, non-fatal on failure
             shop_folder_name = sanitize_shop_name(vendor_name)
             shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
-
-            # Create shop info file with hashed vendor ID and token
+            shop_folder_created = True
             try:
                 print(f"📁 Creating shop folder: {shop_folder_name}")
                 s3.put_object(
@@ -5312,35 +5301,9 @@ def vendor_register_api(request):
                 )
                 print(f"✅ Shop folder created successfully")
             except Exception as e:
-                # Non-critical for onboarding flow; allow proceeding to pricing
+                shop_folder_created = False
                 print(f"❌ Error creating shop info: {str(e)}")
-                print("⚠️ Proceeding with success response (fallback mode) despite shop folder error")
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Registration successful (basic mode - shop folder will be created later)',
-                    'vendor_email': email,
-                    'vendor_id': vendor_id,
-                    'vendor_token': vendor_token,
-                    'shop_folder': sanitize_shop_name(vendor_name),
-                    'fallback_mode': True
-                })
 
-            # Prepare pricing details if present
-            pricing_entries = data.get('pricing_entries', [])
-            pricing_saved = 0
-            for entry in pricing_entries:
-                try:
-                    pricing_id = str(uuid.uuid4())
-                    key = f'vendor_register_details/{sanitize_email(email)}/pricing_details/pricing_{pricing_id}.json'
-                    s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=json.dumps(entry), ContentType='application/json')
-                    pricing_saved += 1
-                except Exception as e:
-                    print(f"⚠️ Warning: Could not save pricing entry: {str(e)}")
-                    # Continue with registration even if pricing fails
-
-            print(f"✅ Successfully registered vendor {email} with shop folder: {shop_folder_name}")
-            
-            # Send welcome email with password
             email_sent = False
             try:
                 print(f"📧 Sending welcome email to: {email}")
@@ -5349,17 +5312,21 @@ def vendor_register_api(request):
                 print(f"✅ Welcome email sent successfully")
             except Exception as e:
                 print(f"⚠️ Warning: Could not send welcome email to {email}: {str(e)}")
-                # Continue with registration even if email fails
+                # Not a blocker
 
-            # Always return success if registration data was saved
+            fallback = (not shop_folder_created) or (not email_sent)
+
             print(f"🎉 Registration completed successfully for {email}")
             return JsonResponse({
                 'success': True,
-                'message': 'Registration successful' + (' (Welcome email sent)' if email_sent else ' (Welcome email will be sent later)'),
+                'message': 'Registration successful' +
+                    (email_sent and " (Welcome email sent)" or " (Welcome email will be sent later)") +
+                    (not shop_folder_created and ' (Shop folder will be created later)' or ''),
                 'vendor_email': email,
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
-                'shop_folder': shop_folder_name
+                'shop_folder': shop_folder_name,
+                'fallback_mode': fallback
             })
 
         except Exception as e:
@@ -5561,7 +5528,6 @@ def get_vendor_pricing(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
 @csrf_exempt
 def calculate_gloss_print_pricing(request):
     """Calculate pricing for gloss print service based on vendor pricing.json"""
@@ -6251,7 +6217,6 @@ def calculate_digital_print_pricing(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
 @csrf_exempt
 def calculate_jumbo_print_pricing(request):
     """Calculate pricing for jumbo print service based on vendor pricing.json"""
@@ -7037,7 +7002,6 @@ def get_vendor_id_by_shop_folder(shop_folder):
     except Exception as e:
         print(f"Error finding vendor_id for shop {shop_folder}: {str(e)}")
         return 'vendor1'
-
 def get_vendor_email_by_vendor_id(vendor_id):
     """Get vendor email by vendor_id from R2 storage"""
     try:
@@ -7794,7 +7758,6 @@ def get_vendor_email_by_vendor_id(vendor_id):
     except Exception as e:
         print(f"Error finding vendor email for vendor_id {vendor_id}: {str(e)}")
     return None
-
 # ─────────────────────────────────────────────────────────────
 # Token management helpers
 # ─────────────────────────────────────────────────────────────
@@ -8309,8 +8272,6 @@ def list_vendor_folder(request):
             "error": str(e)
         })
 
-# Removed create_vendor_folder_structure function - no longer needed since we use service.json in the same path as pricing.json
-
 @csrf_exempt
 def update_vendor_availability(request):
     """
@@ -8558,7 +8519,6 @@ def get_vendor_profile_image(request):
         "success": False,
         "error": "Invalid request method"
     }, status=405)
-
 @csrf_exempt
 def update_vendor_profile(request):
     """
@@ -9308,7 +9268,6 @@ def simple_update_vendor_status(filename, vendor_id, status):
         import traceback
         traceback.print_exc()
         return False
-
 @csrf_exempt
 def vendor_dashboard_notification(request):
     """Handle vendor dashboard notifications including compensation requests"""
@@ -10065,7 +10024,6 @@ def store_vendor_notification(vendor_id, notification_data, completion_time):
     except Exception as e:
         print(f"❌ Error storing vendor notification: {e}")
         return False
-
 def get_vendor_notification_date_folder(completion_date):
     """Get the appropriate 2-day date folder for vendor notifications"""
     try:
@@ -10817,7 +10775,6 @@ def update_job_hidden_status_in_r2(filename, hidden_status, vendor_id):
     except Exception as e:
         print(f"❌ Error updating hidden status: {str(e)}")
         return False
-
 @csrf_exempt
 def debug_file_locations(request):
     """Debug endpoint to find where files are stored"""
