@@ -10337,7 +10337,24 @@
         let totalPrice = 0;
         const breakdown = [];
         const pages = formData.pageCount || 1;
-        const copies = formData['Print Quantity'] || formData['Number of Print Copies'] || 1;
+        const copies = (function() {
+          const candidates = [
+            formData['Print Quantity'],
+            formData['Number of Print Copies'],
+            formData['Number of Copies'],
+            formData['Copies'],
+            formData['Num Copies'],
+            formData['Quantity'],
+            formData['quantity'],
+            formData['copies'],
+            formData['num_copies']
+          ];
+          for (const v of candidates) {
+            const n = parseInt(v, 10);
+            if (!isNaN(n) && n > 0) return n;
+          }
+          return 1;
+        })();
 
         switch (service) {
           case 'digital':
@@ -10365,6 +10382,10 @@
 
         // Calculate platform commission
         const serviceKey = getServiceKey(service, formData);
+        // Ensure breakdown carries copies so summaries and invoices use it consistently
+        if (breakdown && typeof breakdown === 'object' && breakdown.num_copies == null) {
+          breakdown.num_copies = copies;
+        }
         const commission = calculatePlatformCommission(serviceKey, totalPrice);
         
         // Add commission details to breakdown
@@ -11737,9 +11758,9 @@
         const basePrice = job.color === 'color' ? 5 : 3;
         let cost = pages * copies * basePrice;
 
-        if (job.spiralBinding === 'Yes') cost += 20;
+        if (job.spiralBinding === 'Yes') cost += 20 * copies;
         if (job.lamination === 'Yes') cost += pages * copies * 15;
-        if (job.tapeBinding === 'Yes') cost += 25;
+        if (job.tapeBinding === 'Yes') cost += 25 * copies;
 
         return cost;
       };
@@ -12293,9 +12314,9 @@
         const basePrice = job.color === 'color' ? 5 : 3;
         let cost = pages * copies * basePrice;
 
-        if (job.spiralBinding === 'Yes') cost += 20;
+        if (job.spiralBinding === 'Yes') cost += 20 * copies;
         if (job.lamination === 'Yes') cost += pages * copies * 15;
-        if (job.tapeBinding === 'Yes') cost += 25;
+        if (job.tapeBinding === 'Yes') cost += 25 * copies;
 
         return cost;
       };
@@ -16937,7 +16958,8 @@
           
           // Add binding services commission if selected
           if (spiralBinding) {
-            const bindingCommission = calculatePlatformCommission('spiral_binding', 20);
+            const spiralPrice = 20 * totalCopies;
+            const bindingCommission = calculatePlatformCommission('spiral_binding', spiralPrice);
             commission.amount += bindingCommission.amount;
             commission.total += bindingCommission.total;
           }
@@ -16948,7 +16970,8 @@
             commission.total += laminationCommission.total;
           }
           if (tapeBinding) {
-            const tapeCommission = calculatePlatformCommission('tape_binding', 25);
+            const tapePrice = 25 * totalCopies;
+            const tapeCommission = calculatePlatformCommission('tape_binding', tapePrice);
             commission.amount += tapeCommission.amount;
             commission.total += tapeCommission.total;
           }
@@ -16958,7 +16981,7 @@
           const additionalOptions = [];
           
           if (spiralBinding) {
-            const spiralPrice = 20;
+            const spiralPrice = 20 * totalCopies;
             totalSubtotal += spiralPrice;
             additionalOptions.push({ name: 'Spiral Binding', price: spiralPrice });
           }
@@ -16968,7 +16991,7 @@
             additionalOptions.push({ name: 'Lamination', price: laminationPrice });
           }
           if (tapeBinding) {
-            const tapePrice = 25;
+            const tapePrice = 25 * totalCopies;
             totalSubtotal += tapePrice;
             additionalOptions.push({ name: 'Tape Binding', price: tapePrice });
           }
@@ -17832,7 +17855,12 @@
                 const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
                 const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
                 const resolvedCopies = copiesFromMetadata || job.copies || '1';
-                const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3) + (job.spiralBinding==='Yes'?20:0) + (job.lamination==='Yes'?parseInt(job.pages||1)*parseInt(job.copies||1)*15:0));
+                const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (
+                  parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3)
+                  + (job.spiralBinding==='Yes' ? 20*parseInt(job.copies||1) : 0)
+                  + (job.lamination==='Yes' ? parseInt(job.pages||1)*parseInt(job.copies||1)*15 : 0)
+                  + (job.tapeBinding==='Yes' ? 25*parseInt(job.copies||1) : 0)
+                );
                 return `
                 <div class="completed-job-card">
                   <div class="completed-job-header">
