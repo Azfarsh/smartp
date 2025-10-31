@@ -5315,6 +5315,28 @@ def vendor_register_api(request):
                     email_sent = False
                     print(f"⚠️ Welcome email failed to dispatch: {e}")
 
+                # Optional: send a one-time SMTP test email if configured
+                try:
+                    test_to = os.environ.get('EMAIL_TEST_TO')
+                    if test_to:
+                        from django.core.mail import send_mail as _send_mail
+                        threading.Thread(
+                            target=_send_mail,
+                            args=(
+                                'PrintMax SMTP Test',
+                                'This is a test email sent after vendor registration to verify SMTP.',
+                                settings.DEFAULT_FROM_EMAIL,
+                                [test_to],
+                            ),
+                            kwargs={
+                                'fail_silently': True
+                            },
+                            daemon=True
+                        ).start()
+                        print(f"📨 SMTP test email queued to {test_to}")
+                except Exception as e:
+                    print(f"⚠️ Could not queue SMTP test email: {e}")
+
             except Exception as e:
                 print(f"[REG NON-FATAL] Error post-registration: {e}")
 
