@@ -29,6 +29,7 @@ from PIL import Image, ImageDraw
 import io
 from django.views.decorators.http import require_POST
 from django.views.decorators.http import require_http_methods
+import threading
 
 
 def terms(request):
@@ -5306,13 +5307,13 @@ def vendor_register_api(request):
                     shop_folder_created = False
                     print(f"❌ Shop folder create failed: {e}")
 
-                # Welcome email (non-blocking)
+                # Welcome email (fire-and-forget to avoid blocking request)
                 try:
                     print(f"📧 Sending welcome email to: {email}")
-                    send_welcome_email(email, vendor_name, password, vendor_id)
+                    threading.Thread(target=send_welcome_email, args=(email, vendor_name, password, vendor_id), daemon=True).start()
                 except Exception as e:
                     email_sent = False
-                    print(f"⚠️ Welcome email failed: {e}")
+                    print(f"⚠️ Welcome email failed to dispatch: {e}")
 
             except Exception as e:
                 print(f"[REG NON-FATAL] Error post-registration: {e}")
@@ -7711,7 +7712,8 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
         }
         
         msg.attach_alternative(html_message, "text/html")
-        msg.send(fail_silently=False)
+        # Do not raise if SMTP is unreachable in production environment
+        msg.send(fail_silently=True)
         
         print(f"✅ Welcome email with credentials sent successfully to {email}")
         return True
