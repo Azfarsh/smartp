@@ -152,19 +152,38 @@ CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
 
 VENDOR_ID=1
 
-# ✅ Email Configuration (from environment)
+# ✅ Email Configuration (Hostinger)
+# All email settings must be configured in .env file - no defaults, only from .env
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.hostinger.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').lower() == 'true'
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '20'))
+EMAIL_HOST = os.getenv('EMAIL_HOST')
 
-# Default email settings (sender identity)
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@printmax.in')
-EMAIL_SUBJECT_PREFIX = os.getenv('EMAIL_SUBJECT_PREFIX', '[PrintMax] ')
+# Option A: SSL on port 465 (Hostinger recommended)
+EMAIL_PORT = int(os.getenv('EMAIL_PORT')) if os.getenv('EMAIL_PORT') else None
+email_use_ssl = os.getenv('EMAIL_USE_SSL')
+EMAIL_USE_SSL = email_use_ssl.lower() == 'true' if email_use_ssl else False
+email_use_tls = os.getenv('EMAIL_USE_TLS')
+EMAIL_USE_TLS = email_use_tls.lower() == 'true' if email_use_tls else False
+
+# Option B: TLS on port 587 (uncomment if SSL doesn't work)
+# EMAIL_PORT = int(os.getenv('EMAIL_PORT')) if os.getenv('EMAIL_PORT') else None
+# email_use_ssl = os.getenv('EMAIL_USE_SSL')
+# EMAIL_USE_SSL = email_use_ssl.lower() == 'true' if email_use_ssl else False
+# email_use_tls = os.getenv('EMAIL_USE_TLS')
+# EMAIL_USE_TLS = email_use_tls.lower() == 'true' if email_use_tls else False
+
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+
+# IMPORTANT: Use the EMAIL ACCOUNT password (mailbox password), NOT the hPanel password!
+# Get this from: Hostinger hPanel → Email → Manage → Email Accounts → Your Email Account
+# Remove any quotes from password if present
+email_password = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_PASSWORD = email_password.strip("'\"") if email_password else None  # Strip quotes if any
+
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT')) if os.getenv('EMAIL_TIMEOUT') else None
+
+# Default email settings
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+EMAIL_SUBJECT_PREFIX = os.getenv('EMAIL_SUBJECT_PREFIX')
 
 # Email templates directory
 EMAIL_TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates', 'emails')
