@@ -5317,7 +5317,7 @@ def vendor_register_api(request):
 
                 # Optional: send a one-time SMTP test email if configured
                 try:
-                    test_to = os.environ.get('EMAIL_TEST_TO')
+                    test_to = getattr(settings, 'EMAIL_TEST_TO', None)
                     if test_to:
                         from django.core.mail import send_mail as _send_mail
                         threading.Thread(
@@ -7454,11 +7454,12 @@ def send_password_reset_email(email, verification_code, vendor_name):
 def send_welcome_email(email, vendor_name, password, vendor_id):
     """
     Send welcome email to new vendors with login credentials
+    Uses Django send_mail first, then falls back to direct SMTP if needed
     """
-    try:
-        subject = 'Welcome to PrintMax - Your Vendor Account is Ready!'
-        
-        html_message = f"""
+    subject = 'Welcome to PrintMax - Your Vendor Account is Ready!'
+    
+    # HTML email template (EXACT CONTENT PRESERVED)
+    html_message = f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -7682,8 +7683,9 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
         </body>
         </html>
         """
-        
-        plain_message = f"""
+    
+    # Plain text version (EXACT CONTENT PRESERVED)
+    plain_message = f"""
         Welcome to PrintMax, {vendor_name}!
 
         Your vendor account has been successfully created and is ready to use.
@@ -7710,15 +7712,34 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
 
         This email was sent to {email}. Please do not reply to this email.
         """
-        
-        # Create email message with additional headers to prevent quoted text issues
+    
+    # Validate email configuration first
+    if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+        print(f"⚠️ Email credentials not configured. Skipping email send to {email}")
+        print(f"   EMAIL_HOST_USER: {'Set' if settings.EMAIL_HOST_USER else 'Missing'}")
+        print(f"   EMAIL_HOST_PASSWORD: {'Set' if settings.EMAIL_HOST_PASSWORD else 'Missing'}")
+        return False
+    
+    # CRITICAL: FROM address MUST match EMAIL_HOST_USER for authentication
+    # Extract email address - use authenticated email as FROM
+    from_email_addr = settings.EMAIL_HOST_USER
+    
+    # For display, we can use a formatted version, but SMTP envelope must use authenticated email
+    display_from = f'PrintMax <{from_email_addr}>' if from_email_addr else 'PrintMax'
+    
+    print(f"📧 Email config - Host: {settings.EMAIL_HOST}, Port: {settings.EMAIL_PORT}")
+    print(f"📧 Authenticated as: {from_email_addr}")
+    print(f"📧 Sending to: {email}")
+    
+    try:
+        # Method 1: Try Django's EmailMultiAlternatives for better control
         from django.core.mail import EmailMultiAlternatives
         
         msg = EmailMultiAlternatives(
             subject=subject,
             body=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[email]
+            from_email=from_email_addr,  # CRITICAL: Must match EMAIL_HOST_USER
+            to=[email],
         )
         
         # Add headers to prevent email clients from treating content as quoted
@@ -7727,22 +7748,99 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
             'X-Priority': '1',
             'X-MSMail-Priority': 'High',
             'Importance': 'high',
-            'X-Original-Sender': settings.DEFAULT_FROM_EMAIL,
+            'X-Original-Sender': from_email_addr,
             'X-Auto-Response-Suppress': 'All',
             'Precedence': 'bulk',
             'X-Entity-Ref-ID': f'vendor-welcome-{vendor_id}',
         }
         
         msg.attach_alternative(html_message, "text/html")
-        # Do not raise if SMTP is unreachable in production environment
-        msg.send(fail_silently=True)
         
-        print(f"✅ Welcome email with credentials sent successfully to {email}")
+        # Send with fail_silently=False to catch errors
+        result = msg.send(fail_silently=False)
+        
+        print(f"✅ Registration email sent successfully via Django EmailMultiAlternatives to {email}")
         return True
         
     except Exception as e:
-        print(f"❌ Error sending welcome email to {email}: {str(e)}")
-        return False
+        print(f"❌ Primary email method failed: {str(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        
+        # Method 2: Fallback - Direct SMTP connection
+        try:
+            print("🔄 Trying direct SMTP send as fallback...")
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            import ssl
+            
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = display_from  # Display name in header
+            msg['To'] = email
+            
+            # Add headers to prevent email clients from treating content as quoted
+            msg['X-Mailer'] = 'PrintMax Vendor System'
+            msg['X-Priority'] = '1'
+            msg['X-MSMail-Priority'] = 'High'
+            msg['Importance'] = 'high'
+            msg['X-Original-Sender'] = from_email_addr
+            msg['X-Auto-Response-Suppress'] = 'All'
+            msg['Precedence'] = 'bulk'
+            msg['X-Entity-Ref-ID'] = f'vendor-welcome-{vendor_id}'
+            
+            # Add text and HTML parts
+            part1 = MIMEText(plain_message, 'plain')
+            part2 = MIMEText(html_message, 'html')
+            msg.attach(part1)
+            msg.attach(part2)
+            
+            # Try SSL first (port 465) - Primary configuration for Hostinger
+            try:
+                print("🔄 Attempting SMTP connection with SSL (port 465)...")
+                context = ssl.create_default_context()
+                server = smtplib.SMTP_SSL(
+                    settings.EMAIL_HOST, 
+                    465, 
+                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 30),
+                    context=context
+                )
+                server.set_debuglevel(0)  # Set to 1 for debug output
+                server.ehlo()
+                server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                server.sendmail(from_email_addr, [email], msg.as_string())
+                server.quit()
+                print(f"✅ Registration email sent successfully via direct SMTP (SSL) to {email}")
+                return True
+            except Exception as e_ssl:
+                print(f"❌ Direct SSL (465) failed: {str(e_ssl)}")
+                
+                # Try TLS (port 587) as fallback option
+                try:
+                    print("🔄 Attempting SMTP connection with TLS (port 587) as fallback...")
+                    context = ssl.create_default_context()
+                    server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 30))
+                    server.set_debuglevel(0)
+                    server.ehlo()
+                    server.starttls(context=context)
+                    server.ehlo()
+                    server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                    server.sendmail(from_email_addr, [email], msg.as_string())
+                    server.quit()
+                    print(f"✅ Registration email sent successfully via direct SMTP (TLS) to {email}")
+                    return True
+                except Exception as e_tls:
+                    print(f"❌ Direct TLS (587) failed: {str(e_tls)}")
+                    print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
+                    return False
+                    
+        except Exception as e_fallback:
+            print(f"❌ Fallback method also failed: {str(e_fallback)}")
+            import traceback
+            print(f"❌ Full traceback: {traceback.format_exc()}")
+            return False
 
 
 # ─────────────────────────────────────────────────────────────
