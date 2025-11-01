@@ -13,7 +13,7 @@ from .views import (
     update_vendor_service_availability, get_vendor_service_availability, 
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
     create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations,
-    contact_view, save_contact_details,
+    contact_view, save_contact_details, chatbot_message,
 )
 
 urlpatterns = [
@@ -130,4 +130,5 @@ urlpatterns += [
     path('admin-dashboard/trigger-reports/', admin_views.trigger_report_generation_view, name='trigger_report_generation'),
       path('terms/', views.terms, name='terms'),
     path('privacy/', views.privacy, name='privacy'),
+    path('chatbot/message/', chatbot_message, name='chatbot_message'),
     ]

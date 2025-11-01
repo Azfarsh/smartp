@@ -11270,3 +11270,289 @@ def get_vendor_connection_status(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+@login_required
+@csrf_exempt
+def chatbot_message(request):
+    """
+    Printmax Assistant - Professional AI support agent for printing services
+    Handles print types, uploads, payments, orders, and filters inappropriate/off-topic queries.
+    """
+
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'response': 'Invalid request method',
+            'status': 'error'
+        }, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message', '').strip()
+        user_message_lower = user_message.lower()
+        current_timestamp = timezone.now().isoformat()
+
+        def matches_keywords(text, keywords):
+            return any(keyword in text for keyword in keywords)
+
+        # 1️⃣ Handle empty or greeting
+        if not user_message:
+            return JsonResponse({
+                'success': True,
+                'response': "Hi! 👋 I'm Printmax Assistant. How can I help you today?",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+        
+        if matches_keywords(user_message_lower, ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening']):
+            return JsonResponse({
+                'success': True,
+                'response': "Hi there! 😊 How can I help you with your printing today?",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # 2️⃣ Inappropriate or restricted content
+        inappropriate_keywords = [
+            'sex', 'adult', 'xxx', 'nude', 'kill', 'hate', 'abuse', 'terror', 'crime',
+            'murder', 'suicide', 'drugs', 'rape', 'weapon', 'violence', 'bomb'
+        ]
+        restricted_keywords = [
+            'revenue', 'income', 'profit', 'company owner', 'salary', 'ceo', 'employee details',
+            'password', 'api key', 'database', 'source code', 'security breach', 'hack', 'company revenue'
+        ]
+        off_topic_keywords = [
+            'weather', 'movie', 'song', 'music', 'game', 'cricket', 'football', 'politics',
+            'recipe', 'story', 'funny', 'joke', 'relationship', 'love', 'boyfriend', 'girlfriend'
+        ]
+
+        if matches_keywords(user_message_lower, inappropriate_keywords):
+            response_text = "⚠️ That message seems inappropriate. Please keep questions related to Printmax services."
+        elif matches_keywords(user_message_lower, restricted_keywords):
+            response_text = "🚫 Sorry, I can't share internal company information. I can help you with your print orders or account instead."
+        elif matches_keywords(user_message_lower, off_topic_keywords):
+            response_text = "⚠️ I can only help with printing and related services. Please ask me about your print orders or uploads."
+        else:
+            response_text = None
+
+        if response_text:
+            return JsonResponse({
+                'success': True,
+                'response': response_text,
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # 3️⃣ Print Type Specific Handlers
+        
+        # Document Printing
+        if matches_keywords(user_message_lower, ['document printing', 'document print', 'print document']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "📄 For Document Printing:\n\n1. Go to your dashboard → Upload File\n2. Select PDF or DOCX (under 50MB)\n3. Choose paper size (A4, Letter, etc.)\n4. Select color/B&W and copies\n5. Tap Send to Print 🖨️\n\nSupported formats: PDF, DOCX. Paper sizes: A4, Letter, Legal.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "📄 Document Printing supports PDF and DOCX files. Available paper sizes: A4, Letter, Legal. You can choose color or B&W printing.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # Photo Printing
+        if matches_keywords(user_message_lower, ['photo printing', 'photo print', 'print photo', 'print image']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "📸 For Photo Printing:\n\n1. Go to dashboard → Upload File\n2. Choose high-quality image (JPG/PNG)\n3. Select Photo Printing as print type\n4. Adjust size, copies, and finish\n5. Tap Send to Print 🖨️\n\nFor best quality, use images with good resolution and correct aspect ratio.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "📸 Photo Printing supports JPG and PNG formats. Ensure your image has good quality and proper aspect ratio for best results. Available sizes: 4x6, 5x7, 8x10 inches.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # Passport Photo Printing
+        if matches_keywords(user_message_lower, ['passport photo', 'passport print', 'id photo', 'visa photo']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "🪪 For Passport Photo Printing:\n\n1. Upload a clear headshot (JPG/PNG)\n2. Select Passport Photo as print type\n3. Standard size: 2x2 inch (51x51mm)\n4. Ensure plain white/light background\n5. Tap Send to Print 🖨️\n\nNote: Background should be plain white or light colored. Face should be clearly visible.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "🪪 Passport Photo Printing uses standard 2x2 inch (51x51mm) dimensions. Your photo needs a plain white or light background with your face clearly visible. Upload JPG or PNG format.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # Jumbo Paper Printing
+        if matches_keywords(user_message_lower, ['jumbo paper', 'jumbo print', 'large paper', 'a3', 'a2', 'a1', 'a0']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "📐 For Jumbo Paper Printing:\n\n1. Go to dashboard → Upload File\n2. Select Jumbo Paper as print type\n3. Choose size: A3, A2, A1, or A0\n4. Adjust copies and settings\n5. Tap Send to Print 🖨️\n\nPerfect for posters, banners, architectural drawings, or large presentations.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "📐 Jumbo Paper Printing offers A3, A2, A1, and A0 sizes. Ideal for posters, banners, architectural plans, and large format presentations.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # Golden Embossing
+        if matches_keywords(user_message_lower, ['golden embossing', 'gold emboss', 'embossing', 'gold foil']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "✨ For Golden Embossing:\n\n1. Upload PDF or DOCX file\n2. Choose Golden Embossing as print type\n3. Select color foil options (gold, silver, etc.)\n4. Confirm design settings\n5. Pay securely → Send to Print 🖨️\n\nPerfect for certificates, greeting cards, invitation covers, or premium documents.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "✨ Golden Embossing adds a shiny raised gold finish to your prints. Ideal for certificates, greeting cards, or invitation covers. Available in gold, silver, and other foil colors. Upload PDF/DOCX format.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # Digital Paper Printing
+        if matches_keywords(user_message_lower, ['digital paper', 'digital print', 'digital paper printing']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "📸 For Digital Paper Printing:\n\n1. Go to dashboard → Upload File\n2. Choose high-quality image (JPG/PNG)\n3. Select Digital Paper as print type\n4. Adjust size, color, and copies\n5. Tap Send to Print 🖨️\n\nThis premium option uses smooth-texture, high-quality paper for exceptional prints.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "📸 Digital Paper Printing uses smooth-texture, high-quality paper for premium prints. Perfect for professional photos, portfolios, or special documents. Upload JPG or PNG format.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # Gloss Paper Printing
+        if matches_keywords(user_message_lower, ['gloss paper', 'glossy paper', 'gloss print', 'glossy print']):
+            if matches_keywords(user_message_lower, ['how', 'upload', 'step']):
+                return JsonResponse({
+                    'success': True,
+                    'response': "✨ For Gloss Paper Printing:\n\n1. Go to dashboard → Upload File\n2. Select image or document (JPG/PNG/PDF)\n3. Choose Gloss Paper as print type\n4. Adjust size and copies\n5. Tap Send to Print 🖨️\n\nThis photo-like shiny paper is great for posters, menus, cards, or marketing materials.",
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+            return JsonResponse({
+                'success': True,
+                'response': "✨ Gloss Paper Printing uses photo-like shiny paper. Perfect for posters, menus, business cards, or marketing materials. Supports JPG, PNG, and PDF formats.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # 4️⃣ General "how to upload" or "how to print" queries
+        if matches_keywords(user_message_lower, ['how to upload', 'how upload', 'how to print', 'how print', 'upload file', 'print file']):
+            return JsonResponse({
+                'success': True,
+                'response': "📤 To upload and print:\n\n1. Go to your dashboard → Upload File\n2. Choose your document or image\n3. Select print type (Document, Photo, etc.)\n4. Adjust settings (size, copies, color)\n5. Tap Send to Print 🖨️\n\nYour nearest vendor will handle the rest.\n\nWould you like me to explain a specific print type step by step?",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # 5️⃣ Core domain-specific intents
+        domain_cases = [
+            # Track order
+            (['track', 'status', 'where is', 'print status', 'my order', 'order progress'],
+             "📦 Track your order: Go to **My Orders** → you'll see real-time status (Pending, Processing, or Ready) ✅"),
+
+            # Payments
+            (['payment', 'pay', 'razorpay', 'upi', 'card', 'wallet', 'invoice', 'bill'],
+             "💳 Payments are processed securely through Razorpay. Supported: UPI, Card, or College Wallet. Check history in **My Orders → Transactions**."),
+
+            # Vendor & delivery
+            (['vendor', 'printer', 'shop', 'delivery', 'location', 'where print', 'who print'],
+             "🏪 Printmax automatically assigns your nearest verified vendor. You'll get a notification once your order is accepted."),
+
+            # Print settings
+            (['copies', 'color', 'b&w', 'orientation', 'portrait', 'landscape', 'page range', 'print setting'],
+             "⚙️ Customize: Copies, Color/B&W, Orientation, Page range. All options are available during upload."),
+
+            # Delivery time
+            (['time', 'how long', 'delay', 'minutes', 'hours', 'processing time', 'delivery time'],
+             "⏱️ Prints are usually ready within 5–20 minutes depending on vendor workload and document size."),
+
+            # Upload issues
+            (['error', 'not working', 'fail', 'problem', 'upload issue'],
+             "❌ Try: 1) File < 50MB, 2) Supported format, 3) Stable internet, 4) Retry after refresh. If stuck, contact Printmax Support."),
+
+            # File formats
+            (['format', 'pdf', 'docx', 'jpg', 'png', 'supported', 'what format'],
+             "📄 Supported formats: PDF, DOCX, PNG, JPG/JPEG (under 50MB)."),
+
+            # Pricing
+            (['price', 'cost', 'fee', 'charge', 'rate', 'how much'],
+             "💰 Pricing depends on print type, paper size, color, and copies. View exact pricing in your upload form."),
+
+            # Cancellation/refund
+            (['cancel', 'refund', 'delete order', 'cancel order'],
+             "⚠️ To cancel: Go to **My Orders → Select Order → Cancel** (if available). For refunds, contact support@printmax.in"),
+
+            # Support/help
+            (['help', 'support', 'assist', 'contact', 'issue', 'problem', 'help me'],
+             "💬 Reach us via Printmax Support Chat or support@printmax.in for account, payment, or print issues."),
+
+            # Coupon/discount
+            (['coupon', 'discount', 'offer', 'promo'],
+             "🎟️ Printmax occasionally offers discount codes! Keep an eye on announcements or dashboard banners."),
+        ]
+
+        for keywords, reply in domain_cases:
+            if matches_keywords(user_message_lower, keywords):
+                return JsonResponse({
+                    'success': True,
+                    'response': reply,
+                    'status': 'success',
+                    'timestamp': current_timestamp
+                })
+
+        # 6️⃣ Ambiguous or unclear queries
+        if len(user_message_lower.split()) <= 2:
+            return JsonResponse({
+                'success': True,
+                'response': "🤔 Could you please clarify? I can help with uploads, print types, order status, payment, or print settings.",
+                'status': 'success',
+                'timestamp': current_timestamp
+            })
+
+        # 7️⃣ Unknown or out-of-domain
+        return JsonResponse({
+            'success': True,
+            'response': "⚠️ I can only help with printing and related services. Please ask me about your print orders, uploads, or Printmax services.",
+            'status': 'success',
+            'timestamp': current_timestamp
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'response': '⚙️ Invalid message format. Please try again.',
+            'status': 'error',
+            'timestamp': timezone.now().isoformat()
+        }, status=400)
+    
+    except Exception as e:
+        print(f"Chatbot error: {e}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'response': "⚙️ Sorry, something went wrong. Please try again shortly.",
+            'status': 'error',
+            'timestamp': timezone.now().isoformat()
+        }, status=500)

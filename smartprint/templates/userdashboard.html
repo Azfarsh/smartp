@@ -164,6 +164,13 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100%;
+    }
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--background);
@@ -174,6 +181,8 @@
       padding-bottom: 70px;
       font-size: 14px;
       position: relative;
+      overflow-x: hidden;
+      width: 100%;
     }
 
     body::before {
@@ -1220,12 +1229,17 @@
       max-width: 1200px;
       margin: 0 auto;
       padding: 2.5rem 1rem 2rem; /* reduced top gap under navbar */
+      width: 100%;
+      overflow-x: hidden;
     }
 
     /* Mobile-first responsive design */
     @media (max-width: 768px) {
       .main-content {
         padding: 2rem 0.75rem 1.5rem; /* reduce bottom space below last section */
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
       }
       
       .notification-panel {
@@ -1718,7 +1732,28 @@
       .jobs-section .section-header { margin-bottom: 0.1rem; }
       .jobs-container { margin-top: 0; }
       /* Tighter margins for job cards on mobile */
-      .job-card-mobile { margin-top: 6px; margin-bottom: 8px; }
+      .job-card-mobile { 
+        margin-top: 6px; 
+        margin-bottom: 8px; 
+        min-width: auto !important;
+        max-width: 100% !important;
+        width: calc(100% - 1rem) !important;
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+      }
+      
+      /* Prevent horizontal scrolling on mobile */
+      .jobs-container {
+        overflow-x: hidden !important;
+      }
+      
+      .jobs-scroll-wrapper {
+        overflow-x: hidden !important;
+      }
+      
+      .jobs-row {
+        width: 100% !important;
+      }
     }
 
     .job-card {
@@ -4634,28 +4669,49 @@
 
     /* Enhanced Mobile Responsive Design */
     @media (max-width: 768px) {
+      /* Prevent horizontal overflow */
+      body, html {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+      }
+      
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
+        width: 100%;
       }
 
       .services-grid {
         grid-template-columns: 1fr;
+        width: 100%;
       }
 
       .metadata-grid {
         grid-template-columns: 1fr;
+        width: 100%;
       }
 
       .modal {
         margin: 0.75rem;
         max-width: calc(100% - 1.5rem);
+        width: calc(100% - 1.5rem);
       }
       
       .section-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
+        width: 100%;
+      }
+      
+      /* Ensure all sections are contained */
+      .stats-section,
+      .jobs-section,
+      .services-section {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
       }
       
       /* Mobile sidebar improvements */
@@ -4696,6 +4752,19 @@
     }
 
     @media (max-width: 480px) {
+      /* Extra small screens - ensure everything fits */
+      body, html {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+      }
+      
+      .main-content {
+        padding: 1rem 0.5rem 1rem;
+        width: 100%;
+        max-width: 100%;
+      }
+      
       .header-content {
         padding: 0 0.75rem;
       }
@@ -4712,6 +4781,13 @@
 
       .stat-card, .service-card {
         padding: 0.75rem;
+      }
+      
+      /* Ensure job cards are fully responsive */
+      .job-card-mobile {
+        width: calc(100% - 0.5rem) !important;
+        margin-left: 0.25rem !important;
+        margin-right: 0.25rem !important;
       }
 
       .job-actions {
@@ -4983,6 +5059,49 @@
   <!-- Google Drive Picker API -->
   <script src="https://apis.google.com/js/api.js"></script>
   <script src="https://apis.google.com/js/picker.js"></script>
+  <!-- Global error handler for Google API errors -->
+  <script>
+    // Suppress Google API CSP report errors (harmless reporting failures)
+    window.addEventListener('error', function(event) {
+      const errorMsg = event.message || '';
+      const errorSource = event.filename || '';
+      
+      // Only suppress specific Google API CSP report errors
+      if (errorSource.includes('gapi.loaded') && errorMsg.includes('[object Object]')) {
+        // Suppress the harmless gapi.loaded object error
+        event.preventDefault();
+        return false;
+      }
+      
+      // Suppress CSP report POST failures to Google (400 errors are expected)
+      if (errorSource.includes('accounts.google.com') && errorSource.includes('cspreport')) {
+        event.preventDefault();
+        return false;
+      }
+    }, true);
+    
+    // Catch unhandled promise rejections from Google API
+    window.addEventListener('unhandledrejection', function(event) {
+      const reason = event.reason;
+      if (reason) {
+        const reasonStr = reason.toString();
+        const reasonUrl = reason.url || '';
+        
+        // Only suppress CSP report failures (400 errors to cspreport endpoint)
+        if (reasonUrl.includes('accounts.google.com') && reasonUrl.includes('cspreport')) {
+          event.preventDefault();
+          return false;
+        }
+        
+        // Suppress [object Object] errors from gapi.loaded
+        if (reasonStr.includes('[object Object]') && (reasonStr.includes('gapi') || reasonStr.includes('google'))) {
+          event.preventDefault();
+          console.warn('Google API error (suppressed):', reason);
+          return false;
+        }
+      }
+    });
+  </script>
   <!-- Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -12425,42 +12544,94 @@
 
     // Initialize Google Drive Picker
     function initializeDrivePicker() {
-      gapi.load('auth2', function() {
-        gapi.auth2.init({
-          client_id: '{{ GOOGLE_CLIENT_ID }}',
-          scope: 'https://www.googleapis.com/auth/drive.readonly'
-        }).then(function() {
-          console.log('Google Drive Picker initialized');
+      try {
+        if (typeof gapi === 'undefined') {
+          console.warn('Google API not loaded');
+          return;
+        }
+        gapi.load('auth2', function() {
+          try {
+            gapi.auth2.init({
+              client_id: '{{ GOOGLE_CLIENT_ID }}',
+              scope: 'https://www.googleapis.com/auth/drive.readonly'
+            }).then(function() {
+              console.log('Google Drive Picker initialized');
+            }).catch(function(error) {
+              console.warn('Google Drive Picker auth init failed:', error);
+            });
+          } catch (error) {
+            console.warn('Error initializing Google auth:', error);
+          }
+        }, function(error) {
+          console.warn('Error loading Google auth2:', error);
         });
-      });
+      } catch (error) {
+        console.warn('Error in initializeDrivePicker:', error);
+      }
     }
 
     // Load Google Drive Picker
     function onPickerApiLoad() {
-      gapi.load('picker', {'callback': createPicker});
+      try {
+        if (typeof gapi === 'undefined') {
+          console.warn('Google API not loaded');
+          return;
+        }
+        gapi.load('picker', {
+          'callback': createPicker,
+          'onerror': function(error) {
+            console.warn('Error loading Google Picker:', error);
+          }
+        });
+      } catch (error) {
+        console.warn('Error in onPickerApiLoad:', error);
+      }
     }
 
     // Create Google Drive Picker
     function createPicker() {
-      if (!oauthToken) {
-        // Get OAuth token first
-        gapi.auth2.getAuthInstance().signIn().then(function(googleUser) {
-          oauthToken = googleUser.getAuthResponse().access_token;
+      try {
+        if (!oauthToken) {
+          // Get OAuth token first
+          const authInstance = gapi.auth2.getAuthInstance();
+          if (!authInstance) {
+            console.warn('Google auth2 instance not available');
+            return;
+          }
+          authInstance.signIn().then(function(googleUser) {
+            try {
+              oauthToken = googleUser.getAuthResponse().access_token;
+              showDrivePicker();
+            } catch (error) {
+              console.warn('Error getting OAuth token:', error);
+            }
+          }).catch(function(error) {
+            console.warn('Error signing in to Google:', error);
+          });
+        } else {
           showDrivePicker();
-        });
-      } else {
-        showDrivePicker();
+        }
+      } catch (error) {
+        console.warn('Error in createPicker:', error);
       }
     }
 
     function showDrivePicker() {
-      const picker = new google.picker.PickerBuilder()
-        .addView(google.picker.ViewId.DOCS)
-        .setOAuthToken(oauthToken)
-        .setDeveloperKey(DEVELOPER_KEY)
-        .setCallback(pickerCallback)
-        .build();
-      picker.setVisible(true);
+      try {
+        if (typeof google === 'undefined' || !google.picker) {
+          console.warn('Google Picker API not loaded');
+          return;
+        }
+        const picker = new google.picker.PickerBuilder()
+          .addView(google.picker.ViewId.DOCS)
+          .setOAuthToken(oauthToken)
+          .setDeveloperKey(DEVELOPER_KEY)
+          .setCallback(pickerCallback)
+          .build();
+        picker.setVisible(true);
+      } catch (error) {
+        console.warn('Error showing Drive Picker:', error);
+      }
     }
 
     // Handle Google Drive file selection
@@ -18991,6 +19162,795 @@
   </script>
 
 
+
+  <!-- Chatbot Widget -->
+  <style>
+    /* Chatbot Widget Styles */
+    /* ============================================
+       Modern Floating Chatbot UI Component
+       Glassmorphism Design with Smooth Animations
+       ============================================ */
+    
+    .chatbot-widget {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      font-family: 'Inter', sans-serif;
+      max-width: calc(100vw - 48px);
+      max-height: calc(100vh - 48px);
+      overflow: visible;
+    }
+
+    /* Floating Chat Icon Button */
+    .chatbot-toggle {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all var(--transition-standard);
+      font-size: 24px;
+      position: relative;
+    }
+
+    .chatbot-toggle::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .chatbot-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 32px rgba(37, 99, 235, 0.4), 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .chatbot-toggle:hover::before {
+      opacity: 1;
+    }
+
+    .chatbot-toggle:active {
+      transform: scale(0.95);
+    }
+
+    /* Chat Window with Glassmorphism */
+    .chatbot-window {
+      position: absolute;
+      bottom: 80px;
+      right: 0;
+      width: 340px;
+      height: 420px;
+      max-width: calc(100vw - 48px);
+      max-height: calc(100vh - 120px);
+      
+      /* Glassmorphism Effect */
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px) saturate(180%);
+      -webkit-backdrop-filter: blur(10px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+      
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px) scale(0.9);
+      transform-origin: bottom right;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 10000;
+    }
+
+    .chatbot-window.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* Gradient Header Bar */
+    .chatbot-header {
+      background: var(--gradient-header);
+      color: var(--on-primary);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chatbot-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+      pointer-events: none;
+    }
+
+    .chatbot-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .chatbot-close {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: var(--on-primary);
+      cursor: pointer;
+      font-size: 20px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+      position: relative;
+      z-index: 1;
+      font-weight: 300;
+    }
+
+    .chatbot-close:hover,
+    .chatbot-close:active,
+    .chatbot-close:focus {
+      background: rgba(255, 255, 255, 0.25);
+      transform: rotate(90deg);
+      outline: none;
+    }
+
+    /* Scrollable Messages Area */
+    .chatbot-messages {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: transparent;
+      scroll-behavior: smooth;
+    }
+
+    /* Custom Scrollbar */
+    .chatbot-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chatbot-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chatbot-messages::-webkit-scrollbar-thumb {
+      background: rgba(37, 99, 235, 0.3);
+      border-radius: var(--radius-sm);
+      transition: background var(--transition-fast);
+    }
+
+    .chatbot-messages::-webkit-scrollbar-thumb:hover {
+      background: rgba(37, 99, 235, 0.5);
+    }
+
+    /* Message Container */
+    .chatbot-message {
+      display: flex;
+      width: 100%;
+      align-items: flex-start;
+      animation: messageSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    @keyframes messageSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chatbot-message.assistant {
+      justify-content: flex-start;
+    }
+
+    .chatbot-message.user {
+      justify-content: flex-end;
+    }
+
+    /* Message Avatar */
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 16px;
+      margin-top: 2px;
+      transition: transform var(--transition-fast);
+    }
+
+    .message-avatar:hover {
+      transform: scale(1.1);
+    }
+
+    .chatbot-message.assistant .message-avatar {
+      background: var(--primary);
+      color: var(--on-primary);
+      margin-right: 10px;
+      order: 1;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+    }
+
+    .chatbot-message.user .message-avatar {
+      background: var(--surface-variant);
+      color: var(--on-surface);
+      margin-left: 10px;
+      order: 2;
+    }
+
+    /* Message Content */
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      max-width: 75%;
+      min-width: 0;
+    }
+
+    .chatbot-message.assistant .message-content {
+      align-items: flex-start;
+      order: 2;
+    }
+
+    .chatbot-message.user .message-content {
+      align-items: flex-end;
+      order: 1;
+    }
+
+    /* Message Bubbles */
+    .message-bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius-lg);
+      word-wrap: break-word;
+      word-break: break-word;
+      font-size: 14px;
+      line-height: 1.6;
+      transition: transform var(--transition-fast);
+    }
+
+    .message-bubble:hover {
+      transform: scale(1.02);
+    }
+
+    /* Markdown-like formatting support */
+    .message-bubble strong {
+      font-weight: 600;
+      color: inherit;
+    }
+
+    .message-bubble em {
+      font-style: italic;
+    }
+
+    .message-bubble br {
+      line-height: 1.8;
+    }
+
+    .chatbot-message.assistant .message-bubble {
+      background: var(--surface-variant);
+      color: var(--on-surface);
+      border-bottom-left-radius: var(--radius-xs);
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      border-bottom-right-radius: var(--radius-lg);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .chatbot-message.user .message-bubble {
+      background: var(--primary);
+      color: var(--on-primary);
+      border-bottom-right-radius: var(--radius-xs);
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      border-bottom-left-radius: var(--radius-lg);
+      box-shadow: 0 2px 12px rgba(37, 99, 235, 0.25);
+    }
+
+    /* Input Container */
+    .chatbot-input-container {
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(209, 213, 219, 0.3);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chatbot-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--outline);
+      border-radius: var(--radius-md);
+      background: var(--surface-variant);
+      color: var(--on-surface);
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .chatbot-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      background: var(--surface-elevated);
+    }
+
+    .chatbot-send {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .chatbot-send:hover {
+      background: var(--primary-variant);
+      transform: scale(1.05) rotate(15deg);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .chatbot-send:active {
+      transform: scale(0.95);
+    }
+
+    .chatbot-send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Dark Mode Support */
+    [data-theme="dark"] .chatbot-window {
+      background: rgba(31, 41, 55, 0.95);
+      backdrop-filter: blur(10px) saturate(180%);
+      -webkit-backdrop-filter: blur(10px) saturate(180%);
+      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .chatbot-messages {
+      background: transparent;
+    }
+
+    [data-theme="dark"] .chatbot-input {
+      background: rgba(55, 65, 81, 0.8);
+      color: var(--on-surface);
+      border-color: var(--outline);
+    }
+
+    [data-theme="dark"] .chatbot-input:focus {
+      background: rgba(75, 85, 99, 0.9);
+    }
+
+    [data-theme="dark"] .chatbot-message.assistant .message-bubble {
+      background: rgba(55, 65, 81, 0.9);
+      color: var(--on-surface);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .chatbot-input-container {
+      background: rgba(31, 41, 55, 0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top-color: rgba(107, 114, 128, 0.3);
+    }
+
+    [data-theme="dark"] .chatbot-messages::-webkit-scrollbar-thumb {
+      background: rgba(96, 165, 250, 0.3);
+    }
+
+    [data-theme="dark"] .chatbot-messages::-webkit-scrollbar-thumb:hover {
+      background: rgba(96, 165, 250, 0.5);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .chatbot-widget {
+        bottom: 16px;
+        right: 16px;
+        left: auto;
+        width: auto;
+        max-width: calc(100vw - 32px);
+      }
+
+      .chatbot-toggle {
+        width: 56px;
+        height: 56px;
+        font-size: 22px;
+      }
+
+      .chatbot-window {
+        width: calc(100vw - 32px) !important;
+        max-width: calc(100vw - 32px) !important;
+        left: auto !important;
+        right: 0 !important;
+        transform-origin: bottom right;
+        height: calc(100vh - 100px);
+        max-height: 600px;
+        bottom: 72px;
+      }
+
+      .chatbot-window.active {
+        transform: translateY(0) scale(1) !important;
+      }
+
+      /* Ensure close button animation works on tablet/mobile */
+      .chatbot-close:hover,
+      .chatbot-close:active,
+      .chatbot-close:focus {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+        outline: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .chatbot-widget {
+        bottom: 12px;
+        right: 12px;
+        left: auto;
+        max-width: calc(100vw - 24px);
+      }
+
+      .chatbot-toggle {
+        width: 52px;
+        height: 52px;
+        font-size: 20px;
+      }
+
+      .chatbot-window {
+        width: calc(100vw - 24px) !important;
+        max-width: calc(100vw - 24px) !important;
+        left: auto !important;
+        right: 0 !important;
+        transform: translateY(20px) scale(0.9) !important;
+        transform-origin: bottom right !important;
+        height: calc(100vh - 100px);
+        max-height: 500px;
+        bottom: 68px;
+      }
+
+      .chatbot-window.active {
+        transform: translateY(0) scale(1) !important;
+      }
+
+      .message-content {
+        max-width: 85%;
+      }
+      
+      .message-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+      }
+
+      .chatbot-messages {
+        padding: 16px 12px;
+      }
+
+      .chatbot-input-container {
+        padding: 12px;
+      }
+
+      /* Ensure close button animation works on mobile */
+      .chatbot-close:hover,
+      .chatbot-close:active,
+      .chatbot-close:focus {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+        outline: none;
+      }
+    }
+
+    /* Very small screens */
+    @media (max-width: 360px) {
+      /* Ensure close button animation works on very small screens */
+      .chatbot-close:hover,
+      .chatbot-close:active,
+      .chatbot-close:focus {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(90deg);
+        outline: none;
+      }
+      .chatbot-widget {
+        bottom: 8px;
+        right: 8px;
+        max-width: calc(100vw - 16px);
+      }
+
+      .chatbot-window {
+        width: calc(100vw - 16px) !important;
+        max-width: calc(100vw - 16px) !important;
+        right: 0 !important;
+        bottom: 64px;
+      }
+    }
+  </style>
+
+  <div class="chatbot-widget">
+    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chatbot">
+      <i class="fas fa-comments"></i>
+    </button>
+    <div class="chatbot-window" id="chatbotWindow">
+      <div class="chatbot-header">
+        <h3>Printmax Assistant 🖨️</h3>
+        <button class="chatbot-close" id="chatbotClose" aria-label="Close chatbot">×</button>
+      </div>
+      <div class="chatbot-messages" id="chatbotMessages">
+        <div class="chatbot-message assistant">
+          <div class="message-avatar">🖨️</div>
+          <div class="message-content">
+            <div class="message-bubble">
+              Hi! 👋 I'm Printmax Assistant. How can I help you today?
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chatbot-input-container">
+        <input 
+          type="text" 
+          class="chatbot-input" 
+          id="chatbotInput" 
+          placeholder="Type your message..."
+          aria-label="Chat input"
+        />
+        <button class="chatbot-send" id="chatbotSend" aria-label="Send message">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const chatbotToggle = document.getElementById('chatbotToggle');
+      const chatbotWindow = document.getElementById('chatbotWindow');
+      const chatbotClose = document.getElementById('chatbotClose');
+      const chatbotMessages = document.getElementById('chatbotMessages');
+      const chatbotInput = document.getElementById('chatbotInput');
+      const chatbotSend = document.getElementById('chatbotSend');
+
+      let isOpen = false;
+
+      // Toggle chatbot window
+      function toggleChatbot() {
+        isOpen = !isOpen;
+        chatbotWindow.classList.toggle('active', isOpen);
+        
+        // Auto-focus input when opening
+        if (isOpen) {
+          setTimeout(() => {
+            chatbotInput.focus();
+          }, 300); // Delay to allow animation to complete
+        }
+      }
+
+      // Close chatbot window
+      function closeChatbot() {
+        isOpen = false;
+        chatbotWindow.classList.remove('active');
+      }
+
+      // Scroll messages to bottom with smooth animation
+      function scrollToBottom() {
+        // Use requestAnimationFrame for smooth scrolling after DOM update
+        requestAnimationFrame(() => {
+          chatbotMessages.scrollTo({
+            top: chatbotMessages.scrollHeight,
+            behavior: 'smooth'
+          });
+        });
+      }
+
+      // Simple markdown-like formatting helper
+      function formatMessage(text) {
+        // Replace line breaks with <br>
+        let formatted = text.replace(/\n/g, '<br>');
+        
+        // Replace **bold** with <strong>
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Replace *italic* with <em>
+        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Replace bullet points (• or -) with proper formatting
+        formatted = formatted.replace(/^(\s*)•/gm, '$1•');
+        
+        return formatted;
+      }
+
+      // Add message to chat with animation
+      function addMessage(text, isUser) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chatbot-message ${isUser ? 'user' : 'assistant'}`;
+        
+        // Create avatar
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = isUser ? '👤' : '🖨️';
+        
+        // Create message content wrapper
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        // Create message bubble
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        
+        // Format message with markdown-like support
+        bubble.innerHTML = formatMessage(text);
+        
+        // Assemble message structure
+        messageContent.appendChild(bubble);
+        
+        if (isUser) {
+          // User messages: content first, then avatar
+          messageDiv.appendChild(messageContent);
+          messageDiv.appendChild(avatar);
+        } else {
+          // Assistant messages: avatar first, then content
+          messageDiv.appendChild(avatar);
+          messageDiv.appendChild(messageContent);
+        }
+        
+        chatbotMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom after a brief delay to allow animation
+        setTimeout(() => {
+          scrollToBottom();
+        }, 50);
+      }
+
+      // Expose appendMessage as an alias for addMessage (for external use)
+      window.appendMessage = function(text, isUser) {
+        addMessage(text, isUser);
+      };
+
+      // Send message handler
+      function sendMessage() {
+        const message = chatbotInput.value.trim();
+        if (!message) return;
+
+        // Add user message
+        addMessage(message, true);
+        chatbotInput.value = '';
+        
+        // Disable send button while processing
+        chatbotSend.disabled = true;
+
+        // Call chatbot API
+        fetch('/chatbot/message/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken') || ''
+          },
+          body: JSON.stringify({ message: message })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          chatbotSend.disabled = false;
+          if (data.success && data.response) {
+            // Use the response from the backend
+            addMessage(data.response, false);
+          } else if (data.response) {
+            // Even if success is false, show the response message
+            addMessage(data.response, false);
+          } else {
+            addMessage("⚙️ Sorry, I'm having trouble right now. Please try again in a moment.", false);
+          }
+        })
+        .catch(error => {
+          chatbotSend.disabled = false;
+          console.error('Chatbot error:', error);
+          addMessage("⚙️ Sorry, I couldn't connect. Please check your connection and try again 💬.", false);
+        });
+      }
+
+      // Helper function to get CSRF token
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      // Event listeners
+      chatbotToggle.addEventListener('click', toggleChatbot);
+      chatbotClose.addEventListener('click', closeChatbot);
+      chatbotSend.addEventListener('click', sendMessage);
+
+      // Send on Enter key
+      chatbotInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+
+      // Close on Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isOpen) {
+          closeChatbot();
+        }
+      });
+
+      // Close when clicking outside (optional)
+      document.addEventListener('click', function(e) {
+        if (isOpen && 
+            !chatbotWindow.contains(e.target) && 
+            !chatbotToggle.contains(e.target)) {
+          // Uncomment the line below if you want to close on outside click
+          // closeChatbot();
+        }
+      });
+
+      // Initial scroll to bottom
+      scrollToBottom();
+    })();
+  </script>
 
 </body>
 </html>
