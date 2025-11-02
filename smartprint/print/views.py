@@ -7797,25 +7797,22 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
             msg.attach(part1)
             msg.attach(part2)
             
-            # Try SSL first (port 465) - Primary configuration for Hostinger
+            # Try port 2525 with TLS first (unblocked on Render and most cloud platforms)
             try:
-                print("🔄 Attempting SMTP connection with SSL (port 465)...")
+                print("🔄 Attempting SMTP connection with TLS (port 2525) - Render-friendly port...")
                 context = ssl.create_default_context()
-                server = smtplib.SMTP_SSL(
-                    settings.EMAIL_HOST, 
-                    465, 
-                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 20),
-                    context=context
-                )
-                server.set_debuglevel(0)  # Set to 1 for debug output
+                server = smtplib.SMTP(settings.EMAIL_HOST, 2525, timeout=getattr(settings, 'EMAIL_TIMEOUT', 20))
+                server.set_debuglevel(0)
+                server.ehlo()
+                server.starttls(context=context)
                 server.ehlo()
                 server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                 server.sendmail(from_email_addr, [email], msg.as_string())
                 server.quit()
-                print(f"✅ Registration email sent successfully via direct SMTP (SSL) to {email}")
+                print(f"✅ Registration email sent successfully via direct SMTP (TLS port 2525) to {email}")
                 return True
-            except Exception as e_ssl:
-                print(f"❌ Direct SSL (465) failed: {str(e_ssl)}")
+            except Exception as e_2525:
+                print(f"❌ Direct TLS (2525) failed: {str(e_2525)}")
                 
                 # Try TLS (port 587) as fallback option
                 try:
@@ -7829,12 +7826,32 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                     server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                     server.sendmail(from_email_addr, [email], msg.as_string())
                     server.quit()
-                    print(f"✅ Registration email sent successfully via direct SMTP (TLS) to {email}")
+                    print(f"✅ Registration email sent successfully via direct SMTP (TLS port 587) to {email}")
                     return True
                 except Exception as e_tls:
                     print(f"❌ Direct TLS (587) failed: {str(e_tls)}")
-                    print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
-                    return False
+                    
+                    # Try SSL (port 465) as last fallback
+                    try:
+                        print("🔄 Attempting SMTP connection with SSL (port 465) as final fallback...")
+                        context = ssl.create_default_context()
+                        server = smtplib.SMTP_SSL(
+                            settings.EMAIL_HOST, 
+                            465, 
+                            timeout=getattr(settings, 'EMAIL_TIMEOUT', 20),
+                            context=context
+                        )
+                        server.set_debuglevel(0)
+                        server.ehlo()
+                        server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                        server.sendmail(from_email_addr, [email], msg.as_string())
+                        server.quit()
+                        print(f"✅ Registration email sent successfully via direct SMTP (SSL port 465) to {email}")
+                        return True
+                    except Exception as e_ssl:
+                        print(f"❌ Direct SSL (465) failed: {str(e_ssl)}")
+                        print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
+                        return False
                     
         except Exception as e_fallback:
             print(f"❌ Fallback method also failed: {str(e_fallback)}")
