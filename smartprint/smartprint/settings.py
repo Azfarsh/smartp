@@ -157,15 +157,15 @@ VENDOR_ID=1
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.hostinger.com')
 
-# Option A: SSL on port 465 (Hostinger recommended)
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').lower() == 'true'
+# Primary: Port 2525 with TLS (unblocked on Render and most cloud platforms)
+# This is Hostinger's alternative submission port, works identically to 587
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '2525'))
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
 
-# Option B: TLS on port 587 (uncomment if SSL doesn't work)
-# EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-# EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
-# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+# Fallback options (kept for compatibility):
+# - Port 587 with TLS (standard submission port)
+# - Port 465 with SSL (legacy SSL port)
 
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'printmax_support@printmax.in')
 # IMPORTANT: Use the EMAIL ACCOUNT password (mailbox password), NOT the hPanel password!
