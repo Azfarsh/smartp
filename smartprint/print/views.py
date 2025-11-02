@@ -7804,7 +7804,7 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                 server = smtplib.SMTP_SSL(
                     settings.EMAIL_HOST, 
                     465, 
-                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 30),
+                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 20),
                     context=context
                 )
                 server.set_debuglevel(0)  # Set to 1 for debug output
@@ -7821,7 +7821,7 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                 try:
                     print("🔄 Attempting SMTP connection with TLS (port 587) as fallback...")
                     context = ssl.create_default_context()
-                    server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 30))
+                    server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 20))
                     server.set_debuglevel(0)
                     server.ehlo()
                     server.starttls(context=context)

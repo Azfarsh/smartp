@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 import firebase_admin
@@ -172,12 +173,25 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'printmax_support@printmax.in')
 # Remove any quotes from password if present
 email_password = os.getenv('EMAIL_HOST_PASSWORD', 'TH%D6xeaB2z8D&F')
 EMAIL_HOST_PASSWORD = email_password.strip("'\"")  # Strip quotes if any
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '20'))  # Updated to match Render default
 
 # Default email settings - CRITICAL: FROM must match EMAIL_HOST_USER for authentication
 # Use only the email address, not formatted version, to avoid authentication issues
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-EMAIL_SUBJECT_PREFIX = os.getenv('EMAIL_SUBJECT_PREFIX', '[PrintMax] ')
+# Extract email address from formatted string if provided (e.g., "Name <email@domain.com>" -> "email@domain.com")
+default_from_env = os.getenv('DEFAULT_FROM_EMAIL', '')
+if default_from_env:
+    # Check if it's a formatted email (contains < and >)
+    email_match = re.search(r'<(.+?)>', default_from_env)
+    if email_match:
+        # Extract email from formatted string
+        DEFAULT_FROM_EMAIL = email_match.group(1)
+    else:
+        # Use as-is if it's just an email address
+        DEFAULT_FROM_EMAIL = default_from_env.strip()
+else:
+    # Fallback to EMAIL_HOST_USER if not set
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_SUBJECT_PREFIX = os.getenv('EMAIL_SUBJECT_PREFIX', '[PrintMax]')
 
 # Email templates directory
 EMAIL_TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates', 'emails')
