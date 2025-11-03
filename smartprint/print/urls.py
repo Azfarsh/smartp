@@ -17,6 +17,8 @@ from .views import (
 )
 
 urlpatterns = [
+    # Firebase service worker - must be at root level for proper scope
+    path('firebase-messaging-sw.js', views.firebase_messaging_sw, name='firebase_messaging_sw'),
     path('', views.home, name='home'),
     path('upload/', views.upload_to_r2, name='upload_to_r2'),
     path('userdashboard/', views.userdashboard, name='userdashboard'),
@@ -100,6 +102,7 @@ urlpatterns += [
     path('get-user-notifications/', views.get_user_notifications, name='get_user_notifications'),
     path('get-user-points/', views.get_user_points, name='get_user_points'),
     path('get-user-completed-jobs/', views.get_user_completed_jobs, name='get_user_completed_jobs'),
+    path('save-fcm-token/', views.save_fcm_token, name='save_fcm_token'),
     # Accept print job endpoints
     path('accept-print-job/', views.accept_print_job, name='accept_print_job'),
     path('hide-completed-job/', views.hide_completed_job, name='hide_completed_job'),

@@ -32,6 +32,101 @@ from django.views.decorators.http import require_http_methods
 import threading
 
 
+def firebase_messaging_sw(request):
+    """
+    Serve Firebase messaging service worker from root with dynamic config
+    Service workers must be served from root for proper scope
+    """
+    from django.http import HttpResponse
+    from django.template import Template, Context
+    
+    # Template for service worker with dynamic Firebase config
+    sw_template = """// Import Firebase scripts for service worker
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+
+// Initialize Firebase in the service worker with config from Django settings
+const firebaseConfig = {
+  apiKey: "{{ apiKey }}",
+  authDomain: "{{ authDomain }}",
+  projectId: "{{ projectId }}",
+  storageBucket: "{{ storageBucket }}",
+  messagingSenderId: "{{ messagingSenderId }}",
+  appId: "{{ appId }}"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+// Retrieve an instance of Firebase Messaging
+const messaging = firebase.messaging();
+
+// Handle background messages
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
+  const notificationOptions = {
+    body: payload.notification?.body || payload.data?.message || 'You have a new notification',
+    icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
+    badge: '/static/images/android-chrome-192x192.png',
+    tag: payload.data?.notification_id || 'printmax-notification',
+    requireInteraction: true,
+    data: payload.data || {}
+  };
+
+  // Add click action if provided
+  if (payload.data?.click_action || payload.fcmOptions?.link) {
+    notificationOptions.data.url = payload.data?.click_action || payload.fcmOptions?.link;
+  }
+
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', function(event) {
+  console.log('[firebase-messaging-sw.js] Notification click received.');
+  
+  event.notification.close();
+
+  // Open the app URL if provided
+  const urlToOpen = event.notification.data?.url || '/userdashboard/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Check if there's already a window/tab open with the target URL
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no window is open, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+"""
+    
+    # Get Firebase config from settings
+    firebase_config = getattr(settings, 'FIREBASE_CONFIG', {})
+    
+    # Render template with config
+    template = Template(sw_template)
+    context = Context({
+        'apiKey': firebase_config.get('apiKey', ''),
+        'authDomain': firebase_config.get('authDomain', ''),
+        'projectId': firebase_config.get('projectId', ''),
+        'storageBucket': firebase_config.get('storageBucket', ''),
+        'messagingSenderId': firebase_config.get('messagingSenderId', ''),
+        'appId': firebase_config.get('appId', ''),
+    })
+    
+    content = template.render(context)
+    return HttpResponse(content, content_type='application/javascript')
+
+
 def terms(request):
     """
     Terms & Conditions page view
@@ -1109,6 +1204,10 @@ def userdashboard(request):
         except Exception:
             user_points = 0
 
+        # Get Firebase config from settings
+        firebase_config = getattr(settings, 'FIREBASE_CONFIG', {})
+        firebase_vapid_key = getattr(settings, 'FIREBASE_VAPID_PUBLIC_KEY', '')
+        
         context = {
             'user': request.user,
             'user_details': user_details,
@@ -1122,7 +1221,10 @@ def userdashboard(request):
             'total_earnings': total_earnings,
             'user_points': user_points,
             'GOOGLE_CLIENT_ID': settings.GOOGLE_CLIENT_ID,
-            'GOOGLE_DEVELOPER_KEY': settings.GOOGLE_DEVELOPER_KEY
+            'GOOGLE_DEVELOPER_KEY': settings.GOOGLE_DEVELOPER_KEY,
+            # Firebase FCM Configuration
+            'FIREBASE_CONFIG': firebase_config,
+            'FIREBASE_VAPID_KEY': firebase_vapid_key,
         }
         return render(request, 'userdashboard.html', context)
         
@@ -7797,28 +7899,31 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
             msg.attach(part1)
             msg.attach(part2)
             
-            # Try port 2525 with TLS first (unblocked on Render and most cloud platforms)
+            # Try SSL first (port 465) - Primary configuration for Hostinger
             try:
-                print("🔄 Attempting SMTP connection with TLS (port 2525) - Render-friendly port...")
+                print("🔄 Attempting SMTP connection with SSL (port 465)...")
                 context = ssl.create_default_context()
-                server = smtplib.SMTP(settings.EMAIL_HOST, 2525, timeout=getattr(settings, 'EMAIL_TIMEOUT', 20))
-                server.set_debuglevel(0)
-                server.ehlo()
-                server.starttls(context=context)
+                server = smtplib.SMTP_SSL(
+                    settings.EMAIL_HOST, 
+                    465, 
+                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 30),
+                    context=context
+                )
+                server.set_debuglevel(0)  # Set to 1 for debug output
                 server.ehlo()
                 server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                 server.sendmail(from_email_addr, [email], msg.as_string())
                 server.quit()
-                print(f"✅ Registration email sent successfully via direct SMTP (TLS port 2525) to {email}")
+                print(f"✅ Registration email sent successfully via direct SMTP (SSL) to {email}")
                 return True
-            except Exception as e_2525:
-                print(f"❌ Direct TLS (2525) failed: {str(e_2525)}")
+            except Exception as e_ssl:
+                print(f"❌ Direct SSL (465) failed: {str(e_ssl)}")
                 
                 # Try TLS (port 587) as fallback option
                 try:
                     print("🔄 Attempting SMTP connection with TLS (port 587) as fallback...")
                     context = ssl.create_default_context()
-                    server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 20))
+                    server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 30))
                     server.set_debuglevel(0)
                     server.ehlo()
                     server.starttls(context=context)
@@ -7826,32 +7931,12 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                     server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                     server.sendmail(from_email_addr, [email], msg.as_string())
                     server.quit()
-                    print(f"✅ Registration email sent successfully via direct SMTP (TLS port 587) to {email}")
+                    print(f"✅ Registration email sent successfully via direct SMTP (TLS) to {email}")
                     return True
                 except Exception as e_tls:
                     print(f"❌ Direct TLS (587) failed: {str(e_tls)}")
-                    
-                    # Try SSL (port 465) as last fallback
-                    try:
-                        print("🔄 Attempting SMTP connection with SSL (port 465) as final fallback...")
-                        context = ssl.create_default_context()
-                        server = smtplib.SMTP_SSL(
-                            settings.EMAIL_HOST, 
-                            465, 
-                            timeout=getattr(settings, 'EMAIL_TIMEOUT', 20),
-                            context=context
-                        )
-                        server.set_debuglevel(0)
-                        server.ehlo()
-                        server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-                        server.sendmail(from_email_addr, [email], msg.as_string())
-                        server.quit()
-                        print(f"✅ Registration email sent successfully via direct SMTP (SSL port 465) to {email}")
-                        return True
-                    except Exception as e_ssl:
-                        print(f"❌ Direct SSL (465) failed: {str(e_ssl)}")
-                        print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
-                        return False
+                    print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
+                    return False
                     
         except Exception as e_fallback:
             print(f"❌ Fallback method also failed: {str(e_fallback)}")
@@ -9997,12 +10082,160 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         except Exception as e:
             print(f"❌ Error storing vendor notification: {e}")
         
+        # Send FCM push notification
+        try:
+            send_fcm_notification(user_email, notification_data)
+        except Exception as e:
+            print(f"⚠️ Error sending FCM notification: {e}")
+        
         # Here you could also send email, push notification, etc.
         print(f"📧 Sent {status} notification to {user_email} for job {filename}")
         return True
     except Exception as e:
         print(f"❌ Error sending notification: {e}")
         return False
+
+# ─────────────────────────────────────────────────────────────
+# FCM (Firebase Cloud Messaging) Functions
+# ─────────────────────────────────────────────────────────────
+
+def save_fcm_token(request):
+    """Save FCM registration token for a user"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            token = data.get('token')
+            user_email = data.get('user_email')
+            
+            if not token or not user_email:
+                return JsonResponse({'success': False, 'error': 'Token and user_email are required'}, status=400)
+            
+            # Store token in R2 storage
+            try:
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
+                
+                # Store token associated with user email
+                token_data = {
+                    'token': token,
+                    'user_email': user_email,
+                    'created_at': datetime.datetime.now().isoformat(),
+                    'updated_at': datetime.datetime.now().isoformat()
+                }
+                
+                token_key = f'fcm_tokens/{sanitize_email(user_email)}/token.json'
+                
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=token_key,
+                    Body=json.dumps(token_data, indent=2),
+                    ContentType='application/json'
+                )
+                
+                print(f"✅ FCM token saved for {user_email}")
+                return JsonResponse({'success': True, 'message': 'FCM token saved successfully'})
+                
+            except Exception as e:
+                print(f"❌ Error saving FCM token: {e}")
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"❌ Error in save_fcm_token: {e}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+def get_user_fcm_tokens(user_email):
+    """Get all FCM tokens for a user"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+        
+        token_key = f'fcm_tokens/{sanitize_email(user_email)}/token.json'
+        
+        try:
+            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=token_key)
+            token_data = json.loads(result['Body'].read().decode('utf-8'))
+            return [token_data.get('token')] if token_data.get('token') else []
+        except s3.exceptions.NoSuchKey:
+            # No token found for this user
+            return []
+        except Exception as e:
+            print(f"⚠️ Error reading FCM token: {e}")
+            return []
+    except Exception as e:
+        print(f"❌ Error getting FCM tokens: {e}")
+        return []
+
+
+def send_fcm_notification(user_email, notification_data):
+    """Send FCM push notification to user"""
+    try:
+        from firebase_admin import messaging
+        if messaging is None:
+            print("⚠️ Firebase messaging not available")
+            return False
+        # Get user's FCM tokens
+        tokens = get_user_fcm_tokens(user_email)
+        
+        if not tokens:
+            print(f"⚠️ No FCM tokens found for {user_email}")
+            return False
+        
+        # Prepare notification message
+        title = notification_data.get('title', 'PrintMax Notification')
+        message = notification_data.get('message', 'You have a new notification')
+        
+        # Create FCM message
+        fcm_message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=message,
+                image=notification_data.get('icon', None)
+            ),
+            data={
+                'notification_id': notification_data.get('notification_id', ''),
+                'type': notification_data.get('type', 'job_completed'),
+                'filename': notification_data.get('filename', ''),
+                'token': notification_data.get('token', ''),
+                'status': notification_data.get('status', 'completed'),
+                'click_action': '/userdashboard/'
+            },
+            webpush=messaging.WebpushConfig(
+                notification=messaging.WebpushNotification(
+                    title=title,
+                    body=message,
+                    icon='/static/images/android-chrome-192x192.png',
+                    badge='/static/images/android-chrome-192x192.png',
+                    require_interaction=True
+                ),
+                fcm_options=messaging.WebpushFCMOptions(
+                    link='/userdashboard/'
+                )
+            ),
+            token=tokens[0]  # Send to first token (you can extend this to send to all tokens)
+        )
+        
+        # Send message
+        response = messaging.send(fcm_message)
+        print(f"✅ FCM notification sent successfully: {response}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error sending FCM notification: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 
 def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, token=None):
     """Store vendor notification directly using vendor email from session"""
