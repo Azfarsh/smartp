@@ -13,6 +13,7 @@ urlpatterns = [
     path('', include('print.urls')),  # Include your app's routes
     # Favicon route to ensure proper serving
     path('favicon.ico', RedirectView.as_view(url='/static/images/favicon.ico', permanent=True)),
+    # Firebase service worker route is handled in print.urls
 ]
 
 # Serve static files during development

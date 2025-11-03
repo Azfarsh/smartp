@@ -28,6 +28,9 @@
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
   <style>
     :root {
       /* Professional Color System with Enhanced Contrast */
@@ -6828,6 +6831,74 @@
         display: block;
         animation: slideInUp 0.3s ease-out;
       }
+      
+      /* Photo Print modal specific styling - ensure summary is below preview */
+      #service-modal-photo .pricing-summary {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        clear: both;
+        width: 100%;
+        max-width: 100%;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
+      
+      /* Ensure pricing details in Photo Print modal are properly aligned */
+      #service-modal-photo .pricing-details {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      #service-modal-photo .professional-bill {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+      }
+      
+      /* Ensure modal actions are clearly positioned below summary */
+      #service-modal-photo .modal-actions {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex !important;
+        visibility: visible !important;
+        gap: 0.75rem;
+        width: 100%;
+        clear: both;
+      }
+      
+      /* Remove Calculate Price button from Photo Print modal */
+      #service-modal-photo .btn-calculate {
+        display: none !important;
+      }
+      
+      /* Mobile responsive for Photo Print modal */
+      @media (max-width: 768px) {
+        #service-modal-photo .pricing-summary {
+          margin-top: 1rem;
+          margin-bottom: 1rem;
+          padding: 1rem;
+          width: 100%;
+        }
+        
+        #service-modal-photo .pricing-details {
+          width: 100%;
+          padding: 0;
+        }
+        
+        #service-modal-photo .modal-actions {
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        
+        #service-modal-photo .modal-actions .btn-cancel,
+        #service-modal-photo .modal-actions .btn-submit {
+          width: 100%;
+          min-height: 44px;
+        }
+      }
 
       @keyframes slideInUp {
         from {
@@ -8738,7 +8809,8 @@
         }
       };
 
-      function openServiceModal(service) {
+      // Define openServiceModal in global scope immediately to ensure it's available for onclick handlers
+      window.openServiceModal = function openServiceModal(service) {
         const modalId = `service-modal-${service}`;
         let modal = document.getElementById(modalId);
         if (!modal) {
@@ -8750,30 +8822,50 @@
           document.getElementById('serviceModalsContainer').appendChild(modal);
           // Attach events immediately for faster modal opening
           attachServiceModalEvents(service, modal);
+          // Fix dropdown overflow and button visibility after modal is created
+          if (typeof fixDropdownOverflow === 'function') {
+            fixDropdownOverflow();
+          }
+          if (typeof ensureModalButtonsVisible === 'function') {
+            ensureModalButtonsVisible();
+          }
           // Ensure points section is available immediately when user has points
           if (typeof userPoints !== 'undefined' && userPoints > 0) {
             const pointsSection = modal.querySelector(`#${service}-points-section`);
             if (pointsSection) {
               pointsSection.style.display = 'block';
               pointsSection.classList.add('active');
-              updatePointsDisplay();
+              if (typeof updatePointsDisplay === 'function') {
+                updatePointsDisplay();
+              }
             }
           }
         } else {
           // Reset modal before opening
-          resetServiceModal(service);
+          if (typeof resetServiceModal === 'function') {
+            resetServiceModal(service);
+          }
           modal.classList.add('active');
+          // Fix dropdown overflow and button visibility when modal is opened
+          if (typeof fixDropdownOverflow === 'function') {
+            fixDropdownOverflow();
+          }
+          if (typeof ensureModalButtonsVisible === 'function') {
+            ensureModalButtonsVisible();
+          }
           // Re-show points if applicable immediately
           if (typeof userPoints !== 'undefined' && userPoints > 0) {
             const pointsSection = modal.querySelector(`#${service}-points-section`);
             if (pointsSection) {
               pointsSection.style.display = 'block';
               pointsSection.classList.add('active');
-              updatePointsDisplay();
+              if (typeof updatePointsDisplay === 'function') {
+                updatePointsDisplay();
+              }
             }
           }
         }
-      }
+      };
 
       function closeServiceModal(service) {
         const modal = document.getElementById(`service-modal-${service}`);
@@ -8781,6 +8873,16 @@
           modal.classList.remove('active');
           // Reset the modal immediately
           resetServiceModal(service);
+          // Prevent any success messages or animations when closing modal (especially for photo print)
+          if (service === 'photo') {
+            // Hide any success modals that might be showing
+            const successModal = document.getElementById('successModal');
+            if (successModal) {
+              successModal.classList.remove('active');
+            }
+            // Hide payment processing state if it was showing
+            hidePaymentProcessingState();
+          }
         }
       }
 
@@ -8970,6 +9072,23 @@
           delete modal.dataset.calculatedPrice;
           delete modal.dataset.pricingBreakdown;
           delete modal.dataset.structuredPricing;
+          delete modal.dataset.filePageCount;
+          delete modal.dataset.currentFile;
+
+          // Clear uploaded files array
+          if (modal._uploadedFiles) {
+            modal._uploadedFiles = [];
+          }
+          
+          // Ensure file upload button/label is visible and reset
+          const fileUploadArea = modal.querySelector(`#${service}-file-upload`);
+          if (fileUploadArea) {
+            fileUploadArea.style.display = '';
+          }
+          // Reuse existing fileUploadLabel from earlier declaration
+          if (fileUploadLabel) {
+            fileUploadLabel.textContent = 'Click to select file';
+          }
 
           // Remove reset animation class
           if (modalContent) {
@@ -9196,12 +9315,12 @@
                   </div>
                 </div>
                 
-                <div class="modal-actions">
+                <div class="modal-actions" style="display: flex !important; visibility: visible !important;">
                   <button type="button" class="btn-cancel" onclick="closeServiceModal('${service}')">
                     <i class="fas fa-times"></i>
                     Cancel
                   </button>
-                    <button type="submit" class="btn-submit">
+                    <button type="submit" class="btn-submit" style="display: flex !important; visibility: visible !important;">
                       <i class="fas fa-print"></i>
                       Print
                     </button>
@@ -9601,8 +9720,17 @@
                 } else if (service === 'passport') {
                   calculatePassportPhotoPrice(service);
                 } else if (service === 'photo') {
-                  if (modal.dataset.fileName) {
-                    calculatePhotoPrintPrice(service);
+                  // Auto-calculate for photo print if file is uploaded and all inputs provided
+                  if (modal.dataset.fileName || (Array.isArray(modal._uploadedFiles) && modal._uploadedFiles.length > 0)) {
+                    const photoSize = modal.querySelector(`#${service}-field-1`);
+                    const printQuantity = modal.querySelector(`#${service}-field-2`);
+                    const paperType = modal.querySelector(`#${service}-field-3`);
+                    const finish = modal.querySelector(`#${service}-field-4`);
+                    
+                    if (photoSize && photoSize.value && printQuantity && printQuantity.value && 
+                        paperType && paperType.value && finish && finish.value) {
+                      calculatePhotoPrintPrice(service);
+                    }
                   }
                 }
               }
@@ -9637,9 +9765,32 @@
               
               // Use specific pricing calculation function based on service type
               if (service === 'photo') {
-                // For photo print, we need to check if file is uploaded first
-                if (modal.dataset.fileName) {
-                  calculatePhotoPrintPrice(service);
+                // For photo print, auto-calculate if file is uploaded and all inputs are provided
+                if (modal.dataset.fileName || (Array.isArray(modal._uploadedFiles) && modal._uploadedFiles.length > 0)) {
+                  // Check if all required inputs are provided
+                  const photoSize = modal.querySelector(`#${service}-field-1`);
+                  const printQuantity = modal.querySelector(`#${service}-field-2`);
+                  const paperType = modal.querySelector(`#${service}-field-3`);
+                  const finish = modal.querySelector(`#${service}-field-4`);
+                  
+                  if (photoSize && photoSize.value && printQuantity && printQuantity.value && 
+                      paperType && paperType.value && finish && finish.value) {
+                    // All inputs provided, auto-calculate
+                    calculatePhotoPrintPrice(service);
+                  } else {
+                    // Show message to complete all inputs
+                    const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                    const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                    if (pricingDetails && pricingSummary) {
+                      pricingDetails.innerHTML = `
+                        <div class="loading-pricing">
+                          <i class="fas fa-info-circle"></i>
+                          <span>Please complete all required fields to calculate pricing</span>
+                        </div>
+                      `;
+                      pricingSummary.classList.add('active');
+                    }
+                  }
                 } else {
                   // Show message to upload file first
                   const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
@@ -10179,6 +10330,19 @@
                   
                   // Update job list dynamically
                   updateJobListAfterPayment();
+                  
+                  // Clear all modal inputs and preview data after successful payment
+                  const serviceModal = document.getElementById(`service-modal-${service}`);
+                  if (serviceModal) {
+                    // Clear uploaded files
+                    if (serviceModal._uploadedFiles) {
+                      serviceModal._uploadedFiles = [];
+                    }
+                    // Reset the modal completely
+                    resetServiceModal(service);
+                    closeServiceModal(service);
+                  }
+                  
                   return;
                 } catch (err) {
                   // Hide processing state on error
@@ -11417,11 +11581,18 @@
         
         console.log('Photo print form data being sent:', formData); // Debug log
 
-        // Show loading state
-        const calculateBtn = modal.querySelector('.btn-calculate');
-        const originalText = calculateBtn.innerHTML;
-        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
-        calculateBtn.disabled = true;
+        // Show loading state (no button needed since Calculate Price button is removed)
+        const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+        const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+        if (pricingDetails && pricingSummary) {
+          pricingDetails.innerHTML = `
+            <div class="loading-pricing">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Calculating pricing...</span>
+            </div>
+          `;
+          pricingSummary.classList.add('active');
+        }
 
         try {
           // Use the photo print pricing calculation endpoint
@@ -11468,11 +11639,10 @@
         } catch (error) {
           console.error('Error calculating photo print price:', error);
           alert('Error calculating price. Please try again.');
-        } finally {
-          // Restore button state
-          if (calculateBtn) {
-          calculateBtn.innerHTML = originalText;
-          calculateBtn.disabled = false;
+          // Hide pricing summary on error
+          const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+          if (pricingSummary) {
+            pricingSummary.classList.remove('active');
           }
         }
       }
@@ -12123,7 +12293,6 @@
             <div class="service-details">
               <div class="service-item">
                 <span class="service-name" id="serviceName">A4 Print Single Bw</span>
-                <span class="service-price" id="servicePrice">₹0.00</span>
               </div>
               
               <div class="details-section">
@@ -12144,10 +12313,6 @@
               </div>
               
               <div class="pricing-breakdown">
-                <div class="breakdown-item">
-                  <span class="breakdown-label">Subtotal</span>
-                  <span class="breakdown-value" id="subtotalAmount">₹0.00</span>
-                </div>
                 <div class="breakdown-item total-item">
                   <span class="breakdown-label">Grand Total</span>
                   <span class="breakdown-value" id="totalAmount">₹0.00</span>
@@ -13014,6 +13179,151 @@
       nodesToClean.forEach((node) => {
         node.nodeValue = node.nodeValue.replace(/undefined/gi, '').replace(/\s{2,}/g, ' ').trim();
       });
+    }
+
+    // Firebase Cloud Messaging (FCM) Setup
+    let messaging = null;
+    
+    // Initialize Firebase and FCM
+    function initializeFCM() {
+      // Firebase configuration from Django settings
+      const firebaseConfig = {
+        apiKey: "{{ FIREBASE_CONFIG.apiKey }}",
+        authDomain: "{{ FIREBASE_CONFIG.authDomain }}",
+        projectId: "{{ FIREBASE_CONFIG.projectId }}",
+        storageBucket: "{{ FIREBASE_CONFIG.storageBucket }}",
+        messagingSenderId: "{{ FIREBASE_CONFIG.messagingSenderId }}",
+        appId: "{{ FIREBASE_CONFIG.appId }}",
+        vapidKey: "{{ FIREBASE_VAPID_KEY }}"  // VAPID key from settings
+      };
+
+      // Initialize Firebase
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+
+      // Get messaging instance
+      messaging = firebase.messaging();
+
+      // Request notification permission and get token
+      requestNotificationPermission();
+    }
+
+    // Request notification permission and register FCM token
+    async function requestNotificationPermission() {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          console.log('✅ Notification permission granted');
+          
+          // Get registration token
+          const vapidKey = "{{ FIREBASE_VAPID_KEY }}";
+          const token = await messaging.getToken({ vapidKey: vapidKey });
+          
+          if (token) {
+            console.log('✅ FCM Registration Token:', token);
+            
+            // Send token to server
+            await saveFCMToken(token);
+            
+            // Listen for token refresh
+            messaging.onTokenRefresh(async () => {
+              const newToken = await messaging.getToken({ vapidKey: vapidKey });
+              console.log('🔄 FCM Token refreshed:', newToken);
+              await saveFCMToken(newToken);
+            });
+          } else {
+            console.warn('⚠️ No FCM token available');
+          }
+        } else {
+          console.log('❌ Notification permission denied');
+        }
+      } catch (error) {
+        console.error('❌ Error requesting notification permission:', error);
+      }
+    }
+
+    // Save FCM token to server
+    async function saveFCMToken(token) {
+      try {
+        const response = await fetch('/save-fcm-token/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.csrfToken || getCookie('csrftoken')
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            token: token,
+            user_email: window.userEmail || '{{ user.email }}'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ FCM token saved:', data);
+        } else {
+          console.error('❌ Failed to save FCM token');
+        }
+      } catch (error) {
+        console.error('❌ Error saving FCM token:', error);
+      }
+    }
+
+    // Helper function to get CSRF token from cookies
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Handle foreground messages
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log('✅ Service Worker registered:', registration);
+          
+          // Initialize FCM after service worker is registered
+          messaging.onMessage((payload) => {
+            console.log('📩 Message received in foreground:', payload);
+            
+            // Show notification even when app is in foreground
+            const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
+            const notificationOptions = {
+              body: payload.notification?.body || payload.data?.message || 'You have a new notification',
+              icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
+              badge: '/static/images/android-chrome-192x192.png',
+              tag: payload.data?.notification_id || 'printmax-notification',
+              requireInteraction: true,
+              data: payload.data || {}
+            };
+
+            // Show browser notification
+            if (Notification.permission === 'granted') {
+              new Notification(notificationTitle, notificationOptions);
+            }
+            
+            // Also trigger your existing notification system
+            if (typeof initializeNotifications === 'function') {
+              initializeNotifications();
+            }
+          });
+          
+          // Initialize FCM
+          initializeFCM();
+        })
+        .catch((error) => {
+          console.error('❌ Service Worker registration failed:', error);
+        });
     }
 
     // Load user jobs and shops on page load - OPTIMIZED for instant loading
@@ -14417,24 +14727,50 @@
         
         // Trigger pricing calculation only if file is uploaded (like document print modal)
         setTimeout(() => {
-          const modal = document.getElementById(`service-modal-${service}`);
-          const hasFile = modal.dataset.fileName || modal.dataset.currentFile;
+          const serviceModal = document.getElementById(`service-modal-${service}`);
+          const hasFile = serviceModal && (serviceModal.dataset.fileName || serviceModal.dataset.currentFile || 
+                                          (Array.isArray(serviceModal._uploadedFiles) && serviceModal._uploadedFiles.length > 0));
           
-          if (hasFile) {
-            const fnMap = {
-              'digital': window.calculateDigitalPrintPrice,
-              'gloss': window.calculateGlossPrintPrice,
-              'jumbo': window.calculateJumboPrintPrice,
-              'goldenemboss': window.calculateGoldenEmbossPrice,
-              'passport': window.calculatePassportPhotoPrice,
-              'photo': window.calculatePhotoPrintPrice
-            };
-            const fn = fnMap[service];
-            if (typeof fn === 'function') fn(service);
-          } else {
+          if (hasFile && serviceModal) {
+            // For photo service, check if all required inputs are provided before auto-calculating
+            if (service === 'photo') {
+              const photoSize = serviceModal.querySelector(`#${service}-field-1`);
+              const printQuantity = serviceModal.querySelector(`#${service}-field-2`);
+              const paperType = serviceModal.querySelector(`#${service}-field-3`);
+              const finish = serviceModal.querySelector(`#${service}-field-4`);
+              
+              if (photoSize && photoSize.value && printQuantity && printQuantity.value && 
+                  paperType && paperType.value && finish && finish.value) {
+                calculatePhotoPrintPrice(service);
+              } else {
+                // Show message to complete all inputs
+                const pricingDetails = serviceModal.querySelector(`#${service}-pricing-details`);
+                const pricingSummary = serviceModal.querySelector(`#${service}-pricing-summary`);
+                if (pricingDetails && pricingSummary) {
+                  pricingDetails.innerHTML = `
+                    <div class="loading-pricing">
+                      <i class="fas fa-info-circle"></i>
+                      <span>Please complete all required fields to calculate pricing</span>
+                    </div>
+                  `;
+                  pricingSummary.classList.add('active');
+                }
+              }
+            } else {
+              const fnMap = {
+                'digital': window.calculateDigitalPrintPrice,
+                'gloss': window.calculateGlossPrintPrice,
+                'jumbo': window.calculateJumboPrintPrice,
+                'goldenemboss': window.calculateGoldenEmbossPrice,
+                'passport': window.calculatePassportPhotoPrice
+              };
+              const fn = fnMap[service];
+              if (typeof fn === 'function') fn(service);
+            }
+          } else if (serviceModal) {
             // Show message to upload file first
-            const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
-            const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+            const pricingDetails = serviceModal.querySelector(`#${service}-pricing-details`);
+            const pricingSummary = serviceModal.querySelector(`#${service}-pricing-summary`);
             if (pricingDetails && pricingSummary) {
               pricingDetails.innerHTML = `
                 <div class="loading-pricing">
@@ -15638,6 +15974,7 @@
         fileList.innerHTML = '<div class="no-files-message" id="noFilesMessage">No files selected yet</div>';
       }
       if (uploadArea) {
+        uploadArea.style.display = 'block'; // Ensure upload area is visible
         uploadArea.innerHTML = `
           <div class="upload-icon">
             <i class="fas fa-cloud-upload-alt"></i>
@@ -16432,28 +16769,6 @@
         }
       }
     }
-    // Call fixDropdownOverflow when modals are opened
-    function openServiceModal(service) {
-      const modalId = `service-modal-${service}`;
-      let modal = document.getElementById(modalId);
-      if (!modal) {
-        // Create modal if not exists
-        modal = document.createElement('div');
-        modal.className = 'service-modal-overlay active';
-        modal.id = modalId;
-        modal.innerHTML = renderServiceModal(service);
-        document.getElementById('serviceModalsContainer').appendChild(modal);
-        // Attach events and fix issues immediately for faster modal opening
-        attachServiceModalEvents(service, modal);
-        fixDropdownOverflow(); // Fix dropdown overflow after modal is created
-        ensureModalButtonsVisible(); // Ensure buttons are visible
-      } else {
-        modal.classList.add('active');
-        // Fix issues immediately when modal is opened
-        fixDropdownOverflow(); // Fix dropdown overflow when modal is opened
-        ensureModalButtonsVisible(); // Ensure buttons are visible
-      }
-    }
 
     // Add window resize listener to fix dropdown overflow and button visibility
     window.addEventListener('resize', function() {
@@ -17013,19 +17328,13 @@
           
           // Update the new pricing summary fields
           const serviceNameEl = document.getElementById('serviceName');
-          const servicePriceEl = document.getElementById('servicePrice');
           const summaryPagesEl = document.getElementById('summaryPages');
           const summaryColorEl = document.getElementById('summaryColor');
           const summaryCopiesEl = document.getElementById('summaryCopies');
-          const subtotalAmountEl = document.getElementById('subtotalAmount');
           const totalAmountEl = document.getElementById('totalAmount');
           
           if (serviceNameEl) {
             serviceNameEl.textContent = `A4 Print ${printType === 'single_color' ? 'Single Color' : 'Single Bw'}`;
-          }
-          
-          if (servicePriceEl) {
-            servicePriceEl.textContent = `₹${vendorPrice.toFixed(2)}`;
           }
           
           if (summaryPagesEl) {
@@ -17040,12 +17349,9 @@
             summaryCopiesEl.textContent = totalCopies;
           }
           
-          if (subtotalAmountEl) {
-            subtotalAmountEl.textContent = `₹${totalSubtotal.toFixed(2)}`;
-          }
-          
           if (totalAmountEl) {
-            totalAmountEl.textContent = `₹${totalSubtotal.toFixed(2)}`;
+            // Show total with commission (not just subtotal) to match payment amount
+            totalAmountEl.textContent = `₹${commission.total.toFixed(2)}`;
             // Reveal the order summary only after a successful calculation
             const orderSummaryEl = document.getElementById('orderSummary');
             if (orderSummaryEl) orderSummaryEl.style.display = 'block';

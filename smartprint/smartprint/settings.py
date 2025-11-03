@@ -1,5 +1,4 @@
 import os
-import re
 from pathlib import Path
 from dotenv import load_dotenv
 import firebase_admin
@@ -119,17 +118,62 @@ GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 # "postMessage" error with the Google Sign-In popup.
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
+# ─────────────────────────────────────────────────────────────
+# Firebase Cloud Messaging (FCM) Configuration
+# ─────────────────────────────────────────────────────────────
+
+# Firebase Project Configuration (from Firebase Console > Project Settings > General)
+FIREBASE_CONFIG = {
+    'apiKey': os.getenv('FIREBASE_API_KEY', 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw'),  # Get from Firebase Console
+    'authDomain': os.getenv('FIREBASE_AUTH_DOMAIN', 'smartprint-9e291.firebaseapp.com'),
+    'projectId': os.getenv('FIREBASE_PROJECT_ID', 'smartprint-9e291'),
+    'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'smartprint-9e291.appspot.com'),
+    'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', '101846981910632623946'),
+    'appId': os.getenv('FIREBASE_APP_ID', '1:101846981910632623946:web:your-app-id'),  # Get from Firebase Console > Project Settings > General > Your apps (Web app)
+}
+
+# VAPID Keys for Web Push (from Firebase Console > Project Settings > Cloud Messaging)
+FIREBASE_VAPID_PUBLIC_KEY = os.getenv('FIREBASE_VAPID_PUBLIC_KEY', 'BEgXPYZmK1CuT3BJX7nn00h4TIyY1faOk6Ei3BtYLTpRhTOIu8qcZZHrxg05aDEAkbShRP7wMbgXb4NwsADD838')
+FIREBASE_VAPID_PRIVATE_KEY = os.getenv('FIREBASE_VAPID_PRIVATE_KEY', 'lN_9Q7zeIVR2zqKTfsJwDHJOsl8-zryjU2DeqbwnU5M')
+
+# Firebase Service Account Configuration
+# You can either use a JSON file path or provide credentials directly
+FIREBASE_SERVICE_ACCOUNT_JSON = {
+    "type": "service_account",
+    "project_id": "smartprint-9e291",
+    "private_key_id": "0819627ebd74ddb083f5ca002b755c4ceed08d0a",
+    "private_key": os.getenv('FIREBASE_PRIVATE_KEY', "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCarD7q4T3eOm6r\nVzy0tClhLwM0TVGwInRVMIVbqA5253zOo04Ew0tE2+U17jiVMcIRMtbwC4hNwzWR\nnw/+uEzy9Ngcj+IqkVd6CgQkuwmaEsX9PbKOT9Jo4aUgTObMBCBlZNqPMJLVQtF2\nMG0Bgb69bPmodPPXGdgOurn6xUWSoh+wxPWGSjHHCn6o4sLUNMSKzwLWVqO98e8o\ngstxcDbTSsHHsLho+khd6mwuJZJC2bZA8sUYyuK2fGWyMBPVnN180qUzvd4m1ovY\ncheA9aE19Jffkh2uLCSh9gcllrXjIlXRKMBUpFS7McH0Cu1TXEpIvk/NF/2qKwc7\nW+E8Fvb1AgMBAAECggEABhMTtO6prTlZZ560wlpYcbDLsZBM9JKjjPxia9fRrQmE\nXk97Sn+9AyspZuxk5VqNWVa187qigVovvEI3sL25q1vnMXtm2u6OERcSwbqJoLcE\nUinwlEjQQWMX2T/nW2prN0uj/KPycFTbnD1ko7WCnza+3aJkgce3oUR2GtR1/pqk\nmRdMXINC7/IX3ESqyXb/LPLmGx4BH0RBIas46OSr8h/d8mvkNDI79X48fk8uKsM7\n+k+CWkG61coaxQXRt96ogvCtxmgYoveRafko0b7I5nvpIxnufg2ar+KgtRc3XeBW\njdPoI2mS+phsfjyoNXI5b55ipdn3Slxap+jQea0v1QKBgQDVdpRAa6PcV2Uqj2WW\nrP+DqTV69stcFlRAU6v5h8w7AihCpL1D3yZruAVEqgzmtOzd10taBJdicZjipCX8\nxdnsJ8Ph1FHV18D20dS5HEG8cFgyOmWF2fwwGcDxY1MUFeeLiFzRvN2BlZ/l51Wn\nw5rktfUhJUL7gGWFSWAzv3z+ZwKBgQC5fpZpY9WMJdeeWOSbaL8OyVLdbD4sYBRt\nzisevgwFtlsGvrz5Kzl0IHR+fZti6RPNpSPzBgp/4F4QZ9K3Ocg4CFbxnShokThb\nFdirIWDOsXBjL5bqU6Fz2eBtRTv8Hin3fpaCoY1wa90ASZPvqLhJU+MWOKh+C68n\nzorOrBtOQwKBgGZyY5JLVrggJYh4i7v1ySeKJQWfvleyy7qXrZiziNvlHCdn4wHY\n7hqSlcyvhEORH4EUm7BXNcRkWoijWSvoVL9XElamzKPByXVrnRk+K3phvKJWjnTf\n+n2nTodLMQsZvCemSU3Lw882XSg8j0pVwVf0z/GZbX1A0PhYD9imFToPAoGBAIEg\npChdfS0AsubiTtH4yvfKIktNrMJLaC1AVjgiaFAZr6g0Y2y5MFesuCvN2Lu0MTr4\n+NuWmvyF/jVBcShnqv+Gnq+3jYetgCO4Q4ptw+xfDTOez1n0OfJh+59VkPpjLSfD\nEZeCSum1zLUEg11UgGVbZjvz2SdVjusRFwPkP2XtAoGAGrH1z6MSTL7twZMdfaVO\nEwJZrkrEL2jXCLKpOzpcUXPXyHWA3SWSzxfYA9fTFvUcPoqw6UOI7M5vldVBujsT\n7rF9Yr7zsiUk6UhWAmvW1nofOMiHDSBhGR+LNL+HbStNN0PHDK++FRXNf0XjFD2+\nr1VTaccfMZMIrm1RSH+JH6M=\n-----END PRIVATE KEY-----\n"),
+    "client_email": "firebase-adminsdk-fbsvc@smartprint-9e291.iam.gserviceaccount.com",
+    "client_id": "101846981910632623946",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40smartprint-9e291.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
+
 # Firebase Admin SDK Configuration
+FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH', None)
+
 try:
     if not firebase_admin._apps:
-        # For now, we'll initialize without credentials since we don't have the service account file
-        # You'll need to get the service account key from Firebase Console
-        firebase_admin.initialize_app()
-        print("Firebase Admin SDK initialized successfully (without credentials)")
+        # Try to use service account from JSON file path first
+        if FIREBASE_SERVICE_ACCOUNT_PATH and os.path.exists(FIREBASE_SERVICE_ACCOUNT_PATH):
+            cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK initialized from service account file")
+        # Otherwise, use the JSON dictionary from settings
+        elif FIREBASE_SERVICE_ACCOUNT_JSON.get('private_key'):
+            cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_JSON)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK initialized from settings")
+        else:
+            firebase_admin.initialize_app()
+            print("⚠️ Firebase Admin SDK initialized without credentials (push notifications won't work)")
     else:
         print("Firebase Admin SDK already initialized")
 except Exception as e:
-    print(f"Error initializing Firebase Admin SDK: {str(e)}")
+    print(f"❌ Error initializing Firebase Admin SDK: {str(e)}")
 
 # Channel layers configuration
 CHANNEL_LAYERS = {
@@ -157,15 +201,15 @@ VENDOR_ID=1
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.hostinger.com')
 
-# Primary: Port 2525 with TLS (unblocked on Render and most cloud platforms)
-# This is Hostinger's alternative submission port, works identically to 587
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '2525'))
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+# Option A: SSL on port 465 (Hostinger recommended)
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False').lower() == 'true'
 
-# Fallback options (kept for compatibility):
-# - Port 587 with TLS (standard submission port)
-# - Port 465 with SSL (legacy SSL port)
+# Option B: TLS on port 587 (uncomment if SSL doesn't work)
+# EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+# EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() == 'true'
+# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
 
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'printmax_support@printmax.in')
 # IMPORTANT: Use the EMAIL ACCOUNT password (mailbox password), NOT the hPanel password!
@@ -173,24 +217,11 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'printmax_support@printmax.in')
 # Remove any quotes from password if present
 email_password = os.getenv('EMAIL_HOST_PASSWORD', 'TH%D6xeaB2z8D&F')
 EMAIL_HOST_PASSWORD = email_password.strip("'\"")  # Strip quotes if any
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '20'))  # Updated to match Render default
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
 
 # Default email settings - CRITICAL: FROM must match EMAIL_HOST_USER for authentication
 # Use only the email address, not formatted version, to avoid authentication issues
-# Extract email address from formatted string if provided (e.g., "Name <email@domain.com>" -> "email@domain.com")
-default_from_env = os.getenv('DEFAULT_FROM_EMAIL', '')
-if default_from_env:
-    # Check if it's a formatted email (contains < and >)
-    email_match = re.search(r'<(.+?)>', default_from_env)
-    if email_match:
-        # Extract email from formatted string
-        DEFAULT_FROM_EMAIL = email_match.group(1)
-    else:
-        # Use as-is if it's just an email address
-        DEFAULT_FROM_EMAIL = default_from_env.strip()
-else:
-    # Fallback to EMAIL_HOST_USER if not set
-    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 EMAIL_SUBJECT_PREFIX = os.getenv('EMAIL_SUBJECT_PREFIX', '[PrintMax]')
 
 # Email templates directory
