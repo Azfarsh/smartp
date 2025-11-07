@@ -199,6 +199,9 @@ GOOGLE_DEVELOPER_KEY = os.getenv('GOOGLE_DEVELOPER_KEY', 'AIzaSyBZxTJfCiwyYdeuHL
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'your-google-client-id-here')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', 'your-google-client-secret-here')
 
+# ✅ PicWish API Configuration
+PICWISH_API_KEY = os.getenv('PICWISH_API_KEY', 'wx3i27ru0mokdxowp')
+
 # ✅ Session Configuration for Persistent Login
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 180  # 6 months (180 days)

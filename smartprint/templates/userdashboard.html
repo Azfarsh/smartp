@@ -24,6 +24,7 @@
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -6698,6 +6699,61 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .shop-selection-item-name > span:first-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .shop-selection-item-name .traffic-dot,
+      .shop-selection-item-name .traffic-badge-placeholder {
+        flex-shrink: 0;
+      }
+
+      /* Minimal traffic dot indicator */
+      .traffic-dot {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-left: 4px;
+        position: relative;
+        cursor: help;
+      }
+      .traffic-dot .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+      }
+      .traffic-dot[data-status="low"] .dot {
+        background-color: #10b981;
+      }
+      .traffic-dot[data-status="medium"] .dot {
+        background-color: #fbbf24;
+      }
+      .traffic-dot[data-status="high"] .dot {
+        background-color: #ef4444;
+        animation: pulse-red 1.5s infinite;
+      }
+      @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+        70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      }
+      .traffic-badge-placeholder {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
       }
 
       .shop-selection-item-address {
@@ -9258,6 +9314,8 @@
           </div>
         `;
 
+        // (Removed duplicate simple passport enhance block)
+
         return `
           <div class="service-modal">
             <div class="modal-header">
@@ -9278,6 +9336,7 @@
               <form id="${service}-modal-form">
               ${fieldsHtml}
                 <div class="file-preview" id="${service}-file-preview" style="margin-bottom: 16px;"></div>
+                
                 ${shopSelectionHtml}
                 ${feedbackHtml}
                 
@@ -13754,8 +13813,68 @@
         renderVendorOptions();
       }
     }
+
+    // ============================================
+    // Traffic Status Functions
+    // ============================================
+    
+    // Cache for traffic status to avoid repeated API calls
+    const trafficStatusCache = {};
+    const TRAFFIC_CACHE_DURATION = 30000; // 30 seconds
+
+    // Function to fetch vendor traffic status from backend
+    async function fetchVendorTraffic(vendorEmail) {
+      if (!vendorEmail) return "Low"; // Default fallback
+      
+      // Check cache first
+      const cacheKey = vendorEmail;
+      const cached = trafficStatusCache[cacheKey];
+      if (cached && (Date.now() - cached.timestamp) < TRAFFIC_CACHE_DURATION) {
+        return cached.status;
+      }
+
+      try {
+        const response = await fetch(`/get-vendor-service-availability/?vendor_email=${encodeURIComponent(vendorEmail)}`);
+        const data = await response.json();
+        if (data.success && data.data && data.data.traffic_status) {
+          const status = data.data.traffic_status;
+          // Update cache
+          trafficStatusCache[cacheKey] = {
+            status: status,
+            timestamp: Date.now()
+          };
+          return status;
+        }
+      } catch (err) {
+        console.error("Error fetching traffic for", vendorEmail, err);
+      }
+      
+      // Default fallback
+      return "Low";
+    }
+
+    // Function to get traffic badge HTML (with tooltip)
+    function getTrafficBadge(status) {
+      const safe = (status || 'Low').toString();
+      const label = safe.charAt(0).toUpperCase() + safe.slice(1).toLowerCase();
+      const statusKey = label.toLowerCase();
+      const tooltipMap = {
+        low: 'Low traffic – estimated wait: 2 mins',
+        medium: 'Medium traffic – estimated wait: 5 mins',
+        high: 'High traffic – estimated wait: 10+ mins'
+      };
+      const tooltip = tooltipMap[statusKey] || `Traffic status: ${label}`;
+      const displayLabel = `${label} traffic`;
+      return `
+        <span class="traffic-badge" data-status="${statusKey}" title="${tooltip}" aria-label="${tooltip}">
+          <span class="traffic-dot" data-status="${statusKey}"><span class="dot"></span></span>
+          <span class="traffic-text">${displayLabel}</span>
+        </span>
+      `.trim();
+    }
+
     // Function to render vendor options in main print modal (with location support)
-    function renderVendorOptions() {
+    async function renderVendorOptions() {
       const vendorOptionsContainer = document.getElementById('vendorOptions');
       if (!vendorOptionsContainer) return;
 
@@ -13778,6 +13897,7 @@
         return;
       }
 
+      // First render shops without traffic badges (for faster initial display)
       const listHtml = shopsToRender.map((shop) => {
         const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
         const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
@@ -13785,18 +13905,18 @@
           .filter(Boolean)
           .join(', ');
         return `
-          <div class="shop-row" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}">
-            <div class="row-left">
-              <img class="avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" alt="${shop.shop_name||'Shop'}" />
+          <div class="shop-item" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}">
+            <div class="shop-left">
+              <img class="avatar shop-avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" alt="${shop.shop_name||'Shop'}" />
+              <div class="shop-info">
+                <div class="shop-name">${shop.shop_name || 'Print Shop'}</div>
+                <div class="shop-address">${address}</div>
+              </div>
             </div>
-            <div class="row-body">
-              <div class="row-title">${shop.shop_name || 'Print Shop'}</div>
-              <div class="row-sub">${address}</div>
-            </div>
-            <div class="row-meta">
-              <i class="fas fa-location-arrow"></i>
-              <span>${distance || ''}</span>
-              <button type="button" class="track-btn" title="Track"><i class="fas fa-map-marker-alt"></i></button>
+            <div class="shop-right">
+              <span class="traffic-badge-placeholder" data-vendor-email="${shop.vendor_email || ''}"></span>
+              <span class="shop-distance">${distance || ''}</span>
+              <i class="fas fa-map-marker-alt location-icon"></i>
             </div>
           </div>
         `;
@@ -13837,6 +13957,34 @@
           [data-theme="dark"] .row-title { color:#e5e7eb; }
           [data-theme="dark"] .row-sub { color:#9ca3af; }
           [data-theme="dark"] .row-meta { color:#60a5fa; }
+          
+          /* Unified shop item + traffic badge styles */
+          .shop-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fff; border-bottom:1px solid #e5e7eb; border-radius:10px; margin-bottom:6px; transition:all 0.2s ease-in-out; }
+          .shop-item:hover { background:#f9fafb; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
+          .shop-item.selected { background:#f0f7ff; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+          .shop-left { display:flex; align-items:center; gap:10px; flex:1; }
+          .shop-info { display:flex; flex-direction:column; overflow:hidden; }
+          .shop-name { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-address { font-size:0.85rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .shop-right { display:flex; align-items:center; gap:8px; justify-content:flex-end; flex:0 0 150px; text-align:right; }
+          .shop-distance { font-size:0.9rem; color:#374151; font-weight:500; }
+          .location-icon { color:#2563eb; font-size:0.9rem; }
+          .traffic-badge { display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; color:#374151; text-transform:capitalize; white-space:nowrap; }
+          .traffic-text { line-height:1; display:block; }
+          .traffic-badge[data-status="low"] { color:#047857; }
+          .traffic-badge[data-status="medium"] { color:#b45309; }
+          .traffic-badge[data-status="high"] { color:#b91c1c; }
+          .traffic-dot { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; position:relative; cursor:help; }
+          .traffic-dot .dot { width:10px; height:10px; border-radius:50%; box-shadow:0 0 6px rgba(0,0,0,0.1); }
+          .traffic-dot[data-status="low"] .dot { background-color:#10b981; }
+          .traffic-dot[data-status="medium"] .dot { background-color:#fbbf24; }
+          .traffic-dot[data-status="high"] .dot { background-color:#ef4444; animation:pulse-red 1.5s infinite; }
+          .traffic-badge-placeholder { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; }
+          [data-theme="dark"] .traffic-badge { color:#e5e7eb; }
+          [data-theme="dark"] .traffic-badge[data-status="low"] { color:#6ee7b7; }
+          [data-theme="dark"] .traffic-badge[data-status="medium"] { color:#facc15; }
+          [data-theme="dark"] .traffic-badge[data-status="high"] { color:#f87171; }
+          @media (max-width:480px){ .shop-item{ padding:8px 10px; } .shop-distance{ font-size:0.8rem; } .location-icon{ font-size:0.8rem; } }
           
           /* Full-screen mobile search modal */
           .shop-search-modal { 
@@ -13949,6 +14097,10 @@
             flex-direction: column; 
             gap: 2px;
           }
+          /* Ensure long names never clip the traffic badge */
+          .shop-search-name { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+          .shop-search-name > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .shop-search-name .traffic-dot, .shop-search-name .traffic-badge-placeholder { flex-shrink:0; }
           .shop-search-name { 
             font-weight: 600; 
             color: #111827; 
@@ -14073,6 +14225,19 @@
         </div>
       `;
 
+      // Populate traffic badges asynchronously
+      setTimeout(async () => {
+        const placeholders = vendorOptionsContainer.querySelectorAll('.traffic-badge-placeholder');
+        for (const placeholder of placeholders) {
+          const vendorEmail = placeholder.getAttribute('data-vendor-email');
+          if (vendorEmail) {
+            const traffic = await fetchVendorTraffic(vendorEmail);
+            placeholder.innerHTML = getTrafficBadge(traffic);
+            placeholder.classList.remove('traffic-badge-placeholder');
+          }
+        }
+      }, 100);
+
       // Bind interactions
       const listEl = document.getElementById('footer-shop-list');
       const hiddenSelect = document.getElementById('footer-shop-select');
@@ -14118,29 +14283,28 @@
 
       if (listEl) {
         listEl.addEventListener('click', (e) => {
-          const row = e.target.closest('.shop-row');
-          const trackBtn = e.target.closest('.track-btn');
+          const row = e.target.closest('.shop-item');
           if (!row) return;
           const shopId = row.getAttribute('data-shop');
           const lat = row.getAttribute('data-lat');
           const lng = row.getAttribute('data-lng');
-          if (trackBtn) {
+          const onMapIcon = e.target.closest('.location-icon');
+          if (onMapIcon) {
             if (lat && lng) window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
             return;
           }
           hiddenSelect.value = shopId;
           selectedVendor = shopId;
           panel.classList.remove('open');
-          listEl.querySelectorAll('.shop-row').forEach(r => r.classList.remove('selected'));
+          listEl.querySelectorAll('.shop-item').forEach(r => r.classList.remove('selected'));
           row.classList.add('selected');
           const titleEl = trigger?.querySelector('.shop-title');
           const subEl = trigger?.querySelector('.shop-subtitle');
-          const name = row.querySelector('.row-title')?.textContent || 'Selected Shop';
-          const addr = row.querySelector('.row-sub')?.textContent || '';
-          const meta = row.querySelector('.row-meta span')?.textContent || '';
+          const name = row.querySelector('.shop-name')?.textContent || 'Selected Shop';
+          const addr = row.querySelector('.shop-address')?.textContent || '';
+          const meta = row.querySelector('.shop-distance')?.textContent || '';
           if (titleEl) titleEl.textContent = name;
           if (subEl) subEl.textContent = addr || meta;
-          // Auto-calc pricing when vendor changes and files are present
           if (selectedVendor && uploadedFiles && uploadedFiles.length > 0) {
             calculateA4PrintPrice();
           }
@@ -14211,6 +14375,19 @@
         `;
       } else {
         nearbyList.innerHTML = shopsToRender.map(shop => createShopSearchItem(shop, false)).join('');
+        
+        // Populate traffic badges asynchronously
+        setTimeout(async () => {
+          const placeholders = nearbyList.querySelectorAll('.traffic-badge-placeholder');
+          for (const placeholder of placeholders) {
+            const vendorEmail = placeholder.getAttribute('data-vendor-email');
+            if (vendorEmail) {
+              const traffic = await fetchVendorTraffic(vendorEmail);
+              placeholder.innerHTML = getTrafficBadge(traffic);
+              placeholder.classList.remove('traffic-badge-placeholder');
+            }
+          }
+        }, 100);
       }
     }
 
@@ -14227,7 +14404,10 @@
         <div class="shop-search-item" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}">
           <div class="shop-search-avatar">${shopInitial}</div>
           <div class="shop-search-info">
-            <div class="shop-search-name">${shop.shop_name || 'Print Shop'}</div>
+            <div class="shop-search-name" style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+              <span>${shop.shop_name || 'Print Shop'}</span>
+              <span class="traffic-badge-placeholder" data-vendor-email="${shop.vendor_email || ''}"></span>
+            </div>
             <div class="shop-search-address">${address}</div>
           </div>
           <div class="shop-search-actions">
@@ -14509,7 +14689,7 @@
     }
 
     // Function to load shops in modal
-    function loadShopsInModal(service) {
+    async function loadShopsInModal(service) {
       const shopList = document.getElementById(`${service}-shop-selection-list`);
       if (!shopList) return;
       
@@ -14544,7 +14724,10 @@
                    src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" 
                    alt="${shop.shop_name||'Shop'}" />
               <div class="shop-selection-item-info">
-                <div class="shop-selection-item-name">${shop.shop_name || 'Print Shop'}</div>
+                <div class="shop-selection-item-name" style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                  <span>${shop.shop_name || 'Print Shop'}</span>
+                <span class="traffic-badge-placeholder" data-vendor-email="${shop.vendor_email || ''}"></span>
+                </div>
                 <div class="shop-selection-item-address">${address}</div>
               </div>
               <div class="shop-selection-item-meta">
@@ -14559,6 +14742,19 @@
       }).join('');
       
       shopList.innerHTML = shopItemsHtml;
+      
+      // Populate traffic badges asynchronously
+      setTimeout(async () => {
+        const placeholders = shopList.querySelectorAll('.traffic-badge-placeholder');
+        for (const placeholder of placeholders) {
+          const vendorEmail = placeholder.getAttribute('data-vendor-email');
+          if (vendorEmail) {
+            const traffic = await fetchVendorTraffic(vendorEmail);
+            placeholder.innerHTML = getTrafficBadge(traffic);
+            placeholder.classList.remove('traffic-badge-placeholder');
+          }
+        }
+      }, 100);
     }
 
     // Function to select shop in modal
@@ -18155,7 +18351,8 @@
     previewContainer.removeAttribute('data-enhanced-ready');
     previewContainer.removeAttribute('data-selected-version');
     previewContainer.dataset.selectedVersion = 'original';
-    const enhancementToken = Date.now() + '_' + Math.random();
+    // Create enhancement token with only valid ID characters (replace dots with dashes)
+    const enhancementToken = (Date.now() + '_' + Math.random()).replace(/\./g, '-');
     previewContainer.dataset.enhancementToken = enhancementToken;
     
     // Track selection
@@ -18178,7 +18375,103 @@
       previewContainer.dataset.selectedVersion = selectedVersion;
     }
 
-    // Initial render
+    // Helper: Demo comparison HTML for Enhanced fallback
+    function getEnhancedDemoHTML() {
+      // Professional passport photo demo images - before (needs enhancement) and after (enhanced)
+      // Using professional passport-style headshot of a man in suit with neutral expression
+      const demoImgBefore = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format';
+      const demoImgAfter = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format&q=90';
+      return `
+        <style>
+          .selectable-image.enhanced .demo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+          .dark-mode .selectable-image.enhanced .demo-compare { background: rgba(17,24,39,0.6); border-color: rgba(148,163,184,0.3); }
+          .selectable-image.enhanced .demo-side { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
+          .dark-mode .selectable-image.enhanced .demo-side { background: #0b1020; border-color: rgba(148,163,184,0.25); }
+          .selectable-image.enhanced .demo-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+          .selectable-image.enhanced .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+          .dark-mode .selectable-image.enhanced .photo-wrap { background: #111827; }
+          .selectable-image.enhanced .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .selectable-image.enhanced .before img { filter: blur(1.2px) brightness(0.9) contrast(0.9) saturate(0.9); }
+          .selectable-image.enhanced .after img { filter: contrast(1.1) brightness(1.05) saturate(1.1); }
+          .selectable-image.enhanced .demo-divider { display: none; }
+          .selectable-image.enhanced .demo-fallback { color: #6b7280; font-size: 0.95rem; text-align: center; padding: 1.25rem 0; }
+          .selectable-image.enhanced .apply-demo-btn { margin: 12px auto 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 10px; border: 1px solid #2563eb; color: #ffffff; background: #2563eb; cursor: pointer; font-weight: 600; transition: transform .15s ease, box-shadow .15s ease; }
+          .selectable-image.enhanced .apply-demo-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,0.25); }
+          .dark-mode .selectable-image.enhanced .apply-demo-btn { background:#3b82f6; border-color:#3b82f6; }
+        </style>
+        <div class="demo-compare" role="img" aria-label="Demo before and after passport photo enhancement">
+          <div class="demo-side before">
+            <div class="demo-label">Before</div>
+            <div class="photo-wrap">
+              <img src="${demoImgBefore}" alt="Before demo - original passport photo" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div class\\'demo-fallback\\'>Enhanced Preview Unavailable</div>';"></img>
+            </div>
+          </div>
+          <div class="demo-side after">
+            <div class="demo-label">After</div>
+            <div class="photo-wrap">
+              <img src="${demoImgAfter}" alt="After demo - enhanced passport photo" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div class\\'demo-fallback\\'>Enhanced Preview Unavailable</div>';"></img>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <button type="button" class="apply-demo-btn" data-action="apply-demo">Apply Enhancement</button>
+        </div>
+      `;
+    }
+
+    // Helper: Get dummy comparison HTML using static dummy image (man in suit passport photo)
+    function getDummyComparisonHTML(uploadedFileUrl) {
+      // Use a static dummy image (man in suit passport photo) for before/after comparison
+      // This will be replaced with actual enhanced image only after clicking "Apply Enhancement"
+      const dummyImgBefore = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format';
+      const dummyImgAfter = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format&q=90';
+      return `
+        <style>
+          .selectable-image.enhanced .demo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+          .dark-mode .selectable-image.enhanced .demo-compare { background: rgba(17,24,39,0.6); border-color: rgba(148,163,184,0.3); }
+          .selectable-image.enhanced .demo-side { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
+          .dark-mode .selectable-image.enhanced .demo-side { background: #0b1020; border-color: rgba(148,163,184,0.25); }
+          .selectable-image.enhanced .demo-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+          .selectable-image.enhanced .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+          .dark-mode .selectable-image.enhanced .photo-wrap { background: #111827; }
+          .selectable-image.enhanced .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .selectable-image.enhanced .before img { filter: blur(1.2px) brightness(0.9) contrast(0.9) saturate(0.9); }
+          .selectable-image.enhanced .after img { filter: contrast(1.1) brightness(1.05) saturate(1.1); }
+          .selectable-image.enhanced .apply-enhancement-btn { margin: 16px auto 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 10px; border: none; color: #ffffff; background: #2563eb; cursor: pointer; font-weight: 600; font-size: 1rem; transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; }
+          .selectable-image.enhanced .apply-enhancement-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,0.25); }
+          .selectable-image.enhanced .apply-enhancement-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+          .dark-mode .selectable-image.enhanced .apply-enhancement-btn { background:#3b82f6; }
+          .selectable-image.enhanced .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; z-index: 10; }
+          .dark-mode .selectable-image.enhanced .loading-overlay { background: rgba(17,24,39,0.9); }
+          .selectable-image.enhanced .loading-spinner { font-size: 2em; color: #3b82f6; margin-bottom: 12px; }
+          .selectable-image.enhanced .loading-text { color: #374151; font-size: 1rem; font-weight: 500; }
+          .dark-mode .selectable-image.enhanced .loading-text { color: #e5e7eb; }
+        </style>
+        <div class="demo-compare" role="img" aria-label="Before and after passport photo enhancement preview">
+          <div class="demo-side before">
+            <div class="demo-label">Before</div>
+            <div class="photo-wrap">
+              <img src="${dummyImgBefore}" alt="Before - original passport photo" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div style=\'color:#6b7280;font-size:0.95rem;text-align:center;padding:1.25rem 0;\'>Demo Preview</div>';" />
+            </div>
+          </div>
+          <div class="demo-side after">
+            <div class="demo-label">After</div>
+            <div class="photo-wrap">
+              <img src="${dummyImgAfter}" alt="After - enhanced passport photo preview" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div style=\'color:#6b7280;font-size:0.95rem;text-align:center;padding:1.25rem 0;\'>Demo Preview</div>';" />
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center; margin-top: 16px;">
+          <button type="button" class="apply-enhancement-btn" id="apply-enhancement-btn-${enhancementToken}">
+            <i class="fas fa-magic" style="margin-right: 8px;"></i>
+            Apply Enhancement
+          </button>
+        </div>
+      `;
+    }
+
+    // Initial render - Show dummy comparison immediately
+    const uploadedFileUrl = URL.createObjectURL(file);
     previewContainer.innerHTML = `
       <style>
         .passport-preview-flex { width: 100%; display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1.5rem 0; flex-wrap: wrap; box-sizing: border-box; }
@@ -18196,15 +18489,14 @@
         <div class="selectable-image original selected" tabindex="0">
           <div class="selectable-label">Original</div>
           <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original"></span>
-          <img src="${URL.createObjectURL(file)}" alt="Original" />
+          <img src="${uploadedFileUrl}" alt="Original" />
         </div>
         <div class="selectable-image enhanced" tabindex="0">
           <div class="selectable-label">Enhanced</div>
           <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
-          <div id="enhance-spinner" style="padding: 40px 0; color: #3b82f6; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-            <i class="fas fa-spinner fa-spin" style="font-size:2.2em;"></i><br/>
-            <span style="font-size:1.05em;">Enhancing…</span>
-          </div>
+          ${getDummyComparisonHTML(uploadedFileUrl)}
+          <div class='enhanced-extra'>Preview</div>
+          <div class='enhanced-cost'>+₹10 extra for enhancement</div>
         </div>
       </div>
     `;
@@ -18226,100 +18518,178 @@
     if (origRadio) origRadio.addEventListener('change', () => { selectedVersion = 'original'; updateSelectionUI(); });
     if (enhRadio) enhRadio.addEventListener('change', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
 
-    // Enhancement logic
-    const apiKey = 'wx1rwv2nti07a0yb4';
-    const formData = new FormData();
-    formData.append('image_file', file);
-    formData.append('sync', 0);
-    formData.append('type', 'face');
-    formData.append('return_type', 1);
-
-    let taskId = null;
-    let errorMsg = null;
-    try {
-      const resp = await fetch('https://techhk.aoscdn.com/api/tasks/visual/scale', {
-        method: 'POST',
-        headers: { 'X-API-KEY': apiKey },
-        body: formData
-      });
-      const data = await resp.json();
-      if (!resp.ok || !data || !data.data || !data.data.task_id) {
-        throw new Error(data?.msg || 'Failed to create enhancement task.');
-      }
-      taskId = data.data.task_id;
-    } catch (err) {
-      errorMsg = err.message || 'Failed to contact enhancement API.';
-    }
-    if (!taskId) {
-      if (enhBox) enhBox.innerHTML += `<div style='color:#ef4444;'>${errorMsg || 'Could not start enhancement.'}</div>`;
-      return;
-    }
-    let pollCount = 0;
-    let pollError = null;
-    while (pollCount < 30 && !enhancedUrl) {
-      try {
-        await new Promise(r => setTimeout(r, 1000));
-        pollCount++;
-        const pollResp = await fetch(`https://techhk.aoscdn.com/api/tasks/visual/scale/${taskId}`, {
-          method: 'GET',
-          headers: { 'X-API-KEY': apiKey }
-        });
-        const pollData = await pollResp.json();
-        if (pollResp.status === 429) {
-          pollError = 'Rate limit reached. Please try again later.';
-          break;
-        }
-        if (!pollResp.ok || !pollData || !pollData.data) {
-          pollError = pollData?.msg || 'Enhancement failed.';
-          break;
-        }
-        if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
-          enhancedUrl = pollData.data.image;
-          enhancedReady = true;
-          break;
-        }
-        if (pollData.data.state === 2) {
-          pollError = 'Enhancement failed.';
-          break;
-        }
-      } catch (err) {
-        pollError = err.message || 'Error polling enhancement API.';
-        break;
-      }
-    }
-    if (enhancedUrl) {
-      // Only update if this is the latest enhancement
+    // Enhancement function - triggered when "Apply Enhancement" button is clicked
+    async function applyEnhancement() {
+      // Only proceed if this is the latest enhancement token
       if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
-      if (enhBox) {
-        enhBox.innerHTML = `
-          <div class="selectable-label">Enhanced</div>
-          <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
-          <img src="${enhancedUrl}" alt="Enhanced" />
-          <div class='enhanced-extra'>Ready!</div>
-          <div class='enhanced-cost'>+₹10 extra for enhancement</div>
+      
+      // Use getElementById to avoid CSS selector escaping issues with special characters
+      const applyBtn = previewContainer.querySelector(`[id="apply-enhancement-btn-${enhancementToken}"]`) || 
+                       document.getElementById(`apply-enhancement-btn-${enhancementToken}`);
+      if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Processing...';
+      }
+      
+      // Declare currentEnhBox once at the top of the function
+      let currentEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+      const demoCompare = currentEnhBox?.querySelector('.demo-compare');
+      if (demoCompare) {
+        demoCompare.style.position = 'relative';
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+          <i class="fas fa-spinner fa-spin loading-spinner"></i>
+          <div class="loading-text">Enhancing your photo...</div>
         `;
-        // Re-attach selection logic after replacing innerHTML
-        const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
-        const newEnhRadio = previewContainer.querySelector('#select-enhanced');
-        if (newEnhBox) {
-          newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
-          newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
-        }
-        if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
-        updateSelectionUI();
+        demoCompare.appendChild(loadingOverlay);
       }
-      // Set data attributes for enhanced image
-      previewContainer.dataset.enhancedUrl = enhancedUrl;
-      previewContainer.dataset.enhancedReady = 'true';
-    } else {
+      
+      // Enhancement logic - Call Django backend
+      const formData = new FormData();
+      formData.append('image_file', file);
+      formData.append('type', 'face');
+
+      let taskId = null;
+      let errorMsg = null;
+      try {
+        // Call Django backend endpoint
+        const resp = await fetch('/enhance-passport-photo-with-picwish/', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.success || !data.data || !data.data.task_id) {
+          throw new Error(data?.error || data?.msg || 'Failed to create enhancement task.');
+        }
+        taskId = data.data.task_id;
+      } catch (err) {
+        errorMsg = err.message || 'Failed to contact enhancement API.';
+        console.error('Enhancement task creation error:', err);
+        // Remove loading overlay and show error
+        currentEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+        const loadingOverlay = currentEnhBox?.querySelector('.loading-overlay');
+        if (loadingOverlay) loadingOverlay.remove();
+        if (applyBtn) {
+          applyBtn.disabled = false;
+          applyBtn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>Retry Enhancement';
+        }
+        alert('Enhancement failed: ' + errorMsg);
+        return;
+      }
+      
+      // Poll for enhancement result
+      let pollCount = 0;
+      let pollError = null;
+      while (pollCount < 30 && !enhancedUrl) {
+        try {
+          await new Promise(r => setTimeout(r, 1000));
+          pollCount++;
+          // Call Django backend for polling
+          const pollResp = await fetch(`/enhance-passport-photo-with-picwish/?task_id=${taskId}`, {
+            method: 'GET'
+          });
+          const pollData = await pollResp.json();
+          if (pollResp.status === 429) {
+            pollError = 'Rate limit reached. Please try again later.';
+            break;
+          }
+          if (!pollResp.ok || !pollData || !pollData.success || !pollData.data) {
+            pollError = pollData?.error || pollData?.msg || 'Enhancement failed.';
+            break;
+          }
+          if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
+            enhancedUrl = pollData.data.image;
+            enhancedReady = true;
+            break;
+          }
+          if (pollData.data.state === 2) {
+            pollError = 'Enhancement failed.';
+            break;
+          }
+        } catch (err) {
+          pollError = err.message || 'Error polling enhancement API.';
+          console.error('Polling error:', err);
+          break;
+        }
+      }
+      
       // Only update if this is the latest enhancement
       if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
-      if (enhBox) {
-        enhBox.innerHTML += `<div style='color:#ef4444;'>${pollError || 'Enhancement timed out. Please try again.'}</div>`;
+      
+      // Remove loading overlay
+      currentEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+      const loadingOverlay = currentEnhBox?.querySelector('.loading-overlay');
+      if (loadingOverlay) loadingOverlay.remove();
+      
+      if (enhancedUrl) {
+        // Replace dummy comparison with actual before/after comparison
+        // Use user's uploaded file as "before" and PicWish enhanced image as "after"
+        const uploadedFileUrl = URL.createObjectURL(file);
+        const finalEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+        if (finalEnhBox) {
+          finalEnhBox.innerHTML = `
+            <div class="selectable-label">Enhanced</div>
+            <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
+            <div class="demo-compare" role="img" aria-label="Before and after passport photo enhancement">
+              <div class="demo-side before">
+                <div class="demo-label">Before</div>
+                <div class="photo-wrap">
+                  <img src="${uploadedFileUrl}" alt="Before - original passport photo" />
+                </div>
+              </div>
+              <div class="demo-side after">
+                <div class="demo-label">After</div>
+                <div class="photo-wrap">
+                  <img src="${enhancedUrl}" alt="After - enhanced passport photo" style="transition: opacity 0.3s ease;" />
+                </div>
+              </div>
+            </div>
+            <div class='enhanced-extra'>Ready!</div>
+            <div class='enhanced-cost'>+₹10 extra for enhancement</div>
+            <style>
+              .selectable-image.enhanced .demo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+              .dark-mode .selectable-image.enhanced .demo-compare { background: rgba(17,24,39,0.6); border-color: rgba(148,163,184,0.3); }
+              .selectable-image.enhanced .demo-side { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
+              .dark-mode .selectable-image.enhanced .demo-side { background: #0b1020; border-color: rgba(148,163,184,0.25); }
+              .selectable-image.enhanced .demo-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+              .selectable-image.enhanced .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+              .dark-mode .selectable-image.enhanced .photo-wrap { background: #111827; }
+              .selectable-image.enhanced .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+            </style>
+          `;
+          // Re-attach selection logic after replacing innerHTML
+          const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+          const newEnhRadio = previewContainer.querySelector('#select-enhanced');
+          if (newEnhBox) {
+            newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+            newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+          }
+          if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+          updateSelectionUI();
+        }
+        // Set data attributes for enhanced image
+        previewContainer.dataset.enhancedUrl = enhancedUrl;
+        previewContainer.dataset.enhancedReady = 'true';
+      } else {
+        // Enhancement failed - show error but keep dummy comparison
+        if (applyBtn) {
+          applyBtn.disabled = false;
+          applyBtn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>Retry Enhancement';
+        }
+        alert('Enhancement failed: ' + (pollError || 'Timeout or unknown error'));
+        // Set not ready
+        previewContainer.dataset.enhancedUrl = '';
+        previewContainer.dataset.enhancedReady = 'false';
       }
-      // Set not ready
-      previewContainer.dataset.enhancedUrl = '';
-      previewContainer.dataset.enhancedReady = 'false';
+    }
+    
+    // Attach click handler to "Apply Enhancement" button
+    // Use attribute selector to avoid CSS selector escaping issues with special characters
+    const applyBtn = previewContainer.querySelector(`[id="apply-enhancement-btn-${enhancementToken}"]`) || 
+                     document.getElementById(`apply-enhancement-btn-${enhancementToken}`);
+    if (applyBtn) {
+      applyBtn.addEventListener('click', applyEnhancement);
     }
   }
   </script>
@@ -19950,6 +20320,135 @@
       // Initial scroll to bottom
       scrollToBottom();
     })();
+  </script>
+
+  <!-- PicWish Photo Enhancement Script -->
+  <script>
+    $(document).ready(function() {
+      // Handle file upload and preview original image
+      $(document).on('change', '#uploadedPassportPhoto', function() {
+        const file = this.files[0];
+        if (file) {
+          // Validate file type
+          if (!file.type.match('image.*')) {
+            alert('Please select a valid image file.');
+            $(this).val(''); // Clear the input
+            return;
+          }
+          
+          // Validate file size (max 10MB)
+          if (file.size > 10 * 1024 * 1024) {
+            alert('Image file is too large. Please select an image smaller than 10MB.');
+            $(this).val(''); // Clear the input
+            return;
+          }
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            $('#originalImage').attr('src', e.target.result).css('display', 'block');
+            // Reset enhanced image when new file is uploaded
+            $('#enhancedImage').attr('src', '#').css('display', 'none');
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Handle Apply Enhancement button click
+      $(document).on('click', '#applyEnhancementBtn', function() {
+        const file = $('#uploadedPassportPhoto')[0].files[0];
+        if (!file) {
+          alert('Please upload an image first.');
+          return;
+        }
+
+        // Prepare FormData for AJAX request
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('type', 'face');
+
+        // Get button reference and store original text
+        const $btn = $(this);
+        const originalText = $btn.html();
+        
+        // Disable button and show loading state
+        $btn.prop('disabled', true).text('Enhancing...');
+
+        // Make AJAX request to Django backend
+        $.ajax({
+          url: '/enhance-photo/',
+          type: 'POST',
+          data: formData,
+          processData: false,  // Don't process the data
+          contentType: false,  // Let browser set content type for FormData
+          headers: {
+            'X-CSRFToken': window.csrfToken || getCookie('csrftoken') || ''
+          },
+          success: function(response) {
+            // Check if response indicates success
+            if (response.success && response.enhanced_image_url) {
+              // Update only the enhanced image preview (no page reload)
+              $('#enhancedImage')
+                .attr('src', response.enhanced_image_url)
+                .css('display', 'block')
+                .on('error', function() {
+                  // Handle image load error
+                  alert('Failed to load enhanced image. Please try again.');
+                  $(this).css('display', 'none');
+                });
+            } else {
+              // Show error message from response
+              const errorMsg = response.error || 'Enhancement failed. Unknown error.';
+              alert('Enhancement failed: ' + errorMsg);
+            }
+          },
+          error: function(xhr, status, error) {
+            // Handle HTTP errors (400, 401, 429, 500, etc.)
+            let errorMsg = 'Something went wrong. Please try again.';
+            
+            // Try to extract error message from response
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+              errorMsg = xhr.responseJSON.error;
+            } else if (xhr.status === 401) {
+              errorMsg = 'Unauthorized API Key. Please contact support.';
+            } else if (xhr.status === 429) {
+              errorMsg = 'Rate limit exceeded. Please try again later.';
+            } else if (xhr.status === 400) {
+              errorMsg = 'Invalid request. Please check your image file.';
+            } else if (xhr.status === 0) {
+              errorMsg = 'Network error. Please check your internet connection.';
+            }
+            
+            alert('Enhancement failed: ' + errorMsg);
+            console.error('Enhancement error:', {
+              status: xhr.status,
+              statusText: xhr.statusText,
+              response: xhr.responseJSON || xhr.responseText,
+              error: error
+            });
+          },
+          complete: function() {
+            // Re-enable button and restore original text
+            $btn.prop('disabled', false).html(originalText);
+          }
+        });
+      });
+
+      // Helper function to get CSRF token from cookies
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+    });
   </script>
 
 </body>

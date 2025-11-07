@@ -20,7 +20,7 @@
     <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
 
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Printmax - Revolutionary AI-Powered Printing">
+    <meta property="og:title" content="Printmax - Revolutionary AI-Supported Printing">
     <meta property="og:description" content="Experience the future of printing with our AI-powered automated system. Upload, customize, and collect your prints instantly.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://printmax.com">
@@ -29,14 +29,14 @@
 
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Printmax - Revolutionary AI-Powered Printing">
+    <meta name="twitter:title" content="Printmax - Revolutionary AI-Supported Printing">
     <meta name="twitter:description" content="The future of printing is here. AI-powered, instant, and revolutionary.">
     <meta name="twitter:image" content="https://printmax.com/twitter-image.jpg">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://printmax.com">
 
-    <title>Printmax - Revolutionary AI-Powered Printing | The Future is Here</title>
+    <title>Printmax - Revolutionary AI-Supported Printing | The Future is Here</title>
     <!-- Favicons: place files in static/images/ -->
     <link rel="icon" href="{% static 'images/favicon.ico' %}?v=2" sizes="any">
     <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2">
@@ -405,7 +405,25 @@
             font-size: clamp(1.1rem, 2.5vw, 1.4rem);
             color: var(--text-secondary);
             margin-bottom: 3rem;
-            line-height: 1.6;
+            line-height: 1.7;
+            text-align: left; /* ensure left alignment across themes */
+            max-width: 46rem; /* tidy line length for better readability */
+            text-wrap: pretty;
+        }
+
+        /* Make the first bold line act like a heading for neat alignment */
+        .hero-subtitle strong:first-child {
+            display: block;
+            color: var(--heading-color);
+            margin-bottom: 0.6rem;
+            font-weight: 800;
+            font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+            line-height: 1.3;
+        }
+
+        /* Metadata line below buttons (flags, speed, AI note) */
+        .hero-meta { 
+            margin-bottom: 0.75rem; /* add breathing room before next stacked element */
         }
 
         /* Buttons */
@@ -528,11 +546,15 @@
         .upload-icon::before { background: var(--accent-gradient); }
         .payment-icon::before { background: var(--success-gradient); }
         .print-icon::before { background: var(--warning-gradient); }
-        .collect-icon::before { background: var(--secondary-gradient); }
+        .collect-icon::before { background: var(--ocean-gradient); }
         .speed-icon::before { background: var(--fire-gradient); }
         .security-icon::before { background: var(--ocean-gradient); }
         .price-icon::before { background: var(--forest-gradient); }
-        .available-icon::before { background: var(--sunset-gradient); }
+        .available-icon::before { background: var(--accent-gradient); }
+        
+        /* Section-specific overrides to ensure unique colors per section */
+        /* Before Printmax section: available-icon uses primary-gradient to avoid conflict with upload-icon */
+        #before-printmax .available-icon::before { background: var(--primary-gradient); }
 
         /* Stats Section */
         .stats-section {
@@ -636,13 +658,17 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 3px solid rgba(138, 43, 226, 0.3);
             background: var(--primary-gradient);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.2rem;
+        }
+
+        .testimonial-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         /* CTA Section */
@@ -720,7 +746,8 @@
             .navbar { padding: 0.5rem 0; }
             .navbar-brand { font-size: 1.5rem; }
             .hero { padding: 30px 0 24px; }
-            .hero-title { font-size: 2.5rem; }
+            .hero-title { font-size: 2.5rem; text-align: center; }
+            .hero-subtitle { text-align: center; margin-left: auto; margin-right: auto; }
             .btn-gradient, .btn-outline-gradient { 
                 padding: 0.8rem 2rem; 
                 font-size: 1rem; 
@@ -736,8 +763,20 @@
 
         @media (max-width: 576px) {
             .container { padding: 0 1rem; }
-            .hero-title { font-size: 2rem; }
-            .hero-subtitle { font-size: 1rem; }
+            .hero-title { font-size: 2rem; text-align: center; text-wrap: balance; }
+            .hero-subtitle { 
+                font-size: 1rem; 
+                text-align: justify; 
+                text-justify: inter-word;
+                margin-left: 0; 
+                margin-right: 0; 
+                max-width: 100%;
+                hyphens: auto;
+            }
+            .hero-subtitle strong:first-child {
+                text-align: left; /* keep the intro line aligned */
+            }
+            .hero-meta { margin-bottom: 1rem; }
             .btn-gradient, .btn-outline-gradient { 
                 padding: 0.7rem 1.5rem; 
                 font-size: 0.9rem; 
@@ -793,6 +832,54 @@
         .hover-glow:hover {
             box-shadow: var(--shadow-neon);
             transition: var(--transition-smooth);
+        }
+        /* How It Works card paragraph formatting */
+        #how-it-works .glass-card h3 {
+            text-align: center;
+            margin: 0.75rem 0 0.5rem;
+            letter-spacing: 0.2px;
+            line-height: 1.25;
+        }
+        #how-it-works .glass-card p.text-muted {
+            text-align: center;
+            margin: 0.35rem auto 0;
+            max-width: 33ch;
+            text-wrap: pretty;
+            line-height: 1.8;
+            font-size: 1rem;
+            letter-spacing: 0.1px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            /* Equalize height across cards for alignment */
+            min-height: 7.6rem; /* ~4 lines */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            hyphens: auto;
+        }
+        #how-it-works .glass-card p.text-muted strong {
+            display: block;
+            color: var(--heading-color);
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.2px;
+            font-weight: 800;
+        }
+        /* Ensure cards align content consistently */
+        #how-it-works .glass-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #how-it-works .glass-card .feature-icon { margin-bottom: 1.25rem; }
+
+        /* Responsive: reduce min-height on small screens */
+        @media (max-width: 576px) {
+            #how-it-works .glass-card p.text-muted {
+                max-width: 31ch;
+                line-height: 1.75;
+                min-height: 6.4rem;
+            }
         }
     </style>
 </head>
@@ -934,27 +1021,27 @@
                     <div class="col-lg-6">
                         <h1 class="hero-title">
                             <span class="gradient-text">Revolutionary</span><br>
-                            AI-Powered Printing
+                            AI-Supported Printing
                         </h1>
                         <p class="hero-subtitle">
-                            🚀 Experience the future of printing with our cutting-edge AI technology. 
-                            Upload, customize, and collect - all powered by intelligent automation that's 
-                            <strong>10x faster</strong> than traditional printing services.
+                            <strong>Print smarter, not harder.</strong>
+                            Upload your file, choose service, and print fast with trusted local vendors.
                         </p>
                         <div class="d-flex flex-column flex-md-row gap-3">
                             <a href="/login" class="btn btn-gradient hover-glow">
-                                <i class="bi bi-lightning-charge-fill me-2"></i>
+                                <i class="bi bi-printer-fill me-2"></i>
                                 Start Printing Now
                             </a>
-                            <button class="btn btn-outline-gradient hover-float" onclick="scrollToSection('#how-it-works')">
-                                <i class="bi bi-play-circle-fill me-2"></i>
-                                See How It Works
-                            </button>
                         </div>
-                        <div class="mt-4">
+                        <div class="mt-4 hero-meta">
                             <small class="text-muted">
                                 <i class="bi bi-shield-check-fill me-1"></i>
-                                🚀 Trusted by 10K+ users • ⚡ 99.9% uptime • 🎯 AI-optimized quality
+                                <svg style="display: inline-block; width: 18px; height: 12px; vertical-align: middle; margin-right: 4px;" viewBox="0 0 18 12" xmlns="http://www.w3.org/2000/svg">
+                                    <rect width="18" height="4" fill="#FF9933"/>
+                                    <rect y="4" width="18" height="4" fill="#FFFFFF"/>
+                                    <rect y="8" width="18" height="4" fill="#138808"/>
+                                    <circle cx="9" cy="6" r="2" fill="#000080"/>
+                                </svg> Proudly built in India • ⚡ Fast, reliable & secure • 🎯 Empowered by AI innovation
                             </small>
                         </div>
                     </div>
@@ -982,24 +1069,24 @@
         </section>
 
         <!-- Stats Section -->
-        <section class="stats-section">
+        <section class="stats-section" id="stats-section">
             <div class="container">
                 <div class="row text-center">
                     <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">50K+</div>
-                        <div class="stat-label">🔥 Documents Printed</div>
+                        <div class="stat-number" data-target="50" data-suffix="K+" data-prefix="">0</div>
+                        <div class="stat-label">📈 Impressions</div>
                     </div>
                     <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">30s</div>
+                        <div class="stat-number" data-target="30" data-suffix="s" data-prefix="">0</div>
                         <div class="stat-label">⚡ Average Processing</div>
                     </div>
                     <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">99.9%</div>
+                        <div class="stat-number" data-target="99.9" data-suffix="%" data-prefix="" data-decimal="true">0</div>
                         <div class="stat-label">🎯 Success Rate</div>
                     </div>
                     <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">24/7</div>
-                        <div class="stat-label">🚀 AI Available</div>
+                        <div class="stat-number" data-target="24" data-suffix="/7" data-prefix="">0</div>
+                        <div class="stat-label">🚀 Availability</div>
                     </div>
                 </div>
             </div>
@@ -1013,7 +1100,7 @@
                         <span class="gradient-text">How It Works</span>
                     </h2>
                     <p class="lead">
-                        🎯 <strong>4 Simple Steps</strong> to Revolutionary Printing Experience
+                        🎯 <strong>4 Simple Steps</strong> to Get Your Documents Printed
                     </p>
                 </div>
                 <div class="row g-4">
@@ -1022,10 +1109,11 @@
                             <div class="feature-icon upload-icon mx-auto">
                                 <i class="bi bi-cloud-upload-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">📤 Smart Upload</h3>
+                            <h3 class="h5 fw-bold mb-3"> Smart Upload </h3>
                             <p class="text-muted">
-                                <strong>Drag, drop, done!</strong> Our AI instantly optimizes your files 
-                                for perfect printing quality.
+                                <strong>Upload once, print anywhere.</strong><br>
+                                Your file is validated and securely stored in our cloud storage.<br>
+                                We read copies, color, and orientation to show a live price.
                             </p>
                         </div>
                     </div>
@@ -1034,10 +1122,11 @@
                             <div class="feature-icon payment-icon mx-auto">
                                 <i class="bi bi-credit-card-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">💳 Instant Payment</h3>
+                            <h3 class="h5 fw-bold mb-3"> Instant Payment </h3>
                             <p class="text-muted">
-                                <strong>Secure & Fast!</strong> Multiple payment options with 
-                                military-grade encryption.
+                                <strong>Fast, secure checkout.</strong><br>
+                                Pay via UPI, card, or wallet.<br>
+                                Once payment is verified, your job is queued automatically with the nearest vendor.
                             </p>
                         </div>
                     </div>
@@ -1046,22 +1135,24 @@
                             <div class="feature-icon print-icon mx-auto">
                                 <i class="bi bi-printer-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">🤖 AI Printing</h3>
+                            <h3 class="h5 fw-bold mb-3"> AI-Supported Printing </h3>
                             <p class="text-muted">
-                                <strong>Hands-free magic!</strong> Our robots handle everything 
-                                with precision and speed.
+                                <strong>Nearest vendor auto-assigned.</strong><br>
+                                We select the best nearby printer based on load and distance.<br>
+                                Vendors see the job instantly and update status in real time.
                             </p>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6 fade-in-up">
                         <div class="glass-card text-center hover-float">
                             <div class="feature-icon collect-icon mx-auto">
-                                <i class="bi bi-gift-fill"></i>
+                                <i class="bi bi-bag-check-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">🎁 Smart Collection</h3>
+                            <h3 class="h5 fw-bold mb-3"> Quick Collection </h3>
                             <p class="text-muted">
-                                <strong>Token-based pickup!</strong> Get notified and collect 
-                                your prints hassle-free.
+                                <strong>Token-based pickup.</strong><br>
+                                Receive a unique token or QR code.<br>
+                                Show it at the shop and collect your prints without waiting.
                             </p>
                         </div>
                     </div>
@@ -1077,7 +1168,7 @@
                         <span class="gradient-text">Why Choose Printmax?</span>
                     </h2>
                     <p class="lead">
-                        🚀 <strong>Next-Gen Features</strong> That Make Us The Future of Printing
+                        What makes us different
                     </p>
                 </div>
                 <div class="row g-4">
@@ -1086,10 +1177,10 @@
                             <div class="feature-icon speed-icon mx-auto">
                                 <i class="bi bi-lightning-charge-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">⚡ Lightning Fast</h3>
+                            <h3 class="h5 fw-bold mb-3"> Quick Service</h3>
                             <p class="text-muted">
-                                <strong>30-second processing!</strong> Our AI works at warp speed 
-                                to get your prints ready instantly.
+                                <strong>Fast turnaround.</strong> Your orders are processed quickly so 
+                                your prints are ready when you need them.
                             </p>
                         </div>
                     </div>
@@ -1098,22 +1189,22 @@
                             <div class="feature-icon security-icon mx-auto">
                                 <i class="bi bi-shield-lock-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">🔒 Fort Knox Security</h3>
+                            <h3 class="h5 fw-bold mb-3"> Secure & Private</h3>
                             <p class="text-muted">
-                                <strong>Bank-level protection!</strong> Files auto-delete after printing. 
-                                Your privacy is our obsession.
+                                <strong>Your files are safe.</strong> All uploads are protected and 
+                                removed from our system after printing.
                             </p>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6 fade-in-up">
                         <div class="glass-card text-center hover-scale">
                             <div class="feature-icon price-icon mx-auto">
-                                <i class="bi bi-currency-dollar"></i>
+                                <i class="bi bi-currency-rupee"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">💰 Smart Pricing</h3>
+                            <h3 class="h5 fw-bold mb-3"> Fair Prices</h3>
                             <p class="text-muted">
-                                <strong>AI-optimized costs!</strong> Pay only for what you need. 
-                                No hidden fees, no surprises.
+                                <strong>Simple pricing.</strong> You pay only for what you print. 
+                                No hidden fees or unexpected charges.
                             </p>
                         </div>
                     </div>
@@ -1122,10 +1213,10 @@
                             <div class="feature-icon available-icon mx-auto">
                                 <i class="bi bi-clock-fill"></i>
                             </div>
-                            <h3 class="h5 fw-bold mb-3">🌙 Always On</h3>
+                            <h3 class="h5 fw-bold mb-3"> Available Anytime</h3>
                             <p class="text-muted">
-                                <strong>24/7 AI service!</strong> Print at 3AM? No problem. 
-                                Our robots never sleep.
+                                <strong>Open 24/7.</strong> Place your order whenever it's convenient 
+                                for you. We're always ready to help.
                             </p>
                         </div>
                     </div>
@@ -1133,44 +1224,120 @@
             </div>
         </section>
 
-        <!-- Services Section -->
-        <section id="services" class="py-5">
+        <!-- Before Printmax Section -->
+        <section id="before-printmax" class="py-5" style="background: var(--secondary-bg);">
             <div class="container">
                 <div class="text-center mb-5 fade-in-up">
                     <h2 class="display-4 fw-bold mb-4">
-                        <span class="gradient-text">What Can You Print?</span>
+                        <span class="gradient-text">Before Printmax</span>
                     </h2>
                     <p class="lead">
-                        🎨 <strong>Unlimited Possibilities</strong> with Our AI-Powered Platform
+                        The everyday struggles of printing before automation.
                     </p>
                 </div>
                 <div class="row g-4">
                     <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-file-text-fill display-4 mb-3" style="background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">📄 Smart Documents</h5>
-                            <p class="text-muted">Reports, assignments, contracts - AI-enhanced for perfect clarity</p>
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon speed-icon mx-auto">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> Long Queues</h3>
+                            <p class="text-muted">
+                                <strong>Waiting hours</strong> at print shops just to print a few pages.
+                            </p>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-image-fill display-4 mb-3" style="background: var(--success-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">🖼️ Photo Magic</h5>
-                            <p class="text-muted">Professional photos, posters - AI color correction included</p>
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon print-icon mx-auto">
+                                <i class="bi bi-receipt-cutoff"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> Manual Payments</h3>
+                            <p class="text-muted">
+                                <strong>Cash only.</strong> Vendors don't print until you're physically present for payment verification. No receipts. No transparency.
+                            </p>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-easel-fill display-4 mb-3" style="background: var(--warning-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">🎨 Creative Designs</h5>
-                            <p class="text-muted">Presentations, flyers, art - optimized for stunning results</p>
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon upload-icon mx-auto">
+                                <i class="bi bi-folder-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> File Confusion</h3>
+                            <p class="text-muted">
+                                <strong>Wrong files, missing pages,</strong> or format issues every time.
+                            </p>
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-receipt-fill display-4 mb-3" style="background: var(--secondary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">📋 Official Forms</h5>
-                            <p class="text-muted">Government forms, certificates - precision guaranteed</p>
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon available-icon mx-auto">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> Limited Availability</h3>
+                            <p class="text-muted">
+                                <strong>Shops closed</strong> when you need urgent prints. You must be physically present during operating hours.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- After Printmax Section -->
+        <section id="after-printmax" class="py-5">
+            <div class="container">
+                <div class="text-center mb-5 fade-in-up">
+                    <h2 class="display-4 fw-bold mb-4">
+                        <span class="gradient-text">After Printmax</span>
+                    </h2>
+                    <p class="lead">
+                        Smart. Fast. Reliable — The AI-powered solution to every printing problem.
+                    </p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon speed-icon mx-auto">
+                                <i class="bi bi-lightning-charge-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> Instant Access</h3>
+                            <p class="text-muted">
+                                <strong>Upload anytime, anywhere</strong> — no waiting lines.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon payment-icon mx-auto">
+                                <i class="bi bi-credit-card-fill"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> Smart Payments</h3>
+                            <p class="text-muted">
+                                <strong>Pay online upfront.</strong> Digital payments with instant receipts and AI verification. No need to be physically present.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon print-icon mx-auto">
+                                <i class="bi bi-robot"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> AI Optimization</h3>
+                            <p class="text-muted">
+                                <strong>Every file enhanced</strong> for perfect clarity before printing.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 fade-in-up">
+                        <div class="glass-card text-center hover-scale">
+                            <div class="feature-icon available-icon mx-auto">
+                                <i class="bi bi-globe"></i>
+                            </div>
+                            <h3 class="h5 fw-bold mb-3"> 24/7 Availability</h3>
+                            <p class="text-muted">
+                                <strong>Print from any device, any time</strong> — your nearest vendor awaits.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1192,14 +1359,15 @@
                     <div class="col-lg-4 fade-in-up">
                         <div class="testimonial-card">
                             <p class="mb-4">
-                                "🤯 <strong>Mind-blowing!</strong> Uploaded my thesis at midnight, 
-                                collected perfect prints in the morning. This is the future!"
+                                "Bro, this is insane! 😱 I literally had to submit my project report tomorrow morning and forgot to print it. Uploaded at like 2 AM, went to college next day and just picked it up. The print quality is so good, my professor actually asked where I got it printed from haha!"
                             </p>
                             <div class="d-flex align-items-center">
-                                <div class="testimonial-avatar me-3">AK</div>
+                                <div class="testimonial-avatar me-3">
+                                    <img src="https://i.pravatar.cc/150?img=68" alt="Arjun Kumar">
+                                </div>
                                 <div>
                                     <h6 class="mb-0 fw-bold">Arjun Kumar</h6>
-                                    <small class="text-muted">PhD Student</small>
+                                    <small class="text-muted">Final Year Engineering Student</small>
                                 </div>
                             </div>
                         </div>
@@ -1207,14 +1375,15 @@
                     <div class="col-lg-4 fade-in-up">
                         <div class="testimonial-card">
                             <p class="mb-4">
-                                "⚡ <strong>Lightning fast!</strong> Needed urgent job documents. 
-                                Printmax delivered in 2 minutes. Literally saved my career!"
+                                "Omg yaar, best thing that happened to me! 😍 I print all my notes and assignments here now. No more standing in long queues at the print shop near my college. Just upload from hostel, grab it on the way to class. So convenient and cheap too!"
                             </p>
                             <div class="d-flex align-items-center">
-                                <div class="testimonial-avatar me-3">RP</div>
+                                <div class="testimonial-avatar me-3">
+                                    <img src="https://i.pravatar.cc/150?img=47" alt="Priya Sharma">
+                                </div>
                                 <div>
-                                    <h6 class="mb-0 fw-bold">Riya Patel</h6>
-                                    <small class="text-muted">Software Engineer</small>
+                                    <h6 class="mb-0 fw-bold">Priya Sharma</h6>
+                                    <small class="text-muted">2nd Year B.Com Student</small>
                                 </div>
                             </div>
                         </div>
@@ -1222,14 +1391,15 @@
                     <div class="col-lg-4 fade-in-up">
                         <div class="testimonial-card">
                             <p class="mb-4">
-                                "🚀 <strong>Game changer!</strong> Print reports from office, 
-                                collect on my way home. The AI quality is insane!"
+                                "Seriously, PrintMax saved my life during exam season! 📚 Had to print like 500 pages of study material, and the print shop was closed. Used this at night, got everything ready by morning. The AI thing actually made my notes look clearer. Worth every rupee!"
                             </p>
                             <div class="d-flex align-items-center">
-                                <div class="testimonial-avatar me-3">MS</div>
+                                <div class="testimonial-avatar me-3">
+                                    <img src="https://i.pravatar.cc/150?img=12" alt="Rahul Mehta">
+                                </div>
                                 <div>
-                                    <h6 class="mb-0 fw-bold">Mohit Sharma</h6>
-                                    <small class="text-muted">Marketing Director</small>
+                                    <h6 class="mb-0 fw-bold">Rahul Mehta</h6>
+                                    <small class="text-muted">3rd Year MBA Student</small>
                                 </div>
                             </div>
                         </div>
@@ -1247,8 +1417,7 @@
                             🚀 Ready to Experience the Future?
                         </h2>
                         <p class="lead mb-5">
-                            Join <strong>50,000+ users</strong> who've already upgraded to AI-powered printing. 
-                            Your documents deserve the best!
+                            Join thousands of college students who print smarter, faster, and stress-free with AI-supported printing.
                         </p>
                         <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
                             <a href="/login" class="btn btn-gradient btn-lg hover-glow">
@@ -2461,11 +2630,86 @@
             });
         });
 
+        // Number counter animation
+        function animateCounter(element, target, duration = 2000) {
+            const prefix = element.getAttribute('data-prefix') || '';
+            const suffix = element.getAttribute('data-suffix') || '';
+            const isDecimal = element.hasAttribute('data-decimal');
+            const startTime = performance.now();
+            let hasAnimated = element.hasAttribute('data-animated');
+            
+            if (hasAnimated) return;
+            element.setAttribute('data-animated', 'true');
+
+            function updateCounter(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation
+                const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                
+                let currentValue = target * easeOutCubic;
+                
+                if (isDecimal) {
+                    currentValue = parseFloat(currentValue.toFixed(1));
+                } else {
+                    currentValue = Math.floor(currentValue);
+                }
+                
+                // Format and display the value
+                let displayValue = currentValue;
+                element.textContent = prefix + displayValue + suffix;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    // Ensure final value is exact
+                    let finalValue = target;
+                    if (isDecimal) {
+                        finalValue = parseFloat(target).toFixed(1);
+                    } else {
+                        finalValue = Math.floor(target);
+                    }
+                    element.textContent = prefix + finalValue + suffix;
+                }
+            }
+
+            requestAnimationFrame(updateCounter);
+        }
+
+        // Initialize counter animation
+        function initializeCounterAnimation() {
+            const statsSection = document.getElementById('stats-section');
+            if (!statsSection) return;
+
+            const observerOptions = {
+                threshold: 0.3,
+                rootMargin: '0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const statNumbers = entry.target.querySelectorAll('.stat-number[data-target]');
+                        statNumbers.forEach(stat => {
+                            const target = parseFloat(stat.getAttribute('data-target'));
+                            const duration = 2000; // 2 seconds
+                            animateCounter(stat, target, duration);
+                        });
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            observer.observe(statsSection);
+        }
+
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializeTheme();
             initializeScrollAnimations();
             initializeNavbar();
+            initializeCounterAnimation();
 
             // Close mobile menu when clicking on a link
             document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {

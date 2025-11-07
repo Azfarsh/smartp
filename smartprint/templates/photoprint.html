@@ -522,13 +522,45 @@
         .row-left { display:flex; align-items:center; }
         .avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; box-shadow:0 1px 2px rgba(0,0,0,.06); }
         .row-body { flex:1; min-width:0; display:flex; flex-direction:column; padding-right: 96px; }
-        .row-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .row-title { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:8px; justify-content:space-between; }
         .row-sub { font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .row-meta { display:flex; align-items:center; gap:8px; color:#2563eb; margin-left:auto; white-space:nowrap; flex-shrink:0; }
         .track-btn { background:#10b981; color:#fff; border:none; border-radius:8px; padding:6px 8px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
         .shop-trigger, .shop-panel, .shop-dropdown2 { max-width: 360px; margin-left:auto; margin-right:auto; }
         .shop-dropdown2 { padding-left: 12px; padding-right: 12px; box-sizing: border-box; }
         @media (max-width: 768px) { .row-title { font-size:14px; } .row-sub { font-size:12px; } }
+        /* Unified shop list + traffic indicator styles */
+        .shop-item { display:grid; grid-template-columns:minmax(0,1fr) 150px; align-items:center; padding:10px 14px; background:#fff; border-bottom:1px solid #e5e7eb; border-radius:10px; margin-bottom:6px; transition:all 0.2s ease-in-out; }
+        .shop-item:hover { background:#f9fafb; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
+        .shop-item.selected { background:#f0f7ff; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+        .shop-left { display:flex; align-items:center; gap:10px; flex:1; }
+        .shop-info { display:flex; flex-direction:column; overflow:hidden; }
+        .shop-name { font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .shop-address { font-size:0.85rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .shop-right { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+        .shop-distance { font-size:0.9rem; color:#374151; font-weight:500; }
+        .location-icon { color:#2563eb; font-size:0.9rem; }
+        .traffic-badge { display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; color:#374151; text-transform:capitalize; white-space:nowrap; }
+        .traffic-text { line-height:1; display:block; }
+        .traffic-badge[data-status="low"] { color:#047857; }
+        .traffic-badge[data-status="medium"] { color:#b45309; }
+        .traffic-badge[data-status="high"] { color:#b91c1c; }
+        .traffic-dot { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; position:relative; cursor:help; }
+        .traffic-dot .dot { width:10px; height:10px; border-radius:50%; box-shadow:0 0 6px rgba(0,0,0,0.1); }
+        .traffic-dot[data-status="low"] .dot { background-color:#10b981; }
+        .traffic-dot[data-status="medium"] .dot { background-color:#fbbf24; }
+        .traffic-dot[data-status="high"] .dot { background-color:#ef4444; animation:pulse-red 1.5s infinite; }
+        .traffic-badge-placeholder { display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; }
+        [data-theme="dark"] .traffic-badge { color:#e5e7eb; }
+        [data-theme="dark"] .traffic-badge[data-status="low"] { color:#6ee7b7; }
+        [data-theme="dark"] .traffic-badge[data-status="medium"] { color:#facc15; }
+        [data-theme="dark"] .traffic-badge[data-status="high"] { color:#f87171; }
+        @media (max-width:480px){ .shop-item{ padding:8px 10px; } .shop-distance{ font-size:0.8rem; } .location-icon{ font-size:0.8rem; } }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239,68,68, 0.5); }
+            70% { box-shadow: 0 0 0 8px rgba(239,68,68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68, 0); }
+        }
         @media (max-width: 800px) {
             .card-modal {
                 max-width: 99vw;
@@ -661,6 +693,41 @@
     </div>
 </div>
 <script>
+// ============================================
+// Traffic Status (shared logic with dashboard)
+// ============================================
+const _trafficCache = {}; const _TRAFFIC_TTL = 30000;
+async function fetchVendorTraffic(vendorEmail){
+    if(!vendorEmail) return 'Low';
+    const cached=_trafficCache[vendorEmail];
+    if(cached && (Date.now()-cached.t)<_TRAFFIC_TTL) return cached.v;
+    try{
+        const r = await fetch(`/get-vendor-service-availability/?vendor_email=${encodeURIComponent(vendorEmail)}`);
+        const j = await r.json();
+        const status = (j && j.success && j.data && j.data.traffic_status) ? j.data.traffic_status : 'Low';
+        _trafficCache[vendorEmail] = { v: status, t: Date.now() };
+        return status;
+    }catch(e){ return 'Low'; }
+}
+function getTrafficBadge(status){
+    const safe=(status||'Low').toString();
+    const label=safe.charAt(0).toUpperCase()+safe.slice(1).toLowerCase();
+    const statusKey=label.toLowerCase();
+    const tooltipMap={
+        low:'Low traffic – estimated wait: 2 mins',
+        medium:'Medium traffic – estimated wait: 5 mins',
+        high:'High traffic – estimated wait: 10+ mins'
+    };
+    const tip=tooltipMap[statusKey]||`Traffic status: ${label}`;
+    const displayLabel = `${label} traffic`;
+    return `
+        <span class="traffic-badge" data-status="${statusKey}" title="${tip}" aria-label="${tip}">
+          <span class="traffic-dot" data-status="${statusKey}"><span class="dot"></span></span>
+          <span class="traffic-text">${displayLabel}</span>
+        </span>
+    `.trim();
+}
+
 // Add a safe JSON parser to prevent "<!DOCTYPE" HTML parsing errors
 async function parseJsonResponse(response) {
     const contentType = response.headers.get('content-type') || '';
@@ -744,17 +811,18 @@ function renderPhotoShopDropdown() {
         const formattedDistance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (s.formattedDistance || (s.distance_km ? `${Number(s.distance_km).toFixed(1)} km` : ''));
         const address = [s.address_line1, s.address_line2, s.city, s.state, s.postal_code].filter(Boolean).join(', ') || [s.area, s.city].filter(Boolean).join(', ');
         return `
-          <div class="shop-row" data-shop="${s.shop_folder}" data-lat="${s.latitude || ''}" data-lng="${s.longitude || ''}" data-vendor_email="${s.vendor_email || ''}">
-            <div class="row-left">
-              <img class="avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((s.shop_name||'P')[0])}" alt="${s.shop_name||'Shop'}" />
+          <div class="shop-item" data-shop="${s.shop_folder}" data-lat="${s.latitude || ''}" data-lng="${s.longitude || ''}" data-vendor_email="${s.vendor_email || ''}">
+            <div class="shop-left">
+              <img class="avatar shop-avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((s.shop_name||'P')[0])}" alt="${s.shop_name||'Shop'}" />
+              <div class="shop-info">
+                <div class="shop-name">${s.shop_name || 'Unknown Shop'}</div>
+                <div class="shop-address">${address || 'Address not available'}</div>
+              </div>
             </div>
-            <div class="row-body">
-              <div class="row-title">${s.shop_name || 'Unknown Shop'}</div>
-              <div class="row-sub">${address || 'Address not available'}</div>
-            </div>
-            <div class="row-meta">
-              <i class="fas fa-map-marker-alt" style="color: #2563eb; margin-right: 4px;"></i>
-              <span>${formattedDistance}</span>
+            <div class="shop-right">
+              <span class="traffic-badge-placeholder" data-vendor-email="${s.vendor_email || ''}"></span>
+              <span class="shop-distance">${formattedDistance}</span>
+              <i class="fas fa-map-marker-alt location-icon"></i>
             </div>
           </div>
         `;
@@ -762,12 +830,25 @@ function renderPhotoShopDropdown() {
 
     photoList.innerHTML = listHtml;
     
+    // Populate traffic badges asynchronously
+    setTimeout(async () => {
+        const placeholders = photoList.querySelectorAll('.traffic-badge-placeholder');
+        for (const placeholder of placeholders) {
+            const vendorEmail = placeholder.getAttribute('data-vendor-email');
+            if (vendorEmail) {
+                const traffic = await fetchVendorTraffic(vendorEmail);
+                placeholder.innerHTML = getTrafficBadge(traffic);
+                placeholder.classList.remove('traffic-badge-placeholder');
+            }
+        }
+    }, 50);
+
     // Set up click handlers for shop rows
-    photoList.querySelectorAll('.shop-row').forEach(row => {
+    photoList.querySelectorAll('.shop-item').forEach(row => {
         row.addEventListener('click', () => {
             const shopFolder = row.dataset.shop;
-            const shopName = row.querySelector('.row-title').textContent;
-            const shopAddress = row.querySelector('.row-sub').textContent;
+            const shopName = row.querySelector('.shop-name')?.textContent || 'Select Shop';
+            const shopAddress = row.querySelector('.shop-address')?.textContent || '';
             
             selectedShop = shopFolder;
             shopSelect.value = shopFolder;
@@ -777,7 +858,7 @@ function renderPhotoShopDropdown() {
             photoTrigger.querySelector('.shop-subtitle').textContent = shopAddress;
             
             // Update selection visual
-            photoList.querySelectorAll('.shop-row').forEach(r => r.classList.remove('selected'));
+            photoList.querySelectorAll('.shop-item').forEach(r => r.classList.remove('selected'));
             row.classList.add('selected');
             
             // Close panel
@@ -791,7 +872,7 @@ function renderPhotoShopDropdown() {
         selectedShop = firstShop.shop_folder;
         shopSelect.value = selectedShop;
         
-        const firstRow = photoList.querySelector('.shop-row');
+        const firstRow = photoList.querySelector('.shop-item');
         if (firstRow) {
             firstRow.classList.add('selected');
             photoTrigger.querySelector('.shop-title').textContent = firstShop.shop_name || 'Select Shop';

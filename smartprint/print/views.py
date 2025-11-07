@@ -7166,6 +7166,332 @@ def enhance_passport_photo(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@csrf_exempt
+def enhance_photo(request):
+    """
+    PicWish Photo Enhancement API endpoint.
+    Accepts an image file, sends it to PicWish API, and returns the enhanced image URL.
+    Used by the Enhance section in passport-photo-service.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+    
+    try:
+        # Get uploaded image file
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return JsonResponse({'success': False, 'error': 'No image uploaded'}, status=400)
+        
+        # PicWish API configuration - Load from settings
+        api_key = getattr(settings, 'PICWISH_API_KEY', None)
+        if not api_key:
+            print("DEBUG: PICWISH_API_KEY not found in settings")
+            return JsonResponse({'success': False, 'error': 'API key not configured'}, status=500)
+        
+        print("DEBUG: Using PicWish API key:", api_key[:10] + "..." if len(api_key) > 10 else api_key)
+        
+        api_url = 'https://techhk.aoscdn.com/api/tasks/visual/scale'
+        
+        # Prepare request headers - Use Authorization header format as per PicWish API docs
+        headers = {
+            "Authorization": f"API-Key {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Prepare form data
+        data = {
+            'sync': 1,  # Synchronous request (1 = sync, 0 = async)
+            'type': request.POST.get('type', 'face'),  # Enhancement type: 'face' for passport photos
+            'return_type': 1  # Return type: 1 = image URL, 2 = base64
+        }
+        
+        print("DEBUG: Headers:", headers)
+        print("DEBUG: Payload:", data)
+        
+        # Prepare file upload (read file content)
+        files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+        
+        # Make API request to PicWish
+        # Note: When using files, requests will set Content-Type to multipart/form-data automatically
+        # So we remove Content-Type from headers for file uploads
+        headers_for_upload = {
+            "Authorization": f"API-Key {api_key}"
+        }
+        response = requests.post(api_url, headers=headers_for_upload, data=data, files=files, timeout=60)
+        
+        # If 401 with Authorization header, try X-API-KEY as fallback
+        if response.status_code == 401:
+            print("DEBUG: 401 with Authorization header, trying X-API-KEY fallback")
+            headers_fallback = {'X-API-KEY': api_key}
+            # Reset file pointer
+            image_file.seek(0)
+            files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+            response = requests.post(api_url, headers=headers_fallback, data=data, files=files, timeout=60)
+        
+        print("DEBUG: PicWish response status:", response.status_code)
+        print("DEBUG: PicWish response body:", response.text)
+        
+        # Handle different HTTP status codes
+        if response.status_code == 200:
+            # Parse JSON response
+            result = response.json()
+            
+            # Check if API returned success status
+            if result.get('status') == 200:
+                enhanced_url = result.get('data', {}).get('image')
+                if enhanced_url:
+                    return JsonResponse({
+                        'success': True, 
+                        'enhanced_image_url': enhanced_url
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': 'No image URL in API response'
+                    })
+            else:
+                # API returned error in response body
+                error_msg = result.get('message') or result.get('msg') or 'Enhancement failed'
+                return JsonResponse({
+                    'success': False, 
+                    'error': error_msg
+                })
+        
+        elif response.status_code == 401:
+            # Unauthorized - Invalid or expired API key
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Unauthorized API Key'
+            except:
+                error_msg = 'Unauthorized API Key. Please check your key.'
+            return JsonResponse({
+                'success': False, 
+                'error': 'Unauthorized API Key. Please check your key.'
+            }, status=401)
+        
+        elif response.status_code == 429:
+            # Rate limit exceeded
+            return JsonResponse({
+                'success': False, 
+                'error': 'Rate limit exceeded. Please try again later.'
+            }, status=429)
+        
+        elif response.status_code == 400:
+            # Bad request - invalid parameters or file format
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Invalid request'
+            except:
+                error_msg = 'Invalid request. Please check your image file.'
+            return JsonResponse({
+                'success': False, 
+                'error': error_msg
+            }, status=400)
+        
+        else:
+            # Other HTTP errors
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('message') or error_detail.get('msg') or f'API request failed with status {response.status_code}'
+            except:
+                error_msg = f'API request failed with status {response.status_code}'
+            return JsonResponse({
+                'success': False, 
+                'error': error_msg
+            }, status=response.status_code)
+            
+    except requests.exceptions.Timeout:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Request timeout. The API took too long to respond.'
+        }, status=504)
+    
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({
+            'success': False, 
+            'error': f'Network error: {str(e)}'
+        }, status=500)
+    
+    except Exception as e:
+        # Log the exception for debugging
+        import traceback
+        print(f"Enhance photo error: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False, 
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+def enhance_passport_photo_with_picwish(request):
+    """
+    PicWish Passport Photo Enhancement API endpoint (Async).
+    Supports both task creation and task polling.
+    - POST with file: Creates async enhancement task, returns task_id
+    - GET with task_id: Polls task status, returns enhanced image URL when ready
+    """
+    # Get API key from settings
+    api_key = getattr(settings, 'PICWISH_API_KEY', None)
+    if not api_key:
+        print("DEBUG: PICWISH_API_KEY not found in settings")
+        return JsonResponse({'success': False, 'error': 'API key not configured'}, status=500)
+    
+    print("DEBUG: Using PicWish API key:", api_key[:10] + "..." if len(api_key) > 10 else api_key)
+    
+    api_url = 'https://techhk.aoscdn.com/api/tasks/visual/scale'
+    
+    if request.method == 'POST':
+        # Create enhancement task
+        try:
+            # Get uploaded image file
+            image_file = request.FILES.get('image_file')
+            if not image_file:
+                return JsonResponse({'success': False, 'error': 'No image uploaded'}, status=400)
+            
+            # Prepare request headers - Try Authorization format first, fallback to X-API-KEY if needed
+            # Note: PicWish API may accept either format, but Authorization: API-Key is the standard
+            headers = {
+                "Authorization": f"API-Key {api_key}"
+            }
+            
+            # Prepare form data for async task creation
+            data = {
+                'sync': 0,  # Async request
+                'type': request.POST.get('type', 'face'),  # Enhancement type: 'face' for passport photos
+                'return_type': 1  # Return type: 1 = image URL, 2 = base64
+            }
+            
+            print("DEBUG: Headers:", headers)
+            print("DEBUG: Payload:", data)
+            
+            # Prepare file upload
+            files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+            
+            # Make API request to PicWish
+            response = requests.post(api_url, headers=headers, data=data, files=files, timeout=60)
+            
+            # If 401 with Authorization header, try X-API-KEY as fallback
+            if response.status_code == 401:
+                print("DEBUG: 401 with Authorization header, trying X-API-KEY fallback")
+                headers_fallback = {'X-API-KEY': api_key}
+                # Reset file pointer
+                image_file.seek(0)
+                files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+                response = requests.post(api_url, headers=headers_fallback, data=data, files=files, timeout=60)
+            
+            print("DEBUG: PicWish response status:", response.status_code)
+            print("DEBUG: PicWish response body:", response.text)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 200 and result.get('data', {}).get('task_id'):
+                    task_id = result['data']['task_id']
+                    return JsonResponse({
+                        'success': True,
+                        'data': {
+                            'task_id': task_id
+                        }
+                    })
+                else:
+                    error_msg = result.get('msg') or result.get('message') or 'Failed to create task'
+                    return JsonResponse({'success': False, 'error': error_msg}, status=500)
+            elif response.status_code == 401:
+                error_detail = response.json() if response.text else {}
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Unauthorized API Key'
+                print(f"DEBUG: 401 Error - {error_msg}")
+                return JsonResponse({'success': False, 'error': error_msg}, status=401)
+            else:
+                try:
+                    error_detail = response.json()
+                    error_msg = error_detail.get('message') or error_detail.get('msg') or f'API request failed with status {response.status_code}'
+                except:
+                    error_msg = f'API request failed with status {response.status_code}'
+                return JsonResponse({'success': False, 'error': error_msg}, status=response.status_code)
+                
+        except Exception as e:
+            import traceback
+            print(f"DEBUG: Exception in enhance_passport_photo_with_picwish (POST): {str(e)}")
+            print(traceback.format_exc())
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    elif request.method == 'GET':
+        # Poll task status
+        try:
+            task_id = request.GET.get('task_id')
+            if not task_id:
+                return JsonResponse({'success': False, 'error': 'task_id required'}, status=400)
+            
+            # Prepare request headers - Try Authorization format first, fallback to X-API-KEY if needed
+            headers = {
+                "Authorization": f"API-Key {api_key}"
+            }
+            
+            # Poll task status
+            poll_url = f"{api_url}/{task_id}"
+            response = requests.get(poll_url, headers=headers, timeout=60)
+            
+            # If 401 with Authorization header, try X-API-KEY as fallback
+            if response.status_code == 401:
+                print("DEBUG: 401 with Authorization header, trying X-API-KEY fallback for polling")
+                headers_fallback = {'X-API-KEY': api_key}
+                response = requests.get(poll_url, headers=headers_fallback, timeout=60)
+            
+            print(f"DEBUG: Polling task {task_id} - status: {response.status_code}")
+            print(f"DEBUG: Poll response body: {response.text}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 200 and result.get('data'):
+                    data = result['data']
+                    if data.get('progress') == 100 and data.get('state') == 1 and data.get('image'):
+                        # Task completed successfully
+                        return JsonResponse({
+                            'success': True,
+                            'data': {
+                                'progress': 100,
+                                'state': 1,
+                                'image': data['image']
+                            }
+                        })
+                    elif data.get('state') == 2:
+                        # Task failed
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Enhancement failed',
+                            'data': data
+                        })
+                    else:
+                        # Task still in progress
+                        return JsonResponse({
+                            'success': True,
+                            'data': data
+                        })
+                else:
+                    error_msg = result.get('msg') or result.get('message') or 'Failed to get task status'
+                    return JsonResponse({'success': False, 'error': error_msg}, status=500)
+            elif response.status_code == 401:
+                error_detail = response.json() if response.text else {}
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Unauthorized API Key'
+                return JsonResponse({'success': False, 'error': error_msg}, status=401)
+            else:
+                try:
+                    error_detail = response.json()
+                    error_msg = error_detail.get('message') or error_detail.get('msg') or f'API request failed with status {response.status_code}'
+                except:
+                    error_msg = f'API request failed with status {response.status_code}'
+                return JsonResponse({'success': False, 'error': error_msg}, status=response.status_code)
+                
+        except Exception as e:
+            import traceback
+            print(f"DEBUG: Exception in enhance_passport_photo_with_picwish (GET): {str(e)}")
+            print(traceback.format_exc())
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    else:
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
 # ─────────────────────────────────────────────────────────────
 # FILE UPLOAD TO CLOUDFLARE R2
 # ─────────────────────────────────────────────────────────────
@@ -8163,9 +8489,21 @@ def get_vendor_service_availability(request):
             )
             data = json.loads(response['Body'].read().decode('utf-8'))
             
+            # Check if this is a user request (has vendor_email in query params) or vendor request (from session)
+            is_user_request = request.GET.get('vendor_email') is not None
+            
+            if is_user_request:
+                # For user requests, include traffic_status but exclude other backend-only fields
+                vendor_data = {k: v for k, v in data.items() 
+                              if k not in ['pending_jobs', 'average_pending_all_vendors', 'last_updated']}
+            else:
+                # For vendor requests, remove traffic-related fields (backend-only data)
+                vendor_data = {k: v for k, v in data.items() 
+                              if k not in ['traffic_status', 'pending_jobs', 'average_pending_all_vendors', 'last_updated']}
+            
             return JsonResponse({
                 "success": True,
-                "data": data,
+                "data": vendor_data,
                 "file_path": file_path,
                 "source": "R2"
             })
@@ -8177,9 +8515,22 @@ def get_vendor_service_availability(request):
                 if os.path.exists(local_file):
                     with open(local_file, 'r', encoding='utf-8') as f:
                         data = json.load(f)
+                    
+                    # Check if this is a user request (has vendor_email in query params) or vendor request (from session)
+                    is_user_request = request.GET.get('vendor_email') is not None
+                    
+                    if is_user_request:
+                        # For user requests, include traffic_status but exclude other backend-only fields
+                        vendor_data = {k: v for k, v in data.items() 
+                                      if k not in ['pending_jobs', 'average_pending_all_vendors', 'last_updated']}
+                    else:
+                        # For vendor requests, remove traffic-related fields (backend-only data)
+                        vendor_data = {k: v for k, v in data.items() 
+                                      if k not in ['traffic_status', 'pending_jobs', 'average_pending_all_vendors', 'last_updated']}
+                    
                     return JsonResponse({
                         "success": True,
-                        "data": data,
+                        "data": vendor_data,
                         "file_path": local_file,
                         "source": "local",
                         "note": "Loaded from local fallback (R2 failed)"
@@ -8188,6 +8539,9 @@ def get_vendor_service_availability(request):
                 pass
             
             # File doesn't exist, return default values
+            # Check if this is a user request (has vendor_email in query params) or vendor request (from session)
+            is_user_request = request.GET.get('vendor_email') is not None
+            
             default_data = {
                 "digital_print": True,
                 "project_binding": True,
@@ -8198,6 +8552,11 @@ def get_vendor_service_availability(request):
                 "photo_print": True,
                 "vendor_shop_avaliability": "online"  # Always include availability status
             }
+            
+            # Include traffic_status for user requests
+            if is_user_request:
+                default_data["traffic_status"] = "Low"  # Default to Low when file doesn't exist
+            
             return JsonResponse({
                 "success": True,
                 "data": default_data,
@@ -8252,6 +8611,233 @@ def test_r2_simple(request):
             "endpoint": settings.R2_ENDPOINT,
             "bucket": settings.R2_BUCKET
         })
+
+def update_vendor_traffic_background(vendor_id=None, vendor_email=None):
+    """Calculate and persist a vendor's traffic status using only its pending jobs."""
+
+    def _resolve_vendor_identity(current_vendor_id, current_vendor_email):
+        vendor_details = {}
+
+        if current_vendor_email and not current_vendor_id:
+            try:
+                vendor_details = get_vendor_details_by_email(current_vendor_email) or {}
+            except Exception:
+                vendor_details = {}
+            current_vendor_id = vendor_details.get('vendor_id') or current_vendor_id
+
+        if current_vendor_id and not current_vendor_email:
+            try:
+                current_vendor_email = get_vendor_email_by_vendor_id(current_vendor_id)
+            except Exception:
+                current_vendor_email = None
+
+        if not current_vendor_id and not current_vendor_email:
+            return None, None
+
+        if not current_vendor_id and current_vendor_email and not vendor_details:
+            try:
+                vendor_details = get_vendor_details_by_email(current_vendor_email) or {}
+            except Exception:
+                vendor_details = {}
+            current_vendor_id = vendor_details.get('vendor_id')
+
+        return current_vendor_id, current_vendor_email
+
+    def _load_service_profile(storage_client, key_path, sanitized_email_value):
+        default_profile = {
+            "digital_print": True,
+            "project_binding": True,
+            "photo_print": True,
+            "jumbo_printing": True,
+            "regular_print": True,
+            "passport_print": True,
+            "gloss_printing": True,
+            "vendor_shop_avaliability": "online"
+        }
+
+        try:
+            response = storage_client.get_object(Bucket=settings.R2_BUCKET, Key=key_path)
+            data = json.loads(response['Body'].read().decode('utf-8'))
+            return data, 'r2'
+        except Exception:
+            local_dir = os.path.join(os.path.dirname(__file__), '../../local_vendor_register_details', sanitized_email_value)
+            local_file = os.path.join(local_dir, 'service.json')
+            try:
+                with open(local_file, 'r', encoding='utf-8') as local_fp:
+                    data = json.load(local_fp)
+                    return data, 'local'
+            except Exception:
+                return default_profile, 'defaults'
+
+    def _save_service_profile(storage_client, key_path, sanitized_email_value, payload):
+        try:
+            storage_client.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=key_path,
+                Body=json.dumps(payload, indent=2),
+                ContentType='application/json'
+            )
+            return 'r2', key_path, None
+        except Exception as r2_error:
+            local_dir = os.path.join(os.path.dirname(__file__), '../../local_vendor_register_details', sanitized_email_value)
+            try:
+                os.makedirs(local_dir, exist_ok=True)
+                local_file = os.path.join(local_dir, 'service.json')
+                with open(local_file, 'w', encoding='utf-8') as local_fp:
+                    json.dump(payload, local_fp, indent=2)
+                return 'local', local_file, str(r2_error)
+            except Exception as local_error:
+                raise RuntimeError(f"R2 upload failed ({r2_error}) and local save failed: {local_error}")
+
+    vendor_id, vendor_email = _resolve_vendor_identity(vendor_id, vendor_email)
+
+    result = {
+        "success": False,
+        "vendor_id": vendor_id,
+        "vendor_email": vendor_email,
+        "traffic_status": None,
+        "pending_jobs": 0,
+        "message": "",
+    }
+
+    if not vendor_id or not vendor_email:
+        result["message"] = "Vendor context (vendor_id or vendor_email) is required."
+        return result
+
+    endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=settings.R2_ACCESS_KEY,
+        aws_secret_access_key=settings.R2_SECRET_KEY,
+        endpoint_url=endpoint_url,
+        region_name='auto',
+        config=boto3.session.Config(signature_version='s3v4', retries={'max_attempts': 3})
+    )
+
+    try:
+        jobs = get_vendor_specific_jobs(vendor_id)
+    except Exception as job_error:
+        result["message"] = f"Unable to fetch jobs for vendor: {job_error}"
+        return result
+
+    try:
+        pending_jobs = [
+            job for job in jobs
+            if str(job.get("job_completed", "NO")).upper() != "YES"
+        ]
+
+        total_pending_jobs = len(pending_jobs)
+
+        if total_pending_jobs < 10:
+            traffic_status = "Low"
+        elif total_pending_jobs <= 15:
+            traffic_status = "Medium"
+        else:
+            traffic_status = "High"
+
+        sanitized_email = sanitize_email(vendor_email)
+        file_path = f"vendor_register_details/{sanitized_email}/service.json"
+
+        service_profile, _ = _load_service_profile(s3, file_path, sanitized_email)
+
+        service_profile['traffic_status'] = traffic_status
+        service_profile['pending_jobs'] = total_pending_jobs
+
+        updated_at = timezone.now().astimezone(datetime.timezone.utc).replace(microsecond=0)
+        service_profile['last_updated'] = updated_at.isoformat().replace('+00:00', 'Z')
+
+        # Remove legacy fields that relied on system-wide calculations
+        service_profile.pop('average_pending_all_vendors', None)
+
+        storage_location, saved_path, warning = _save_service_profile(s3, file_path, sanitized_email, service_profile)
+
+        result.update({
+            "success": True,
+            "traffic_status": traffic_status,
+            "pending_jobs": total_pending_jobs,
+            "message": "Traffic updated successfully for vendor." if storage_location == 'r2' else "Traffic updated locally for vendor.",
+            "file_path": saved_path,
+            "storage": storage_location,
+        })
+
+        if warning:
+            result['warning'] = warning
+
+        return result
+    except Exception as error:
+        result['message'] = f"Failed to update traffic data: {error}"
+        return result
+
+
+# Flag to prevent multiple traffic updater threads
+_traffic_updater_started = False
+
+def start_traffic_updater():
+    """
+    Start background thread that runs update_vendor_traffic_background() for each vendor every 10-30 seconds.
+    This function should be called once when Django app starts (e.g., in apps.py ready() method).
+    """
+    global _traffic_updater_started
+    
+    # Prevent multiple threads from starting
+    if _traffic_updater_started:
+        print("ℹ️ Traffic updater already started, skipping")
+        return
+    
+    def _discover_vendor_ids():
+        endpoint_url = settings.R2_ENDPOINT.rstrip('/') if settings.R2_ENDPOINT else ''
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            endpoint_url=endpoint_url,
+            region_name='auto',
+            config=boto3.session.Config(signature_version='s3v4', retries={'max_attempts': 3})
+        )
+
+        vendor_ids = set()
+        prefixes = ['vendor_print_jobs/', 'vendor_manual_print_jobs/']
+
+        for prefix in prefixes:
+            try:
+                response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix, Delimiter='/')
+                for prefix_info in response.get('CommonPrefixes', []):
+                    folder_name = prefix_info['Prefix'].replace(prefix, '').rstrip('/')
+                    if folder_name:
+                        vendor_ids.add(folder_name)
+            except Exception as exc:
+                print(f"⚠️ Traffic updater: unable to list {prefix}: {exc}")
+
+        return sorted(vendor_ids)
+    
+    def loop():
+        import time
+        while True:
+            try:
+                vendor_ids = _discover_vendor_ids()
+                if not vendor_ids:
+                    time.sleep(15)
+                    continue
+
+                for vendor_id in vendor_ids:
+                    try:
+                        response = update_vendor_traffic_background(vendor_id=vendor_id)
+                        if not response.get('success'):
+                            print(f"⚠️ Traffic updater: failed to update {vendor_id}: {response.get('message')}")
+                    except Exception as vendor_error:
+                        print(f"❌ Traffic updater: error updating {vendor_id}: {vendor_error}")
+            except Exception as e:
+                print(f"❌ Traffic updater loop error: {str(e)}")
+            # Sleep for 15 seconds (middle of 10-30s range)
+            time.sleep(15)
+    
+    # Start daemon thread (will stop when main process stops)
+    traffic_thread = threading.Thread(target=loop, daemon=True, name="TrafficUpdater")
+    traffic_thread.start()
+    _traffic_updater_started = True
+    print("🚀 Traffic updater background task started (runs every 15 seconds)")
+
 
 @csrf_exempt
 def list_vendor_folder(request):
