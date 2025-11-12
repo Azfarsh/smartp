@@ -245,61 +245,98 @@ def contact_view(request):
 @csrf_exempt
 def save_contact_details(request):
     """
-    Save contact form details to Cloudflare R2 at path:
-    printme/contact_details/<timestamp>.json
-
-    Accepts JSON or form-encoded data. Returns JSON response.
+    Save contact form details into Cloudflare D1 via the Worker API.
+    Accepts JSON or form data. Returns JSON.
     """
     try:
         if request.method != 'POST':
             return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
-        try:
-            if request.content_type and 'application/json' in request.content_type:
+        # Accept both JSON and form posts
+        if request.content_type and 'application/json' in request.content_type:
+            try:
                 payload = json.loads(request.body or '{}')
-            else:
-                payload = {
-                    'name': request.POST.get('name', ''),
-                    'email': request.POST.get('email', ''),
-                    'subject': request.POST.get('subject', ''),
-                    'message': request.POST.get('message', ''),
-                }
-        except Exception:
-            payload = {}
+            except Exception:
+                payload = {}
+        else:
+            payload = {
+                'name': request.POST.get('name', ''),
+                'email': request.POST.get('email', ''),
+                'subject': request.POST.get('subject', ''),
+                'message': request.POST.get('message', ''),
+            }
 
-        timestamp_iso = datetime.datetime.now().isoformat()
-        record = {
-            'name': (payload.get('name') or '').strip(),
-            'email': (payload.get('email') or '').strip(),
-            'subject': (payload.get('subject') or '').strip(),
-            'message': (payload.get('message') or '').strip(),
-            'submitted_at': timestamp_iso,
-            'solved_status': (payload.get('solved_status') or 'no'),
+        # Basic validation on Django side
+        name = (payload.get('name') or '').strip()
+        email = (payload.get('email') or '').strip()
+        subject = (payload.get('subject') or '').strip()
+        message = (payload.get('message') or '').strip()
+
+        if not name or not email or not subject or not message:
+            return JsonResponse({'success': False, 'error': 'All fields are required'}, status=400)
+
+        # Forward to Worker
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+        if not api_url or not api_key:
+            return JsonResponse({'success': False, 'error': 'Server misconfigured: missing Worker API settings'}, status=500)
+        
+        # Debug: Log API key info (first/last 4 chars only for security)
+        api_key_preview = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "***"
+        print(f"Sending request to Worker API: {api_url}")
+        print(f"API Key (preview): {api_key_preview} (length: {len(api_key)})")
+
+        # Prepare payload for Worker
+        worker_payload = {
+            'name': name,
+            'email': email,
+            'subject': subject,
+            'message': message,
         }
 
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=settings.R2_ACCESS_KEY,
-            aws_secret_access_key=settings.R2_SECRET_KEY,
-            endpoint_url=settings.R2_ENDPOINT,
-            region_name='auto'
-        )
+        try:
+            resp = requests.post(
+                api_url,
+                json=worker_payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key
+                },
+                timeout=10
+            )
+            
+            # Log response for debugging
+            print(f"Worker API Response Status: {resp.status_code}")
+            print(f"Worker API URL: {api_url}")
+            
+            try:
+                data = resp.json()
+                print(f"Worker API Response Data: {data}")
+            except Exception as json_err:
+                response_text = resp.text[:500]  # First 500 chars
+                print(f"Failed to parse JSON response: {json_err}")
+                print(f"Response text: {response_text}")
+                data = {'success': False, 'error': f'Invalid response from API ({resp.status_code}): {response_text}'}
 
-        safe_email = (record['email'] or 'anonymous').replace('@', '_at_').replace('.', '_')
-        key = f"contact_details/{timestamp_iso.replace(':', '-').replace('T', '_')}_{safe_email}.json"
+            if resp.status_code == 200 and data.get('success'):
+                return JsonResponse({'success': True})
 
-        s3.put_object(
-            Bucket='printme',
-            Key=key,
-            Body=json.dumps(record, ensure_ascii=False, indent=2),
-            ContentType='application/json'
-        )
-
-        return JsonResponse({'success': True, 'key': key})
+            error_msg = data.get('error', f'API error (status {resp.status_code})')
+            print(f"Worker API Error: {error_msg}")
+            return JsonResponse({'success': False, 'error': error_msg}, status=resp.status_code or 500)
+            
+        except requests.exceptions.RequestException as req_err:
+            error_msg = f'Failed to connect to Worker API: {str(req_err)}'
+            print(f"Request Exception: {error_msg}")
+            return JsonResponse({'success': False, 'error': error_msg}, status=500)
 
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         print(f"Error saving contact details: {str(e)}")
-        return JsonResponse({'success': False, 'error': 'Failed to save contact details'}, status=500)
+        print(f"Traceback: {error_trace}")
+        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)
 
 def assign_token_from_vendor_pool(vendor_email):
     """
@@ -3142,6 +3179,22 @@ def upload_to_r2(request):
                                     Metadata=file_metadata
                                 )
                                 print(f"✅ Photo layout saved as PDF: {file.name}")
+                                
+                                # Store print job in D1 database (R2 storage is already done above)
+                                try:
+                                    store_vendor_print_job_in_db(
+                                        vendor_id=vendor_id,
+                                        vendor_email=vendor_email,
+                                        user_email=user_email,
+                                        filename=file.name,
+                                        storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
+                                        r2_path=vendor_file_key,
+                                        metadata=file_metadata,
+                                        pricing_details=pricing_details
+                                    )
+                                except Exception as db_err:
+                                    print(f"⚠️ Error storing print job in database: {db_err}")
+                                    # Don't fail the upload if database storage fails
                             else:
                                 print(f"❌ Failed to create {service_type} layout")
                                 return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
@@ -3161,6 +3214,22 @@ def upload_to_r2(request):
                             ContentType=content_type,
                             Metadata=file_metadata
                         )
+
+                    # Store print job in D1 database (R2 storage is already done above)
+                    try:
+                        store_vendor_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=file.name,
+                            storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
+                            r2_path=vendor_file_key,
+                            metadata=file_metadata,
+                            pricing_details=pricing_details
+                        )
+                    except Exception as db_err:
+                        print(f"⚠️ Error storing print job in database: {db_err}")
+                        # Don't fail the upload if database storage fails
 
                     files_uploaded += 1
 
@@ -4293,6 +4362,28 @@ def verify_razorpay_payment(request):
             'printer_name': metadata.get('printer_name', '') if files_processed else ''
         })
     except Exception as e:
+        # If payment verification fails but payment was attempted, return points if they were deducted
+        try:
+            points_applied = request.POST.get('points_applied', 'false').lower() == 'true'
+            points_used = int(request.POST.get('points_used', '0'))
+            user_email = request.user.email if request.user.is_authenticated else None
+            
+            # Check if we're on localhost
+            is_localhost = request.get_host() in ['127.0.0.1:8000', 'localhost:8000', '127.0.0.1', 'localhost']
+            
+            # Return points if payment verification failed and points were used
+            if points_applied and points_used > 0 and user_email:
+                # Check if points were already deducted (they shouldn't be, but check anyway)
+                # Actually, points are only deducted after successful verification, so this is a safety check
+                # But if verification fails, we should return points if they were somehow deducted
+                if is_localhost:
+                    # Always return points on localhost if payment fails
+                    success = add_user_points(user_email, points_used, f'Points returned - payment verification failed on localhost: {str(e)}')
+                    if success:
+                        print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure on localhost")
+        except Exception as return_error:
+            print(f"⚠️ Error returning points after verification failure: {str(return_error)}")
+        
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 from django.http import JsonResponse
@@ -4721,43 +4812,20 @@ def vendor_pricing(request):
             if not vendor_email:
                 return JsonResponse({'success': False, 'message': 'Vendor email required'})
 
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-
-            # Load existing pricing data to preserve values
+            # Initialize empty structures (R2 storage removed - all data now in D1)
             existing_pricing_data = {}
-            existing_categorized_pricing = {}
-            existing_printer_configuration = {}
-            
-            try:
-                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                existing_data = json.loads(response['Body'].read().decode('utf-8'))
-                existing_pricing_data = existing_data.get('pricing_data', {})
-                existing_categorized_pricing = existing_data.get('categorized_pricing', {})
-                existing_printer_configuration = existing_data.get('printer_configuration', {})
-                print(f"📋 Loaded existing pricing data for vendor {vendor_email}")
-            except Exception as e:
-                print(f"ℹ️ No existing pricing data found for vendor {vendor_email}: {str(e)}")
-                # Initialize empty structures if no existing data
-                existing_data = {}
-                existing_pricing_data = {}
-                existing_categorized_pricing = {
-                    'digital_print': {},
-                    'jumbo_print': {},
-                    'gloss_print': {},
-                    'photo_print': {},
-                    'golden_embossing': {},
-                    'passport_photo': {},
-                    'a4_print': {},
-                    'lamination': {},
-                    'binding': {}
-                }
-                existing_printer_configuration = {}
+            existing_categorized_pricing = {
+                'digital_print': {},
+                'jumbo_print': {},
+                'gloss_print': {},
+                'photo_print': {},
+                'golden_embossing': {},
+                'passport_photo': {},
+                'a4_print': {},
+                'lamination': {},
+                'binding': {}
+            }
+            existing_data = {}
 
             # Categorize pricing data by service type - merge with existing data
             pricing_entries = data.get('pricing_entries', [])
@@ -4802,116 +4870,207 @@ def vendor_pricing(request):
                             categorized_pricing['general'] = {}
                         categorized_pricing['general'][service_type] = price
             
-            # Get printer configuration from request data - merge with existing
-            printer_configuration = existing_printer_configuration.copy()  # Start with existing data
-            new_printer_config = data.get('printer_configuration', {})
-            
-            # Handle printer names and counts separately
-            printer_counts = existing_data.get('printer_counts', {}).copy()  # Start with existing counts
-            if 'counts' in new_printer_config:
-                printer_counts.update(new_printer_config['counts'])
-                del new_printer_config['counts']  # Remove counts from main config
-            
-            # Only update printer fields that have actual values (not empty or NA)
-            for printer_field, printer_name in new_printer_config.items():
-                if printer_name and printer_name.strip() and printer_name.strip() != 'NA':
-                    printer_configuration[printer_field] = printer_name.strip()
-                    
-                    # Initialize count for this printer if not already set
-                    count_field = f"{printer_field}_count"
-                    if count_field not in printer_counts:
-                        printer_counts[count_field] = 0
-            
-            # For dashboard updates, only ensure fields that were provided are set
-            # For new registrations, ensure all printer fields are included
-            if not from_dashboard:
-                all_printer_fields = [
-                    'digital_printer_1', 'digital_printer_2',
-                    'gloss_printer_1', 'gloss_printer_2',
-                    'jumbo_printer_1', 'jumbo_printer_2',
-                    'a4_printer_1', 'a4_printer_2', 'a4_printer_3',
-                    'passport_printer_1', 'passport_printer_2', 'passport_printer_3'
-                ]
-                
-                for printer_field in all_printer_fields:
-                    if printer_field not in printer_configuration or not printer_configuration[printer_field] or printer_configuration[printer_field].strip() == '':
-                        printer_configuration[printer_field] = 'NA'
-                    
-                    # Initialize count for this printer field
-                    count_field = f"{printer_field}_count"
-                    if count_field not in printer_counts:
-                        printer_counts[count_field] = 0
-            
             # Calculate services summary based on all pricing data (existing + new)
             all_pricing_entries = list(updated_pricing_data.values())
             total_services = len([price for price in all_pricing_entries if price and price > 0])
             available_services = len([price for price in all_pricing_entries if price and price > 0])
             not_available_services = len([price for price in all_pricing_entries if price == 0 or not price])
             
-            # Check if we should store only categorized pricing
-            store_only_categorized = data.get('store_only_categorized', False)
+            # Save to D1 database via Worker API (REQUIRED - no R2 storage)
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
             
-            # Prepare pricing data with categorized structure
-            pricing_data = {
-                'vendor_email': vendor_email,
-                'categorized_pricing': categorized_pricing,
-                'services_summary': {
-                    'total_services': total_services,
-                    'available_services_count': available_services,
-                    'not_available_services_count': not_available_services
-                },
-                'created_at': existing_data.get('created_at', datetime.datetime.now().isoformat()),
-                'updated_at': datetime.datetime.now().isoformat()
-            }
+            if api_url and api_key:
+                # Construct the Worker API endpoint for vendor pricing
+                if '/add-contact' in api_url:
+                    worker_endpoint = api_url.replace('/add-contact', '/add-vendor-pricing')
+                elif '/add-vendor-register' in api_url:
+                    worker_endpoint = api_url.replace('/add-vendor-register', '/add-vendor-pricing')
+                else:
+                    worker_endpoint = api_url.rstrip('/') + '/add-vendor-pricing'
+                
+                # Prepare pricing data for D1 database (map form fields to DB columns)
+                worker_payload = {
+                    'vendor_email': vendor_email,
+                    'last_updated': datetime.datetime.now().isoformat(),
+                    'is_active': 'yes',
+                    # Digital Print
+                    'digital_print_a4_color': updated_pricing_data.get('digital_print_a4_color', 0),
+                    'digital_print_a3_color': updated_pricing_data.get('digital_print_a3_color', 0),
+                    'digital_print_12x18_color': updated_pricing_data.get('digital_print_12x18_color', 0),
+                    'digital_print_a2_color': updated_pricing_data.get('digital_print_a2_color', 0),
+                    'digital_print_a1_color': updated_pricing_data.get('digital_print_a1_color', 0),
+                    'digital_print_a0_color': updated_pricing_data.get('digital_print_a0_color', 0),
+                    # Regular Print
+                    'regular_print_a4_bw': updated_pricing_data.get('regular_print_a4_bw', 0),
+                    'regular_print_a4_color': updated_pricing_data.get('regular_print_a4_color', 0),
+                    # Photo Print
+                    'photo_print_a4_bw': updated_pricing_data.get('photo_print_a4_bw', 0),
+                    'photo_print_a4_color': updated_pricing_data.get('photo_print_a4_color', 0),
+                    # Gloss Print
+                    'gloss_print_a4_color': updated_pricing_data.get('gloss_print_a4_color', 0),
+                    'gloss_print_a3_color': updated_pricing_data.get('gloss_print_a3_color', 0),
+                    'gloss_print_a2_color': updated_pricing_data.get('gloss_print_a2_color', 0),
+                    'gloss_print_a1_color': updated_pricing_data.get('gloss_print_a1_color', 0),
+                    'gloss_print_a0_color': updated_pricing_data.get('gloss_print_a0_color', 0),
+                    # Jumbo Print
+                    'jumbo_print_a3_bw': updated_pricing_data.get('jumbo_print_a3_bw', 0),
+                    'jumbo_print_a3_color': updated_pricing_data.get('jumbo_print_a3_color', 0),
+                    'jumbo_print_a2_bw': updated_pricing_data.get('jumbo_print_a2_bw', 0),
+                    'jumbo_print_a2_color': updated_pricing_data.get('jumbo_print_a2_color', 0),
+                    'jumbo_print_a1_bw': updated_pricing_data.get('jumbo_print_a1_bw', 0),
+                    'jumbo_print_a1_color': updated_pricing_data.get('jumbo_print_a1_color', 0),
+                    'jumbo_print_a0_bw': updated_pricing_data.get('jumbo_print_a0_bw', 0),
+                    'jumbo_print_a0_color': updated_pricing_data.get('jumbo_print_a0_color', 0),
+                    # Passport Photo
+                    'passport_print_8': updated_pricing_data.get('passport_print_8', 0),
+                    'passport_print_16': updated_pricing_data.get('passport_print_16', 0),
+                    'passport_print_30': updated_pricing_data.get('passport_print_30', 0),
+                    # Golden Embossing
+                    'golden_emboss_cover': updated_pricing_data.get('golden_emboss_cover', 0),
+                    'golden_emboss_bond_color': updated_pricing_data.get('golden_emboss_bond_color', 0),
+                    # Lamination
+                    'lamination_a4_standard': updated_pricing_data.get('lamination_a4_standard', 0),
+                    'lamination_a4_glossy': updated_pricing_data.get('lamination_a4_glossy', 0),
+                    'lamination_a3_standard': updated_pricing_data.get('lamination_a3_standard', 0),
+                    'lamination_a3_glossy': updated_pricing_data.get('lamination_a3_glossy', 0),
+                    'lamination_a2_standard': updated_pricing_data.get('lamination_a2_standard', 0),
+                    'lamination_a2_glossy': updated_pricing_data.get('lamination_a2_glossy', 0),
+                    'lamination_a1_standard': updated_pricing_data.get('lamination_a1_standard', 0),
+                    'lamination_a1_glossy': updated_pricing_data.get('lamination_a1_glossy', 0),
+                    'lamination_a0_standard': updated_pricing_data.get('lamination_a0_standard', 0),
+                    'lamination_a0_glossy': updated_pricing_data.get('lamination_a0_glossy', 0),
+                    # Binding
+                    'tape_binding_a4_100': updated_pricing_data.get('tape_binding_a4_100', 0),
+                    'tape_binding_a4_200': updated_pricing_data.get('tape_binding_a4_200', 0),
+                    'tape_binding_a3_100': updated_pricing_data.get('tape_binding_a3_100', 0),
+                    'tape_binding_a3_200': updated_pricing_data.get('tape_binding_a3_200', 0),
+                    'spiral_binding_a4_100': updated_pricing_data.get('spiral_binding_a4_100', 0),
+                    'spiral_binding_a4_200': updated_pricing_data.get('spiral_binding_a4_200', 0),
+                    'spiral_binding_a3_100': updated_pricing_data.get('spiral_binding_a3_100', 0),
+                    'spiral_binding_a3_200': updated_pricing_data.get('spiral_binding_a3_200', 0),
+                }
+                
+                print(f"💾 Saving vendor pricing to D1 database via Worker API...")
+                print(f"🔗 Worker endpoint: {worker_endpoint}")
+                
+                try:
+                    import requests
+                    resp = requests.post(
+                        worker_endpoint,
+                        json=worker_payload,
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-api-key': api_key
+                        },
+                        timeout=15
+                    )
+                    
+                    print(f"📡 Worker API Response Status: {resp.status_code}")
+                    
+                    if resp.status_code == 200:
+                        try:
+                            response_data = resp.json()
+                            if response_data.get('success'):
+                                print(f"✅ Vendor pricing saved to D1 database successfully")
+                            else:
+                                error_msg = response_data.get('error', 'Unknown error from Worker API')
+                                print(f"❌ Worker API returned error: {error_msg}")
+                        except json.JSONDecodeError:
+                            print(f"❌ Invalid JSON response from Worker API: {resp.text[:200]}")
+                    else:
+                        error_text = resp.text[:500] if resp.text else 'No error message'
+                        print(f"⚠️ D1 database save failed with status {resp.status_code}: {error_text}")
+                except requests.exceptions.RequestException as e:
+                    print(f"⚠️ Failed to connect to Worker API: {str(e)}")
+                except Exception as e:
+                    print(f"⚠️ Unexpected error saving to D1 database: {str(e)}")
+            else:
+                print(f"❌ Worker API not configured - cannot save pricing data")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Server configuration error: Worker API not configured. Please contact support.'
+                }, status=500)
             
-            # Only include pricing_data if not storing only categorized
-            if not store_only_categorized:
-                pricing_data['pricing_data'] = updated_pricing_data
-
-            file_content = json.dumps(pricing_data, indent=4)
-            file_key = f"vendor_register_details/{sanitize_email(vendor_email)}/pricing.json"
-
-            s3.put_object(Bucket=settings.R2_BUCKET,
-                          Key=file_key,
-                          Body=file_content,
-                          ContentType='application/json')
-
-            print(f"✅ Successfully saved pricing data for vendor {vendor_email}")
-            
-            # Create token.json file with 300 tokens set to "free"
-            token_data = {}
-            for i in range(1, 301):  # Generate tokens 1 to 300
-                token_data[str(i)] = "free"
-            
-            token_file_content = json.dumps(token_data, indent=4)
-            token_file_key = f"vendor_register_details/{sanitize_email(vendor_email)}/token.json"
-            
-            s3.put_object(Bucket=settings.R2_BUCKET,
-                          Key=token_file_key,
-                          Body=token_file_content,
-                          ContentType='application/json')
-            
-            print(f"✅ Successfully created token.json file for vendor {vendor_email} with 300 tokens set to 'free'")
+            if not from_dashboard:
+                # Create 300 tokens and save to D1 database via Worker API
+                print(f"🎫 Creating 300 tokens for vendor {vendor_email}...")
+                
+                # Prepare token data for D1 database
+                tokens_payload = {
+                    'vendor_email': vendor_email,
+                    'tokens': []
+                }
+                
+                # Generate 300 tokens (1-300) all set to "free"
+                for i in range(1, 301):
+                    tokens_payload['tokens'].append({
+                        'token_number': i,
+                        'status': 'free'
+                    })
+                
+                # Construct the Worker API endpoint for tokens
+                if '/add-contact' in api_url:
+                    token_endpoint = api_url.replace('/add-contact', '/add-vendor-tokens')
+                elif '/add-vendor-register' in api_url:
+                    token_endpoint = api_url.replace('/add-vendor-register', '/add-vendor-tokens')
+                elif '/add-vendor-pricing' in api_url:
+                    token_endpoint = api_url.replace('/add-vendor-pricing', '/add-vendor-tokens')
+                else:
+                    token_endpoint = api_url.rstrip('/') + '/add-vendor-tokens'
+                
+                print(f"🔗 Token endpoint: {token_endpoint}")
+                
+                try:
+                    import requests
+                    resp = requests.post(
+                        token_endpoint,
+                        json=tokens_payload,
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-api-key': api_key
+                        },
+                        timeout=15
+                    )
+                    
+                    print(f"📡 Token API Response Status: {resp.status_code}")
+                    
+                    if resp.status_code == 200:
+                        try:
+                            response_data = resp.json()
+                            if response_data.get('success'):
+                                print(f"✅ Successfully created 300 tokens for vendor {vendor_email} in D1 database")
+                            else:
+                                error_msg = response_data.get('error', 'Unknown error from Worker API')
+                                print(f"❌ Token API returned error: {error_msg}")
+                        except json.JSONDecodeError:
+                            print(f"❌ Invalid JSON response from Token API: {resp.text[:200]}")
+                    else:
+                        error_text = resp.text[:500] if resp.text else 'No error message'
+                        print(f"⚠️ Token save failed with status {resp.status_code}: {error_text}")
+                except requests.exceptions.RequestException as e:
+                    print(f"⚠️ Failed to connect to Token API: {str(e)}")
+                except Exception as e:
+                    print(f"⚠️ Unexpected error saving tokens: {str(e)}")
+            else:
+                print("ℹ️ Dashboard update detected - skipping token regeneration to speed up response.")
 
             # Calculate detailed statistics for success message
-            total_services = pricing_data['services_summary']['total_services']
-            available_services = pricing_data['services_summary']['available_services_count']
-            not_available_services = pricing_data['services_summary']['not_available_services_count']
-            configured_printers = len([p for p in printer_configuration.values() if p and p.strip() and p != 'NA'])
+            total_services = len([price for price in updated_pricing_data.values() if price and price > 0])
+            available_services = len([price for price in updated_pricing_data.values() if price and price > 0])
+            not_available_services = len([price for price in updated_pricing_data.values() if price == 0 or not price])
             
             # Create detailed success message based on update type
             if from_dashboard:
                 success_message = f"✅ Pricing Updated Successfully!\n\n"
-                success_message += f"📊 Services Updated: {len(pricing_entries)}\n"
-                success_message += f"🖨️ Printers Updated: {len([k for k, v in new_printer_config.items() if v and v.strip() and v != 'NA'])}\n\n"
+                success_message += f"📊 Services Updated: {len(pricing_entries)}\n\n"
                 success_message += f"Your pricing changes are now live!"
             else:
-                success_message = f"✅ Pricing & Printer Configuration Updated Successfully!\n\n"
+                success_message = f"✅ Pricing Configuration Updated Successfully!\n\n"
                 success_message += f"📊 Services Configured: {total_services}\n"
                 success_message += f"✅ Available Services: {available_services}\n"
                 success_message += f"❌ Not Available: {not_available_services}\n"
-                success_message += f"🖨️ Printers Configured: {configured_printers}\n"
-                success_message += f"🎫 Token File Created: 200 tokens generated and set to 'free'\n\n"
+                success_message += f"🎫 Token File Created: 300 tokens generated and set to 'free'\n\n"
                 success_message += f"Your pricing is now live and customers can place orders!"
             
             return JsonResponse({
@@ -4983,7 +5142,8 @@ def vendor_info(request, vendor_id):
 @csrf_exempt
 def vendor_login(request):
     """
-    Handle vendor login by email using new R2 storage structure
+    Handle vendor login by email using D1 database (vendor_register_details table)
+    Uses the same authentication system as R2 storage (pbkdf2_sha256 password hashing)
     """
     if request.method == 'POST':
         try:
@@ -4997,74 +5157,77 @@ def vendor_login(request):
                     'message': 'Email and password are required'
                 })
 
-            # Initialize R2 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
+            # Get vendor from D1 database via Worker API
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+            
+            if not api_url or not api_key:
+                print(f"❌ Worker API not configured")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Server configuration error: Worker API not configured. Please contact support.'
+                }, status=500)
 
-            # Search for vendor by email in the new R2 structure
-            found_vendor = None
-            vendor_id = None
-
+            # Construct the Worker API endpoint for getting vendor
+            if '/add-contact' in api_url:
+                worker_endpoint = api_url.replace('/add-contact', '/get-vendor-by-email')
+            elif '/add-vendor-register' in api_url:
+                worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-by-email')
+            else:
+                worker_endpoint = api_url.rstrip('/') + '/get-vendor-by-email'
+            
             try:
-                # First, try to get vendor registration details directly
-                reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
-                try:
-                    reg_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
-                    reg_details = json.loads(reg_response['Body'].read().decode('utf-8'))
-                    vendor_id = reg_details.get('vendor_id')
-                    print(f"🔍 Found vendor ID from registration details: {vendor_id}")
-                except Exception as e:
-                    print(f"Could not get registration details: {str(e)}")
+                resp = requests.post(
+                    worker_endpoint,
+                    json={'email': email},
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=10
+                )
                 
-                # Get login details
-                login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
-                try:
-                    login_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=login_key)
-                    found_vendor = json.loads(login_response['Body'].read().decode('utf-8'))
-                    print(f"🔍 Found login details for: {email}")
-                except Exception as e:
-                    print(f"Could not get login details: {str(e)}")
-                    # Fallback: search through all login details
-                    objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
-                    for obj in objects.get("Contents", []):
-                        if obj["Key"].endswith('/login_details.json'):
-                            try:
-                                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
-                                login_details = json.loads(response['Body'].read().decode('utf-8'))
-                                if login_details.get('email') == email:
-                                    found_vendor = login_details
-                                    break
-                            except Exception as e:
-                                print(f"Error reading login details from {obj['Key']}: {str(e)}")
-                                continue
-
-                if not found_vendor:
+                if resp.status_code == 404:
                     return JsonResponse({
                         'success': False,
                         'message': 'Vendor not found with this email address'
                     })
 
-                # Check password
-                if check_password(password, found_vendor['hashed_password']):
-                    # Update last login timestamp
-                    found_vendor['last_login'] = timezone.now().isoformat()
-                    login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
-                    s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(found_vendor), ContentType='application/json')
-
-                    # Get vendor registration details for additional info
-                    try:
-                        reg_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=f'vendor_register_details/{sanitize_email(email)}/registration_details.json')
-                        reg_details = json.loads(reg_response['Body'].read().decode('utf-8'))
-                        vendor_name = reg_details.get('vendor_name', '')
-                        vendor_id = reg_details.get('vendor_id', vendor_id)  # Use vendor_id from registration details
-                        print(f"✅ Retrieved vendor details - Name: {vendor_name}, ID: {vendor_id}")
-                    except Exception as e:
-                        vendor_name = ''
-                        vendor_id = vendor_id  # Keep the extracted vendor_id
-                        print(f"⚠️ Could not get registration details: {str(e)}")
+                if resp.status_code != 200:
+                    error_text = resp.text[:500] if resp.text else 'Unknown error'
+                    print(f"❌ Worker API error: {error_text}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Error finding vendor account'
+                    })
+                
+                response_data = resp.json()
+                if not response_data.get('success'):
+                    return JsonResponse({
+                        'success': False,
+                        'message': response_data.get('error', 'Vendor not found')
+                    })
+                
+                vendor_data = response_data.get('vendor')
+                if not vendor_data:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Vendor not found with this email address'
+                    })
+                
+                # Get password_hash from database
+                password_hash = vendor_data.get('password_hash')
+                if not password_hash:
+                    print(f"❌ No password_hash found for vendor: {email}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid vendor account configuration'
+                    })
+                
+                # Check password using Django's check_password (supports pbkdf2_sha256 format)
+                if check_password(password, password_hash):
+                    vendor_id = vendor_data.get('vendor_id')
+                    vendor_name = vendor_data.get('vendor_name', '')
                     
                     # Set vendor email and vendor_id in session
                     request.session['vendor_email'] = email
@@ -5087,15 +5250,25 @@ def vendor_login(request):
                         'message': 'Invalid password'
                     })
 
-            except Exception as e:
-                print(f"Error searching for vendor: {str(e)}")
+            except requests.exceptions.RequestException as e:
+                print(f"❌ Failed to connect to Worker API: {str(e)}")
                 return JsonResponse({
                     'success': False,
-                    'message': 'Error finding vendor account'
+                    'message': f'Failed to connect to database service: {str(e)}. Please try again later.'
+                }, status=500)
+            except Exception as e:
+                print(f"❌ Error during vendor login: {str(e)}")
+                import traceback
+                print(f"❌ Traceback: {traceback.format_exc()}")
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Login error: {str(e)}'
                 })
 
         except Exception as e:
-            print(f"Error during vendor login: {str(e)}")
+            print(f"❌ Error during vendor login: {str(e)}")
+            import traceback
+            print(f"❌ Traceback: {traceback.format_exc()}")
             return JsonResponse({
                 'success': False,
                 'message': f'Login error: {str(e)}'
@@ -5150,7 +5323,6 @@ def vendor_register_api(request):
             state = data.get('state', '').strip()
             city = data.get('city', '').strip()
             locality = data.get('locality', '').strip()
-            landmark = data.get('landmark', '').strip()
             shop_address = data.get('shop_address', '').strip()
             pincode = data.get('pincode', '').strip()
             latitude = data.get('latitude', '0')
@@ -5228,233 +5400,151 @@ def vendor_register_api(request):
             # Hash password
             password_hash = make_password(password)
 
-            # Check R2 configuration with detailed logging
-            r2_config = {
-                'R2_ACCESS_KEY': bool(settings.R2_ACCESS_KEY),
-                'R2_SECRET_KEY': bool(settings.R2_SECRET_KEY),
-                'R2_ENDPOINT': bool(settings.R2_ENDPOINT),
-                'R2_BUCKET': bool(settings.R2_BUCKET)
-            }
+            # Save to D1 database via Worker API (REQUIRED - no fallback to R2)
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
             
-            print(f"🔧 R2 Configuration status: {r2_config}")
-            
-            if not all(r2_config.values()):
-                missing_configs = [k for k, v in r2_config.items() if not v]
-                print(f"❌ R2 configuration incomplete. Missing: {missing_configs}")
+            if not api_url or not api_key:
+                print(f"❌ Worker API not configured")
                 return JsonResponse({
                     'success': False,
-                    'message': f'Server configuration error. Missing: {", ".join(missing_configs)}. Please contact support.'
+                    'message': 'Server configuration error: Worker API not configured. Please contact support.'
                 }, status=500)
 
-            # Initialize S3 client with better error handling
-            s3 = None
-            try:
-                print(f"🔗 Initializing S3 client...")
-                print(f"🔗 Endpoint: {settings.R2_ENDPOINT}")
-                print(f"🔗 Bucket: {settings.R2_BUCKET}")
-                
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
-                
-                # Test the connection
-                s3.head_bucket(Bucket=settings.R2_BUCKET)
-                print(f"✅ S3 client initialized and tested successfully")
-                
-            except Exception as e:
-                print(f"❌ Error initializing S3 client: {str(e)}")
-                print(f"❌ Error type: {type(e).__name__}")
-                
-                # For production, we'll try to continue without R2 for now
-                # This allows basic registration to work even if R2 is down
-                print(f"⚠️ Continuing without R2 storage - using fallback method")
-                
-                # Return success with basic registration data
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Registration successful (basic mode - storage will be configured later)',
-                    'vendor_email': email,
-                    'vendor_id': vendor_id,
-                    'vendor_token': vendor_token,
-                    'shop_folder': sanitize_shop_name(vendor_name),
-                    'fallback_mode': True
-                })
-
-            # Check if email already exists
-            existing_vendor = None
-            try:
-                print(f"🔍 Checking for existing vendor: {email}")
-                objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=f'vendor_register_details/{sanitize_email(email)}/')
-                for obj in objects.get("Contents", []):
-                    if obj["Key"].endswith('registration_details.json'):
-                        try:
-                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
-                            existing_vendor = json.loads(response['Body'].read().decode('utf-8'))
-                            print(f"✅ Found existing vendor: {email}")
-                            break
-                        except Exception as e:
-                            print(f"⚠️ Warning: Could not read existing vendor details: {str(e)}")
-                            continue
-            except Exception as e:
-                print(f"⚠️ Warning: Could not check for existing email: {str(e)}")
-                print(f"⚠️ Error type: {type(e).__name__}")
-                # Continue with registration even if we can't check for duplicates
-
-            # If vendor already exists, return success with existing details
-            if existing_vendor:
-                print(f"✅ Vendor {email} already registered, allowing continuation to pricing")
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Registration already completed. Continuing to pricing setup.',
-                    'vendor_email': email,
-                    'vendor_id': existing_vendor.get('vendor_id'),
-                    'vendor_token': existing_vendor.get('vendor_token'),
-                    'shop_folder': sanitize_shop_name(existing_vendor.get('vendor_name', 'Unknown Shop')),
-                    'already_registered': True
-                })
-
-            # Prepare registration details
-            registration_details = {
-                'vendor_email': email,
+            # Construct the Worker API endpoint for vendor registration
+            # Handle both cases: URL with /add-contact or base URL
+            if '/add-contact' in api_url:
+                worker_endpoint = api_url.replace('/add-contact', '/add-vendor-register')
+            else:
+                # If it's a base URL, append the endpoint
+                worker_endpoint = api_url.rstrip('/') + '/add-vendor-register'
+            
+            worker_payload = {
+                'email': email,
+                'password_hash': password_hash,
                 'vendor_name': vendor_name,
-                'vendor_id': vendor_id,
-                'vendor_token': vendor_token,
                 'phone_number': phone_number,
                 'state': state,
                 'city': city,
                 'locality': locality,
-                'landmark': landmark or '',
                 'shop_address': shop_address,
                 'pincode': pincode,
                 'latitude': latitude,
                 'longitude': longitude,
-                'shop_visited': 'not visited',
-                'coordinator': 'none',
-                'registration_date': timezone.now().isoformat(),
-                'hashed_password': password_hash
+                'vendor_id': vendor_id,
+                'vendor_token': vendor_token,
+                'status': 'pending'
             }
             
-            # Save registration details
-            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+            print(f"💾 Saving vendor registration to D1 database via Worker API...")
+            print(f"🔗 Worker endpoint: {worker_endpoint}")
+            
             try:
-                print(f"💾 Saving registration details to: {reg_key}")
-                s3.put_object(Bucket=settings.R2_BUCKET, Key=reg_key, Body=json.dumps(registration_details), ContentType='application/json')
-                print(f"✅ Registration details saved successfully")
-            except Exception as e:
-                print(f"❌ Error saving registration details: {str(e)}")
-                print(f"❌ Error type: {type(e).__name__}")
-                # For production, continue with fallback mode
-                print(f"⚠️ Continuing with fallback mode due to storage error")
+                resp = requests.post(
+                    worker_endpoint,
+                    json=worker_payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=10
+                )
+                
+                print(f"📡 Worker API Response Status: {resp.status_code}")
+                
+                if resp.status_code == 200:
+                    try:
+                        response_data = resp.json()
+                        if response_data.get('success'):
+                            print(f"✅ Vendor registration saved to D1 database successfully")
+                        else:
+                            error_msg = response_data.get('error', 'Unknown error from Worker API')
+                            print(f"❌ Worker API returned error: {error_msg}")
+                            return JsonResponse({
+                                'success': False,
+                                'message': f'Failed to save registration: {error_msg}'
+                            }, status=500)
+                    except json.JSONDecodeError:
+                        print(f"❌ Invalid JSON response from Worker API: {resp.text[:200]}")
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Invalid response from database service. Please try again.'
+                        }, status=500)
+                else:
+                    error_text = resp.text[:500] if resp.text else 'No error message'
+                    print(f"❌ D1 database save failed with status {resp.status_code}: {error_text}")
+                    
+                    # Provide helpful error message
+                    if resp.status_code == 404:
+                        error_msg = 'Database endpoint not found. Please ensure the Worker API is deployed with the /add-vendor-register endpoint.'
+                    elif resp.status_code == 401:
+                        error_msg = 'Database authentication failed. Please check API key configuration.'
+                    else:
+                        error_msg = f'Database error (status {resp.status_code}): {error_text}'
+                    
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_msg
+                    }, status=500)
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"❌ Failed to connect to Worker API: {str(e)}")
                 return JsonResponse({
-                    'success': True,
-                    'message': 'Registration successful (basic mode - storage will be configured later)',
-                    'vendor_email': email,
-                    'vendor_id': vendor_id,
-                    'vendor_token': vendor_token,
-                    'shop_folder': sanitize_shop_name(vendor_name),
-                    'fallback_mode': True
-                })
-
-            # Prepare login details
-            login_details = {
-                'email': email,
-                'hashed_password': password_hash,
-                'last_login': None
-            }
-            login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
-            try:
-                print(f"💾 Saving login details to: {login_key}")
-                s3.put_object(Bucket=settings.R2_BUCKET, Key=login_key, Body=json.dumps(login_details), ContentType='application/json')
-                print(f"✅ Login details saved successfully")
+                    'success': False,
+                    'message': f'Failed to connect to database service: {str(e)}. Please try again later.'
+                }, status=500)
             except Exception as e:
-                # Non-critical: continue in fallback mode so UI can proceed to pricing
-                print(f"❌ Error saving login details: {str(e)}")
-                print("⚠️ Proceeding with success response (fallback mode) despite login details save error")
+                print(f"❌ Unexpected error saving to D1 database: {str(e)}")
+                import traceback
+                print(f"❌ Traceback: {traceback.format_exc()}")
                 return JsonResponse({
-                    'success': True,
-                    'message': 'Registration successful (basic mode - login details will be saved later)',
-                    'vendor_email': email,
-                    'vendor_id': vendor_id,
-                    'vendor_token': vendor_token,
-                    'shop_folder': sanitize_shop_name(vendor_name),
-                    'fallback_mode': True
-                })
+                    'success': False,
+                    'message': f'Unexpected error occurred while saving registration. Please try again.'
+                }, status=500)
 
-            # Create shop folder and send email, never fail registration for these
-            shop_folder_created = True
-            email_sent = True
-            try:
-                # Define shop_folder_name and shop_folder_key for folder creation
-                shop_folder_name = sanitize_shop_name(vendor_name)
-                shop_folder_key = f'vendor_register_details/{sanitize_email(email)}/{shop_folder_name}/'
-
-                # Shop folder (non-blocking)
-                try:
-                    print(f"📁 Creating shop folder: {shop_folder_name}")
-                    s3.put_object(
-                        Bucket=settings.R2_BUCKET,
-                        Key=f'{shop_folder_key}shop_info.json',
-                        Body=json.dumps({
-                            'shop_name': vendor_name,
-                            'vendor_id_hash': make_password(vendor_id),
-                            'vendor_token_hash': make_password(vendor_token),
-                            'created_at': timezone.now().isoformat(),
-                            'folder_created': True
-                        }),
-                        ContentType='application/json'
-                    )
-                except Exception as e:
-                    shop_folder_created = False
-                    print(f"❌ Shop folder create failed: {e}")
-
-                # Welcome email (fire-and-forget to avoid blocking request)
-                try:
-                    print(f"📧 Sending welcome email to: {email}")
-                    threading.Thread(target=send_welcome_email, args=(email, vendor_name, password, vendor_id), daemon=True).start()
-                except Exception as e:
-                    email_sent = False
-                    print(f"⚠️ Welcome email failed to dispatch: {e}")
-
-                # Optional: send a one-time SMTP test email if configured
-                try:
-                    test_to = getattr(settings, 'EMAIL_TEST_TO', None)
-                    if test_to:
-                        from django.core.mail import send_mail as _send_mail
-                        threading.Thread(
-                            target=_send_mail,
-                            args=(
-                                'PrintMax SMTP Test',
-                                'This is a test email sent after vendor registration to verify SMTP.',
-                                settings.DEFAULT_FROM_EMAIL,
-                                [test_to],
-                            ),
-                            kwargs={
-                                'fail_silently': True
-                            },
-                            daemon=True
-                        ).start()
-                        print(f"📨 SMTP test email queued to {test_to}")
-                except Exception as e:
-                    print(f"⚠️ Could not queue SMTP test email: {e}")
-
+            # Registration saved to D1 database successfully above
+            # Now proceed with non-critical operations (email, etc.)
+            
+            email_sent = False
+            try:  # Welcome email (fire-and-forget to avoid blocking request)
+                print(f"📧 Sending welcome email to: {email}")
+                threading.Thread(target=send_welcome_email, args=(email, vendor_name, password, vendor_id), daemon=True).start()
+                email_sent = True
             except Exception as e:
-                print(f"[REG NON-FATAL] Error post-registration: {e}")
+                print(f"⚠️ Welcome email failed to dispatch: {e}")
 
-            fallback = (not shop_folder_created) or (not email_sent)
+            # Optional: send a one-time SMTP test email if configured
+            try:
+                test_to = getattr(settings, 'EMAIL_TEST_TO', None)
+                if test_to:
+                    from django.core.mail import send_mail as _send_mail
+                    threading.Thread(
+                        target=_send_mail,
+                        args=(
+                            'PrintMax SMTP Test',
+                            'This is a test email sent after vendor registration to verify SMTP.',
+                            settings.DEFAULT_FROM_EMAIL,
+                            [test_to],
+                        ),
+                        kwargs={
+                            'fail_silently': True
+                        },
+                        daemon=True
+                    ).start()
+                    print(f"📨 SMTP test email queued to {test_to}")
+            except Exception as e:
+                print(f"⚠️ Could not queue SMTP test email: {e}")
 
-            print(f"🎉 Registration completed successfully for {email} (fallback={fallback})")
+            shop_folder_name = sanitize_shop_name(vendor_name)
+
+            print(f"🎉 Registration completed successfully for {email}")
             return JsonResponse({
                 'success': True,
-                'message': 'Registration successful' +
-                    (email_sent and " (Welcome email sent)" or " (Welcome email will be sent later)") +
-                    (not shop_folder_created and ' (Shop folder will be created later)' or ''),
+                'message': 'Registration successful' + (" (Welcome email sent)" if email_sent else " (Welcome email will be sent later)"),
                 'vendor_email': email,
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
-                'shop_folder': shop_folder_name,
-                'fallback_mode': fallback
+                'shop_folder': shop_folder_name
             })
 
         except Exception as e:
@@ -5466,25 +5556,6 @@ def vendor_register_api(request):
             
             # Check if this is a critical error that prevents registration
             error_message = str(e).lower()
-            # Safety net: if registration_details.json already exists, return success so UI can proceed
-            try:
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=(settings.R2_ENDPOINT.rstrip('/') if getattr(settings, 'R2_ENDPOINT', None) else None),
-                                  region_name='auto')
-                reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
-                s3.head_object(Bucket=settings.R2_BUCKET, Key=reg_key)
-                # If head_object succeeds, treat as success already
-                print("✅ Safety net: registration_details.json exists; returning success to client")
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Registration successful (post-save error ignored)',
-                    'vendor_email': email,
-                    'already_registered': True
-                })
-            except Exception:
-                pass
             if any(keyword in error_message for keyword in ['json', 'decode', 'parse', 'invalid', 'malformed']):
                 return JsonResponse({
                     'success': False,
@@ -5552,10 +5623,70 @@ def sanitize_shop_name(shop_name):
     sanitized = re.sub(r'\s+', '_', sanitized.strip())
     return sanitized
 
+def get_vendor_pricing_from_d1(vendor_email):
+    """
+    Helper function to get vendor pricing from d1 database via Worker API
+    Returns pricing data dict with categorized_pricing, or None if failed
+    """
+    api_url = getattr(settings, 'WORKER_API_URL', '')
+    api_key = getattr(settings, 'WORKER_API_KEY', '')
+    
+    if not api_url or not api_key:
+        print(f"⚠️ Worker API not configured - cannot fetch pricing from d1 database")
+        return None
+    
+    # Construct the Worker API endpoint for getting vendor pricing
+    if '/add-contact' in api_url:
+        worker_endpoint = api_url.replace('/add-contact', '/get-vendor-pricing')
+    elif '/add-vendor-register' in api_url:
+        worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-pricing')
+    elif '/add-vendor-pricing' in api_url:
+        worker_endpoint = api_url.replace('/add-vendor-pricing', '/get-vendor-pricing')
+    else:
+        worker_endpoint = api_url.rstrip('/') + '/get-vendor-pricing'
+    
+    # Add vendor_email as query parameter (URL encode it)
+    from urllib.parse import quote
+    worker_endpoint = f"{worker_endpoint}?vendor_email={quote(vendor_email)}"
+    
+    try:
+        resp = requests.get(
+            worker_endpoint,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=15
+        )
+        
+        if resp.status_code == 200:
+            response_data = resp.json()
+            if response_data.get('success'):
+                print(f"✅ Successfully fetched vendor pricing from d1 database for {vendor_email}")
+                # Return pricing data in the format expected by pricing calculation functions
+                pricing_data = {
+                    'pricing_data': response_data.get('pricing', {}),
+                    'categorized_pricing': response_data.get('categorized_pricing', {}),
+                    'services_summary': response_data.get('services_summary', {})
+                }
+                return pricing_data
+            else:
+                error_msg = response_data.get('error', 'Unknown error from Worker API')
+                print(f"⚠️ Worker API returned error: {error_msg}")
+        else:
+            error_text = resp.text[:500] if resp.text else 'No error message'
+            print(f"⚠️ Failed to fetch pricing from d1 database with status {resp.status_code}: {error_text}")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Failed to connect to Worker API: {str(e)}")
+    except Exception as e:
+        print(f"⚠️ Unexpected error fetching pricing from d1 database: {str(e)}")
+    
+    return None
+
 @csrf_exempt
 def get_vendor_pricing(request):
     """
-    Get vendor pricing data from R2 storage
+    Get vendor pricing data from d1 database via Worker API
     """
     if request.method == 'POST':
         try:
@@ -5565,110 +5696,200 @@ def get_vendor_pricing(request):
             if not vendor_email:
                 return JsonResponse({'success': False, 'error': 'Vendor email required'})
 
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-
-            try:
-                # Get vendor pricing file
-                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+            # Try to fetch from d1 database via Worker API
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+            
+            if api_url and api_key:
+                # Construct the Worker API endpoint for getting vendor pricing
+                if '/add-contact' in api_url:
+                    worker_endpoint = api_url.replace('/add-contact', '/get-vendor-pricing')
+                elif '/add-vendor-register' in api_url:
+                    worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-pricing')
+                elif '/add-vendor-pricing' in api_url:
+                    worker_endpoint = api_url.replace('/add-vendor-pricing', '/get-vendor-pricing')
+                else:
+                    worker_endpoint = api_url.rstrip('/') + '/get-vendor-pricing'
                 
-                # Return both old format (for backward compatibility) and new categorized format
-                return JsonResponse({
-                    'success': True,
-                    'pricing': pricing_data.get('pricing_data', {}),
-                    'categorized_pricing': pricing_data.get('categorized_pricing', {}),
-                    'services_summary': pricing_data.get('services_summary', {})
-                })
+                # Add vendor_email as query parameter (URL encode it)
+                from urllib.parse import quote
+                worker_endpoint = f"{worker_endpoint}?vendor_email={quote(vendor_email)}"
                 
-            except Exception as e:
-                print(f"Error fetching pricing for {vendor_email}: {str(e)}")
-                # Return default pricing if vendor pricing not found
-                default_pricing = {
-                    'digital_print_a4_single_bw': 2,
-                    'digital_print_a4_single_color': 5,
-                    'digital_print_a3_single_bw': 4,
-                    'digital_print_a3_single_color': 8,
+                try:
+                    resp = requests.get(
+                        worker_endpoint,
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-api-key': api_key
+                        },
+                        timeout=15
+                    )
+                    
+                    if resp.status_code == 200:
+                        response_data = resp.json()
+                        if response_data.get('success'):
+                            print(f"✅ Successfully fetched vendor pricing from d1 database for {vendor_email}")
+                            # Combine pricing and categorized_pricing into a single object for frontend compatibility
+                            pricing_obj = response_data.get('pricing', {})
+                            pricing_obj['categorized_pricing'] = response_data.get('categorized_pricing', {})
+                            pricing_obj['services_summary'] = response_data.get('services_summary', {})
+                            return JsonResponse({
+                                'success': True,
+                                'pricing': pricing_obj,
+                                'categorized_pricing': response_data.get('categorized_pricing', {}),
+                                'services_summary': response_data.get('services_summary', {})
+                            })
+                        else:
+                            error_msg = response_data.get('error', 'Unknown error from Worker API')
+                            print(f"⚠️ Worker API returned error: {error_msg}")
+                    else:
+                        error_text = resp.text[:500] if resp.text else 'No error message'
+                        print(f"⚠️ Failed to fetch pricing from d1 database with status {resp.status_code}: {error_text}")
+                except requests.exceptions.RequestException as e:
+                    print(f"⚠️ Failed to connect to Worker API: {str(e)}")
+                except Exception as e:
+                    print(f"⚠️ Unexpected error fetching from d1 database: {str(e)}")
+            else:
+                print(f"⚠️ Worker API not configured - cannot fetch pricing from d1 database")
+            
+            # Fallback: Return default pricing if d1 fetch fails
+            print(f"⚠️ Falling back to default pricing for {vendor_email}")
+            # Return default pricing if vendor pricing not found
+            default_pricing = {
+                'digital_print_a4_color': 5,
+                'digital_print_a3_color': 8,
+                'digital_print_12x18_color': 12,
+                'digital_print_a2_color': 15,
+                'digital_print_a1_color': 22,
+                'digital_print_a0_color': 30,
+                'regular_print_a4_bw': 2,
+                'regular_print_a4_color': 5,
+                'photo_print_a4_bw': 6,
+                'photo_print_a4_color': 12,
+                'gloss_print_a4_color': 8,
+                'gloss_print_a3_color': 12,
+                'gloss_print_a2_color': 18,
+                'gloss_print_a1_color': 24,
+                'gloss_print_a0_color': 32,
+                'jumbo_print_a3_bw': 10,
+                'jumbo_print_a3_color': 16,
+                'jumbo_print_a2_bw': 18,
+                'jumbo_print_a2_color': 24,
+                'jumbo_print_a1_bw': 26,
+                'jumbo_print_a1_color': 32,
+                'jumbo_print_a0_bw': 34,
+                'jumbo_print_a0_color': 40,
+                'passport_print_8': 40,
+                'passport_print_16': 70,
+                'passport_print_30': 120,
+                'golden_emboss_cover': 50,
+                'golden_emboss_bond_color': 10,
+                'lamination_a4_standard': 30,
+                'lamination_a4_glossy': 35,
+                'lamination_a3_standard': 45,
+                'lamination_a3_glossy': 55,
+                'lamination_a2_standard': 65,
+                'lamination_a2_glossy': 75,
+                'lamination_a1_standard': 85,
+                'lamination_a1_glossy': 95,
+                'lamination_a0_standard': 105,
+                'lamination_a0_glossy': 115,
+                'tape_binding_a4_100': 40,
+                'tape_binding_a4_200': 60,
+                'tape_binding_a3_100': 70,
+                'tape_binding_a3_200': 90,
+                'spiral_binding_a4_100': 45,
+                'spiral_binding_a4_200': 65,
+                'spiral_binding_a3_100': 75,
+                'spiral_binding_a3_200': 95
+            }
+            
+            # Create categorized default pricing
+            default_categorized = {
+                'digital_print': {
+                    'digital_print_a4_color': 5,
+                    'digital_print_a3_color': 8,
+                    'digital_print_12x18_color': 12,
+                    'digital_print_a2_color': 15,
+                    'digital_print_a1_color': 22,
+                    'digital_print_a0_color': 30
+                },
+                'a4_print': {
+                    'regular_print_a4_bw': 2,
+                    'regular_print_a4_color': 5
+                },
+                'photo_print': {
+                    'photo_print_a4_bw': 6,
+                    'photo_print_a4_color': 12
+                },
+                'gloss_print': {
+                    'gloss_print_a4_color': 8,
                     'gloss_print_a3_color': 12,
                     'gloss_print_a2_color': 18,
                     'gloss_print_a1_color': 24,
-                    'gloss_print_a0_color': 30,
-                    'jumbo_print_a3_single_bw': 6,
-                    'jumbo_print_a3_single_color': 12,
-                    'jumbo_print_a2_single_bw': 12,
-                    'jumbo_print_a2_single_color': 18,
-                    'jumbo_print_a1_single_bw': 18,
-                    'jumbo_print_a1_single_color': 24,
-                    'jumbo_print_a0_single_bw': 25,
-                    'jumbo_print_a0_single_color': 30,
-                    'photo_print_4_6_standard': 5,
-                    'photo_print_5_7_standard': 8,
-                    'photo_print_6_8_standard': 12,
-                    'photo_print_a4_standard': 15,
-                    'passport_photo_8_photos': 40,
-                    'passport_photo_16_photos': 70,
-                    'passport_photo_30_photos': 120,
-                    'golden_embossing_per_book': 50,
-                    'digital_print_quality_upgrade': 1,
-                    'golden_emboss_quality_upgrade': 3
+                    'gloss_print_a0_color': 32
+                },
+                'jumbo_print': {
+                    'jumbo_print_a3_bw': 10,
+                    'jumbo_print_a3_color': 16,
+                    'jumbo_print_a2_bw': 18,
+                    'jumbo_print_a2_color': 24,
+                    'jumbo_print_a1_bw': 26,
+                    'jumbo_print_a1_color': 32,
+                    'jumbo_print_a0_bw': 34,
+                    'jumbo_print_a0_color': 40
+                },
+                'passport_photo': {
+                    'passport_print_8': 40,
+                    'passport_print_16': 70,
+                    'passport_print_30': 120
+                },
+                'golden_embossing': {
+                    'golden_emboss_cover': 50,
+                    'golden_emboss_bond_color': 10
+                },
+                'lamination': {
+                    'lamination_a4_standard': 30,
+                    'lamination_a4_glossy': 35,
+                    'lamination_a3_standard': 45,
+                    'lamination_a3_glossy': 55,
+                    'lamination_a2_standard': 65,
+                    'lamination_a2_glossy': 75,
+                    'lamination_a1_standard': 85,
+                    'lamination_a1_glossy': 95,
+                    'lamination_a0_standard': 105,
+                    'lamination_a0_glossy': 115
+                },
+                'binding': {
+                    'tape_binding_a4_100': 40,
+                    'tape_binding_a4_200': 60,
+                    'tape_binding_a3_100': 70,
+                    'tape_binding_a3_200': 90,
+                    'spiral_binding_a4_100': 45,
+                    'spiral_binding_a4_200': 65,
+                    'spiral_binding_a3_100': 75,
+                    'spiral_binding_a3_200': 95
                 }
-                
-                # Create categorized default pricing
-                default_categorized = {
-                    'digital_print': {
-                        'digital_print_a4_single_bw': 2,
-                        'digital_print_a4_single_color': 5,
-                        'digital_print_a3_single_bw': 4,
-                        'digital_print_a3_single_color': 8,
-                        'digital_print_quality_upgrade': 1
-                    },
-                    'gloss_print': {
-                        'gloss_print_a3_color': 12,
-                        'gloss_print_a2_color': 18,
-                        'gloss_print_a1_color': 24,
-                        'gloss_print_a0_color': 30
-                    },
-                    'jumbo_print': {
-                        'jumbo_print_a3_single_bw': 6,
-                        'jumbo_print_a3_single_color': 12,
-                        'jumbo_print_a2_single_bw': 12,
-                        'jumbo_print_a2_single_color': 18,
-                        'jumbo_print_a1_single_bw': 18,
-                        'jumbo_print_a1_single_color': 24,
-                        'jumbo_print_a0_single_bw': 25,
-                        'jumbo_print_a0_single_color': 30
-                    },
-                    'photo_print': {
-                        'photo_print_4_6_standard': 5,
-                        'photo_print_5_7_standard': 8,
-                        'photo_print_6_8_standard': 12,
-                        'photo_print_a4_standard': 15
-                    },
-                    'passport_photo': {
-                        'passport_photo_8_photos': 40,
-                        'passport_photo_16_photos': 70,
-                        'passport_photo_30_photos': 120
-                    },
-                    'golden_embossing': {
-                        'golden_embossing_per_book': 50,
-                        'golden_emboss_quality_upgrade': 3
-                    }
+            }
+            
+            # Combine pricing and categorized_pricing into a single object for frontend compatibility
+            default_pricing['categorized_pricing'] = default_categorized
+            default_pricing['services_summary'] = {
+                'total_services': len(default_pricing),
+                'available_services_count': len(default_pricing),
+                'not_available_services_count': 0
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'pricing': default_pricing,
+                'categorized_pricing': default_categorized,
+                'services_summary': {
+                    'total_services': len(default_pricing),
+                    'available_services_count': len(default_pricing),
+                    'not_available_services_count': 0
                 }
-                
-                return JsonResponse({
-                    'success': True,
-                    'pricing': default_pricing,
-                    'categorized_pricing': default_categorized,
-                    'services_summary': {
-                        'total_services': len(default_pricing),
-                        'available_services_count': len(default_pricing),
-                        'not_available_services_count': 0
-                    }
-                })
+            })
                 
         except Exception as e:
             print(f"Error in get_vendor_pricing: {str(e)}")
@@ -5716,41 +5937,12 @@ def calculate_gloss_print_pricing(request):
             if num_copies < 1:
                 num_copies = 1
             
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
+            # Get vendor pricing from d1 database
             print(f"🔍 Gloss print - Vendor email: {vendor_email}")
-            print(f"🔍 Gloss print - Sanitized folder: {vendor_folder}")
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            print(f"🔍 Gloss print - Trying pricing keys: {possible_pricing_keys}")
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -5863,41 +6055,12 @@ def calculate_golden_emboss_pricing(request):
             if num_copies < 1:
                 num_copies = 1
             
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
+            # Get vendor pricing from d1 database
             print(f"🔍 Golden emboss - Vendor email: {vendor_email}")
-            print(f"🔍 Golden emboss - Sanitized folder: {vendor_folder}")
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            print(f"🔍 Golden emboss - Trying pricing keys: {possible_pricing_keys}")
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -6091,41 +6254,12 @@ def calculate_photo_print_pricing(request):
             if layout_slots < 1: layout_slots = 1
             if copies < 1: copies = 1
             
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
+            # Get vendor pricing from d1 database
             print(f"🔍 Photo print - Vendor email: {vendor_email}")
-            print(f"🔍 Photo print - Sanitized folder: {vendor_folder}")
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            print(f"🔍 Photo print - Trying pricing keys: {possible_pricing_keys}")
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -6234,35 +6368,11 @@ def calculate_digital_print_pricing(request):
             if not all([vendor_email, paper_size, print_color, print_quality]):
                 return JsonResponse({'success': False, 'error': 'Missing required parameters'})
 
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            # Get vendor pricing from d1 database
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -6404,41 +6514,12 @@ def calculate_jumbo_print_pricing(request):
             if num_copies < 1:
                 num_copies = 1
             
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
+            # Get vendor pricing from d1 database
             print(f"🔍 Jumbo print - Vendor email: {vendor_email}")
-            print(f"🔍 Jumbo print - Sanitized folder: {vendor_folder}")
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            print(f"🔍 Jumbo print - Trying pricing keys: {possible_pricing_keys}")
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -6540,41 +6621,12 @@ def calculate_passport_photo_pricing(request):
                 photo_package = 8
                 print(f"Invalid photo package {photo_package}, using default: 8")
             
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
+            # Get vendor pricing from d1 database
             print(f"🔍 Passport photo - Vendor email: {vendor_email}")
-            print(f"🔍 Passport photo - Sanitized folder: {vendor_folder}")
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            print(f"🔍 Passport photo - Trying pricing keys: {possible_pricing_keys}")
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -6672,41 +6724,12 @@ def calculate_a4_print_pricing(request):
             if total_quantity is not None and total_quantity < 1:
                 total_quantity = total_pages * total_copies
             
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Get vendor pricing from R2 - try different possible locations
-            vendor_folder = sanitize_email(vendor_email)
+            # Get vendor pricing from d1 database
             print(f"🔍 A4 print - Vendor email: {vendor_email}")
-            print(f"🔍 A4 print - Sanitized folder: {vendor_folder}")
-            
-            # Try different possible pricing file locations
-            possible_pricing_keys = [
-                f'vendor_register_details/{vendor_folder}/pricing.json',
-                f'vendor_register_details/{vendor_folder}/vendor_pricing.json',
-                f'vendor_register_details/{vendor_folder}/pricing_data.json'
-            ]
-            
-            print(f"🔍 A4 print - Trying pricing keys: {possible_pricing_keys}")
-            
-            pricing_data = None
-            for pricing_key in possible_pricing_keys:
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-                    print(f"✅ Loaded pricing data from: {pricing_key}")
-                    print(f"📊 Pricing data keys: {list(pricing_data.keys())}")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Could not load from {pricing_key}: {e}")
-                    continue
+            pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
             if pricing_data is None:
-                print(f"❌ Could not load vendor pricing from any location for vendor: {vendor_email}")
+                print(f"❌ Could not load vendor pricing from d1 database for vendor: {vendor_email}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
@@ -6807,7 +6830,7 @@ def calculate_a4_print_pricing(request):
 @csrf_exempt
 def get_available_shops(request):
     """
-    Get all available shops from R2 storage vendor registration details with caching
+    Get all available shops from d1 database Vendor_register table with caching
     """
     import time
     
@@ -6827,61 +6850,125 @@ def get_available_shops(request):
         })
     
     try:
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-        shops = []
-        try:
-            objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
-            for obj in objects.get("Contents", []):
-                key = obj["Key"]
-                if key.endswith('/registration_details.json'):
-                    try:
-                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                        vendor_data = json.loads(response['Body'].read().decode('utf-8'))
-                        vendor_name = vendor_data.get('vendor_name', '')
-                        vendor_email = vendor_data.get('vendor_email', '')
-                        shop_address = vendor_data.get('shop_address', '')
-                        city = vendor_data.get('city', '')
-                        latitude = vendor_data.get('latitude', '')
-                        longitude = vendor_data.get('longitude', '')
-                        if vendor_name and vendor_email:
-                            shop_folder = sanitize_shop_name(vendor_name)
-                            shop_info = {
-                                'shop_name': vendor_name,
-                                'shop_folder': shop_folder,
-                                'vendor_email': vendor_email,
-                                'phone_number': vendor_data.get('phone_number', ''),
-                                'shop_address': shop_address,
-                                'city': city,
-                                'pincode': vendor_data.get('pincode', ''),
-                                'latitude': latitude,
-                                'longitude': longitude,
-                                'status': 'Available',
-                                'vendor_id': vendor_data.get('vendor_id', ''),
-                                'vendor_token': vendor_data.get('vendor_token', '')
-                            }
-                            if not any(s['shop_folder'] == shop_folder for s in shops):
-                                shops.append(shop_info)
-                    except Exception as e:
-                        print(f"Error reading vendor data from {key}: {str(e)}")
-                        continue
-        except Exception as e:
-            print(f"Error listing vendor folders: {str(e)}")
+        # Try to fetch from d1 database via Worker API
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
         
-        # Cache the result
-        if not hasattr(get_available_shops, '_cache'):
-            get_available_shops._cache = {}
-            get_available_shops._cache_timestamps = {}
-        get_available_shops._cache[cache_key] = shops
-        get_available_shops._cache_timestamps[cache_key] = current_time
+        if api_url and api_key:
+            # Construct the Worker API endpoint for getting all vendors
+            if '/add-contact' in api_url:
+                worker_endpoint = api_url.replace('/add-contact', '/get-all-vendors')
+            elif '/add-vendor-register' in api_url:
+                worker_endpoint = api_url.replace('/add-vendor-register', '/get-all-vendors')
+            elif '/add-vendor-pricing' in api_url:
+                worker_endpoint = api_url.replace('/add-vendor-pricing', '/get-all-vendors')
+            else:
+                worker_endpoint = api_url.rstrip('/') + '/get-all-vendors'
+            
+            try:
+                resp = requests.get(
+                    worker_endpoint,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=15
+                )
+                
+                if resp.status_code == 200:
+                    response_data = resp.json()
+                    if response_data.get('success'):
+                        vendors = response_data.get('vendors', [])
+                        shops = []
+                        
+                        for vendor in vendors:
+                            vendor_name = vendor.get('vendor_name', '')
+                            vendor_email = vendor.get('email', '')
+                            
+                            if vendor_name and vendor_email:
+                                shop_folder = sanitize_shop_name(vendor_name)
+                                shop_info = {
+                                    'shop_name': vendor_name,
+                                    'shop_folder': shop_folder,
+                                    'vendor_email': vendor_email,
+                                    'phone_number': vendor.get('phone_number', ''),
+                                    'shop_address': vendor.get('shop_address', ''),
+                                    'city': vendor.get('city', ''),
+                                    'pincode': vendor.get('pincode', ''),
+                                    'latitude': vendor.get('latitude', ''),
+                                    'longitude': vendor.get('longitude', ''),
+                                    'status': vendor.get('status', 'Available'),
+                                    'vendor_id': vendor.get('vendor_id', ''),
+                                    'vendor_token': vendor.get('vendor_token', '')
+                                }
+                                if not any(s['shop_folder'] == shop_folder for s in shops):
+                                    shops.append(shop_info)
+                        
+                        if len(shops) > 0:
+                            print(f"✅ Successfully fetched {len(shops)} shops from d1 database")
+                            
+                            # Only cache successful results with shops
+                            if not hasattr(get_available_shops, '_cache'):
+                                get_available_shops._cache = {}
+                                get_available_shops._cache_timestamps = {}
+                            get_available_shops._cache[cache_key] = shops
+                            get_available_shops._cache_timestamps[cache_key] = current_time
+                            
+                            return JsonResponse({
+                                'success': True,
+                                'shops': shops,
+                                'total_shops': len(shops)
+                            })
+                        else:
+                            error_msg = "No shops found in database"
+                            print(f"⚠️ {error_msg}")
+                            # Clear cache if we get empty results
+                            if hasattr(get_available_shops, '_cache') and cache_key in get_available_shops._cache:
+                                del get_available_shops._cache[cache_key]
+                                if cache_key in get_available_shops._cache_timestamps:
+                                    del get_available_shops._cache_timestamps[cache_key]
+                    else:
+                        error_msg = response_data.get('error', 'Unknown error from Worker API')
+                        print(f"⚠️ Worker API returned error: {error_msg}")
+                        # Clear cache on error
+                        if hasattr(get_available_shops, '_cache') and cache_key in get_available_shops._cache:
+                            del get_available_shops._cache[cache_key]
+                            if cache_key in get_available_shops._cache_timestamps:
+                                del get_available_shops._cache_timestamps[cache_key]
+                else:
+                    error_text = resp.text[:500] if resp.text else 'No error message'
+                    print(f"⚠️ Failed to fetch shops from d1 database with status {resp.status_code}: {error_text}")
+                    # Clear cache on error
+                    if hasattr(get_available_shops, '_cache') and cache_key in get_available_shops._cache:
+                        del get_available_shops._cache[cache_key]
+                        if cache_key in get_available_shops._cache_timestamps:
+                            del get_available_shops._cache_timestamps[cache_key]
+            except requests.exceptions.RequestException as e:
+                print(f"⚠️ Failed to connect to Worker API: {str(e)}")
+                # Clear cache on connection error
+                if hasattr(get_available_shops, '_cache') and cache_key in get_available_shops._cache:
+                    del get_available_shops._cache[cache_key]
+                    if cache_key in get_available_shops._cache_timestamps:
+                        del get_available_shops._cache_timestamps[cache_key]
+            except Exception as e:
+                print(f"⚠️ Unexpected error fetching shops from d1 database: {str(e)}")
+                # Clear cache on unexpected error
+                if hasattr(get_available_shops, '_cache') and cache_key in get_available_shops._cache:
+                    del get_available_shops._cache[cache_key]
+                    if cache_key in get_available_shops._cache_timestamps:
+                        del get_available_shops._cache_timestamps[cache_key]
+        else:
+            print(f"⚠️ Worker API not configured - cannot fetch shops from d1 database")
+        
+        # Fallback: Return empty shops list if d1 fetch fails (but don't cache it)
+        print(f"⚠️ Falling back to empty shops list")
+        shops = []
         
         return JsonResponse({
             'success': True,
             'shops': shops,
-            'total_shops': len(shops)
+            'total_shops': len(shops),
+            'message': 'No shops available. Please check database connection.'
         })
     except Exception as e:
         print(f"Error getting available shops: {str(e)}")
@@ -7556,7 +7643,7 @@ def send_password_reset_email(email, verification_code, vendor_name):
 def send_welcome_email(email, vendor_name, password, vendor_id):
     """
     Send welcome email to new vendors with login credentials
-    Uses Django send_mail first, then falls back to direct SMTP if needed
+    Uses direct SMTP connection with SSL (port 465) and TLS (port 587) only
     """
     subject = 'Welcome to PrintMax - Your Vendor Account is Ready!'
     
@@ -7829,120 +7916,83 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
     # For display, we can use a formatted version, but SMTP envelope must use authenticated email
     display_from = f'PrintMax <{from_email_addr}>' if from_email_addr else 'PrintMax'
     
-    print(f"📧 Email config - Host: {settings.EMAIL_HOST}, Port: {settings.EMAIL_PORT}")
+    print(f"📧 Email config - Host: {settings.EMAIL_HOST}")
     print(f"📧 Authenticated as: {from_email_addr}")
     print(f"📧 Sending to: {email}")
     
+    # Direct SMTP connection using SSL (port 465) and TLS (port 587) only
     try:
-        # Method 1: Try Django's EmailMultiAlternatives for better control
-        from django.core.mail import EmailMultiAlternatives
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        import ssl
         
-        msg = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_message,
-            from_email=from_email_addr,  # CRITICAL: Must match EMAIL_HOST_USER
-            to=[email],
-        )
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = display_from  # Display name in header
+        msg['To'] = email
         
         # Add headers to prevent email clients from treating content as quoted
-        msg.extra_headers = {
-            'X-Mailer': 'PrintMax Vendor System',
-            'X-Priority': '1',
-            'X-MSMail-Priority': 'High',
-            'Importance': 'high',
-            'X-Original-Sender': from_email_addr,
-            'X-Auto-Response-Suppress': 'All',
-            'Precedence': 'bulk',
-            'X-Entity-Ref-ID': f'vendor-welcome-{vendor_id}',
-        }
+        msg['X-Mailer'] = 'PrintMax Vendor System'
+        msg['X-Priority'] = '1'
+        msg['X-MSMail-Priority'] = 'High'
+        msg['Importance'] = 'high'
+        msg['X-Original-Sender'] = from_email_addr
+        msg['X-Auto-Response-Suppress'] = 'All'
+        msg['Precedence'] = 'bulk'
+        msg['X-Entity-Ref-ID'] = f'vendor-welcome-{vendor_id}'
         
-        msg.attach_alternative(html_message, "text/html")
+        # Add text and HTML parts
+        part1 = MIMEText(plain_message, 'plain')
+        part2 = MIMEText(html_message, 'html')
+        msg.attach(part1)
+        msg.attach(part2)
         
-        # Send with fail_silently=False to catch errors
-        result = msg.send(fail_silently=False)
-        
-        print(f"✅ Registration email sent successfully via Django EmailMultiAlternatives to {email}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Primary email method failed: {str(e)}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        
-        # Method 2: Fallback - Direct SMTP connection
+        # Try SSL first (port 465) - Primary configuration
         try:
-            print("🔄 Trying direct SMTP send as fallback...")
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            import ssl
+            print("🔄 Attempting SMTP connection with SSL (port 465)...")
+            context = ssl.create_default_context()
+            server = smtplib.SMTP_SSL(
+                settings.EMAIL_HOST, 
+                465, 
+                timeout=getattr(settings, 'EMAIL_TIMEOUT', 30),
+                context=context
+            )
+            server.set_debuglevel(0)
+            server.ehlo()
+            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+            server.sendmail(from_email_addr, [email], msg.as_string())
+            server.quit()
+            print(f"✅ Registration email sent successfully via SMTP (SSL port 465) to {email}")
+            return True
+        except Exception as e_ssl:
+            print(f"❌ SSL (465) failed: {str(e_ssl)}")
             
-            # Create message
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = display_from  # Display name in header
-            msg['To'] = email
-            
-            # Add headers to prevent email clients from treating content as quoted
-            msg['X-Mailer'] = 'PrintMax Vendor System'
-            msg['X-Priority'] = '1'
-            msg['X-MSMail-Priority'] = 'High'
-            msg['Importance'] = 'high'
-            msg['X-Original-Sender'] = from_email_addr
-            msg['X-Auto-Response-Suppress'] = 'All'
-            msg['Precedence'] = 'bulk'
-            msg['X-Entity-Ref-ID'] = f'vendor-welcome-{vendor_id}'
-            
-            # Add text and HTML parts
-            part1 = MIMEText(plain_message, 'plain')
-            part2 = MIMEText(html_message, 'html')
-            msg.attach(part1)
-            msg.attach(part2)
-            
-            # Try SSL first (port 465) - Primary configuration for Hostinger
+            # Try TLS (port 587) as fallback
             try:
-                print("🔄 Attempting SMTP connection with SSL (port 465)...")
+                print("🔄 Attempting SMTP connection with TLS (port 587)...")
                 context = ssl.create_default_context()
-                server = smtplib.SMTP_SSL(
-                    settings.EMAIL_HOST, 
-                    465, 
-                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 30),
-                    context=context
-                )
-                server.set_debuglevel(0)  # Set to 1 for debug output
+                server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 30))
+                server.set_debuglevel(0)
+                server.ehlo()
+                server.starttls(context=context)
                 server.ehlo()
                 server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
                 server.sendmail(from_email_addr, [email], msg.as_string())
                 server.quit()
-                print(f"✅ Registration email sent successfully via direct SMTP (SSL) to {email}")
+                print(f"✅ Registration email sent successfully via SMTP (TLS port 587) to {email}")
                 return True
-            except Exception as e_ssl:
-                print(f"❌ Direct SSL (465) failed: {str(e_ssl)}")
-                
-                # Try TLS (port 587) as fallback option
-                try:
-                    print("🔄 Attempting SMTP connection with TLS (port 587) as fallback...")
-                    context = ssl.create_default_context()
-                    server = smtplib.SMTP(settings.EMAIL_HOST, 587, timeout=getattr(settings, 'EMAIL_TIMEOUT', 30))
-                    server.set_debuglevel(0)
-                    server.ehlo()
-                    server.starttls(context=context)
-                    server.ehlo()
-                    server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-                    server.sendmail(from_email_addr, [email], msg.as_string())
-                    server.quit()
-                    print(f"✅ Registration email sent successfully via direct SMTP (TLS) to {email}")
-                    return True
-                except Exception as e_tls:
-                    print(f"❌ Direct TLS (587) failed: {str(e_tls)}")
-                    print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
-                    return False
+            except Exception as e_tls:
+                print(f"❌ TLS (587) failed: {str(e_tls)}")
+                print(f"❌ All email methods failed. Check SMTP credentials and server configuration.")
+                return False
                     
-        except Exception as e_fallback:
-            print(f"❌ Fallback method also failed: {str(e_fallback)}")
-            import traceback
-            print(f"❌ Full traceback: {traceback.format_exc()}")
-            return False
+    except Exception as e:
+        print(f"❌ Email send failed: {str(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        return False
 
 
 # ─────────────────────────────────────────────────────────────
@@ -9684,37 +9734,56 @@ def update_job_failed_status_in_r2(filename, vendor_id, failed_status):
         return False
 
 def add_user_points(user_email, points, reason):
-    """Add points to user account - stores only points, date and time"""
+    """Add points to user account - stores in D1 database (User_points table)"""
     try:
-        # Store only essential points data
-        points_data = {
+        # Store points data
+        date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+        time_str = datetime.datetime.now().strftime('%H:%M:%S')
+        timestamp = datetime.datetime.now().isoformat()
+        
+        # Store in D1 database via Worker API
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            print(f"⚠️ Worker API not configured, skipping database storage")
+            return False
+
+        # Construct the Worker API endpoint
+        if '/add-contact' in api_url:
+            worker_endpoint = api_url.replace('/add-contact', '/add-user-points')
+        elif '/add-vendor-register' in api_url:
+            worker_endpoint = api_url.replace('/add-vendor-register', '/add-user-points')
+        else:
+            worker_endpoint = api_url.rstrip('/') + '/add-user-points'
+        
+        payload = {
+            'user_email': user_email,
             'points': points,
-            'date': datetime.datetime.now().strftime('%Y-%m-%d'),
-            'time': datetime.datetime.now().strftime('%H:%M:%S')
+            'date': date_str,
+            'time': time_str,
+            'reason': reason or '',
+            'transaction_timestamp': timestamp
         }
         
-        # Create folder structure: user_points/{email}/{timestamp}.json
-        points_key = f'user_points/{sanitize_email(user_email)}/{int(time.time())}.json'
+        resp = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
         
-        try:
-            # Initialize R2 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
+        if resp.status_code == 200:
+            print(f"✅ Stored {points} points for {user_email} in database on {date_str} at {time_str}")
+            return True
+        else:
+            error_text = resp.text[:200] if resp.text else 'Unknown error'
+            print(f"⚠️ Failed to store points in database: {resp.status_code} - {error_text}")
+            return False
             
-            s3.put_object(
-                Bucket=settings.R2_BUCKET,
-                Key=points_key,
-                Body=json.dumps(points_data, indent=2),
-                ContentType='application/json'
-            )
-            print(f"💰 Stored {points} points for {user_email} on {points_data['date']} at {points_data['time']}")
-        except Exception as e:
-            print(f"❌ Error storing points in R2: {e}")
-        
-        return True
     except Exception as e:
         print(f"❌ Error adding points: {e}")
         return False
@@ -9888,73 +9957,355 @@ def mark_notification_read(request):
         return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
 
 def get_total_user_points(user_email: str) -> int:
-    """Sum all points for the user from R2. Returns 0 if none."""
+    """Get total points for the user from D1 database. Returns 0 if none."""
     try:
-        # Initialize R2 client
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
+        # Get from D1 database via Worker API
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
         
-        # Updated prefix to match new structure: user_points/{email}/
-        prefix = f'user_points/{sanitize_email(user_email)}/'
-        response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-        total_points = 0
+        if not api_url or not api_key:
+            print(f"⚠️ Worker API not configured, returning 0 points")
+            return 0
+
+        # Construct the Worker API endpoint
+        if '/add-contact' in api_url:
+            worker_endpoint = api_url.replace('/add-contact', '/get-user-total-points')
+        elif '/add-vendor-register' in api_url:
+            worker_endpoint = api_url.replace('/add-vendor-register', '/get-user-total-points')
+        else:
+            worker_endpoint = api_url.rstrip('/') + '/get-user-total-points'
         
-        for obj in response.get('Contents', []):
-            try:
-                res = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
-                data = json.loads(res['Body'].read().decode('utf-8'))
-                total_points += int(data.get('points', 0))
-            except Exception as _e:
-                print(f"⚠️ Skipping invalid points record {obj.get('Key')}: {_e}")
-                continue
+        resp = requests.post(
+            worker_endpoint,
+            json={'user_email': user_email},
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
         
-        print(f"💰 Total points for {user_email}: {total_points}")
-        return total_points
+        if resp.status_code == 200:
+            response_data = resp.json()
+            if response_data.get('success'):
+                total_points = response_data.get('total_points', 0)
+                print(f"💰 Total points for {user_email}: {total_points}")
+                return int(total_points)
+        
+        print(f"⚠️ Failed to get points from database: {resp.status_code}")
+        return 0
     except Exception as e:
-        print(f"❌ Error summing user points: {e}")
+        print(f"❌ Error getting user points: {e}")
         return 0
 
 def deduct_user_points(user_email: str, points: int, reason: str) -> bool:
-    """Deduct points from a user's account"""
+    """Deduct points from a user's account - stores in D1 database"""
     try:
         if points <= 0:
             return True  # No points to deduct
         
-        # Create negative points record
-        points_data = {
-            'points': -points,  # Negative value for deduction
-            'date': datetime.datetime.now().strftime('%Y-%m-%d'),
-            'time': datetime.datetime.now().strftime('%H:%M:%S'),
-            'reason': reason
-        }
-        
-        # Create folder structure: user_points/{email}/{timestamp}.json
-        points_key = f'user_points/{sanitize_email(user_email)}/{int(time.time())}.json'
-        
-        try:
-            # Initialize R2 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            s3.put_object(
-                Bucket=settings.R2_BUCKET,
-                Key=points_key,
-                Body=json.dumps(points_data, indent=2),
-                ContentType='application/json'
-            )
-            print(f"💰 Deducted {points} points from {user_email} on {points_data['date']} at {points_data['time']} - Reason: {reason}")
-        except Exception as e:
-            print(f"❌ Error deducting points in R2: {e}")
-        
-        return True
+        # Create negative points record (use add_user_points with negative value)
+        return add_user_points(user_email, -points, reason)
     except Exception as e:
         print(f"❌ Error deducting points: {e}")
+        return False
+
+@csrf_exempt
+def return_user_points(request):
+    """Return points to user - used when payment fails after points were deducted"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+    
+    try:
+        body = json.loads(request.body.decode('utf-8')) if request.body else {}
+        user_email = body.get('user_email')
+        points = int(body.get('points', 0))
+        reason = body.get('reason', 'Points returned due to payment failure')
+        
+        if not user_email:
+            return JsonResponse({'success': False, 'error': 'User email required'}, status=400)
+        
+        if points <= 0:
+            return JsonResponse({'success': False, 'error': 'Invalid points amount'}, status=400)
+        
+        # Return points by adding them back
+        success = add_user_points(user_email, points, reason)
+        
+        if success:
+            print(f"✅ Returned {points} points to {user_email}: {reason}")
+            return JsonResponse({'success': True, 'message': f'Returned {points} points'})
+        else:
+            return JsonResponse({'success': False, 'error': 'Failed to return points'}, status=500)
+            
+    except Exception as e:
+        print(f"❌ Error returning points: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None):
+    """Store vendor print job in D1 database via Worker API"""
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            print(f"⚠️ Worker API not configured, skipping database storage")
+            return False
+
+        # Construct the Worker API endpoint
+        if '/add-contact' in api_url:
+            worker_endpoint = api_url.replace('/add-contact', '/add-vendor-print-job')
+        elif '/add-vendor-register' in api_url:
+            worker_endpoint = api_url.replace('/add-vendor-register', '/add-vendor-print-job')
+        else:
+            worker_endpoint = api_url.rstrip('/') + '/add-vendor-print-job'
+        
+        # Extract pricing information from pricing_details if available
+        total_price = None
+        platform_profit = None
+        price_per_page = None
+        page_count = None
+        num_copies = None
+        
+        if pricing_details:
+            if isinstance(pricing_details, dict):
+                total_price = pricing_details.get('total_price', pricing_details.get('total'))
+                platform_profit = pricing_details.get('platform_profit')
+                if isinstance(pricing_details.get('pricing_breakdown'), dict):
+                    breakdown = pricing_details.get('pricing_breakdown', {})
+                    price_per_page = breakdown.get('price_per_page')
+                    page_count = breakdown.get('page_count')
+                    num_copies = breakdown.get('num_copies')
+            elif isinstance(pricing_details, str):
+                try:
+                    pricing_obj = json.loads(pricing_details)
+                    total_price = pricing_obj.get('total_price', pricing_obj.get('total'))
+                    platform_profit = pricing_obj.get('platform_profit')
+                    price_per_page = pricing_obj.get('price_per_page', pricing_obj.get('per_page'))
+                    page_count = pricing_obj.get('page_count', pricing_obj.get('pages'))
+                    num_copies = pricing_obj.get('num_copies', pricing_obj.get('copies'))
+                except:
+                    pass
+        
+        # Also check metadata for pricing info
+        if total_price is None:
+            total_price = metadata.get('total_price')
+        if price_per_page is None:
+            price_per_page = metadata.get('price_per_page')
+        if page_count is None:
+            page_count = metadata.get('page_count')
+        if num_copies is None:
+            num_copies = metadata.get('num_copies')
+        
+        # Convert string values to appropriate types
+        if total_price:
+            try:
+                total_price = float(total_price)
+            except:
+                total_price = None
+        if platform_profit:
+            try:
+                platform_profit = float(platform_profit)
+            except:
+                platform_profit = None
+        if price_per_page:
+            try:
+                price_per_page = float(price_per_page)
+            except:
+                price_per_page = None
+        if page_count:
+            try:
+                page_count = int(page_count)
+            except:
+                page_count = None
+        if num_copies:
+            try:
+                num_copies = int(num_copies)
+            except:
+                num_copies = None
+        
+        # Store pricing_details as JSON string if available
+        pricing_details_str = None
+        if pricing_details:
+            if isinstance(pricing_details, str):
+                pricing_details_str = pricing_details
+            else:
+                pricing_details_str = json.dumps(pricing_details)
+        
+        payload = {
+            'vendor_id': vendor_id,
+            'vendor_email': vendor_email or '',
+            'user_email': user_email,
+            'filename': filename,
+            'storage_folder': storage_folder,
+            'r2_path': r2_path,
+            'service_type': metadata.get('service_type', ''),
+            'status': metadata.get('status', 'pending'),
+            'job_completed': metadata.get('job_completed', 'NO'),
+            'vendor_status': metadata.get('vendor_status', 'not sended'),
+            'token': metadata.get('token', ''),
+            'job_id': metadata.get('job_id', ''),
+            'copies': metadata.get('copies', '1'),
+            'color': metadata.get('color', ''),
+            'orientation': metadata.get('orientation', ''),
+            'pageSize': metadata.get('pageSize', ''),
+            'pageRange': metadata.get('pageRange', ''),
+            'specificPages': metadata.get('specificPages', ''),
+            'spiralBinding': metadata.get('spiralBinding', 'No'),
+            'lamination': metadata.get('lamination', 'No'),
+            'service_name': metadata.get('service_name', ''),
+            'feedback': metadata.get('feedback', ''),
+            'quality': metadata.get('quality', ''),
+            'thickness': metadata.get('thickness', ''),
+            'points_applied': metadata.get('points_applied', 'false'),
+            'points_used': metadata.get('points_used', '0'),
+            'timestamp': metadata.get('timestamp', datetime.datetime.now().isoformat()),
+            'completion_time': metadata.get('completion_time', ''),
+            'rendered_status': metadata.get('rendered_status', 'NO'),
+            'trash': metadata.get('trash', 'NO'),
+            'total_price': total_price,
+            'platform_profit': platform_profit,
+            'price_per_page': price_per_page,
+            'final_amount': metadata.get('final_amount'),
+            'page_count': page_count,
+            'num_copies': num_copies,
+            'pricing_details': pricing_details_str
+        }
+        
+        # Convert final_amount to float if present
+        if payload['final_amount']:
+            try:
+                payload['final_amount'] = float(payload['final_amount'])
+            except:
+                payload['final_amount'] = None
+        
+        resp = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if resp.status_code == 200:
+            print(f"✅ Stored print job in database: {filename} in {storage_folder}")
+            return True
+        else:
+            print(f"⚠️ Failed to store print job in database: {resp.status_code} - {resp.text[:200]}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error storing print job in database: {e}")
+        return False
+
+def store_user_notification_in_db(notification_data):
+    """Store user notification in D1 database via Worker API"""
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            print(f"⚠️ Worker API not configured, skipping database storage")
+            return False
+
+        # Construct the Worker API endpoint
+        if '/add-contact' in api_url:
+            worker_endpoint = api_url.replace('/add-contact', '/add-user-notification')
+        elif '/add-vendor-register' in api_url:
+            worker_endpoint = api_url.replace('/add-vendor-register', '/add-user-notification')
+        else:
+            worker_endpoint = api_url.rstrip('/') + '/add-user-notification'
+        
+        payload = {
+            'notification_id': notification_data.get('notification_id', ''),
+            'user_email': notification_data.get('user_email', ''),
+            'filename': notification_data.get('filename', ''),
+            'vendor_id': notification_data.get('vendor_id', ''),
+            'status': notification_data.get('status', ''),
+            'completion_time': notification_data.get('completion_time', ''),
+            'created_at': notification_data.get('created_at', datetime.datetime.now().isoformat()),
+            'read': notification_data.get('read', False),
+            'type': notification_data.get('type', ''),
+            'token': notification_data.get('token', ''),
+            'service_type': notification_data.get('service_type', ''),
+            'platform_profit': int(notification_data.get('platform_profit', 0)),
+            'total_price': int(notification_data.get('total_price', 0))
+        }
+        
+        resp = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if resp.status_code == 200:
+            print(f"✅ Stored user notification in database: {notification_data.get('notification_id')}")
+            return True
+        else:
+            print(f"⚠️ Failed to store user notification in database: {resp.status_code} - {resp.text[:200]}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error storing user notification in database: {e}")
+        return False
+
+def store_vendor_notification_in_db(notification_data):
+    """Store vendor notification in D1 database via Worker API"""
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            print(f"⚠️ Worker API not configured, skipping database storage")
+            return False
+
+        # Construct the Worker API endpoint
+        if '/add-contact' in api_url:
+            worker_endpoint = api_url.replace('/add-contact', '/add-vendor-notification')
+        elif '/add-vendor-register' in api_url:
+            worker_endpoint = api_url.replace('/add-vendor-register', '/add-vendor-notification')
+        else:
+            worker_endpoint = api_url.rstrip('/') + '/add-vendor-notification'
+        
+        payload = {
+            'notification_id': notification_data.get('notification_id', ''),
+            'vendor_id': notification_data.get('vendor_id', ''),
+            'vendor_email': notification_data.get('vendor_email', ''),
+            'user_email': notification_data.get('user_email', ''),
+            'filename': notification_data.get('filename', ''),
+            'service_type': notification_data.get('service_type', ''),
+            'platform_profit': int(notification_data.get('platform_profit', 0)),
+            'total_price': int(notification_data.get('total_price', 0)),
+            'completion_time': notification_data.get('completion_time', ''),
+            'timestamp': notification_data.get('timestamp', datetime.datetime.now().isoformat()),
+            'token': notification_data.get('token', ''),
+            'read': notification_data.get('read', False)
+        }
+        
+        resp = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if resp.status_code == 200:
+            print(f"✅ Stored vendor notification in database: {notification_data.get('notification_id')}")
+            return True
+        else:
+            print(f"⚠️ Failed to store vendor notification in database: {resp.status_code} - {resp.text[:200]}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error storing vendor notification in database: {e}")
         return False
 
 def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time, token=None):
@@ -10055,28 +10406,14 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'total_price': total_price
         }
         
-        # Store notification in R2 for user to see
-        notification_key = f'user_notifications/{sanitize_email(user_email)}/{notification_id}.json'
-        
+        # Store user notification in D1 database only
         try:
-            # Initialize R2 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            s3.put_object(
-                Bucket=settings.R2_BUCKET,
-                Key=notification_key,
-                Body=json.dumps(notification_data, indent=2),
-                ContentType='application/json'
-            )
-            print(f"📧 Stored {status} notification for {user_email} for job {filename}")
+            store_user_notification_in_db(notification_data)
+            print(f"📧 Stored {status} notification for {user_email} for job {filename} in database")
         except Exception as e:
-            print(f"❌ Error storing notification in R2: {e}")
+            print(f"❌ Error storing user notification in database: {e}")
         
-        # Store vendor notification in 2-day date folder
+        # Store vendor notification in D1 database
         try:
             store_vendor_notification(vendor_id, notification_data, completion_time)
         except Exception as e:
@@ -10334,33 +10671,22 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
             'document_name': document_name
         }
         
-        # Store in vendor_notifications folder with 2-day date structure
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-        
-        vendor_notification_key = f'vendor_notifications/{sanitize_email(vendor_email)}/{date_folder}/{notification_id}.json'
-        
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=vendor_notification_key,
-            Body=json.dumps(vendor_notification_data, indent=2),
-            ContentType='application/json'
-        )
-        
-        print(f"📧 Stored vendor notification for {vendor_email} in folder {date_folder}")
-        print(f"📁 Notification stored at: {vendor_notification_key}")
-        print(f"📊 Notification data: {json.dumps(vendor_notification_data, indent=2)}")
-        return True
+        # Store vendor notification in D1 database only
+        try:
+            store_vendor_notification_in_db(vendor_notification_data)
+            print(f"📧 Stored vendor notification for {vendor_email} in database")
+            print(f"📊 Notification data: {json.dumps(vendor_notification_data, indent=2)}")
+            return True
+        except Exception as e:
+            print(f"❌ Error storing vendor notification in database: {e}")
+            return False
         
     except Exception as e:
         print(f"❌ Error storing vendor notification: {e}")
         return False
 
 def store_vendor_notification(vendor_id, notification_data, completion_time):
-    """Store vendor notification in 2-day date folder structure"""
+    """Store vendor notification in D1 database only"""
     try:
         # Get vendor email from vendor_id
         vendor_email = get_vendor_email_by_id(vendor_id)
@@ -10387,26 +10713,16 @@ def store_vendor_notification(vendor_id, notification_data, completion_time):
             'completion_time': completion_time,
             'timestamp': notification_data['timestamp'],
             'token': notification_data['token'],
-            'document_name': notification_data['document_name']
+            'document_name': notification_data.get('document_name', '')
         }
         
-        # Store in vendor_notifications folder with 2-day date structure
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
+        # Store vendor notification in D1 database only
+        try:
+            store_vendor_notification_in_db(vendor_notification_data)
+            print(f"📧 Stored vendor notification for {vendor_email} in database")
+        except Exception as e:
+            print(f"❌ Error storing vendor notification in database: {e}")
         
-        vendor_notification_key = f'vendor_notifications/{sanitize_email(vendor_email)}/{date_folder}/{notification_data["notification_id"]}.json'
-        
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=vendor_notification_key,
-            Body=json.dumps(vendor_notification_data, indent=2),
-            ContentType='application/json'
-        )
-        
-        print(f"📧 Stored vendor notification for {vendor_email} in folder {date_folder}")
         return True
         
     except Exception as e:

@@ -1305,26 +1305,14 @@
                             </div>
                         </div>
 
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="locality" class="form-label">Locality/Area</label>
-                                <div class="input-wrapper">
-                                    <input type="text" class="form-input" id="locality" name="locality" required 
-                                           placeholder="Enter your locality or area">
-                                    <span class="material-icons input-icon">place</span>
-                                </div>
-                                <div class="error-message" id="localityError"></div>
+                        <div class="form-group">
+                            <label for="locality" class="form-label">Locality/Area</label>
+                            <div class="input-wrapper">
+                                <input type="text" class="form-input" id="locality" name="locality" required 
+                                       placeholder="Enter your locality or area">
+                                <span class="material-icons input-icon">place</span>
                             </div>
-
-                            <div class="form-group">
-                                <label for="landmark" class="form-label">Landmark (Optional)</label>
-                                <div class="input-wrapper">
-                                    <input type="text" class="form-input" id="landmark" name="landmark" 
-                                           placeholder="Nearby landmark or reference point">
-                                    <span class="material-icons input-icon">flag</span>
-                                </div>
-                                <div class="error-message" id="landmarkError"></div>
-                            </div>
+                            <div class="error-message" id="localityError"></div>
                         </div>
 
                         <div class="form-group">
@@ -1512,10 +1500,6 @@
             locality: (value) => {
                 if (!value.trim()) return { isValid: false, message: 'Locality is required' };
                 if (value.trim().length < 2) return { isValid: false, message: 'Please enter a valid locality' };
-                return { isValid: true };
-            },
-            landmark: (value) => {
-                // Landmark is optional, so always valid
                 return { isValid: true };
             },
             shopAddress: (value) => {
@@ -1764,7 +1748,6 @@
                 validateField('state', 'stateError', validations.state),
                 validateField('city', 'cityError', validations.city),
                 validateField('locality', 'localityError', validations.locality),
-                validateField('landmark', 'landmarkError', validations.landmark),
                 validateField('shopAddress', 'shopAddressError', validations.shopAddress),
                 validateField('pincode', 'pincodeError', validations.pincode)
             ];
@@ -1803,7 +1786,6 @@
                 state: document.getElementById('state').value,
                 city: document.getElementById('city').value,
                 locality: document.getElementById('locality').value,
-                landmark: document.getElementById('landmark').value,
                 shop_address: document.getElementById('shopAddress').value,
                 pincode: document.getElementById('pincode').value,
                 latitude: latitude,

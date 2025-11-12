@@ -359,18 +359,30 @@
                         const message = document.getElementById('message')?.value?.trim() || '';
                         if(!name || !email || !subjectVal || !message){ showResultModal('Please fill out all fields before submitting.', 'error'); return; }
                         if(loader){ loader.removeAttribute('aria-hidden'); loader.classList.add('show'); }
-                        await fetch('{% url "save_contact_details" %}', {
+                        
+                        const response = await fetch('{% url "save_contact_details" %}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
                             body: JSON.stringify({ name, email, subject: subjectVal, message })
-                        }).catch(()=>{});
-                        await new Promise(res=>setTimeout(res, 1200));
+                        });
+                        
+                        const data = await response.json();
+                        
+                        await new Promise(res=>setTimeout(res, 800));
                         if(loader){ loader.classList.remove('show'); loader.setAttribute('aria-hidden','true'); }
-                        showResultModal('Thanks! Your message has been sent successfully.', 'success');
-                        clearForm();
+                        
+                        // Only show success if API confirms success
+                        if(response.ok && data.success === true){
+                            showResultModal('Thanks! Your message has been sent successfully.', 'success');
+                            clearForm();
+                        } else {
+                            const errorMsg = data.error || 'Something went wrong. Please try again.';
+                            showResultModal(errorMsg, 'error');
+                        }
                     } catch(err) {
                         if(loader){ loader.classList.remove('show'); loader.setAttribute('aria-hidden','true'); }
-                        showResultModal('Something went wrong. Please try again.', 'error');
+                        showResultModal('Failed to send message. Please check your connection and try again.', 'error');
+                        console.error('Contact form error:', err);
                     }
                 });
             }

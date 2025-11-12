@@ -8820,6 +8820,16 @@
           modal.id = modalId;
           modal.innerHTML = renderServiceModal(service);
           document.getElementById('serviceModalsContainer').appendChild(modal);
+          
+          // Add overlay click handler to close modal when clicking outside
+          modal.addEventListener('click', function(e) {
+            // Only close if clicking directly on the overlay (not on modal content)
+            if (e.target === modal || e.target.classList.contains('service-modal-overlay')) {
+              closeServiceModal(service);
+            }
+          });
+          modal.setAttribute('data-overlay-handler', 'true');
+          
           // Attach events immediately for faster modal opening
           attachServiceModalEvents(service, modal);
           // Fix dropdown overflow and button visibility after modal is created
@@ -8846,6 +8856,19 @@
             resetServiceModal(service);
           }
           modal.classList.add('active');
+          
+          // Ensure overlay click handler is attached (in case it was removed)
+          const hasOverlayHandler = modal.hasAttribute('data-overlay-handler');
+          if (!hasOverlayHandler) {
+            modal.addEventListener('click', function(e) {
+              // Only close if clicking directly on the overlay (not on modal content)
+              if (e.target === modal || e.target.classList.contains('service-modal-overlay')) {
+                closeServiceModal(service);
+              }
+            });
+            modal.setAttribute('data-overlay-handler', 'true');
+          }
+          
           // Fix dropdown overflow and button visibility when modal is opened
           if (typeof fixDropdownOverflow === 'function') {
             fixDropdownOverflow();
@@ -8928,13 +8951,36 @@
           modalContent.classList.add('resetting');
         }
 
+        // Clear vendor pricing cache for the selected vendor (if any)
+        const shopSelect = modal.querySelector(`#${service}-shop-select`);
+        if (shopSelect && shopSelect.value) {
+          const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
+          if (selectedVendor && selectedVendor.vendor_email && typeof vendorPricingData !== 'undefined') {
+            delete vendorPricingData[selectedVendor.vendor_email];
+          }
+        }
+
+        // Clear points application state
+        const pointsSection = modal.querySelector(`#${service}-points-section`);
+        if (pointsSection) {
+          const applyPointsBtn = modal.querySelector(`#${service}-apply-points-btn`);
+          const removePointsBtn = modal.querySelector(`#${service}-remove-points-btn`);
+          const redeemAmount = modal.querySelector(`#${service}-redeem-amount`);
+          if (applyPointsBtn) applyPointsBtn.style.display = '';
+          if (removePointsBtn) removePointsBtn.style.display = 'none';
+          if (redeemAmount) redeemAmount.textContent = '10';
+          // Clear points applied state from modal dataset
+          delete modal.dataset.pointsApplied;
+          delete modal.dataset.pointsUsed;
+        }
+
         // Clear all form data in the modal
         const form = modal.querySelector('form');
         if (form) {
           form.reset();
         }
 
-        // Clear all input fields
+        // Clear all input fields immediately
         const inputs = modal.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
           if (input.type === 'checkbox' || input.type === 'radio') {
@@ -8949,7 +8995,7 @@
         // Reset submit button
         const submitBtn = modal.querySelector('.btn-submit');
         if (submitBtn) {
-              submitBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+          submitBtn.innerHTML = '<i class="fas fa-print"></i> Print';
           submitBtn.disabled = false;
         }
 
@@ -8964,12 +9010,14 @@
           display.style.display = 'none';
         });
 
-        // Clear any file previews
-        // Keep the persistent preview containers ('.file-preview') so subsequent uploads can render again
+        // Clear any file previews immediately
         const uploadedFiles = modal.querySelectorAll('.uploaded-file');
         uploadedFiles.forEach(el => el.remove());
         const previewContainers = modal.querySelectorAll('.file-preview');
-        previewContainers.forEach(container => { container.innerHTML = ''; container.classList.remove('active'); });
+        previewContainers.forEach(container => { 
+          container.innerHTML = ''; 
+          container.classList.remove('active'); 
+        });
 
         // Reset any progress indicators
         const progressBars = modal.querySelectorAll('.progress-bar, .loading-indicator');
@@ -8977,120 +9025,110 @@
           bar.style.display = 'none';
         });
 
-        // Reset after a brief delay to show the loading state
-        setTimeout(() => {
-          // Reset file input
-          const fileInput = modal.querySelector(`#${service}-file-input`);
-          if (fileInput) {
-            fileInput.value = '';
-          }
+        // Reset file input immediately
+        const fileInput = modal.querySelector(`#${service}-file-input`);
+        if (fileInput) {
+          fileInput.value = '';
+        }
 
-          // Reset file upload label
-          const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
-          if (fileUploadLabel) {
-            fileUploadLabel.textContent = 'Click to select file';
-          }
+        // Reset file upload label immediately
+        const fileUploadLabel = modal.querySelector(`#${service}-file-upload-label`);
+        if (fileUploadLabel) {
+          fileUploadLabel.textContent = 'Click to select file';
+        }
 
-          // Reset file preview
-          const filePreview = modal.querySelector(`#${service}-file-preview`);
-          if (filePreview) {
-            filePreview.innerHTML = '';
-          }
+        // Reset file preview immediately
+        const filePreview = modal.querySelector(`#${service}-file-preview`);
+        if (filePreview) {
+          filePreview.innerHTML = '';
+        }
 
-          // Reset all form fields
-          const form = modal.querySelector(`#${service}-modal-form`);
-          if (form) {
-            form.reset();
-            
-            // Reset select fields to empty (no defaults)
-            const selects = form.querySelectorAll('select');
-            selects.forEach(select => {
-              select.selectedIndex = -1;
-            });
-
-            // Reset number inputs to empty (no defaults)
-            const numberInputs = form.querySelectorAll('input[type="number"]');
-            numberInputs.forEach(input => {
-              input.value = '';
-            });
-
-            // Reset text inputs (including range fields)
-            const textInputs = form.querySelectorAll('input[type="text"]');
-            textInputs.forEach(input => {
-              input.value = '';
-            });
-
-            // Hide range fields after reset
-            const rangeFields = form.querySelectorAll('input[placeholder*="range"]');
-            rangeFields.forEach(input => {
-              const fieldGroup = input.closest('.modal-field-group');
-              if (fieldGroup) {
-                fieldGroup.style.display = 'none';
-              }
-            });
-          }
+        // Reset all form fields immediately
+        const formElement = modal.querySelector(`#${service}-modal-form`);
+        if (formElement) {
+          formElement.reset();
           
-                      // Reset shop selection button to default state
-            resetShopSelectionButton(service);
-            
-            // Reset hidden input
-            const shopSelect = modal.querySelector(`#${service}-shop-select`);
-            if (shopSelect) {
-              shopSelect.value = '';
+          // Reset select fields to empty (no defaults)
+          const selects = formElement.querySelectorAll('select');
+          selects.forEach(select => {
+            select.selectedIndex = -1;
+          });
+
+          // Reset number inputs to empty (no defaults)
+          const numberInputs = formElement.querySelectorAll('input[type="number"]');
+          numberInputs.forEach(input => {
+            input.value = '';
+          });
+
+          // Reset text inputs (including range fields)
+          const textInputs = formElement.querySelectorAll('input[type="text"]');
+          textInputs.forEach(input => {
+            input.value = '';
+          });
+
+          // Hide range fields after reset
+          const rangeFields = formElement.querySelectorAll('input[placeholder*="range"]');
+          rangeFields.forEach(input => {
+            const fieldGroup = input.closest('.modal-field-group');
+            if (fieldGroup) {
+              fieldGroup.style.display = 'none';
             }
+          });
+        }
+        
+        // Reset shop selection button to default state
+        resetShopSelectionButton(service);
+        
+        // Reset hidden input
+        if (shopSelect) {
+          shopSelect.value = '';
+        }
 
-          // Reset feedback textarea
-          const feedbackTextarea = modal.querySelector(`#${service}-feedback`);
-          const feedbackCounter = modal.querySelector(`#${service}-feedback-count`);
-          if (feedbackTextarea) {
-            feedbackTextarea.value = '';
-          }
-          if (feedbackCounter) {
-            feedbackCounter.textContent = '0';
-            feedbackCounter.parentElement.classList.remove('warning', 'danger');
-          }
+        // Reset feedback textarea
+        const feedbackTextarea = modal.querySelector(`#${service}-feedback`);
+        const feedbackCounter = modal.querySelector(`#${service}-feedback-count`);
+        if (feedbackTextarea) {
+          feedbackTextarea.value = '';
+        }
+        if (feedbackCounter) {
+          feedbackCounter.textContent = '0';
+          feedbackCounter.parentElement.classList.remove('warning', 'danger');
+        }
 
-          // Clear pricing and summary
-          const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-          const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
-          if (pricingSummary) pricingSummary.classList.remove('active');
-          if (pricingDetails) pricingDetails.innerHTML = '';
+        // Clear pricing and summary immediately
+        const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+        const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+        if (pricingSummary) pricingSummary.classList.remove('active');
+        if (pricingDetails) pricingDetails.innerHTML = '';
 
-          // Reset submit button
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-          }
+        // Clear any global file object
+        if (typeof fileObj !== 'undefined') {
+          fileObj = null;
+        }
 
-          // Clear any global file object
-          if (typeof fileObj !== 'undefined') {
-            fileObj = null;
-          }
+        // Clear transient modal datasets immediately
+        delete modal.dataset.fileName;
+        delete modal.dataset.calculatedPrice;
+        delete modal.dataset.pricingBreakdown;
+        delete modal.dataset.structuredPricing;
+        delete modal.dataset.filePageCount;
+        delete modal.dataset.currentFile;
+        delete modal.dataset.pointsApplied;
+        delete modal.dataset.pointsUsed;
 
-          // Clear transient modal datasets
-          delete modal.dataset.fileName;
-          delete modal.dataset.calculatedPrice;
-          delete modal.dataset.pricingBreakdown;
-          delete modal.dataset.structuredPricing;
-          delete modal.dataset.filePageCount;
-          delete modal.dataset.currentFile;
+        // Clear uploaded files array immediately
+        if (modal._uploadedFiles) {
+          modal._uploadedFiles = [];
+        }
+        
+        // Ensure file upload button/label is visible and reset
+        const fileUploadArea = modal.querySelector(`#${service}-file-upload`);
+        if (fileUploadArea) {
+          fileUploadArea.style.display = '';
+        }
 
-          // Clear uploaded files array
-          if (modal._uploadedFiles) {
-            modal._uploadedFiles = [];
-          }
-          
-          // Ensure file upload button/label is visible and reset
-          const fileUploadArea = modal.querySelector(`#${service}-file-upload`);
-          if (fileUploadArea) {
-            fileUploadArea.style.display = '';
-          }
-          // Reuse existing fileUploadLabel from earlier declaration
-          if (fileUploadLabel) {
-            fileUploadLabel.textContent = 'Click to select file';
-          }
-
-          // Remove reset animation class
+        // Remove reset animation class after brief delay
+        setTimeout(() => {
           if (modalContent) {
             modalContent.classList.remove('resetting');
           }
@@ -10347,7 +10385,78 @@
                 } catch (err) {
                   // Hide processing state on error
                   hidePaymentProcessingState();
-                  alert('Verification error: ' + err.message);
+                  
+                  // Check if we're on localhost
+                  const isLocalhost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+                  
+                  // Get points information from modal
+                  const modal = document.getElementById(`service-modal-${service}`);
+                  const pointsApplied = modal && modal.dataset.pointsApplied === 'true';
+                  const pointsUsed = modal ? parseInt(modal.dataset.pointsUsed || '0') : 0;
+                  
+                  // Return points if verification failed on localhost or if points were applied
+                  if ((isLocalhost || pointsApplied) && pointsUsed > 0) {
+                    try {
+                      // Get user email - try multiple sources
+                      let userEmail = null;
+                      // Try from body dataset
+                      userEmail = document.body.dataset.userEmail;
+                      // Fallback: try to get from Django template variable if available
+                      if (!userEmail && typeof userEmailFromTemplate !== 'undefined') {
+                        userEmail = userEmailFromTemplate;
+                      }
+                      // Last resort: try to extract from any available source
+                      if (!userEmail) {
+                        // Try to get from user info in sidebar or header
+                        const userInfoElement = document.querySelector('.sidebar-user-info p, .user-info-dropdown p');
+                        if (userInfoElement) {
+                          userEmail = userInfoElement.textContent.trim();
+                        }
+                      }
+                      
+                      if (userEmail) {
+                        const returnResp = await fetch('/payments/return-points/', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                          },
+                          body: JSON.stringify({
+                            user_email: userEmail,
+                            points: pointsUsed,
+                            reason: isLocalhost 
+                              ? 'Points returned - payment verification failed on localhost'
+                              : 'Points returned - payment verification failed'
+                          })
+                        });
+                        
+                        const returnData = await returnResp.json();
+                        if (returnData.success) {
+                          console.log(`✅ Returned ${pointsUsed} points to user due to verification failure`);
+                          // Update local points variable
+                          if (typeof userPoints !== 'undefined') {
+                            userPoints = (userPoints || 0) + pointsUsed;
+                          }
+                          alert(`Payment verification failed. ${pointsUsed} points have been returned to your account.`);
+                        } else {
+                          console.error('Failed to return points:', returnData.error);
+                          alert('Payment verification failed. Please contact support to return your points.');
+                        }
+                      }
+                    } catch (returnError) {
+                      console.error('Error returning points:', returnError);
+                      alert('Payment verification failed. Please contact support if points were deducted.');
+                    }
+                  } else {
+                    alert('Verification error: ' + err.message);
+                  }
+                  
+                  // Reset button state
+                  const submitBtn = modal ? modal.querySelector('.btn-submit') : null;
+                  if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+                  }
                 } finally {
                   if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-print"></i> Print'; }
                 }
@@ -13186,6 +13295,13 @@
     
     // Initialize Firebase and FCM
     function initializeFCM() {
+      // Check if Firebase is loaded
+      if (typeof firebase === 'undefined' || !firebase) {
+        console.warn('⚠️ Firebase SDK not loaded, skipping FCM initialization');
+        messaging = null;
+        return;
+      }
+      
       // Firebase configuration from Django settings
       const firebaseConfig = {
         apiKey: "{{ FIREBASE_CONFIG.apiKey }}",
@@ -13197,43 +13313,66 @@
         vapidKey: "{{ FIREBASE_VAPID_KEY }}"  // VAPID key from settings
       };
 
-      // Initialize Firebase
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+      try {
+        // Initialize Firebase
+        if (!firebase.apps || !firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+
+        // Get messaging instance - check if firebase.messaging exists
+        if (firebase.messaging && typeof firebase.messaging === 'function') {
+          messaging = firebase.messaging();
+          
+          // Request notification permission and get token
+          requestNotificationPermission();
+        } else {
+          console.warn('⚠️ Firebase messaging not available');
+          messaging = null;
+        }
+      } catch (error) {
+        console.error('❌ Error initializing Firebase:', error);
+        messaging = null;
       }
-
-      // Get messaging instance
-      messaging = firebase.messaging();
-
-      // Request notification permission and get token
-      requestNotificationPermission();
     }
 
     // Request notification permission and register FCM token
     async function requestNotificationPermission() {
       try {
+        // Check if messaging is initialized
+        if (!messaging) {
+          console.warn('⚠️ Messaging not initialized, skipping permission request');
+          return;
+        }
+        
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           console.log('✅ Notification permission granted');
           
           // Get registration token
           const vapidKey = "{{ FIREBASE_VAPID_KEY }}";
-          const token = await messaging.getToken({ vapidKey: vapidKey });
           
-          if (token) {
-            console.log('✅ FCM Registration Token:', token);
+          if (messaging && typeof messaging.getToken === 'function') {
+            const token = await messaging.getToken({ vapidKey: vapidKey });
             
-            // Send token to server
-            await saveFCMToken(token);
-            
-            // Listen for token refresh
-            messaging.onTokenRefresh(async () => {
-              const newToken = await messaging.getToken({ vapidKey: vapidKey });
-              console.log('🔄 FCM Token refreshed:', newToken);
-              await saveFCMToken(newToken);
-            });
+            if (token) {
+              console.log('✅ FCM Registration Token:', token);
+              
+              // Send token to server
+              await saveFCMToken(token);
+              
+              // Listen for token refresh
+              if (messaging && typeof messaging.onTokenRefresh === 'function') {
+                messaging.onTokenRefresh(async () => {
+                  const newToken = await messaging.getToken({ vapidKey: vapidKey });
+                  console.log('🔄 FCM Token refreshed:', newToken);
+                  await saveFCMToken(newToken);
+                });
+              }
+            } else {
+              console.warn('⚠️ No FCM token available');
+            }
           } else {
-            console.warn('⚠️ No FCM token available');
+            console.warn('⚠️ Messaging.getToken not available');
           }
         } else {
           console.log('❌ Notification permission denied');
@@ -13292,34 +13431,45 @@
         .then((registration) => {
           console.log('✅ Service Worker registered:', registration);
           
-          // Initialize FCM after service worker is registered
-          messaging.onMessage((payload) => {
-            console.log('📩 Message received in foreground:', payload);
+          // Initialize FCM first, then set up message handler
+          try {
+            initializeFCM();
             
-            // Show notification even when app is in foreground
-            const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
-            const notificationOptions = {
-              body: payload.notification?.body || payload.data?.message || 'You have a new notification',
-              icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
-              badge: '/static/images/android-chrome-192x192.png',
-              tag: payload.data?.notification_id || 'printmax-notification',
-              requireInteraction: true,
-              data: payload.data || {}
-            };
+            // Set up message handler after FCM is initialized
+            // Use a small delay to ensure messaging is initialized
+            setTimeout(() => {
+              if (messaging && typeof messaging.onMessage === 'function') {
+                messaging.onMessage((payload) => {
+                  console.log('📩 Message received in foreground:', payload);
+                  
+                  // Show notification even when app is in foreground
+                  const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
+                  const notificationOptions = {
+                    body: payload.notification?.body || payload.data?.message || 'You have a new notification',
+                    icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
+                    badge: '/static/images/android-chrome-192x192.png',
+                    tag: payload.data?.notification_id || 'printmax-notification',
+                    requireInteraction: true,
+                    data: payload.data || {}
+                  };
 
-            // Show browser notification
-            if (Notification.permission === 'granted') {
-              new Notification(notificationTitle, notificationOptions);
-            }
-            
-            // Also trigger your existing notification system
-            if (typeof initializeNotifications === 'function') {
-              initializeNotifications();
-            }
-          });
-          
-          // Initialize FCM
-          initializeFCM();
+                  // Show browser notification
+                  if (Notification.permission === 'granted') {
+                    new Notification(notificationTitle, notificationOptions);
+                  }
+                  
+                  // Also trigger your existing notification system
+                  if (typeof initializeNotifications === 'function') {
+                    initializeNotifications();
+                  }
+                });
+              } else {
+                console.warn('⚠️ Messaging not initialized, skipping onMessage handler');
+              }
+            }, 100);
+          } catch (fcmError) {
+            console.error('❌ Error initializing FCM:', fcmError);
+          }
         })
         .catch((error) => {
           console.error('❌ Service Worker registration failed:', error);
@@ -17695,11 +17845,75 @@
 
         const rzp = new Razorpay(options);
         // Ensure processing overlay is not shown on failure/cancel
-        rzp.on('payment.failed', function (response) {
+        rzp.on('payment.failed', async function (response) {
           console.error('Payment failed:', response.error);
           hidePaymentProcessingState();
-          // Simple, quick failure message
-          alert('Payment failed. Please try again.');
+          
+          // Check if we're on localhost
+          const isLocalhost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+          
+          // Get points information from modal
+          const pointsApplied = printModal.dataset.pointsApplied === 'true';
+          const pointsUsed = parseInt(printModal.dataset.pointsUsed || '0');
+          
+          // Return points if payment failed on localhost or if points were applied
+          if ((isLocalhost || pointsApplied) && pointsUsed > 0) {
+            try {
+              // Get user email - try multiple sources
+              let userEmail = null;
+              // Try from form data first (most reliable)
+              const formDataEntries = Array.from(formData.entries());
+              const userEmailEntry = formDataEntries.find(([key]) => key === 'user_email');
+              if (userEmailEntry) {
+                userEmail = userEmailEntry[1];
+              }
+              // Fallback to body dataset
+              if (!userEmail) {
+                userEmail = document.body.dataset.userEmail;
+              }
+              // Last resort: try to get from Django template variable if available
+              if (!userEmail && typeof userEmailFromTemplate !== 'undefined') {
+                userEmail = userEmailFromTemplate;
+              }
+              
+              if (userEmail) {
+                const returnResp = await fetch('/payments/return-points/', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                  },
+                  body: JSON.stringify({
+                    user_email: userEmail,
+                    points: pointsUsed,
+                    reason: isLocalhost 
+                      ? 'Points returned - payment failed on localhost (domain not registered)'
+                      : 'Points returned - payment failed'
+                  })
+                });
+                
+                const returnData = await returnResp.json();
+                if (returnData.success) {
+                  console.log(`✅ Returned ${pointsUsed} points to user due to payment failure`);
+                  // Update local points variable
+                  if (typeof userPoints !== 'undefined') {
+                    userPoints = (userPoints || 0) + pointsUsed;
+                  }
+                  alert(`Payment failed. ${pointsUsed} points have been returned to your account.`);
+                } else {
+                  console.error('Failed to return points:', returnData.error);
+                  alert('Payment failed. Please contact support to return your points.');
+                }
+              }
+            } catch (error) {
+              console.error('Error returning points:', error);
+              alert('Payment failed. Please contact support if points were deducted.');
+            }
+          } else {
+            // Simple, quick failure message
+            alert('Payment failed. Please try again.');
+          }
+          
           proceedBtn.disabled = false;
           proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
         });

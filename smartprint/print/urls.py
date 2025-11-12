@@ -70,6 +70,7 @@ urlpatterns = [
      path('vendor_documents', views.vendor_documents, name='vendor_documents'),
     path('payments/create-order/', create_razorpay_order, name='create_razorpay_order'),
     path('payments/verify/', verify_razorpay_payment, name='verify_razorpay_payment'),
+    path('payments/return-points/', views.return_user_points, name='return_user_points'),
     # Google Drive integration endpoints
     path('drive/oauth/start/', views.drive_oauth_start, name='drive_oauth_start'),
     path('drive/oauth/callback/', views.drive_oauth_callback, name='drive_oauth_callback'),
