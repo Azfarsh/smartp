@@ -275,16 +275,25 @@ def save_contact_details(request):
         if not name or not email or not subject or not message:
             return JsonResponse({'success': False, 'error': 'All fields are required'}, status=400)
 
-        # Forward to Worker
+        # Forward to Worker API (D1 database only - no R2 storage)
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
 
         if not api_url or not api_key:
             return JsonResponse({'success': False, 'error': 'Server misconfigured: missing Worker API settings'}, status=500)
         
+        # Construct the Worker API endpoint for adding contact
+        # Remove any existing endpoint paths and add /add-contact
+        base_url = api_url.rstrip('/')
+        # Remove common endpoint paths if present
+        for endpoint in ['/add-contact', '/add-vendor-register', '/add-vendor-pricing', '/get-all-vendors']:
+            if base_url.endswith(endpoint):
+                base_url = base_url[:-len(endpoint)]
+        worker_endpoint = base_url.rstrip('/') + '/add-contact'
+        
         # Debug: Log API key info (first/last 4 chars only for security)
         api_key_preview = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "***"
-        print(f"Sending request to Worker API: {api_url}")
+        print(f"Sending request to Worker API: {worker_endpoint}")
         print(f"API Key (preview): {api_key_preview} (length: {len(api_key)})")
 
         # Prepare payload for Worker
@@ -297,7 +306,7 @@ def save_contact_details(request):
 
         try:
             resp = requests.post(
-                api_url,
+                worker_endpoint,
                 json=worker_payload,
                 headers={
                     'Content-Type': 'application/json',
@@ -308,7 +317,7 @@ def save_contact_details(request):
             
             # Log response for debugging
             print(f"Worker API Response Status: {resp.status_code}")
-            print(f"Worker API URL: {api_url}")
+            print(f"Worker API URL: {worker_endpoint}")
             
             try:
                 data = resp.json()
@@ -6856,14 +6865,13 @@ def get_available_shops(request):
         
         if api_url and api_key:
             # Construct the Worker API endpoint for getting all vendors
-            if '/add-contact' in api_url:
-                worker_endpoint = api_url.replace('/add-contact', '/get-all-vendors')
-            elif '/add-vendor-register' in api_url:
-                worker_endpoint = api_url.replace('/add-vendor-register', '/get-all-vendors')
-            elif '/add-vendor-pricing' in api_url:
-                worker_endpoint = api_url.replace('/add-vendor-pricing', '/get-all-vendors')
-            else:
-                worker_endpoint = api_url.rstrip('/') + '/get-all-vendors'
+            # Remove any existing endpoint paths and add /get-all-vendors
+            base_url = api_url.rstrip('/')
+            # Remove common endpoint paths if present
+            for endpoint in ['/add-contact', '/add-vendor-register', '/add-vendor-pricing', '/get-all-vendors']:
+                if base_url.endswith(endpoint):
+                    base_url = base_url[:-len(endpoint)]
+            worker_endpoint = base_url.rstrip('/') + '/get-all-vendors'
             
             try:
                 resp = requests.get(

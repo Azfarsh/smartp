@@ -211,9 +211,11 @@ R2_ENDPOINT = os.getenv('R2_ENDPOINT', '').rstrip('/')  # Remove trailing slash
 R2_BUCKET = os.getenv('R2_BUCKET')
 
 # ✅ Cloudflare Worker API for D1 Database
-# Hardcoded for localhost testing - DO NOT use from .env file
-WORKER_API_URL = 'https://data.azfarshaikh7860.workers.dev/add-contact'
-WORKER_API_KEY = 'your-secret-api-key-here-contact-data'
+# Use environment variables for production deployment
+# WORKER_API_URL should be the base URL without any endpoint path
+# Example: https://data.azfarshaikh7860.workers.dev
+WORKER_API_URL = os.getenv('WORKER_API_URL', 'https://data.azfarshaikh7860.workers.dev')
+WORKER_API_KEY = os.getenv('WORKER_API_KEY', 'your-secret-api-key-here-contact-data')
 
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
