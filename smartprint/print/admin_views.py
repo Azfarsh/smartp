@@ -7,6 +7,7 @@ import boto3
 import datetime
 import json
 import pytz
+import requests
 from django.utils import timezone
 from django.http import HttpResponse
 import os
@@ -2113,50 +2114,80 @@ def admin_update_report_payment_status(request):
 
 @staff_member_required
 def admin_contacts_data(request):
-    """Get all contacts data for admin dashboard"""
+    """Get all contacts data for admin dashboard from D1 database via Worker API"""
     try:
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-
-        # Contacts stored as individual JSON files under contact_details/
-        prefix = 'contact_details/'
-        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-
-        contacts = []
-        if 'Contents' in objects:
-            for obj in objects['Contents']:
-                key = obj['Key']
-                if not key.endswith('.json'):
-                    continue
-                try:
-                    resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                    data = json.loads(resp['Body'].read().decode('utf-8'))
-                    solved_status = data.get('solved_status', '')
-                    # Strictly include only those with explicit solved_status == 'no'
-                    if str(solved_status).lower() == 'no':
-                        contacts.append({
-                            'name': data.get('name', ''),
-                            'email': data.get('email', ''),
-                            'subject': data.get('subject', ''),
-                            'message': data.get('message', ''),
-                            'submitted_at': data.get('submitted_at', ''),
-                            'solved_status': solved_status,
-                            'key': key
-                        })
-                except Exception as e:
-                    # Skip unreadable items
-                    continue
-
-        # Sort newest first by submitted_at or by LastModified fallback
+        # Fetch from D1 database via Worker API (not R2)
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'Worker API not configured'
+            }, status=500)
+        
+        # Construct the Worker API endpoint for getting contacts
+        base_url = api_url.rstrip('/')
+        # Remove common endpoint paths if present
+        for endpoint in ['/add-contact', '/add-vendor-register', '/add-vendor-pricing', '/get-all-vendors', '/contacts']:
+            if base_url.endswith(endpoint):
+                base_url = base_url[:-len(endpoint)]
+        worker_endpoint = base_url.rstrip('/') + '/contacts'
+        
         try:
-            contacts.sort(key=lambda x: x.get('submitted_at', ''), reverse=True)
-        except Exception:
-            pass
-
-        return JsonResponse({'success': True, 'contacts': contacts, 'total_count': len(contacts)})
+            resp = requests.get(
+                worker_endpoint,
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key
+                },
+                timeout=15
+            )
+            
+            if resp.status_code == 200:
+                response_data = resp.json()
+                if response_data.get('success'):
+                    all_contacts = response_data.get('data', [])
+                    # Filter only unsolved contacts (solved_status == 'no')
+                    contacts = []
+                    for contact in all_contacts:
+                        solved_status = contact.get('solved_status', 'no')
+                        if str(solved_status).lower() == 'no':
+                            contacts.append({
+                                'name': contact.get('name', ''),
+                                'email': contact.get('email', ''),
+                                'subject': contact.get('subject', ''),
+                                'message': contact.get('message', ''),
+                                'submitted_at': contact.get('submitted_at', ''),
+                                'solved_status': solved_status,
+                                'key': str(contact.get('id', ''))  # Use ID as key for D1 database
+                            })
+                    
+                    # Sort newest first by submitted_at
+                    try:
+                        contacts.sort(key=lambda x: x.get('submitted_at', ''), reverse=True)
+                    except Exception:
+                        pass
+                    
+                    return JsonResponse({'success': True, 'contacts': contacts, 'total_count': len(contacts)})
+                else:
+                    error_msg = response_data.get('error', 'Unknown error from Worker API')
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Worker API error: {error_msg}'
+                    }, status=500)
+            else:
+                error_text = resp.text[:500] if resp.text else 'No error message'
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Failed to fetch contacts from D1 database (status {resp.status_code}): {error_text}'
+                }, status=500)
+                
+        except requests.exceptions.RequestException as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to connect to Worker API: {str(e)}'
+            }, status=500)
         
     except Exception as e:
         return JsonResponse({
@@ -2168,7 +2199,7 @@ def admin_contacts_data(request):
 @staff_member_required
 @csrf_exempt
 def admin_mark_contact_solved(request):
-    """Mark a contact record as solved."""
+    """Mark a contact record as solved in D1 database via Worker API."""
     try:
         if request.method != 'POST':
             return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
@@ -2178,32 +2209,58 @@ def admin_mark_contact_solved(request):
         except Exception:
             payload = {}
 
-        key = (payload.get('key') or '').strip()
-        if not key:
-            return JsonResponse({'success': False, 'error': 'Missing key'}, status=400)
+        contact_id = (payload.get('key') or '').strip()
+        if not contact_id:
+            return JsonResponse({'success': False, 'error': 'Missing contact ID'}, status=400)
 
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-
-        # Fetch existing contact json
-        resp = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-        data = json.loads(resp['Body'].read().decode('utf-8'))
-
-        # Update fields
-        data['solved_status'] = 'yes'
-        data['solved_at'] = datetime.datetime.now().isoformat()
-
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=key,
-            Body=json.dumps(data, ensure_ascii=False, indent=2),
-            ContentType='application/json'
-        )
-
-        return JsonResponse({'success': True, 'key': key})
+        # Update in D1 database via Worker API
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            return JsonResponse({'success': False, 'error': 'Worker API not configured'}, status=500)
+        
+        # Construct the Worker API endpoint for updating contact
+        base_url = api_url.rstrip('/')
+        # Remove common endpoint paths if present
+        for endpoint in ['/add-contact', '/add-vendor-register', '/add-vendor-pricing', '/get-all-vendors', '/contacts', '/update-contact']:
+            if base_url.endswith(endpoint):
+                base_url = base_url[:-len(endpoint)]
+        worker_endpoint = base_url.rstrip('/') + '/update-contact'
+        
+        try:
+            resp = requests.post(
+                worker_endpoint,
+                json={
+                    'id': contact_id,
+                    'solved_status': 'yes'
+                },
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key
+                },
+                timeout=15
+            )
+            
+            if resp.status_code == 200:
+                response_data = resp.json()
+                if response_data.get('success'):
+                    return JsonResponse({'success': True, 'key': contact_id})
+                else:
+                    error_msg = response_data.get('error', 'Unknown error from Worker API')
+                    return JsonResponse({'success': False, 'error': f'Worker API error: {error_msg}'}, status=500)
+            else:
+                error_text = resp.text[:500] if resp.text else 'No error message'
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Failed to update contact in D1 database (status {resp.status_code}): {error_text}'
+                }, status=500)
+                
+        except requests.exceptions.RequestException as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to connect to Worker API: {str(e)}'
+            }, status=500)
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

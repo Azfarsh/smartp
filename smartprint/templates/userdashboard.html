@@ -13436,37 +13436,54 @@
             initializeFCM();
             
             // Set up message handler after FCM is initialized
-            // Use a small delay to ensure messaging is initialized
-            setTimeout(() => {
-              if (messaging && typeof messaging.onMessage === 'function') {
-                messaging.onMessage((payload) => {
-                  console.log('📩 Message received in foreground:', payload);
-                  
-                  // Show notification even when app is in foreground
-                  const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
-                  const notificationOptions = {
-                    body: payload.notification?.body || payload.data?.message || 'You have a new notification',
-                    icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
-                    badge: '/static/images/android-chrome-192x192.png',
-                    tag: payload.data?.notification_id || 'printmax-notification',
-                    requireInteraction: true,
-                    data: payload.data || {}
-                  };
+            // Use a retry mechanism to ensure messaging is initialized
+            let retryCount = 0;
+            const maxRetries = 5;
+            const retryDelay = 200;
+            
+            function setupMessageHandler() {
+              // Check if messaging is properly initialized
+              if (messaging && messaging !== null && typeof messaging === 'object' && typeof messaging.onMessage === 'function') {
+                try {
+                  messaging.onMessage((payload) => {
+                    console.log('📩 Message received in foreground:', payload);
+                    
+                    // Show notification even when app is in foreground
+                    const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
+                    const notificationOptions = {
+                      body: payload.notification?.body || payload.data?.message || 'You have a new notification',
+                      icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
+                      badge: '/static/images/android-chrome-192x192.png',
+                      tag: payload.data?.notification_id || 'printmax-notification',
+                      requireInteraction: true,
+                      data: payload.data || {}
+                    };
 
-                  // Show browser notification
-                  if (Notification.permission === 'granted') {
-                    new Notification(notificationTitle, notificationOptions);
-                  }
-                  
-                  // Also trigger your existing notification system
-                  if (typeof initializeNotifications === 'function') {
-                    initializeNotifications();
-                  }
-                });
+                    // Show browser notification
+                    if (Notification.permission === 'granted') {
+                      new Notification(notificationTitle, notificationOptions);
+                    }
+                    
+                    // Also trigger your existing notification system
+                    if (typeof initializeNotifications === 'function') {
+                      initializeNotifications();
+                    }
+                  });
+                  console.log('✅ onMessage handler registered successfully');
+                } catch (onMessageError) {
+                  console.error('❌ Error setting up onMessage handler:', onMessageError);
+                }
+              } else if (retryCount < maxRetries) {
+                retryCount++;
+                console.log(`⚠️ Messaging not ready, retrying (${retryCount}/${maxRetries})...`);
+                setTimeout(setupMessageHandler, retryDelay);
               } else {
-                console.warn('⚠️ Messaging not initialized, skipping onMessage handler');
+                console.warn('⚠️ Messaging not initialized after retries, skipping onMessage handler');
               }
-            }, 100);
+            }
+            
+            // Start trying to set up message handler
+            setTimeout(setupMessageHandler, 100);
           } catch (fcmError) {
             console.error('❌ Error initializing FCM:', fcmError);
           }
@@ -14011,7 +14028,7 @@
 
     
 
-    // Function to load available shops from R2 storage (optimized)
+    // Function to load available shops from D1 database via Worker API (optimized)
     async function loadAvailableShops() {
       try {
         const response = await fetch('/get-available-shops/', {
