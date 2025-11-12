@@ -129,7 +129,7 @@ FIREBASE_CONFIG = {
     'projectId': os.getenv('FIREBASE_PROJECT_ID', 'smartprint-9e291'),
     'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'smartprint-9e291.appspot.com'),
     'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', '101846981910632623946'),
-    'appId': os.getenv('FIREBASE_APP_ID', '1:101846981910632623946:web:your-app-id'),  # Get from Firebase Console > Project Settings > General > Your apps (Web app)
+    'appId': os.getenv('FIREBASE_APP_ID', '1:101846981910632623946:web:1:48548800228:web:a2b523c97d5824f1836ef1'),  # Get from Firebase Console > Project Settings > General > Your apps (Web app)
 }
 
 # VAPID Keys for Web Push (from Firebase Console > Project Settings > Cloud Messaging)
@@ -164,9 +164,23 @@ try:
             print("✅ Firebase Admin SDK initialized from service account file")
         # Otherwise, use the JSON dictionary from settings
         elif FIREBASE_SERVICE_ACCOUNT_JSON.get('private_key'):
-            cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_JSON)
-            firebase_admin.initialize_app(cred)
-            print("✅ Firebase Admin SDK initialized from settings")
+            # Ensure private_key has actual newlines, not literal \n
+            firebase_config = FIREBASE_SERVICE_ACCOUNT_JSON.copy()
+            if isinstance(firebase_config.get('private_key'), str):
+                # Replace literal \n with actual newlines
+                firebase_config['private_key'] = firebase_config['private_key'].replace('\\n', '\n')
+            try:
+                cred = credentials.Certificate(firebase_config)
+                firebase_admin.initialize_app(cred)
+                print("✅ Firebase Admin SDK initialized from settings")
+            except Exception as cert_error:
+                # If certificate initialization fails, try without credentials
+                print(f"⚠️ Warning: Could not initialize Firebase with certificate: {str(cert_error)}")
+                print("⚠️ Firebase Admin SDK initialized without credentials (push notifications won't work)")
+                try:
+                    firebase_admin.initialize_app()
+                except:
+                    pass  # Already initialized or other error
         else:
             firebase_admin.initialize_app()
             print("⚠️ Firebase Admin SDK initialized without credentials (push notifications won't work)")
@@ -174,6 +188,13 @@ try:
         print("Firebase Admin SDK already initialized")
 except Exception as e:
     print(f"❌ Error initializing Firebase Admin SDK: {str(e)}")
+    # Try to initialize without credentials as fallback
+    try:
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app()
+            print("⚠️ Firebase Admin SDK initialized without credentials (fallback mode)")
+    except:
+        pass  # Ignore if already initialized or other error
 
 # Channel layers configuration
 CHANNEL_LAYERS = {
@@ -182,15 +203,17 @@ CHANNEL_LAYERS = {
     }
 }
 
-# Vendor dashboard configuration
-VENDOR_DASHBOARD_URL = os.getenv('VENDOR_DASHBOARD_URL')
-VENDOR_TOKEN = os.getenv('VENDOR_TOKEN')
 
 # ✅ R2 credentials from .env
 R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY')
 R2_SECRET_KEY = os.getenv('R2_SECRET_KEY')
 R2_ENDPOINT = os.getenv('R2_ENDPOINT', '').rstrip('/')  # Remove trailing slash
 R2_BUCKET = os.getenv('R2_BUCKET')
+
+# ✅ Cloudflare Worker API for D1 Database
+# Hardcoded for localhost testing - DO NOT use from .env file
+WORKER_API_URL = 'https://data.azfarshaikh7860.workers.dev/add-contact'
+WORKER_API_KEY = 'your-secret-api-key-here-contact-data'
 
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
