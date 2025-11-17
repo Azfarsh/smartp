@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -402,235 +403,122 @@
         .loading-pricing i {
             font-size: 16px;
         }
-        .pricing-summary {
-            width: 100%;
-            max-width: 500px;
-            display: none;
-            box-sizing: border-box;
-            position: relative;
-            overflow: visible;
-            flex-shrink: 0;
-            align-self: center;
-            margin: 24px auto 0 auto;
-            margin-top: auto;
-        }
-        .pricing-summary.active {
+.order-summary {
+    width: 100%;
+    display: none;
+    padding: 0 32px 18px;
+    margin-top: 0;
+    box-sizing: border-box;
+}
+        .order-summary.show {
             display: block;
-            margin-top: auto;
         }
-        
-        /* Professional Bill Styles (matching jumbo print) */
-        .professional-bill {
-            background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .bill-header {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            padding: 0.7rem 1rem;
+        .pricing-summary-card {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+            padding: 1.25rem;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .bill-logo {
-            width: 36px;
-            height: 36px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-        }
-
-        .bill-title h3 {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 700;
-        }
-
-        .bill-subtitle {
-            margin: 0.15rem 0 0 0;
-            opacity: 0.9;
-            font-size: 0.8rem;
-        }
-
-        .bill-date {
-            text-align: right;
-            font-size: 0.85rem;
-            opacity: 0.9;
-        }
-
-        .bill-date p {
-            margin: 0.25rem 0;
-        }
-
-        .bill-content {
-            padding: 0.85rem 10px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .service-info {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-
-        .service-info h4 {
-            margin: 0 0 0.5rem 0;
-            color: #374151;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .service-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-            padding: 0.6rem 1rem;
-            border-radius: 8px;
-            gap: 0.75rem;
-        }
-
-        .service-name {
-            font-weight: 600;
-            color: #1f2937;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex: 1;
-        }
-
-        .service-status {
-            background: #10b981;
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .invoice-items {
-            margin-bottom: 0.75rem;
-        }
-
-        .invoice-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.6rem 0;
-            border-bottom: 1px solid #e5e7eb;
+            flex-direction: column;
             gap: 1rem;
         }
-
-        .invoice-item:last-child {
-            border-bottom: none;
+        .pricing-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
         }
-
-        .invoice-item-label {
-            font-size: 0.95rem;
-            color: #374151;
-            font-weight: 500;
-            flex: 1;
-            text-align: left;
-        }
-
-        .invoice-item-value {
-            font-size: 0.95rem;
-            color: #111827;
-            font-weight: 600;
-            flex: 0 0 auto;
-            text-align: right;
-            min-width: 80px;
-        }
-
-        .invoice-subtotal {
-            background: #f9fafb;
-            padding: 0.8rem;
-            border-radius: 8px;
-            margin-top: 0.75rem;
-            font-weight: 600;
-        }
-
-        .invoice-total {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 0.75rem;
-        }
-
-        .invoice-total .invoice-item-label,
-        .invoice-total .invoice-item-value {
-            color: white;
+        .service-title {
             font-size: 1.1rem;
             font-weight: 700;
+            color: #0f172a;
         }
-
-        .bill-footer {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 2px solid #f3f4f6;
-        }
-
-        .payment-info p {
-            margin: 0.5rem 0;
-            color: #374151;
-            font-size: 0.9rem;
-        }
-
-        .status-pending {
-            color: #1f2937;
+        .service-status {
+            background: #e0f2fe;
+            color: #0369a1;
             font-weight: 600;
-        }
-
-        .contact-info p {
-            margin: 0.5rem 0;
-            color: #6b7280;
+            border-radius: 999px;
+            padding: 0.3rem 0.9rem;
             font-size: 0.85rem;
+            white-space: nowrap;
         }
-
-        .contact-info p:first-child {
-            color: #374151;
+        .service-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .details-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+        }
+        .detail-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+        .detail-label {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .detail-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .pricing-breakdown {
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .breakdown-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+        .breakdown-item.points-applied {
+            color: #b91c1c;
+        }
+        .breakdown-item.points-applied .breakdown-value {
+            color: #b91c1c;
+        }
+        .breakdown-label {
             font-weight: 500;
+            color: #475569;
         }
-
-        @media (max-width: 768px) {
-            .professional-bill {
-                font-size: 0.875rem;
-            }
-            
-            .bill-header {
-                padding: 1rem;
-                flex-direction: column;
-                text-align: center;
-                gap: 0.5rem;
-            }
-            
-            .bill-title h3 {
-                font-size: 1.25rem;
-            }
-            
-            .bill-footer {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
+        .breakdown-value {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .breakdown-item.total-item {
+            padding: 0.85rem;
+            border-radius: 10px;
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            color: #065f46;
+            font-size: 1.05rem;
+        }
+        .breakdown-item.total-item .breakdown-label,
+        .breakdown-item.total-item .breakdown-value {
+            color: inherit;
+        }
+        .pricing-placeholder {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        .pricing-placeholder i {
+            color: #2563eb;
         }
         
         .pricing-breakdown-list {
@@ -793,6 +681,39 @@
 
         .points-applied .points-icon {
             background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .modal-bg.closing {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        .photo-success-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(3px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .photo-success-overlay.show {
+            display: flex;
+        }
+        .photo-success-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px 28px;
+            width: min(92vw, 420px);
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+        }
+        .photo-success-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-top: 8px;
         }
         /* Shop Selection Button Styles - Simple Button */
         .vendor-selection {
@@ -1161,15 +1082,31 @@
                 </div>
             </div>
             </div>
-            <!-- Pricing Summary - Full width below content row -->
-            <div class="pricing-summary" id="pricingSummary" style="display: none;">
-                <div id="pricingDetails"></div>
+        </div>
+        <div class="order-summary" id="pricingSummary">
+            <div class="pricing-summary-card">
+                <div class="pricing-header">
+                    <div class="service-title" id="photoSummaryService">Photo Printing</div>
+                    <div class="service-status">Ready to Process</div>
+                </div>
+                    <div class="pricing-breakdown" id="pricingDetails">
+                        <div class="pricing-placeholder">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Upload photos and select a shop to see pricing.</span>
+                        </div>
+                    </div>
             </div>
         </div>
         <div class="footer-controls">
             <button class="cancel-btn" id="cancelBtn">Cancel</button>
             <button class="print-btn" id="printBtn" disabled>Print</button>
         </div>
+    </div>
+</div>
+<div id="photoSuccessOverlay" class="photo-success-overlay" aria-hidden="true">
+    <div class="photo-success-card">
+        <dotlottie-player src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto;"></dotlottie-player>
+        <div class="photo-success-text" id="photoSuccessText">✅ Print job sent to print successfully.</div>
     </div>
 </div>
 <script>
@@ -1225,6 +1162,88 @@ const pricingDetails = document.getElementById('pricingDetails');
 const orientationSelect = document.getElementById('orientation');
 const copiesInput = document.getElementById('copies');
 const pagesInput = document.getElementById('pages');
+const summaryServiceName = document.getElementById('photoSummaryService');
+const photoSuccessOverlay = document.getElementById('photoSuccessOverlay');
+const photoSuccessText = document.getElementById('photoSuccessText');
+
+function showPricingSummary() {
+    if (pricingSummary) {
+        pricingSummary.classList.add('show');
+    }
+}
+
+function hidePricingSummary() {
+    if (pricingSummary) {
+        pricingSummary.classList.remove('show');
+    }
+    if (pricingDetails) {
+        pricingDetails.innerHTML = `
+          <div class="pricing-placeholder">
+            <i class="fas fa-info-circle"></i>
+            <span>Upload photos and select a shop to see pricing.</span>
+          </div>
+        `;
+    }
+}
+
+function renderPricingMessage(iconClass, message) {
+    if (!pricingDetails) return;
+    pricingDetails.innerHTML = `
+      <div class="pricing-placeholder">
+        <i class="${iconClass}"></i>
+        <span>${message}</span>
+      </div>
+    `;
+    showPricingSummary();
+}
+
+function closePhotoPrintModalView() {
+    const modalBg = document.querySelector('.modal-bg');
+    if (modalBg) {
+        modalBg.classList.add('closing');
+    }
+}
+
+function showPhotoSuccessOverlay(message) {
+    if (!photoSuccessOverlay) return;
+    if (photoSuccessText && message) {
+        photoSuccessText.textContent = message;
+    }
+    photoSuccessOverlay.classList.add('show');
+    photoSuccessOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function buildPhotoPricingBreakdown(breakdown, commission) {
+    const serviceName = (breakdown.pricing_key_used || 'Photo Print A4 Color')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, letter => letter.toUpperCase());
+    const basePrice = Number(breakdown.base_price || 0);
+    const subtotal = Number(breakdown.total_price || basePrice);
+    const totalAmount = Number(commission.total || subtotal);
+    const perPhoto = Number(breakdown.price_per_page || 0);
+
+    const rows = [
+        { label: serviceName, value: `₹${basePrice.toFixed(2)}` },
+        { label: 'Number of photos', value: breakdown.photo_count ?? '-' },
+        { label: 'Layout slots', value: breakdown.layout_slots ?? '-' },
+        { label: 'Number of copies', value: breakdown.copies ?? '-' },
+        perPhoto ? { label: 'Price per photo', value: `₹${perPhoto.toFixed(2)}` } : null,
+        { label: 'Subtotal', value: `₹${subtotal.toFixed(2)}`, dataRole: 'subtotal' },
+        { label: 'Grand Total', value: `₹${totalAmount.toFixed(2)}`, total: true, dataRole: 'total' }
+    ].filter(Boolean);
+
+    return rows.map(row => {
+        const classes = ['breakdown-item'];
+        if (row.total) classes.push('total-item');
+        const dataAttr = row.dataRole ? ` data-role="${row.dataRole}"` : '';
+        return `
+            <div class="${classes.join(' ')}"${dataAttr}>
+                <span class="breakdown-label">${row.label}</span>
+                <span class="breakdown-value">${row.value}</span>
+            </div>
+        `;
+    }).join('');
+}
 // Distance calculation functions (same as dashboard)
 let userLocation = null;
 
@@ -1538,31 +1557,10 @@ function selectShopInPhotoModal(shopFolder) {
                     calculatePhotoPrintPrice();
                 } else {
                     // Show message to complete all inputs
-                    const pricingSummary = document.getElementById('pricingSummary');
-                    const pricingDetails = document.getElementById('pricingDetails');
-                    if (pricingDetails && pricingSummary) {
-                        pricingDetails.innerHTML = `
-                          <div class="loading-pricing">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Please complete all required fields to calculate pricing</span>
-                          </div>
-                        `;
-                        pricingSummary.style.display = 'block';
-                    }
+                    renderPricingMessage('fas fa-info-circle', 'Please complete all required fields to calculate pricing');
                 }
             } else {
-                // Show message to upload file first
-                const pricingSummary = document.getElementById('pricingSummary');
-                const pricingDetails = document.getElementById('pricingDetails');
-                if (pricingDetails && pricingSummary) {
-                    pricingDetails.innerHTML = `
-                      <div class="loading-pricing">
-                        <i class="fas fa-upload"></i>
-                        <span>Please upload a photo first to calculate pricing</span>
-                      </div>
-                    `;
-                    pricingSummary.style.display = 'block';
-                }
+                renderPricingMessage('fas fa-upload', 'Please upload a photo first to calculate pricing');
             }
         }, 50);
     }
@@ -1643,6 +1641,9 @@ function updateUI() {
     updateThumbnails();
     updatePreview();
     printBtn.disabled = uploadedImages.length === 0;
+    if (uploadedImages.length === 0) {
+        hidePricingSummary();
+    }
 }
 function updateThumbnails() {
     const addMoreBtn = document.getElementById('addMorePhotosBtn');
@@ -1861,6 +1862,7 @@ function resetPhotoPrintModal() {
     if (fileInput) fileInput.value = '';
     
     updateUI();
+    hidePricingSummary();
 }
 // Replace cancel behavior to go back without reloading
 cancelBtn.addEventListener('click', () => {
@@ -1922,32 +1924,12 @@ function calculatePlatformCommission(serviceKey, vendorPrice) {
 
 async function calculatePhotoPrintPrice() {
     if (!selectedShop) {
-        const pricingSummary = document.getElementById('pricingSummary');
-        const pricingDetails = document.getElementById('pricingDetails');
-        if (pricingDetails && pricingSummary) {
-            pricingDetails.innerHTML = `
-              <div class="loading-pricing">
-                <i class="fas fa-info-circle"></i>
-                <span>Please select a shop first to calculate pricing</span>
-              </div>
-            `;
-            pricingSummary.style.display = 'block';
-        }
+        renderPricingMessage('fas fa-info-circle', 'Please select a shop first to calculate pricing');
         return;
     }
 
     if (uploadedImages.length === 0) {
-        const pricingSummary = document.getElementById('pricingSummary');
-        const pricingDetails = document.getElementById('pricingDetails');
-        if (pricingDetails && pricingSummary) {
-            pricingDetails.innerHTML = `
-              <div class="loading-pricing">
-                <i class="fas fa-upload"></i>
-                <span>Please upload at least one photo first</span>
-              </div>
-            `;
-            pricingSummary.style.display = 'block';
-        }
+        renderPricingMessage('fas fa-upload', 'Please upload at least one photo first');
         return;
     }
 
@@ -1971,16 +1953,15 @@ async function calculatePhotoPrintPrice() {
     console.log('Photo print form data being sent:', formData);
 
     // Show loading state
-    const pricingSummary = document.getElementById('pricingSummary');
     const pricingDetails = document.getElementById('pricingDetails');
-    if (pricingDetails && pricingSummary) {
+    if (pricingDetails) {
         pricingDetails.innerHTML = `
           <div class="loading-pricing">
             <i class="fas fa-spinner fa-spin"></i>
             <span>Calculating pricing...</span>
           </div>
         `;
-        pricingSummary.style.display = 'block';
+        showPricingSummary();
     }
 
     try {
@@ -2002,99 +1983,12 @@ async function calculatePhotoPrintPrice() {
             // Use A4 color pricing key for photo prints commission model
             const commission = calculatePlatformCommission('a4_print_color', vendorPrice);
 
-            // Build professional bill display exactly like jumbo print modal
-            let html = `
-                <div class="professional-bill">
-                    <div class="bill-header">
-                        <div class="bill-logo">
-                            <i class="fas fa-print"></i>
-                        </div>
-                        <div class="bill-title">
-                            <h3>PrintMax Invoice</h3>
-                            <p class="bill-subtitle">Professional Printing Services</p>
-                        </div>
-                        <div class="bill-date">
-                            <p>Date: ${new Date().toLocaleDateString()}</p>
-                            <p>Time: ${new Date().toLocaleTimeString()}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="bill-content">
-                        <div class="service-info">
-                            <h4>Service Details</h4>
-                            <div class="service-row">
-                                <span class="service-name">Photo Printing<span class="service-status">Ready to Process</span></span>
-                            </div>
-                        </div>
-                        
-                        <div class="invoice-items">
-            `;
+            if (summaryServiceName) summaryServiceName.textContent = 'Photo Printing';
 
-            const serviceName = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            const basePrice = Number(breakdown.base_price || 0);
-            html += `
-                <div class="invoice-item">
-                    <span class="invoice-item-label">${serviceName}</span>
-                    <span class="invoice-item-value">₹${basePrice.toFixed(2)}</span>
-                </div>
-            `;
-
-            html += `
-                <div class="invoice-item">
-                    <span class="invoice-item-label">Number of photos</span>
-                    <span class="invoice-item-value">${breakdown.photo_count}</span>
-                </div>
-                <div class="invoice-item">
-                    <span class="invoice-item-label">Layout slots</span>
-                    <span class="invoice-item-value">${breakdown.layout_slots}</span>
-                </div>
-                <div class="invoice-item">
-                    <span class="invoice-item-label">Number of copies</span>
-                    <span class="invoice-item-value">${breakdown.copies}</span>
-                </div>
-            `;
-
-            // Effective per-photo after adding commission
-            const items = (Number(breakdown.photo_count || 1) * Number(breakdown.copies || 1)) || 1;
-            const basePer = Number(breakdown.price_per_page || 0);
-            const effectivePer = (basePer + (items ? (commission.amount / items) : 0)).toFixed(2);
-            if (basePer) {
-              html += `
-                <div class="invoice-item">
-                    <span class="invoice-item-label">Price per photo</span>
-                    <span class="invoice-item-value">₹${effectivePer}</span>
-                </div>
-              `;
+            if (pricingDetails) {
+                pricingDetails.innerHTML = buildPhotoPricingBreakdown(breakdown, commission);
             }
-
-            html += `
-                            <div class="invoice-item invoice-subtotal">
-                                <span class="invoice-item-label">Subtotal</span>
-                                <span class="invoice-item-value">₹${basePrice.toFixed(2)}</span>
-                            </div>
-                            <div class="invoice-item invoice-total">
-                                <span class="invoice-item-label">Grand Total</span>
-                                <span class="invoice-item-value">₹${Number(commission.total).toFixed(2)}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="bill-footer">
-                            <div class="payment-info">
-                                <p><strong>Payment Method:</strong> Online Payment</p>
-                                <p><strong>Status:</strong> <span class="status-pending">Pending Payment</span></p>
-                            </div>
-                            <div class="contact-info">
-                                <p>Thank you for choosing PrintMax!</p>
-                                <p>For queries, contact: support@printmax.com</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            pricingDetails.innerHTML = html;
-            pricingSummary.style.display = 'block';
-            pricingSummary.classList.add('active');
+            showPricingSummary();
 
             // Show points section if user has points
             showPointsSection('photoprint');
@@ -2106,31 +2000,11 @@ async function calculatePhotoPrintPrice() {
             document.body.dataset.pricingBreakdown = JSON.stringify(finalBreakdown);
 
         } else {
-            const pricingSummary = document.getElementById('pricingSummary');
-            const pricingDetails = document.getElementById('pricingDetails');
-            if (pricingDetails && pricingSummary) {
-                pricingDetails.innerHTML = `
-                  <div class="loading-pricing">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>Error: ${result.error || 'Unknown error'}</span>
-                  </div>
-                `;
-                pricingSummary.style.display = 'block';
-            }
+            renderPricingMessage('fas fa-exclamation-circle', `Error: ${result.error || 'Unknown error'}`);
         }
     } catch (error) {
         console.error('Error calculating photo print price:', error);
-        const pricingSummary = document.getElementById('pricingSummary');
-        const pricingDetails = document.getElementById('pricingDetails');
-        if (pricingDetails && pricingSummary) {
-            pricingDetails.innerHTML = `
-              <div class="loading-pricing">
-                <i class="fas fa-exclamation-circle"></i>
-                <span>Error calculating price. Please try again.</span>
-              </div>
-            `;
-            pricingSummary.style.display = 'block';
-        }
+        renderPricingMessage('fas fa-exclamation-circle', 'Error calculating price. Please try again.');
     }
 }
 async function handlePrint() {
@@ -2272,20 +2146,26 @@ async function handlePrint() {
                         const verifyData = await parseJsonResponse(verifyResp);
                         if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
                         const serverToken = verifyData.token || token;
-                        if (pricingDetails) {
-                            alert(`Photo print job submitted successfully!\n\nTotal Paid: Rs${pricingDetails.total_price}\nVendor: ${selectedShopData?.shop_name || 'Unknown'}\nToken: ${serverToken}`);
-                        } else {
-                            alert(`Photo print job submitted successfully! Token: ${serverToken}`);
+                        const successMessage = '✅ Print job sent to print successfully.';
+                        try {
+                            sessionStorage.setItem('photoPrintSuccess', JSON.stringify({
+                                message: successMessage,
+                                token: serverToken,
+                                timestamp: Date.now()
+                            }));
+                        } catch (storageError) {
+                            console.warn('Unable to persist success state:', storageError);
                         }
-                        // Go back to dashboard without full reload
-                        if (window.history.length > 1) {
-                            window.history.back();
-                        } else {
+                        closePhotoPrintModalView();
+                        showPhotoSuccessOverlay(successMessage);
+                        setTimeout(() => {
                             window.location.href = '/userdashboard/';
-                        }
+                        }, 1500);
+                        resolve();
                         return;
                     } catch (err) {
                         alert(err.message || 'Payment verified but upload failed');
+                        resolve();
                     }
                 },
                 modal: { ondismiss: function(){ resolve(); } },
@@ -2462,27 +2342,28 @@ function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount
     if (!pricingDetails) return;
 
     // Find the total amount line and update it
-    const totalItem = pricingDetails.querySelector('.pricing-item.total');
+    const totalItem = pricingDetails.querySelector('.breakdown-item[data-role="total"]');
     if (totalItem) {
         // Remove any existing points line
-        const existingPointsLine = pricingDetails.querySelector('.pricing-item.points-applied');
+        const existingPointsLine = pricingDetails.querySelector('.breakdown-item.points-applied');
         if (existingPointsLine) {
             existingPointsLine.remove();
         }
 
         // Add points applied line before total
         if (pointsUsed > 0) {
-            const pointsLine = document.createElement('li');
-            pointsLine.className = 'pricing-item points-applied';
+            const pointsLine = document.createElement('div');
+            pointsLine.className = 'breakdown-item points-applied';
+            pointsLine.dataset.role = 'points';
             pointsLine.innerHTML = `
-                <span class="pricing-label">Points Applied</span>
-                <span class="pricing-value">-₹${pointsUsed.toFixed(2)}</span>
+                <span class="breakdown-label">Points Applied</span>
+                <span class="breakdown-value">-₹${pointsUsed.toFixed(2)}</span>
             `;
             totalItem.parentNode.insertBefore(pointsLine, totalItem);
         }
 
         // Update total amount
-        const totalValue = totalItem.querySelector('.pricing-value');
+        const totalValue = totalItem.querySelector('.breakdown-value');
         if (totalValue) {
             totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
         }
