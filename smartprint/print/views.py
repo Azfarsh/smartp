@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
+from django.db import connection
 import boto3
 import datetime
 import json
@@ -2881,8 +2882,9 @@ def upload_to_r2(request):
                               endpoint_url=settings.R2_ENDPOINT,
                               region_name='auto')
 
-            # Get user email for folder creation
+            # Get user details for folder creation
             user_email = request.user.email if request.user.is_authenticated else 'anonymous'
+            user_id = str(request.user.id) if request.user.is_authenticated else ''
 
             # Process each file with its corresponding settings
             for i in range(file_count):
@@ -2948,10 +2950,13 @@ def upload_to_r2(request):
                     file_metadata = {
                         'copies': str(print_settings.get("copies", "1")),
                         'color': print_settings.get("color", "Black and White"),
+                        'color_mode': str(print_settings.get("color", "Black and White")),
                         'orientation': print_settings.get("orientation", "portrait"),
                         'pageRange': str(print_settings.get("pageRange", "")),
                         'specificPages': str(print_settings.get("specificPages", "")),
                         'pageSize': str(print_settings.get("pageSize", "A4")),
+                        'paper_type': str(print_settings.get("paper_type", print_settings.get("pageSize", "A4"))),
+                        'layout_type': str(print_settings.get("layout", "single")),
                         'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                         'lamination': str(print_settings.get("lamination", "No")),
                         'timestamp': datetime.datetime.now().isoformat(),
@@ -2960,7 +2965,9 @@ def upload_to_r2(request):
                         'vendor_status': 'not sended',
                         'trash': 'NO',
                         'user': user_email,
+                        'user_id': user_id,
                         'vendor': vendor_id,
+                        'shop_id': str(vendor_id or ''),
                         'job_id': job_id,
                         'service_type': print_settings.get('service_type', 'regular print'),
                         'token': token,
@@ -2971,7 +2978,9 @@ def upload_to_r2(request):
                         'points_applied': str(points_applied),
                         'points_used': str(points_used),
                         'final_amount': str(final_amount),
-                        'user_email': user_email
+                        'user_email': user_email,
+                        'page_count': str(print_settings.get("page_count", print_settings.get("pages", ""))),
+                        'pages': str(print_settings.get("page_count", print_settings.get("pages", "")))
                     }
                     
                     # Add pricing details to metadata if available
@@ -3189,21 +3198,6 @@ def upload_to_r2(request):
                                 )
                                 print(f"✅ Photo layout saved as PDF: {file.name}")
                                 
-                                # Store print job in D1 database (R2 storage is already done above)
-                                try:
-                                    store_vendor_print_job_in_db(
-                                        vendor_id=vendor_id,
-                                        vendor_email=vendor_email,
-                                        user_email=user_email,
-                                        filename=file.name,
-                                        storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
-                                        r2_path=vendor_file_key,
-                                        metadata=file_metadata,
-                                        pricing_details=pricing_details
-                                    )
-                                except Exception as db_err:
-                                    print(f"⚠️ Error storing print job in database: {db_err}")
-                                    # Don't fail the upload if database storage fails
                             else:
                                 print(f"❌ Failed to create {service_type} layout")
                                 return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
@@ -3234,11 +3228,31 @@ def upload_to_r2(request):
                             storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
                             r2_path=vendor_file_key,
                             metadata=file_metadata,
-                            pricing_details=pricing_details
+                            pricing_details=pricing_details,
+                            user_id=user_id,
+                            shop_id=vendor_id
                         )
                     except Exception as db_err:
                         print(f"⚠️ Error storing print job in database: {db_err}")
                         # Don't fail the upload if database storage fails
+
+                    try:
+                        user_metadata = dict(file_metadata)
+                        user_metadata['storage_folder'] = 'users'
+                        store_user_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=file.name,
+                            storage_folder='users',
+                            r2_path=user_file_key,
+                            metadata=user_metadata,
+                            pricing_details=pricing_details,
+                            user_id=user_id,
+                            shop_id=vendor_id
+                        )
+                    except Exception as user_db_err:
+                        print(f"⚠️ Error storing user print job in database: {user_db_err}")
 
                     files_uploaded += 1
 
@@ -4318,6 +4332,43 @@ def verify_razorpay_payment(request):
 
                     files_processed += 1
                     print(f"✅ Successfully uploaded file: {fobj.name}")
+                    
+                    # Store print job in D1 database (R2 storage is already done above)
+                    try:
+                        vendor_email = get_vendor_email_by_vendor_id(vendor_id) if vendor_id else None
+                        store_vendor_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=fobj.name,
+                            storage_folder=print_settings.get('storage_folder', 'vendor_print_jobs') if 'storage_folder' in print_settings else ('vendor_manual_print_jobs' if service_type in ['digital_print', 'gloss_printing', 'jumbo_printing', 'golden_embossing', 'project_binding'] else 'vendor_print_jobs'),
+                            r2_path=vendor_file_key,
+                            metadata=metadata,
+                            pricing_details=pricing_details,
+                            user_id=str(request.user.id) if request.user.is_authenticated else None,
+                            shop_id=vendor_id
+                        )
+                    except Exception as db_err:
+                        print(f"⚠️ Error storing vendor print job in database: {db_err}")
+                        # Don't fail the upload if database storage fails
+
+                    try:
+                        user_metadata = dict(metadata)
+                        user_metadata['storage_folder'] = 'users'
+                        store_user_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=fobj.name,
+                            storage_folder='users',
+                            r2_path=user_file_key,
+                            metadata=user_metadata,
+                            pricing_details=pricing_details,
+                            user_id=str(request.user.id) if request.user.is_authenticated else None,
+                            shop_id=vendor_id
+                        )
+                    except Exception as user_db_err:
+                        print(f"⚠️ Error storing user print job in database: {user_db_err}")
                     
                 except Exception as upload_error:
                     files_failed += 1
@@ -5632,6 +5683,125 @@ def sanitize_shop_name(shop_name):
     sanitized = re.sub(r'\s+', '_', sanitized.strip())
     return sanitized
 
+
+def _categorize_vendor_pricing_row(row_dict):
+    """
+    Build a categorized_pricing structure similar to the one returned by the Worker API
+    using a row from the Vendor_pricing table.
+    """
+    if not row_dict:
+        return {}
+
+    prefix_rules = {
+        'digital_print': ('digital_print_',),
+        'regular_print': ('regular_print_',),
+        'photo_print': ('photo_print_',),
+        'gloss_print': ('gloss_print_',),
+        'jumbo_print': ('jumbo_print_',),
+        'passport_photo': ('passport_print_',),
+        'golden_embossing': ('golden_emboss_',),
+        'lamination': ('lamination_',),
+        'binding': ('tape_binding_', 'spiral_binding_'),
+    }
+
+    categorized = {}
+    for category, prefixes in prefix_rules.items():
+        category_data = {}
+        for key, value in row_dict.items():
+            if value in (None, ''):
+                continue
+            if any(key.startswith(prefix) for prefix in prefixes):
+                category_data[key] = value
+        if category_data:
+            categorized[category] = category_data
+
+    # Create an a4_print alias so existing UI code gets the expected keys
+    regular = categorized.get('regular_print', {})
+    a4_alias = {}
+    bw_price = regular.get('regular_print_a4_bw')
+    color_price = regular.get('regular_print_a4_color')
+    if bw_price is not None:
+        a4_alias['a4_print_single_bw'] = bw_price
+    if color_price is not None:
+        a4_alias['a4_print_single_color'] = color_price
+    if a4_alias:
+        categorized['a4_print'] = a4_alias
+
+    return categorized
+
+
+def normalize_color_key(value, default='color'):
+    """
+    Normalize color strings coming from various parts of the product UI.
+    """
+    normalized = (value or '').strip().lower()
+    color_aliases = {
+        'single_color': 'color',
+        'colour': 'color',
+        'color': 'color',
+        'colour_print': 'color',
+        'color_print': 'color',
+        'single_colour': 'color',
+        'single_bw': 'bw',
+        'single_black_white': 'bw',
+        'bw': 'bw',
+        'black_white': 'bw',
+        'black & white': 'bw',
+        'black and white': 'bw',
+        'mono': 'bw',
+    }
+    return color_aliases.get(normalized, normalized or default)
+
+
+def safe_price(value, default=0.0):
+    """
+    Convert pricing values from DB/API to float safely.
+    """
+    try:
+        if value in (None, ''):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def get_vendor_pricing_from_local_db(vendor_email):
+    """
+    Attempt to read vendor pricing from the local Vendor_pricing table when the Worker API
+    is unreachable. This keeps pricing-dependent flows functional for on-prem deployments.
+    """
+    if not vendor_email:
+        return None
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT *
+                FROM Vendor_pricing
+                WHERE LOWER(vendor_email) = LOWER(%s)
+                ORDER BY COALESCE(last_updated, '') DESC, id DESC
+                LIMIT 1
+                """,
+                [vendor_email]
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            columns = [col[0] for col in cursor.description]
+            row_dict = {columns[idx]: value for idx, value in enumerate(row)}
+            categorized = _categorize_vendor_pricing_row(row_dict)
+            return {
+                'pricing_data': row_dict,
+                'categorized_pricing': categorized,
+                'services_summary': {}
+            }
+    except Exception as exc:
+        print(f"⚠️ Unable to fetch vendor pricing from local DB for {vendor_email}: {exc}")
+
+    return None
+
 def get_vendor_pricing_from_d1(vendor_email):
     """
     Helper function to get vendor pricing from d1 database via Worker API
@@ -5689,6 +5859,12 @@ def get_vendor_pricing_from_d1(vendor_email):
         print(f"⚠️ Failed to connect to Worker API: {str(e)}")
     except Exception as e:
         print(f"⚠️ Unexpected error fetching pricing from d1 database: {str(e)}")
+    
+    # Fallback to local Vendor_pricing table so pricing-dependent flows still work
+    local_pricing = get_vendor_pricing_from_local_db(vendor_email)
+    if local_pricing:
+        print(f"ℹ️ Falling back to local Vendor_pricing table for {vendor_email}")
+        return local_pricing
     
     return None
 
@@ -5958,10 +6134,13 @@ def calculate_gloss_print_pricing(request):
                 })
             
             # Construct pricing key based on user selections
-            # Handle special case for A1 (it's stored as 'al' in the pricing.json)
-            size_key = print_size.lower()
+            size_key = (print_size or 'A4').strip().lower()
+            size_candidates = [size_key]
             if size_key == 'a1':
-                size_key = 'al'
+                size_candidates.append('al')
+            
+            gloss_type_key = (gloss_type or 'standard_gloss').strip().lower()
+            color_key = normalize_color_key(print_color, default='color')
             
             # For gloss printing, the pricing is nested under "categorized_pricing.gloss_print" object
             # Access the nested gloss_print pricing data
@@ -5971,21 +6150,29 @@ def calculate_gloss_print_pricing(request):
             gloss_pricing = categorized_pricing.get('gloss_print', {})
             print(f"📊 Gloss pricing keys: {list(gloss_pricing.keys())}")
             
-            # Construct the pricing key format: gloss_print_{size}_{gloss_type}
-            pricing_key_name = f'gloss_print_{size_key}_{gloss_type}'
-            print(f"🔍 Looking for pricing key: {pricing_key_name}")
-            
-            # Get base price from the nested gloss_print object
-            base_price = gloss_pricing.get(pricing_key_name)
+            # Construct candidate pricing keys to support legacy schemas
+            lookup_candidates = []
+            for size_variant in size_candidates:
+                lookup_candidates.extend([
+                    f'gloss_print_{size_variant}_{gloss_type_key}_{color_key}',
+                    f'gloss_print_{size_variant}_{gloss_type_key}',
+                    f'gloss_print_{size_variant}_{color_key}',
+                    f'gloss_print_{size_variant}'
+                ])
+            base_price, resolved_key = resolve_pricing_key(gloss_pricing, *lookup_candidates)
             
             # Check if pricing is available
-            if base_price is None:
-                print(f"❌ Pricing not found for key: {pricing_key_name}")
-                print(f"Available gloss pricing keys: {list(gloss_pricing.keys())}")
+            if base_price in (None, ''):
+                available_keys = list(gloss_pricing.keys())
+                print(f"❌ Pricing not found for keys: {lookup_candidates}")
+                print(f"Available gloss pricing keys: {available_keys}")
                 return JsonResponse({
                     'success': False,
-                    'error': f'Pricing not available for {print_size} {gloss_type}. Please contact the vendor.'
+                    'error': f'Pricing not available for {print_size} {gloss_type}. Please ask the vendor to configure gloss pricing in Dashboard.'
                 })
+            
+            print(f"✅ Using gloss pricing key: {resolved_key}")
+            base_price = safe_price(base_price, default=0.0)
             
             # Calculate price per page
             price_per_page = base_price
@@ -6002,7 +6189,7 @@ def calculate_gloss_print_pricing(request):
                 'page_count': page_count,
                 'num_copies': num_copies,
                 'total_price': total_price,
-                'pricing_key_used': pricing_key_name
+                'pricing_key_used': resolved_key or lookup_candidates[0]
             }
             
             return JsonResponse({
@@ -6080,97 +6267,28 @@ def calculate_golden_emboss_pricing(request):
             print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
             
             golden_emboss_pricing = categorized_pricing.get('golden_embossing', {})
-            digital_print_pricing = categorized_pricing.get('digital_print', {})
-            
             print(f"📊 Golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
-            print(f"📊 Digital print pricing keys: {list(digital_print_pricing.keys())}")
             
-            # Base printing cost - use paper type pricing directly from golden embossing
-            paper_size_key = paper_type.lower()
-            if paper_size_key == 'a1':
-                paper_size_key = 'al'
+            cover_price = safe_price(golden_emboss_pricing.get('golden_emboss_cover'))
+            bond_color_price = safe_price(golden_emboss_pricing.get('golden_emboss_bond_color'))
             
-            # Get paper pricing directly from golden embossing pricing
-            if paper_type == 'A4':
-                paper_price_key = 'emboss_a4_paper'
-                base_price = golden_emboss_pricing.get(paper_price_key, 0)
-                print(f"🔍 Looking for A4 paper pricing key: {paper_price_key}")
-            elif paper_type == 'Bond':
-                paper_price_key = 'emboss_bond_paper'
-                base_price = golden_emboss_pricing.get(paper_price_key, 0)
-                print(f"🔍 Looking for Bond paper pricing key: {paper_price_key}")
-            else:
-                # Fallback to A4 pricing for other paper types
-                paper_price_key = 'emboss_a4_paper'
-                base_price = golden_emboss_pricing.get(paper_price_key, 0)
-                print(f"🔍 Using A4 pricing as fallback for {paper_type}: {paper_price_key}")
-            
-            if base_price is None or base_price == "":
-                print(f"❌ Paper pricing not found or empty for key: {paper_price_key}")
-                print(f"Available golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
+            if cover_price <= 0 and bond_color_price <= 0:
+                print("❌ Golden emboss pricing table missing cover/bond color entries")
                 return JsonResponse({
                     'success': False,
-                    'error': f'Pricing not available for {paper_type} paper. Please contact the vendor to set their pricing.'
+                    'error': 'Golden emboss pricing not configured for this vendor. Please ask the vendor to set cover and bond color rates.'
                 })
             
-            # Convert string prices to integers
-            try:
-                base_price = int(base_price) if base_price else 0
-            except (ValueError, TypeError):
-                base_price = 0
+            cover_cost_per_book = max(cover_price, 0.0)
+            color_cost_per_book = max(bond_color_price, 0.0) * page_count
+            print(f"Golden emboss cover cost: {cover_cost_per_book}, color charge per book: {color_cost_per_book}")
             
-            # Calculate paper cost
-            paper_cost = base_price * page_count
-            print(f"Paper cost: {base_price} * {page_count} = {paper_cost}")
-            
-            # Golden embossing cost - black cover
-            emboss_price_key = 'emboss_black_cover'
-            emboss_price = golden_emboss_pricing.get(emboss_price_key)
-            if emboss_price is None or emboss_price == "":
-                print(f"❌ Golden embossing pricing not found or empty for key: {emboss_price_key}")
-                print(f"Available golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
+            total_price_per_book = cover_cost_per_book + color_cost_per_book
+            if total_price_per_book <= 0:
                 return JsonResponse({
                     'success': False,
-                    'error': f'Golden embossing pricing not available. Please contact the vendor to set their pricing.'
+                    'error': 'Golden emboss pricing resulted in zero total. Please ask vendor to configure valid rates.'
                 })
-            
-            # Convert emboss price to integer
-            try:
-                emboss_price = int(emboss_price) if emboss_price else 0
-            except (ValueError, TypeError):
-                emboss_price = 0
-            
-            emboss_cost = emboss_price
-            print(f"Golden embossing cost: {emboss_price}")
-            
-            # Paper type cost
-            paper_cost = 0
-            if paper_type == 'A4':
-                paper_price_key = 'emboss_a4_paper'
-                paper_price = golden_emboss_pricing.get(paper_price_key, 0)
-                if paper_price and paper_price != "":
-                    try:
-                        paper_price = int(paper_price)
-                        if paper_price > 0:
-                            paper_cost = paper_price * page_count
-                            print(f"A4 paper cost: {paper_price} * {page_count} = {paper_cost}")
-                    except (ValueError, TypeError):
-                        paper_price = 0
-            elif paper_type == 'Bond':
-                paper_price_key = 'emboss_bond_paper'
-                paper_price = golden_emboss_pricing.get(paper_price_key, 0)
-                if paper_price and paper_price != "":
-                    try:
-                        paper_price = int(paper_price)
-                        if paper_price > 0:
-                            paper_cost = paper_price * page_count
-                            print(f"Bond paper cost: {paper_price} * {page_count} = {paper_cost}")
-                    except (ValueError, TypeError):
-                        paper_price = 0
-            
-            # Calculate total price per book
-            total_price_per_book = paper_cost + emboss_cost
-            print(f"Total per book: paper_cost={paper_cost} + emboss_cost={emboss_cost} = {total_price_per_book}")
             
             # Calculate total price for all copies
             total_price = total_price_per_book * num_copies
@@ -6179,36 +6297,34 @@ def calculate_golden_emboss_pricing(request):
             # Prepare pricing breakdown
             pricing_breakdown = [
                 {
-                    'label': f'{paper_type} Paper ({page_count} pages)',
-                    'value': f'₹{paper_cost}'
+                    'label': 'Golden Emboss Cover (per book)',
+                    'value': f'₹{cover_cost_per_book:.2f}'
                 },
                 {
-                    'label': 'Golden Embossing Black Cover',
-                    'value': f'₹{emboss_cost}'
+                    'label': f'Bond Color ({page_count} pages)',
+                    'value': f'₹{color_cost_per_book:.2f}'
                 }
             ]
             
-            # Add copies information
-            if num_copies > 1:
-                pricing_breakdown.append({
-                    'label': f'Total per book',
-                    'value': f'₹{total_price_per_book}'
-                })
-                pricing_breakdown.append({
-                    'label': f'Number of copies',
-                    'value': f'{num_copies}'
-                })
+            pricing_breakdown.append({
+                'label': 'Total per book',
+                'value': f'₹{total_price_per_book:.2f}'
+            })
+            pricing_breakdown.append({
+                'label': 'Number of copies',
+                'value': f'{num_copies}'
+            })
             
             # Also provide structured data for metadata storage
             structured_breakdown = {
                 'pricing_breakdown': pricing_breakdown,
                 'total_price': total_price,
-                'price_per_page': base_price,
+                'price_per_page': bond_color_price,
                 'page_count': page_count,
                 'num_copies': num_copies,
                 'paper_type': paper_type,
-                'emboss_cost': emboss_cost,
-                'paper_cost': paper_cost,
+                'emboss_cost': cover_cost_per_book,
+                'paper_cost': color_cost_per_book,
                 'total_per_book': total_price_per_book,
                 'total_pages': page_count * num_copies  # Total pages across all copies
             }
@@ -6232,6 +6348,27 @@ def calculate_golden_emboss_pricing(request):
         'success': False,
         'error': 'Invalid request method'
     })
+
+def resolve_pricing_key(pricing_dict, *candidates):
+    """
+    Helper to find a pricing value using multiple key variations (case-insensitive).
+    Returns tuple of (value, matched_key) or (None, None).
+    """
+    if not pricing_dict:
+        return None, None
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        value = pricing_dict.get(candidate)
+        if value in (None, ''):
+            lower_candidate = candidate.lower()
+            for existing_key, existing_value in pricing_dict.items():
+                if existing_key.lower() == lower_candidate and existing_value not in (None, ''):
+                    return existing_value, existing_key
+        else:
+            return value, candidate
+    return None, None
 
 @csrf_exempt
 def calculate_photo_print_pricing(request):
@@ -6391,20 +6528,46 @@ def calculate_digital_print_pricing(request):
             digital_pricing = pricing_data.get('categorized_pricing', {}).get('digital_print', {})
             
             # Construct the pricing key based on user selections
-            # Handle special case for A1 (it's stored as 'al' in the pricing.json)
-            paper_size_key = paper_size.lower()
+            paper_size_key = (paper_size or 'A4').strip().lower()
+            size_candidates = [paper_size_key]
             if paper_size_key == 'a1':
-                paper_size_key = 'al'
+                size_candidates.append('al')
             
-            pricing_key_name = f"digital_print_{paper_size_key}_{print_color}"
+            color_key_raw = (print_color or '').strip().lower()
+            color_key_normalized = normalize_color_key(print_color, default='color')
+            color_candidates = []
+            for candidate in [color_key_raw, color_key_normalized, 'color']:
+                if candidate:
+                    color_candidates.append(candidate)
+            if color_key_normalized == 'color':
+                color_candidates.append('single_color')
+            elif color_key_normalized == 'bw':
+                color_candidates.append('single_bw')
+            # Preserve order but remove duplicates
+            seen = set()
+            color_candidates = [c for c in color_candidates if not (c in seen or seen.add(c))]
             
-            # Get base price for the selected options
-            base_price = digital_pricing.get(pricing_key_name, 0)
+            lookup_candidates = []
+            for size_variant in size_candidates:
+                for color_variant in color_candidates:
+                    lookup_candidates.append(f"digital_print_{size_variant}_{color_variant}")
+                lookup_candidates.append(f"digital_print_{size_variant}")
+            base_price, resolved_key = resolve_pricing_key(digital_pricing, *lookup_candidates)
+            
+            if base_price in (None, ''):
+                print(f"❌ Digital pricing not found for keys: {lookup_candidates}")
+                print(f"Available digital pricing keys: {list(digital_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for {paper_size} {print_color}. Please contact the vendor.'
+                })
+            
+            base_price = safe_price(base_price, default=0.0)
             
             # Apply quality upgrade if high quality is selected
             quality_upgrade = 0
             if print_quality == 'high_quality':
-                quality_upgrade = digital_pricing.get('digital_print_high_quality', 0)
+                quality_upgrade = safe_price(digital_pricing.get('digital_print_high_quality', 0), default=0.0)
             
             # Calculate total price (price per page * number of pages * number of copies)
             price_per_page = base_price + quality_upgrade
@@ -6420,7 +6583,7 @@ def calculate_digital_print_pricing(request):
                 'page_count': page_count,
                 'num_copies': num_copies,
                 'total_price': total_price,
-                'pricing_key_used': pricing_key_name
+                'pricing_key_used': resolved_key or lookup_candidates[0]
             }
             
             return JsonResponse({
@@ -6535,10 +6698,11 @@ def calculate_jumbo_print_pricing(request):
                 })
             
             # Construct pricing key based on user selections
-            # Handle special case for A1 (it's stored as 'al' in the pricing.json)
-            size_key = print_size.lower()
+            size_key = (print_size or 'A3').strip().lower()
+            size_key = size_key.replace(' ', '')
+            size_candidates = [size_key]
             if size_key == 'a1':
-                size_key = 'al'
+                size_candidates.append('al')
             
             # For jumbo printing, the pricing is nested under "categorized_pricing.jumbo_print" object
             # Access the nested jumbo_print pricing data
@@ -6549,23 +6713,36 @@ def calculate_jumbo_print_pricing(request):
             print(f"📊 Jumbo pricing keys: {list(jumbo_pricing.keys())}")
             
             # Map print color to pricing key format
-            color_key = 'single_color' if print_color == 'Color' else 'single_bw'
+            color_key = normalize_color_key(print_color, default='color')
+            color_candidates = []
+            for candidate in [color_key, 'single_color' if color_key == 'color' else None, 'single_bw' if color_key == 'bw' else None]:
+                if candidate:
+                    color_candidates.append(candidate)
+            if color_key == 'bw':
+                color_candidates.append('bw')
+            # Deduplicate while preserving order
+            seen_colors = set()
+            color_candidates = [c for c in color_candidates if not (c in seen_colors or seen_colors.add(c))]
             
-            # Construct the pricing key format: jumbo_print_{size}_{color_key}
-            pricing_key_name = f'jumbo_print_{size_key}_{color_key}'
-            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            lookup_candidates = []
+            for size_variant in size_candidates:
+                for color_variant in color_candidates:
+                    lookup_candidates.append(f'jumbo_print_{size_variant}_{color_variant}')
+                lookup_candidates.append(f'jumbo_print_{size_variant}')
             
             # Get base price from the nested jumbo_print object
-            base_price = jumbo_pricing.get(pricing_key_name)
+            base_price, resolved_key = resolve_pricing_key(jumbo_pricing, *lookup_candidates)
             
             # Check if pricing is available
-            if base_price is None:
-                print(f"❌ Pricing not found for key: {pricing_key_name}")
+            if base_price in (None, ''):
+                print(f"❌ Pricing not found for keys: {lookup_candidates}")
                 print(f"Available jumbo pricing keys: {list(jumbo_pricing.keys())}")
                 return JsonResponse({
                     'success': False,
                     'error': f'Pricing not available for {print_size} {print_color}. Please contact the vendor.'
                 })
+            
+            base_price = safe_price(base_price, default=0.0)
             
             # Calculate price per page
             price_per_page = base_price
@@ -6582,7 +6759,7 @@ def calculate_jumbo_print_pricing(request):
                 'page_count': page_count,
                 'num_copies': num_copies,
                 'total_price': total_price,
-                'pricing_key_used': pricing_key_name
+                'pricing_key_used': resolved_key or lookup_candidates[0]
             }
             
             return JsonResponse({
@@ -10049,7 +10226,7 @@ def return_user_points(request):
         print(f"❌ Error returning points: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None):
+def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
     """Store vendor print job in D1 database via Worker API"""
     try:
         api_url = getattr(settings, 'WORKER_API_URL', '')
@@ -10103,6 +10280,7 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             page_count = metadata.get('page_count')
         if num_copies is None:
             num_copies = metadata.get('num_copies')
+        pages_value = metadata.get('page_count') or metadata.get('pages')
         
         # Convert string values to appropriate types
         if total_price:
@@ -10130,6 +10308,11 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
                 num_copies = int(num_copies)
             except:
                 num_copies = None
+        if pages_value:
+            try:
+                pages_value = int(pages_value)
+            except:
+                pages_value = None
         
         # Store pricing_details as JSON string if available
         pricing_details_str = None
@@ -10143,8 +10326,10 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'vendor_id': vendor_id,
             'vendor_email': vendor_email or '',
             'user_email': user_email,
+            'user_id': user_id or metadata.get('user_id', ''),
             'filename': filename,
             'storage_folder': storage_folder,
+            'shop_id': shop_id or metadata.get('shop_id', vendor_id),
             'r2_path': r2_path,
             'service_type': metadata.get('service_type', ''),
             'status': metadata.get('status', 'pending'),
@@ -10175,7 +10360,11 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'price_per_page': price_per_page,
             'final_amount': metadata.get('final_amount'),
             'page_count': page_count,
+            'pages': pages_value,
             'num_copies': num_copies,
+            'paper_type': metadata.get('paper_type', ''),
+            'color_mode': metadata.get('color_mode', metadata.get('color', '')),
+            'layout_type': metadata.get('layout_type', ''),
             'pricing_details': pricing_details_str
         }
         
@@ -10205,6 +10394,156 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             
     except Exception as e:
         print(f"❌ Error storing print job in database: {e}")
+        return False
+
+def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
+    """Store user print job in D1 database via Worker API"""
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+        if not api_url or not api_key:
+            print(f"⚠️ Worker API not configured, skipping user print job storage")
+            return False
+
+        if '/add-contact' in api_url:
+            worker_endpoint = api_url.replace('/add-contact', '/add-user-print-job')
+        elif '/add-vendor-register' in api_url:
+            worker_endpoint = api_url.replace('/add-vendor-register', '/add-user-print-job')
+        else:
+            worker_endpoint = api_url.rstrip('/') + '/add-user-print-job'
+
+        total_price = None
+        platform_profit = None
+        price_per_page = None
+        page_count = None
+        num_copies = None
+
+        if pricing_details:
+            if isinstance(pricing_details, dict):
+                total_price = pricing_details.get('total_price', pricing_details.get('total'))
+                platform_profit = pricing_details.get('platform_profit')
+                if isinstance(pricing_details.get('pricing_breakdown'), dict):
+                    breakdown = pricing_details.get('pricing_breakdown', {})
+                    price_per_page = breakdown.get('price_per_page')
+                    page_count = breakdown.get('page_count')
+                    num_copies = breakdown.get('num_copies')
+            elif isinstance(pricing_details, str):
+                try:
+                    pricing_obj = json.loads(pricing_details)
+                    total_price = pricing_obj.get('total_price', pricing_obj.get('total'))
+                    platform_profit = pricing_obj.get('platform_profit')
+                    price_per_page = pricing_obj.get('price_per_page', pricing_obj.get('per_page'))
+                    page_count = pricing_obj.get('page_count', pricing_obj.get('pages'))
+                    num_copies = pricing_obj.get('num_copies', pricing_obj.get('copies'))
+                except:
+                    pass
+
+        if total_price is None:
+            total_price = metadata.get('total_price')
+        if price_per_page is None:
+            price_per_page = metadata.get('price_per_page')
+        if page_count is None:
+            page_count = metadata.get('page_count')
+        if num_copies is None:
+            num_copies = metadata.get('num_copies')
+        pages_value = metadata.get('page_count') or metadata.get('pages')
+
+        def to_float(value):
+            if value is None:
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        def to_int(value):
+            if value is None:
+                return None
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
+
+        total_price = to_float(total_price)
+        platform_profit = to_float(platform_profit)
+        price_per_page = to_float(price_per_page)
+        page_count = to_int(page_count)
+        num_copies = to_int(num_copies)
+        pages_value = to_int(pages_value)
+
+        pricing_details_str = None
+        if pricing_details:
+            pricing_details_str = pricing_details if isinstance(pricing_details, str) else json.dumps(pricing_details)
+
+        payload = {
+            'vendor_id': vendor_id,
+            'vendor_email': vendor_email or '',
+            'user_email': user_email,
+            'user_id': user_id or metadata.get('user_id', ''),
+            'filename': filename,
+            'storage_folder': storage_folder or 'users',
+            'shop_id': shop_id or metadata.get('shop_id', vendor_id),
+            'r2_path': r2_path,
+            'service_type': metadata.get('service_type', ''),
+            'status': metadata.get('status', 'pending'),
+            'job_completed': metadata.get('job_completed', 'NO'),
+            'vendor_status': metadata.get('vendor_status', 'not sended'),
+            'token': metadata.get('token', ''),
+            'job_id': metadata.get('job_id', ''),
+            'copies': metadata.get('copies', '1'),
+            'color': metadata.get('color', ''),
+            'orientation': metadata.get('orientation', ''),
+            'pageSize': metadata.get('pageSize', ''),
+            'pageRange': metadata.get('pageRange', ''),
+            'specificPages': metadata.get('specificPages', ''),
+            'spiralBinding': metadata.get('spiralBinding', 'No'),
+            'lamination': metadata.get('lamination', 'No'),
+            'service_name': metadata.get('service_name', ''),
+            'feedback': metadata.get('feedback', ''),
+            'quality': metadata.get('quality', ''),
+            'thickness': metadata.get('thickness', ''),
+            'points_applied': metadata.get('points_applied', 'false'),
+            'points_used': metadata.get('points_used', '0'),
+            'timestamp': metadata.get('timestamp', datetime.datetime.now().isoformat()),
+            'completion_time': metadata.get('completion_time', ''),
+            'rendered_status': metadata.get('rendered_status', 'NO'),
+            'trash': metadata.get('trash', 'NO'),
+            'total_price': total_price,
+            'platform_profit': platform_profit,
+            'price_per_page': price_per_page,
+            'final_amount': metadata.get('final_amount'),
+            'page_count': page_count,
+            'pages': pages_value,
+            'num_copies': num_copies,
+            'paper_type': metadata.get('paper_type', ''),
+            'color_mode': metadata.get('color_mode', metadata.get('color', '')),
+            'layout_type': metadata.get('layout_type', ''),
+            'pricing_details': pricing_details_str
+        }
+
+        if payload['final_amount']:
+            payload['final_amount'] = to_float(payload['final_amount'])
+
+        resp = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+
+        if resp.status_code == 200:
+            print(f"✅ Stored user print job in database: {filename}")
+            return True
+        else:
+            print(f"⚠️ Failed to store user print job in database: {resp.status_code} - {resp.text[:200]}")
+            return False
+
+    except Exception as e:
+        print(f"❌ Error storing user print job in database: {e}")
         return False
 
 def store_user_notification_in_db(notification_data):
@@ -10445,43 +10784,58 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
 # ─────────────────────────────────────────────────────────────
 
 def save_fcm_token(request):
-    """Save FCM registration token for a user"""
+    """Save FCM registration token for a user in D1 database"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             token = data.get('token')
             user_email = data.get('user_email')
+            device_type = data.get('device_type', 'web')
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
             
             if not token or not user_email:
                 return JsonResponse({'success': False, 'error': 'Token and user_email are required'}, status=400)
             
-            # Store token in R2 storage
+            # Store token in D1 database via Worker API
             try:
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
+                api_url = getattr(settings, 'WORKER_API_URL', '')
+                api_key = getattr(settings, 'WORKER_API_KEY', '')
                 
-                # Store token associated with user email
-                token_data = {
+                if not api_url or not api_key:
+                    return JsonResponse({'success': False, 'error': 'Worker API not configured'}, status=500)
+                
+                # Construct the Worker API endpoint
+                base_url = api_url.rstrip('/')
+                for endpoint in ['/add-fcm-token', '/get-fcm-tokens', '/delete-fcm-token']:
+                    if base_url.endswith(endpoint):
+                        base_url = base_url[:-len(endpoint)]
+                worker_endpoint = base_url.rstrip('/') + '/add-fcm-token'
+                
+                payload = {
                     'token': token,
                     'user_email': user_email,
-                    'created_at': datetime.datetime.now().isoformat(),
-                    'updated_at': datetime.datetime.now().isoformat()
+                    'device_type': device_type,
+                    'user_agent': user_agent,
+                    'is_active': True
                 }
                 
-                token_key = f'fcm_tokens/{sanitize_email(user_email)}/token.json'
-                
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=token_key,
-                    Body=json.dumps(token_data, indent=2),
-                    ContentType='application/json'
+                response = requests.post(
+                    worker_endpoint,
+                    json=payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=10
                 )
                 
-                print(f"✅ FCM token saved for {user_email}")
-                return JsonResponse({'success': True, 'message': 'FCM token saved successfully'})
+                if response.status_code == 200:
+                    print(f"✅ FCM token saved in D1 database for {user_email}")
+                    return JsonResponse({'success': True, 'message': 'FCM token saved successfully'})
+                else:
+                    error_msg = response.text[:200] if response.text else 'Unknown error'
+                    print(f"❌ Error saving FCM token to D1: {response.status_code} - {error_msg}")
+                    return JsonResponse({'success': False, 'error': f'Failed to save token: {error_msg}'}, status=response.status_code)
                 
             except Exception as e:
                 print(f"❌ Error saving FCM token: {e}")
@@ -10497,26 +10851,47 @@ def save_fcm_token(request):
 
 
 def get_user_fcm_tokens(user_email):
-    """Get all FCM tokens for a user"""
+    """Get all active FCM tokens for a user from D1 database"""
     try:
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
         
-        token_key = f'fcm_tokens/{sanitize_email(user_email)}/token.json'
+        if not api_url or not api_key:
+            print("⚠️ Worker API not configured for FCM tokens")
+            return []
         
-        try:
-            result = s3.get_object(Bucket=settings.R2_BUCKET, Key=token_key)
-            token_data = json.loads(result['Body'].read().decode('utf-8'))
-            return [token_data.get('token')] if token_data.get('token') else []
-        except s3.exceptions.NoSuchKey:
-            # No token found for this user
+        # Construct the Worker API endpoint
+        base_url = api_url.rstrip('/')
+        for endpoint in ['/add-fcm-token', '/get-fcm-tokens', '/delete-fcm-token']:
+            if base_url.endswith(endpoint):
+                base_url = base_url[:-len(endpoint)]
+        worker_endpoint = base_url.rstrip('/') + '/get-fcm-tokens'
+        
+        payload = {
+            'user_email': user_email
+        }
+        
+        response = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success') and data.get('tokens'):
+                # Extract just the token strings
+                tokens = [token_info.get('token') for token_info in data.get('tokens', []) if token_info.get('token')]
+                return tokens
             return []
-        except Exception as e:
-            print(f"⚠️ Error reading FCM token: {e}")
+        else:
+            print(f"⚠️ Error getting FCM tokens from D1: {response.status_code} - {response.text[:200]}")
             return []
+            
     except Exception as e:
         print(f"❌ Error getting FCM tokens: {e}")
         return []

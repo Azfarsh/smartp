@@ -1172,6 +1172,35 @@
       transition: width linear;
     }
 
+    .photo-success-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+    }
+    .photo-success-overlay.show {
+      display: flex;
+    }
+    .photo-success-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 24px 28px;
+      width: min(92vw, 420px);
+      text-align: center;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+    }
+    .photo-success-text {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-top: 10px;
+    }
+
     /* Simple User Profile in Header */
     .user-profile-simple {
       display: flex;
@@ -3806,6 +3835,116 @@
       margin-bottom: 1.5rem;
     }
 
+    .batch-preview-panel {
+      display: none;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      margin-bottom: 1.5rem;
+    }
+
+    .batch-preview-panel.show {
+      display: block;
+    }
+
+    .batch-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .batch-preview-header span:first-child {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .batch-preview-count {
+      font-size: 0.85rem;
+      color: #475569;
+      font-weight: 600;
+    }
+
+    .batch-preview-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .batch-preview-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #e2e8f0;
+      gap: 1rem;
+    }
+
+    .batch-preview-item:last-child {
+      border-bottom: none;
+    }
+
+    .batch-preview-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .batch-preview-name {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .batch-preview-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: #475569;
+    }
+
+    .batch-preview-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .batch-preview-meta i {
+      color: #2563eb;
+    }
+
+    .batch-preview-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .batch-preview-btn {
+      border: 1px solid #2563eb;
+      background: #eef2ff;
+      color: #1d4ed8;
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .batch-preview-btn:hover {
+      background: #dbeafe;
+      border-color: #1d4ed8;
+    }
+
+    .batch-preview-empty {
+      font-size: 0.9rem;
+      color: #64748b;
+      text-align: center;
+      padding: 0.5rem 0;
+    }
+
     /* Image Preview */
     .image-preview-container {
       margin-top: 1rem;
@@ -3818,6 +3957,35 @@
 
     .image-preview-container.active {
       display: block;
+    }
+
+    #printModal .image-preview-container {
+      display: none;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      padding: 1.25rem;
+    }
+
+    #printModal .image-preview-container.active {
+      display: block;
+    }
+
+    #printModal .preview-canvas-container {
+      width: 100%;
+      max-width: 520px;
+      min-height: 520px;
+      margin: 0 auto;
+      background: #f8fafc;
+      border-radius: var(--radius-md);
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    #printModal .preview-canvas {
+      width: 100%;
+      height: auto;
+      max-height: 520px;
     }
 
     .preview-title {
@@ -4251,6 +4419,15 @@
       justify-content: space-between;
       align-items: center;
       gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .bill-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 1;
+      min-width: 0;
     }
 
     .bill-logo {
@@ -5155,6 +5332,13 @@
       <div class="toast-message" id="toastMessage">Job: Document.pdf | Token: #123 | Status: COMPLETED</div>
     </div>
     <div class="toast-progress" id="toastProgress"></div>
+  </div>
+
+  <div class="photo-success-overlay" id="dashboardSuccessOverlay" aria-hidden="true">
+    <div class="photo-success-card">
+      <dotlottie-player src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto;"></dotlottie-player>
+      <div class="photo-success-text" id="dashboardSuccessText">✅ Print job sent to print successfully.</div>
+    </div>
   </div>
 
   <!-- Cursor-style Notification Container -->
@@ -6067,6 +6251,26 @@
         transform: translateY(-1px);
       }
 
+      .single-option-field .single-option-display {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        background: #f9fafb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .single-option-field .single-option-meta {
+        font-size: 0.9rem;
+        color: #6b7280;
+        font-weight: 500;
+      }
+
       .select-arrow {
         position: absolute;
         right: 1rem;
@@ -6914,11 +7118,12 @@
       .pricing-header {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 0.75rem;
         margin-bottom: 1rem;
       }
 
-      .pricing-title-container {
+      .pricing-header-main {
         display: flex;
         align-items: center;
         gap: 0.5rem;
@@ -6951,10 +7156,14 @@
         
         .bill-header {
           padding: 1rem;
-          flex-direction: column;
-          text-align: center;
-          gap: 0.5rem;
+        flex-direction: row;
+        text-align: left;
+        gap: 0.75rem;
         }
+
+      .bill-identity {
+        width: 100%;
+      }
         
         .bill-title h3 {
           font-size: 1.25rem;
@@ -7066,7 +7275,7 @@
       }
 
       .detail-label {
-        color: #6b7280;
+        color: #000102;
         font-weight: 500;
       }
 
@@ -8747,27 +8956,7 @@
               label: 'Select Country', 
               type: 'select', 
               options: [
-                { value: 'india', label: 'India (35x45mm)', price: 'Standard' },
-                { value: 'uae', label: 'United Arab Emirates (51x51mm)', price: 'Standard' },
-                { value: 'saudi_arabia', label: 'Saudi Arabia (51x51mm)', price: 'Standard' },
-                { value: 'united_states', label: 'United States (51x51mm)', price: 'Standard' },
-                { value: 'singapore', label: 'Singapore (35x45mm)', price: 'Standard' },
-                { value: 'thailand', label: 'Thailand (35x45mm)', price: 'Standard' },
-                { value: 'united_kingdom', label: 'United Kingdom (35x45mm)', price: 'Standard' },
-                { value: 'qatar', label: 'Qatar (51x51mm)', price: 'Standard' },
-                { value: 'kuwait', label: 'Kuwait (51x51mm)', price: 'Standard' },
-                { value: 'canada', label: 'Canada (50x70mm)', price: 'Standard' },
-                { value: 'australia', label: 'Australia (35x45mm)', price: 'Standard' },
-                { value: 'maldives', label: 'Maldives (35x45mm)', price: 'Standard' },
-                { value: 'nepal', label: 'Nepal (35x45mm)', price: 'Standard' },
-                { value: 'sri_lanka', label: 'Sri Lanka (35x45mm)', price: 'Standard' },
-                { value: 'malaysia', label: 'Malaysia (35x45mm)', price: 'Standard' },
-                { value: 'indonesia', label: 'Indonesia (51x51mm)', price: 'Standard' },
-                { value: 'switzerland', label: 'Switzerland (35x45mm)', price: 'Standard' },
-                { value: 'bhutan', label: 'Bhutan (35x45mm)', price: 'Standard' },
-                { value: 'mauritius', label: 'Mauritius (35x45mm)', price: 'Standard' },
-                { value: 'france', label: 'France (35x45mm)', price: 'Standard' },
-                { value: 'germany', label: 'Germany (35x45mm)', price: 'Standard' }
+                { value: 'india', label: 'India (35x45mm)', price: 'Standard' }
               ], 
               required: true,
               description: 'Select the country for which you need passport photos',
@@ -9049,10 +9238,15 @@
           formElement.reset();
           
           // Reset select fields to empty (no defaults)
-          const selects = formElement.querySelectorAll('select');
-          selects.forEach(select => {
+        const selects = formElement.querySelectorAll('select');
+        selects.forEach(select => {
+          if (select.options.length > 0) {
+            select.selectedIndex = 0;
+            select.dispatchEvent(new Event('change'));
+          } else {
             select.selectedIndex = -1;
-          });
+          }
+        });
 
           // Reset number inputs to empty (no defaults)
           const numberInputs = formElement.querySelectorAll('input[type="number"]');
@@ -9170,34 +9364,61 @@
               </div>
             `;
           } else if (f.type === 'select') {
-             const optionsHtml = f.options.map(opt => {
-               if (typeof opt === 'object') {
-                 return `<option value="${opt.value}">${opt.label}</option>`;
-               } else {
-                 return `<option value="${opt}">${opt}</option>`;
-               }
-             }).join('');
-            
-            fieldsHtml += `
-              <div class="modal-field-group">
-                <div class="field-header">
-                  <div class="field-icon">
-                    <i class="${fieldIcon}"></i>
+            const hasSingleOption = Array.isArray(f.options) && f.options.length === 1;
+            if (hasSingleOption) {
+              const soleOption = f.options[0];
+              const optionValue = typeof soleOption === 'object' ? soleOption.value : soleOption;
+              const optionLabel = typeof soleOption === 'object' ? soleOption.label : soleOption;
+              const optionMeta = typeof soleOption === 'object' && soleOption.price ? `<span class="single-option-meta">${soleOption.price}</span>` : '';
+              fieldsHtml += `
+                <div class="modal-field-group single-option-field">
+                  <div class="field-header">
+                    <div class="field-icon">
+                      <i class="${fieldIcon}"></i>
+                    </div>
+                    <div class="field-label">
+                      <span class="field-title">${fieldLabel}</span>
+                      <span class="field-required">*</span>
+                    </div>
                   </div>
-                  <div class="field-label">
-                    <span class="field-title">${fieldLabel}</span>
-                    <span class="field-required">*</span>
+                  <div class="field-description">${fieldDescription}</div>
+                  <div class="single-option-display">
+                    <span class="single-option-text">${optionLabel}</span>
+                    ${optionMeta}
+                  </div>
+                  <input type="hidden" id="${service}-field-${idx}" value="${optionValue}" />
+                </div>
+              `;
+            } else {
+              const optionsHtml = f.options.map(opt => {
+                if (typeof opt === 'object') {
+                  return `<option value="${opt.value}">${opt.label}</option>`;
+                } else {
+                  return `<option value="${opt}">${opt}</option>`;
+                }
+              }).join('');
+             
+              fieldsHtml += `
+                <div class="modal-field-group">
+                  <div class="field-header">
+                    <div class="field-icon">
+                      <i class="${fieldIcon}"></i>
+                    </div>
+                    <div class="field-label">
+                      <span class="field-title">${fieldLabel}</span>
+                      <span class="field-required">*</span>
+                    </div>
+                  </div>
+                  <div class="field-description">${fieldDescription}</div>
+                  <div class="select-wrapper">
+                    <select id="${service}-field-${idx}" ${f.required ? 'required' : ''}>
+                      ${optionsHtml}
+                </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
                   </div>
                 </div>
-                <div class="field-description">${fieldDescription}</div>
-                <div class="select-wrapper">
-                  <select id="${service}-field-${idx}" ${f.required ? 'required' : ''}>
-                    ${optionsHtml}
-              </select>
-                  <i class="fas fa-chevron-down select-arrow"></i>
-                </div>
-              </div>
-            `;
+              `;
+            }
           } else if (f.type === 'number') {
             fieldsHtml += `
               <div class="modal-field-group">
@@ -9340,10 +9561,12 @@
                 <!-- Order Summary -->
                 <div class="pricing-summary" id="${service}-pricing-summary">
                   <div class="pricing-header">
-                    <div class="pricing-icon">
-                      <i class="fas fa-calculator"></i>
+                    <div class="pricing-header-main">
+                      <div class="pricing-icon">
+                        <i class="fas fa-calculator"></i>
+                      </div>
+                      <div class="pricing-title">Order Summary</div>
                     </div>
-                    <div class="pricing-title">Order Summary</div>
                   </div>
                   <div class="pricing-details" id="${service}-pricing-details">
                     <div class="loading-pricing">
@@ -9388,35 +9611,12 @@
             { value: '8', label: '8 Photos (Standard)' },
             { value: '16', label: '16 Photos (Family)' },
             { value: '30', label: '30 Photos (Bulk)' }
-          ],
-          'default': [
-            { value: '8', label: '8 Photos (Standard)' }
           ]
         };
         
         // Country-specific photo dimensions (in mm at 300 DPI)
         const countryDimensions = {
-          'india': { width: 413, height: 531 }, // 35x45mm
-          'uae': { width: 602, height: 602 }, // 51x51mm
-          'saudi_arabia': { width: 602, height: 602 }, // 51x51mm
-          'united_states': { width: 602, height: 602 }, // 51x51mm
-          'singapore': { width: 413, height: 531 }, // 35x45mm
-          'thailand': { width: 413, height: 531 }, // 35x45mm
-          'united_kingdom': { width: 413, height: 531 }, // 35x45mm
-          'qatar': { width: 602, height: 602 }, // 51x51mm
-          'kuwait': { width: 602, height: 602 }, // 51x51mm
-          'canada': { width: 590, height: 826 }, // 50x70mm
-          'australia': { width: 413, height: 531 }, // 35x45mm
-          'maldives': { width: 413, height: 531 }, // 35x45mm
-          'nepal': { width: 413, height: 531 }, // 35x45mm
-          'sri_lanka': { width: 413, height: 531 }, // 35x45mm
-          'malaysia': { width: 413, height: 531 }, // 35x45mm
-          'indonesia': { width: 602, height: 602 }, // 51x51mm
-          'switzerland': { width: 413, height: 531 }, // 35x45mm
-          'bhutan': { width: 413, height: 531 }, // 35x45mm
-          'mauritius': { width: 413, height: 531 }, // 35x45mm
-          'france': { width: 413, height: 531 }, // 35x45mm
-          'germany': { width: 413, height: 531 } // 35x45mm
+          'india': { width: 413, height: 531 } // 35x45mm
         };
         
         // Wait for location-based shops to load before rendering shop dropdown
@@ -9962,7 +10162,7 @@
               // Handle country change
               countrySelect.addEventListener('change', function() {
                 const selectedCountry = this.value;
-                const packages = countryPhotoPackages[selectedCountry] || countryPhotoPackages['default'];
+                const packages = countryPhotoPackages[selectedCountry] || countryPhotoPackages['india'];
                 
                 // Clear existing options
                 packageSelect.innerHTML = '';
@@ -10576,8 +10776,9 @@
         // Calculate pricing based on service type
         const pricing = calculateServicePricing(service, formData, vendorPricing);
         
-        // Display pricing
-        displayPricing(pricingDetails, pricing);
+        // Display pricing and points
+        displayPricing(service, modal, pricing);
+        showPointsSection(service);
       }
 
       function collectFormData(service, modal) {
@@ -10887,75 +11088,120 @@
         return total;
       }
 
-      function displayPricing(pricingDetails, pricing) {
-        let html = '';
-        
-        // Hide explicit commission rows and only show effective per-page and total
-        const pagesTimesCopies = (pricing.page_count || 1) * (pricing.num_copies || 1);
-        const vendorPrice = Number(pricing.vendor_price || pricing.total_price || 0);
-        const commissionAmount = Number(pricing.commission_amount || 0);
-        const totalWithCommission = Number(pricing.total || pricing.total_price || (vendorPrice + commissionAmount));
-        const basePerPage = Number(pricing.price_per_page || 0);
-        const effectivePerPage = (basePerPage + (pagesTimesCopies ? (commissionAmount / pagesTimesCopies) : 0)).toFixed(2);
+      function displayPricing(service, modal, pricing) {
+        if (!modal) return;
+        const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+        const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+        if (!pricingDetails || !pricingSummary) return;
 
-        if (pricing.pricing_key_used) {
+        const breakdownList = Array.isArray(pricing.breakdown) ? pricing.breakdown : [];
+        const detailItems = breakdownList.filter(item => item && item.label && !item.label.startsWith('Platform Commission') && item.label !== 'Vendor Price');
+        const commissionEntry = breakdownList.find(item => item?.label?.startsWith('Platform Commission'));
+        const vendorEntry = breakdownList.find(item => item?.label === 'Vendor Price');
+
+        const vendorPrice = typeof pricing.vendorPrice === 'number'
+          ? pricing.vendorPrice
+          : vendorEntry
+            ? parseFloat(String(vendorEntry.value).replace(/[^0-9.]/g, '')) || 0
+            : 0;
+        const commissionAmount = typeof pricing.commission?.amount === 'number'
+          ? pricing.commission.amount
+          : commissionEntry
+            ? parseFloat(String(commissionEntry.value).replace(/[^0-9.]/g, '')) || 0
+            : 0;
+        const commissionPercent = typeof pricing.commission?.percentage === 'number'
+          ? pricing.commission.percentage
+          : commissionEntry
+            ? parseInt(commissionEntry.label.replace(/[^0-9]/g, ''), 10) || 0
+            : 0;
+        const totalAmount = typeof pricing.total === 'number'
+          ? pricing.total
+          : vendorPrice + commissionAmount;
+
+        const serviceNames = {
+          'digital': 'Digital Printing',
+          'gloss': 'Gloss Printing',
+          'jumbo': 'Jumbo Printing',
+          'passport': 'Passport Photo',
+          'photo': 'Photo Printing',
+          'goldenemboss': 'Golden Emboss Printing',
+          'print': 'Document Printing'
+        };
+        const serviceDisplayName = serviceNames[service] || 'Printing Service';
+
+        let html = `
+          <div class="professional-bill">
+            <div class="bill-header">
+              <div class="bill-identity">
+                <div class="bill-logo">
+                  <i class="fas fa-print"></i>
+                </div>
+                <div class="bill-title">
+                  <h3>PrintMax Invoice</h3>
+                  <p class="bill-subtitle">Professional Printing Services</p>
+                </div>
+              </div>
+              <div class="bill-date">
+                <p>Date: ${new Date().toLocaleDateString()}</p>
+                <p>Time: ${new Date().toLocaleTimeString()}</p>
+              </div>
+            </div>
+            <div class="bill-content">
+              <div class="service-info">
+                <h4>Service Details</h4>
+                <div class="service-row">
+                  <span class="service-name">${serviceDisplayName}</span>
+                  <span class="service-status">Ready to Process</span>
+                </div>
+              </div>
+              <div class="invoice-items">
+        `;
+
+        detailItems.forEach(item => {
           html += `
-            <div class="pricing-item">
-              <span class="pricing-label">${String(pricing.pricing_key_used).replace(/_/g, ' ').toUpperCase()}</span>
-              <span class="pricing-value">₹${Number(pricing.base_price || 0)}</span>
+            <div class="invoice-item">
+              <span class="invoice-item-label">${item.label}</span>
+              <span class="invoice-item-value">${item.value}</span>
+            </div>
+          `;
+        });
+
+        if (vendorPrice > 0) {
+          html += `
+            <div class="invoice-item">
+              <span class="invoice-item-label">Vendor Price</span>
+              <span class="invoice-item-value">₹${vendorPrice.toFixed(2)}</span>
             </div>
           `;
         }
-        if (Number(pricing.quality_upgrade || 0) > 0) {
+
+        if (commissionAmount > 0) {
           html += `
-            <div class="pricing-item">
-              <span class="pricing-label">High Quality Upgrade</span>
-              <span class="pricing-value">₹${Number(pricing.quality_upgrade).toFixed(2)}</span>
+            <div class="invoice-item">
+              <span class="invoice-item-label">Platform Commission (${commissionPercent}%)</span>
+              <span class="invoice-item-value">₹${commissionAmount.toFixed(2)}</span>
             </div>
           `;
         }
-        if (basePerPage) {
-          html += `
-            <div class="pricing-item">
-              <span class="pricing-label">Price per page</span>
-              <span class="pricing-value">₹${effectivePerPage}</span>
-            </div>
-          `;
-        }
-        if (pricing.page_count && pricing.num_copies) {
-          html += `
-            <div class="pricing-item">
-              <span class="pricing-label">Pages × Copies</span>
-              <span class="pricing-value">${pricing.page_count} × ${pricing.num_copies}</span>
-            </div>
-          `;
-        }
+
         html += `
-          <div class="pricing-item total">
-            <span class="pricing-label">Total Amount</span>
-            <span class="pricing-value">₹${Number(totalWithCommission).toFixed(2)}</span>
+                <div class="invoice-total">
+                  <span class="invoice-total-label">Grand Total</span>
+                  <span class="invoice-total-value">₹${totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         `;
 
-        // Build pricing data for modal
-        const pricingData = {
-          breakdown: {
-            'Service Type': breakdown.pricing_key_used.replace(/_/g, ' ').toUpperCase(),
-            'Number of Pages': breakdown.pages,
-            'Number of Copies': breakdown.copies,
-            'Price per Page': breakdown.price_per_page ? `₹${(Number(breakdown.price_per_page) + (commission.amount / ((Number(breakdown.pages || 1) * Number(breakdown.copies || 1)) || 1))).toFixed(2)}` : null
-          },
-          total_price: Number(totalWithCommission).toFixed(2)
-        };
+        pricingDetails.innerHTML = html;
+        pricingSummary.classList.add('active');
 
-        // Store calculated price + breakdown in page dataset for submit
-        const finalBreakdown = { ...breakdown };
-        finalBreakdown.total_price = Number(totalWithCommission).toFixed(2);
-        document.body.dataset.calculatedPrice = finalBreakdown.total_price;
-        document.body.dataset.pricingBreakdown = JSON.stringify(finalBreakdown);
-
-        // Update pricing details in modal
-        displayPricingWithCommission(service, modal, breakdown, 'digital_print');
+        modal.dataset.calculatedPrice = totalAmount.toFixed(2);
+        modal.dataset.pricingBreakdown = JSON.stringify({
+          total_price: totalAmount,
+          breakdown: breakdownList
+        });
       }
       async function calculateDigitalPrintPrice(service) {
         const modal = document.getElementById(`service-modal-${service}`);
@@ -11025,13 +11271,15 @@
         }
 
         // Collect form data
+        const copiesField = modal.querySelector(`#${service}-field-4`);
+        const qualityField = modal.querySelector(`#${service}-field-5`);
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          paper_size: modal.querySelector(`#${service}-field-2`).value, // Paper Size
-          print_color: modal.querySelector(`#${service}-field-1`).value, // Print Color
-          num_copies: parseInt(modal.querySelector(`#${service}-field-3`).value) || 1, // Number of Copies
-          print_quality: modal.querySelector(`#${service}-field-4`).value, // Print Quality
-          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+          paper_size: modal.querySelector(`#${service}-field-2`)?.value, // Paper Size
+          print_color: modal.querySelector(`#${service}-field-1`)?.value, // Print Color
+          num_copies: parseInt(copiesField?.value, 10) || 1, // Number of Copies
+          print_quality: qualityField ? qualityField.value : 'standard_quality', // Print Quality
+          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
         };
         
         console.log('Form data being sent:', formData); // Debug log
@@ -11176,11 +11424,11 @@
         // Collect form data for gloss print
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          print_size: modal.querySelector(`#${service}-field-1`).value, // Print Size
-          gloss_type: modal.querySelector(`#${service}-field-2`).value, // Gloss Type
-          print_color: modal.querySelector(`#${service}-field-3`).value, // Print Color
-          num_copies: parseInt(modal.querySelector(`#${service}-field-4`).value) || 1, // Number of Copies
-          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+          print_size: modal.querySelector(`#${service}-field-1`)?.value, // Print Size
+          gloss_type: modal.querySelector(`#${service}-field-2`)?.value, // Gloss Type
+          print_color: modal.querySelector(`#${service}-field-3`)?.value, // Print Color
+          num_copies: parseInt(modal.querySelector(`#${service}-field-5`)?.value, 10) || 1, // Number of Copies
+          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
         };
         
         console.log('Gloss print form data being sent:', formData); // Debug log
@@ -11297,11 +11545,11 @@
         // Collect form data for jumbo print
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          print_size: modal.querySelector(`#${service}-field-1`).value, // Print Size
-          print_color: modal.querySelector(`#${service}-field-2`).value, // Print Color
-          print_quality: modal.querySelector(`#${service}-field-3`).value, // Print Quality
-          num_copies: parseInt(modal.querySelector(`#${service}-field-4`).value) || 1, // Number of Copies
-          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+          print_size: modal.querySelector(`#${service}-field-1`)?.value, // Print Size
+          print_color: modal.querySelector(`#${service}-field-2`)?.value, // Print Color
+          print_quality: modal.querySelector(`#${service}-field-3`)?.value, // Print Quality
+          num_copies: parseInt(modal.querySelector(`#${service}-field-5`)?.value, 10) || 1, // Number of Copies
+          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
         };
         
         console.log('Jumbo print form data being sent:', formData); // Debug log
@@ -11418,13 +11666,13 @@
         // Collect form data for golden embossing
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          print_color: modal.querySelector(`#${service}-field-1`).value, // Print Color
-          paper_type: modal.querySelector(`#${service}-field-2`).value, // Paper Type
-          course: modal.querySelector(`#${service}-field-3`).value, // Course
-          branch: modal.querySelector(`#${service}-field-4`).value, // Branch
-          college: modal.querySelector(`#${service}-field-5`).value, // College
-          num_copies: parseInt(modal.querySelector(`#${service}-field-6`).value) || 1, // Number of Copies
-          page_count: parseInt(pageCount) || 1 // Ensure page count is a number
+          print_color: modal.querySelector(`#${service}-field-1`)?.value, // Print Color
+          paper_type: modal.querySelector(`#${service}-field-2`)?.value, // Paper Type
+          course: modal.querySelector(`#${service}-field-4`)?.value, // Course
+          branch: modal.querySelector(`#${service}-field-5`)?.value, // Branch
+          college: modal.querySelector(`#${service}-field-6`)?.value, // College
+          num_copies: parseInt(modal.querySelector(`#${service}-field-7`)?.value, 10) || 1, // Number of Copies
+          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
         };
         
         console.log('Golden embossing form data being sent:', formData); // Debug log
@@ -12169,7 +12417,135 @@
     #printModal .preview-info { display: none; }
     #printModal .settings-label { font-weight: 800; font-size: 1rem; color: var(--on-surface); margin-bottom: .25rem; }
     #printModal .settings-subtitle { display: none; }
-    #printModal .settings-group { margin-top: 1rem; }
+    #printModal .settings-group { margin-top: 0.75rem; }
+    
+    /* Reduce modal size for desktop */
+    @media (min-width: 769px) {
+      #printModal .service-modal {
+        width: min(480px, 85vw);
+        max-width: 480px;
+        max-height: 85vh;
+      }
+      
+      #printModal .modal-header {
+        padding: 0.875rem 1rem;
+      }
+      
+      #printModal .modal-body {
+        padding: 1rem;
+        gap: 0.75rem;
+      }
+    }
+    
+    /* Make upload area smaller and more professional */
+    #printModal .upload-area {
+      padding: 1rem 0.875rem;
+      max-width: 100%;
+      margin: 0 auto 0.75rem;
+    }
+    
+    #printModal .upload-content {
+      gap: 0.4rem;
+    }
+    
+    #printModal .upload-icon {
+      font-size: 1.75rem;
+      margin-bottom: 0.4rem;
+    }
+    
+    #printModal .upload-text {
+      font-size: 0.9rem;
+      margin-bottom: 0.2rem;
+    }
+    
+    #printModal .upload-hint {
+      font-size: 0.75rem;
+      margin-bottom: 0.2rem;
+    }
+    
+    #printModal .upload-subtitle {
+      font-size: 0.7rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    #printModal .upload-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      margin-top: 0.4rem;
+    }
+    
+    /* Reduce spacing in file list and other elements */
+    #printModal .file-list {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    #printModal .batch-preview-panel {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    #printModal .image-preview-container {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    #printModal .vendor-selection {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    #printModal .print-settings {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    /* Reduce spacing for empty state messages */
+    #printModal .no-files-message {
+      padding: 0.5rem 0;
+      margin: 0.25rem 0;
+      font-size: 0.875rem;
+    }
+    
+    /* Reduce spacing for add more files button */
+    #printModal #addMoreBtn {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    /* Responsive design for mobile */
+    @media (max-width: 768px) {
+      #printModal .upload-area {
+        padding: 0.875rem 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+      
+      #printModal .upload-icon {
+        font-size: 1.5rem;
+      }
+      
+      #printModal .upload-text {
+        font-size: 0.85rem;
+      }
+      
+      #printModal .upload-hint {
+        font-size: 0.7rem;
+      }
+      
+      #printModal .upload-subtitle {
+        font-size: 0.65rem;
+      }
+      
+      #printModal .upload-btn {
+        padding: 0.45rem 0.9rem;
+        font-size: 0.8rem;
+      }
+      
+      #printModal .modal-body {
+        padding: 0.875rem;
+        gap: 0.625rem;
+      }
+    }
   </style>
   <div class="modal-overlay service-modal-overlay" id="printModal">
     <div class="modal service-modal">
@@ -12187,24 +12563,34 @@
       </div>
       <div class="modal-body">
         <!-- File Upload Area -->
-        <div class="upload-area" id="uploadArea">
-          <div class="upload-icon">
-            <i class="fas fa-cloud-upload-alt"></i>
+        <div class="upload-area file-upload-area" id="uploadArea">
+          <div class="upload-content">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <span class="upload-text">Click to select files</span>
+            <span class="upload-hint">or drag and drop them into this window</span>
+            <span class="upload-subtitle">Supported: PDF, JPEG, PNG</span>
+            <button class="upload-btn" id="uploadBtn">
+              <i class="fas fa-file-upload"></i>
+              Add files
+            </button>
           </div>
-          <div class="upload-text">Choose a file or drag it here</div>
-          <div class="upload-subtitle">Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, XLS, XLSX, JPG, PNG, GIF, BMP, TIFF, SVG</div>
-          <button class="upload-btn" id="uploadBtn">
-            <i class="fas fa-file-upload"></i>
-            Add files
-          </button>
         </div>
 
-        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg">
+        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png">
 
         <!-- File List -->
         <div class="file-list" id="fileList">
           <div class="no-files-message" id="noFilesMessage">
             No files selected yet
+          </div>
+        </div>
+        <div class="batch-preview-panel" id="batchPreviewPanel">
+          <div class="batch-preview-header">
+            <span>Batch Preview</span>
+            <span class="batch-preview-count" id="batchFileCount">0 files</span>
+          </div>
+          <div class="batch-preview-list" id="batchPreviewList">
+            <div class="batch-preview-empty">Upload files to see a combined summary.</div>
           </div>
         </div>
 
@@ -12392,41 +12778,40 @@
         </div>
 
         <!-- Order Summary -->
-        <div class="order-summary" id="orderSummary" style="display: none;">
-          <div class="pricing-summary-card">
-            <div class="pricing-header">
-              <div class="service-title">Printing Service</div>
-              <div class="service-status">Ready to Process</div>
+        <div class="order-summary pricing-summary" id="orderSummary" style="display: none;">
+          <div class="pricing-header">
+            <div class="pricing-header-main">
+              <div class="pricing-icon">
+                <i class="fas fa-calculator"></i>
+              </div>
+              <div>
+                <div class="pricing-title">Order Summary</div>
+                <p class="modal-subtitle" style="margin:0;color:#6b7280;">Review your configuration</p>
+              </div>
             </div>
-            
-            <div class="service-details">
-              <div class="service-item">
-                <span class="service-name" id="serviceName">A4 Print Single Bw</span>
-              </div>
-              
-              <div class="details-section">
-                <div class="detail-item">
-                  <span class="detail-label">Pages</span>
-                  <span class="detail-value" id="summaryPages">0</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Color</span>
-                  <span class="detail-value" id="summaryColor">Black and White</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Copies</span>
-                  <span class="detail-value" id="summaryCopies">0</span>
-                </div>
-                <!-- Additional options will be inserted here -->
-                <div id="additionalOptionsContainer"></div>
-              </div>
-              
-              <div class="pricing-breakdown">
-                <div class="breakdown-item total-item">
-                  <span class="breakdown-label">Grand Total</span>
-                  <span class="breakdown-value" id="totalAmount">₹0.00</span>
-                </div>
-              </div>
+            <div class="service-status">Ready to Process</div>
+          </div>
+          <div class="pricing-details">
+            <div class="detail-item">
+              <span class="detail-label">Service</span>
+              <span class="detail-value" id="serviceName">A4 Print Single Bw</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Pages</span>
+              <span class="detail-value" id="summaryPages">0</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Color</span>
+              <span class="detail-value" id="summaryColor">Black and White</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Copies</span>
+              <span class="detail-value" id="summaryCopies">0</span>
+            </div>
+            <div id="additionalOptionsContainer"></div>
+            <div class="detail-item total-item">
+              <span class="detail-label">Grand Total</span>
+              <span class="detail-value" id="totalAmount">₹0.00</span>
             </div>
           </div>
         </div>
@@ -12689,6 +13074,7 @@
     let selectedVendor = '';
     let userJobs = [];
     let availableShops = [];
+    let shopsLoadedPromise = null;
     let userLocation = null;
     let locationBasedShops = [];
     
@@ -12942,7 +13328,8 @@
 
         let html = `
           <div class="professional-bill">
-            <div class="bill-header">
+          <div class="bill-header">
+            <div class="bill-identity">
               <div class="bill-logo">
                 <i class="fas fa-print"></i>
               </div>
@@ -12950,7 +13337,8 @@
                 <h3>PrintMax Invoice</h3>
                 <p class="bill-subtitle">Professional Printing Services</p>
               </div>
-              <div class="bill-date">
+            </div>
+            <div class="bill-date">
                 <p>Date: ${new Date().toLocaleDateString()}</p>
                 <p>Time: ${new Date().toLocaleTimeString()}</p>
               </div>
@@ -13119,16 +13507,6 @@
 
         // Ensure buttons are visible when pricing is shown
         ensureModalButtonsVisible();
-
-        // Only scroll to pricing summary if all required inputs are provided
-        if (areAllInputsProvided(service, modal)) {
-          setTimeout(() => {
-            pricingSummary.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'nearest' 
-            });
-          }, 100);
-        }
 
         // Show points section if user has points
         showPointsSection(service);
@@ -13503,6 +13881,10 @@
       // Load user points
       loadUserPoints();
       // WebSocket removed - not used
+
+      // Prime shop data immediately for all modals
+      const shopsPromise = loadAvailableShops();
+      window.availableShopsPromise = shopsPromise;
       
       // Load other components asynchronously to not block job rendering
       // Use requestIdleCallback for better performance
@@ -13526,23 +13908,11 @@
           method: 'GET',
           headers: { 'X-CSRFToken': window.csrfToken }
         }).then(response => response.json()),
-        fetch('/get-available-shops/', {
-          method: 'GET',
-          headers: { 'X-CSRFToken': window.csrfToken }
-        }).then(response => response.json())
-      ]).then(([coordsData, shopsData]) => {
+        shopsPromise
+      ]).then(([coordsData]) => {
         // Update map with coordinates
         if (coordsData.coordinates) {
           updateMapWithCoordinates(coordsData.coordinates);
-        }
-        
-        // Update shops data
-        if (shopsData.success) {
-          availableShops = shopsData.shops;
-          if (availableShops.length > 0) {
-            selectedVendor = availableShops[0].shop_folder;
-          }
-          renderVendorOptions();
         }
       }).catch(err => {
         console.error('Failed to fetch dashboard data:', err);
@@ -13871,6 +14241,44 @@
       toast.classList.remove('show');
     }
 
+  const dashboardSuccessOverlay = document.getElementById('dashboardSuccessOverlay');
+  const dashboardSuccessText = document.getElementById('dashboardSuccessText');
+
+  function showDashboardSuccess(message) {
+    if (!dashboardSuccessOverlay) return;
+    if (dashboardSuccessText && message) {
+      dashboardSuccessText.textContent = message;
+    }
+    dashboardSuccessOverlay.classList.add('show');
+    dashboardSuccessOverlay.setAttribute('aria-hidden', 'false');
+    setTimeout(() => {
+      hideDashboardSuccess();
+    }, 2200);
+  }
+
+  function hideDashboardSuccess() {
+    if (!dashboardSuccessOverlay) return;
+    dashboardSuccessOverlay.classList.remove('show');
+    dashboardSuccessOverlay.setAttribute('aria-hidden', 'true');
+  }
+
+  (function initPhotoPrintSuccessOverlay() {
+    if (!dashboardSuccessOverlay) return;
+    dashboardSuccessOverlay.addEventListener('click', hideDashboardSuccess);
+    try {
+      const stored = sessionStorage.getItem('photoPrintSuccess');
+      if (stored) {
+        sessionStorage.removeItem('photoPrintSuccess');
+        let parsed = {};
+        try { parsed = JSON.parse(stored); } catch (err) { parsed = {}; }
+        const message = parsed?.message || '✅ Print job sent to print successfully.';
+        showDashboardSuccess(message);
+      }
+    } catch (error) {
+      console.warn('Unable to read photo print success state', error);
+    }
+  })();
+
     // Cursor-style Notification Functions
     function showCursorNotification(title, status, message, type = 'info', duration = 5000) {
       const container = document.getElementById('cursorNotificationContainer');
@@ -14029,36 +14437,62 @@
     
 
     // Function to load available shops from D1 database via Worker API (optimized)
-    async function loadAvailableShops() {
-      try {
-        const response = await fetch('/get-available-shops/', {
-          method: 'GET',
-          headers: {
-            'X-CSRFToken': getCookie('csrftoken')
+    async function loadAvailableShops(forceReload = false) {
+      if (!forceReload) {
+        if (availableShops.length > 0) {
+          return availableShops;
+        }
+        if (shopsLoadedPromise) {
+          return shopsLoadedPromise;
+        }
+      }
+
+      const fetchPromise = (async () => {
+        try {
+          const response = await fetch('/get-available-shops/', {
+            method: 'GET',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken')
+            }
+          });
+          
+          const data = await response.json();
+          console.log('🏪 Loaded shops data:', data);
+          if (data.success) {
+            availableShops = data.shops || [];
+            console.log('🏪 Available shops:', availableShops);
+            if (availableShops.length > 0 && !selectedVendor) {
+              selectedVendor = availableShops[0].shop_folder;
+            }
+            renderVendorOptions();
+          } else {
+            console.error('Error loading shops:', data.error);
+            availableShops = [];
+            selectedVendor = 'firozshop';
+            renderVendorOptions();
           }
-        });
-        
-        const data = await response.json();
-        console.log('🏪 Loaded shops data:', data);
-        if (data.success) {
-          availableShops = data.shops;
-          console.log('🏪 Available shops:', availableShops);
-          if (availableShops.length > 0) {
-            selectedVendor = availableShops[0].shop_folder;
-          }
-          renderVendorOptions();
-        } else {
-          console.error('Error loading shops:', data.error);
+        } catch (error) {
+          console.error('Error fetching shops:', error);
           availableShops = [];
           selectedVendor = 'firozshop';
           renderVendorOptions();
         }
-      } catch (error) {
-        console.error('Error fetching shops:', error);
-        availableShops = [];
-        selectedVendor = 'firozshop';
-        renderVendorOptions();
-      }
+        return availableShops;
+      })();
+
+      shopsLoadedPromise = fetchPromise;
+
+      return fetchPromise.then((result) => {
+        if (shopsLoadedPromise === fetchPromise) {
+          shopsLoadedPromise = null;
+        }
+        return result;
+      }).catch((error) => {
+        if (shopsLoadedPromise === fetchPromise) {
+          shopsLoadedPromise = null;
+        }
+        throw error;
+      });
     }
     // Function to render vendor options in main print modal (with location support)
     function renderVendorOptions() {
@@ -16078,6 +16512,9 @@
     const addMoreBtn = document.getElementById('addMoreBtn');
     const fileList = document.getElementById('fileList');
     const noFilesMessage = document.getElementById('noFilesMessage');
+    const batchPreviewPanel = document.getElementById('batchPreviewPanel');
+    const batchPreviewList = document.getElementById('batchPreviewList');
+    const batchFileCount = document.getElementById('batchFileCount');
     const printSettings = document.getElementById('printSettings');
     const settingsSubtitle = document.getElementById('settingsSubtitle');
     const fileSettingsInfo = document.getElementById('fileSettingsInfo');
@@ -16140,18 +16577,24 @@
       if (fileList) {
         fileList.innerHTML = '<div class="no-files-message" id="noFilesMessage">No files selected yet</div>';
       }
+      if (batchPreviewPanel && batchPreviewList && batchFileCount) {
+        batchPreviewPanel.classList.remove('show');
+        batchPreviewList.innerHTML = '<div class="batch-preview-empty">Upload files to see a combined summary.</div>';
+        batchFileCount.textContent = '0 files';
+      }
       if (uploadArea) {
         uploadArea.style.display = 'block'; // Ensure upload area is visible
         uploadArea.innerHTML = `
-          <div class="upload-icon">
-            <i class="fas fa-cloud-upload-alt"></i>
+          <div class="upload-content">
+            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+            <span class="upload-text">Click to select files</span>
+            <span class="upload-hint">or drag and drop them into this window</span>
+            <span class="upload-subtitle">Supported: PDF, DOC, DOCX, PPT, PPTX, TXT, XLS, XLSX, JPG, PNG, GIF, BMP, TIFF, SVG</span>
+            <button class="upload-btn" id="uploadBtn">
+              <i class="fas fa-file-upload"></i>
+              Add files
+            </button>
           </div>
-          <div class="upload-text">Choose a file or drag it here</div>
-          <div class="upload-subtitle">Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, XLS, XLSX, JPG, PNG, GIF, BMP, TIFF, SVG</div>
-          <button class="upload-btn" id="uploadBtn">
-            <i class="fas fa-file-upload"></i>
-            Add files
-          </button>
         `;
       }
       
@@ -16298,23 +16741,12 @@
     function isValidFile(file) {
       const validTypes = [
         'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'text/plain',
         'image/jpeg',
-        'image/png',
-        'image/gif',
-        'image/bmp',
-        'image/tiff',
-        'image/svg+xml'
+        'image/png'
       ];
 
       const fileName = file.name.toLowerCase();
-      const validExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.svg'];
+      const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
       const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
 
       return validTypes.includes(file.type) || hasValidExtension;
@@ -16462,6 +16894,7 @@
     function updateFileList() {
       if (uploadedFiles.length === 0) {
         fileList.innerHTML = '<div class="no-files-message">No files selected yet</div>';
+        renderBatchPreview();
         return;
       }
 
@@ -16485,7 +16918,52 @@
       }).join('');
 
       fileList.innerHTML = fileListHTML;
+      renderBatchPreview();
     }
+
+    function renderBatchPreview() {
+      if (!batchPreviewPanel || !batchPreviewList || !batchFileCount) return;
+      if (uploadedFiles.length === 0) {
+        batchPreviewPanel.classList.remove('show');
+        batchPreviewList.innerHTML = '<div class="batch-preview-empty">Upload files to see a combined summary.</div>';
+        batchFileCount.textContent = '0 files';
+        return;
+      }
+
+      batchPreviewPanel.classList.add('show');
+      const totalLabel = uploadedFiles.length === 1 ? 'file' : 'files';
+      batchFileCount.textContent = `${uploadedFiles.length} ${totalLabel}`;
+
+      batchPreviewList.innerHTML = uploadedFiles.map((fileObj, index) => {
+        const settings = fileSettings[fileObj.id] || defaultSettings;
+        const colorLabel = settings.color === 'color' ? 'Color' : 'Black & White';
+        return `
+          <div class="batch-preview-item">
+            <div class="batch-preview-info">
+              <div class="batch-preview-name" title="${fileObj.name}">${fileObj.name}</div>
+              <div class="batch-preview-meta">
+                <span><i class="fas fa-file-alt"></i>${fileObj.pages} pages</span>
+                <span><i class="fas fa-copy"></i>${settings.copies} copies</span>
+                <span><i class="fas fa-palette"></i>${colorLabel}</span>
+              </div>
+            </div>
+            <div class="batch-preview-actions">
+              <button class="batch-preview-btn" onclick="handleBatchPreviewClick(${index})">
+                View
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.handleBatchPreviewClick = function(index) {
+      selectFile(index);
+      const previewContainer = document.getElementById('imagePreviewContainer');
+      if (previewContainer) {
+        previewContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
 
     function selectFile(index) {
       selectedFileIndex = index;
@@ -16561,6 +17039,7 @@
 
       updateSettingsDisplay();
       updateOrderSummary();
+      renderBatchPreview();
     }
 
     function updateSettingsDisplay() {
@@ -17649,6 +18128,8 @@
             pageRange: settings.pageRange,
             specificPages: settings.specificPages,
             pageSize: settings.pageSize,
+            page_count: fileObj.pages,
+            pages: fileObj.pages,
             spiralBinding: settings.spiralBinding ? 'Yes' : 'No',
             lamination: settings.lamination ? 'Yes' : 'No',
             tapeBinding: settings.tapeBinding ? 'Yes' : 'No',
@@ -18195,7 +18676,7 @@
         console.log('🏪 Loading location-based shops...');
         
         // First load all shops
-        await loadAvailableShops();
+        await loadAvailableShops(forceLocationRefresh);
         console.log('📦 Available shops loaded:', availableShops.length);
         
         // Try to get user location with enhanced accuracy
