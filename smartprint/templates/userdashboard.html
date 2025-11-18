@@ -5157,7 +5157,7 @@
     }
   </style>
 </head>
-<body data-theme="light">
+<body data-theme="light" data-user-email="{{ user.email }}">
   
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <!-- Google Drive Picker API -->
@@ -5174,8 +5174,8 @@
       </button>
       <div class="sidebar-profile">
         <div class="sidebar-avatar">
-          {% if user_details and user_details.profile_picture %}
-            <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+          {% if user_nav_profile_image %}
+            <img src="{{ user_nav_profile_image }}" alt="Profile Picture">
           {% else %}
             <i class="fas fa-user"></i>
           {% endif %}
@@ -5261,8 +5261,8 @@
         </div>
         <div class="user-profile-simple">
           <div class="user-avatar-simple">
-            {% if user_details and user_details.profile_picture %}
-              <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+            {% if user_nav_profile_image %}
+              <img src="{{ user_nav_profile_image }}" alt="Profile Picture">
             {% else %}
               <i class="fas fa-user"></i>
             {% endif %}
@@ -5271,22 +5271,22 @@
         <div class="user-profile-dropdown" id="desktopUserProfile" style="display:none;">
           <button class="user-profile-trigger" id="userProfileTrigger">
             <div class="user-avatar-small">
-              {% if user_details and user_details.profile_picture %}
-                <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+              {% if user_nav_profile_image %}
+                <img src="{{ user_nav_profile_image }}" alt="Profile Picture">
               {% else %}
                 <i class="fas fa-user"></i>
               {% endif %}
             </div>
             <span class="user-name-header">
-              {% if user_details and user_details.given_name %}{{ user_details.given_name }}{% else %}{{ user.username }}{% endif %}
+              {{ user_nav_first_name|default:user.username }}
             </span>
             <i class="fas fa-chevron-down dropdown-arrow"></i>
           </button>
           <div class="user-dropdown" id="userDropdown">
             <div class="user-dropdown-header">
               <div class="user-avatar-large">
-                {% if user_details and user_details.profile_picture %}
-                  <img src="{{ user_details.profile_picture }}" alt="Profile Picture">
+                {% if user_nav_profile_image %}
+                  <img src="{{ user_nav_profile_image }}" alt="Profile Picture">
                 {% else %}
                   <i class="fas fa-user"></i>
                 {% endif %}
@@ -10409,10 +10409,16 @@
           }
           const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
           const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+          const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
+          const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
             
           formData.append('selected_vendor', selectedShopValue);
           formData.append('vendor_id', vendorId);
-            formData.append('storage_folder', 'vendor_manual_print_jobs'); // New parameter for manual jobs
+          formData.append('vendor_email', vendorEmail);
+          if (userEmail) {
+            formData.append('user_email', userEmail);
+          }
+            formData.append('storage_folder', 'vendor_print_jobs'); // Force storage into vendor_print_jobs
           
           // Add points information if points were applied
           const pointsApplied = modal.dataset.pointsApplied === 'true';
@@ -10452,6 +10458,7 @@
                   const structured = JSON.parse(structuredPricing);
                   pricingDetails.structured_data = structured;
                 }
+                pricingDetails.user_email = userEmail || null;
                 
                 console.log(`💰 Pricing details stored in job metadata for ${service}:`, pricingDetails);
               } catch (error) {
@@ -10494,7 +10501,9 @@
               pricing_details: pricingDetails,
               // Store all document names in each document's metadata
               all_document_names: allFileNames,
-              document_count: files.length
+              document_count: files.length,
+              vendor_email: vendorEmail || '',
+              user_email: userEmail || ''
             };
             
             formData.append(`settings_${i}`, JSON.stringify(settingsJson));
@@ -18140,7 +18149,9 @@
             vendor_status: "not sended",
             was_image: fileObj.isImage || false, // Track if this was originally an image
             // Add pricing details if available (will be populated after pricing calculation)
-            pricing_details: null
+            pricing_details: null,
+            vendor_email: vendorEmail || '',
+            user_email: userEmail || ''
           };
 
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
@@ -18152,7 +18163,13 @@
         // Get vendor_id for the selected vendor
         const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
         const vendorId = selectedVendorData ? selectedVendorData.vendor_id : 'vendor1';
+        const vendorEmail = selectedVendorData ? (selectedVendorData.vendor_email || '') : '';
+        const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
         formData.append('vendor_id', vendorId);
+        formData.append('vendor_email', vendorEmail);
+        if (userEmail) {
+          formData.append('user_email', userEmail);
+        }
         
         // Add points information if points were applied (for regular print modal)
         const printModal = document.getElementById('printModal');
@@ -18177,6 +18194,7 @@
               pricing_breakdown: breakdownObj,
               calculation_timestamp: new Date().toISOString(),
               vendor_email: selectedVendorData ? selectedVendorData.vendor_email : null,
+              user_email: userEmail || null,
               additional_options: breakdownObj.additional_options || [],
               subtotal: breakdownObj.subtotal || parseFloat(calculatedPrice)
             };
@@ -19508,10 +19526,15 @@
     .success-modal-content {
       text-align: center;
       padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
 
     .success-animation-container {
-      margin-bottom: 1.5rem;
+      margin-bottom: 0;
       height: 200px;
       display: flex;
       align-items: center;
@@ -19528,7 +19551,7 @@
     .success-check {
       width: 88px;
       height: 88px;
-      margin: -20px auto 16px auto;
+      margin: 0 auto 0.75rem auto;
       background: #22c55e;
       border-radius: 50%;
       display: flex;
@@ -19543,13 +19566,21 @@
     }
 
     .success-title {
-      margin: 8px 0 8px 0;
+      margin: 0;
+      padding: 0;
       font-size: 1.6rem;
       font-weight: 800;
       background: linear-gradient(90deg, #10b981 0%, #2563eb 100%);
       -webkit-background-clip: text;
+      line-height: 1.3;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+    }
+
+    .success-message {
+      margin: 0;
+      padding: 0;
+      width: 100%;
     }
 
     .success-subtext {

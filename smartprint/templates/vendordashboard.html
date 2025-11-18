@@ -4372,6 +4372,7 @@
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
         let vendorAvailability = 'online'; // Default to online
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
+        const JOB_REFRESH_INTERVAL_MS = 60 * 1000; // Refresh once per minute as requested
         
         // Availability toggle variables
         let previousAvailabilityBeforeOptimistic = null;
@@ -4708,7 +4709,7 @@
             // Background rendering every 1 minute without refreshing existing jobs
             setInterval(() => {
                 loadJobs();
-            }, 60000);
+            }, JOB_REFRESH_INTERVAL_MS);
             
             initResponsiveLayout();
             initializeNotifications();
