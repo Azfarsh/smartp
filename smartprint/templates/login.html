@@ -1942,9 +1942,10 @@
       if (data.success) {
         // Already showing welcome; update message if available
         try { showWelcome(data.vendor?.vendor_name || 'Vendor', true); } catch (_) {}
+        // Show welcome animation for max 4 seconds, then redirect to vendordashboard
         setTimeout(() => {
           window.location.href = '/vendordashboard/';
-        }, 1000); // 1 second delay for smooth vendor login transition
+        }, 4000); // Max 4 seconds welcome animation
       } else {
         submitBtn.disabled = false;
         btnIcon.textContent = 'rocket_launch';
