@@ -119,6 +119,20 @@ def post_to_worker(path, payload=None, timeout=10):
     return endpoint, response
 
 
+def _to_decimal(value, precision=2):
+    """
+    Safely convert inputs to floats with optional rounding.
+    Handles strings, decimals, and None without raising.
+    """
+    try:
+        if value is None or value == '':
+            return 0.0
+        number = float(value)
+        return round(number, precision) if precision is not None else number
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def firebase_messaging_sw(request):
     """
     Serve Firebase messaging service worker from root with dynamic config
@@ -3190,6 +3204,18 @@ def upload_to_r2(request):
                 }, status=400)
             user_id = str(request.user.id) if request.user.is_authenticated else ''
 
+            # Get vendor_email from form data (preferred) or fallback to shop folder lookup
+            vendor_email = (request.POST.get('vendor_email') or '').strip()
+            if not vendor_email and selected_vendor:
+                try:
+                    # Get vendor email from shop folder as fallback
+                    vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                    print(f"✅ Got vendor_email from shop folder: {vendor_email}")
+                except Exception as e:
+                    print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+            elif vendor_email:
+                print(f"✅ Got vendor_email from form data: {vendor_email}")
+
             # Process each file with its corresponding settings
             for i in range(file_count):
                 file_key = f'file_{i}'
@@ -3210,12 +3236,17 @@ def upload_to_r2(request):
                     print(f"   Pricing details: {print_settings.get('pricing_details')}")
                     print(f"   All settings keys: {list(print_settings.keys())}")
 
-                    # Get vendor email for token assignment
-                    vendor_email = None
-                    if selected_vendor:
+                    # Get vendor email from settings_json if not already set (fallback)
+                    if not vendor_email:
+                        vendor_email = print_settings.get('vendor_email', '').strip()
+                        if vendor_email:
+                            print(f"✅ Got vendor_email from settings_json: {vendor_email}")
+                    
+                    # Final fallback: Get vendor email from shop folder if still not set
+                    if not vendor_email and selected_vendor:
                         try:
-                            # Get vendor email from shop folder
                             vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                            print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
                         except Exception as e:
                             print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
                     
@@ -3271,6 +3302,7 @@ def upload_to_r2(request):
                         'user': user_email,
                         'user_id': user_id,
                         'vendor': vendor_id,
+                        'vendor_email': vendor_email or '',
                         'shop_id': str(vendor_id or ''),
                         'job_id': job_id,
                         'service_type': print_settings.get('service_type', 'regular print'),
@@ -4463,6 +4495,18 @@ def verify_razorpay_payment(request):
                 'error': 'User email is required to finalize the print job'
             }, status=400)
 
+        # Get vendor_email from form data (preferred) or fallback to shop folder lookup
+        selected_vendor = request.POST.get('selected_vendor') or ''
+        vendor_email = (request.POST.get('vendor_email') or '').strip()
+        if not vendor_email and selected_vendor:
+            try:
+                vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                print(f"✅ Got vendor_email from shop folder: {vendor_email}")
+            except Exception as e:
+                print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+        elif vendor_email:
+            print(f"✅ Got vendor_email from form data: {vendor_email}")
+
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,
                           aws_secret_access_key=settings.R2_SECRET_KEY,
@@ -4479,8 +4523,21 @@ def verify_razorpay_payment(request):
                 print_settings = json.loads(settings_json)
 
                 # Resolve user and vendor context
-                selected_vendor = request.POST.get('selected_vendor') or ''
                 vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
+
+                # Get vendor email from settings_json if not already set (fallback)
+                if not vendor_email:
+                    vendor_email = print_settings.get('vendor_email', '').strip()
+                    if vendor_email:
+                        print(f"✅ Got vendor_email from settings_json: {vendor_email}")
+                
+                # Final fallback: Get vendor email from shop folder if still not set
+                if not vendor_email and selected_vendor:
+                    try:
+                        vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                        print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
+                    except Exception as e:
+                        print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
 
                 # Store every paid job inside vendor_print_jobs
                 service_type = (print_settings.get('service_type') or '').strip()
@@ -4491,14 +4548,6 @@ def verify_razorpay_payment(request):
                 # Assign token from vendor pool if available
                 if not token_value:  # Only generate once per request
                     try:
-                        # Get vendor email for token assignment
-                        vendor_email = None
-                        if selected_vendor:
-                            try:
-                                vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
-                            except Exception as e:
-                                print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
-                        
                         # Assign token from vendor pool if vendor email is available
                         if vendor_email:
                             assigned_token = assign_token_from_vendor_pool(vendor_email)
@@ -4534,6 +4583,7 @@ def verify_razorpay_payment(request):
                                   'trash': 'NO',
                     'user': user_email,
                     'vendor': vendor_id,
+                    'vendor_email': vendor_email or '',
                     'job_id': str(print_settings.get('job_id', '')),
                     'service_type': service_type or 'regular print',
                     'service_name': str(print_settings.get('service_name', '')),
@@ -4550,14 +4600,9 @@ def verify_razorpay_payment(request):
                 # Resolve vendor email for printer assignment and assign by lowest count
                 assigned_printer_name = ''
                 try:
-                    vendor_email_for_printer = None
-                    if selected_vendor:
-                        try:
-                            vendor_email_for_printer = get_vendor_email_by_shop_folder(selected_vendor)
-                        except Exception as e:
-                            print(f"⚠️ Could not resolve vendor email for printer assignment: {str(e)}")
-                    if vendor_email_for_printer:
-                        assigned_printer_name = assign_printer_and_increment_count(vendor_email_for_printer, service_type)
+                    # Use already-extracted vendor_email for printer assignment
+                    if vendor_email:
+                        assigned_printer_name = assign_printer_and_increment_count(vendor_email, service_type)
                         if assigned_printer_name:
                             metadata['printer_name'] = assigned_printer_name
                 except Exception as e:
@@ -4620,7 +4665,14 @@ def verify_razorpay_payment(request):
                     
                     # Store print job in D1 database (R2 storage is already done above)
                     try:
-                        vendor_email = get_vendor_email_by_vendor_id(vendor_id) if vendor_id else None
+                        # vendor_email is already extracted above, use it directly
+                        # Fallback to vendor_id lookup only if still not set
+                        if not vendor_email and vendor_id:
+                            try:
+                                vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                                print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
+                            except Exception as e:
+                                print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
                         store_vendor_print_job_in_db(
                             vendor_id=vendor_id,
                             vendor_email=vendor_email,
@@ -5568,6 +5620,9 @@ def vendor_login(request):
                     request.session['vendor_email'] = email
                     request.session['vendor_id'] = vendor_id
                     
+                    # Ensure Vendor_service_availability row is refreshed on every login
+                    _sync_vendor_service_on_login(email, vendor_id)
+
                     print(f"✅ Vendor login successful: {email} (ID: {vendor_id})")
                     
                     return JsonResponse({
@@ -8735,6 +8790,48 @@ def _default_service_availability():
     }
 
 
+def _sync_vendor_service_on_login(vendor_email, vendor_id):
+    """
+    Ensure the Vendor_service_availability table has up-to-date rows whenever a vendor logs in.
+    Fetches the latest config (or defaults) and upserts it via the Worker so D1 stays fresh.
+    """
+    if not vendor_email or not vendor_id:
+        return
+
+    try:
+        service_payload = _default_service_availability()
+
+        # Try to load the most recent config so we don't clobber valid data
+        try:
+            payload = {"vendor_email": vendor_email, "vendor_id": vendor_id}
+            endpoint, resp = post_to_worker('/get-vendor-service', payload)
+            if resp.status_code == 200:
+                resp_json = resp.json()
+                if resp_json.get('success'):
+                    service_data = resp_json.get('service', {}).get('service_data')
+                    if isinstance(service_data, dict) and service_data:
+                        service_payload = service_data
+            elif resp.status_code != 404:
+                print(f"⚠️ Worker get-vendor-service failed during login sync ({resp.status_code}) via {endpoint}")
+        except Exception as fetch_err:
+            print(f"⚠️ Unable to fetch vendor service data during login sync: {fetch_err}")
+
+        # Persist (or create) the row so it always exists after login
+        try:
+            endpoint, resp = post_to_worker('/upsert-vendor-service', {
+                'vendor_email': vendor_email,
+                'vendor_id': vendor_id,
+                'service_data': service_payload,
+                'updated_by': vendor_email
+            })
+            if resp.status_code != 200:
+                print(f"⚠️ Worker upsert-vendor-service failed during login sync ({resp.status_code}) via {endpoint}: {resp.text[:200]}")
+        except Exception as upsert_err:
+            print(f"⚠️ Unable to upsert vendor service data during login sync: {upsert_err}")
+    except Exception as sync_err:
+        print(f"⚠️ Vendor service sync on login failed: {sync_err}")
+
+
 @csrf_exempt
 def get_vendor_details(request):
     email = request.GET.get('email')
@@ -10816,6 +10913,9 @@ def store_user_notification_in_db(notification_data):
         else:
             worker_endpoint = api_url.rstrip('/') + '/add-user-notification'
         
+        platform_profit = _to_decimal(notification_data.get('platform_profit'))
+        total_price = _to_decimal(notification_data.get('total_price'))
+
         payload = {
             'notification_id': notification_data.get('notification_id', ''),
             'user_email': notification_data.get('user_email', ''),
@@ -10828,8 +10928,8 @@ def store_user_notification_in_db(notification_data):
             'type': notification_data.get('type', ''),
             'token': notification_data.get('token', ''),
             'service_type': notification_data.get('service_type', ''),
-            'platform_profit': int(notification_data.get('platform_profit', 0)),
-            'total_price': int(notification_data.get('total_price', 0))
+            'platform_profit': platform_profit,
+            'total_price': total_price
         }
         
         resp = requests.post(
@@ -10871,6 +10971,9 @@ def store_vendor_notification_in_db(notification_data):
         else:
             worker_endpoint = api_url.rstrip('/') + '/add-vendor-notification'
         
+        platform_profit = _to_decimal(notification_data.get('platform_profit'))
+        total_price = _to_decimal(notification_data.get('total_price'))
+
         payload = {
             'notification_id': notification_data.get('notification_id', ''),
             'vendor_id': notification_data.get('vendor_id', ''),
@@ -10878,8 +10981,8 @@ def store_vendor_notification_in_db(notification_data):
             'user_email': notification_data.get('user_email', ''),
             'filename': notification_data.get('filename', ''),
             'service_type': notification_data.get('service_type', ''),
-            'platform_profit': int(notification_data.get('platform_profit', 0)),
-            'total_price': int(notification_data.get('total_price', 0)),
+            'platform_profit': platform_profit,
+            'total_price': total_price,
             'completion_time': notification_data.get('completion_time', ''),
             'timestamp': notification_data.get('timestamp', datetime.datetime.now().isoformat()),
             'token': notification_data.get('token', ''),
