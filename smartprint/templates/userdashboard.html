@@ -13679,6 +13679,23 @@
 
     // Firebase Cloud Messaging (FCM) Setup
     let messaging = null;
+    let serviceWorkerRegistration = null;
+
+    async function ensureServiceWorkerRegistration() {
+      if (serviceWorkerRegistration) {
+        return serviceWorkerRegistration;
+      }
+      if (!('serviceWorker' in navigator)) {
+        return null;
+      }
+      try {
+        serviceWorkerRegistration = await navigator.serviceWorker.ready;
+        return serviceWorkerRegistration;
+      } catch (err) {
+        console.warn('⚠️ Unable to resolve service worker registration:', err);
+        return null;
+      }
+    }
     
     // Initialize Firebase and FCM
     function initializeFCM() {
@@ -13739,7 +13756,16 @@
           const vapidKey = "{{ FIREBASE_VAPID_KEY }}";
           
           if (messaging && typeof messaging.getToken === 'function') {
-            const token = await messaging.getToken({ vapidKey: vapidKey });
+            const registration = await ensureServiceWorkerRegistration();
+            if (!registration) {
+              console.warn('⚠️ No active Service Worker registration; skipping push subscription');
+              return;
+            }
+
+            const token = await messaging.getToken({
+              vapidKey: vapidKey,
+              serviceWorkerRegistration: registration
+            });
             
             if (token) {
               console.log('✅ FCM Registration Token:', token);
@@ -13750,9 +13776,21 @@
               // Listen for token refresh
               if (messaging && typeof messaging.onTokenRefresh === 'function') {
                 messaging.onTokenRefresh(async () => {
-                  const newToken = await messaging.getToken({ vapidKey: vapidKey });
-                  console.log('🔄 FCM Token refreshed:', newToken);
-                  await saveFCMToken(newToken);
+                  try {
+                    const refreshedRegistration = await ensureServiceWorkerRegistration();
+                    if (!refreshedRegistration) {
+                      console.warn('⚠️ Unable to refresh token: missing Service Worker registration');
+                      return;
+                    }
+                    const newToken = await messaging.getToken({
+                      vapidKey: vapidKey,
+                      serviceWorkerRegistration: refreshedRegistration
+                    });
+                    console.log('🔄 FCM Token refreshed:', newToken);
+                    await saveFCMToken(newToken);
+                  } catch (refreshError) {
+                    console.error('❌ Error refreshing FCM token:', refreshError);
+                  }
                 });
               }
             } else {
@@ -13816,6 +13854,7 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
+          serviceWorkerRegistration = registration;
           console.log('✅ Service Worker registered:', registration);
           
           // Initialize FCM first, then set up message handler
@@ -19191,20 +19230,17 @@
   }
   </script>
 
-  <!-- Success Modal with Lottie Animation -->
+  <!-- Success Modal - Compact & Impressive -->
   <div id="successModal" class="success-modal-overlay">
     <div class="success-modal">
-      <div class="success-modal-content">
-        <div class="success-animation-container">
-          <div id="lottie-animation" class="lottie-animation"></div>
-        </div>
-        <div class="success-check" aria-hidden="true">
-          <span class="material-icons">check</span>
-        </div>
-        <div class="success-message">
-          <h3 class="success-title">Print Job Sent to Print Successfully!</h3>
-        </div>
+      <div class="success-check-circle">
+        <svg class="success-checkmark" viewBox="0 0 52 52">
+          <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+          <path class="success-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
       </div>
+      <h3 class="success-title">Success!</h3>
+      <p class="success-subtitle">Your print job has been sent to print successfully.</p>
     </div>
   </div>
 
@@ -19487,22 +19523,22 @@
       box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
     }
 
-    /* Success Modal Styles */
+    /* Success Modal Styles - Compact & Impressive */
     .success-modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.6);
       z-index: 9999;
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0;
       visibility: hidden;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(8px);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(4px);
     }
 
     .success-modal-overlay.active {
@@ -19511,106 +19547,149 @@
     }
 
     .success-modal {
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
       width: 90%;
-      max-width: 400px;
-      transform: scale(0.8);
-      transition: all 0.3s ease;
+      max-width: 320px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      transform: scale(0.85) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
       overflow: hidden;
     }
 
+    .success-modal::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #10b981 0%, #3b82f6 100%);
+    }
+
     .success-modal-overlay.active .success-modal {
-      transform: scale(1);
+      transform: scale(1) translateY(0);
     }
 
-    .success-modal-content {
-      text-align: center;
-      padding: 2rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .success-animation-container {
-      margin-bottom: 0;
-      height: 200px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .success-check-circle {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
       position: relative;
     }
 
-    .lottie-animation {
-      width: 200px;
-      height: 200px;
+    .success-checkmark {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: block;
+      stroke-width: 3;
+      stroke: #10b981;
+      stroke-miterlimit: 10;
+      box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+      animation: success-fill 0.4s ease-in-out 0.4s forwards, success-scale 0.3s ease-in-out 0.9s both;
     }
 
-    /* Green success circle with check */
-    .success-check {
-      width: 88px;
-      height: 88px;
-      margin: 0 auto 0.75rem auto;
-      background: #22c55e;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 10px 25px rgba(34,197,94,0.35);
+    .success-checkmark-circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      stroke-width: 3;
+      stroke-miterlimit: 10;
+      stroke: #10b981;
+      fill: none;
+      animation: success-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
     }
-    .success-check .material-icons {
-      color: #fff;
-      font-size: 44px;
-      line-height: 1;
+
+    .success-checkmark-check {
+      transform-origin: 50% 50%;
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: success-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+    }
+
+    @keyframes success-stroke {
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes success-fill {
+      100% {
+        box-shadow: 0 0 0 30px rgba(16, 185, 129, 0);
+      }
+    }
+
+    @keyframes success-scale {
+      0%, 100% {
+        transform: none;
+      }
+      50% {
+        transform: scale3d(1.1, 1.1, 1);
+      }
     }
 
     .success-title {
-      margin: 0;
+      margin: 0 0 0.5rem 0;
       padding: 0;
-      font-size: 1.6rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, #10b981 0%, #2563eb 100%);
-      -webkit-background-clip: text;
-      line-height: 1.3;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: -0.02em;
     }
 
-    .success-message {
+    .success-subtitle {
       margin: 0;
       padding: 0;
-      width: 100%;
-    }
-
-    .success-subtext {
-      color: #6b7280;
-      font-size: 1rem;
-      margin: 0;
+      font-size: 0.95rem;
+      color: #64748b;
+      font-weight: 400;
       line-height: 1.5;
     }
 
-    /* No buttons for this modal; auto hide on outside click or via explicit close */
-
     @media (max-width: 768px) {
       .success-modal {
-        width: 95%;
-        margin: 1rem;
+        max-width: 280px;
+        padding: 2rem 1.5rem;
       }
       
-      .success-modal-content {
-        padding: 1.5rem;
+      .success-check-circle {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 1.25rem;
       }
       
-      .lottie-animation {
-        width: 150px;
-        height: 150px;
+      .success-checkmark {
+        width: 70px;
+        height: 70px;
       }
       
-      .success-animation-container {
-        height: 150px;
+      .success-title {
+        font-size: 1.35rem;
+      }
+      
+      .success-subtitle {
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .success-modal {
+        max-width: 260px;
+        padding: 1.75rem 1.25rem;
+      }
+      
+      .success-check-circle {
+        width: 65px;
+        height: 65px;
+        margin-bottom: 1rem;
+      }
+      
+      .success-checkmark {
+        width: 65px;
+        height: 65px;
       }
     }
   </style>
@@ -19722,12 +19801,20 @@
         if (modal) {
           modal.classList.add('active');
           
-          // Don't auto-close - let user choose with buttons
-          // setTimeout(() => {
-          //   hideSuccessModal();
-          // }, 3000);
+          // Auto-close after 2.5 seconds
+          setTimeout(() => {
+            hideSuccessModal();
+          }, 2500);
         }
       }
+      
+      // Close modal on overlay click
+      document.addEventListener('click', (e) => {
+        const modal = document.getElementById('successModal');
+        if (modal && e.target === modal) {
+          hideSuccessModal();
+        }
+      });
 
     function hideSuccessModal() {
       const modal = document.getElementById('successModal');
@@ -20047,4 +20134,5 @@
 </html>
 </html>
 </html>
+
 

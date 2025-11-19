@@ -1384,11 +1384,21 @@ def get_user_jobs_from_d1(user_email):
                 
                 processed_jobs = []
                 for job in jobs:
-                    # Get R2 path from database (r2_path field)
-                    r2_path = job.get('r2_path', '')
+                    # Get storage folder and R2 path from database
+                    storage_folder = job.get('storage_folder') or 'user_print_jobs'
+                    job['storage_folder'] = storage_folder
+                    job.setdefault('user', job.get('user_email', ''))
+                    job.setdefault('vendor', job.get('vendor_id', ''))
+
+                    # Get R2 path from database (r2_path field) - ONLY use R2 for file URL
+                    r2_path = job.get('r2_path')
+                    if not r2_path and job.get('filename'):
+                        r2_path = f"{storage_folder.rstrip('/')}/{job.get('user_email', '')}/{job.get('filename')}"
+                        job['r2_path'] = r2_path
+
                     if r2_path:
                         try:
-                            # Generate presigned URL from R2 path
+                            # Generate presigned URL from R2 path - ONLY for file rendering
                             url = s3.generate_presigned_url(
                                 ClientMethod='get_object',
                                 Params={
@@ -1405,15 +1415,74 @@ def get_user_jobs_from_d1(user_email):
                             job['url'] = ''
                             job['preview_url'] = ''
                             job['download_url'] = ''
+                    else:
+                        job['url'] = job['preview_url'] = job['download_url'] = ''
                     
                     # Ensure preview/download URLs exist even if R2 path missing
                     job.setdefault('preview_url', job.get('url', ''))
                     job.setdefault('download_url', job.get('url', ''))
                     
-                    # Ensure all required fields are present
-                    job.setdefault('job_completed', job.get('job_completed', 'NO'))
+                    # Map ALL metadata from D1 database (not from R2)
+                    # All fields come from D1, only file URL comes from R2
+                    job_completed_value = job.get('job_completed', job.get('job_completed_status', 'NO')) or 'NO'
+                    job['job_completed'] = job_completed_value
+                    job.setdefault('service_type', job.get('service_type', ''))
+                    job.setdefault('pages', str(job.get('page_count', job.get('pages', '0'))))
+                    job.setdefault('rendered_status', job.get('rendered_status', 'NO'))
+                    job.setdefault('vendor_status', job.get('vendor_status', 'not sended'))
+                    job.setdefault('token', job.get('token', ''))
+                    job.setdefault('job_id', job.get('job_id', ''))
+                    copies_value = job.get('copies', job.get('num_copies'))
+                    job['copies'] = str(copies_value) if copies_value not in [None, ''] else '1'
+                    job.setdefault('color', job.get('color', ''))
+                    job.setdefault('orientation', job.get('orientation', ''))
+                    job.setdefault('pageSize', job.get('pageSize', ''))
+                    job.setdefault('timestamp', job.get('timestamp', ''))
                     job.setdefault('uploaded_at', job.get('timestamp', ''))
+                    job.setdefault('completion_time', job.get('completion_time', ''))
+                    job.setdefault('total_price', job.get('total_price', 0))
+                    job.setdefault('final_amount', job.get('final_amount', 0))
+                    job.setdefault('user_email', job.get('user_email', ''))
+                    job.setdefault('vendor_email', job.get('vendor_email', ''))
+                    job.setdefault('vendor_id', job.get('vendor_id', ''))
                     job.setdefault('filename', job.get('filename', ''))
+
+                    # Parse pricing_details if present
+                    pricing_details_raw = job.get('pricing_details')
+                    parsed_pricing = None
+                    if isinstance(pricing_details_raw, str) and pricing_details_raw.strip():
+                        try:
+                            parsed_pricing = json.loads(pricing_details_raw)
+                        except json.JSONDecodeError:
+                            parsed_pricing = None
+                    elif isinstance(pricing_details_raw, dict):
+                        parsed_pricing = pricing_details_raw
+                    if parsed_pricing is not None:
+                        job['pricing_details'] = parsed_pricing
+
+                    # Create metadata structure from D1 fields (not R2)
+                    job['metadata'] = {
+                        'status': job.get('status', 'pending'),
+                        'job_completed': job_completed_value,
+                        'copies': job.get('copies', '1'),
+                        'color': job.get('color', ''),
+                        'orientation': job.get('orientation', ''),
+                        'page_size': job.get('pageSize', ''),
+                        'pages': str(job.get('page_count', job.get('pages', '0'))),
+                        'timestamp': job.get('timestamp', ''),
+                        'vendor': job.get('vendor_id', ''),
+                        'user': job.get('user_email', ''),
+                        'service_type': job.get('service_type', ''),
+                        'job_id': job.get('job_id', ''),
+                        'token': job.get('token', ''),
+                        'vendor_id': job.get('vendor_id', ''),
+                        'rendered_status': job.get('rendered_status', 'NO'),
+                        'vendor_status': job.get('vendor_status', 'not sended'),
+                        'total_price': job.get('total_price', 0),
+                        'final_amount': job.get('final_amount', 0),
+                    }
+                    
+                    job['metadata']['pricing_details'] = parsed_pricing
                     
                     processed_jobs.append(job)
                 
