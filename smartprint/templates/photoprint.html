@@ -1199,8 +1199,12 @@ function renderPricingMessage(iconClass, message) {
 
 function closePhotoPrintModalView() {
     const modalBg = document.querySelector('.modal-bg');
-    if (modalBg) {
-        modalBg.classList.add('closing');
+    if (!modalBg) return;
+    modalBg.classList.add('closing');
+    if (typeof modalBg.remove === 'function') {
+        modalBg.remove();
+    } else if (modalBg.parentNode) {
+        modalBg.parentNode.removeChild(modalBg);
     }
 }
 
@@ -1211,6 +1215,20 @@ function showPhotoSuccessOverlay(message) {
     }
     photoSuccessOverlay.classList.add('show');
     photoSuccessOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function redirectToDashboardWithSuccess(message, token) {
+    const payload = {
+        message: message || '✅ Print job sent to print successfully.',
+        token: token || '',
+        timestamp: Date.now()
+    };
+    try {
+        sessionStorage.setItem('photoPrintSuccess', JSON.stringify(payload));
+    } catch (storageError) {
+        console.warn('Unable to persist success state:', storageError);
+    }
+    window.location.replace('/userdashboard/');
 }
 
 function buildPhotoPricingBreakdown(breakdown, commission) {
@@ -2147,21 +2165,9 @@ async function handlePrint() {
                         if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
                         const serverToken = verifyData.token || token;
                         const successMessage = '✅ Print job sent to print successfully.';
-                        try {
-                            sessionStorage.setItem('photoPrintSuccess', JSON.stringify({
-                                message: successMessage,
-                                token: serverToken,
-                                timestamp: Date.now()
-                            }));
-                        } catch (storageError) {
-                            console.warn('Unable to persist success state:', storageError);
-                        }
                         closePhotoPrintModalView();
-                        showPhotoSuccessOverlay(successMessage);
-                        setTimeout(() => {
-                            window.location.href = '/userdashboard/';
-                        }, 1500);
                         resolve();
+                        redirectToDashboardWithSuccess(successMessage, serverToken);
                         return;
                     } catch (err) {
                         alert(err.message || 'Payment verified but upload failed');

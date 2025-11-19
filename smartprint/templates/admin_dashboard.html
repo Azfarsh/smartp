@@ -1005,7 +1005,7 @@
                         <div class="data-content">
                             <div id="users-loading" class="loading">
                                 <i class="fas fa-spinner"></i>
-                                <p>Loading user data from R2 storage...</p>
+                                <p>Loading user data from the D1 database...</p>
                             </div>
                             <div class="table-container">
                                 <table class="data-table" id="users-table" style="display: none;">
@@ -1027,7 +1027,7 @@
                             <div id="users-empty" class="empty-state" style="display: none;">
                                 <i class="fas fa-users"></i>
                                 <h3>No users found</h3>
-                                <p>No user data available in R2 storage.</p>
+                                <p>No user data available in the D1 database.</p>
                             </div>
                         </div>
                     </div>
@@ -1099,9 +1099,14 @@
                                 <i class="fas fa-search search-icon"></i>
                             </div>
                             <div class="month-selector">
-                                <label for="vendor-month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select Month:</label>
-                                <select id="vendor-month-select" class="month-dropdown">
-                                    <option value="">Loading months...</option>
+                                <label for="vendor-period-type" style="font-weight: 600; margin-right: 10px; color: #374151;">Period:</label>
+                                <select id="vendor-period-type" class="period-dropdown" style="margin-right: 10px; padding: 8px 12px; font-size: 14px; min-width: 120px;">
+                                    <option value="month" selected>Month</option>
+                                    <option value="week">Week</option>
+                                </select>
+                                <label for="vendor-period-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select:</label>
+                                <select id="vendor-period-select" class="month-dropdown">
+                                    <option value="">Loading...</option>
                                 </select>
                             </div>
                         </div>
@@ -1115,17 +1120,19 @@
                         <div class="data-content">
                             <div id="vendors-loading" class="loading">
                                 <i class="fas fa-spinner"></i>
-                                <p>Loading vendor data from R2 storage...</p>
+                                <p>Loading vendor data from the D1 database...</p>
                             </div>
                             <div class="table-container">
                                 <table class="data-table" id="vendors-table" style="display: none;">
                                      <thead>
                                          <tr>
                                              <th>Vendor Email</th>
-                                             <th style="text-align: right;">Total Price</th>
-                                             <th style="text-align: right;">Platform Profit</th>
+                                             <th style="text-align: center;">Documents</th>
                                              <th style="text-align: center;">Service Types</th>
-                                             <th style="text-align: center;">Amount</th>
+                                             <th style="text-align: right;">Total Cost</th>
+                                             <th style="text-align: right;">Platform Revenue</th>
+                                             <th style="text-align: right;">Last Activity</th>
+                                             <th style="text-align: center;">Invoice Amount</th>
                                              <th style="text-align: center;">Action</th>
                                          </tr>
                                      </thead>
@@ -1137,7 +1144,7 @@
                             <div id="vendors-empty" class="empty-state" style="display: none;">
                                 <i class="fas fa-store"></i>
                                 <h3>No vendors found</h3>
-                                <p>No vendor data available in R2 storage.</p>
+                                <p>No vendor data available in the D1 database.</p>
                             </div>
                         </div>
                     </div>
@@ -1165,7 +1172,7 @@
                         <div class="data-content">
                             <div id="transactions-loading" class="loading">
                                 <i class="fas fa-spinner"></i>
-                                <p>Loading transaction reports from R2...</p>
+                                <p>Loading transaction reports from the database...</p>
                             </div>
                             <div class="table-container">
                                 <table class="data-table" id="transactions-table" style="display: none;">
@@ -1340,6 +1347,8 @@
         let filteredVendorsData = [];
         let allTransactions = [];
         let filteredTransactions = [];
+        let vendorAvailableMonths = [];
+        let currentVendorPeriodType = 'month';
 
         // CSRF helper (same as used elsewhere)
         function getCookie(name) {
@@ -1404,17 +1413,24 @@
                 filterVendors();
             });
 
-             // Display current date for vendor data
-             const currentDateDisplay = document.getElementById('vendor-month-select');
-             if (currentDateDisplay) {
-                 const today = new Date();
-                 currentDateDisplay.innerHTML = `<option value="">Current Date: ${today.toLocaleDateString('en-US', { 
-                     weekday: 'long', 
-                     year: 'numeric', 
-                     month: 'long', 
-                     day: 'numeric' 
-                 })}</option>`;
-             }
+            const vendorPeriodTypeSelect = document.getElementById('vendor-period-type');
+            if (vendorPeriodTypeSelect) {
+                vendorPeriodTypeSelect.addEventListener('change', function() {
+                    currentVendorPeriodType = this.value;
+                    updateVendorPeriodLabel(currentVendorPeriodType);
+                    updateVendorPeriodSelector(currentVendorPeriodType, null, { triggerFetch: true });
+                });
+            }
+
+            const vendorPeriodSelect = document.getElementById('vendor-period-select');
+            if (vendorPeriodSelect) {
+                vendorPeriodSelect.addEventListener('change', function() {
+                    const selectedPeriod = this.value;
+                    if (selectedPeriod) {
+                        loadVendorsData(selectedPeriod, document.getElementById('vendor-period-type').value);
+                    }
+                });
+            }
 
             // Filter buttons
             const filterButtons = document.querySelectorAll('.filter-btn');
@@ -2066,45 +2082,68 @@
             }
         }
 
-        // Load users data from R2
+        // Load users data from D1
         function loadUsersData(selectedPeriod = null, periodType = 'month') {
             const loading = document.getElementById('users-loading');
             const table = document.getElementById('users-table');
             const empty = document.getElementById('users-empty');
+            const tableBody = document.getElementById('users-table-body');
             
             loading.style.display = 'block';
             table.style.display = 'none';
             empty.style.display = 'none';
             
-            let url = '/admin-dashboard/users/';
+            const params = new URLSearchParams();
             if (selectedPeriod) {
-                url += `?${periodType}=${selectedPeriod}`;
+                params.set(periodType === 'week' ? 'week' : 'month', selectedPeriod);
             }
+            const url = params.toString() ? `/admin-dashboard/users/?${params.toString()}` : '/admin-dashboard/users/';
             
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     loading.style.display = 'none';
                     
-                    if (data.success && data.users && data.users.length > 0) {
-                        allUsersData = data.users;
-                        filteredUsersData = [...allUsersData];
-                        displayUsers(data.users);
-                        updateOverviewCards(data.overview);
-                        updateMonthSelector(data.overview.available_months, data.overview.selected_month);
-                    } else {
+                    if (!data.success) {
+                        if (tableBody) tableBody.innerHTML = '';
                         empty.style.display = 'block';
-                        updateMonthSelector(data.overview.available_months, data.overview.selected_month);
+                        return;
+                    }
+
+                    const users = Array.isArray(data.users) ? data.users : [];
+                    allUsersData = users;
+                    filteredUsersData = [...users];
+                    
+                    if (users.length > 0) {
+                        displayUsers(users);
+                        updateOverviewCards(data.overview || {});
+                    } else {
+                        table.style.display = 'none';
+                        if (tableBody) {
+                            tableBody.innerHTML = '';
+                        }
+                        empty.style.display = 'block';
                     }
                     
-                    // Update the period label based on the response
+                    const availableMonths = (data.overview && data.overview.available_months) || [];
+                    updateMonthSelector(availableMonths, (data.overview && data.overview.selected_month) || selectedPeriod);
+                    
                     if (data.period_type) {
                         const periodLabel = document.querySelector('label[for="month-select"]');
                         if (periodLabel) {
                             periodLabel.textContent = `Select ${data.period_type === 'week' ? 'Week' : 'Month'}:`;
                         }
                     }
-                    
+
+                    if (
+                        users.length === 0 &&
+                        !selectedPeriod &&
+                        periodType === 'month' &&
+                        availableMonths.length > 0 &&
+                        availableMonths[0] !== (data.selected_period || selectedPeriod)
+                    ) {
+                        loadUsersData(availableMonths[0], 'month');
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading users:', error);
@@ -2126,25 +2165,33 @@
             table.style.display = 'table';
             document.getElementById('users-empty').style.display = 'none';
 
-            tableBody.innerHTML = users.map(user => `
-                <tr>
-                    <td class="user-email">${user.email}</td>
-                    <td class="documents-count">${user.total_documents}</td>
-                    <td class="service-tags">
-                        ${user.service_breakdown.map(service => 
-                            `<span class="service-tag" title="Commission: ${service.commission_rate}">${service.name} (${service.count})</span>`
-                        ).join('')}
-                    </td>
-                    <td class="cost-amount">₹${user.total_cost.toFixed(2)}</td>
-                    <td class="revenue-amount">₹${user.platform_revenue.toFixed(2)}</td>
-                    <td class="last-activity">${user.last_activity}</td>
-                </tr>
-            `).join('');
+            tableBody.innerHTML = users.map(user => {
+                const services = Array.isArray(user.service_breakdown) ? user.service_breakdown : [];
+                const servicesHtml = services.length
+                    ? services.map(service =>
+                        `<span class="service-tag" title="Commission: ${service.commission_rate}">${service.name} (${service.count})</span>`
+                    ).join('')
+                    : '<span class="service-tag" style="background: #f1f5f9; color: #475569;">No services</span>';
+                const totalCost = Number(user.total_cost || 0).toFixed(2);
+                const totalRevenue = Number(user.platform_revenue || 0).toFixed(2);
+                const documents = user.total_documents || 0;
+                const lastActivity = user.last_activity || 'Never';
+                return `
+                    <tr>
+                        <td class="user-email">${user.email}</td>
+                        <td class="documents-count">${documents}</td>
+                        <td class="service-tags">${servicesHtml}</td>
+                        <td class="cost-amount">₹${totalCost}</td>
+                        <td class="revenue-amount">₹${totalRevenue}</td>
+                        <td class="last-activity">${lastActivity}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
 
         // Update overview cards
-        function updateOverviewCards(overview) {
+        function updateOverviewCards(overview = {}) {
             document.getElementById('total-users').textContent = overview.total_users || 0;
             document.getElementById('total-cost').textContent = `₹${(overview.total_cost || 0).toFixed(2)}`;
             document.getElementById('total-revenue').textContent = `₹${(overview.total_revenue || 0).toFixed(2)}`;
@@ -2262,7 +2309,8 @@
         // Filter users based on search and period
         function filterUsers() {
             const searchTerm = document.getElementById('users-search').value.toLowerCase();
-            const activePeriod = document.querySelector('.filter-btn.active').getAttribute('data-period');
+            const activePeriodBtn = document.querySelector('.filter-btn[data-period].active');
+            const activePeriod = activePeriodBtn ? activePeriodBtn.getAttribute('data-period') : 'all';
             
             filteredUsersData = allUsersData.filter(user => {
                 const matchesSearch = user.email.toLowerCase().includes(searchTerm);
@@ -2292,33 +2340,71 @@
             }
         }
 
-         // Load vendors data from R2 (current date only)
-         function loadVendorsData() {
-             const loading = document.getElementById('vendors-loading');
-             const table = document.getElementById('vendors-table');
-             const empty = document.getElementById('vendors-empty');
-             
-             loading.style.display = 'block';
-             table.style.display = 'none';
-             empty.style.display = 'none';
-             
-             let url = '/admin-dashboard/vendors/';
+        // Load vendors data from D1 (supports month/week filtering)
+        function loadVendorsData(selectedPeriod = null, periodType = currentVendorPeriodType || 'month') {
+            const loading = document.getElementById('vendors-loading');
+            const table = document.getElementById('vendors-table');
+            const empty = document.getElementById('vendors-empty');
+            const tableBody = document.getElementById('vendors-table-body');
             
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            empty.style.display = 'none';
+            
+            const params = new URLSearchParams();
+            if (selectedPeriod) {
+                params.set(periodType === 'week' ? 'week' : 'month', selectedPeriod);
+            }
+            const url = params.toString() ? `/admin-dashboard/vendors/?${params.toString()}` : '/admin-dashboard/vendors/';
+           
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Vendor data response:', data);
                     loading.style.display = 'none';
                     
-                    if (data.success && data.vendors && data.vendors.length > 0) {
-                        console.log(`Found ${data.vendors.length} vendors`);
-                        allVendorsData = data.vendors;
-                        filteredVendorsData = [...allVendorsData];
-                        displayVendors(data.vendors);
-                        updateVendorOverviewCards(data.overview);
-                    } else {
-                        console.log('No vendors found or error in response');
+                    if (!data.success) {
+                        if (tableBody) tableBody.innerHTML = '';
                         empty.style.display = 'block';
+                        return;
+                    }
+
+                    const vendors = Array.isArray(data.vendors) ? data.vendors : [];
+                    allVendorsData = vendors;
+                    filteredVendorsData = [...vendors];
+
+                    vendorAvailableMonths = Array.isArray(data.available_months) && data.available_months.length
+                        ? data.available_months
+                        : vendorAvailableMonths;
+
+                    const resolvedPeriodType = data.period_type || periodType || 'month';
+                    const vendorPeriodTypeSelectEl = document.getElementById('vendor-period-type');
+                    if (vendorPeriodTypeSelectEl && vendorPeriodTypeSelectEl.value !== resolvedPeriodType) {
+                        vendorPeriodTypeSelectEl.value = resolvedPeriodType;
+                    }
+                    currentVendorPeriodType = resolvedPeriodType;
+                    updateVendorPeriodLabel(resolvedPeriodType);
+                    updateVendorPeriodSelector(resolvedPeriodType, data.selected_period || selectedPeriod);
+
+                    if (vendors.length > 0) {
+                        displayVendors(vendors);
+                        table.style.display = 'table';
+                        empty.style.display = 'none';
+                    } else {
+                        table.style.display = 'none';
+                        empty.style.display = 'block';
+                        if (tableBody) tableBody.innerHTML = '';
+                    }
+
+                    updateVendorOverviewCards(data.overview || {});
+
+                    if (
+                        vendors.length === 0 &&
+                        !selectedPeriod &&
+                        resolvedPeriodType === 'month' &&
+                        vendorAvailableMonths.length > 0 &&
+                        vendorAvailableMonths[0] !== (data.selected_period || selectedPeriod)
+                    ) {
+                        loadVendorsData(vendorAvailableMonths[0], 'month');
                     }
                 })
                 .catch(error => {
@@ -2329,50 +2415,63 @@
 
         // Display vendors in the table
         function displayVendors(vendors) {
-            console.log('Displaying vendors:', vendors);
             const tableBody = document.getElementById('vendors-table-body');
             const table = document.getElementById('vendors-table');
             
             if (vendors.length === 0) {
-                console.log('No vendors to display');
                 document.getElementById('vendors-empty').style.display = 'block';
                 table.style.display = 'none';
                 return;
             }
 
-            console.log(`Displaying ${vendors.length} vendors in table`);
             table.style.display = 'table';
             document.getElementById('vendors-empty').style.display = 'none';
 
-             tableBody.innerHTML = vendors.map(vendor => `
-                 <tr>
-                     <td class="vendor-email">${vendor.vendor_email}</td>
-                     <td class="total-price" style="text-align: right;">₹${vendor.total_price.toFixed(2)}</td>
-                     <td class="platform-profit" style="text-align: right;">₹${vendor.total_platform_profit.toFixed(2)}</td>
-                     <td class="service-types" style="text-align: center;">${vendor.service_types}</td>
-                     <td class="amount-input" style="text-align: center;">
-                         <input type="number" 
-                                class="amount-field" 
-                                data-vendor-email="${vendor.vendor_email}"
-                                placeholder="Enter amount" 
-                                style="width: 100px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
-                     </td>
-                     <td class="action" style="text-align: center;">
-                         <button class="btn-submit-invoice" 
-                                 data-vendor-email="${vendor.vendor_email}"
-                                 style="background: #4CAF50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                             Submit
-                         </button>
-                     </td>
-                 </tr>
-             `).join('');
+            tableBody.innerHTML = vendors.map(vendor => {
+                const services = Array.isArray(vendor.service_breakdown) ? vendor.service_breakdown : [];
+                const servicesHtml = services.length
+                    ? services.map(service =>
+                        `<span class="service-tag" title="Jobs: ${service.count}">${service.name} (${service.count})</span>`
+                    ).join('')
+                    : '<span class="service-tag" style="background: #f1f5f9; color: #475569;">No services</span>';
+                const totalCost = Number(vendor.total_cost || vendor.total_price || 0).toFixed(2);
+                const platformRevenue = Number(vendor.platform_revenue || vendor.total_platform_profit || 0).toFixed(2);
+                const documents = vendor.total_documents || 0;
+                const lastActivity = vendor.last_activity || 'Never';
+                const vendorEmail = vendor.vendor_email || vendor.vendor_id || 'N/A';
+
+                return `
+                    <tr>
+                        <td class="vendor-email">${vendorEmail}</td>
+                        <td class="documents-count" style="text-align: center;">${documents}</td>
+                        <td class="service-tags" style="text-align: center;">${servicesHtml}</td>
+                        <td class="total-price" style="text-align: right;">₹${totalCost}</td>
+                        <td class="platform-profit" style="text-align: right;">₹${platformRevenue}</td>
+                        <td class="last-activity" style="text-align: right;">${lastActivity}</td>
+                        <td class="amount-input" style="text-align: center;">
+                            <input type="number" 
+                                   class="amount-field" 
+                                   data-vendor-email="${vendorEmail}"
+                                   placeholder="Enter amount" 
+                                   style="width: 100px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
+                        </td>
+                        <td class="action" style="text-align: center;">
+                            <button class="btn-submit-invoice" 
+                                    data-vendor-email="${vendorEmail}"
+                                    style="background: #4CAF50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                                Submit
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
              
              // Add event listeners for submit buttons
              document.querySelectorAll('.btn-submit-invoice').forEach(button => {
                  button.addEventListener('click', function() {
                      const vendorEmail = this.getAttribute('data-vendor-email');
                      const amountInput = document.querySelector(`input[data-vendor-email="${vendorEmail}"]`);
-                     const amount = amountInput.value;
+                     const amount = amountInput ? amountInput.value : '';
                      
                      if (!amount || amount <= 0) {
                          alert('Please enter a valid amount');
@@ -2415,7 +2514,7 @@
         }
 
         // Update vendor overview cards
-        function updateVendorOverviewCards(overview) {
+        function updateVendorOverviewCards(overview = {}) {
             document.getElementById('total-vendors').textContent = overview.total_vendors || 0;
             document.getElementById('total-vendor-documents').textContent = overview.total_documents || 0;
             document.getElementById('total-vendor-cost').textContent = `₹${(overview.total_cost || 0).toFixed(2)}`;
@@ -2435,26 +2534,58 @@
             }
         }
 
-        // Update vendor month selector dropdown
-        function updateVendorMonthSelector(availableMonths, selectedMonth) {
-            const monthSelect = document.getElementById('vendor-month-select');
-            monthSelect.innerHTML = '';
-            
-            if (availableMonths && availableMonths.length > 0) {
-                availableMonths.forEach(month => {
+        // Update vendor period label helper
+        function updateVendorPeriodLabel(periodType) {
+            const label = document.querySelector('label[for="vendor-period-select"]');
+            if (label) {
+                label.textContent = `Select ${periodType === 'week' ? 'Week' : 'Month'}:`;
+            }
+        }
+
+        // Update vendor period selector dropdown
+        function updateVendorPeriodSelector(periodType, selectedPeriod = null, options = {}) {
+            const periodSelect = document.getElementById('vendor-period-select');
+            if (!periodSelect) return;
+            periodSelect.innerHTML = '';
+
+            let targetValue = selectedPeriod || '';
+
+            if (periodType === 'week') {
+                const weeks = generateWeeksForYear(new Date().getFullYear());
+                weeks.forEach(week => {
+                    const option = document.createElement('option');
+                    option.value = week.value;
+                    option.textContent = week.label;
+                    periodSelect.appendChild(option);
+                });
+                if (!targetValue && weeks.length > 0) {
+                    targetValue = weeks[0].value;
+                }
+            } else {
+                const months = vendorAvailableMonths.length ? vendorAvailableMonths : [new Date().toISOString().slice(0, 7)];
+                months.forEach(month => {
                     const option = document.createElement('option');
                     option.value = month;
                     option.textContent = formatMonthDisplay(month);
-                    if (month === selectedMonth) {
-                        option.selected = true;
-                    }
-                    monthSelect.appendChild(option);
+                    periodSelect.appendChild(option);
                 });
-            } else {
+                if (!targetValue && months.length > 0) {
+                    targetValue = months[0];
+                }
+            }
+
+            if (!periodSelect.options.length) {
                 const option = document.createElement('option');
                 option.value = '';
                 option.textContent = 'No data available';
-                monthSelect.appendChild(option);
+                periodSelect.appendChild(option);
+            }
+
+            if (targetValue) {
+                periodSelect.value = targetValue;
+                if (options.triggerFetch) {
+                    loadVendorsData(targetValue, periodType);
+                }
             }
         }
 
@@ -2463,10 +2594,14 @@
             const searchTerm = document.getElementById('vendors-search').value.toLowerCase();
             
             filteredVendorsData = allVendorsData.filter(vendor => {
-                const matchesName = vendor.vendor_name.toLowerCase().includes(searchTerm);
-                const matchesEmail = vendor.email.toLowerCase().includes(searchTerm);
-                const matchesId = vendor.vendor_id.toLowerCase().includes(searchTerm);
-                return matchesName || matchesEmail || matchesId;
+                const nameValue = (vendor.vendor_name || vendor.vendor_email || '').toLowerCase();
+                const emailValue = (vendor.vendor_email || vendor.email || '').toLowerCase();
+                const idValue = (vendor.vendor_id || '').toLowerCase();
+                return (
+                    nameValue.includes(searchTerm) ||
+                    emailValue.includes(searchTerm) ||
+                    idValue.includes(searchTerm)
+                );
             });
             
             displayVendors(filteredVendorsData);
@@ -2562,7 +2697,7 @@
                     <td>${(item.message || '').replace(/</g,'&lt;')}</td>
                     <td>${(item.submitted_at || '').replace('T',' ').replace('Z','')}</td>
                     <td style="text-align:right;">
-                        <button class="primary-btn" onclick="markContactSolved(this)" data-key="${(item.key||'').replace(/'/g, "&#39;")}"><i class=\"fas fa-check\"></i>&nbsp;Mark Solved</button>
+                        <button class="primary-btn" onclick="markContactSolved(this)" data-key="${(item.key||'').replace(/'/g, "&#39;")}" data-email="${(item.email||'').replace(/"/g,'&quot;').replace(/'/g,"&#39;")}"><i class="fas fa-check"></i>&nbsp;Mark Solved</button>
                     </td>
                 </tr>
             `).join('');
@@ -2570,6 +2705,7 @@
 
         function markContactSolved(btn) {
             const key = btn.getAttribute('data-key');
+            const vendorEmail = btn.getAttribute('data-email') || '';
             const row = btn.closest('tr');
 
             btn.disabled = true;
@@ -2579,7 +2715,7 @@
             fetch('/admin-dashboard/contacts/mark-solved/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-                body: JSON.stringify({ key })
+                body: JSON.stringify({ key, vendor_email: vendorEmail })
             })
             .then(r => r.json())
             .then(data => {

@@ -29,7 +29,7 @@ def admin_dashboard(request):
 
 @staff_member_required
 def admin_users_data(request):
-    """Get all users data for admin dashboard from R2 storage with month filtering"""
+    """Get all users data for admin dashboard from D1 database with month filtering"""
     try:
         # Get selected period from request (month or week)
         selected_month = request.GET.get('month')
@@ -37,37 +37,49 @@ def admin_users_data(request):
         
         if selected_week:
             # Handle week filtering
-            users_data = get_all_users_from_r2_week(selected_week)
+            users_data = get_all_users_from_d1_week(selected_week)
             period_type = 'week'
             selected_period = selected_week
         elif selected_month:
             # Handle month filtering
-            users_data = get_all_users_from_r2(selected_month)
+            users_data = get_all_users_from_d1(selected_month)
             period_type = 'month'
             selected_period = selected_month
         else:
             # Default to current month
-            selected_period = datetime.datetime.now().strftime('%Y-%m')
-            users_data = get_all_users_from_r2(selected_period)
+            selected_month = datetime.datetime.now().strftime('%Y-%m')
+            selected_period = selected_month
+            users_data = get_all_users_from_d1(selected_month)
             period_type = 'month'
         
         # Get available months for dropdown
-        available_months = get_available_months()
+        available_months = get_available_months_from_d1()
+        if period_type == 'month' and selected_month:
+            if selected_month not in available_months:
+                available_months = sorted(list(set(available_months + [selected_month])), reverse=True)
+        elif not available_months:
+            available_months = [datetime.datetime.now().strftime('%Y-%m')]
         
         # Calculate overview statistics for selected month
         overview = calculate_overview_stats(users_data)
         
         # Calculate growth percentage if previous month data exists
         growth_percentage = 0.0
-        if len(available_months) > 1:
-            current_month_index = available_months.index(selected_month) if selected_month in available_months else 0
-            if current_month_index < len(available_months) - 1:
-                previous_month = available_months[current_month_index + 1]
-                previous_month_data = get_monthly_overview(previous_month)
-                growth_percentage = calculate_growth_percentage(overview, previous_month_data)
+        reference_month = None
+        if period_type == 'month':
+            reference_month = selected_month or (available_months[0] if available_months else None)
+        elif available_months:
+            reference_month = available_months[0]
+
+        if reference_month and reference_month in available_months:
+            idx = available_months.index(reference_month)
+            if idx < len(available_months) - 1:
+                previous_month = available_months[idx + 1]
+                previous_overview = get_monthly_overview_from_d1(previous_month)
+                growth_percentage = calculate_growth_percentage(overview, previous_overview)
         
         # Add month info to overview
-        overview['selected_month'] = selected_month
+        overview['selected_month'] = reference_month
         overview['growth_percentage'] = growth_percentage
         overview['available_months'] = available_months
         
@@ -88,9 +100,13 @@ def admin_users_data(request):
 
 
 def get_monthly_overview(month):
-    """Get overview data for a specific month"""
+    """Get overview data for a specific month (deprecated - use get_monthly_overview_from_d1)"""
+    return get_monthly_overview_from_d1(month)
+
+def get_monthly_overview_from_d1(month):
+    """Get overview data for a specific month from D1 database"""
     try:
-        users_data = get_all_users_from_r2(month)
+        users_data = get_all_users_from_d1(month)
         return calculate_overview_stats(users_data)
     except Exception as e:
         print(f"Error getting monthly overview for {month}: {str(e)}")
@@ -623,33 +639,19 @@ def get_user_notification_data(selected_month=None):
 
 
 def get_available_months():
-    """Get list of available months from R2 data"""
+    """Get list of available months (deprecated - use get_available_months_from_d1)"""
+    return get_available_months_from_d1()
+
+def get_available_months_from_d1():
+    """Get list of available months from D1 database"""
     try:
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-        
-        users_prefix = "users/"
-        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=users_prefix)
-        
-        months = set()
-        
-        if 'Contents' in objects:
-            for obj in objects['Contents']:
-                last_modified = obj.get('LastModified')
-                if last_modified:
-                    month_key = last_modified.strftime('%Y-%m')
-                    months.add(month_key)
-        
-        # Sort months in descending order (most recent first)
-        sorted_months = sorted(months, reverse=True)
-        return sorted_months
-        
+        months = fetch_user_job_months_from_worker()
+        if months:
+            return months
+        return [datetime.datetime.now().strftime('%Y-%m')]
     except Exception as e:
-        print(f"Error getting available months: {str(e)}")
-        return []
+        print(f"Error getting available months from D1: {str(e)}")
+        return [datetime.datetime.now().strftime('%Y-%m')]
 
 
 def calculate_growth_percentage(current_month_data, previous_month_data):
@@ -668,6 +670,7 @@ def calculate_growth_percentage(current_month_data, previous_month_data):
 
 def get_service_commission_rate(service_type):
     """Get commission rate for different service types - matches user dashboard rates"""
+    service_type = (service_type or 'default')
     commission_rates = {
         # A4 Print rates
         'regular print': 0.20,      # 20% (matches a4_print_bw and a4_print_color)
@@ -715,6 +718,596 @@ def get_service_commission_rate(service_type):
     # Normalize service type for matching
     normalized_type = service_type.lower().replace('_', ' ').strip()
     return commission_rates.get(normalized_type, 0.15)
+
+
+# ==================== D1 Database Functions ====================
+
+def fetch_user_jobs_from_worker(payload=None, timeout=20):
+    """Call Worker API to fetch user print jobs with optional filters."""
+    api_url = getattr(settings, 'WORKER_API_URL', '')
+    api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+    if not api_url or not api_key:
+        print("⚠️ Worker API not configured for D1 database")
+        return []
+
+    worker_endpoint = api_url.rstrip('/') + '/get-all-user-jobs'
+    try:
+        resp = requests.post(
+            worker_endpoint,
+            json=payload or {},
+            headers={
+                'x-api-key': api_key,
+                'Content-Type': 'application/json'
+            },
+            timeout=timeout
+        )
+
+        if resp.status_code != 200:
+            error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
+            print(f"⚠️ Failed to get jobs from D1: {resp.status_code} - {error_text}")
+            return []
+
+        data = resp.json()
+        if not data.get('success'):
+            error_msg = data.get('error', 'Unknown error')
+            print(f"⚠️ Worker API returned error for user jobs: {error_msg}")
+            return []
+
+        return data.get('data', []) or []
+    except requests.exceptions.RequestException as exc:
+        print(f"⚠️ Network error fetching user jobs from D1: {exc}")
+        return []
+    except Exception as exc:
+        print(f"⚠️ Unexpected error fetching user jobs from D1: {exc}")
+        return []
+
+
+def fetch_user_job_months_from_worker():
+    """Retrieve distinct months present in User_print_jobs via Worker API."""
+    api_url = getattr(settings, 'WORKER_API_URL', '')
+    api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+    if not api_url or not api_key:
+        print("⚠️ Worker API not configured for D1 database")
+        return []
+
+    worker_endpoint = api_url.rstrip('/') + '/get-user-job-months'
+    try:
+        resp = requests.post(
+            worker_endpoint,
+            json={},
+            headers={
+                'x-api-key': api_key,
+                'Content-Type': 'application/json'
+            },
+            timeout=15
+        )
+
+        if resp.status_code != 200:
+            print(f"⚠️ Failed to get user-job months from D1: {resp.status_code}")
+            return []
+
+        data = resp.json()
+        if not data.get('success'):
+            print(f"⚠️ Worker API returned error for user-job months: {data.get('error')}")
+            return []
+
+        months = data.get('data', []) or []
+        return [str(month) for month in months if isinstance(month, str) and len(month) == 7]
+    except requests.exceptions.RequestException as exc:
+        print(f"⚠️ Network error fetching user-job months from D1: {exc}")
+        return []
+    except Exception as exc:
+        print(f"⚠️ Unexpected error fetching user-job months from D1: {exc}")
+        return []
+
+
+def _safe_parse_datetime(raw_value):
+    """Parse various timestamp formats into naive datetime."""
+    if not raw_value:
+        return None
+
+    safe_value = str(raw_value).strip()
+    if not safe_value:
+        return None
+
+    if safe_value.endswith('Z'):
+        safe_value = safe_value[:-1] + '+00:00'
+
+    parsed = None
+    try:
+        parsed = datetime.datetime.fromisoformat(safe_value)
+    except ValueError:
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S'):
+            try:
+                base_value = safe_value.split('.')[0]
+                parsed = datetime.datetime.strptime(base_value, fmt)
+                break
+            except ValueError:
+                continue
+
+    if not parsed:
+        return None
+
+    if parsed.tzinfo:
+        parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
+    return parsed
+
+
+def get_job_timestamp(job):
+    """Return cached or freshly parsed timestamp for a job dict."""
+    cached = job.get('_parsed_timestamp')
+    if cached:
+        return cached
+
+    timestamp = None
+    for field in ('timestamp', 'completion_time', 'uploaded_at', 'created_at', 'updated_at'):
+        timestamp = _safe_parse_datetime(job.get(field))
+        if timestamp:
+            break
+
+    if timestamp:
+        job['_parsed_timestamp'] = timestamp
+
+    return timestamp
+
+
+def get_all_users_from_d1(selected_month=None):
+    """Get all users data from D1 database User_print_jobs table with month filtering
+    Uses same pattern as get_all_vendors_from_d1 for consistency"""
+    try:
+        payload = {}
+        if selected_month:
+            payload['month'] = selected_month
+        
+        all_jobs = fetch_user_jobs_from_worker(payload)
+        if not all_jobs:
+            return []
+        
+        # Group jobs by user_email (same pattern as vendor code)
+        user_jobs_map = {}
+        for job in all_jobs:
+            user_email = (job.get('user_email') or '').strip()
+            if not user_email:
+                continue
+            user_jobs_map.setdefault(user_email, []).append(job)
+        
+        # Process each user's data
+        users_data = []
+        for user_email, jobs in user_jobs_map.items():
+            user_data = process_user_data_from_d1(user_email, jobs)
+            if user_data and user_data.get('total_documents', 0) > 0:
+                users_data.append(user_data)
+        
+        # Sort by last activity (most recent first)
+        users_data.sort(key=lambda x: x.get('last_activity_date') or datetime.datetime.min, reverse=True)
+        
+        return users_data
+        
+    except Exception as e:
+        print(f"Error getting all users from D1: {str(e)}")
+        return []
+
+
+def get_all_users_from_d1_week(selected_week):
+    """Get all users data from D1 database with week filtering"""
+    try:
+        # Parse week format (YYYY-WW)
+        year, week_num = selected_week.split('-W')
+        year = int(year)
+        week_num = int(week_num)
+        
+        # Calculate the start and end dates for the week
+        jan_1 = datetime.datetime(year, 1, 1)
+        days_since_monday = jan_1.weekday()
+        first_monday = jan_1 - datetime.timedelta(days=days_since_monday)
+        week_start = (first_monday + datetime.timedelta(weeks=week_num - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        week_end = (week_start + datetime.timedelta(days=6)).replace(hour=23, minute=59, second=59, microsecond=0)
+        
+        payload = {
+            'week_start': week_start.isoformat(),
+            'week_end': week_end.isoformat()
+        }
+        all_jobs = fetch_user_jobs_from_worker(payload)
+        
+        # Group jobs by user_email and filter by week
+        user_jobs_map = {}
+        for job in all_jobs:
+            user_email = job.get('user_email', '').strip()
+            if not user_email:
+                continue
+            
+            # Filter by week - use completion_time or created_at from User_notifications
+            timestamp_obj = None
+            completion_time = job.get('completion_time')
+            created_at = job.get('created_at')
+            
+            if completion_time:
+                timestamp_obj = _safe_parse_datetime(completion_time)
+            elif created_at:
+                timestamp_obj = _safe_parse_datetime(created_at)
+            
+            if not timestamp_obj:
+                continue
+            
+            dt_naive = timestamp_obj.replace(tzinfo=None) if timestamp_obj.tzinfo else timestamp_obj
+            if dt_naive < week_start or dt_naive > week_end:
+                continue
+            
+            if user_email not in user_jobs_map:
+                user_jobs_map[user_email] = []
+            user_jobs_map[user_email].append(job)
+        
+        # Process each user's data
+        users_data = []
+        for user_email, jobs in user_jobs_map.items():
+            user_data = process_user_data_from_d1(user_email, jobs)
+            if user_data and user_data['total_documents'] > 0:
+                users_data.append(user_data)
+        
+        # Sort by last activity
+        users_data.sort(key=lambda x: x['last_activity_date'] or datetime.datetime.min, reverse=True)
+        
+        return users_data
+        
+    except Exception as e:
+        print(f"Error getting all users from D1 for week {selected_week}: {str(e)}")
+        return []
+
+
+def process_user_data_from_d1(user_email, jobs):
+    """Process individual user data from D1 User_notifications table"""
+    try:
+        if not jobs:
+            return None
+        
+        total_documents = len(jobs)
+        total_cost = 0.0
+        total_revenue = 0.0
+        service_breakdown = {}
+        last_activity = None
+        
+        for job in jobs:
+            # Get service type from User_notifications
+            service_type = job.get('service_type', 'default')
+            if not service_type:
+                service_type = 'default'
+            if service_type not in service_breakdown:
+                service_breakdown[service_type] = {'count': 0, 'total_cost': 0.0, 'total_revenue': 0.0}
+            
+            # Get pricing data from User_notifications (total_price is INTEGER, convert to float)
+            price = 0.0
+            total_price_val = job.get('total_price')
+            if total_price_val is not None:
+                try:
+                    # Handle both integer and string values
+                    price = float(total_price_val) if total_price_val else 0.0
+                except (ValueError, TypeError):
+                    price = 0.0
+            
+            # Get platform_profit from User_notifications (already calculated, INTEGER)
+            platform_profit = 0.0
+            platform_profit_val = job.get('platform_profit')
+            if platform_profit_val is not None:
+                try:
+                    platform_profit = float(platform_profit_val) if platform_profit_val else 0.0
+                except (ValueError, TypeError):
+                    platform_profit = 0.0
+            
+            # If platform_profit is not available, calculate it
+            if platform_profit == 0.0 and price > 0.0:
+                commission_rate = get_service_commission_rate(service_type)
+                platform_profit = price * commission_rate
+            
+            # Update totals
+            total_cost += price
+            total_revenue += platform_profit
+            
+            # Update service breakdown
+            service_breakdown[service_type]['count'] += 1
+            service_breakdown[service_type]['total_cost'] += price
+            service_breakdown[service_type]['total_revenue'] += platform_profit
+            
+            # Update last activity - use completion_time or created_at from User_notifications
+            timestamp_obj = None
+            completion_time = job.get('completion_time')
+            created_at = job.get('created_at')
+            
+            if completion_time:
+                timestamp_obj = _safe_parse_datetime(completion_time)
+            elif created_at:
+                timestamp_obj = _safe_parse_datetime(created_at)
+            
+            if timestamp_obj and (not last_activity or timestamp_obj > last_activity):
+                last_activity = timestamp_obj
+        
+        if total_documents == 0:
+            return None
+        
+        # Format service breakdown for display
+        service_breakdown_list = []
+        for service_type, data in service_breakdown.items():
+            service_breakdown_list.append({
+                'name': str(service_type).replace('_', ' ').title() if service_type else 'Unknown',
+                'count': data['count'],
+                'total_cost': data['total_cost'],
+                'total_revenue': data['total_revenue'],
+                'commission_rate': get_service_commission_rate(service_type)
+            })
+        
+        return {
+            'email': user_email,
+            'total_documents': total_documents,
+            'total_cost': round(total_cost, 2),
+            'platform_revenue': round(total_revenue, 2),
+            'service_breakdown': service_breakdown_list,
+            'last_activity': last_activity.strftime('%Y-%m-%d %H:%M') if last_activity else 'Never',
+            'last_activity_date': last_activity
+        }
+        
+    except Exception as e:
+        print(f"Error processing user data from D1 for {user_email}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+def fetch_vendor_jobs_from_d1(payload=None):
+    """Helper to call Worker API and fetch vendor jobs stored in D1."""
+    api_url = getattr(settings, 'WORKER_API_URL', '')
+    api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+    if not api_url or not api_key:
+        print("⚠️ Worker API not configured for D1 database")
+        return []
+
+    worker_endpoint = api_url.rstrip('/') + '/get-all-vendor-jobs'
+    try:
+        resp = requests.post(
+            worker_endpoint,
+            json=payload or {},
+            headers={
+                'x-api-key': api_key,
+                'Content-Type': 'application/json'
+            },
+            timeout=20
+        )
+
+        if resp.status_code != 200:
+            error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
+            print(f"⚠️ Failed to get vendor jobs from D1: {resp.status_code} - {error_text}")
+            return []
+
+        data = resp.json()
+        if not data.get('success'):
+            error_msg = data.get('error', 'Unknown error')
+            print(f"⚠️ Worker API returned error for vendor jobs: {error_msg}")
+            return []
+
+        return data.get('data', []) or []
+    except requests.exceptions.RequestException as exc:
+        print(f"⚠️ Network error fetching vendor jobs from D1: {exc}")
+        return []
+    except Exception as exc:
+        print(f"⚠️ Unexpected error fetching vendor jobs from D1: {exc}")
+        return []
+
+
+def get_all_vendors_from_d1(selected_month=None):
+    """Aggregate vendor data from D1 Vendor_print_jobs table with month filtering."""
+    payload = {}
+    if selected_month:
+        payload['month'] = selected_month
+
+    jobs = fetch_vendor_jobs_from_d1(payload)
+    if not jobs:
+        return []
+
+    vendor_jobs_map = {}
+    for job in jobs:
+        vendor_email = (job.get('vendor_email') or '').strip()
+        vendor_id = str(job.get('vendor_id') or '').strip()
+        vendor_key = vendor_email or vendor_id
+        if not vendor_key:
+            continue
+        vendor_jobs_map.setdefault(vendor_key, []).append(job)
+
+    vendors_data = []
+    for vendor_key, vendor_jobs in vendor_jobs_map.items():
+        vendor_record = process_vendor_data_from_d1(vendor_key, vendor_jobs)
+        if vendor_record and vendor_record.get('total_documents', 0) > 0:
+            vendors_data.append(vendor_record)
+
+    vendors_data.sort(key=lambda x: x.get('last_activity_date') or datetime.datetime.min, reverse=True)
+    return vendors_data
+
+
+def get_all_vendors_from_d1_week(selected_week):
+    """Aggregate vendor data from D1 with ISO week filtering."""
+    if not selected_week:
+        return []
+
+    try:
+        year, week_num = selected_week.split('-W')
+        year = int(year)
+        week_num = int(week_num)
+    except ValueError:
+        print(f"⚠️ Invalid week format: {selected_week}")
+        return []
+
+    jan_1 = datetime.datetime(year, 1, 1)
+    days_since_monday = jan_1.weekday()
+    first_monday = jan_1 - datetime.timedelta(days=days_since_monday)
+    week_start = first_monday + datetime.timedelta(weeks=week_num - 1)
+    week_end = week_start + datetime.timedelta(days=6)
+
+    start_iso = week_start.replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + 'Z'
+    end_boundary = (week_end + datetime.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_iso = end_boundary.isoformat() + 'Z'
+
+    jobs = fetch_vendor_jobs_from_d1({
+        'week_start': start_iso,
+        'week_end': end_iso
+    })
+
+    if not jobs:
+        return []
+
+    vendor_jobs_map = {}
+    for job in jobs:
+        vendor_email = (job.get('vendor_email') or '').strip()
+        vendor_id = str(job.get('vendor_id') or '').strip()
+        vendor_key = vendor_email or vendor_id
+        if not vendor_key:
+            continue
+
+        # Additional safeguard if Worker-side filtering missed edge cases
+        # Use completion_time or timestamp from vendor_notification (vendor_notification has timestamp, not created_at)
+        timestamp_obj = None
+        completion_time = job.get('completion_time')
+        timestamp = job.get('timestamp')
+        
+        if completion_time:
+            timestamp_obj = _safe_parse_datetime(completion_time)
+        elif timestamp:
+            timestamp_obj = _safe_parse_datetime(timestamp)
+        
+        if timestamp_obj:
+            dt_naive = timestamp_obj.replace(tzinfo=None) if timestamp_obj.tzinfo else timestamp_obj
+            if dt_naive < week_start or dt_naive > (week_end + datetime.timedelta(days=1)):
+                continue
+
+        vendor_jobs_map.setdefault(vendor_key, []).append(job)
+
+    vendors_data = []
+    for vendor_key, vendor_jobs in vendor_jobs_map.items():
+        vendor_record = process_vendor_data_from_d1(vendor_key, vendor_jobs)
+        if vendor_record and vendor_record.get('total_documents', 0) > 0:
+            vendors_data.append(vendor_record)
+
+    vendors_data.sort(key=lambda x: x.get('last_activity_date') or datetime.datetime.min, reverse=True)
+    return vendors_data
+
+
+def process_vendor_data_from_d1(vendor_key, jobs):
+    """Summarize vendor metrics from D1 vendor_notification table."""
+    if not jobs:
+        return None
+
+    total_documents = len(jobs)
+    total_cost = 0.0
+    platform_revenue = 0.0
+    service_breakdown = {}
+    last_activity = None
+
+    vendor_email = ''
+    vendor_id = ''
+    vendor_name = ''
+
+    for job in jobs:
+        if not vendor_email:
+            vendor_email = (job.get('vendor_email') or '').strip()
+        if not vendor_id and job.get('vendor_id'):
+            vendor_id = str(job.get('vendor_id') or '').strip()
+        if not vendor_name:
+            vendor_name = (job.get('vendor_name') or '').strip()
+
+        service_type = job.get('service_type') or 'default'
+        if not service_type:
+            service_type = 'default'
+
+        # Get pricing data from vendor_notification (total_price is INTEGER, convert to float)
+        price = 0.0
+        total_price_val = job.get('total_price')
+        if total_price_val is not None:
+            try:
+                price = float(total_price_val) if total_price_val else 0.0
+            except (ValueError, TypeError):
+                price = 0.0
+
+        # Get platform_profit from vendor_notification (already calculated, INTEGER)
+        platform_profit_val = job.get('platform_profit')
+        if platform_profit_val is not None:
+            try:
+                profit = float(platform_profit_val) if platform_profit_val else 0.0
+            except (ValueError, TypeError):
+                profit = 0.0
+        else:
+            # If platform_profit is not available, calculate it
+            commission_rate = get_service_commission_rate(service_type)
+            profit = price * commission_rate
+
+        total_cost += price
+        platform_revenue += profit
+
+        breakdown = service_breakdown.setdefault(service_type, {'count': 0, 'total_cost': 0.0})
+        breakdown['count'] += 1
+        breakdown['total_cost'] += price
+
+        # Use completion_time or timestamp from vendor_notification (vendor_notification has timestamp, not created_at)
+        timestamp_obj = None
+        completion_time = job.get('completion_time')
+        timestamp = job.get('timestamp')
+        
+        if completion_time:
+            timestamp_obj = _safe_parse_datetime(completion_time)
+        elif timestamp:
+            timestamp_obj = _safe_parse_datetime(timestamp)
+        
+        if timestamp_obj and (not last_activity or timestamp_obj > last_activity):
+            last_activity = timestamp_obj
+
+    if total_documents == 0:
+        return None
+
+    service_breakdown_list = [
+        {
+            'name': str(service).replace('_', ' ').title() if service else 'Unknown',
+            'count': data['count'],
+            'total_cost': round(data['total_cost'], 2)
+        }
+        for service, data in service_breakdown.items()
+    ]
+
+    return {
+        'vendor_key': vendor_key,
+        'vendor_email': vendor_email or vendor_key,
+        'vendor_id': vendor_id or vendor_key,
+        'vendor_name': vendor_name or vendor_email or vendor_key,
+        'total_documents': total_documents,
+        'total_cost': round(total_cost, 2),
+        'platform_revenue': round(platform_revenue, 2),
+        'service_breakdown': service_breakdown_list,
+        'last_activity': last_activity.strftime('%Y-%m-%d %H:%M') if last_activity else 'Never',
+        'last_activity_date': last_activity
+    }
+
+
+def get_available_vendor_months_from_d1():
+    """Return sorted list of months that have vendor notifications in D1."""
+    jobs = fetch_vendor_jobs_from_d1()
+    if not jobs:
+        return [datetime.datetime.now().strftime('%Y-%m')]
+
+    months = set()
+    for job in jobs:
+        # Use completion_time or timestamp from vendor_notification (vendor_notification has timestamp, not created_at)
+        timestamp_obj = None
+        completion_time = job.get('completion_time')
+        timestamp = job.get('timestamp')
+        
+        if completion_time:
+            timestamp_obj = _safe_parse_datetime(completion_time)
+        elif timestamp:
+            timestamp_obj = _safe_parse_datetime(timestamp)
+        
+        if timestamp_obj:
+            months.add(timestamp_obj.strftime('%Y-%m'))
+
+    sorted_months = sorted(months, reverse=True)
+    return sorted_months or [datetime.datetime.now().strftime('%Y-%m')]
 
 
 def process_user_data_from_r2(s3, user_email, selected_month=None):
@@ -909,29 +1502,33 @@ def get_user_total_payments_from_r2(user_email):
 
 @staff_member_required
 def admin_vendors_data(request):
-    """Get vendor data from vendor_notification folder for current date only"""
+    """Get vendor data from D1 Vendor_print_jobs table with period filtering"""
     try:
-        # Get current date
-        current_date = datetime.datetime.now().date()
-        print(f"🔍 Admin vendors data request for date: {current_date}")
-        
-        # Get vendor notification data for current date only
-        vendor_notification_data = get_vendor_notification_data_current_date(current_date)
-        print(f"📊 Found {len(vendor_notification_data)} vendors for current date")
-        
-        # Calculate overview statistics
-        overview = calculate_vendor_overview_stats_current_date(vendor_notification_data)
-        
-        # Debug: Print vendor data
-        for vendor in vendor_notification_data:
-            print(f"📋 Vendor: {vendor['vendor_email']}, Total Price: {vendor['total_price']}, Platform Profit: {vendor['total_platform_profit']}")
-        
+        selected_month = request.GET.get('month')
+        selected_week = request.GET.get('week')
+
+        if selected_week:
+            vendors_data = get_all_vendors_from_d1_week(selected_week)
+            period_type = 'week'
+            selected_period = selected_week
+        else:
+            if not selected_month:
+                selected_month = datetime.datetime.now().strftime('%Y-%m')
+            vendors_data = get_all_vendors_from_d1(selected_month)
+            period_type = 'month'
+            selected_period = selected_month
+
+        available_months = get_available_vendor_months_from_d1()
+        overview = calculate_vendor_overview_stats(vendors_data)
+
         return JsonResponse({
             'success': True,
-            'vendors': vendor_notification_data,
+            'vendors': vendors_data,
             'overview': overview,
-            'total_count': len(vendor_notification_data),
-            'current_date': current_date.strftime('%Y-%m-%d')
+            'total_count': len(vendors_data),
+            'available_months': available_months,
+            'period_type': period_type,
+            'selected_period': selected_period
         })
         
     except Exception as e:
@@ -1271,11 +1868,13 @@ def calculate_vendor_overview_stats(vendors_data):
         total_vendors = len(vendors_data)
         total_documents = sum(vendor['total_documents'] for vendor in vendors_data)
         total_cost = sum(vendor['total_cost'] for vendor in vendors_data)
+        total_revenue = sum(vendor.get('platform_revenue', 0.0) for vendor in vendors_data)
         
         return {
             'total_vendors': total_vendors,
             'total_documents': total_documents,
-            'total_cost': round(total_cost, 2)
+            'total_cost': round(total_cost, 2),
+            'total_revenue': round(total_revenue, 2)
         }
         
     except Exception as e:
@@ -1283,18 +1882,19 @@ def calculate_vendor_overview_stats(vendors_data):
         return {
             'total_vendors': 0,
             'total_documents': 0,
-            'total_cost': 0.0
+            'total_cost': 0.0,
+            'total_revenue': 0.0
         }
 
 
 def get_vendor_monthly_overview(month):
     """Get vendor overview data for a specific month"""
     try:
-        vendors_data = get_all_vendors_from_r2(month)
+        vendors_data = get_all_vendors_from_d1(month)
         return calculate_vendor_overview_stats(vendors_data)
     except Exception as e:
         print(f"Error getting vendor monthly overview for {month}: {str(e)}")
-        return {'total_vendors': 0, 'total_documents': 0, 'total_cost': 0.0}
+        return {'total_vendors': 0, 'total_documents': 0, 'total_cost': 0.0, 'total_revenue': 0.0}
 
 
 def get_vendor_stats_from_r2(vendor_email):
@@ -2153,6 +2753,9 @@ def admin_contacts_data(request):
                     for contact in all_contacts:
                         solved_status = contact.get('solved_status', 'no')
                         if str(solved_status).lower() == 'no':
+                            contact_id_value = contact.get('id')
+                            rowid_value = contact.get('rowid') or contact.get('row_id') or contact.get('rowID')
+                            key_value = contact_id_value if contact_id_value not in (None, '', 'null') else rowid_value
                             contacts.append({
                                 'name': contact.get('name', ''),
                                 'email': contact.get('email', ''),
@@ -2160,7 +2763,7 @@ def admin_contacts_data(request):
                                 'message': contact.get('message', ''),
                                 'submitted_at': contact.get('submitted_at', ''),
                                 'solved_status': solved_status,
-                                'key': str(contact.get('id', ''))  # Use ID as key for D1 database
+                                'key': str(key_value or '').strip()
                             })
                     
                     # Sort newest first by submitted_at
@@ -2209,10 +2812,23 @@ def admin_mark_contact_solved(request):
         except Exception:
             payload = {}
 
-        contact_id = (payload.get('key') or '').strip()
-        if not contact_id:
-            return JsonResponse({'success': False, 'error': 'Missing contact ID'}, status=400)
+        contact_id_str = (payload.get('key') or '').strip()
+        vendor_email = (
+            payload.get('vendor_email')
+            or payload.get('email')
+            or payload.get('contact_email')
+            or ''
+        ).strip()
 
+        contact_id = None
+        if contact_id_str:
+            try:
+                parsed_id = int(contact_id_str)
+                if parsed_id > 0:
+                    contact_id = parsed_id
+            except (ValueError, TypeError):
+                contact_id = None
+        
         # Update in D1 database via Worker API
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
@@ -2226,7 +2842,67 @@ def admin_mark_contact_solved(request):
         for endpoint in ['/add-contact', '/add-vendor-register', '/add-vendor-pricing', '/get-all-vendors', '/contacts', '/update-contact']:
             if base_url.endswith(endpoint):
                 base_url = base_url[:-len(endpoint)]
-        worker_endpoint = base_url.rstrip('/') + '/update-contact'
+        worker_base = base_url.rstrip('/')
+        worker_endpoint = worker_base + '/update-contact'
+
+        def _resolve_contact_id_from_email(email_value):
+            """Fallback lookup: fetch contact list and match by email."""
+            if not email_value:
+                return None
+            lookup_endpoint = worker_base + '/contacts'
+            try:
+                resp = requests.get(
+                    lookup_endpoint,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=15
+                )
+                if resp.status_code != 200:
+                    return None
+                data = resp.json()
+                if not data.get('success'):
+                    return None
+                email_lower = email_value.lower()
+                for contact in data.get('data', []):
+                    contact_email = str(contact.get('email', '')).strip().lower()
+                    if contact_email == email_lower:
+                        potential_id = contact.get('id')
+                        rowid_value = contact.get('rowid') or contact.get('row_id') or contact.get('rowID')
+                        try:
+                            if potential_id not in (None, '', 'null'):
+                                cid = int(potential_id)
+                                if cid > 0:
+                                    return cid
+                        except (ValueError, TypeError):
+                            pass
+                        try:
+                            if rowid_value not in (None, '', 'null'):
+                                rid = int(rowid_value)
+                                if rid > 0:
+                                    return rid
+                        except (ValueError, TypeError):
+                            continue
+            except requests.exceptions.RequestException as lookup_err:
+                print(f"⚠️ Failed to resolve contact ID from email {email_value}: {lookup_err}")
+            except Exception as lookup_err:
+                print(f"⚠️ Unexpected error resolving contact ID: {lookup_err}")
+            return None
+
+        if not contact_id and vendor_email:
+            contact_id = _resolve_contact_id_from_email(vendor_email)
+
+        if not contact_id:
+            return JsonResponse(
+                {
+                    'success': False,
+                    'error': 'Contact ID not found. Provide a valid contact key or vendor email.'
+                },
+                status=400
+            )
+
+        contact_id_str = str(contact_id)
         
         try:
             resp = requests.post(
@@ -2245,7 +2921,7 @@ def admin_mark_contact_solved(request):
             if resp.status_code == 200:
                 response_data = resp.json()
                 if response_data.get('success'):
-                    return JsonResponse({'success': True, 'key': contact_id})
+                    return JsonResponse({'success': True, 'key': contact_id_str})
                 else:
                     error_msg = response_data.get('error', 'Unknown error from Worker API')
                     return JsonResponse({'success': False, 'error': f'Worker API error: {error_msg}'}, status=500)
