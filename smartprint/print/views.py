@@ -887,8 +887,10 @@ def vendordashboard(request):
                 'completed_jobs_count': 0,
             })
 
-        # Fetch vendor-specific jobs strictly from D1 database
-        files = get_vendor_jobs_from_d1(vendor_id) or []
+        # Fetch vendor-specific jobs strictly from D1 database (pending + completed for KPIs)
+        pending_jobs = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
+        completed_jobs_raw = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='YES') or []
+        files = pending_jobs + completed_jobs_raw
         if not files:
             print(f"ℹ️ No jobs returned from D1 for vendor {vendor_id}")
         
@@ -908,12 +910,14 @@ def vendordashboard(request):
             # Default rendered_status
             job['rendered_status'] = job.get('rendered_status') or job.get('metadata', {}).get('rendered_status', 'NO')
             # Get job status - prioritize job_completed over job_completed_status
-            job_completed = job.get('job_completed', 'NO').upper()
-            if job_completed == 'NO' and 'job_completed_status' in job:
-                # Handle legacy field if job_completed is not set
-                job_completed = job.get('job_completed_status', 'NO').upper()
+            job_completed_raw = job.get('job_completed')
+            if not job_completed_raw:
+                job_completed_raw = job.get('job_completed_status')
+            if job_completed_raw is None or str(job_completed_raw).strip() == '':
+                job_completed_raw = 'NO'
+            job_completed = str(job_completed_raw).strip().upper()
             
-            service_type = job.get('service_type', '').strip().lower()
+            service_type = (job.get('service_type') or '').strip().lower()
             vendor_status = job.get('vendor_status', 'not sended').lower()
             is_hidden = job.get('is_hidden', 'false').lower() == 'true'
             
@@ -1246,6 +1250,22 @@ def userdashboard(request):
     try:
         # ULTRA-FAST: Avoid synchronous job loading; fetch details only
         user_details = get_user_details_from_d1(request.user.email) or {}
+        preloaded_jobs = get_user_jobs_from_d1(request.user.email)
+        if not isinstance(preloaded_jobs, list):
+            preloaded_jobs = []
+        pending_job_list = [
+            job for job in preloaded_jobs
+            if str(job.get('job_completed', 'NO')).upper() != 'YES'
+        ]
+        total_jobs = len(preloaded_jobs)
+        pending_jobs = len(pending_job_list)
+        completed_jobs = total_jobs - pending_jobs
+        current_month = datetime.datetime.now().strftime("%Y-%m")
+        current_month_jobs = sum(
+            1 for job in preloaded_jobs
+            if str(job.get('uploaded_at') or job.get('timestamp', '')).startswith(current_month)
+        )
+        total_earnings = current_month_jobs * 50
 
         session_name = (request.session.get('user_name') or '').strip()
         session_picture = (request.session.get('user_picture') or '').strip()
@@ -1270,11 +1290,12 @@ def userdashboard(request):
 
         nav_profile_image = user_details.get('profile_picture') or session_picture
 
-        # Defer jobs and stats to async endpoint for instant dashboard paint
-        total_jobs = 0
-        pending_jobs = 0
-        completed_jobs = 0
-        total_earnings = 0
+        # Serialize preloaded jobs for instant client rendering
+        try:
+            user_jobs_json = json.dumps(preloaded_jobs, default=str)
+        except Exception as serialize_error:
+            print(f"⚠️ Error serializing preloaded jobs: {serialize_error}")
+            user_jobs_json = '[]'
         try:
             user_points = get_total_user_points(request.user.email)
         except Exception:
@@ -1291,8 +1312,8 @@ def userdashboard(request):
             'user_nav_profile_image': nav_profile_image,
             'firebase_uid': request.session.get('firebase_uid'),
             'auth_method': request.session.get('auth_method', 'unknown'),
-            'user_jobs': [],  # Defer loading to client-side
-            'user_jobs_json': json.dumps([]),  # Empty for fast initial render
+            'user_jobs': preloaded_jobs,
+            'user_jobs_json': user_jobs_json,
             'total_jobs': total_jobs,
             'pending_jobs': pending_jobs,
             'completed_jobs': completed_jobs,
@@ -1339,18 +1360,28 @@ def userdashboard(request):
         })
 
 
-def get_user_jobs_from_d1(user_email):
+def get_user_jobs_from_d1(user_email, fallback_to_r2=True):
     """
     Fetch user print jobs from D1 database via Worker API
     Returns list of jobs with R2 paths from database
     """
+    def _maybe_fallback():
+        if not fallback_to_r2:
+            return []
+        try:
+            print(f"ℹ️ Falling back to R2 for user jobs: {user_email}")
+            return get_user_jobs_from_r2(user_email)
+        except Exception as fallback_error:
+            print(f"⚠️ R2 fallback failed for {user_email}: {fallback_error}")
+            return []
+
     try:
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
         
         if not api_url or not api_key:
             print("⚠️ Worker API not configured for D1 database")
-            return []
+            return _maybe_fallback()
         
         # Construct Worker API endpoint
         worker_endpoint = api_url.rstrip('/') + '/get-user-print-jobs'
@@ -1383,6 +1414,13 @@ def get_user_jobs_from_d1(user_email):
                                 region_name='auto')
                 
                 processed_jobs = []
+                vendor_email_cache = {}
+                vendor_coords_cache = {}
+
+                def _normalize_identifier(value):
+                    if value is None:
+                        return ''
+                    return str(value).strip().lower()
                 for job in jobs:
                     # Get storage folder and R2 path from database
                     storage_folder = job.get('storage_folder') or 'user_print_jobs'
@@ -1443,7 +1481,19 @@ def get_user_jobs_from_d1(user_email):
                     job.setdefault('total_price', job.get('total_price', 0))
                     job.setdefault('final_amount', job.get('final_amount', 0))
                     job.setdefault('user_email', job.get('user_email', ''))
-                    job.setdefault('vendor_email', job.get('vendor_email', ''))
+                    vendor_identifier = job.get('vendor_id') or job.get('vendor')
+                    vendor_email_value = (job.get('vendor_email') or '').strip()
+                    if not vendor_email_value and vendor_identifier:
+                        cache_key = _normalize_identifier(vendor_identifier)
+                        if cache_key not in vendor_email_cache:
+                            try:
+                                resolved_email = get_vendor_email_by_vendor_id(vendor_identifier) or ''
+                            except Exception as vendor_lookup_error:
+                                print(f"⚠️ Error resolving vendor email for {vendor_identifier}: {vendor_lookup_error}")
+                                resolved_email = ''
+                            vendor_email_cache[cache_key] = resolved_email
+                        vendor_email_value = vendor_email_cache.get(cache_key, '')
+                    job['vendor_email'] = vendor_email_value or job.get('vendor_email', '')
                     job.setdefault('vendor_id', job.get('vendor_id', ''))
                     job.setdefault('filename', job.get('filename', ''))
 
@@ -1483,20 +1533,60 @@ def get_user_jobs_from_d1(user_email):
                     }
                     
                     job['metadata']['pricing_details'] = parsed_pricing
+
+                    vendor_lat_value = job.get('vendor_lat')
+                    vendor_lng_value = job.get('vendor_lng')
+                    if (not vendor_lat_value or not vendor_lng_value) and vendor_email_value:
+                        coords_key = _normalize_identifier(vendor_email_value)
+                        if coords_key not in vendor_coords_cache:
+                            coords = get_vendor_coordinates_from_email(vendor_email_value) or {}
+                            vendor_coords_cache[coords_key] = coords
+                        coords = vendor_coords_cache.get(coords_key) or {}
+                        if coords:
+                            vendor_lat_value = vendor_lat_value or coords.get('latitude')
+                            vendor_lng_value = vendor_lng_value or coords.get('longitude')
+                            if coords.get('vendor_name'):
+                                job.setdefault('vendor_name', coords.get('vendor_name'))
+                            if coords.get('shop_address'):
+                                job.setdefault('vendor_shop_address', coords.get('shop_address'))
+                            if coords.get('city'):
+                                job.setdefault('vendor_city', coords.get('city'))
+
+                    job['vendor_lat'] = str(vendor_lat_value) if vendor_lat_value not in [None, ''] else ''
+                    job['vendor_lng'] = str(vendor_lng_value) if vendor_lng_value not in [None, ''] else ''
+
+                    vendor_label = (
+                        job.get('vendor_name') or
+                        vendor_email_value or
+                        job.get('vendor') or
+                        vendor_identifier or ''
+                    )
+                    job['vendor_label'] = vendor_label
                     
                     processed_jobs.append(job)
                 
-                return processed_jobs
+                if processed_jobs:
+                    processed_jobs.sort(
+                        key=lambda job: (
+                            job.get('timestamp')
+                            or job.get('uploaded_at')
+                            or ''
+                        ),
+                        reverse=True,
+                    )
+                    return processed_jobs
+                print(f"ℹ️ D1 returned no jobs for {user_email}, attempting fallback")
+                return _maybe_fallback()
             else:
                 print(f"⚠️ Worker API returned error: {data.get('error', 'Unknown error')}")
-                return []
+                return _maybe_fallback()
         else:
             print(f"⚠️ Worker API request failed with status {resp.status_code}")
-            return []
+            return _maybe_fallback()
             
     except Exception as e:
         print(f"⚠️ Error fetching user jobs from D1: {str(e)}")
-        return []
+        return _maybe_fallback()
 
 
 def userdashboard_data(request):
@@ -1789,43 +1879,35 @@ def assign_printer_and_increment_count(vendor_email, service_type):
     except Exception as e:
         print(f"⚠️ assign_printer_and_increment_count error: {str(e)}")
         return ''
-def get_vendor_jobs_from_d1(vendor_id):
+def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
     """
-    Fetch vendor print jobs from D1 database via Worker API
-    Returns list of jobs with R2 paths from database
+    Fetch vendor print jobs from the Vendor_print_jobs D1 table via Worker API.
+    Supports filtering by vendor_id, vendor_email and job completion status.
+    Only uses R2 to generate presigned URLs for the actual files.
     """
     try:
-        api_url = getattr(settings, 'WORKER_API_URL', '')
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            print("⚠️ Worker API not configured for D1 database")
+        vendor_id = str(vendor_id).strip() if vendor_id else ''
+        vendor_email = (vendor_email or '').strip().lower()
+        status_filter = (job_status or '').strip().upper()
+
+        if not vendor_id and not vendor_email:
+            print("⚠️ Cannot fetch vendor jobs without vendor_id or vendor_email")
             return []
-        
-        # Construct Worker API endpoint
-        # Note: This endpoint needs to be added to worker_complete.js
-        # For now, we'll use a workaround by querying the database directly
-        # The endpoint should be: /get-vendor-print-jobs
-        worker_endpoint = api_url.rstrip('/') + '/get-vendor-print-jobs'
-        
-        # Prepare payload
+
+        if not status_filter:
+            status_filter = 'NO'
+
         worker_payload = {
-            'vendor_id': vendor_id
+            'job_completed': status_filter,
         }
-        
-        # Make request to Worker API - use x-api-key header (not Authorization Bearer)
-        resp = requests.post(
-            worker_endpoint,
-            json=worker_payload,
-            headers={
-                'x-api-key': api_key,
-                'Content-Type': 'application/json'
-            },
-            timeout=10
-        )
-        
+        if vendor_id:
+            worker_payload['vendor_id'] = vendor_id
+        if vendor_email:
+            worker_payload['vendor_email'] = vendor_email
+
+        endpoint, resp = post_to_worker('/get-vendor-print-jobs', worker_payload)
         if resp.status_code != 200:
-            print(f"⚠️ Worker API request failed with status {resp.status_code}")
+            print(f"⚠️ Worker API request failed ({resp.status_code}) via {endpoint}: {resp.text[:300]}")
             return []
 
         data = resp.json()
@@ -1844,7 +1926,7 @@ def get_vendor_jobs_from_d1(vendor_id):
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
         
-        processed_jobs = []
+        filtered_jobs = []
         for job in jobs:
             storage_folder = job.get('storage_folder') or 'vendor_print_jobs'
             job['storage_folder'] = storage_folder
@@ -1885,7 +1967,12 @@ def get_vendor_jobs_from_d1(vendor_id):
             
             # Map ALL metadata from D1 database (not from R2)
             # All fields come from D1, only file URL comes from R2
-            job_completed_value = job.get('job_completed', job.get('job_completed_status', 'NO')) or 'NO'
+            job_completed_source = job.get('job_completed')
+            if not job_completed_source:
+                job_completed_source = job.get('job_completed_status')
+            if job_completed_source is None or str(job_completed_source).strip() == '':
+                job_completed_source = 'NO'
+            job_completed_value = str(job_completed_source).strip().upper()
             job['job_completed'] = job_completed_value
             job.setdefault('service_type', job.get('service_type', ''))
             job.setdefault('pages', str(job.get('page_count', job.get('pages', '0'))))
@@ -1941,9 +2028,13 @@ def get_vendor_jobs_from_d1(vendor_id):
             
             job['metadata']['pricing_details'] = parsed_pricing
             
-            processed_jobs.append(job)
+            # Enforce local status filtering as a safety net
+            normalized_status_raw = job.get('job_completed') or job.get('job_completed_status') or 'NO'
+            normalized_status = str(normalized_status_raw).strip().upper()
+            if normalized_status == status_filter:
+                filtered_jobs.append(job)
 
-        return processed_jobs
+        return filtered_jobs
             
     except Exception as e:
         print(f"⚠️ Error fetching vendor jobs from D1: {str(e)}")
@@ -1979,8 +2070,8 @@ def get_print_requests(request):
             printer_config = get_vendor_printer_configuration(vendor_email)
             print(f"🖨️ Loaded printer configuration: {printer_config}")
         
-        # Fetch jobs from D1 database instead of R2
-        files = get_vendor_jobs_from_d1(vendor_id) or []
+        # Fetch pending jobs from D1 database using vendor email fallback
+        files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
         if not files:
             print(f"ℹ️ No jobs returned from D1 for vendor {vendor_id}")
         
@@ -1991,7 +2082,7 @@ def get_print_requests(request):
         
         # Assign printers per job using alternating rules
         for job in files:
-            service_type = job.get('service_type', '').strip()
+            service_type = (job.get('service_type') or '').strip()
             pages = job.get('pages') or job.get('metadata', {}).get('pages', '0')
             assigned = _assign_printer_alternating(vendor_id, printer_config, service_type, pages)
             job['assigned_printer'] = assigned
@@ -2015,12 +2106,14 @@ def get_print_requests(request):
         
         for job in files:
             # Get job status - prioritize job_completed over job_completed_status
-            job_completed = job.get('job_completed', 'NO').upper()
-            if job_completed == 'NO' and 'job_completed_status' in job:
-                # Handle legacy field if job_completed is not set
-                job_completed = job.get('job_completed_status', 'NO').upper()
+            job_completed_source = job.get('job_completed')
+            if not job_completed_source:
+                job_completed_source = job.get('job_completed_status')
+            if job_completed_source is None or str(job_completed_source).strip() == '':
+                job_completed_source = 'NO'
+            job_completed = str(job_completed_source).strip().upper()
             
-            service_type = job.get('service_type', '').strip().lower()
+            service_type = (job.get('service_type') or '').strip().lower()
             vendor_status = job.get('vendor_status', 'not sended').lower()
             
             if job_completed == 'YES':
@@ -5682,15 +5775,20 @@ def vendor_login(request):
                 
                 # Check password using Django's check_password (supports pbkdf2_sha256 format)
                 if check_password(password, password_hash):
-                    vendor_id = vendor_data.get('vendor_id')
+                    vendor_id = str(vendor_data.get('vendor_id') or '').strip()
                     vendor_name = vendor_data.get('vendor_name', '')
+                    vendor_email_db = (vendor_data.get('email') or vendor_data.get('vendor_email') or email or '').strip()
                     
-                    # Set vendor email and vendor_id in session
-                    request.session['vendor_email'] = email
-                    request.session['vendor_id'] = vendor_id
+                    # Persist canonical vendor identifiers in the session
+                    request.session['vendor_email'] = vendor_email_db
+                    request.session['vendor_name'] = vendor_name
+                    if vendor_id:
+                        request.session['vendor_id'] = vendor_id
+                    else:
+                        request.session.pop('vendor_id', None)
                     
                     # Ensure Vendor_service_availability row is refreshed on every login
-                    _sync_vendor_service_on_login(email, vendor_id)
+                    _sync_vendor_service_on_login(vendor_email_db, vendor_id)
 
                     print(f"✅ Vendor login successful: {email} (ID: {vendor_id})")
                     
@@ -5700,7 +5798,7 @@ def vendor_login(request):
                         'vendor': {
                             'vendor_id': vendor_id,
                             'vendor_name': vendor_name,
-                            'email': email
+                            'email': vendor_email_db
                         }
                     })
                 else:

@@ -12018,8 +12018,9 @@
   </main>
   <!-- Data from backend - OPTIMIZED for instant loading -->
   <script>
-    window.userJobsData = [];
+    window.userJobsData = {{ user_jobs_json|default:"[]"|safe }};
     window.userEmail = '{{ user.email }}';
+    window.__userLocation = window.__userLocation || null;
     
     // PDF Animation Control Variables
     let pdfAnimationTimer = null;
@@ -12087,6 +12088,7 @@
           while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
           container.innerHTML = '';
           container.appendChild(fragment);
+          updateJobTrackDistances();
       } else {
         // No jobs found, let animation continue for 3 seconds, then hide Print Requests section
         console.log('📄 PDF Animation: No jobs found, animation will run for 3 seconds');
@@ -12112,6 +12114,7 @@
       // If preloaded (server provided) jobs exist, render immediately
       if (window.preloadedJobs && window.preloadedPendingJobs) {
         userJobs = window.preloadedJobs;
+        cacheVendorCoordinatesFromJobs(userJobs);
         renderJobsWithAnimation(window.preloadedPendingJobs);
         updateLayoutBasedOnJobs();
       } else {
@@ -12128,6 +12131,7 @@
           window.preloadedJobs = data.user_jobs || [];
           window.preloadedPendingJobs = (data.user_jobs || []).filter(j => j.job_completed === 'NO');
           userJobs = window.preloadedJobs;
+          cacheVendorCoordinatesFromJobs(userJobs);
           // Update KPI counters fast
           const updates = [
             ['totalJobsCount', data.total_jobs],
@@ -12369,10 +12373,14 @@
                 </button>
               ` : ''}
               <button class="job-action-btn track-btn" 
+                      data-job-filename="${job.filename}"
                       data-lat="${job.vendor_lat || ''}" 
                       data-lng="${job.vendor_lng || ''}"
-                      data-vendor="${job.vendor || ''}"
-                      onclick="trackVendorLocation('${job.filename}')" title="Track Vendor">
+                      data-vendor="${job.vendor_label || job.vendor || ''}"
+                      data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
+                      data-vendor-id="${job.vendor_id || job.vendor || ''}"
+                      data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
+                      onclick="trackVendorLocation('${job.filename}', this)" title="Track Vendor">
                 <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
               </button>
             </div>
@@ -12410,6 +12418,17 @@
                 container.innerHTML = '';
                 container.appendChild(fragment);
                 console.log(`⚡ ULTRA-FAST: ${pendingJobs.length} jobs rendered before DOM ready`);
+                
+                if (typeof hidePdfAnimation === 'function') {
+                  hidePdfAnimation();
+                }
+                const jobsSection = document.getElementById('jobsSection');
+                if (jobsSection) {
+                  jobsSection.style.display = 'block';
+                  setTimeout(() => {
+                    jobsSection.style.opacity = '1';
+                  }, 10);
+                }
               }
             }
           }
@@ -13057,10 +13076,14 @@
                 </button>
               ` : ''}
               <button class="job-action-btn track-btn" 
+                      data-job-filename="${job.filename}"
                       data-lat="${job.vendor_lat || ''}" 
                       data-lng="${job.vendor_lng || ''}"
-                      data-vendor="${job.vendor || ''}"
-                      onclick="trackVendorLocation('${job.filename}')" title="Track Vendor">
+                      data-vendor="${job.vendor_label || job.vendor || ''}"
+                      data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
+                      data-vendor-id="${job.vendor_id || job.vendor || ''}"
+                      data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
+                      onclick="trackVendorLocation('${job.filename}', this)" title="Track Vendor">
                 <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
               </button>
             </div>
@@ -13070,6 +13093,175 @@
     }
     // Preserve previous global API used elsewhere
     window.createJobCard = buildJobCardHtml;
+
+    function updateJobTrackDistances() {
+      try {
+        const currentLocation = window.__userLocation;
+        if (!currentLocation || currentLocation.latitude === undefined || currentLocation.longitude === undefined) {
+          return;
+        }
+        const buttons = document.querySelectorAll('.job-action-btn.track-btn');
+        if (!buttons.length) {
+          return;
+        }
+        buttons.forEach(btn => {
+          const label = btn.querySelector('.job-action-label');
+          if (!label) return;
+          const lat = parseFloat(btn.dataset.lat);
+          const lng = parseFloat(btn.dataset.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            label.textContent = 'Track';
+            btn.removeAttribute('data-distance-km');
+            btn.removeAttribute('data-distance-label');
+            return;
+          }
+          const distanceKm = calculateDistance(currentLocation.latitude, currentLocation.longitude, lat, lng);
+          if (!Number.isFinite(distanceKm)) {
+            label.textContent = 'Track';
+            btn.removeAttribute('data-distance-km');
+            btn.removeAttribute('data-distance-label');
+            return;
+          }
+          const distanceLabel = formatDistance(distanceKm);
+          label.textContent = `Track • ${distanceLabel}`;
+          btn.dataset.distanceKm = distanceKm.toFixed(3);
+          btn.dataset.distanceLabel = distanceLabel;
+          btn.title = `Track Vendor (${distanceLabel})`;
+        });
+      } catch (distanceError) {
+        console.warn('Unable to update track button distances:', distanceError);
+      }
+    }
+
+    const vendorCoordinateRegistry = (() => {
+      const byEmail = new Map();
+      const byId = new Map();
+      const byLabel = new Map();
+
+      const normalize = (value) => (value || '').toString().trim().toLowerCase();
+      const toNumber = (value) => {
+        if (value === null || value === undefined) return null;
+        const num = typeof value === 'number' ? value : parseFloat(value);
+        return Number.isFinite(num) ? num : null;
+      };
+
+      const store = (key, map, record) => {
+        const normalizedKey = normalize(key);
+        if (normalizedKey) {
+          map.set(normalizedKey, record);
+        }
+      };
+
+      const add = (entry = {}) => {
+        const lat = toNumber(entry.latitude ?? entry.lat ?? entry.vendor_lat);
+        const lng = toNumber(entry.longitude ?? entry.lng ?? entry.vendor_lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return;
+        }
+        const record = {
+          lat,
+          lng,
+          vendor_name: entry.vendor_name || entry.shop_name || entry.vendor_label || entry.vendor_email || entry.vendor_id || entry.label || '',
+          vendor_email: entry.vendor_email || entry.label || '',
+          vendor_id: entry.vendor_id || entry.vendor_token || '',
+          shop_folder: entry.shop_folder || ''
+        };
+        if (entry.vendor_email) store(entry.vendor_email, byEmail, record);
+        if (entry.vendor_id) store(entry.vendor_id, byId, record);
+        if (entry.shop_folder) store(entry.shop_folder, byLabel, record);
+        if (entry.vendor_name) store(entry.vendor_name, byLabel, record);
+        if (entry.vendor_label) store(entry.vendor_label, byLabel, record);
+      };
+
+      const find = (candidates = []) => {
+        for (const candidate of candidates) {
+          const key = normalize(candidate);
+          if (!key) continue;
+          if (byEmail.has(key)) return byEmail.get(key);
+          if (byId.has(key)) return byId.get(key);
+          if (byLabel.has(key)) return byLabel.get(key);
+        }
+        return null;
+      };
+
+      return {
+        add,
+        addMany: function (list) {
+          if (!Array.isArray(list)) return;
+          list.forEach(add);
+        },
+        rememberJob: function (job) {
+          if (!job) return;
+          add({
+            vendor_email: job.vendor_email || job.user_vendor_email || job.vendor,
+            vendor_id: job.vendor_id || job.vendor,
+            vendor_name: job.vendor_name || job.vendor_label,
+            shop_folder: job.vendor_shop_folder || job.shop_folder,
+            latitude: job.vendor_lat,
+            longitude: job.vendor_lng
+          });
+        },
+        find
+      };
+    })();
+    window.vendorCoordinateRegistry = vendorCoordinateRegistry;
+
+    function cacheVendorCoordinatesFromJobs(jobList) {
+      if (!Array.isArray(jobList)) return;
+      jobList.forEach((job) => vendorCoordinateRegistry.rememberJob(job));
+    }
+
+    const parseCoordinateValue = (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = typeof value === 'number' ? value : parseFloat(value);
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const hasValidCoordinates = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng);
+
+    const normalizeCandidate = (value) => (value || '').toString().trim().toLowerCase();
+
+    function findCoordinatesInShopLists(candidateValues = []) {
+      const normalizedValues = candidateValues.map(normalizeCandidate).filter(Boolean);
+      if (!normalizedValues.length) return null;
+      const allShops = [
+        ...(Array.isArray(locationBasedShops) ? locationBasedShops : []),
+        ...(Array.isArray(availableShops) ? availableShops : [])
+      ];
+      for (const shop of allShops) {
+        const matchKeys = [
+          shop.vendor_email,
+          shop.vendor_id,
+          shop.shop_name,
+          shop.shop_folder
+        ];
+        if (matchKeys.some((value) => normalizedValues.includes(normalizeCandidate(value)))) {
+          const lat = parseCoordinateValue(shop.latitude);
+          const lng = parseCoordinateValue(shop.longitude);
+          if (hasValidCoordinates(lat, lng)) {
+            const vendorName = shop.shop_name || shop.vendor_name || shop.vendor_email || shop.vendor_id;
+            const record = {
+              lat,
+              lng,
+              vendor_name: vendorName,
+              vendor_email: shop.vendor_email,
+              vendor_id: shop.vendor_id,
+              shop_folder: shop.shop_folder
+            };
+            vendorCoordinateRegistry.add({
+              vendor_email: shop.vendor_email,
+              vendor_id: shop.vendor_id,
+              vendor_name: vendorName,
+              shop_folder: shop.shop_folder,
+              latitude: lat,
+              longitude: lng
+            });
+            return record;
+          }
+        }
+      }
+      return null;
+    }
 
     // Global state management (Complete R2 Integration)
     let uploadedFiles = [];
@@ -13535,6 +13727,7 @@
       const userJobsElement = document.getElementById('userJobsData');
       if (userJobsElement) {
         userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+        cacheVendorCoordinatesFromJobs(userJobs);
         // Pre-render jobs immediately if data is available
         if (userJobs && userJobs.length > 0) {
           // Jobs will be rendered instantly when DOM is ready
@@ -14508,6 +14701,16 @@
           console.log('🏪 Loaded shops data:', data);
           if (data.success) {
             availableShops = data.shops || [];
+            vendorCoordinateRegistry.addMany(
+              (availableShops || []).map((shop) => ({
+                vendor_email: shop.vendor_email,
+                vendor_id: shop.vendor_id,
+                vendor_name: shop.shop_name,
+                shop_folder: shop.shop_folder,
+                latitude: shop.latitude,
+                longitude: shop.longitude
+              }))
+            );
             console.log('🏪 Available shops:', availableShops);
             if (availableShops.length > 0 && !selectedVendor) {
               selectedVendor = availableShops[0].shop_folder;
@@ -15934,6 +16137,7 @@
         if (cachedJobs && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
           // Use cached data
           userJobs = JSON.parse(cachedJobs);
+          cacheVendorCoordinatesFromJobs(userJobs);
           const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
           renderJobsWithAnimation(pendingJobs);
           console.log(`⚡ CACHED LOAD: ${userJobs.length} jobs loaded from cache`);
@@ -15944,6 +16148,7 @@
         const userJobsElement = document.getElementById('userJobsData');
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+          cacheVendorCoordinatesFromJobs(userJobs);
           
           // Cache the data
           localStorage.setItem('userJobsCache', JSON.stringify(userJobs));
@@ -15997,6 +16202,7 @@
         const userJobsElement = doc.querySelector('#userJobsData');
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
+          cacheVendorCoordinatesFromJobs(userJobs);
           renderUserJobs(); // Render immediately
           console.log(`⚡ INSTANT REFRESH: ${userJobs.length} jobs refreshed immediately`);
         }
@@ -16045,6 +16251,7 @@
         // Clear container and append fragment in one operation
         container.innerHTML = '';
         container.appendChild(fragment);
+        updateJobTrackDistances();
       }
 
       // Completed jobs are displayed via the History modal only
@@ -16466,68 +16673,118 @@
       modal.classList.add('active');
     }
     // Function to track vendor location and open Google Maps navigation
-    window.trackVendorLocation = function(filename) {
-      console.log('trackVendorLocation called with filename:', filename);
+    window.trackVendorLocation = function(filename, triggerEl) {
+      const safeFilename = (filename || '').toString();
+      console.log('trackVendorLocation called with filename:', safeFilename);
       console.log('userJobs:', userJobs);
       
-      const job = userJobs.find(j => j.filename === filename);
-      console.log('Found job:', job);
+      const jobList = Array.isArray(userJobs) ? userJobs : [];
+      let job = jobList.find(j => j.filename === safeFilename);
+      const triggerData = (triggerEl && triggerEl.dataset) ? triggerEl.dataset : {};
+      
+      if (!job && Object.keys(triggerData).length) {
+        job = {
+          vendor_lat: triggerData.lat || '',
+          vendor_lng: triggerData.lng || '',
+          vendor_label: triggerData.vendor || '',
+          vendor_email: triggerData.vendorEmail || triggerData.vendor_email || '',
+          vendor_id: triggerData.vendorId || triggerData.vendor_id || '',
+          vendor_shop_folder: triggerData.shopFolder || triggerData.shop_folder || ''
+        };
+      }
       
       if (!job) {
         alert('Job not found.');
         return;
       }
 
-      const vendorLat = job.vendor_lat;
-      const vendorLng = job.vendor_lng;
-      const vendorName = job.vendor;
+      const triggerVendorEmail = triggerData.vendorEmail || triggerData.vendor_email || '';
+      const triggerVendorId = triggerData.vendorId || triggerData.vendor_id || '';
+      const triggerShopFolder = triggerData.shopFolder || triggerData.shop_folder || '';
+      let vendorName = job.vendor_label || job.vendor_name || job.vendor || job.vendor_email || triggerData.vendor || triggerVendorEmail || 'the print shop';
 
-      console.log('Vendor coordinates:', { vendorLat, vendorLng, vendorName });
-      console.log('Vendor email (raw):', job.vendor);
-      console.log('Vendor email type:', typeof job.vendor);
+      let vendorLat = parseCoordinateValue(job.vendor_lat ?? triggerData.lat);
+      let vendorLng = parseCoordinateValue(job.vendor_lng ?? triggerData.lng);
 
-      // Check if vendor coordinates are available
-      if (!vendorLat || !vendorLng || vendorLat === '' || vendorLng === '') {
-        alert(`Location not available for vendor: ${vendorName || 'Unknown'}\n\nYour print job is being processed. You will be notified when it's ready for pickup.`);
+      const candidateKeys = [
+        job.vendor_email,
+        job.vendor_label,
+        job.vendor_name,
+        job.vendor,
+        job.vendor_id,
+        job.vendor_shop_folder,
+        triggerVendorEmail,
+        triggerVendorId,
+        triggerShopFolder,
+        triggerData.vendor
+      ];
+
+      if (!hasValidCoordinates(vendorLat, vendorLng)) {
+        const registryMatch = vendorCoordinateRegistry.find(candidateKeys) || findCoordinatesInShopLists(candidateKeys);
+        if (registryMatch && hasValidCoordinates(registryMatch.lat, registryMatch.lng)) {
+          vendorLat = registryMatch.lat;
+          vendorLng = registryMatch.lng;
+          if (!job.vendor_email && registryMatch.vendor_email) {
+            job.vendor_email = registryMatch.vendor_email;
+          }
+          if (!job.vendor_id && registryMatch.vendor_id) {
+            job.vendor_id = registryMatch.vendor_id;
+          }
+          if (!job.vendor_shop_folder && registryMatch.shop_folder) {
+            job.vendor_shop_folder = registryMatch.shop_folder;
+          }
+          if ((!job.vendor_label || job.vendor_label === job.vendor) && registryMatch.vendor_name) {
+            vendorName = registryMatch.vendor_name;
+          }
+        }
+      }
+
+      if (!hasValidCoordinates(vendorLat, vendorLng)) {
+        alert(`We're waiting for ${vendorName || 'the print shop'} to share their live location.\n\nPlease ask the shop to accept your print request so we can guide you instantly.`);
         return;
       }
 
-      // Get user's current location
-      if (navigator.geolocation) {
-        console.log('Getting user location...');
-        navigator.geolocation.getCurrentPosition(
-          function(position) {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            
-            console.log('User location:', { userLat, userLng });
-            
-            // Construct Google Maps navigation URL
-            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${vendorLat},${vendorLng}&travelmode=driving`;
-            
-            console.log('Opening maps URL:', mapsUrl);
-            
-            // Open Google Maps in a new tab
-            window.open(mapsUrl, '_blank');
-          },
-          function(error) {
-            console.error('Geolocation error:', error);
-            // Handle location permission denied or other errors
-            if (error.code === error.PERMISSION_DENIED) {
-              alert('Please enable location to track the shop.');
-            } else {
-              alert('Unable to get your location. Please check your location settings.');
-            }
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000 // 5 minutes
-          }
-        );
-      } else {
-        alert('Geolocation is not supported by this browser.');
+      vendorCoordinateRegistry.add({
+        vendor_email: job.vendor_email || triggerVendorEmail,
+        vendor_id: job.vendor_id || job.vendor || triggerVendorId,
+        vendor_name: vendorName,
+        shop_folder: job.vendor_shop_folder || triggerShopFolder,
+        latitude: vendorLat,
+        longitude: vendorLng
+      });
+
+      const openMapsNavigation = (originLat, originLng, destinationLat, destinationLng) => {
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destinationLat},${destinationLng}&travelmode=driving`;
+        console.log('Opening maps URL:', mapsUrl);
+        window.open(mapsUrl, '_blank');
+      };
+
+      const cachedLocation = window.__userLocation;
+      if (cachedLocation && hasValidCoordinates(cachedLocation.latitude, cachedLocation.longitude)) {
+        console.log('Using cached user location:', cachedLocation);
+        openMapsNavigation(cachedLocation.latitude, cachedLocation.longitude, vendorLat, vendorLng);
+        return;
       }
+
+      if (typeof getUserLocation === 'function') {
+        console.log('Requesting fresh user location via getUserLocation()');
+        getUserLocation(false)
+          .then(location => {
+            if (location && hasValidCoordinates(location.latitude, location.longitude)) {
+              window.__userLocation = location;
+              openMapsNavigation(location.latitude, location.longitude, vendorLat, vendorLng);
+            } else {
+              alert('Unable to get your current location. Please enable location services and try again.');
+            }
+          })
+          .catch(error => {
+            console.error('Geolocation error:', error);
+            alert(error.message || 'Unable to get your location. Please check your location settings.');
+          });
+        return;
+      }
+
+      alert('Geolocation is not supported by this browser.');
     }
 
     // Test function to verify the implementation
@@ -18360,6 +18617,7 @@
                       pricing_details: pricingDetails || null,
                       token: verifyData.token || ''
                     };
+                  vendorCoordinateRegistry.rememberJob(newJob);
                     if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
                     userJobs = [newJob, ...userJobs];
                     const container = document.getElementById('jobsContainer');
@@ -18369,6 +18627,7 @@
                       temp.innerHTML = cardHTML;
                       const node = temp.firstElementChild;
                       if (node) container.insertBefore(node, container.firstChild);
+                      updateJobTrackDistances();
                     }
                     
                     // Update layout when new job is added
@@ -18550,6 +18809,7 @@
         // Clear cached location if force refresh is requested
         if (forceRefresh) {
           userLocation = null;
+          window.__userLocation = null;
         }
 
         // Enhanced geolocation options for maximum accuracy
@@ -18571,6 +18831,7 @@
               accuracy: coords.accuracy,
               timestamp: new Date().toISOString()
             };
+            window.__userLocation = userLocation;
             
             console.log('✅ Location obtained successfully:');
             console.log('📍 Latitude:', userLocation.latitude);
@@ -18578,6 +18839,7 @@
             console.log('🎯 Accuracy:', coords.accuracy, 'meters');
             console.log('🕐 Timestamp:', userLocation.timestamp);
             console.log('🌐 Full coordinates object:', coords);
+            updateJobTrackDistances();
 
             // Location info display removed for cleaner UI
             
@@ -18965,10 +19227,14 @@
                   <div class="completed-job-actions">
                     <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
                     <button class="completed-job-btn track-vendor-btn" 
+                            data-job-filename="${job.filename}"
                             data-lat="${job.vendor_lat || ''}" 
                             data-lng="${job.vendor_lng || ''}"
-                            data-vendor="${job.vendor || ''}"
-                            onclick="trackVendorLocation('${job.filename}')"><i class="fas fa-map-marker-alt"></i> Track</button>
+                            data-vendor="${job.vendor_label || job.vendor || ''}"
+                            data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
+                            data-vendor-id="${job.vendor_id || job.vendor || ''}"
+                            data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
+                            onclick="trackVendorLocation('${job.filename}', this)"><i class="fas fa-map-marker-alt"></i> Track</button>
                   </div>
                 </div>
               `}).join('');
@@ -19015,8 +19281,23 @@
     }
 
     function updateMapWithCoordinates(coords) {
-      // TODO: Implement your map update logic here
-      // Example: map.setMarkers(coords);
+      if (!Array.isArray(coords) || coords.length === 0) {
+        window.vendorCoordinates = [];
+        return;
+      }
+      window.vendorCoordinates = coords;
+      vendorCoordinateRegistry.addMany(
+        coords.map((coord) => ({
+          vendor_email: coord.vendor_email,
+          vendor_id: coord.vendor_id,
+          vendor_name: coord.shop_name || coord.vendor_name,
+          shop_folder: coord.shop_folder,
+          latitude: coord.latitude,
+          longitude: coord.longitude
+        }))
+      );
+      console.log(`🗺️ Map updated with ${coords.length} vendor locations`);
+      // TODO: Hook into actual map rendering library if available (Leaflet/Maps JS)
     }
   </script>
 
@@ -19902,6 +20183,7 @@
           if (data.success && data.user_jobs) {
             // Update global userJobs variable
             userJobs = data.user_jobs;
+            cacheVendorCoordinatesFromJobs(userJobs);
             
             // Cache the updated data
             localStorage.setItem('userJobsCache', JSON.stringify(userJobs));

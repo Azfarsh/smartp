@@ -1653,6 +1653,9 @@
     "👑 Reign Over the Print Kingdom"
   ];
 
+  const MIN_VENDOR_ANIMATION_MS = 700;
+  const PREFETCH_TIMEOUT_MS = 1200;
+
   let currentTaglineIndex = 0;
   let isVendorTab = false;
 
@@ -1913,6 +1916,46 @@
     }
   }
 
+  async function prefetchVendorJobs(timeoutMs = PREFETCH_TIMEOUT_MS) {
+    if (typeof fetch !== 'function') {
+      return false;
+    }
+    const supportsAbort = typeof AbortController !== 'undefined';
+    const controller = supportsAbort ? new AbortController() : null;
+    let timeoutId = null;
+    if (controller && timeoutMs > 0) {
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
+    try {
+      const response = await fetch('/get-print-requests/', {
+        method: 'GET',
+        credentials: 'include',
+        signal: controller ? controller.signal : undefined
+      });
+      if (!response.ok) {
+        return false;
+      }
+      const data = await response.json();
+      if (Array.isArray(data.print_requests)) {
+        try {
+          localStorage.setItem('vendorJobs', JSON.stringify(data.print_requests));
+        } catch (storageError) {
+          console.warn('Unable to cache vendor jobs before redirect:', storageError);
+        }
+        return true;
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.warn('Vendor job prefetch failed:', error);
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+    return false;
+  }
+
   async function vendorLogin(event) {
     event.preventDefault();
     const email = document.getElementById('vendorEmail').value;
@@ -1920,6 +1963,7 @@
     const submitBtn = document.getElementById('vendorSignInBtn');
     const btnIcon = document.getElementById('vendorBtnIcon');
     const btnText = document.getElementById('vendorBtnText');
+    const authStart = Date.now();
     submitBtn.disabled = true;
     btnIcon.textContent = 'hourglass_empty';
     btnIcon.style.animation = 'spin 1s linear infinite';
@@ -1942,10 +1986,14 @@
       if (data.success) {
         // Already showing welcome; update message if available
         try { showWelcome(data.vendor?.vendor_name || 'Vendor', true); } catch (_) {}
-        // Show welcome animation for max 4 seconds, then redirect to vendordashboard
-        setTimeout(() => {
-          window.location.href = '/vendordashboard/';
-        }, 4000); // Max 4 seconds welcome animation
+        const elapsed = Date.now() - authStart;
+        const animationDelay = Math.max(0, MIN_VENDOR_ANIMATION_MS - elapsed);
+        const prefetchPromise = prefetchVendorJobs();
+        await Promise.all([
+          prefetchPromise.catch(() => false),
+          new Promise((resolve) => setTimeout(resolve, animationDelay))
+        ]);
+        window.location.href = '/vendordashboard/';
       } else {
         submitBtn.disabled = false;
         btnIcon.textContent = 'rocket_launch';
