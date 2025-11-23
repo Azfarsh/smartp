@@ -31,6 +31,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <!-- Google Maps API removed - no longer needed since we use backend for Distance Matrix and browser geolocation for location -->
   <style>
     :root {
       /* Professional Color System with Enhanced Contrast */
@@ -13094,7 +13095,7 @@
     // Preserve previous global API used elsewhere
     window.createJobCard = buildJobCardHtml;
 
-    function updateJobTrackDistances() {
+    async function updateJobTrackDistances() {
       try {
         const currentLocation = window.__userLocation;
         if (!currentLocation || currentLocation.latitude === undefined || currentLocation.longitude === undefined) {
@@ -13104,9 +13105,12 @@
         if (!buttons.length) {
           return;
         }
-        buttons.forEach(btn => {
+        
+        // Process all buttons in parallel
+        const distancePromises = Array.from(buttons).map(async (btn) => {
           const label = btn.querySelector('.job-action-label');
           if (!label) return;
+          
           const lat = parseFloat(btn.dataset.lat);
           const lng = parseFloat(btn.dataset.lng);
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -13115,19 +13119,31 @@
             btn.removeAttribute('data-distance-label');
             return;
           }
-          const distanceKm = calculateDistance(currentLocation.latitude, currentLocation.longitude, lat, lng);
-          if (!Number.isFinite(distanceKm)) {
+          
+          try {
+            // Use Google Distance Matrix for accurate road distance
+            const distanceData = await getGoogleDistance(currentLocation.latitude, currentLocation.longitude, lat, lng);
+            const distanceKm = distanceData.distanceKm || null;
+            
+            if (distanceKm === null || !Number.isFinite(distanceKm) || distanceKm === 0) {
+              label.textContent = 'Track';
+              btn.removeAttribute('data-distance-km');
+              btn.removeAttribute('data-distance-label');
+              return;
+            }
+            
+            const distanceLabel = distanceData.distanceText || formatDistance(distanceKm);
+            label.textContent = `Track • ${distanceLabel}`;
+            btn.dataset.distanceKm = distanceKm.toFixed(3);
+            btn.dataset.distanceLabel = distanceLabel;
+            btn.title = `Track Vendor (${distanceLabel})`;
+          } catch (error) {
+            console.warn('Error calculating distance for track button:', error);
             label.textContent = 'Track';
-            btn.removeAttribute('data-distance-km');
-            btn.removeAttribute('data-distance-label');
-            return;
           }
-          const distanceLabel = formatDistance(distanceKm);
-          label.textContent = `Track • ${distanceLabel}`;
-          btn.dataset.distanceKm = distanceKm.toFixed(3);
-          btn.dataset.distanceLabel = distanceLabel;
-          btn.title = `Track Vendor (${distanceLabel})`;
         });
+        
+        await Promise.all(distancePromises);
       } catch (distanceError) {
         console.warn('Unable to update track button distances:', distanceError);
       }
@@ -13278,9 +13294,11 @@
     let shopsLoadedPromise = null;
     let userLocation = null;
     let locationBasedShops = [];
+    let currentSearchText = ''; // Track current search text for shop filtering
     
     // Google Drive Picker Configuration
-    const DEVELOPER_KEY = '{{ GOOGLE_DEVELOPER_KEY|default:"AIzaSyBvOkBw7uFyVhDqHiWiXH3fGJjKjLmNpQr" }}';
+    // Uses browser API key (with HTTP referrer restrictions) - for frontend only
+    const DEVELOPER_KEY = '{{ GOOGLE_DEVELOPER_KEY|default:"" }}';
     let oauthToken = null;
     let driveFiles = new Map(); // Store temp_key for each fileId
 
@@ -14127,6 +14145,11 @@
       const shopsPromise = loadAvailableShops();
       window.availableShopsPromise = shopsPromise;
       
+      // Automatically get user location on dashboard load
+      getUserLocation().catch(err => {
+        console.log('Location not available:', err.message);
+      });
+      
       // Load other components asynchronously to not block job rendering
       // Use requestIdleCallback for better performance
       if (window.requestIdleCallback) {
@@ -14750,28 +14773,51 @@
       const vendorOptionsContainer = document.getElementById('vendorOptions');
       if (!vendorOptionsContainer) return;
 
-      const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      // Get shops with distance info (prefer locationBasedShops if available)
+      let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      
+      // Filter shops based on search text
+      const { displayShops, within3km } = getFilteredShops(shopsWithDistance, currentSearchText);
       
       console.log('🏪 Rendering shops:', {
         locationBasedShops: locationBasedShops.length,
         availableShops: availableShops.length,
-        shopsToRender: shopsToRender.length,
-        shops: shopsToRender
+        shopsToRender: displayShops.length,
+        searchText: currentSearchText,
+        within3km: within3km.length
       });
 
-      if (shopsToRender.length === 0) {
-        vendorOptionsContainer.innerHTML = `
-          <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
-            <i class="fas fa-store-slash"></i>
-            <p>No print shops available at the moment.</p>
-          </div>
-        `;
-        return;
+      // Show appropriate message based on mode
+      if (currentSearchText.length === 0) {
+        // DEFAULT MODE: Show message if no shops within 3km
+        if (displayShops.length === 0) {
+          vendorOptionsContainer.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
+              <i class="fas fa-exclamation-triangle"></i>
+              <p>⚠️ No shops available near your location.</p>
+              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop.</p>
+            </div>
+          `;
+          return;
+        }
+      } else {
+        // SEARCH MODE: Show message if no matching shops
+        if (displayShops.length === 0) {
+          vendorOptionsContainer.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
+              <i class="fas fa-search"></i>
+              <p>No shops found for "${currentSearchText}"</p>
+            </div>
+          `;
+          return;
+        }
       }
+      
+      // Use displayShops instead of shopsToRender
+      const shopsToRender = displayShops;
 
       const listHtml = shopsToRender.map((shop) => {
-        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
-        const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
+        const distance = shop.formattedDistance || shop.distanceText || 'N/A';
         const address = [shop.shop_address, shop.city, shop.pincode]
           .filter(Boolean)
           .join(', ');
@@ -15187,27 +15233,50 @@
       
       if (!nearbyList) return;
 
-      const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      // Get shops with distance info (prefer locationBasedShops if available)
+      let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      
+      // Get search text from input
+      const searchInput = document.getElementById('shop-search-input');
+      const searchText = searchInput ? searchInput.value.trim() : '';
+      
+      // Filter shops based on search text
+      const { displayShops, within3km } = getFilteredShops(shopsWithDistance, searchText);
       
       // Hide recent list in document print modal - only Nearby Shops should be shown
       if (recentList) recentList.innerHTML = '';
       
-      // Populate nearby shops (mobile and desktop should use the same UI renderer)
-      if (!shopsToRender || shopsToRender.length === 0) {
-        nearbyList.innerHTML = `
-          <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
-            <i class="fas fa-store-slash"></i>
-            <p>No print shops available at the moment.</p>
-          </div>
-        `;
+      // Populate nearby shops with appropriate message
+      if (searchText.length === 0) {
+        // DEFAULT MODE: Show message if no shops within 3km
+        if (displayShops.length === 0) {
+          nearbyList.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
+              <i class="fas fa-exclamation-triangle"></i>
+              <p>⚠️ No shops available near your location.</p>
+              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop.</p>
+            </div>
+          `;
+        } else {
+          nearbyList.innerHTML = displayShops.map(shop => createShopSearchItem(shop, false)).join('');
+        }
       } else {
-        nearbyList.innerHTML = shopsToRender.map(shop => createShopSearchItem(shop, false)).join('');
+        // SEARCH MODE: Show message if no matching shops
+        if (displayShops.length === 0) {
+          nearbyList.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
+              <i class="fas fa-search"></i>
+              <p>No shops found for "${searchText}"</p>
+            </div>
+          `;
+        } else {
+          nearbyList.innerHTML = displayShops.map(shop => createShopSearchItem(shop, false)).join('');
+        }
       }
     }
 
     function createShopSearchItem(shop, isRecent = false) {
-      const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
-      const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
+      const distance = shop.formattedDistance || shop.distanceText || 'N/A';
       const address = [shop.shop_address, shop.city, shop.pincode]
         .filter(Boolean)
         .join(', ');
@@ -15248,10 +15317,13 @@
 
       // Search functionality
       if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-          const query = e.target.value.toLowerCase().trim();
-          filterShopsInSearchModal(query);
-        });
+        // Use oninput to replace any existing handler
+        searchInput.oninput = function(e) {
+          const query = e.target.value.trim();
+          currentSearchText = query;
+          // Re-populate the modal with filtered results
+          populateShopSearchModal();
+        };
       }
 
       // Shop selection
@@ -15377,7 +15449,13 @@
       const shopSelectionButton = document.getElementById(`${service}-shop-selection-button`);
       if (!shopSelectionButton) return;
 
-      const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      let shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      // Sort shops by nearest distance
+      shopsToRender = [...shopsToRender].sort((a, b) => {
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
 
       if (shopsToRender.length === 0) {
         // Update button to show no shops available
@@ -15468,19 +15546,8 @@
       // Search functionality
       if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-          const searchTerm = e.target.value.toLowerCase();
-          const shopItems = shopList.querySelectorAll('.shop-selection-item');
-          
-          shopItems.forEach(item => {
-            const name = item.querySelector('.shop-selection-item-name')?.textContent.toLowerCase() || '';
-            const address = item.querySelector('.shop-selection-item-address')?.textContent.toLowerCase() || '';
-            
-            if (name.includes(searchTerm) || address.includes(searchTerm)) {
-              item.style.display = 'block';
-        } else {
-              item.style.display = 'none';
-            }
-          });
+          // Re-load shops with new search filter
+          loadShopsInModal(service);
         });
       }
       
@@ -15504,21 +15571,46 @@
       const shopList = document.getElementById(`${service}-shop-selection-list`);
       if (!shopList) return;
       
-      const shopsToRender = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      // Get shops with distance info (prefer locationBasedShops if available)
+      let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
       
-      if (shopsToRender.length === 0) {
-        shopList.innerHTML = `
-          <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
-            <i class="fas fa-store-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-            <p>No print shops available at the moment.</p>
-          </div>
-        `;
-        return;
+      // Get search text from input
+      const searchInput = document.getElementById(`${service}-shop-search-input`);
+      const searchText = searchInput ? searchInput.value.trim() : '';
+      
+      // Filter shops based on search text
+      const { displayShops, within3km } = getFilteredShops(shopsWithDistance, searchText);
+      
+      // Show appropriate message based on mode
+      if (searchText.length === 0) {
+        // DEFAULT MODE: Show message if no shops within 3km
+        if (displayShops.length === 0) {
+          shopList.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
+              <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+              <p>⚠️ No shops available near your location.</p>
+              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop.</p>
+            </div>
+          `;
+          return;
+        }
+      } else {
+        // SEARCH MODE: Show message if no matching shops
+        if (displayShops.length === 0) {
+          shopList.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
+              <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+              <p>No shops found for "${searchText}"</p>
+            </div>
+          `;
+          return;
+        }
       }
       
+      const shopsToRender = displayShops;
+      
       const shopItemsHtml = shopsToRender.map((shop, index) => {
-        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : null;
-        const distance = distanceKm !== null ? (distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`) : (shop.formattedDistance || '');
+        const distance = shop.formattedDistance || shop.distanceText || 'N/A';
         const address = [shop.shop_address, shop.city, shop.pincode]
           .filter(Boolean)
           .join(', ');
@@ -16766,20 +16858,20 @@
         return;
       }
 
-      if (typeof getUserLocation === 'function') {
-        console.log('Requesting fresh user location via getUserLocation()');
-        getUserLocation(false)
+      if (typeof fetchAccurateUserLocation === 'function') {
+        console.log('Requesting fresh user location via Google Geolocation API');
+        fetchAccurateUserLocation(false)
           .then(location => {
             if (location && hasValidCoordinates(location.latitude, location.longitude)) {
               window.__userLocation = location;
               openMapsNavigation(location.latitude, location.longitude, vendorLat, vendorLng);
             } else {
-              alert('Unable to get your current location. Please enable location services and try again.');
+              alert('Unable to get your current location. Please try again.');
             }
           })
           .catch(error => {
-            console.error('Geolocation error:', error);
-            alert(error.message || 'Unable to get your location. Please check your location settings.');
+            console.error('Location error:', error);
+            alert('Unable to get your location. Please try again.');
           });
         return;
       }
@@ -18778,110 +18870,87 @@
       return cookieValue;
     }
 
-    // Location-based shop filtering functions
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      // Haversine formula to calculate distance between two points
-      const R = 6371; // Radius of the Earth in kilometers
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c; // Distance in kilometers
-      return distance;
+    // Google Maps Location System - Replaces Leaflet + HTML5 GPS
+    // API key is now securely stored on the backend - no longer exposed to frontend
+    
+    // Location picker state variables removed - using browser geolocation only
+
+    // Format distance helper (fallback for edge cases)
+    function formatDistance(distanceText) {
+      if (!distanceText) return 'N/A';
+      return distanceText;
     }
 
-    function formatDistance(distance) {
-      if (distance < 1) {
-        return Math.round(distance * 1000) + 'm';
-      } else {
-        return distance.toFixed(1) + 'km';
-      }
-    }
-    function getUserLocation(forceRefresh = false) {
-      return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error('Geolocation is not supported by this browser'));
-          return;
+    // Get user location using Google Geolocation API via backend
+    // Unified function for automatic location detection
+    async function fetchAccurateUserLocation(forceRefresh = false) {
+      try {
+        if (!forceRefresh) {
+          const cachedLat = localStorage.getItem("printmax_user_lat");
+          const cachedLng = localStorage.getItem("printmax_user_lon");
+          if (cachedLat && cachedLng) {
+            const cachedLocation = {
+              latitude: parseFloat(cachedLat),
+              longitude: parseFloat(cachedLng),
+              fromCache: true
+            };
+            window.__userLocation = cachedLocation;
+            userLocation = cachedLocation;
+            return cachedLocation;
+          }
         }
 
-        // Clear cached location if force refresh is requested
-        if (forceRefresh) {
-          userLocation = null;
-          window.__userLocation = null;
+        const response = await fetch("/api/get-accurate-location/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({})
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          console.error("❌ Accurate location failed:", data);
+          return null;
         }
 
-        // Enhanced geolocation options for maximum accuracy
-        const options = {
-          enableHighAccuracy: true,    // Use GPS if available
-          timeout: 15000,              // Wait up to 15 seconds
-          maximumAge: forceRefresh ? 0 : 60000  // Use cached location for 1 minute, or force fresh if requested
+        const { latitude, longitude } = data;
+
+        // Cache for later
+        localStorage.setItem("printmax_user_lat", latitude);
+        localStorage.setItem("printmax_user_lon", longitude);
+
+        const locationData = {
+          latitude,
+          longitude,
+          accuracy: data.accuracy,
+          fromCache: false
         };
 
-        console.log('🌍 Requesting user location with options:', options);
-        console.log('🔄 Force refresh:', forceRefresh);
+        window.__userLocation = locationData;
+        userLocation = locationData;
 
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const coords = position.coords;
-            userLocation = {
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              accuracy: coords.accuracy,
-              timestamp: new Date().toISOString()
-            };
-            window.__userLocation = userLocation;
-            
-            console.log('✅ Location obtained successfully:');
-            console.log('📍 Latitude:', userLocation.latitude);
-            console.log('📍 Longitude:', userLocation.longitude);
-            console.log('🎯 Accuracy:', coords.accuracy, 'meters');
-            console.log('🕐 Timestamp:', userLocation.timestamp);
-            console.log('🌐 Full coordinates object:', coords);
-            updateJobTrackDistances();
-
-            // Location info display removed for cleaner UI
-            
-            resolve(userLocation);
-          },
-          (error) => {
-            console.error('❌ Geolocation error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            
-            // Provide specific error messages
-            let errorMessage = 'Unable to get your location. ';
-            switch(error.code) {
-              case error.PERMISSION_DENIED:
-                errorMessage += 'Location access was denied. Please enable location services and allow this site to access your location.';
-                break;
-              case error.POSITION_UNAVAILABLE:
-                errorMessage += 'Location information is unavailable. Please check your device\'s location settings.';
-                break;
-              case error.TIMEOUT:
-                errorMessage += 'Location request timed out. Please try again.';
-                break;
-              default:
-                errorMessage += 'An unknown error occurred while retrieving location.';
-                break;
-            }
-            
-            // Location error display removed for cleaner UI
-            reject(new Error(errorMessage));
-          },
-          options
-        );
-      });
+        console.log("✅ Accurate user location:", locationData);
+        return locationData;
+      } catch (err) {
+        console.error("❌ Error fetching accurate user location:", err);
+        return null;
+      }
     }
 
-    // Location display functions removed for cleaner UI
+    // Alias for backward compatibility
+    async function getUserLocation(forceRefresh = false) {
+      return await fetchAccurateUserLocation(forceRefresh);
+    }
+
+    // Location picker functions removed - now using browser's native geolocation only
 
     // Function to manually refresh location
     window.refreshLocation = async function() {
       console.log('🔄 Manual location refresh requested');
       try {
-        await getUserLocation(true); // Force refresh
+        await fetchAccurateUserLocation(true); // Force refresh
         await loadLocationBasedShops(true); // Reload shops with new location
         console.log('✅ Location and shops refreshed successfully');
       } catch (error) {
@@ -18889,39 +18958,31 @@
       }
     }
 
-    // Add a global function to compare with external location services
-    window.compareLocation = function(externalLat, externalLng) {
-      if (!userLocation) {
-        console.log('❌ No user location available for comparison');
-        return;
-      }
-      
-      const distance = calculateDistance(
-        userLocation.latitude, userLocation.longitude,
-        externalLat, externalLng
-      );
-      
-      console.log('🔍 Location Comparison:');
-      console.log('📱 Dashboard Location:', userLocation.latitude, userLocation.longitude);
-      console.log('🌐 External Location:', externalLat, externalLng);
-      console.log('📏 Distance Difference:', formatDistance(distance));
-      console.log('🕐 Dashboard Location Time:', userLocation.timestamp);
-      
-      if (distance > 0.1) { // More than 100 meters difference
-        console.log('⚠️ Significant location difference detected!');
+    // Google Distance Matrix API - Get road distance between two points
+    // Uses secure backend proxy to prevent CORS errors and keep API key hidden
+    async function getGoogleDistance(userLat, userLng, shopLat, shopLng) {
+      try {
+        const res = await fetch(
+          `/api/get-distance/?user_lat=${userLat}&user_lng=${userLng}&shop_lat=${shopLat}&shop_lng=${shopLng}`
+        );
+        const data = await res.json();
+        const element = data?.rows?.[0]?.elements?.[0];
+        if (!element || element.status !== "OK") {
+          return { distanceKm: null, distanceText: "N/A" };
+        }
+        const km = element.distance.value / 1000;
         return {
-          dashboardLocation: userLocation,
-          externalLocation: { lat: externalLat, lng: externalLng },
-          difference: distance,
-          formattedDifference: formatDistance(distance)
+          distanceKm: km,
+          distanceText: element.distance.text
         };
-      } else {
-        console.log('✅ Locations are very close, good accuracy');
-        return null;
+      } catch (err) {
+        console.error("Distance error", err);
+        return { distanceKm: null, distanceText: "N/A" };
       }
     }
-    function filterShopsByLocation(shops, userLat, userLng) {
-      console.log('🔍 Filtering shops by location:');
+    // Filter shops by location using Google Distance Matrix API
+    async function filterShopsByLocation(shops, userLat, userLng) {
+      console.log('🔍 Filtering shops by location using Google Distance Matrix:');
       console.log('👤 User coordinates:', { lat: userLat, lng: userLng });
       console.log('🏪 Total shops to filter:', shops.length);
 
@@ -18930,124 +18991,154 @@
         return shops; // Return all shops if no location data
       }
 
-      const maxRadius = 3; // Fixed 3km radius as requested
+      const maxRadiusKm = 3; // Fixed 3km radius
 
-      // Calculate distance for all shops that have coordinates
-      const shopsWithDistance = shops
-        .filter(shop => {
-          const hasCoords = shop.latitude && shop.longitude && 
-                           shop.latitude !== '' && shop.longitude !== '';
-          if (!hasCoords) {
-            console.log(`🏪 ${shop.shop_name}: No coordinates available`);
-          }
-          return hasCoords;
-        })
-        .map(shop => {
-          const shopLat = parseFloat(shop.latitude);
-          const shopLng = parseFloat(shop.longitude);
-          const distance = calculateDistance(userLat, userLng, shopLat, shopLng);
-          
-          console.log(`📍 ${shop.shop_name}: (${shopLat}, ${shopLng}) = ${formatDistance(distance)}`);
-          
-          return {
-            ...shop,
-            distance: distance,
-            formattedDistance: formatDistance(distance)
-          };
-        })
-        .sort((a, b) => a.distance - b.distance); // Sort by distance
+      // Filter shops with coordinates
+      const shopsWithCoords = shops.filter(shop => {
+        const hasCoords = shop.latitude && shop.longitude && 
+                         shop.latitude !== '' && shop.longitude !== '';
+        if (!hasCoords) {
+          console.log(`🏪 ${shop.shop_name}: No coordinates available`);
+        }
+        return hasCoords;
+      });
 
-      console.log('📊 Shops with coordinates and distances:', shopsWithDistance.length);
+      console.log(`📍 Calculating distances for ${shopsWithCoords.length} shops using Google Distance Matrix...`);
 
-      // Filter shops within 3km radius
-      const filteredShops = shopsWithDistance.filter(shop => shop.distance <= maxRadius);
-      console.log(`🎯 Within ${maxRadius}km: ${filteredShops.length} shops`);
-      
-        if (filteredShops.length > 0) {
-        console.log(`✅ Found ${filteredShops.length} shops within ${maxRadius}km radius`);
-          console.log('🏆 Selected shops:', filteredShops.map(s => `${s.shop_name} (${s.formattedDistance})`));
-      } else {
-        console.log(`⚠️ No shops found within ${maxRadius}km, showing all available shops`);
-        // If no shops within 3km, show all shops with distance info
-        return shopsWithDistance;
-      }
-
-      // If no shops found within 3km, include shops without coordinates at the end
-      if (filteredShops.length === 0) {
-        console.log('❌ No shops found within 3km, showing all shops');
-        const shopsWithoutCoords = shops
-          .filter(shop => !shop.latitude || !shop.longitude || 
-                         shop.latitude === '' || shop.longitude === '')
-          .map(shop => ({
-            ...shop,
-            distance: null,
-            formattedDistance: 'Location not available'
-          }));
+      // Calculate distances using Google Distance Matrix API
+      const distancePromises = shopsWithCoords.map(async (shop) => {
+        const shopLat = parseFloat(shop.latitude);
+        const shopLng = parseFloat(shop.longitude);
         
-        filteredShops = [...shopsWithDistance, ...shopsWithoutCoords];
-        console.log('📝 Final list includes all shops with and without coordinates');
+        const distanceData = await getGoogleDistance(userLat, userLng, shopLat, shopLng);
+        
+        console.log(`📍 ${shop.shop_name}: ${distanceData.distanceText}`);
+        
+        return {
+          ...shop,
+          distanceKm: distanceData.distanceKm,  // Numeric in KM for sorting
+          distanceText: distanceData.distanceText || 'N/A',
+          formattedDistance: distanceData.distanceText || 'N/A'
+        };
+      });
+
+      const shopsWithDistance = await Promise.all(distancePromises);
+      
+      // Sort by distance (null distances go to the end)
+      shopsWithDistance.sort((a, b) => {
+        if (a.distanceKm == null && b.distanceKm == null) return 0;
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+
+      console.log('📊 Shops with distances calculated:', shopsWithDistance.length);
+
+      // Add shops without coordinates
+      const shopsWithoutCoords = shops
+        .filter(shop => !shop.latitude || !shop.longitude || 
+                       shop.latitude === '' || shop.longitude === '')
+        .map(shop => ({
+          ...shop,
+          distanceKm: null,
+          formattedDistance: 'Location not available'
+        }));
+      
+      // Return ALL shops with distance info (filtering will be done in render functions)
+      const allShopsWithDistance = [...shopsWithDistance, ...shopsWithoutCoords];
+      
+      // Separate into within 3km and outside 3km for logging
+      const within3km = shopsWithDistance.filter(shop => shop.distanceKm != null && shop.distanceKm <= maxRadiusKm);
+      console.log(`🎯 Within ${maxRadiusKm}km: ${within3km.length} shops`);
+      console.log(`📍 Total shops with distance: ${allShopsWithDistance.length}`);
+      
+      return allShopsWithDistance;
+    }
+
+    // Helper function to filter and sort shops based on search text and distance
+    function getFilteredShops(shops, searchText = '') {
+      if (!Array.isArray(shops) || shops.length === 0) {
+        return { displayShops: [], within3km: [], outside3km: [] };
       }
 
-      console.log('🎯 Final filtered shops count:', filteredShops.length);
-      return filteredShops;
+      // Separate shops into within 3km and outside 3km
+      const within3km = shops.filter(shop => shop.distanceKm != null && shop.distanceKm <= 3);
+      const outside3km = shops.filter(shop => shop.distanceKm == null || shop.distanceKm > 3);
+      
+      console.log("3km shops:", within3km);
+      console.log("Search:", searchText);
+      
+      let displayShops = [];
+      
+      if (searchText.length === 0) {
+        // DEFAULT MODE: Show only shops within 3km
+        displayShops = [...within3km].sort((a, b) => {
+          if (a.distanceKm == null) return 1;
+          if (b.distanceKm == null) return -1;
+          return a.distanceKm - b.distanceKm;
+        });
+      } else {
+        // SEARCH MODE: Show all shops matching search text (case-insensitive)
+        const searchLower = searchText.toLowerCase();
+        const matchedShops = shops.filter(shop => {
+          const shopName = (shop.shop_name || '').toLowerCase();
+          return shopName.includes(searchLower);
+        });
+        
+        // Sort matched shops by distance
+        displayShops = matchedShops.sort((a, b) => {
+          if (a.distanceKm == null && b.distanceKm == null) return 0;
+          if (a.distanceKm == null) return 1;
+          if (b.distanceKm == null) return -1;
+          return a.distanceKm - b.distanceKm;
+        });
+        
+        console.log("Matched shops:", displayShops);
+      }
+      
+      console.log("Rendered shops:", displayShops);
+      
+      return { displayShops, within3km, outside3km };
     }
 
     async function loadLocationBasedShops(forceLocationRefresh = false) {
       try {
-        console.log('🏪 Loading location-based shops...');
+        console.log('🏪 Loading location-based shops using Google Distance Matrix...');
         
         // First load all shops
         await loadAvailableShops(forceLocationRefresh);
         console.log('📦 Available shops loaded:', availableShops.length);
         
-        // Try to get user location with enhanced accuracy
+        // Try to get user location using Google Geolocation API via backend
         try {
-          console.log('📍 Getting user location...');
-          await getUserLocation(forceLocationRefresh);
+          console.log('📍 Getting user location via Google Geolocation API...');
+          const userLoc = await fetchAccurateUserLocation(forceLocationRefresh);
+          
+          if (!userLoc) {
+            console.warn('⚠️ Could not get accurate user location, skipping distance filtering.');
+            // If location fails, use all shops without distance info
+            locationBasedShops = availableShops.map(shop => ({
+              ...shop,
+              distanceKm: null,
+              formattedDistance: 'Location unavailable'
+            }));
+            availableShops = locationBasedShops;
+            return;
+          }
+          
+          userLocation = userLoc;
           console.log('✅ User location obtained:', userLocation);
           
-          // Calculate distance for ALL shops when location is available
-          console.log('🔍 Calculating distances for all shops...');
-          const allShopsWithDistance = availableShops.map(shop => {
-            if (shop.latitude && shop.longitude && 
-                shop.latitude !== '' && shop.longitude !== '') {
-              const shopLat = parseFloat(shop.latitude);
-              const shopLng = parseFloat(shop.longitude);
-              const distance = calculateDistance(userLocation.latitude, userLocation.longitude, shopLat, shopLng);
-              
-              console.log(`📍 ${shop.shop_name}: (${shopLat}, ${shopLng}) = ${formatDistance(distance)}`);
-              
-              return {
-                ...shop,
-                distance: distance,
-                formattedDistance: formatDistance(distance)
-              };
-            } else {
-              console.log(`🏪 ${shop.shop_name}: No coordinates available`);
-              return {
-                ...shop,
-                distance: null,
-                formattedDistance: 'Location not available'
-              };
-            }
-          }).sort((a, b) => {
-            // Sort by distance (null distances go to the end)
-            if (a.distance === null && b.distance === null) return 0;
-            if (a.distance === null) return 1;
-            if (b.distance === null) return -1;
-            return a.distance - b.distance;
-          });
-          
-          // Filter shops by location with detailed logging
-          console.log('🔍 Filtering shops by user location...');
-          locationBasedShops = filterShopsByLocation(
-            allShopsWithDistance, 
+          // Filter shops by location using Google Distance Matrix
+          console.log('🔍 Calculating distances using Google Distance Matrix API...');
+          locationBasedShops = await filterShopsByLocation(
+            availableShops, 
             userLocation.latitude, 
             userLocation.longitude
           );
           
-          // Also update availableShops with distance information
-          availableShops = allShopsWithDistance;
+          // Update availableShops with distance information (sorted)
+          availableShops = locationBasedShops;
           
           console.log('🎯 Location-based shops found:', locationBasedShops.length);
           if (locationBasedShops.length > 0) {
@@ -19058,15 +19149,14 @@
           }
           
         } catch (locationError) {
-          console.log('⚠️ Location access denied or failed:', locationError.message);
+          console.log('⚠️ Location fetch failed:', locationError.message);
           // If location fails, use all shops without distance info
           locationBasedShops = availableShops.map(shop => ({
             ...shop,
-            distance: null,
-            formattedDistance: 'Enable location for distance'
+            distanceKm: null,
+            formattedDistance: 'Location unavailable'
           }));
-          // Show prompt banner to request location sharing
-          showLocationPrompt();
+          availableShops = locationBasedShops;
         }
         
         // Update selected vendor to first available location-based shop
@@ -19095,8 +19185,13 @@
       }
     }
 
-    // Prompt user to enable location sharing (non-blocking banner)
+    // Prompt user about location (non-blocking banner) - now using Google Geolocation API
     function showLocationPrompt() {
+      // This function is kept for compatibility but location is now fetched automatically via Google Geolocation API
+      // No user action required - location is determined server-side
+      console.log('📍 Location will be fetched automatically via Google Geolocation API');
+      return;
+      
       let banner = document.getElementById('locationPermissionBanner');
       if (!banner) {
         banner = document.createElement('div');
@@ -19119,7 +19214,7 @@
           <div style="display:flex; align-items:center; gap:10px;">
             <i class="fas fa-map-marker-alt" style="color:#60a5fa;"></i>
             <div style="font-size:14px; line-height:1.4;">
-              Enable location to calculate accurate distance to nearby shops.
+              Location is being determined automatically for accurate road distance to nearby shops.
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
@@ -19133,7 +19228,7 @@
         });
         document.getElementById('enableLocationBtn').addEventListener('click', async () => {
           try {
-            await getUserLocation(true);
+            await fetchAccurateUserLocation(true);
             await loadLocationBasedShops(true);
           } catch (e) {
             console.warn('Location still unavailable:', e.message);
@@ -19297,7 +19392,6 @@
         }))
       );
       console.log(`🗺️ Map updated with ${coords.length} vendor locations`);
-      // TODO: Hook into actual map rendering library if available (Leaflet/Maps JS)
     }
   </script>
 
@@ -20410,7 +20504,8 @@
     });
   </script>
 
-
+  <!-- Google Maps Location Picker Modal -->
+  <!-- Location picker modal removed - using browser's native geolocation only -->
 
 </body>
 </html>

@@ -1327,6 +1327,8 @@
 
                         <input type="hidden" id="latitude" name="latitude">
                         <input type="hidden" id="longitude" name="longitude">
+                        <input type="hidden" id="vendor_lat" name="vendor_lat">
+                        <input type="hidden" id="vendor_lng" name="vendor_lng">
 
                         <button type="submit" class="submit-button" id="submitBtn">
                             <span class="loading-spinner" id="loadingSpinner"></span>
@@ -1610,97 +1612,35 @@
                 }
             });
 
-             // Mandatory geolocation fetching with user permission request
-             function requestLocationPermission() {
-                 if (navigator.geolocation) {
-                     // Show permission request message
-                     showNotification('📍 Location access is required for accurate service delivery. Please allow location access.', 'info');
-                     
-                     navigator.geolocation.getCurrentPosition(
-                         position => {
-                             const lat = position.coords.latitude;
-                             const lng = position.coords.longitude;
-                             const accuracy = position.coords.accuracy;
-                             
-                              // Store coordinates in hidden fields
-                              document.getElementById('latitude').value = lat;
-                              document.getElementById('longitude').value = lng;
-                             
-                             // Show success notification
+             // Auto-fetch vendor location on page load
+             window.addEventListener("load", () => {
+                 console.log("🚀 Fetching accurate vendor location...");
+                 (async () => {
+                     try {
+                         showNotification('📍 Fetching your location for accurate service delivery...', 'info');
+                         const loc = await fetchAccurateVendorLocation();
+                         if (loc) {
                              showNotification('✅ Location detected successfully! Your shop location has been recorded.', 'success');
-                         },
-                         error => {
-                             let errorMessage;
-                             let allowContinue = false;
-                             
-                             switch(error.code) {
-                                 case error.PERMISSION_DENIED:
-                                     errorMessage = "❌ Location access denied. This is required for accurate service delivery. Please enable location access and refresh the page.";
-                                     allowContinue = false;
-                                     break;
-                                 case error.POSITION_UNAVAILABLE:
-                                     errorMessage = "⚠️ Location information unavailable. Please check your GPS/WiFi settings and try again.";
-                                     allowContinue = true;
-                                     break;
-                                 case error.TIMEOUT:
-                                     errorMessage = "⏰ Location request timed out. Please try again or check your internet connection.";
-                                     allowContinue = true;
-                                     break;
-                                 default:
-                                     errorMessage = "❌ Location error occurred. Please refresh the page and try again.";
-                                     allowContinue = true;
-                             }
-                             
-                             console.error(`❌ Geolocation Error: ${errorMessage}, Code: ${error.code}`);
-                             
-                             if (allowContinue) {
-                                 // Set default coordinates but warn user
-            document.getElementById('latitude').value = '0';
-            document.getElementById('longitude').value = '0';
-                                 showNotification(errorMessage + ' You can continue with registration, but location services may be limited.', 'warning');
-                             } else {
-                                 // Don't allow registration without location
-                                 showNotification(errorMessage, 'error');
-                                 
-                                 // Disable submit button
-                                 const submitBtn = document.getElementById('submitBtn');
-                                 submitBtn.disabled = true;
-                                 submitBtn.innerHTML = '<span class="material-icons">location_off</span>Location Required';
-                                 submitBtn.style.background = 'var(--error)';
-                                 
-                                 // Add retry button
-                                 const retryBtn = document.createElement('button');
-                                 retryBtn.type = 'button';
-                                 retryBtn.className = 'submit-button';
-                                 retryBtn.style.marginTop = '0.5rem';
-                                 retryBtn.innerHTML = '<span class="material-icons">refresh</span>Retry Location';
-                                 retryBtn.onclick = () => {
-                                     location.reload();
-                                 };
-                                 
-                                 submitBtn.parentNode.insertBefore(retryBtn, submitBtn.nextSibling);
-                             }
-                         },
-                         {
-                             enableHighAccuracy: true,
-                             timeout: 15000,
-                             maximumAge: 0
+                         } else {
+                             showNotification('⚠️ Location could not be determined. Please try again.', 'warning');
+                             // Disable submit button if location is required
+                             const submitBtn = document.getElementById('submitBtn');
+                             submitBtn.disabled = true;
+                             submitBtn.innerHTML = '<span class="material-icons">location_off</span>Location Required';
+                             submitBtn.style.background = 'var(--error)';
                          }
-                     );
-                 } else {
-                     console.error("❌ Geolocation is not supported by this browser.");
-                     showNotification('❌ Your browser does not support location services. Please use a modern browser.', 'error');
-                     
-                     // Disable submit button
-                     const submitBtn = document.getElementById('submitBtn');
-                     submitBtn.disabled = true;
-                     submitBtn.innerHTML = '<span class="material-icons">error</span>Browser Not Supported';
-                     submitBtn.style.background = 'var(--error)';
-                 }
-             }
-             
-             // Request location permission on page load
-             requestLocationPermission();
+                     } catch (error) {
+                         console.error('❌ Location fetch error:', error);
+                         showNotification('❌ Location fetch failed. Please refresh the page and try again.', 'error');
+                         
+                         // Disable submit button if location is required
+                         const submitBtn = document.getElementById('submitBtn');
+                         submitBtn.disabled = true;
+                         submitBtn.innerHTML = '<span class="material-icons">location_off</span>Location Required';
+                         submitBtn.style.background = 'var(--error)';
+                     }
+                 })();
+             });
 
             // Timeline continue button functionality (to Pricing)
             const continuePricingBtn = document.getElementById('continuePricingBtn');
@@ -1717,6 +1657,60 @@
                 }
             });
         });
+
+        // Global functions for location handling (accessible from handleRegistration)
+        // Fetch vendor location using Google Geolocation API via backend
+        async function fetchAccurateVendorLocation() {
+            try {
+                const response = await fetch("/api/get-accurate-location/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                console.log("🌍 Accurate vendor location response:", data);
+                
+                if (data.success) {
+                    const { latitude, longitude } = data;
+                    
+                    // Set both old and new field names for compatibility
+                    document.getElementById("latitude").value = latitude;
+                    document.getElementById("longitude").value = longitude;
+                    document.getElementById("vendor_lat").value = latitude;
+                    document.getElementById("vendor_lng").value = longitude;
+                    
+                    console.log("📍 Stored vendor lat/lng:", latitude, longitude);
+                    return data;
+                } else {
+                    console.error("❌ Location fetch failed:", data);
+                    return null;
+                }
+            } catch (err) {
+                console.error("❌ Error calling location API:", err);
+                return null;
+            }
+        }
+        
+        // Ensure vendor location is loaded before form submission
+        async function ensureVendorLocationLoaded() {
+            let lat = document.getElementById("vendor_lat").value;
+            let lng = document.getElementById("vendor_lng").value;
+            
+            if (!lat || !lng || lat === '0' || lng === '0') {
+                console.warn("⚠️ Location not ready, retrying...");
+                await fetchAccurateVendorLocation();
+                // Wait a bit for the API call to complete
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                lat = document.getElementById("vendor_lat").value;
+                lng = document.getElementById("vendor_lng").value;
+            }
+            
+            return lat && lng && lat !== '0' && lng !== '0';
+        }
 
         // Get CSRF token
         function getCookie(name) {
@@ -1738,6 +1732,15 @@
         async function handleRegistration(event) {
             event.preventDefault();
             
+            // ⛔ DO NOT SUBMIT WITHOUT LOCATION
+            const locationReady = await ensureVendorLocationLoaded();
+            if (!locationReady) {
+                alert("Fetching accurate location... Please try again in 2 seconds.");
+                return;
+            }
+            
+            console.log("📍 Vendor location confirmed, proceeding with registration.");
+            
             // Validate all fields
             const validationResults = [
                 validateField('email', 'emailError', validations.email),
@@ -1756,9 +1759,9 @@
                 return;
             }
 
-            // Get latitude and longitude from hidden fields (set by geolocation)
-            const latitude = document.getElementById('latitude').value;
-            const longitude = document.getElementById('longitude').value;
+            // Get latitude and longitude from hidden fields (set by Google Geolocation API)
+            const latitude = document.getElementById('latitude').value || document.getElementById('vendor_lat').value;
+            const longitude = document.getElementById('longitude').value || document.getElementById('vendor_lng').value;
             
              // Coordinates are ready to be sent
             
@@ -1789,7 +1792,9 @@
                 shop_address: document.getElementById('shopAddress').value,
                 pincode: document.getElementById('pincode').value,
                 latitude: latitude,
-                longitude: longitude
+                longitude: longitude,
+                vendor_lat: document.getElementById('vendor_lat').value || latitude,
+                vendor_lng: document.getElementById('vendor_lng').value || longitude
             };
 
             try {

@@ -1321,6 +1321,7 @@ def userdashboard(request):
             'user_points': user_points,
             'GOOGLE_CLIENT_ID': settings.GOOGLE_CLIENT_ID,
             'GOOGLE_DEVELOPER_KEY': settings.GOOGLE_DEVELOPER_KEY,
+            # Note: GOOGLE_MAPS_API is NOT passed to frontend - it's server-side only for Distance Matrix API
             # Firebase FCM Configuration
             'FIREBASE_CONFIG': firebase_config,
             'FIREBASE_VAPID_KEY': firebase_vapid_key,
@@ -5882,10 +5883,39 @@ def vendor_register_api(request):
             locality = data.get('locality', '').strip()
             shop_address = data.get('shop_address', '').strip()
             pincode = data.get('pincode', '').strip()
-            latitude = data.get('latitude', '0')
-            longitude = data.get('longitude', '0')
+            # Support both old (latitude/longitude) and new (vendor_lat/vendor_lng) field names
+            latitude = data.get('vendor_lat') or data.get('latitude', '0')
+            longitude = data.get('vendor_lng') or data.get('longitude', '0')
 
             print(f"📧 Processing registration for: {email}")
+            print(f"📍 Location data: lat={latitude}, lng={longitude}")
+
+            # Validate location coordinates
+            if not latitude or not longitude or latitude == '0' or longitude == '0':
+                print(f"❌ Location fetch failed: lat={latitude}, lng={longitude}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Location could not be determined. Please try again.'
+                }, status=400)
+            
+            # Validate latitude and longitude are valid numbers
+            try:
+                lat_float = float(latitude)
+                lng_float = float(longitude)
+            except (ValueError, TypeError):
+                print(f"❌ Invalid coordinate format: lat={latitude}, lng={longitude}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid location coordinates. Please refresh the page and try again.'
+                }, status=400)
+            
+            # Validate coordinate ranges
+            if not (-90 <= lat_float <= 90) or not (-180 <= lng_float <= 180):
+                print(f"❌ Invalid coordinate range: lat={lat_float}, lng={lng_float}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid location coordinates. Please refresh the page and try again.'
+                }, status=400)
 
             # Validate required fields
             required_fields = {
@@ -5986,8 +6016,8 @@ def vendor_register_api(request):
                 'locality': locality,
                 'shop_address': shop_address,
                 'pincode': pincode,
-                'latitude': latitude,
-                'longitude': longitude,
+                'latitude': str(lat_float),
+                'longitude': str(lng_float),
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
                 'status': 'pending'
@@ -8911,6 +8941,105 @@ def get_vendor_coordinates(request):
         return JsonResponse({'coordinates': coordinates})
     except Exception as e:
         return JsonResponse({'coordinates': [], 'error': str(e)})
+
+@csrf_exempt
+def get_distance(request):
+    """
+    Secure backend proxy for Google Distance Matrix API.
+    Uses server-side API key (not referrer-restricted).
+    """
+    # Validate that server-side API key is configured
+    if not settings.GOOGLE_MAPS_API:
+        error_msg = "GOOGLE_MAPS_API is not configured in .env file. Please set GOOGLE_MAPS_API=<YOUR_SERVER_SIDE_API_KEY>"
+        print(f"❌ ERROR: {error_msg}")
+        return JsonResponse({
+            'error': error_msg,
+            'status': 'ERROR',
+            'destination_addresses': [],
+            'origin_addresses': [],
+            'rows': []
+        }, status=500)
+    
+    user_lat = request.GET.get("user_lat")
+    user_lng = request.GET.get("user_lng")
+    shop_lat = request.GET.get("shop_lat")
+    shop_lng = request.GET.get("shop_lng")
+    
+    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+    params = {
+        "origins": f"{user_lat},{user_lng}",
+        "destinations": f"{shop_lat},{shop_lng}",
+        "mode": "driving",
+        "key": settings.GOOGLE_MAPS_API
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response_data = response.json()
+        
+        # Temporary logging to verify API response (remove after confirming it works)
+        print("GOOGLE RESPONSE:", response_data)
+        
+        return JsonResponse(response_data)
+    except Exception as e:
+        print(f"❌ Distance Matrix API Error: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def get_accurate_location(request):
+    """
+    Backend proxy for Google Geolocation API.
+    Called by frontend (userdashboard & vendor_register) to get accurate lat/lng.
+    Uses server-side API key (not referrer-restricted).
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+    
+    # Validate that server-side API key is configured
+    if not settings.GOOGLE_MAPS_API:
+        error_msg = "GOOGLE_MAPS_API is not configured in .env file. Please set GOOGLE_MAPS_API=<YOUR_SERVER_SIDE_API_KEY>"
+        print(f"❌ ERROR: {error_msg}")
+        return JsonResponse({
+            "success": False,
+            "message": error_msg
+        }, status=500)
+    
+    url = f"https://www.googleapis.com/geolocation/v1/geolocate?key={settings.GOOGLE_MAPS_API}"
+    
+    try:
+        google_response = requests.post(url, json={}, timeout=10)
+        data = google_response.json()
+        
+        # 🔥 DEBUG (DO NOT REMOVE) - Print RAW Google API response
+        print("📡 RAW GOOGLE RESPONSE:", data)
+        
+        if "location" not in data:
+            print(f"❌ Google Geolocation API failed: {data}")
+            return JsonResponse({
+                "success": False,
+                "message": "Google Geolocation failed",
+                "google_error": data
+            }, status=400)
+        
+        lat = data["location"]["lat"]
+        lng = data["location"]["lng"]
+        accuracy = data.get("accuracy")
+        
+        print(f"✅ Google Geolocation API success: lat={lat}, lng={lng}, accuracy={accuracy}")
+        
+        return JsonResponse({
+            "success": True,
+            "latitude": lat,
+            "longitude": lng,
+            "accuracy": accuracy,
+        })
+    except Exception as e:
+        print(f"❌ Google Geolocation API Error: {str(e)}")
+        return JsonResponse({
+            "success": False,
+            "message": str(e)
+        }, status=500)
 
 def create_job_completion_notification(user_email, filename, token, vendor_name, service_type, completion_time):
     # Stub: implement notification logic if needed
