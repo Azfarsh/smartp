@@ -14145,8 +14145,7 @@
       loadUserJobs();
       // Load user points
       loadUserPoints();
-      // Initialize WebSocket connection for real-time notifications
-      initializeWebSocket();
+      // WebSocket connection removed - using polling instead for notifications
 
       // Prime shop data immediately for all modals
       const shopsPromise = loadAvailableShops();
@@ -14190,106 +14189,7 @@
       });
     });
 
-    // WebSocket connection for real-time notifications
-    let userWebSocket = null;
-    let wsReconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    
-    function initializeWebSocket() {
-      const userEmail = '{{ user.email }}';
-      if (!userEmail) {
-        console.warn('No user email found, skipping WebSocket connection');
-        return;
-      }
-      
-      // Determine WebSocket protocol (ws:// for http, wss:// for https)
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/user/${encodeURIComponent(userEmail)}/`;
-      
-      try {
-        userWebSocket = new WebSocket(wsUrl);
-        
-        userWebSocket.onopen = function() {
-          console.log('✅ WebSocket connected for real-time notifications');
-          wsReconnectAttempts = 0;
-          
-          // Send ping to keep connection alive
-          setInterval(() => {
-            if (userWebSocket && userWebSocket.readyState === WebSocket.OPEN) {
-              userWebSocket.send(JSON.stringify({
-                type: 'ping',
-                timestamp: Date.now()
-              }));
-            }
-          }, 30000); // Ping every 30 seconds
-        };
-        
-        userWebSocket.onmessage = function(event) {
-          try {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'job_completion') {
-              console.log('📬 Real-time job completion notification received:', data);
-              
-              // Refresh jobs to remove completed job from pending list
-              if (typeof refreshJobs === 'function') {
-                refreshJobs();
-              }
-              
-              // Reload notifications to show the new notification
-              if (typeof loadNotifications === 'function') {
-                loadNotifications();
-              }
-              
-              // Show browser notification if permission granted
-              if (Notification.permission === 'granted' && data.message) {
-                new Notification('🎉 Print Job Completed!', {
-                  body: data.message,
-                  icon: '/static/images/android-chrome-192x192.png',
-                  badge: '/static/images/android-chrome-192x192.png',
-                  tag: `job-completed-${data.filename}`,
-                  requireInteraction: true
-                });
-              }
-            } else if (data.type === 'connection_status') {
-              console.log('📡 WebSocket connection status:', data.status);
-            } else if (data.type === 'pong') {
-              // Pong received, connection is alive
-              console.log('🏓 WebSocket pong received');
-            }
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-        
-        userWebSocket.onerror = function(error) {
-          console.error('❌ WebSocket error:', error);
-        };
-        
-        userWebSocket.onclose = function(event) {
-          console.log('⚠️ WebSocket closed:', event.code, event.reason);
-          
-          // Attempt to reconnect if not a normal closure
-          if (event.code !== 1000 && wsReconnectAttempts < maxReconnectAttempts) {
-            wsReconnectAttempts++;
-            const reconnectDelay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000); // Exponential backoff, max 30s
-            console.log(`🔄 Reconnecting WebSocket in ${reconnectDelay}ms (attempt ${wsReconnectAttempts}/${maxReconnectAttempts})...`);
-            setTimeout(initializeWebSocket, reconnectDelay);
-          } else if (wsReconnectAttempts >= maxReconnectAttempts) {
-            console.warn('⚠️ Max WebSocket reconnection attempts reached. Falling back to polling.');
-          }
-        };
-      } catch (error) {
-        console.error('❌ Error initializing WebSocket:', error);
-      }
-    }
-    
-    // Clean up WebSocket on page unload
-    window.addEventListener('beforeunload', function() {
-      if (userWebSocket) {
-        userWebSocket.close(1000, 'Page unloading');
-      }
-    });
+    // WebSocket connection removed - notifications are handled via polling
 
     // Notification System
     let notifications = [];
@@ -14581,13 +14481,9 @@
         const status = (notification.status || 'completed').toString().toUpperCase();
         const serviceType = notification.service_type || 'Document Print';
         
-        // Create a more impressive notification
-        showImpressiveToast('Print Job Ready!', {
-          job: filename,
-          token: token || 'Unknown',
-          status: status,
-          serviceType: serviceType
-        });
+        // Create a notification message
+        const message = `Token ${token || 'Unknown'} - ${serviceType} completed`;
+        showToast('Print Job Ready!', message);
       });
     }
 
@@ -18998,6 +18894,48 @@
       return distanceText;
     }
 
+    // Fallback to browser geolocation API
+    async function fallbackToBrowserGeolocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          console.warn("⚠️ Browser geolocation not available");
+          resolve(null);
+          return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const locationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              fromCache: false,
+              fromBrowser: true
+            };
+            
+            // Cache for later
+            localStorage.setItem("printmax_user_lat", locationData.latitude);
+            localStorage.setItem("printmax_user_lon", locationData.longitude);
+            
+            window.__userLocation = locationData;
+            userLocation = locationData;
+            
+            console.log("✅ Browser geolocation success:", locationData);
+            resolve(locationData);
+          },
+          (error) => {
+            console.warn("⚠️ Browser geolocation failed:", error.message);
+            resolve(null);
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      });
+    }
+
     // Get user location using Google Geolocation API via backend
     // Unified function for automatic location detection
     async function fetchAccurateUserLocation(forceRefresh = false) {
@@ -19025,10 +18963,20 @@
           body: JSON.stringify({})
         });
 
+        // Handle non-200 responses
+        if (!response.ok) {
+          console.warn("⚠️ Location API returned error status, falling back to browser geolocation");
+          return await fallbackToBrowserGeolocation();
+        }
+
         const data = await response.json();
 
         if (!data.success) {
-          console.error("❌ Accurate location failed:", data);
+          console.warn("⚠️ Location API failed:", data.message || "Unknown error");
+          // If API suggests fallback, use browser geolocation
+          if (data.fallback_to_browser) {
+            return await fallbackToBrowserGeolocation();
+          }
           return null;
         }
 
@@ -19052,7 +19000,8 @@
         return locationData;
       } catch (err) {
         console.error("❌ Error fetching accurate user location:", err);
-        return null;
+        // Fallback to browser geolocation on network errors
+        return await fallbackToBrowserGeolocation();
       }
     }
 
@@ -19240,31 +19189,30 @@
               formattedDistance: 'Location unavailable'
             }));
             availableShops = locationBasedShops;
-            return;
+            console.log('📦 Using all shops without distance info:', locationBasedShops.length);
+          } else {
+            userLocation = userLoc;
+            console.log('✅ User location obtained:', userLocation);
+            
+            // Filter shops by location using Google Distance Matrix
+            console.log('🔍 Calculating distances using Google Distance Matrix API...');
+            locationBasedShops = await filterShopsByLocation(
+              availableShops, 
+              userLocation.latitude, 
+              userLocation.longitude
+            );
+            
+            // Update availableShops with distance information (sorted)
+            availableShops = locationBasedShops;
+            
+            console.log('🎯 Location-based shops found:', locationBasedShops.length);
+            if (locationBasedShops.length > 0) {
+              console.log('📊 Closest shops:');
+              locationBasedShops.slice(0, 3).forEach((shop, index) => {
+                console.log(`${index + 1}. ${shop.shop_name} - ${shop.formattedDistance}`);
+              });
+            }
           }
-          
-          userLocation = userLoc;
-          console.log('✅ User location obtained:', userLocation);
-          
-          // Filter shops by location using Google Distance Matrix
-          console.log('🔍 Calculating distances using Google Distance Matrix API...');
-          locationBasedShops = await filterShopsByLocation(
-            availableShops, 
-            userLocation.latitude, 
-            userLocation.longitude
-          );
-          
-          // Update availableShops with distance information (sorted)
-          availableShops = locationBasedShops;
-          
-          console.log('🎯 Location-based shops found:', locationBasedShops.length);
-          if (locationBasedShops.length > 0) {
-            console.log('📊 Closest shops:');
-            locationBasedShops.slice(0, 3).forEach((shop, index) => {
-              console.log(`${index + 1}. ${shop.shop_name} - ${shop.formattedDistance}`);
-            });
-          }
-          
         } catch (locationError) {
           console.log('⚠️ Location fetch failed:', locationError.message);
           // If location fails, use all shops without distance info
