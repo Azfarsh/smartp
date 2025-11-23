@@ -217,6 +217,11 @@ R2_BUCKET = os.getenv('R2_BUCKET')
 WORKER_API_URL = os.getenv('WORKER_API_URL', 'https://data.azfarshaikh7860.workers.dev')
 WORKER_API_KEY = os.getenv('WORKER_API_KEY', 'your-secret-api-key-here-contact-data')
 
+# ✅ PicWish API Configuration
+# PicWish API key for image enhancement services
+# Get your API key from: https://picwish.com/api
+PICWISH_API = os.getenv('PICWISH_API')
+
 # ✅ CORS setup
 CORS_ALLOW_ALL_ORIGINS = True  # Use CORS_ALLOWED_ORIGINS in production
 

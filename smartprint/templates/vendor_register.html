@@ -1659,7 +1659,52 @@
         });
 
         // Global functions for location handling (accessible from handleRegistration)
-        // Fetch vendor location using Google Geolocation API via backend
+        
+        // Validate if coordinates are within India bounds (roughly 6°N-37°N, 68°E-97°E)
+        function isValidIndiaCoordinates(lat, lng) {
+            if (!lat || !lng) return false;
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+            // India bounds: latitude 6°N to 37°N, longitude 68°E to 97°E
+            return (latNum >= 6 && latNum <= 37 && lngNum >= 68 && lngNum <= 97);
+        }
+        
+        // Fallback to browser geolocation API (more accurate than IP-based geolocation)
+        async function fallbackToBrowserGeolocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    console.warn("⚠️ Browser geolocation not available");
+                    resolve(null);
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const locationData = {
+                            success: true,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            fromBrowser: true
+                        };
+                        
+                        console.log("✅ Browser geolocation success:", locationData);
+                        resolve(locationData);
+                    },
+                    (error) => {
+                        console.warn("⚠️ Browser geolocation failed:", error.message);
+                        resolve(null);
+                    },
+                    {
+                        enableHighAccuracy: true, // Use GPS if available
+                        timeout: 15000,
+                        maximumAge: 0 // Don't use cached location
+                    }
+                );
+            });
+        }
+        
+        // Fetch vendor location using Google Geolocation API via backend, with browser fallback
         async function fetchAccurateVendorLocation() {
             try {
                 const response = await fetch("/api/get-accurate-location/", {
@@ -1676,6 +1721,30 @@
                 if (data.success) {
                     const { latitude, longitude } = data;
                     
+                    // Validate coordinates - check if they're reasonable for India
+                    if (!isValidIndiaCoordinates(latitude, longitude)) {
+                        console.warn("⚠️ Google Geolocation returned coordinates outside India bounds. Falling back to browser geolocation.");
+                        console.warn(`   Received: lat=${latitude}, lng=${longitude}`);
+                        const browserLocation = await fallbackToBrowserGeolocation();
+                        if (browserLocation && browserLocation.success) {
+                            // Use browser geolocation instead
+                            const lat = browserLocation.latitude;
+                            const lng = browserLocation.longitude;
+                            
+                            // Set both old and new field names for compatibility
+                            document.getElementById("latitude").value = lat;
+                            document.getElementById("longitude").value = lng;
+                            document.getElementById("vendor_lat").value = lat;
+                            document.getElementById("vendor_lng").value = lng;
+                            
+                            console.log("📍 Stored vendor lat/lng from browser:", lat, lng);
+                            return { success: true, latitude: lat, longitude: lng, fromBrowser: true };
+                        } else {
+                            // Browser geolocation also failed, but still use Google's result (user can manually correct)
+                            console.warn("⚠️ Browser geolocation also failed. Using Google's result (may need manual correction).");
+                        }
+                    }
+                    
                     // Set both old and new field names for compatibility
                     document.getElementById("latitude").value = latitude;
                     document.getElementById("longitude").value = longitude;
@@ -1685,11 +1754,42 @@
                     console.log("📍 Stored vendor lat/lng:", latitude, longitude);
                     return data;
                 } else {
+                    console.warn("⚠️ Google Geolocation API failed, falling back to browser geolocation");
+                    // Fallback to browser geolocation
+                    const browserLocation = await fallbackToBrowserGeolocation();
+                    if (browserLocation && browserLocation.success) {
+                        const lat = browserLocation.latitude;
+                        const lng = browserLocation.longitude;
+                        
+                        // Set both old and new field names for compatibility
+                        document.getElementById("latitude").value = lat;
+                        document.getElementById("longitude").value = lng;
+                        document.getElementById("vendor_lat").value = lat;
+                        document.getElementById("vendor_lng").value = lng;
+                        
+                        console.log("📍 Stored vendor lat/lng from browser fallback:", lat, lng);
+                        return { success: true, latitude: lat, longitude: lng, fromBrowser: true };
+                    }
                     console.error("❌ Location fetch failed:", data);
                     return null;
                 }
             } catch (err) {
-                console.error("❌ Error calling location API:", err);
+                console.error("❌ Error calling location API, falling back to browser geolocation:", err);
+                // Fallback to browser geolocation on network errors
+                const browserLocation = await fallbackToBrowserGeolocation();
+                if (browserLocation && browserLocation.success) {
+                    const lat = browserLocation.latitude;
+                    const lng = browserLocation.longitude;
+                    
+                    // Set both old and new field names for compatibility
+                    document.getElementById("latitude").value = lat;
+                    document.getElementById("longitude").value = lng;
+                    document.getElementById("vendor_lat").value = lat;
+                    document.getElementById("vendor_lng").value = lng;
+                    
+                    console.log("📍 Stored vendor lat/lng from browser fallback:", lat, lng);
+                    return { success: true, latitude: lat, longitude: lng, fromBrowser: true };
+                }
                 return null;
             }
         }

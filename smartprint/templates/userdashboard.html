@@ -10228,18 +10228,29 @@
               // Handle country change
               countrySelect.addEventListener('change', function() {
                 const selectedCountry = this.value;
-                const packages = countryPhotoPackages[selectedCountry] || countryPhotoPackages['india'];
+                // Use countryPhotoPackages from parent scope, with fallback
+                const packages = (countryPhotoPackages && countryPhotoPackages[selectedCountry]) 
+                  ? countryPhotoPackages[selectedCountry] 
+                  : (countryPhotoPackages && countryPhotoPackages['india'])
+                  ? countryPhotoPackages['india']
+                  : [
+                      { value: '8', label: '8 Photos (Standard)' },
+                      { value: '16', label: '16 Photos (Family)' },
+                      { value: '30', label: '30 Photos (Bulk)' }
+                    ];
                 
                 // Clear existing options
                 packageSelect.innerHTML = '';
                 
                 // Add new options based on selected country
-                packages.forEach(pkg => {
-                   const option = document.createElement('option');
-                   option.value = pkg.value;
-                   option.textContent = `${pkg.label}`;
-                   packageSelect.appendChild(option);
-                });
+                if (packages && Array.isArray(packages)) {
+                  packages.forEach(pkg => {
+                     const option = document.createElement('option');
+                     option.value = pkg.value;
+                     option.textContent = `${pkg.label}`;
+                     packageSelect.appendChild(option);
+                  });
+                }
                 
                 // Update description based on country
                 const countryName = this.options[this.selectedIndex].text.split(' (')[0];
@@ -19684,7 +19695,8 @@
     previewContainer.removeAttribute('data-enhanced-ready');
     previewContainer.removeAttribute('data-selected-version');
     previewContainer.dataset.selectedVersion = 'original';
-    const enhancementToken = Date.now() + '_' + Math.random();
+    // Create enhancement token with only valid ID characters (replace dots with dashes)
+    const enhancementToken = (Date.now() + '_' + Math.random()).replace(/\./g, '-');
     previewContainer.dataset.enhancementToken = enhancementToken;
     
     // Track selection
@@ -19707,7 +19719,103 @@
       previewContainer.dataset.selectedVersion = selectedVersion;
     }
 
-    // Initial render
+    // Helper: Demo comparison HTML for Enhanced fallback
+    function getEnhancedDemoHTML() {
+      // Professional passport photo demo images - before (needs enhancement) and after (enhanced)
+      // Using professional passport-style headshot of a man in suit with neutral expression
+      const demoImgBefore = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format';
+      const demoImgAfter = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format&q=90';
+      return `
+        <style>
+          .selectable-image.enhanced .demo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+          .dark-mode .selectable-image.enhanced .demo-compare { background: rgba(17,24,39,0.6); border-color: rgba(148,163,184,0.3); }
+          .selectable-image.enhanced .demo-side { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
+          .dark-mode .selectable-image.enhanced .demo-side { background: #0b1020; border-color: rgba(148,163,184,0.25); }
+          .selectable-image.enhanced .demo-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+          .selectable-image.enhanced .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+          .dark-mode .selectable-image.enhanced .photo-wrap { background: #111827; }
+          .selectable-image.enhanced .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .selectable-image.enhanced .before img { filter: blur(1.2px) brightness(0.9) contrast(0.9) saturate(0.9); }
+          .selectable-image.enhanced .after img { filter: contrast(1.1) brightness(1.05) saturate(1.1); }
+          .selectable-image.enhanced .demo-divider { display: none; }
+          .selectable-image.enhanced .demo-fallback { color: #6b7280; font-size: 0.95rem; text-align: center; padding: 1.25rem 0; }
+          .selectable-image.enhanced .apply-demo-btn { margin: 12px auto 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 10px; border: 1px solid #2563eb; color: #ffffff; background: #2563eb; cursor: pointer; font-weight: 600; transition: transform .15s ease, box-shadow .15s ease; }
+          .selectable-image.enhanced .apply-demo-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,0.25); }
+          .dark-mode .selectable-image.enhanced .apply-demo-btn { background:#3b82f6; border-color:#3b82f6; }
+        </style>
+        <div class="demo-compare" role="img" aria-label="Demo before and after passport photo enhancement">
+          <div class="demo-side before">
+            <div class="demo-label">Before</div>
+            <div class="photo-wrap">
+              <img src="${demoImgBefore}" alt="Before demo - original passport photo" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div class\\'demo-fallback\\'>Enhanced Preview Unavailable</div>';"></img>
+            </div>
+          </div>
+          <div class="demo-side after">
+            <div class="demo-label">After</div>
+            <div class="photo-wrap">
+              <img src="${demoImgAfter}" alt="After demo - enhanced passport photo" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div class\\'demo-fallback\\'>Enhanced Preview Unavailable</div>';"></img>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <button type="button" class="apply-demo-btn" data-action="apply-demo">Apply Enhancement</button>
+        </div>
+      `;
+    }
+
+    // Helper: Get dummy comparison HTML using static dummy image (man in suit passport photo)
+    function getDummyComparisonHTML(uploadedFileUrl) {
+      // Use a static dummy image (man in suit passport photo) for before/after comparison
+      // This will be replaced with actual enhanced image only after clicking "Apply Enhancement"
+      const dummyImgBefore = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format';
+      const dummyImgAfter = 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?w=400&h=500&fit=crop&crop=face&auto=format&q=90';
+      return `
+        <style>
+          .selectable-image.enhanced .demo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+          .dark-mode .selectable-image.enhanced .demo-compare { background: rgba(17,24,39,0.6); border-color: rgba(148,163,184,0.3); }
+          .selectable-image.enhanced .demo-side { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
+          .dark-mode .selectable-image.enhanced .demo-side { background: #0b1020; border-color: rgba(148,163,184,0.25); }
+          .selectable-image.enhanced .demo-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+          .selectable-image.enhanced .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+          .dark-mode .selectable-image.enhanced .photo-wrap { background: #111827; }
+          .selectable-image.enhanced .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .selectable-image.enhanced .before img { filter: blur(1.2px) brightness(0.9) contrast(0.9) saturate(0.9); }
+          .selectable-image.enhanced .after img { filter: contrast(1.1) brightness(1.05) saturate(1.1); }
+          .selectable-image.enhanced .apply-enhancement-btn { margin: 16px auto 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 10px; border: none; color: #ffffff; background: #2563eb; cursor: pointer; font-weight: 600; font-size: 1rem; transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease; }
+          .selectable-image.enhanced .apply-enhancement-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,0.25); }
+          .selectable-image.enhanced .apply-enhancement-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+          .dark-mode .selectable-image.enhanced .apply-enhancement-btn { background:#3b82f6; }
+          .selectable-image.enhanced .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; z-index: 10; }
+          .dark-mode .selectable-image.enhanced .loading-overlay { background: rgba(17,24,39,0.9); }
+          .selectable-image.enhanced .loading-spinner { font-size: 2em; color: #3b82f6; margin-bottom: 12px; }
+          .selectable-image.enhanced .loading-text { color: #374151; font-size: 1rem; font-weight: 500; }
+          .dark-mode .selectable-image.enhanced .loading-text { color: #e5e7eb; }
+        </style>
+        <div class="demo-compare" role="img" aria-label="Before and after passport photo enhancement preview">
+          <div class="demo-side before">
+            <div class="demo-label">Before</div>
+            <div class="photo-wrap">
+              <img src="${dummyImgBefore}" alt="Before - original passport photo" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div style=\'color:#6b7280;font-size:0.95rem;text-align:center;padding:1.25rem 0;\'>Demo Preview</div>';" />
+            </div>
+          </div>
+          <div class="demo-side after">
+            <div class="demo-label">After</div>
+            <div class="photo-wrap">
+              <img src="${dummyImgAfter}" alt="After - enhanced passport photo preview" onerror="this.style.display='none'; this.closest('.photo-wrap').innerHTML='<div style=\'color:#6b7280;font-size:0.95rem;text-align:center;padding:1.25rem 0;\'>Demo Preview</div>';" />
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center; margin-top: 16px;">
+          <button type="button" class="apply-enhancement-btn" id="apply-enhancement-btn-${enhancementToken}">
+            <i class="fas fa-magic" style="margin-right: 8px;"></i>
+            Apply Enhancement
+          </button>
+        </div>
+      `;
+    }
+
+    // Initial render - Show dummy comparison immediately
+    const uploadedFileUrl = URL.createObjectURL(file);
     previewContainer.innerHTML = `
       <style>
         .passport-preview-flex { width: 100%; display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1.5rem 0; flex-wrap: wrap; box-sizing: border-box; }
@@ -19725,15 +19833,14 @@
         <div class="selectable-image original selected" tabindex="0">
           <div class="selectable-label">Original</div>
           <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original"></span>
-          <img src="${URL.createObjectURL(file)}" alt="Original" />
+          <img src="${uploadedFileUrl}" alt="Original" />
         </div>
         <div class="selectable-image enhanced" tabindex="0">
           <div class="selectable-label">Enhanced</div>
           <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
-          <div id="enhance-spinner" style="padding: 40px 0; color: #3b82f6; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-            <i class="fas fa-spinner fa-spin" style="font-size:2.2em;"></i><br/>
-            <span style="font-size:1.05em;">Enhancing…</span>
-          </div>
+          ${getDummyComparisonHTML(uploadedFileUrl)}
+          <div class='enhanced-extra'>Preview</div>
+          <div class='enhanced-cost'>+₹10 extra for enhancement</div>
         </div>
       </div>
     `;
@@ -19755,100 +19862,178 @@
     if (origRadio) origRadio.addEventListener('change', () => { selectedVersion = 'original'; updateSelectionUI(); });
     if (enhRadio) enhRadio.addEventListener('change', () => { if (enhancedReady) { selectedVersion = 'enhanced'; updateSelectionUI(); }});
 
-    // Enhancement logic
-    const apiKey = 'wx1rwv2nti07a0yb4';
-    const formData = new FormData();
-    formData.append('image_file', file);
-    formData.append('sync', 0);
-    formData.append('type', 'face');
-    formData.append('return_type', 1);
-
-    let taskId = null;
-    let errorMsg = null;
-    try {
-      const resp = await fetch('https://techhk.aoscdn.com/api/tasks/visual/scale', {
-        method: 'POST',
-        headers: { 'X-API-KEY': apiKey },
-        body: formData
-      });
-      const data = await resp.json();
-      if (!resp.ok || !data || !data.data || !data.data.task_id) {
-        throw new Error(data?.msg || 'Failed to create enhancement task.');
-      }
-      taskId = data.data.task_id;
-    } catch (err) {
-      errorMsg = err.message || 'Failed to contact enhancement API.';
-    }
-    if (!taskId) {
-      if (enhBox) enhBox.innerHTML += `<div style='color:#ef4444;'>${errorMsg || 'Could not start enhancement.'}</div>`;
-      return;
-    }
-    let pollCount = 0;
-    let pollError = null;
-    while (pollCount < 30 && !enhancedUrl) {
-      try {
-        await new Promise(r => setTimeout(r, 1000));
-        pollCount++;
-        const pollResp = await fetch(`https://techhk.aoscdn.com/api/tasks/visual/scale/${taskId}`, {
-          method: 'GET',
-          headers: { 'X-API-KEY': apiKey }
-        });
-        const pollData = await pollResp.json();
-        if (pollResp.status === 429) {
-          pollError = 'Rate limit reached. Please try again later.';
-          break;
-        }
-        if (!pollResp.ok || !pollData || !pollData.data) {
-          pollError = pollData?.msg || 'Enhancement failed.';
-          break;
-        }
-        if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
-          enhancedUrl = pollData.data.image;
-          enhancedReady = true;
-          break;
-        }
-        if (pollData.data.state === 2) {
-          pollError = 'Enhancement failed.';
-          break;
-        }
-      } catch (err) {
-        pollError = err.message || 'Error polling enhancement API.';
-        break;
-      }
-    }
-    if (enhancedUrl) {
-      // Only update if this is the latest enhancement
+    // Enhancement function - triggered when "Apply Enhancement" button is clicked
+    async function applyEnhancement() {
+      // Only proceed if this is the latest enhancement token
       if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
-      if (enhBox) {
-        enhBox.innerHTML = `
-          <div class="selectable-label">Enhanced</div>
-          <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
-          <img src="${enhancedUrl}" alt="Enhanced" />
-          <div class='enhanced-extra'>Ready!</div>
-          <div class='enhanced-cost'>+₹10 extra for enhancement</div>
+      
+      // Use getElementById to avoid CSS selector escaping issues with special characters
+      const applyBtn = previewContainer.querySelector(`[id="apply-enhancement-btn-${enhancementToken}"]`) || 
+                       document.getElementById(`apply-enhancement-btn-${enhancementToken}`);
+      if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Processing...';
+      }
+      
+      // Declare currentEnhBox once at the top of the function
+      let currentEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+      const demoCompare = currentEnhBox?.querySelector('.demo-compare');
+      if (demoCompare) {
+        demoCompare.style.position = 'relative';
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+          <i class="fas fa-spinner fa-spin loading-spinner"></i>
+          <div class="loading-text">Enhancing your photo...</div>
         `;
-        // Re-attach selection logic after replacing innerHTML
-        const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
-        const newEnhRadio = previewContainer.querySelector('#select-enhanced');
-        if (newEnhBox) {
-          newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
-          newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
-        }
-        if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
-        updateSelectionUI();
+        demoCompare.appendChild(loadingOverlay);
       }
-      // Set data attributes for enhanced image
-      previewContainer.dataset.enhancedUrl = enhancedUrl;
-      previewContainer.dataset.enhancedReady = 'true';
-    } else {
+      
+      // Enhancement logic - Call Django backend
+      const formData = new FormData();
+      formData.append('image_file', file);
+      formData.append('type', 'face');
+
+      let taskId = null;
+      let errorMsg = null;
+      try {
+        // Call Django backend endpoint
+        const resp = await fetch('/enhance-passport-photo-with-picwish/', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.success || !data.data || !data.data.task_id) {
+          throw new Error(data?.error || data?.msg || 'Failed to create enhancement task.');
+        }
+        taskId = data.data.task_id;
+      } catch (err) {
+        errorMsg = err.message || 'Failed to contact enhancement API.';
+        console.error('Enhancement task creation error:', err);
+        // Remove loading overlay and show error
+        currentEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+        const loadingOverlay = currentEnhBox?.querySelector('.loading-overlay');
+        if (loadingOverlay) loadingOverlay.remove();
+        if (applyBtn) {
+          applyBtn.disabled = false;
+          applyBtn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>Retry Enhancement';
+        }
+        alert('Enhancement failed: ' + errorMsg);
+        return;
+      }
+      
+      // Poll for enhancement result
+      let pollCount = 0;
+      let pollError = null;
+      while (pollCount < 30 && !enhancedUrl) {
+        try {
+          await new Promise(r => setTimeout(r, 1000));
+          pollCount++;
+          // Call Django backend for polling
+          const pollResp = await fetch(`/enhance-passport-photo-with-picwish/?task_id=${taskId}`, {
+            method: 'GET'
+          });
+          const pollData = await pollResp.json();
+          if (pollResp.status === 429) {
+            pollError = 'Rate limit reached. Please try again later.';
+            break;
+          }
+          if (!pollResp.ok || !pollData || !pollData.success || !pollData.data) {
+            pollError = pollData?.error || pollData?.msg || 'Enhancement failed.';
+            break;
+          }
+          if (pollData.data.progress === 100 && pollData.data.state === 1 && pollData.data.image) {
+            enhancedUrl = pollData.data.image;
+            enhancedReady = true;
+            break;
+          }
+          if (pollData.data.state === 2) {
+            pollError = 'Enhancement failed.';
+            break;
+          }
+        } catch (err) {
+          pollError = err.message || 'Error polling enhancement API.';
+          console.error('Polling error:', err);
+          break;
+        }
+      }
+      
       // Only update if this is the latest enhancement
       if (previewContainer.dataset.enhancementToken !== enhancementToken) return;
-      if (enhBox) {
-        enhBox.innerHTML += `<div style='color:#ef4444;'>${pollError || 'Enhancement timed out. Please try again.'}</div>`;
+      
+      // Remove loading overlay
+      currentEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+      const loadingOverlay = currentEnhBox?.querySelector('.loading-overlay');
+      if (loadingOverlay) loadingOverlay.remove();
+      
+      if (enhancedUrl) {
+        // Replace dummy comparison with actual before/after comparison
+        // Use user's uploaded file as "before" and PicWish enhanced image as "after"
+        const uploadedFileUrl = URL.createObjectURL(file);
+        const finalEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+        if (finalEnhBox) {
+          finalEnhBox.innerHTML = `
+            <div class="selectable-label">Enhanced</div>
+            <span class="select-radio"><input type="radio" name="passport-select" id="select-enhanced" value="enhanced"></span>
+            <div class="demo-compare" role="img" aria-label="Before and after passport photo enhancement">
+              <div class="demo-side before">
+                <div class="demo-label">Before</div>
+                <div class="photo-wrap">
+                  <img src="${uploadedFileUrl}" alt="Before - original passport photo" />
+                </div>
+              </div>
+              <div class="demo-side after">
+                <div class="demo-label">After</div>
+                <div class="photo-wrap">
+                  <img src="${enhancedUrl}" alt="After - enhanced passport photo" style="transition: opacity 0.3s ease;" />
+                </div>
+              </div>
+            </div>
+            <div class='enhanced-extra'>Ready!</div>
+            <div class='enhanced-cost'>+₹10 extra for enhancement</div>
+            <style>
+              .selectable-image.enhanced .demo-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; margin: 0 auto; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+              .dark-mode .selectable-image.enhanced .demo-compare { background: rgba(17,24,39,0.6); border-color: rgba(148,163,184,0.3); }
+              .selectable-image.enhanced .demo-side { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
+              .dark-mode .selectable-image.enhanced .demo-side { background: #0b1020; border-color: rgba(148,163,184,0.25); }
+              .selectable-image.enhanced .demo-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
+              .selectable-image.enhanced .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+              .dark-mode .selectable-image.enhanced .photo-wrap { background: #111827; }
+              .selectable-image.enhanced .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+            </style>
+          `;
+          // Re-attach selection logic after replacing innerHTML
+          const newEnhBox = previewContainer.querySelector('.selectable-image.enhanced');
+          const newEnhRadio = previewContainer.querySelector('#select-enhanced');
+          if (newEnhBox) {
+            newEnhBox.addEventListener('click', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+            newEnhBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { selectedVersion = 'enhanced'; updateSelectionUI(); }});
+          }
+          if (newEnhRadio) newEnhRadio.addEventListener('change', () => { selectedVersion = 'enhanced'; updateSelectionUI(); });
+          updateSelectionUI();
+        }
+        // Set data attributes for enhanced image
+        previewContainer.dataset.enhancedUrl = enhancedUrl;
+        previewContainer.dataset.enhancedReady = 'true';
+      } else {
+        // Enhancement failed - show error but keep dummy comparison
+        if (applyBtn) {
+          applyBtn.disabled = false;
+          applyBtn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>Retry Enhancement';
+        }
+        alert('Enhancement failed: ' + (pollError || 'Timeout or unknown error'));
+        // Set not ready
+        previewContainer.dataset.enhancedUrl = '';
+        previewContainer.dataset.enhancedReady = 'false';
       }
-      // Set not ready
-      previewContainer.dataset.enhancedUrl = '';
-      previewContainer.dataset.enhancedReady = 'false';
+    }
+    
+    // Attach click handler to "Apply Enhancement" button
+    // Use attribute selector to avoid CSS selector escaping issues with special characters
+    const applyBtn = previewContainer.querySelector(`[id="apply-enhancement-btn-${enhancementToken}"]`) || 
+                     document.getElementById(`apply-enhancement-btn-${enhancementToken}`);
+    if (applyBtn) {
+      applyBtn.addEventListener('click', applyEnhancement);
     }
   }
   </script>
