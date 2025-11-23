@@ -5161,9 +5161,74 @@
 <body data-theme="light" data-user-email="{{ user.email }}">
   
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <!-- Google Drive Picker API -->
-  <script src="https://apis.google.com/js/api.js"></script>
-  <script src="https://apis.google.com/js/picker.js"></script>
+  <!-- Google Drive Picker API with error handling -->
+  <script src="https://apis.google.com/js/api.js" onerror="console.warn('Failed to load Google API script');"></script>
+  <script src="https://apis.google.com/js/picker.js" onerror="console.warn('Failed to load Google Picker script');"></script>
+  
+  <!-- Suppress Chrome extension message passing errors (harmless but annoying) -->
+  <script>
+    // Suppress Chrome extension message passing errors
+    const originalError = console.error;
+    console.error = function(...args) {
+      const message = args.join(' ');
+      // Suppress Chrome extension message passing errors
+      if (message.includes('message channel closed') || 
+          message.includes('asynchronous response') ||
+          message.includes('listener indicated')) {
+        return; // Suppress these errors
+      }
+      originalError.apply(console, args);
+    };
+    
+    // Enhanced error handler to suppress browser extension errors (harmless)
+    window.addEventListener('error', function(e) {
+      const errorMessage = e.message || '';
+      const errorSource = e.filename || '';
+      
+      // Suppress Google accounts CSP report errors (from browser extensions)
+      if (errorMessage.includes('accounts.google.com') ||
+          errorMessage.includes('cspreport') ||
+          errorMessage.includes('fine-allowlist') ||
+          (errorSource.includes('accounts.google.com') && errorSource.includes('cspreport'))) {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Suppress message listener errors from browser extensions
+      if (errorMessage.includes('listener indicated an asynchronous response') || 
+          errorMessage.includes('message channel closed')) {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Suppress Google API loading errors (often from extensions)
+      if (errorSource.includes('gapi.loaded') || errorSource.includes('googleapis.com')) {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
+    
+    // Also handle unhandled promise rejections (browser extension errors)
+    window.addEventListener('unhandledrejection', function(e) {
+      const reason = e.reason || '';
+      const reasonString = String(reason);
+      
+      // Suppress message listener promise rejections from browser extensions
+      if (reasonString.includes('listener indicated an asynchronous response') || 
+          reasonString.includes('message channel closed')) {
+        e.preventDefault(); // Suppress this error
+        return;
+      }
+      
+      // Suppress Google API related rejections
+      if (reasonString.includes('accounts.google.com') || 
+          reasonString.includes('gapi.loaded')) {
+        e.preventDefault();
+        return;
+      }
+    });
+  </script>
+  
   <!-- Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -12018,9 +12083,11 @@
     
   </main>
   <!-- Data from backend - OPTIMIZED for instant loading -->
+  <script id="user-jobs-data" type="application/json">{% if user_jobs_json %}{{ user_jobs_json|safe }}{% else %}[]{% endif %}</script>
   <script>
-    window.userJobsData = {{ user_jobs_json|default:"[]"|safe }};
-    window.userEmail = '{{ user.email }}';
+    const jobsDataScript = document.getElementById('user-jobs-data');
+    window.userJobsData = jobsDataScript ? JSON.parse(jobsDataScript.textContent) : [];
+    window.userEmail = '{{ user.email|default:"" }}';
     window.__userLocation = window.__userLocation || null;
     
     // PDF Animation Control Variables
@@ -13308,44 +13375,94 @@
     let oauthToken = null;
     let driveFiles = new Map(); // Store temp_key for each fileId
 
-    // Initialize Google Drive Picker
+    // Initialize Google Drive Picker with error handling
     function initializeDrivePicker() {
-      gapi.load('auth2', function() {
-        gapi.auth2.init({
-          client_id: '{{ GOOGLE_CLIENT_ID }}',
-          scope: 'https://www.googleapis.com/auth/drive.readonly'
-        }).then(function() {
-          console.log('Google Drive Picker initialized');
+      try {
+        if (typeof gapi === 'undefined' || !gapi) {
+          console.warn('Google API (gapi) not loaded yet');
+          return;
+        }
+        gapi.load('auth2', {
+          callback: function() {
+            try {
+              gapi.auth2.init({
+                client_id: '{{ GOOGLE_CLIENT_ID }}',
+                scope: 'https://www.googleapis.com/auth/drive.readonly'
+              }).then(function() {
+                console.log('Google Drive Picker initialized');
+              }).catch(function(error) {
+                console.warn('Google Drive Picker initialization failed:', error);
+              });
+            } catch (error) {
+              console.warn('Error initializing Google auth2:', error);
+            }
+          },
+          onerror: function() {
+            console.warn('Failed to load Google auth2 API');
+          }
         });
-      });
+      } catch (error) {
+        console.warn('Error loading Google Drive Picker:', error);
+      }
     }
 
-    // Load Google Drive Picker
+    // Load Google Drive Picker with error handling
     function onPickerApiLoad() {
-      gapi.load('picker', {'callback': createPicker});
+      try {
+        if (typeof gapi === 'undefined' || !gapi) {
+          console.warn('Google API (gapi) not loaded yet');
+          return;
+        }
+        gapi.load('picker', {
+          callback: createPicker,
+          onerror: function() {
+            console.warn('Failed to load Google Picker API');
+          }
+        });
+      } catch (error) {
+        console.warn('Error loading Google Picker API:', error);
+      }
     }
 
-    // Create Google Drive Picker
+    // Create Google Drive Picker with error handling
     function createPicker() {
-      if (!oauthToken) {
-        // Get OAuth token first
-        gapi.auth2.getAuthInstance().signIn().then(function(googleUser) {
-          oauthToken = googleUser.getAuthResponse().access_token;
+      try {
+        if (!oauthToken) {
+          // Get OAuth token first
+          if (typeof gapi === 'undefined' || !gapi || !gapi.auth2) {
+            console.warn('Google auth2 not available');
+            return;
+          }
+          gapi.auth2.getAuthInstance().signIn().then(function(googleUser) {
+            oauthToken = googleUser.getAuthResponse().access_token;
+            showDrivePicker();
+          }).catch(function(error) {
+            console.warn('Google Sign-In failed:', error);
+          });
+        } else {
           showDrivePicker();
-        });
-      } else {
-        showDrivePicker();
+        }
+      } catch (error) {
+        console.warn('Error creating Google Drive Picker:', error);
       }
     }
 
     function showDrivePicker() {
-      const picker = new google.picker.PickerBuilder()
-        .addView(google.picker.ViewId.DOCS)
-        .setOAuthToken(oauthToken)
-        .setDeveloperKey(DEVELOPER_KEY)
-        .setCallback(pickerCallback)
-        .build();
-      picker.setVisible(true);
+      try {
+        if (typeof google === 'undefined' || !google || !google.picker) {
+          console.warn('Google Picker API not available');
+          return;
+        }
+        const picker = new google.picker.PickerBuilder()
+          .addView(google.picker.ViewId.DOCS)
+          .setOAuthToken(oauthToken)
+          .setDeveloperKey(DEVELOPER_KEY)
+          .setCallback(pickerCallback)
+          .build();
+        picker.setVisible(true);
+      } catch (error) {
+        console.warn('Error showing Google Drive Picker:', error);
+      }
     }
 
     // Handle Google Drive file selection
@@ -14089,32 +14206,36 @@
               if (messaging && messaging !== null && typeof messaging === 'object' && typeof messaging.onMessage === 'function') {
                 try {
                   messaging.onMessage((payload) => {
-                    console.log('📩 Message received in foreground:', payload);
-                    
-                    // Show notification even when app is in foreground
-                    const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
-                    const notificationOptions = {
-                      body: payload.notification?.body || payload.data?.message || 'You have a new notification',
-                      icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
-                      badge: '/static/images/android-chrome-192x192.png',
-                      tag: payload.data?.notification_id || 'printmax-notification',
-                      requireInteraction: true,
-                      data: payload.data || {}
-                    };
+                    try {
+                      console.log('📩 Message received in foreground:', payload);
+                      
+                      // Show notification even when app is in foreground
+                      const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
+                      const notificationOptions = {
+                        body: payload.notification?.body || payload.data?.message || 'You have a new notification',
+                        icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
+                        badge: '/static/images/android-chrome-192x192.png',
+                        tag: payload.data?.notification_id || 'printmax-notification',
+                        requireInteraction: true,
+                        data: payload.data || {}
+                      };
 
-                    // Show browser notification
-                    if (Notification.permission === 'granted') {
-                      new Notification(notificationTitle, notificationOptions);
-                    }
-                    
-                    // Also trigger your existing notification system
-                    if (typeof initializeNotifications === 'function') {
-                      initializeNotifications();
+                      // Show browser notification
+                      if (Notification.permission === 'granted') {
+                        new Notification(notificationTitle, notificationOptions);
+                      }
+                      
+                      // Also trigger your existing notification system
+                      if (typeof initializeNotifications === 'function') {
+                        initializeNotifications();
+                      }
+                    } catch (payloadError) {
+                      console.warn('Error processing FCM message:', payloadError);
                     }
                   });
                   console.log('✅ onMessage handler registered successfully');
                 } catch (onMessageError) {
-                  console.error('❌ Error setting up onMessage handler:', onMessageError);
+                  console.warn('❌ Error setting up onMessage handler:', onMessageError);
                 }
               } else if (retryCount < maxRetries) {
                 retryCount++;
@@ -14793,13 +14914,13 @@
 
       // Show appropriate message based on mode
       if (currentSearchText.length === 0) {
-        // DEFAULT MODE: Show message if no shops within 3km
+        // DEFAULT MODE: Show message if no shops available at all
         if (displayShops.length === 0) {
           vendorOptionsContainer.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
               <i class="fas fa-exclamation-triangle"></i>
-              <p>⚠️ No shops available near your location.</p>
-              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop.</p>
+              <p>⚠️ No shops available.</p>
+              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop or check back later.</p>
             </div>
           `;
           return;
@@ -15483,7 +15604,7 @@
     }
 
     // Function to open shop selection modal
-    function openShopSelectionModal(service) {
+    async function openShopSelectionModal(service) {
       // Create modal if it doesn't exist
       let modal = document.getElementById(`${service}-shop-selection-modal`);
       if (!modal) {
@@ -15521,7 +15642,31 @@
       modal.classList.add('open');
       document.body.style.overflow = 'hidden';
       
-      // Load shops
+      // Ensure shops are loaded before displaying
+      if (availableShops.length === 0 && (!window.availableShopsPromise || !shopsLoadedPromise)) {
+        // Wait for shops to load
+        try {
+          await loadAvailableShops();
+        } catch (error) {
+          console.error('Error loading shops:', error);
+        }
+      } else if (window.availableShopsPromise) {
+        // Wait for existing promise
+        try {
+          await window.availableShopsPromise;
+        } catch (error) {
+          console.error('Error waiting for shops:', error);
+        }
+      } else if (shopsLoadedPromise) {
+        // Wait for existing promise
+        try {
+          await shopsLoadedPromise;
+        } catch (error) {
+          console.error('Error waiting for shops:', error);
+        }
+      }
+      
+      // Load shops in modal
       loadShopsInModal(service);
       
       // Focus search input
@@ -15571,9 +15716,31 @@
     }
 
     // Function to load shops in modal
-    function loadShopsInModal(service) {
+    async function loadShopsInModal(service) {
       const shopList = document.getElementById(`${service}-shop-selection-list`);
       if (!shopList) return;
+      
+      // Ensure shops are loaded
+      if (availableShops.length === 0) {
+        shopList.innerHTML = `
+          <div class="loading-message" style="text-align: center; padding: 2rem;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading shops...</p>
+          </div>
+        `;
+        try {
+          await loadAvailableShops();
+        } catch (error) {
+          console.error('Error loading shops:', error);
+          shopList.innerHTML = `
+            <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
+              <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+              <p>⚠️ Failed to load shops. Please try again.</p>
+            </div>
+          `;
+          return;
+        }
+      }
       
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
@@ -15587,13 +15754,13 @@
       
       // Show appropriate message based on mode
       if (searchText.length === 0) {
-        // DEFAULT MODE: Show message if no shops within 3km
+        // DEFAULT MODE: Show message if no shops available at all
         if (displayShops.length === 0) {
           shopList.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
               <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-              <p>⚠️ No shops available near your location.</p>
-              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop.</p>
+              <p>⚠️ No shops available.</p>
+              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop or check back later.</p>
             </div>
           `;
           return;
@@ -19131,24 +19298,40 @@
       const within3km = shops.filter(shop => shop.distanceKm != null && shop.distanceKm <= 3);
       const outside3km = shops.filter(shop => shop.distanceKm == null || shop.distanceKm > 3);
       
-      console.log("3km shops:", within3km);
+      console.log("3km shops:", within3km.length);
+      console.log("Total shops:", shops.length);
       console.log("Search:", searchText);
       
       let displayShops = [];
       
       if (searchText.length === 0) {
-        // DEFAULT MODE: Show only shops within 3km
-        displayShops = [...within3km].sort((a, b) => {
-          if (a.distanceKm == null) return 1;
-          if (b.distanceKm == null) return -1;
-          return a.distanceKm - b.distanceKm;
-        });
+        // DEFAULT MODE: Show shops within 3km, but if none exist, show all shops (fallback)
+        if (within3km.length > 0) {
+          displayShops = [...within3km].sort((a, b) => {
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+          });
+        } else {
+          // Fallback: Show all shops if no shops within 3km (or distance not calculated)
+          displayShops = [...shops].sort((a, b) => {
+            if (a.distanceKm == null && b.distanceKm == null) return 0;
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+          });
+          console.log("No shops within 3km, showing all shops:", displayShops.length);
+        }
       } else {
         // SEARCH MODE: Show all shops matching search text (case-insensitive)
         const searchLower = searchText.toLowerCase();
         const matchedShops = shops.filter(shop => {
           const shopName = (shop.shop_name || '').toLowerCase();
-          return shopName.includes(searchLower);
+          const shopAddress = (shop.shop_address || '').toLowerCase();
+          const shopCity = (shop.city || '').toLowerCase();
+          return shopName.includes(searchLower) || 
+                 shopAddress.includes(searchLower) || 
+                 shopCity.includes(searchLower);
         });
         
         // Sort matched shops by distance
@@ -19159,10 +19342,10 @@
           return a.distanceKm - b.distanceKm;
         });
         
-        console.log("Matched shops:", displayShops);
+        console.log("Matched shops:", displayShops.length);
       }
       
-      console.log("Rendered shops:", displayShops);
+      console.log("Rendered shops:", displayShops.length);
       
       return { displayShops, within3km, outside3km };
     }
