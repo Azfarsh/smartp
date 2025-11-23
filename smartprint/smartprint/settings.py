@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 # Local testing hosts + production domain
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'printmax.onrender.com', 'printmax.in']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'printmax.onrender.com', 'printmax.in','192.168.1.4']
 
 # Application definition
 INSTALLED_APPS = [
@@ -259,8 +259,11 @@ EMAIL_TEST_TO = os.getenv('EMAIL_TEST_TO', '')
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_live_RF2OLAhxugVc5B')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '5NkBgjtxzJLNAUwhQLTXzsQP')
 
-GOOGLE_API_KEY = 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw'
-GOOGLE_DEVELOPER_KEY = os.getenv('GOOGLE_DEVELOPER_KEY', 'AIzaSyBZxTJfCiwyYdeuHLDUuACG_cPeqrz2MYw')
+# Google API Keys
+# GOOGLE_DEVELOPER_KEY: Browser API key (with HTTP referrer restrictions) - for frontend Maps JS only
+GOOGLE_DEVELOPER_KEY = os.getenv('GOOGLE_DEVELOPER_KEY', '')
+# GOOGLE_MAPS_API: Server-side API key (NO referrer restrictions) - for backend Distance Matrix API only
+GOOGLE_MAPS_API = os.getenv('GOOGLE_MAPS_API', '')
 
 # ✅ Google OAuth Configuration for Production
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'your-google-client-id-here')
