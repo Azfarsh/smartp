@@ -8051,7 +8051,10 @@ def enhance_passport_photo(request):
         return JsonResponse({'success': False, 'error': 'No image uploaded.'}, status=400)
 
     image_file = request.FILES['file']
-    api_key = 'wxvzd1pi3lnd7t015'
+    api_key = getattr(settings, 'PICWISH_API', None)
+    if not api_key:
+        return JsonResponse({'success': False, 'error': 'API key not configured'}, status=500)
+    
     url = 'https://techhk.aoscdn.com/api/tasks/visual/scale'
     headers = {'X-API-KEY': api_key}
     files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
@@ -8077,6 +8080,332 @@ def enhance_passport_photo(request):
             return JsonResponse({'success': False, 'error': result.get('error', 'Enhancement failed.')}, status=500)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def enhance_photo(request):
+    """
+    PicWish Photo Enhancement API endpoint.
+    Accepts an image file, sends it to PicWish API, and returns the enhanced image URL.
+    Used by the Enhance section in passport-photo-service.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+    
+    try:
+        # Get uploaded image file
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return JsonResponse({'success': False, 'error': 'No image uploaded'}, status=400)
+        
+        # PicWish API configuration - Load from settings
+        api_key = getattr(settings, 'PICWISH_API', None)
+        if not api_key:
+            print("DEBUG: PICWISH_API not found in settings")
+            return JsonResponse({'success': False, 'error': 'API key not configured'}, status=500)
+        
+        print("DEBUG: Using PicWish API key:", api_key[:10] + "..." if len(api_key) > 10 else api_key)
+        
+        api_url = 'https://techhk.aoscdn.com/api/tasks/visual/scale'
+        
+        # Prepare request headers - Use Authorization header format as per PicWish API docs
+        headers = {
+            "Authorization": f"API-Key {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Prepare form data
+        data = {
+            'sync': 1,  # Synchronous request (1 = sync, 0 = async)
+            'type': request.POST.get('type', 'face'),  # Enhancement type: 'face' for passport photos
+            'return_type': 1  # Return type: 1 = image URL, 2 = base64
+        }
+        
+        print("DEBUG: Headers:", headers)
+        print("DEBUG: Payload:", data)
+        
+        # Prepare file upload (read file content)
+        files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+        
+        # Make API request to PicWish
+        # Note: When using files, requests will set Content-Type to multipart/form-data automatically
+        # So we remove Content-Type from headers for file uploads
+        headers_for_upload = {
+            "Authorization": f"API-Key {api_key}"
+        }
+        response = requests.post(api_url, headers=headers_for_upload, data=data, files=files, timeout=60)
+        
+        # If 401 with Authorization header, try X-API-KEY as fallback
+        if response.status_code == 401:
+            print("DEBUG: 401 with Authorization header, trying X-API-KEY fallback")
+            headers_fallback = {'X-API-KEY': api_key}
+            # Reset file pointer
+            image_file.seek(0)
+            files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+            response = requests.post(api_url, headers=headers_fallback, data=data, files=files, timeout=60)
+        
+        print("DEBUG: PicWish response status:", response.status_code)
+        print("DEBUG: PicWish response body:", response.text)
+        
+        # Handle different HTTP status codes
+        if response.status_code == 200:
+            # Parse JSON response
+            result = response.json()
+            
+            # Check if API returned success status
+            if result.get('status') == 200:
+                enhanced_url = result.get('data', {}).get('image')
+                if enhanced_url:
+                    return JsonResponse({
+                        'success': True, 
+                        'enhanced_image_url': enhanced_url
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False, 
+                        'error': 'No image URL in API response'
+                    })
+            else:
+                # API returned error in response body
+                error_msg = result.get('message') or result.get('msg') or 'Enhancement failed'
+                return JsonResponse({
+                    'success': False, 
+                    'error': error_msg
+                })
+        
+        elif response.status_code == 401:
+            # Unauthorized - Invalid or expired API key
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Unauthorized API Key'
+            except:
+                error_msg = 'Unauthorized API Key. Please check your key.'
+            return JsonResponse({
+                'success': False, 
+                'error': 'Unauthorized API Key. Please check your key.'
+            }, status=401)
+        
+        elif response.status_code == 429:
+            # Rate limit exceeded
+            return JsonResponse({
+                'success': False, 
+                'error': 'Rate limit exceeded. Please try again later.'
+            }, status=429)
+        
+        elif response.status_code == 400:
+            # Bad request - invalid parameters or file format
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Invalid request'
+            except:
+                error_msg = 'Invalid request. Please check your image file.'
+            return JsonResponse({
+                'success': False, 
+                'error': error_msg
+            }, status=400)
+        
+        else:
+            # Other HTTP errors
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('message') or error_detail.get('msg') or f'API request failed with status {response.status_code}'
+            except:
+                error_msg = f'API request failed with status {response.status_code}'
+            return JsonResponse({
+                'success': False, 
+                'error': error_msg
+            }, status=response.status_code)
+            
+    except requests.exceptions.Timeout:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Request timeout. The API took too long to respond.'
+        }, status=504)
+    
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({
+            'success': False, 
+            'error': f'Network error: {str(e)}'
+        }, status=500)
+    
+    except Exception as e:
+        # Log the exception for debugging
+        import traceback
+        print(f"Enhance photo error: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({
+            'success': False, 
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+def enhance_passport_photo_with_picwish(request):
+    """
+    PicWish Passport Photo Enhancement API endpoint (Async).
+    Supports both task creation and task polling.
+    - POST with file: Creates async enhancement task, returns task_id
+    - GET with task_id: Polls task status, returns enhanced image URL when ready
+    """
+    # Get API key from settings
+    api_key = getattr(settings, 'PICWISH_API', None)
+    if not api_key:
+        print("DEBUG: PICWISH_API not found in settings")
+        return JsonResponse({'success': False, 'error': 'API key not configured'}, status=500)
+    
+    print("DEBUG: Using PicWish API key:", api_key[:10] + "..." if len(api_key) > 10 else api_key)
+    
+    api_url = 'https://techhk.aoscdn.com/api/tasks/visual/scale'
+    
+    if request.method == 'POST':
+        # Create enhancement task
+        try:
+            # Get uploaded image file
+            image_file = request.FILES.get('image_file')
+            if not image_file:
+                return JsonResponse({'success': False, 'error': 'No image uploaded'}, status=400)
+            
+            # Prepare request headers - Try Authorization format first, fallback to X-API-KEY if needed
+            # Note: PicWish API may accept either format, but Authorization: API-Key is the standard
+            headers = {
+                "Authorization": f"API-Key {api_key}"
+            }
+            
+            # Prepare form data for async task creation
+            data = {
+                'sync': 0,  # Async request
+                'type': request.POST.get('type', 'face'),  # Enhancement type: 'face' for passport photos
+                'return_type': 1  # Return type: 1 = image URL, 2 = base64
+            }
+            
+            print("DEBUG: Headers:", headers)
+            print("DEBUG: Payload:", data)
+            
+            # Prepare file upload
+            files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+            
+            # Make API request to PicWish
+            response = requests.post(api_url, headers=headers, data=data, files=files, timeout=60)
+            
+            # If 401 with Authorization header, try X-API-KEY as fallback
+            if response.status_code == 401:
+                print("DEBUG: 401 with Authorization header, trying X-API-KEY fallback")
+                headers_fallback = {'X-API-KEY': api_key}
+                # Reset file pointer
+                image_file.seek(0)
+                files = {'image_file': (image_file.name, image_file.read(), image_file.content_type)}
+                response = requests.post(api_url, headers=headers_fallback, data=data, files=files, timeout=60)
+            
+            print("DEBUG: PicWish response status:", response.status_code)
+            print("DEBUG: PicWish response body:", response.text)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 200 and result.get('data', {}).get('task_id'):
+                    task_id = result['data']['task_id']
+                    return JsonResponse({
+                        'success': True,
+                        'data': {
+                            'task_id': task_id
+                        }
+                    })
+                else:
+                    error_msg = result.get('msg') or result.get('message') or 'Failed to create task'
+                    return JsonResponse({'success': False, 'error': error_msg}, status=500)
+            elif response.status_code == 401:
+                error_detail = response.json() if response.text else {}
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Unauthorized API Key'
+                print(f"DEBUG: 401 Error - {error_msg}")
+                return JsonResponse({'success': False, 'error': error_msg}, status=401)
+            else:
+                try:
+                    error_detail = response.json()
+                    error_msg = error_detail.get('message') or error_detail.get('msg') or f'API request failed with status {response.status_code}'
+                except:
+                    error_msg = f'API request failed with status {response.status_code}'
+                return JsonResponse({'success': False, 'error': error_msg}, status=response.status_code)
+                
+        except Exception as e:
+            import traceback
+            print(f"DEBUG: Exception in enhance_passport_photo_with_picwish (POST): {str(e)}")
+            print(traceback.format_exc())
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    elif request.method == 'GET':
+        # Poll task status
+        try:
+            task_id = request.GET.get('task_id')
+            if not task_id:
+                return JsonResponse({'success': False, 'error': 'task_id required'}, status=400)
+            
+            # Prepare request headers - Try Authorization format first, fallback to X-API-KEY if needed
+            headers = {
+                "Authorization": f"API-Key {api_key}"
+            }
+            
+            # Poll task status
+            poll_url = f"{api_url}/{task_id}"
+            response = requests.get(poll_url, headers=headers, timeout=60)
+            
+            # If 401 with Authorization header, try X-API-KEY as fallback
+            if response.status_code == 401:
+                print("DEBUG: 401 with Authorization header, trying X-API-KEY fallback for polling")
+                headers_fallback = {'X-API-KEY': api_key}
+                response = requests.get(poll_url, headers=headers_fallback, timeout=60)
+            
+            print(f"DEBUG: Polling task {task_id} - status: {response.status_code}")
+            print(f"DEBUG: Poll response body: {response.text}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 200 and result.get('data'):
+                    data = result['data']
+                    if data.get('progress') == 100 and data.get('state') == 1 and data.get('image'):
+                        # Task completed successfully
+                        return JsonResponse({
+                            'success': True,
+                            'data': {
+                                'progress': 100,
+                                'state': 1,
+                                'image': data['image']
+                            }
+                        })
+                    elif data.get('state') == 2:
+                        # Task failed
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Enhancement failed',
+                            'data': data
+                        })
+                    else:
+                        # Task still in progress
+                        return JsonResponse({
+                            'success': True,
+                            'data': data
+                        })
+                else:
+                    error_msg = result.get('msg') or result.get('message') or 'Failed to get task status'
+                    return JsonResponse({'success': False, 'error': error_msg}, status=500)
+            elif response.status_code == 401:
+                error_detail = response.json() if response.text else {}
+                error_msg = error_detail.get('message') or error_detail.get('msg') or 'Unauthorized API Key'
+                return JsonResponse({'success': False, 'error': error_msg}, status=401)
+            else:
+                try:
+                    error_detail = response.json()
+                    error_msg = error_detail.get('message') or error_detail.get('msg') or f'API request failed with status {response.status_code}'
+                except:
+                    error_msg = f'API request failed with status {response.status_code}'
+                return JsonResponse({'success': False, 'error': error_msg}, status=response.status_code)
+                
+        except Exception as e:
+            import traceback
+            print(f"DEBUG: Exception in enhance_passport_photo_with_picwish (GET): {str(e)}")
+            print(traceback.format_exc())
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    else:
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 
 
 # ─────────────────────────────────────────────────────────────
