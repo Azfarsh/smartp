@@ -14263,7 +14263,11 @@
         };
         
         userWebSocket.onerror = function(error) {
-          console.error('❌ WebSocket error:', error);
+          // Silently handle WebSocket errors - connection will retry automatically
+          // Only log in development mode
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.error('❌ WebSocket error:', error);
+          }
         };
         
         userWebSocket.onclose = function(event) {
@@ -14591,6 +14595,27 @@
       });
     }
 
+    // Impressive toast notification function
+    function showImpressiveToast(title, data) {
+      const { job, token, status, serviceType } = data || {};
+      
+      // Create a detailed message
+      const message = `Job: ${job || 'Document'} | Token: ${token || 'N/A'} | Status: ${status || 'COMPLETED'} | Service: ${serviceType || 'Print'}`;
+      
+      // Show using the cursor notification with success type
+      showCursorNotification('', title, message, 'success', 8000);
+      
+      // Also show browser notification if permission granted
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body: message,
+          icon: '/static/images/android-chrome-192x192.png',
+          badge: '/static/images/android-chrome-192x192.png',
+          tag: `job-ready-${token || Date.now()}`,
+          requireInteraction: false
+        });
+      }
+    }
 
     function showToast(title, message) {
       // Remove # symbol from token values in the message
