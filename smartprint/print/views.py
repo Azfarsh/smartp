@@ -9003,15 +9003,16 @@ def get_distance(request):
     """
     # Validate that server-side API key is configured
     if not settings.GOOGLE_MAPS_API:
-        error_msg = "GOOGLE_MAPS_API is not configured in .env file. Please set GOOGLE_MAPS_API=<YOUR_SERVER_SIDE_API_KEY>"
-        print(f"❌ ERROR: {error_msg}")
+        error_msg = "GOOGLE_MAPS_API is not configured. Distance calculation unavailable."
+        print(f"⚠️ WARNING: {error_msg}")
+        # Return success response but with error status so frontend can handle gracefully
         return JsonResponse({
             'error': error_msg,
             'status': 'ERROR',
             'destination_addresses': [],
             'origin_addresses': [],
             'rows': []
-        }, status=500)
+        }, status=200)
     
     user_lat = request.GET.get("user_lat")
     user_lng = request.GET.get("user_lng")
@@ -9051,12 +9052,14 @@ def get_accurate_location(request):
     
     # Validate that server-side API key is configured
     if not settings.GOOGLE_MAPS_API:
-        error_msg = "GOOGLE_MAPS_API is not configured in .env file. Please set GOOGLE_MAPS_API=<YOUR_SERVER_SIDE_API_KEY>"
-        print(f"❌ ERROR: {error_msg}")
+        error_msg = "GOOGLE_MAPS_API is not configured. Location services will use browser geolocation."
+        print(f"⚠️ WARNING: {error_msg}")
+        # Return success: false but with 200 status so frontend can handle gracefully
         return JsonResponse({
             "success": False,
-            "message": error_msg
-        }, status=500)
+            "message": error_msg,
+            "fallback_to_browser": True
+        }, status=200)
     
     url = f"https://www.googleapis.com/geolocation/v1/geolocate?key={settings.GOOGLE_MAPS_API}"
     
