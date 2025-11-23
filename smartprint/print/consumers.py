@@ -59,12 +59,14 @@ class UserConsumer(AsyncWebsocketConsumer):
 
     async def job_completion_notification(self, event):
         """Handle job completion notification"""
+        notification_data = event.get('notification_data', {})
         await self.send(text_data=json.dumps({
             'type': 'job_completion',
-            'filename': event['filename'],
-            'vendor_id': event['vendor_id'],
-            'completion_time': event['completion_time'],
-            'message': event['message']
+            'filename': event.get('filename', ''),
+            'vendor_id': event.get('vendor_id', ''),
+            'completion_time': event.get('completion_time', ''),
+            'message': event.get('message', notification_data.get('message', 'Your print job has been completed')),
+            'notification_data': notification_data
         }))
 
 class VendorConsumer(AsyncWebsocketConsumer):

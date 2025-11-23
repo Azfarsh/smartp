@@ -12067,8 +12067,14 @@
       const jobsSection = document.getElementById('jobsSection');
       if (!container) return;
       
+      // STRICT FILTER: Only render jobs with job_completed === 'NO' (case-insensitive check)
+      const pendingJobs = (jobs || []).filter(job => {
+        const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        return jobCompleted !== 'YES';
+      });
+      
       // If jobs found, hide animation immediately and show Print Requests section
-      if (jobs && jobs.length > 0) {
+      if (pendingJobs && pendingJobs.length > 0) {
         console.log('📄 PDF Animation: Jobs found, hiding animation immediately');
         hidePdfAnimation();
         
@@ -12081,10 +12087,10 @@
           }, 10);
         }
         
-        // Render actual jobs
+        // Render actual jobs (only pending ones)
           const fragment = document.createDocumentFragment();
           const tempDiv = document.createElement('div');
-        const jobsHTML = jobs.map(job => window.createJobCard(job)).join('');
+        const jobsHTML = pendingJobs.map(job => window.createJobCard(job)).join('');
           tempDiv.innerHTML = jobsHTML;
           while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
           container.innerHTML = '';
@@ -14139,7 +14145,8 @@
       loadUserJobs();
       // Load user points
       loadUserPoints();
-      // WebSocket removed - not used
+      // Initialize WebSocket connection for real-time notifications
+      initializeWebSocket();
 
       // Prime shop data immediately for all modals
       const shopsPromise = loadAvailableShops();
@@ -14181,6 +14188,107 @@
       }).catch(err => {
         console.error('Failed to fetch dashboard data:', err);
       });
+    });
+
+    // WebSocket connection for real-time notifications
+    let userWebSocket = null;
+    let wsReconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    
+    function initializeWebSocket() {
+      const userEmail = '{{ user.email }}';
+      if (!userEmail) {
+        console.warn('No user email found, skipping WebSocket connection');
+        return;
+      }
+      
+      // Determine WebSocket protocol (ws:// for http, wss:// for https)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/user/${encodeURIComponent(userEmail)}/`;
+      
+      try {
+        userWebSocket = new WebSocket(wsUrl);
+        
+        userWebSocket.onopen = function() {
+          console.log('✅ WebSocket connected for real-time notifications');
+          wsReconnectAttempts = 0;
+          
+          // Send ping to keep connection alive
+          setInterval(() => {
+            if (userWebSocket && userWebSocket.readyState === WebSocket.OPEN) {
+              userWebSocket.send(JSON.stringify({
+                type: 'ping',
+                timestamp: Date.now()
+              }));
+            }
+          }, 30000); // Ping every 30 seconds
+        };
+        
+        userWebSocket.onmessage = function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'job_completion') {
+              console.log('📬 Real-time job completion notification received:', data);
+              
+              // Refresh jobs to remove completed job from pending list
+              if (typeof refreshJobs === 'function') {
+                refreshJobs();
+              }
+              
+              // Reload notifications to show the new notification
+              if (typeof loadNotifications === 'function') {
+                loadNotifications();
+              }
+              
+              // Show browser notification if permission granted
+              if (Notification.permission === 'granted' && data.message) {
+                new Notification('🎉 Print Job Completed!', {
+                  body: data.message,
+                  icon: '/static/images/android-chrome-192x192.png',
+                  badge: '/static/images/android-chrome-192x192.png',
+                  tag: `job-completed-${data.filename}`,
+                  requireInteraction: true
+                });
+              }
+            } else if (data.type === 'connection_status') {
+              console.log('📡 WebSocket connection status:', data.status);
+            } else if (data.type === 'pong') {
+              // Pong received, connection is alive
+              console.log('🏓 WebSocket pong received');
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+        
+        userWebSocket.onerror = function(error) {
+          console.error('❌ WebSocket error:', error);
+        };
+        
+        userWebSocket.onclose = function(event) {
+          console.log('⚠️ WebSocket closed:', event.code, event.reason);
+          
+          // Attempt to reconnect if not a normal closure
+          if (event.code !== 1000 && wsReconnectAttempts < maxReconnectAttempts) {
+            wsReconnectAttempts++;
+            const reconnectDelay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000); // Exponential backoff, max 30s
+            console.log(`🔄 Reconnecting WebSocket in ${reconnectDelay}ms (attempt ${wsReconnectAttempts}/${maxReconnectAttempts})...`);
+            setTimeout(initializeWebSocket, reconnectDelay);
+          } else if (wsReconnectAttempts >= maxReconnectAttempts) {
+            console.warn('⚠️ Max WebSocket reconnection attempts reached. Falling back to polling.');
+          }
+        };
+      } catch (error) {
+        console.error('❌ Error initializing WebSocket:', error);
+      }
+    }
+    
+    // Clean up WebSocket on page unload
+    window.addEventListener('beforeunload', function() {
+      if (userWebSocket) {
+        userWebSocket.close(1000, 'Page unloading');
+      }
     });
 
     // Notification System
@@ -16230,7 +16338,10 @@
           // Use cached data
           userJobs = JSON.parse(cachedJobs);
           cacheVendorCoordinatesFromJobs(userJobs);
-          const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
+          const pendingJobs = userJobs.filter(job => {
+            const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+            return jobCompleted !== 'YES';
+          });
           renderJobsWithAnimation(pendingJobs);
           console.log(`⚡ CACHED LOAD: ${userJobs.length} jobs loaded from cache`);
           return;
@@ -16319,9 +16430,15 @@
         return;
       }
 
-      // Filter jobs efficiently
-      const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
-      const completedJobs = userJobs.filter(job => job.job_completed === 'YES');
+      // Filter jobs efficiently - STRICT FILTER: Only pending jobs (case-insensitive)
+      const pendingJobs = userJobs.filter(job => {
+        const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        return jobCompleted !== 'YES';
+      });
+      const completedJobs = userJobs.filter(job => {
+        const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        return jobCompleted === 'YES';
+      });
 
       // Render pending jobs in main container
       if (pendingJobs.length === 0) {
@@ -20284,7 +20401,10 @@
             localStorage.setItem('userJobsCacheTimestamp', Date.now().toString());
             
             // Update the print requests section immediately
-            const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
+            const pendingJobs = userJobs.filter(job => {
+            const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+            return jobCompleted !== 'YES';
+          });
             renderJobsWithAnimation(pendingJobs);
             
             // Update job counts

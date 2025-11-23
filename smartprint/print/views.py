@@ -32,6 +32,8 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.http import require_http_methods
 import threading
 from urllib.parse import urlparse, urlunparse
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 KNOWN_WORKER_ENDPOINTS = {
@@ -3465,11 +3467,12 @@ def upload_to_r2(request):
                         'user': user_email,
                         'user_id': user_id,
                         'vendor': vendor_id,
-                        'vendor_email': vendor_email or '',
+                        'vendor_id': vendor_id,  # Explicitly include vendor_id for User_print_jobs table
+                        'vendor_email': vendor_email or '',  # Explicitly include vendor_email
                         'shop_id': str(vendor_id or ''),
-                        'job_id': job_id,
-                        'service_type': print_settings.get('service_type', 'regular print'),
-                        'token': token,
+                        'job_id': job_id,  # Explicitly include job_id
+                        'service_type': print_settings.get('service_type', 'regular print'),  # Explicitly include service_type
+                        'token': token,  # Explicitly include token
                         'feedback': print_settings.get('feedback', ''),
                         'quality': print_settings.get('quality', ''),
                         'thickness': print_settings.get('thickness', ''),
@@ -4729,7 +4732,15 @@ def verify_razorpay_payment(request):
                         print(f"❌ Error in token assignment: {str(e)}")
                         token_value = str(random.randint(100, 200))
 
+                # Generate a unique job_id if not provided
+                job_id = print_settings.get('job_id', '').strip()
+                if not job_id:
+                    import uuid
+                    job_id = str(uuid.uuid4())
+                    print(f"✅ Generated job_id: {job_id} for file {fobj.name}")
+                
                 # Build metadata (extend base with payment details)
+                # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
                 metadata = {
                     'copies': str(print_settings.get('copies', '1')),
                     'color': print_settings.get('color', 'Black and White'),
@@ -4746,11 +4757,12 @@ def verify_razorpay_payment(request):
                                   'trash': 'NO',
                     'user': user_email,
                     'vendor': vendor_id,
-                    'vendor_email': vendor_email or '',
-                    'job_id': str(print_settings.get('job_id', '')),
-                    'service_type': service_type or 'regular print',
+                    'vendor_id': vendor_id,  # Explicitly include vendor_id
+                    'vendor_email': vendor_email or '',  # Explicitly include vendor_email
+                    'job_id': job_id,  # Use generated or provided job_id
+                    'service_type': service_type or 'regular print',  # Explicitly include service_type
                     'service_name': str(print_settings.get('service_name', '')),
-                    'token': token_value,
+                    'token': token_value,  # Explicitly include token
                     'printer_name': '',
                                   'payment_id': payment_id,
                                   'order_id': order_id
@@ -8768,11 +8780,12 @@ def get_vendor_email_by_vendor_id(vendor_id):
 # ─────────────────────────────────────────────────────────────
 
 def free_token_in_vendor_pool(vendor_email: str, token: str) -> bool:
-    """Mark a token as 'free' in vendor_register_details/{email}/token.json"""
+    """Mark a token as 'free' in vendor_register_details/{email}/token.json AND in Vendor_tokens D1 table"""
     try:
         if not token:
             return False
 
+        # Free token in R2 (legacy storage)
         sanitized = sanitize_email(vendor_email)
         token_key = f'vendor_register_details/{sanitized}/token.json'
 
@@ -8782,29 +8795,69 @@ def free_token_in_vendor_pool(vendor_email: str, token: str) -> bool:
                           endpoint_url=settings.R2_ENDPOINT,
                           region_name='auto')
 
+        r2_freed = False
         try:
             response = s3.get_object(Bucket=settings.R2_BUCKET, Key=token_key)
             token_data = json.loads(response['Body'].read().decode('utf-8'))
+            token_str = str(token)
+            if token_str in token_data:
+                token_data[token_str] = "free"
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=token_key,
+                    Body=json.dumps(token_data, indent=4),
+                    ContentType='application/json'
+                )
+                r2_freed = True
+                print(f"✅ Freed token {token_str} in R2 for vendor {vendor_email}")
+            else:
+                print(f"⚠️ Token {token_str} not found in R2 token.json for {vendor_email}")
         except Exception as e:
-            print(f"❌ Could not read token.json for {vendor_email}: {str(e)}")
-            return False
+            print(f"⚠️ Could not free token in R2 for {vendor_email}: {str(e)}")
 
-        token_str = str(token)
-        if token_str in token_data:
-            token_data[token_str] = "free"
-        else:
-            # If token not present, do nothing but log
-            print(f"⚠️ Token {token_str} not found in token.json for {vendor_email}")
-            return False
+        # Free token in D1 Vendor_tokens table (primary storage)
+        d1_freed = False
+        try:
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+            
+            if api_url and api_key:
+                token_number = int(token) if token.isdigit() else None
+                if token_number:
+                    worker_endpoint = api_url.rstrip('/') + '/free-vendor-token'
+                    worker_payload = {
+                        'vendor_email': vendor_email,
+                        'token_number': token_number
+                    }
+                    
+                    resp = requests.post(
+                        worker_endpoint,
+                        json=worker_payload,
+                        headers={
+                            'x-api-key': api_key,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout=10
+                    )
+                    
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get('success'):
+                            d1_freed = True
+                            print(f"✅ Freed token {token_number} in D1 Vendor_tokens table for vendor {vendor_email}")
+                        else:
+                            print(f"⚠️ D1 API returned error: {data.get('error', 'Unknown error')}")
+                    else:
+                        print(f"⚠️ Failed to free token in D1: {resp.status_code} - {resp.text[:200]}")
+                else:
+                    print(f"⚠️ Token '{token}' is not a valid integer, skipping D1 update")
+            else:
+                print("⚠️ Worker API not configured - skipping D1 token update")
+        except Exception as e:
+            print(f"⚠️ Error freeing token in D1 for {vendor_email}: {str(e)}")
 
-        s3.put_object(
-            Bucket=settings.R2_BUCKET,
-            Key=token_key,
-            Body=json.dumps(token_data, indent=4),
-            ContentType='application/json'
-        )
-        print(f"✅ Freed token {token_str} for vendor {vendor_email}")
-        return True
+        # Return True if at least one storage was updated successfully
+        return r2_freed or d1_freed
     except Exception as e:
         print(f"❌ Error freeing token for {vendor_email}: {str(e)}")
         return False
@@ -10620,7 +10673,7 @@ def add_user_points(user_email, points, reason):
 
 @csrf_exempt
 def get_user_notifications(request):
-    """Get user notifications - only daily completed print job notifications"""
+    """Get user notifications from D1 database - only daily completed print job notifications"""
     try:
         if not request.user.is_authenticated:
             return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
@@ -10628,89 +10681,141 @@ def get_user_notifications(request):
         user_email = request.user.email
         notifications = []
         
-        # Get notifications from R2
-        prefix = f'user_notifications/{sanitize_email(user_email)}/'
-        
+        # Get notifications from D1 database via Worker API
         try:
-            # Initialize R2 client
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
             
-            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
+            if not api_url or not api_key:
+                print("⚠️ Worker API not configured for notifications")
+                return JsonResponse({
+                    'success': True,
+                    'notifications': [],
+                    'unread_count': 0
+                })
             
-            # Get today's date for filtering
+            # Construct Worker API endpoint
+            worker_endpoint = api_url.rstrip('/') + '/get-user-notifications'
+            
+            # Get today's date for filtering (YYYY-MM-DD format)
             today = datetime.datetime.now().date()
+            today_str = today.strftime('%Y-%m-%d')
             
-            for obj in response.get('Contents', []):
-                try:
-                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj['Key'])
-                    notification_data = json.loads(result['Body'].read().decode('utf-8'))
+            payload = {
+                'user_email': user_email,
+                'date': today_str  # Filter for today's notifications
+            }
+            
+            response = requests.post(
+                worker_endpoint,
+                json=payload,
+                headers={
+                    'x-api-key': api_key,
+                    'Content-Type': 'application/json'
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success') and data.get('notifications'):
+                    notifications = data.get('notifications', [])
                     
-                    # Filter for completed print job notifications only
-                    if (notification_data.get('type') == 'job_completed' and 
-                        notification_data.get('status') == 'completed'):
-                        
-                        # Check if notification is from today
-                        notification_date = None
-                        if 'created_at' in notification_data:
-                            try:
-                                notification_date = datetime.datetime.fromisoformat(
-                                    notification_data['created_at'].replace('Z', '+00:00')
-                                ).date()
-                            except:
-                                pass
-                        elif 'timestamp' in notification_data:
-                            try:
-                                notification_date = datetime.datetime.fromtimestamp(
-                                    int(notification_data['timestamp'])
-                                ).date()
-                            except:
-                                pass
-                        
-                        # Only include notifications from today
-                        if notification_date == today:
-                            # Ensure job name and token are included
-                            if 'filename' not in notification_data:
-                                notification_data['filename'] = 'Document'
-                            if 'token' not in notification_data:
-                                # Extract token from filename if available
-                                filename = notification_data.get('filename', '')
-                                if filename:
-                                    import re
-                                    notification_data['token'] = re.sub(r'\.[^/.]+$', '', filename)
-                                else:
-                                    notification_data['token'] = 'Unknown'
+                    # Filter for completed print job notifications only and today's date
+                    filtered_notifications = []
+                    for notif in notifications:
+                        # Check if it's a completed job notification
+                        if (notif.get('type') == 'job_completed' and 
+                            notif.get('status') == 'completed'):
                             
-                            notifications.append(notification_data)
+                            # Check if notification is from today
+                            notification_date = None
+                            if 'completion_time' in notif and notif['completion_time']:
+                                try:
+                                    notification_date = datetime.datetime.fromisoformat(
+                                        notif['completion_time'].replace('Z', '+00:00')
+                                    ).date()
+                                except:
+                                    try:
+                                        notification_date = datetime.datetime.fromisoformat(
+                                            notif['completion_time'].split('T')[0]
+                                        ).date()
+                                    except:
+                                        pass
                             
-                except Exception as e:
-                    print(f"Error reading notification {obj['Key']}: {e}")
-                    continue
-            
-            # Sort by timestamp (newest first)
-            notifications.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-            
-            # Count unread notifications
-            unread_count = sum(1 for n in notifications if not n.get('read', False))
-            
-            return JsonResponse({
-                'success': True,
-                'notifications': notifications,
-                'unread_count': unread_count
-            })
+                            if not notification_date and 'created_at' in notif and notif['created_at']:
+                                try:
+                                    notification_date = datetime.datetime.fromisoformat(
+                                        notif['created_at'].replace('Z', '+00:00')
+                                    ).date()
+                                except:
+                                    try:
+                                        notification_date = datetime.datetime.fromisoformat(
+                                            notif['created_at'].split('T')[0]
+                                        ).date()
+                                    except:
+                                        pass
+                            
+                            # Only include notifications from today
+                            if notification_date == today:
+                                # Ensure required fields are present
+                                if 'filename' not in notif:
+                                    notif['filename'] = 'Document'
+                                if 'token' not in notif or not notif['token']:
+                                    notif['token'] = 'Unknown'
+                                
+                                # Convert read from int to bool if needed
+                                if isinstance(notif.get('read'), int):
+                                    notif['read'] = bool(notif['read'])
+                                
+                                filtered_notifications.append(notif)
+                    
+                    notifications = filtered_notifications
+                    
+                    # Sort by completion_time or created_at (newest first)
+                    notifications.sort(
+                        key=lambda x: x.get('completion_time') or x.get('created_at') or '', 
+                        reverse=True
+                    )
+                    
+                    # Count unread notifications
+                    unread_count = sum(1 for n in notifications if not n.get('read', False))
+                    
+                    print(f"✅ Retrieved {len(notifications)} notifications for {user_email} from D1 database")
+                    return JsonResponse({
+                        'success': True,
+                        'notifications': notifications,
+                        'unread_count': unread_count
+                    })
+                else:
+                    print(f"⚠️ No notifications found in D1 database for {user_email}")
+                    return JsonResponse({
+                        'success': True,
+                        'notifications': [],
+                        'unread_count': 0
+                    })
+            else:
+                print(f"⚠️ Error getting notifications from D1: {response.status_code} - {response.text[:200]}")
+                return JsonResponse({
+                    'success': True,
+                    'notifications': [],
+                    'unread_count': 0
+                })
             
         except Exception as e:
-            print(f"Error getting notifications: {e}")
+            print(f"❌ Error getting notifications from D1 database: {e}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({
                 'success': True,
-                'notifications': []
+                'notifications': [],
+                'unread_count': 0
             })
             
     except Exception as e:
-        print(f"Error in get_user_notifications: {e}")
+        print(f"❌ Error in get_user_notifications: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
 
 @csrf_exempt
@@ -11423,6 +11528,31 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         except Exception as e:
             print(f"⚠️ Error sending FCM notification: {e}")
         
+        # Send WebSocket notification for instant real-time updates
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                # Create room group name for user (same format as UserConsumer)
+                room_group_name = f'user_{user_email.replace("@", "_").replace(".", "_")}'
+                
+                # Send notification via WebSocket
+                async_to_sync(channel_layer.group_send)(
+                    room_group_name,
+                    {
+                        'type': 'job_completion_notification',
+                        'filename': filename,
+                        'vendor_id': vendor_id,
+                        'completion_time': completion_time,
+                        'message': notification_data.get('message', ''),
+                        'notification_data': notification_data
+                    }
+                )
+                print(f"📡 Sent WebSocket notification to {user_email} for job {filename}")
+            else:
+                print(f"⚠️ Channel layer not configured, skipping WebSocket notification")
+        except Exception as e:
+            print(f"⚠️ Error sending WebSocket notification: {e}")
+        
         # Here you could also send email, push notification, etc.
         print(f"📧 Sent {status} notification to {user_email} for job {filename}")
         return True
@@ -11566,7 +11696,57 @@ def send_fcm_notification(user_email, notification_data):
         title = notification_data.get('title', 'PrintMax Notification')
         message = notification_data.get('message', 'You have a new notification')
         
+        # Construct absolute HTTPS URL for FCM link
+        # Use the site domain from settings, or construct from request if available
+        site_domain = getattr(settings, 'SITE_DOMAIN', '')
+        if not site_domain:
+            # Try to get from ALLOWED_HOSTS or construct default
+            allowed_hosts = getattr(settings, 'ALLOWED_HOSTS', [])
+            if allowed_hosts and allowed_hosts[0] != '*':
+                site_domain = allowed_hosts[0]
+            else:
+                # Default to production domain
+                site_domain = 'printmax.onrender.com'
+        
+        # Ensure HTTPS protocol (FCM requires HTTPS)
+        if not site_domain.startswith('http'):
+            # Always use HTTPS for FCM (even for localhost, use a tunnel or production domain)
+            if 'localhost' in site_domain or '127.0.0.1' in site_domain:
+                # For localhost development, use production domain or skip webpush link
+                # FCM requires HTTPS, so we'll use production domain as fallback
+                fcm_link = 'https://printmax.onrender.com/userdashboard/'
+            else:
+                fcm_link = f'https://{site_domain}/userdashboard/'
+        else:
+            if site_domain.startswith('http://'):
+                # Convert HTTP to HTTPS for FCM
+                fcm_link = site_domain.replace('http://', 'https://') + '/userdashboard/'
+            else:
+                fcm_link = f'{site_domain}/userdashboard/'
+        
         # Create FCM message
+        # Build webpush config conditionally to avoid link issues
+        webpush_notification = messaging.WebpushNotification(
+            title=title,
+            body=message,
+            icon='/static/images/android-chrome-192x192.png',
+            badge='/static/images/android-chrome-192x192.png',
+            require_interaction=True
+        )
+        
+        # Always use HTTPS link for FCM (required by FCM)
+        # Ensure fcm_link is HTTPS
+        if not fcm_link.startswith('https://'):
+            fcm_link = 'https://printmax.onrender.com/userdashboard/'
+        
+        # Create webpush config with FCM options (always HTTPS)
+        webpush_config = messaging.WebpushConfig(
+            notification=webpush_notification,
+            fcm_options=messaging.WebpushFCMOptions(
+                link=fcm_link
+            )
+        )
+        
         fcm_message = messaging.Message(
             notification=messaging.Notification(
                 title=title,
@@ -11579,20 +11759,9 @@ def send_fcm_notification(user_email, notification_data):
                 'filename': notification_data.get('filename', ''),
                 'token': notification_data.get('token', ''),
                 'status': notification_data.get('status', 'completed'),
-                'click_action': '/userdashboard/'
+                'click_action': fcm_link
             },
-            webpush=messaging.WebpushConfig(
-                notification=messaging.WebpushNotification(
-                    title=title,
-                    body=message,
-                    icon='/static/images/android-chrome-192x192.png',
-                    badge='/static/images/android-chrome-192x192.png',
-                    require_interaction=True
-                ),
-                fcm_options=messaging.WebpushFCMOptions(
-                    link='/userdashboard/'
-                )
-            ),
+            webpush=webpush_config,
             token=tokens[0]  # Send to first token (you can extend this to send to all tokens)
         )
         
