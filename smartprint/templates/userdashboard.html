@@ -31,7 +31,8 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
-  <!-- Google Maps API removed - no longer needed since we use backend for Distance Matrix and browser geolocation for location -->
+  <!-- Official Google Maps JavaScript API for location, geocoding & Distance Matrix -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDSnR0aMTXytHzeVlX6dU0aeMFQld1zhF8&libraries=places,geometry"></script>
   <style>
     :root {
       /* Professional Color System with Enhanced Contrast */
@@ -3409,6 +3410,438 @@
       }
     }
 
+    /* Order Summary Modal - Ensure Full Visibility and Proper Alignment */
+    #orderSummaryModal {
+      display: none; /* Hidden by default */
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 2000;
+      pointer-events: none; /* Don't block clicks when hidden */
+    }
+
+    #orderSummaryModal.active {
+      display: flex !important; /* Only show when active */
+      pointer-events: auto; /* Allow clicks when active */
+    }
+
+    #orderSummaryModal .service-modal {
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      max-width: 600px;
+      width: 100%;
+      margin: auto;
+      overflow: hidden;
+    }
+
+    #orderSummaryModal .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 1.5rem;
+      padding-bottom: 2rem; /* Extra padding to prevent content cutoff */
+      display: flex;
+      flex-direction: column;
+      min-height: 0; /* Allow flexbox to shrink */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+
+    #orderSummaryModal .order-summary,
+    #orderSummaryModal .pricing-summary {
+      width: 100%;
+      max-width: 100%;
+      display: block;
+      overflow: visible;
+      margin: 0;
+      box-sizing: border-box;
+      visibility: visible;
+      opacity: 1;
+    }
+
+    #orderSummaryModal #orderSummaryContent {
+      width: 100%;
+      display: block;
+      visibility: visible;
+      opacity: 1;
+    }
+
+    #orderSummaryModal #orderSummaryAdditionalOptions {
+      width: 100%;
+      display: block;
+      margin: 0.5rem 0;
+    }
+
+    #orderSummaryModal #orderSummaryAdditionalOptions .detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    #orderSummaryModal .pricing-header {
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+    }
+    
+    #orderSummaryModal .pricing-header-main {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    #orderSummaryModal .pricing-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #2563eb;
+      color: white;
+      border-radius: 8px;
+      font-size: 1.25rem;
+    }
+    
+    #orderSummaryModal .pricing-title {
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: #111827;
+      margin: 0;
+      line-height: 1.4;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .pricing-title {
+      color: #111827;
+    }
+    
+    #orderSummaryModal .pricing-subtitle {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin: 0.25rem 0 0 0;
+      line-height: 1.4;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .pricing-subtitle {
+      color: #374151;
+    }
+    
+    #orderSummaryModal .service-status {
+      background: #10b981;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #orderSummaryModal .pricing-details {
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    #orderSummaryModal .detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #e5e7eb;
+      box-sizing: border-box;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .detail-item {
+      border-bottom-color: #e5e7eb;
+    }
+
+    #orderSummaryModal .detail-item:last-of-type {
+      border-bottom: none;
+    }
+    
+    #orderSummaryModal .detail-item:not(.total-item) {
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    #orderSummaryModal .detail-item.total-item {
+      border-bottom: none;
+      margin-top: 1.5rem;
+    }
+
+    #orderSummaryModal .detail-label {
+      flex: 0 0 auto;
+      margin-right: 1rem;
+      font-weight: 500;
+      color: #374151;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .detail-label {
+      color: #111827;
+    }
+
+    #orderSummaryModal .detail-value {
+      flex: 1;
+      text-align: right;
+      font-weight: 600;
+      color: #1f2937;
+      word-break: break-word;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .detail-value {
+      color: #111827;
+    }
+
+    #orderSummaryModal .total-item {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #2563eb;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      font-size: 1.125rem;
+    }
+
+    #orderSummaryModal .total-item .detail-label {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    #orderSummaryModal .total-item .detail-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    #orderSummaryModal .modal-footer {
+      flex-shrink: 0;
+      padding: 1.5rem;
+      border-top: 1px solid #e5e7eb;
+      background: var(--surface);
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .service-modal {
+      background: #ffffff;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .modal-header {
+      background: #2563EB;
+      color: white;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .modal-body {
+      background: #ffffff;
+      color: #111827;
+    }
+    
+    [data-theme="dark"] #orderSummaryModal .modal-footer {
+      background: #ffffff;
+      border-top-color: #e5e7eb;
+    }
+
+    #orderSummaryModal .modal-footer .btn-cancel,
+    #orderSummaryModal .modal-footer .btn-submit {
+      flex: 1;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      border: 1px solid #d1d5db;
+    }
+    
+    #orderSummaryModal .modal-footer .btn-cancel {
+      background: #e5e7eb;
+      color: #374151;
+      border: 1px solid #cfd3da;
+    }
+    
+    #orderSummaryModal .modal-footer .btn-submit {
+      background: #3b82f6;
+      color: white;
+      border: none;
+    }
+    
+    #orderSummaryModal .modal-footer .btn-cancel:hover,
+    #orderSummaryModal .modal-footer .btn-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    #orderSummaryModal .fixed-bottom-buttons {
+      position: relative !important;
+      margin-top: 1.5rem;
+    }
+
+    /* Mobile Responsive Styles for Order Summary Modal */
+    @media (max-width: 768px) {
+      #orderSummaryModal {
+        padding: 0.5rem;
+        align-items: flex-start;
+        padding-top: 1rem;
+      }
+
+      #orderSummaryModal .service-modal {
+        max-height: calc(100vh - 2rem);
+        max-width: 100%;
+        width: 100%;
+        border-radius: 16px;
+      }
+
+      #orderSummaryModal .modal-header {
+        padding: 1.5rem 1rem 1rem 1rem;
+      }
+
+      #orderSummaryModal .modal-body {
+        padding: 1rem;
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #orderSummaryModal .order-summary,
+      #orderSummaryModal .pricing-summary {
+        padding: 1rem;
+      }
+
+      #orderSummaryModal .pricing-header {
+        padding: 0.75rem 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      #orderSummaryModal .detail-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding: 0.75rem 0;
+      }
+
+      #orderSummaryModal .detail-label {
+        margin-right: 0;
+        font-size: 0.875rem;
+      }
+
+      #orderSummaryModal .detail-value {
+        text-align: left;
+        font-size: 0.95rem;
+        width: 100%;
+      }
+
+      #orderSummaryModal .modal-footer {
+        padding: 1rem;
+        flex-direction: row;
+        gap: 0.75rem;
+      }
+
+      #orderSummaryModal .modal-footer .btn-cancel,
+      #orderSummaryModal .modal-footer .btn-submit {
+        min-height: 44px;
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #orderSummaryModal {
+        padding: 0.25rem;
+        padding-top: 0.5rem;
+      }
+
+      #orderSummaryModal .service-modal {
+        max-height: calc(100vh - 1rem);
+        border-radius: 12px;
+      }
+
+      #orderSummaryModal .modal-header {
+        padding: 1rem 0.75rem;
+      }
+
+      #orderSummaryModal .modal-body {
+        padding: 0.75rem;
+        max-height: calc(100vh - 200px);
+      }
+
+      #orderSummaryModal .order-summary,
+      #orderSummaryModal .pricing-summary {
+        padding: 0.75rem;
+      }
+
+      #orderSummaryModal .pricing-header {
+        padding: 0.5rem 0;
+      }
+
+      #orderSummaryModal .detail-item {
+        padding: 0.5rem 0;
+        font-size: 0.875rem;
+      }
+
+      #orderSummaryModal .detail-label {
+        font-size: 0.8rem;
+      }
+
+      #orderSummaryModal .detail-value {
+        font-size: 0.875rem;
+      }
+
+      #orderSummaryModal .total-item {
+        font-size: 1rem;
+        padding-top: 0.75rem;
+      }
+
+      #orderSummaryModal .total-item .detail-label,
+      #orderSummaryModal .total-item .detail-value {
+        font-size: 1.1rem;
+      }
+
+      #orderSummaryModal .modal-footer {
+        padding: 0.75rem;
+        gap: 0.5rem;
+      }
+
+      #orderSummaryModal .modal-footer .btn-cancel,
+      #orderSummaryModal .modal-footer .btn-submit {
+        min-height: 40px;
+        font-size: 0.85rem;
+        padding: 0.5rem;
+      }
+    }
+
+    /* Tablet Styles */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      #orderSummaryModal .service-modal {
+        max-width: 550px;
+      }
+
+      #orderSummaryModal .modal-body {
+        padding: 1.5rem;
+      }
+    }
+
+    /* Large Desktop */
+    @media (min-width: 1025px) {
+      #orderSummaryModal .service-modal {
+        max-width: 600px;
+      }
+    }
+
     /* Mobile-specific uniform sizing for jumbo printing modal */
     @media (max-width: 768px) {
       #service-modal-jumbo .text-input-wrapper input,
@@ -3600,8 +4033,8 @@
     }
     
     [data-theme="dark"] .invoice-modal {
-      background: #1f2937;
-      color: #e5e7eb;
+      background: #ffffff;
+      color: #111827;
     }
     
     .invoice-header {
@@ -3612,7 +4045,7 @@
     }
     
     [data-theme="dark"] .invoice-header {
-      border-bottom-color: #374151;
+      border-bottom-color: #e5e7eb;
     }
     
     .invoice-title {
@@ -3623,7 +4056,7 @@
     }
     
     [data-theme="dark"] .invoice-title {
-      color: #e5e7eb;
+      color: #111827;
     }
     
     .invoice-date {
@@ -3633,7 +4066,7 @@
     }
     
     [data-theme="dark"] .invoice-date {
-      color: #9ca3af;
+      color: #374151;
     }
     
     .invoice-close-btn {
@@ -3654,9 +4087,14 @@
     }
     
     [data-theme="dark"] .invoice-close-btn {
-      background: #374151;
-      border-color: #4b5563;
-      color: #e5e7eb;
+      background: #f3f4f6;
+      border-color: #e5e7eb;
+      color: #374151;
+    }
+    
+    [data-theme="dark"] .invoice-close-btn:hover {
+      background: #e5e7eb;
+      color: #111827;
     }
     
     .invoice-content {
@@ -3678,7 +4116,7 @@
     }
     
     [data-theme="dark"] .invoice-item {
-      border-bottom-color: #374151;
+      border-bottom-color: #e5e7eb;
     }
     
     .invoice-item:last-child {
@@ -3692,7 +4130,7 @@
     }
     
     [data-theme="dark"] .invoice-item-label {
-      color: #d1d5db;
+      color: #111827;
     }
     
     .invoice-item-value {
@@ -3702,7 +4140,7 @@
     }
     
     [data-theme="dark"] .invoice-item-value {
-      color: #e5e7eb;
+      color: #111827;
     }
     
     .invoice-subtotal {
@@ -3712,8 +4150,8 @@
     }
     
     [data-theme="dark"] .invoice-subtotal {
-      background: #374151;
-      border-color: #4b5563;
+      background: #f9fafb;
+      border-color: #e5e7eb;
     }
     
     .invoice-total {
@@ -3740,7 +4178,7 @@
     }
     
     [data-theme="dark"] .invoice-footer {
-      border-top-color: #374151;
+      border-top-color: #e5e7eb;
     }
     
     .invoice-footer .btn {
@@ -3759,9 +4197,14 @@
     }
     
     [data-theme="dark"] .invoice-footer .btn-secondary {
-      background: #374151;
-      color: #e5e7eb;
-      border-color: #4b5563;
+      background: #f3f4f6;
+      color: #374151;
+      border-color: #e5e7eb;
+    }
+    
+    [data-theme="dark"] .invoice-footer .btn-secondary:hover {
+      background: #e5e7eb;
+      color: #111827;
     }
     
     .invoice-footer .btn-primary {
@@ -6037,6 +6480,16 @@
         animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border: 1px solid rgba(255,255,255,0.2);
         margin: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Order Summary Modal specific - ensure proper flex structure */
+      #orderSummaryModal .service-modal {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        max-height: 90vh;
       }
 
       .modal-header {
@@ -6111,6 +6564,17 @@
         padding: 2rem;
         overflow-y: auto;
         max-height: calc(90vh - 140px);
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Ensure order summary modal body has proper scrolling */
+      #orderSummaryModal .modal-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
       }
 
       .modal-field-group {
@@ -7102,6 +7566,23 @@
         animation: slideInUp 0.3s ease-out;
       }
       
+      /* Hide pricing summary by default for passport, golden embossing, digital, and gloss modals */
+      #service-modal-passport .pricing-summary,
+      #service-modal-goldenemboss .pricing-summary,
+      #service-modal-digital .pricing-summary,
+      #service-modal-gloss .pricing-summary {
+        display: none !important;
+      }
+      
+      /* Only show pricing summary when active class is added (on print button click) */
+      #service-modal-passport .pricing-summary.active,
+      #service-modal-goldenemboss .pricing-summary.active,
+      #service-modal-digital .pricing-summary.active,
+      #service-modal-gloss .pricing-summary.active {
+        display: block !important;
+        animation: slideInUp 0.3s ease-out;
+      }
+      
       /* Photo Print modal specific styling - ensure summary is below preview */
       #service-modal-photo .pricing-summary {
         margin-top: 1.5rem;
@@ -7539,10 +8020,13 @@
 
       /* Redeem card styles (coupon-like) */
       .redeem-card { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px dashed #e5e7eb; border-radius: 10px; padding: 12px; }
+      [data-theme="dark"] .redeem-card { background: #fff; border-color: #e5e7eb; }
       .redeem-left { display: flex; align-items: center; gap: 10px; }
       .coin-icon { width: 28px; height: 28px; border-radius: 50%; background: #fff7cc; display: flex; align-items: center; justify-content: center; font-size: 14px; }
       .redeem-text { color: #111827; font-weight: 600; }
+      [data-theme="dark"] .redeem-text { color: #111827; }
       .redeem-amount { color: #111827; font-weight: 800; margin-right: 4px; }
+      [data-theme="dark"] .redeem-amount { color: #111827; }
       .redeem-actions { display: flex; gap: 8px; }
       .redeem-btn { background: #ef4444; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
       .redeem-btn:hover { filter: brightness(0.95); }
@@ -8362,12 +8846,42 @@
       [data-theme="dark"] .service-modal .number-input-wrapper input,
       [data-theme="dark"] .service-modal .text-input-wrapper input,
       [data-theme="dark"] .service-modal .feedback-textarea,
+      [data-theme="dark"] .service-modal .select-wrapper select,
       [data-theme="dark"] .modal .number-input-wrapper input,
       [data-theme="dark"] .modal .text-input-wrapper input,
-      [data-theme="dark"] .modal .feedback-textarea {
-        background-color: #374151;
-        border-color: #4b5563;
-        color: #f9fafb;
+      [data-theme="dark"] .modal .feedback-textarea,
+      [data-theme="dark"] .modal .select-wrapper select,
+      [data-theme="dark"] .service-modal input[type="text"],
+      [data-theme="dark"] .service-modal input[type="number"],
+      [data-theme="dark"] .service-modal input[type="email"],
+      [data-theme="dark"] .service-modal input[type="tel"],
+      [data-theme="dark"] .service-modal input[type="date"],
+      [data-theme="dark"] .service-modal input[type="time"],
+      [data-theme="dark"] .service-modal input[type="search"],
+      [data-theme="dark"] .service-modal input[type="url"],
+      [data-theme="dark"] .service-modal input[type="password"],
+      [data-theme="dark"] .service-modal textarea,
+      [data-theme="dark"] .service-modal select,
+      [data-theme="dark"] .modal input[type="text"],
+      [data-theme="dark"] .modal input[type="number"],
+      [data-theme="dark"] .modal input[type="email"],
+      [data-theme="dark"] .modal input[type="tel"],
+      [data-theme="dark"] .modal input[type="date"],
+      [data-theme="dark"] .modal input[type="time"],
+      [data-theme="dark"] .modal input[type="search"],
+      [data-theme="dark"] .modal input[type="url"],
+      [data-theme="dark"] .modal input[type="password"],
+      [data-theme="dark"] .modal textarea,
+      [data-theme="dark"] .modal select,
+      [data-theme="dark"] .modal-field-group input,
+      [data-theme="dark"] .modal-field-group select,
+      [data-theme="dark"] .modal-field-group textarea,
+      [data-theme="dark"] .order-summary-modal input,
+      [data-theme="dark"] .order-summary-modal select,
+      [data-theme="dark"] .order-summary-modal textarea {
+        background-color: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #f9fafb !important;
       }
       
       [data-theme="dark"] .service-modal .text-input-wrapper input::placeholder,
@@ -9499,7 +10013,7 @@
                 </div>
                 <div class="field-description">${fieldDescription}</div>
                 <div class="number-input-wrapper">
-                  <input type="number" id="${service}-field-${idx}" min="${f.min || 1}" max="${f.max || 99}" placeholder="Enter ${f.label.toLowerCase()}" ${f.required ? 'required' : ''} />
+                  <input type="number" id="${service}-field-${idx}" min="${f.min || 1}" max="${f.max || 99}" value="${f.default !== undefined ? f.default : (f.label.toLowerCase().includes('copies') || f.label.toLowerCase().includes('copy') ? 1 : '')}" placeholder="Enter ${f.label.toLowerCase()}" ${f.required ? 'required' : ''} />
                 </div>
               </div>
             `;
@@ -10052,17 +10566,10 @@
               
               // Only calculate pricing if all required inputs are provided
               if (!areAllInputsProvided(service, modal)) {
-                // Show message to complete all inputs first
-                const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                // Hide pricing summary when shop is selected - only show when Print button is clicked
                 const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-                if (pricingDetails && pricingSummary) {
-                  pricingDetails.innerHTML = `
-                    <div class="loading-pricing">
-                      <i class="fas fa-info-circle"></i>
-                      <span>Please complete all required fields to calculate pricing</span>
-                    </div>
-                  `;
-                  pricingSummary.classList.add('active');
+                if (pricingSummary) {
+                  pricingSummary.classList.remove('active');
                 }
                 return;
               }
@@ -10082,17 +10589,10 @@
                     // All inputs provided, auto-calculate
                     calculatePhotoPrintPrice(service);
                   } else {
-                    // Show message to complete all inputs
-                    const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                    // Hide pricing summary when shop is selected - only show when Print button is clicked
                     const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-                    if (pricingDetails && pricingSummary) {
-                      pricingDetails.innerHTML = `
-                        <div class="loading-pricing">
-                          <i class="fas fa-info-circle"></i>
-                          <span>Please complete all required fields to calculate pricing</span>
-                        </div>
-                      `;
-                      pricingSummary.classList.add('active');
+                    if (pricingSummary) {
+                      pricingSummary.classList.remove('active');
                     }
                   }
                 } else {
@@ -10106,7 +10606,10 @@
                         <span>Please upload a photo first to calculate pricing</span>
                       </div>
                     `;
-                    pricingSummary.classList.add('active');
+                    // Don't show pricing summary for passport, golden embossing, digital, and gloss modals
+                    if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+                      pricingSummary.classList.add('active');
+                    }
                   }
                 }
               } else if (service === 'passport') {
@@ -10114,17 +10617,10 @@
                 if (modal.dataset.fileName || (Array.isArray(modal._uploadedFiles) && modal._uploadedFiles.length > 0)) {
                   calculatePassportPhotoPrice(service);
                 } else {
-                  // Show message to upload file first
-                  const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                  // Hide pricing summary when shop is selected - only show when Print button is clicked
                   const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-                  if (pricingDetails && pricingSummary) {
-                    pricingDetails.innerHTML = `
-                      <div class="loading-pricing">
-                        <i class="fas fa-upload"></i>
-                        <span>Please upload a photo first to calculate pricing</span>
-                      </div>
-                    `;
-                    pricingSummary.classList.add('active');
+                  if (pricingSummary) {
+                    pricingSummary.classList.remove('active');
                   }
                 }
                 } else if (service === 'digital') {
@@ -10132,17 +10628,10 @@
                   if (modal.dataset.fileName || modal.dataset.filePageCount) {
                     calculateDigitalPrintPrice(service);
                   } else {
-                    // Show message to upload file first
-                    const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                    // Hide pricing summary when shop is selected - only show when Print button is clicked
                     const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-                    if (pricingDetails && pricingSummary) {
-                      pricingDetails.innerHTML = `
-                        <div class="loading-pricing">
-                          <i class="fas fa-upload"></i>
-                          <span>Please upload a file first to calculate pricing</span>
-                        </div>
-                      `;
-                      pricingSummary.classList.add('active');
+                    if (pricingSummary) {
+                      pricingSummary.classList.remove('active');
                     }
                   }
                 } else if (service === 'gloss') {
@@ -10150,17 +10639,10 @@
                   if (modal.dataset.fileName || modal.dataset.filePageCount) {
                     calculateGlossPrintPrice(service);
                   } else {
-                    // Show message to upload file first
-                    const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                    // Hide pricing summary when shop is selected - only show when Print button is clicked
                     const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-                    if (pricingDetails && pricingSummary) {
-                      pricingDetails.innerHTML = `
-                        <div class="loading-pricing">
-                          <i class="fas fa-upload"></i>
-                          <span>Please upload a file first to calculate pricing</span>
-                        </div>
-                      `;
-                      pricingSummary.classList.add('active');
+                    if (pricingSummary) {
+                      pricingSummary.classList.remove('active');
                     }
                   }
                 } else if (service === 'goldenemboss') {
@@ -10168,21 +10650,28 @@
                   if (modal.dataset.fileName || modal.dataset.filePageCount) {
                     calculateGoldenEmbossPrice(service);
                   } else {
-                    // Show message to upload file first
-                    const pricingDetails = modal.querySelector(`#${service}-pricing-details`);
+                    // Hide pricing summary when shop is selected - only show when Print button is clicked
                     const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
-                    if (pricingDetails && pricingSummary) {
-                      pricingDetails.innerHTML = `
-                        <div class="loading-pricing">
-                          <i class="fas fa-upload"></i>
-                          <span>Please upload a file first to calculate pricing</span>
-                        </div>
-                      `;
-                      pricingSummary.classList.add('active');
+                    if (pricingSummary) {
+                      pricingSummary.classList.remove('active');
                     }
                   }
               } else {
-                calculatePricing(service); // Calculate pricing when vendor changes
+                // Hide pricing summary when shop is selected - only show when Print button is clicked
+                const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                if (pricingSummary) {
+                  pricingSummary.classList.remove('active');
+                }
+                // Don't auto-calculate pricing when shop changes - user must click Print button
+              }
+              
+              // For passport, golden embossing, digital, and gloss modals, always hide pricing summary
+              // It should only show when print button is clicked
+              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+                const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                if (pricingSummary) {
+                  pricingSummary.classList.remove('active');
+                }
               }
             });
           }
@@ -10194,7 +10683,16 @@
           // Only calculate when user explicitly clicks Calculate button, so hide auto-calc
           formInputs.forEach(input => {
             input.addEventListener('change', () => {
-              // Recalculate pricing in real-time when inputs change
+              // For passport, golden embossing, digital, and gloss modals, hide pricing summary
+              // It should only show when print button is clicked
+              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+                const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                if (pricingSummary) pricingSummary.classList.remove('active');
+                modal.dataset.calculatedPrice = '';
+                modal.dataset.pricingBreakdown = '';
+                return; // Don't auto-calculate for these services
+              }
+              // Recalculate pricing in real-time when inputs change for other services
               if (areAllInputsProvided(service, modal)) {
                 calculatePricing(service);
               } else {
@@ -10205,7 +10703,16 @@
               }
             });
             input.addEventListener('input', () => {
-              // Recalculate pricing in real-time when inputs change
+              // For passport, golden embossing, digital, and gloss modals, hide pricing summary
+              // It should only show when print button is clicked
+              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+                const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+                if (pricingSummary) pricingSummary.classList.remove('active');
+                modal.dataset.calculatedPrice = '';
+                modal.dataset.pricingBreakdown = '';
+                return; // Don't auto-calculate for these services
+              }
+              // Recalculate pricing in real-time when inputs change for other services
               if (areAllInputsProvided(service, modal)) {
                 calculatePricing(service);
               } else {
@@ -10381,11 +10888,62 @@
                 return;
               }
             }
+            
+            // For passport, golden embossing, digital, and gloss modals, show pricing summary when print button is clicked
+            if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+              const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
+              if (pricingSummary && modal.dataset.calculatedPrice) {
+                pricingSummary.classList.add('active');
+              }
+            }
           }
           
-          // Hide modal and show loading state after all validations pass
+          // Populate and open order summary modal instead of directly submitting
+          populateOrderSummaryModalForService(service, modal);
+          
+          // Update order summary modal title and icon based on service
+          const orderSummaryModal = document.getElementById('orderSummaryModal');
+          const orderSummaryTitle = orderSummaryModal.querySelector('.modal-title');
+          const orderSummarySubtitle = orderSummaryModal.querySelector('.modal-subtitle');
+          const orderSummaryIcon = orderSummaryModal.querySelector('.modal-icon i');
+          
+          const serviceTitles = {
+            'digital': 'Digital Paper Printing',
+            'gloss': 'Gloss Paper Printing',
+            'jumbo': 'Jumbo Printing',
+            'passport': 'Passport Photo',
+            'photo': 'Photo Printing',
+            'goldenemboss': 'Golden Emboss Printing'
+          };
+          
+          const serviceIcons = {
+            'digital': 'fa-file-alt',
+            'gloss': 'fa-star',
+            'jumbo': 'fa-expand-arrows-alt',
+            'passport': 'fa-id-card',
+            'photo': 'fa-camera',
+            'goldenemboss': 'fa-certificate'
+          };
+          
+          if (orderSummaryTitle) {
+            orderSummaryTitle.textContent = serviceTitles[service] || 'Printing Service';
+          }
+          if (orderSummarySubtitle) {
+            orderSummarySubtitle.textContent = 'Review your order and proceed to payment';
+          }
+          if (orderSummaryIcon) {
+            orderSummaryIcon.className = `fas ${serviceIcons[service] || 'fa-print'}`;
+          }
+          
+          // Get modal dimensions from source modal
+          const sourceModalInner = modal.querySelector('.service-modal');
+          const modalWidth = sourceModalInner ? sourceModalInner.offsetWidth : null;
+          const modalMaxWidth = sourceModalInner ? window.getComputedStyle(sourceModalInner).maxWidth : null;
+          
+          // Close service modal and open order summary modal
           closeServiceModal(service);
-          showPaymentProcessingState();
+          openOrderSummaryModal(modalWidth, modalMaxWidth);
+          return; // Stop here, payment will be processed from order summary modal
           
           const formData = new FormData();
           
@@ -10830,7 +11388,11 @@
             <span>Calculating pricing...</span>
           </div>
         `;
-        pricingSummary.classList.add('active');
+        // Only show pricing summary for services that are not passport, golden embossing, digital, or gloss
+        // These services should only show pricing when print button is clicked
+        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+          pricingSummary.classList.add('active');
+        }
 
         // Get selected vendor email
         const selectedVendor = availableShops.find(shop => shop.shop_folder === shopSelect.value);
@@ -11281,7 +11843,11 @@
         `;
 
         pricingDetails.innerHTML = html;
-        pricingSummary.classList.add('active');
+        // For passport, golden embossing, digital, and gloss modals, don't show pricing summary automatically
+        // It should only show when print button is clicked
+        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+          pricingSummary.classList.add('active');
+        }
 
         modal.dataset.calculatedPrice = totalAmount.toFixed(2);
         modal.dataset.pricingBreakdown = JSON.stringify({
@@ -12890,44 +13456,7 @@
           </div>
         </div>
 
-        <!-- Order Summary -->
-        <div class="order-summary pricing-summary" id="orderSummary" style="display: none;">
-          <div class="pricing-header">
-            <div class="pricing-header-main">
-              <div class="pricing-icon">
-                <i class="fas fa-calculator"></i>
-              </div>
-              <div>
-                <div class="pricing-title">Order Summary</div>
-                <p class="modal-subtitle" style="margin:0;color:#6b7280;">Review your configuration</p>
-              </div>
-            </div>
-            <div class="service-status">Ready to Process</div>
-          </div>
-          <div class="pricing-details">
-            <div class="detail-item">
-              <span class="detail-label">Service</span>
-              <span class="detail-value" id="serviceName">A4 Print Single Bw</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Pages</span>
-              <span class="detail-value" id="summaryPages">0</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Color</span>
-              <span class="detail-value" id="summaryColor">Black and White</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Copies</span>
-              <span class="detail-value" id="summaryCopies">0</span>
-            </div>
-            <div id="additionalOptionsContainer"></div>
-            <div class="detail-item total-item">
-              <span class="detail-label">Grand Total</span>
-              <span class="detail-value" id="totalAmount">₹0.00</span>
-            </div>
-          </div>
-        </div>
+        <!-- Order Summary - REMOVED: Now shown in separate orderSummaryModal -->
 
         <!-- Points Applied Display Section -->
         <div class="points-applied-display" id="printModal-points-applied-display" style="display: none;">
@@ -12977,6 +13506,69 @@
           <button type="button" class="btn-submit" id="proceedBtn">
             <i class="fas fa-print"></i>
             Print
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Summary Modal - New separate modal for order review -->
+  <div class="modal-overlay service-modal-overlay" id="orderSummaryModal" style="display: none;">
+    <div class="modal service-modal">
+      <div class="modal-header">
+        <div class="modal-title-section">
+          <div class="modal-icon"><i class="fas fa-print"></i></div>
+          <div class="modal-title-content">
+            <h3 class="modal-title">Print a file</h3>
+            <p class="modal-subtitle">Upload your document and configure print settings</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeOrderSummaryModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Order Summary Content -->
+        <div class="order-summary pricing-summary" id="orderSummaryContent">
+          <div class="pricing-header">
+            <div class="pricing-header-main">
+              <div class="pricing-icon">
+                <i class="fas fa-file-invoice"></i>
+              </div>
+              <div>
+                <div class="pricing-title">Order Summary</div>
+                <p class="pricing-subtitle">Review your configuration</p>
+              </div>
+            </div>
+            <div class="service-status">Ready to Process</div>
+          </div>
+          <div class="pricing-details" id="orderSummaryDetails">
+            <div class="detail-item">
+              <span class="detail-label">Shop Name</span>
+              <span class="detail-value" id="orderSummaryShopName">-</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Service</span>
+              <span class="detail-value" id="orderSummaryServiceName">-</span>
+            </div>
+            <div id="orderSummaryServiceSpecificDetails"></div>
+            <div id="orderSummaryAdditionalOptions"></div>
+            <div class="detail-item total-item">
+              <span class="detail-label">Grand Total</span>
+              <span class="detail-value" id="orderSummaryTotalAmount">₹0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="modal-footer fixed-bottom-buttons" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button type="button" class="btn-cancel" id="orderSummaryCancelBtn">
+            <i class="fas fa-times"></i>
+            Cancel
+          </button>
+          <button type="button" class="btn-submit" id="orderSummaryConfirmPayBtn">
+            <i class="fas fa-credit-card"></i>
+            Pay Now
           </button>
         </div>
       </div>
@@ -13711,8 +14303,36 @@
 
         let subtotal = 0;
 
-        // Service specifics
-        if (breakdown.pricing_key_used) {
+        // Service specifics - Special handling for golden embossing
+        if (service === 'goldenemboss' && breakdown.emboss_cost !== undefined) {
+          // Golden embossing breakdown
+          const pages = breakdown.page_count || 1;
+          const copies = breakdown.num_copies || 1;
+          
+          // Show printing cost if available
+          if (breakdown.paper_cost && breakdown.paper_cost > 0) {
+            const paperCost = Number(breakdown.paper_cost || 0);
+            html += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Printing Cost (${pages} pages × ${copies} copies)</span>
+                <span class="invoice-item-value">₹${paperCost.toFixed(2)}</span>
+              </div>
+            `;
+            subtotal += paperCost;
+          }
+          
+          // Show embossing cost
+          const embossCost = Number(breakdown.emboss_cost || 0);
+          if (embossCost > 0) {
+            html += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Golden Embossing Black Cover (${copies} ${copies === 1 ? 'book' : 'books'})</span>
+                <span class="invoice-item-value">₹${embossCost.toFixed(2)}</span>
+              </div>
+            `;
+            subtotal += embossCost;
+          }
+        } else if (breakdown.pricing_key_used) {
           const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           const qty = breakdown.page_count || breakdown.print_quantity || 1;
           const copies = breakdown.num_copies || 1;
@@ -13856,7 +14476,11 @@
         `;
 
         pricingDetails.innerHTML = html;
-        pricingSummary.classList.add('active');
+        // For passport, golden embossing, digital, and gloss modals, don't show pricing summary automatically
+        // It should only show when print button is clicked
+        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+          pricingSummary.classList.add('active');
+        }
 
         // Ensure buttons are visible when pricing is shown
         ensureModalButtonsVisible();
@@ -15879,7 +16503,10 @@
                       <span>Please complete all required fields to calculate pricing</span>
                     </div>
                   `;
-                  pricingSummary.classList.add('active');
+                  // Don't show pricing summary for passport, golden embossing, digital, and gloss modals
+                  if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+                    pricingSummary.classList.add('active');
+                  }
                 }
               }
             } else {
@@ -17122,16 +17749,28 @@
     const tapeBindingCheckbox = document.getElementById('tapeBinding');
 
     const totalPages = document.getElementById('totalPages');
-    const summaryPages = document.getElementById('summaryPages');
-    const summaryCopies = document.getElementById('summaryCopies');
-    const summaryColor = document.getElementById('summaryColor');
-    const totalAmount = document.getElementById('totalAmount');
+    // Removed elements from print modal - now in orderSummaryModal
+    // const summaryPages = document.getElementById('summaryPages');
+    // const summaryCopies = document.getElementById('summaryCopies');
+    // const summaryColor = document.getElementById('summaryColor');
+    // const totalAmount = document.getElementById('totalAmount');
 
     // Modal functions
     function openModal() {
       // Remove any delays and make modal open instantly
       printModal.classList.add('active');
       document.body.style.overflow = 'hidden';
+      // Restore UI state if files exist (like jumbo print service)
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        // Restore file list display
+        updateFileList();
+        updateUI();
+        // Restore preview if a file is selected
+        if (selectedFileIndex >= 0 && selectedFileIndex < uploadedFiles.length) {
+          updateSettingsDisplay();
+          updateDocumentPreview();
+        }
+      }
       // Reset actions visibility on open
       ensureModalButtonsVisible();
       const body = printModal.querySelector('.modal-body');
@@ -17141,7 +17780,10 @@
     function closeModalFunc() {
       printModal.classList.remove('active');
       document.body.style.overflow = '';
-      resetPrintModal();
+      // Don't reset files when closing - preserve them like jumbo print service
+      // Only clear the file input so same file can be selected again, but keep uploadedFiles array
+      const fileInput = document.getElementById('fileInput');
+      if (fileInput) fileInput.value = '';
       const body = printModal.querySelector('.modal-body');
       if (body) body.removeEventListener('scroll', ensureModalButtonsVisible);
     }
@@ -17580,20 +18222,23 @@
     function updateUI() {
       const hasFiles = uploadedFiles.length > 0;
 
-      uploadArea.style.display = hasFiles ? 'none' : 'block';
-      addMoreBtn.style.display = hasFiles ? 'block' : 'none';
-      document.getElementById('vendorSelection').style.display = hasFiles ? 'block' : 'none';
-      printSettings.style.display = hasFiles ? 'block' : 'none';
-      // Keep order summary hidden until user explicitly calculates price
-      orderSummary.style.display = 'none';
+      if (uploadArea) uploadArea.style.display = hasFiles ? 'none' : 'block';
+      if (addMoreBtn) addMoreBtn.style.display = hasFiles ? 'block' : 'none';
+      const vendorSelection = document.getElementById('vendorSelection');
+      if (vendorSelection) vendorSelection.style.display = hasFiles ? 'block' : 'none';
+      if (printSettings) printSettings.style.display = hasFiles ? 'block' : 'none';
+      // Keep order summary hidden until user explicitly calculates price (if element exists)
+      if (orderSummary) orderSummary.style.display = 'none';
       
       // Only show action buttons after successful file upload
-      if (hasFiles) {
-        actionButtons.style.display = 'flex';
-        actionButtons.classList.add('show');
-      } else {
-        actionButtons.style.display = 'none';
-        actionButtons.classList.remove('show');
+      if (actionButtons) {
+        if (hasFiles) {
+          actionButtons.style.display = 'flex';
+          actionButtons.classList.add('show');
+        } else {
+          actionButtons.style.display = 'none';
+          actionButtons.classList.remove('show');
+        }
       }
 
       // Ensure points section and redeem buttons are hidden when no files
@@ -17632,20 +18277,21 @@
 
     function updateSettingsDisplay() {
       if (selectedFileIndex === -1 || uploadedFiles.length === 0) {
-        settingsSubtitle.textContent = 'Select a file to configure its settings';
-        fileSettingsInfo.style.display = 'block';
-        document.getElementById('imagePreviewContainer').classList.remove('active');
+        if (settingsSubtitle) settingsSubtitle.textContent = 'Select a file to configure its settings';
+        if (fileSettingsInfo) fileSettingsInfo.style.display = 'block';
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        if (imagePreviewContainer) imagePreviewContainer.classList.remove('active');
         return;
       }
 
-      fileSettingsInfo.style.display = 'none';
+      if (fileSettingsInfo) fileSettingsInfo.style.display = 'none';
       const selectedFile = uploadedFiles[selectedFileIndex];
       const settings = fileSettings[selectedFile.id];
 
       const displayName = selectedFile.name.length > 30 ? selectedFile.name.substring(0, 30) + '...' : selectedFile.name;
-      settingsSubtitle.textContent = `Configure settings for ${displayName}`;
+      if (settingsSubtitle) settingsSubtitle.textContent = `Configure settings for ${displayName}`;
 
-      copiesCount.textContent = settings.copies;
+      if (copiesCount) copiesCount.textContent = settings.copies;
 
       colorOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.color === settings.color);
@@ -17659,12 +18305,15 @@
         option.classList.toggle('selected', option.dataset.size === settings.pageSize);
       });
 
-      document.querySelector(`input[value="${settings.pageRange}"]`).checked = true;
-      pageRangeInput.disabled = settings.pageRange !== 'specific';
-      pageRangeInput.value = settings.specificPages || '';
+      const pageRangeRadio = document.querySelector(`input[value="${settings.pageRange}"]`);
+      if (pageRangeRadio) pageRangeRadio.checked = true;
+      if (pageRangeInput) {
+        pageRangeInput.disabled = settings.pageRange !== 'specific';
+        pageRangeInput.value = settings.specificPages || '';
+      }
 
-      spiralBindingCheckbox.checked = settings.spiralBinding;
-      laminationCheckbox.checked = settings.lamination;
+      if (spiralBindingCheckbox) spiralBindingCheckbox.checked = settings.spiralBinding;
+      if (laminationCheckbox) laminationCheckbox.checked = settings.lamination;
       if (tapeBindingCheckbox) tapeBindingCheckbox.checked = settings.tapeBinding;
 
       // Show image preview if current file is an image
@@ -17680,12 +18329,11 @@
     }
 
     function updateOrderSummary() {
+      // This function is kept for compatibility but no longer updates removed order summary elements
+      // Order summary is now shown in orderSummaryModal, not in print modal
       if (uploadedFiles.length === 0) {
         if (totalPages) totalPages.textContent = '0';
-        if (summaryPages) summaryPages.textContent = '0';
-        if (summaryCopies) summaryCopies.textContent = '0';
-        if (summaryColor) summaryColor.textContent = 'Mixed';
-        if (totalAmount) totalAmount.textContent = 'Calculate Price';
+        // Removed: summaryPages, summaryCopies, summaryColor, totalAmount no longer exist in print modal
         return;
       }
 
@@ -17704,17 +18352,7 @@
       });
 
       if (totalPages) totalPages.textContent = totalPagesCount;
-      if (summaryPages) summaryPages.textContent = totalPagesCount;
-      if (summaryCopies) summaryCopies.textContent = totalCopiesCount;
-
-      if (colorTypes.size === 1) {
-        if (summaryColor) summaryColor.textContent = colorTypes.has('Black and White') ? 'Black and White' : 'Color';
-      } else {
-        if (summaryColor) summaryColor.textContent = 'Mixed';
-      }
-
-      // Remove fake price calculation - show "Calculate Price" instead
-      if (totalAmount) totalAmount.textContent = 'Calculate Price';
+      // Removed: summaryPages, summaryCopies, summaryColor, totalAmount updates - these elements no longer exist
     }
 
     function calculatePages(fileObj, settings) {
@@ -18560,55 +19198,8 @@
           document.getElementById('printModal').dataset.calculatedPrice = commission.total;
           document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify(completeBreakdown);
           
-          // Update the new pricing summary fields
-          const serviceNameEl = document.getElementById('serviceName');
-          const summaryPagesEl = document.getElementById('summaryPages');
-          const summaryColorEl = document.getElementById('summaryColor');
-          const summaryCopiesEl = document.getElementById('summaryCopies');
-          const totalAmountEl = document.getElementById('totalAmount');
-          
-          if (serviceNameEl) {
-            serviceNameEl.textContent = `A4 Print ${printType === 'single_color' ? 'Single Color' : 'Single Bw'}`;
-          }
-          
-          if (summaryPagesEl) {
-            summaryPagesEl.textContent = totalPages;
-          }
-          
-          if (summaryColorEl) {
-            summaryColorEl.textContent = colorType;
-          }
-          
-          if (summaryCopiesEl) {
-            summaryCopiesEl.textContent = totalCopies;
-          }
-          
-          if (totalAmountEl) {
-            // Show total with commission (not just subtotal) to match payment amount
-            totalAmountEl.textContent = `₹${commission.total.toFixed(2)}`;
-            // Reveal the order summary only after a successful calculation
-            const orderSummaryEl = document.getElementById('orderSummary');
-            if (orderSummaryEl) orderSummaryEl.style.display = 'block';
-          }
-          
-          // Display additional options in the details section
-          const additionalOptionsContainer = document.getElementById('additionalOptionsContainer');
-          if (additionalOptionsContainer) {
-            if (additionalOptions.length > 0) {
-              let additionalOptionsHtml = '';
-              additionalOptions.forEach(option => {
-                additionalOptionsHtml += `
-                  <div class="detail-item">
-                    <span class="detail-label">${option.name}</span>
-                    <span class="detail-value">₹${option.price.toFixed(2)}</span>
-                  </div>
-                `;
-              });
-              additionalOptionsContainer.innerHTML = additionalOptionsHtml;
-            } else {
-              additionalOptionsContainer.innerHTML = '';
-            }
-          }
+          // REMOVED: Order summary elements no longer exist in print modal
+          // Order summary is now shown in separate orderSummaryModal when user clicks Print button
 
           // Show action buttons after successful price calculation
           const actionButtonsEl = document.getElementById('actionButtons');
@@ -18644,49 +19235,421 @@
       }
     }
 
-    // Payment-first flow with Razorpay, then upload on verified payment
+    // Open Order Summary Modal when Print button is clicked
     document.getElementById('proceedBtn').addEventListener('click', async () => {
       const proceedBtn = document.getElementById('proceedBtn');
-      proceedBtn.disabled = true;
-      proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
       
-      // Hide modal immediately when payment button is clicked
+      // Validate inputs
+      if (uploadedFiles.length === 0) {
+        alert('Please add at least one file to print.');
+        return;
+      }
+      
+      // Check if pricing has been calculated
+      const hasCalculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
+      if (!hasCalculatedPrice) {
+        alert('Please calculate the price before submitting the print job.');
+        return;
+      }
+
+      // Check if a shop is selected
+      if (!selectedVendor || selectedVendor === '') {
+        alert('Please select a print shop before proceeding.');
+        return;
+      }
+
+      // Capture printModal dimensions and position before closing
+      const printModalEl = document.getElementById('printModal');
+      const printModalInner = printModalEl.querySelector('.service-modal');
+      let modalWidth = null;
+      let modalMaxWidth = null;
+      let modalPosition = null;
+      
+      if (printModalInner) {
+        const computedStyle = window.getComputedStyle(printModalInner);
+        const rect = printModalInner.getBoundingClientRect();
+        // Use computed width if available, otherwise use bounding rect width
+        modalWidth = computedStyle.width !== 'auto' && computedStyle.width !== '' 
+          ? parseFloat(computedStyle.width) 
+          : rect.width;
+        modalMaxWidth = computedStyle.maxWidth;
+        modalPosition = {
+          left: rect.left,
+          top: rect.top
+        };
+      }
+      
+      // Close the print modal
       closeModalFunc();
+      
+      // Populate and show the order summary modal
+      populateOrderSummaryModal();
+      openOrderSummaryModal(modalWidth, modalMaxWidth, modalPosition);
+    });
+
+    // Function to populate order summary modal with current data
+    function populateOrderSummaryModal() {
+      const printModal = document.getElementById('printModal');
+      const calculatedPrice = printModal.dataset.calculatedPrice;
+      const pricingBreakdown = printModal.dataset.pricingBreakdown;
+      
+      // Get shop name
+      const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+      const shopName = selectedVendorData ? (selectedVendorData.shop_name || selectedVendorData.vendor_name || selectedVendorData.vendor_email || '-') : '-';
+      
+      // Calculate totals from uploaded files
+      let totalPagesCount = 0;
+      let totalCopiesCount = 0;
+      let colorTypes = new Set();
+      let orientationTypes = new Set();
+      
+      uploadedFiles.forEach(fileObj => {
+        const settings = fileSettings[fileObj.id];
+        const pages = calculatePages(fileObj, settings);
+        const copies = settings.copies;
+        
+        totalPagesCount += pages;
+        totalCopiesCount += copies;
+        colorTypes.add(settings.color);
+        orientationTypes.add(settings.orientation);
+      });
+      
+      // Determine service name
+      const colorType = colorTypes.size === 1 ? Array.from(colorTypes)[0] : 'Mixed';
+      const printType = colorType === 'color' ? 'single_color' : 'single_bw';
+      const serviceName = `A4 Print ${printType === 'single_color' ? 'Single Color' : 'Single Bw'}`;
+      
+      // Format color display text
+      const colorDisplayText = colorType === 'color' ? 'Color' : (colorType === 'bw' ? 'Black and White' : 'Mixed');
+      
+      // Get orientation (use first file's orientation or default)
+      const orientation = orientationTypes.size === 1 ? Array.from(orientationTypes)[0] : (uploadedFiles.length > 0 ? fileSettings[uploadedFiles[0].id].orientation : 'Portrait');
+      
+      // Get additional options from pricing breakdown
+      let additionalOptions = [];
+      if (pricingBreakdown) {
+        try {
+          const breakdownObj = JSON.parse(pricingBreakdown);
+          additionalOptions = breakdownObj.additional_options || [];
+        } catch (e) {
+          console.error('Error parsing pricing breakdown:', e);
+        }
+      }
+      
+      // Get final amount (with points if applied)
+      const pointsApplied = printModal.dataset.pointsApplied === 'true';
+      const finalAmount = pointsApplied ? parseFloat(printModal.dataset.finalAmount || calculatedPrice) : parseFloat(calculatedPrice || '0');
+      
+      // Populate modal fields
+      document.getElementById('orderSummaryShopName').textContent = shopName;
+      document.getElementById('orderSummaryServiceName').textContent = serviceName;
+      
+      // Populate service-specific details
+      const serviceSpecificContainer = document.getElementById('orderSummaryServiceSpecificDetails');
+      if (serviceSpecificContainer) {
+        serviceSpecificContainer.innerHTML = `
+          <div class="detail-item">
+            <span class="detail-label">Pages</span>
+            <span class="detail-value">${totalPagesCount}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Color</span>
+            <span class="detail-value">${colorDisplayText}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Copies</span>
+            <span class="detail-value">${totalCopiesCount}</span>
+          </div>
+        `;
+      }
+      
+      document.getElementById('orderSummaryTotalAmount').textContent = `₹${finalAmount.toFixed(2)}`;
+      
+      // Populate additional options
+      const additionalOptionsContainer = document.getElementById('orderSummaryAdditionalOptions');
+      if (additionalOptionsContainer) {
+        if (additionalOptions.length > 0) {
+          let additionalOptionsHtml = '';
+          additionalOptions.forEach(option => {
+            additionalOptionsHtml += `
+              <div class="detail-item">
+                <span class="detail-label">${option.name}</span>
+                <span class="detail-value">₹${option.price.toFixed(2)}</span>
+              </div>
+            `;
+          });
+          additionalOptionsContainer.innerHTML = additionalOptionsHtml;
+        } else {
+          additionalOptionsContainer.innerHTML = '';
+        }
+      }
+    }
+
+    // Generic function to populate order summary modal for all service modals
+    function populateOrderSummaryModalForService(service, modal) {
+      if (!modal) return;
+      
+      const calculatedPrice = modal.dataset.calculatedPrice;
+      const pricingBreakdown = modal.dataset.pricingBreakdown;
+      
+      // Get shop name
+      const shopSelect = modal.querySelector(`#${service}-shop-select`);
+      const selectedShopValue = shopSelect ? shopSelect.value : '';
+      const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
+      const shopName = selectedShopData ? (selectedShopData.shop_name || selectedShopData.vendor_name || selectedShopData.vendor_email || '-') : '-';
+      
+      // Get service display name
+      const serviceNames = {
+        'digital': 'Digital Paper Printing',
+        'gloss': 'Gloss Paper Printing',
+        'jumbo': 'Jumbo Printing',
+        'passport': 'Passport Photo',
+        'photo': 'Photo Printing',
+        'goldenemboss': 'Golden Emboss Printing',
+        'print': 'Document Printing'
+      };
+      const serviceDisplayName = serviceNames[service] || 'Printing Service';
+      
+      // Parse pricing breakdown to get details
+      let breakdownObj = {};
+      let additionalOptions = [];
+      if (pricingBreakdown) {
+        try {
+          breakdownObj = JSON.parse(pricingBreakdown);
+          additionalOptions = breakdownObj.additional_options || [];
+        } catch (e) {
+          console.error('Error parsing pricing breakdown:', e);
+        }
+      }
+      
+      // Get form values for service-specific details
+      const form = modal.querySelector(`#${service}-modal-form`);
+      const serviceSpecificDetails = [];
+      
+      if (form) {
+        // Get all field values
+        const fields = form.querySelectorAll('input, select, textarea');
+        fields.forEach(field => {
+          if (field.type === 'file' || field.type === 'hidden' || !field.value) return;
+          
+          const label = field.closest('.modal-field-group')?.querySelector('label')?.textContent || 
+                       field.previousElementSibling?.textContent || 
+                       field.getAttribute('placeholder') || 
+                       field.name || '';
+          
+          if (label && !label.toLowerCase().includes('shop') && !label.toLowerCase().includes('feedback')) {
+            let value = field.value;
+            
+            // Format values nicely
+            if (field.type === 'select-one') {
+              const option = field.options[field.selectedIndex];
+              value = option.textContent || value;
+            }
+            
+            // Map common field names
+            const labelLower = label.toLowerCase();
+            if (labelLower.includes('quantity') || labelLower.includes('copies') || labelLower.includes('package')) {
+              serviceSpecificDetails.push({
+                label: label.includes('Package') ? 'Photo Package' : (label.includes('Quantity') ? 'Quantity' : 'Copies'),
+                value: value
+              });
+            } else if (labelLower.includes('size') || labelLower.includes('paper size') || labelLower.includes('photo size')) {
+              serviceSpecificDetails.push({
+                label: label.includes('Photo') ? 'Photo Size' : 'Paper Size',
+                value: value
+              });
+            } else if (labelLower.includes('color') && !labelLower.includes('range')) {
+              serviceSpecificDetails.push({
+                label: 'Color',
+                value: value
+              });
+            } else if (labelLower.includes('quality') || labelLower.includes('paper quality') || labelLower.includes('gloss level')) {
+              serviceSpecificDetails.push({
+                label: 'Quality',
+                value: value
+              });
+            } else if (labelLower.includes('thickness')) {
+              serviceSpecificDetails.push({
+                label: 'Paper Thickness',
+                value: value
+              });
+            } else if (labelLower.includes('country')) {
+              serviceSpecificDetails.push({
+                label: 'Country',
+                value: value
+              });
+            } else if (labelLower.includes('finish')) {
+              serviceSpecificDetails.push({
+                label: 'Finish',
+                value: value
+              });
+            }
+          }
+        });
+      }
+      
+      // Get final amount (with points if applied)
+      const pointsApplied = modal.dataset.pointsApplied === 'true';
+      const finalAmount = pointsApplied ? parseFloat(modal.dataset.finalAmount || calculatedPrice) : parseFloat(calculatedPrice || '0');
+      
+      // Populate modal fields
+      document.getElementById('orderSummaryShopName').textContent = shopName;
+      document.getElementById('orderSummaryServiceName').textContent = serviceDisplayName;
+      
+      // Populate service-specific details
+      const serviceSpecificContainer = document.getElementById('orderSummaryServiceSpecificDetails');
+      if (serviceSpecificContainer) {
+        // Special handling for golden embossing
+        if (service === 'goldenemboss' && breakdownObj) {
+          const pages = breakdownObj.page_count || 1;
+          const copies = breakdownObj.num_copies || 1;
+          const printColor = breakdownObj.print_color || 'Color';
+          const paperType = breakdownObj.paper_type || breakdownObj.print_size || 'A4';
+          
+          let detailsHtml = `
+            <div class="detail-item">
+              <span class="detail-label">Pages</span>
+              <span class="detail-value">${pages}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Copies</span>
+              <span class="detail-value">${copies}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Print Color</span>
+              <span class="detail-value">${printColor}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Paper Type</span>
+              <span class="detail-value">${paperType}</span>
+            </div>
+          `;
+          
+          if (breakdownObj.emboss_cost) {
+            detailsHtml += `
+              <div class="detail-item">
+                <span class="detail-label">Golden Embossing</span>
+                <span class="detail-value">₹${Number(breakdownObj.emboss_cost).toFixed(2)}</span>
+              </div>
+            `;
+          }
+          
+          serviceSpecificContainer.innerHTML = detailsHtml;
+        } else if (serviceSpecificDetails.length > 0) {
+          let detailsHtml = '';
+          serviceSpecificDetails.forEach(detail => {
+            detailsHtml += `
+              <div class="detail-item">
+                <span class="detail-label">${detail.label}</span>
+                <span class="detail-value">${detail.value}</span>
+              </div>
+            `;
+          });
+          serviceSpecificContainer.innerHTML = detailsHtml;
+        } else {
+          serviceSpecificContainer.innerHTML = '';
+        }
+      }
+      
+      document.getElementById('orderSummaryTotalAmount').textContent = `₹${finalAmount.toFixed(2)}`;
+      
+      // Populate additional options
+      const additionalOptionsContainer = document.getElementById('orderSummaryAdditionalOptions');
+      if (additionalOptionsContainer) {
+        if (additionalOptions.length > 0) {
+          let additionalOptionsHtml = '';
+          additionalOptions.forEach(option => {
+            additionalOptionsHtml += `
+              <div class="detail-item">
+                <span class="detail-label">${option.name}</span>
+                <span class="detail-value">₹${option.price.toFixed(2)}</span>
+              </div>
+            `;
+          });
+          additionalOptionsContainer.innerHTML = additionalOptionsHtml;
+        } else {
+          additionalOptionsContainer.innerHTML = '';
+        }
+      }
+      
+      // Store service type in modal for payment processing
+      document.getElementById('orderSummaryModal').dataset.serviceType = service;
+      document.getElementById('orderSummaryModal').dataset.sourceModal = modal.id;
+    }
+
+    // Function to open order summary modal
+    function openOrderSummaryModal(modalWidth, modalMaxWidth, modalPosition) {
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal) {
+        const orderSummaryModalInner = orderSummaryModal.querySelector('.service-modal');
+        
+        // Apply same width and max-width as printModal if provided
+        if (modalWidth && orderSummaryModalInner) {
+          orderSummaryModalInner.style.setProperty('width', `${modalWidth}px`, 'important');
+          if (modalMaxWidth && modalMaxWidth !== 'none') {
+            orderSummaryModalInner.style.setProperty('max-width', modalMaxWidth, 'important');
+          } else {
+            // If no max-width from printModal, use the width as max-width
+            orderSummaryModalInner.style.setProperty('max-width', `${modalWidth}px`, 'important');
+          }
+        } else if (orderSummaryModalInner) {
+          // Reset to default if no width provided (for backward compatibility)
+          orderSummaryModalInner.style.removeProperty('width');
+          orderSummaryModalInner.style.removeProperty('max-width');
+        }
+        
+        orderSummaryModal.style.display = 'block';
+        orderSummaryModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    // Function to close order summary modal
+    function closeOrderSummaryModal() {
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal) {
+        orderSummaryModal.style.display = 'none';
+        orderSummaryModal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    // Generic payment function - works for all services (print modal and service modals)
+    async function processPrintPayment() {
+      const confirmPayBtn = document.getElementById('orderSummaryConfirmPayBtn');
+      confirmPayBtn.disabled = true;
+      confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      
+      // Close order summary modal
+      closeOrderSummaryModal();
       
       // Show loading state while processing payment
       showPaymentProcessingState();
 
       try {
-        if (uploadedFiles.length === 0) {
-          alert('Please add at least one file to print.');
-          return;
-        }
+        // Get service type and source modal from order summary modal
+        const orderSummaryModal = document.getElementById('orderSummaryModal');
+        const serviceType = orderSummaryModal.dataset.serviceType || 'print';
+        const sourceModalId = orderSummaryModal.dataset.sourceModal;
         
-        // Check if pricing has been calculated
-        const hasCalculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
-        if (!hasCalculatedPrice) {
-          alert('Please calculate the price before submitting the print job.');
-          proceedBtn.disabled = false;
-          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-          return;
-        }
-
-        // Check if a shop is selected
-        if (!selectedVendor || selectedVendor === '') {
-          alert('Please select a print shop before proceeding.');
-          proceedBtn.disabled = false;
-          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-          return;
-        }
-
-        // Get vendor data for the selected vendor (before the loop so it's available in settingsJson)
+        // Determine if this is from print modal or service modal
+        const isPrintModal = serviceType === 'print' || !sourceModalId;
+        
+        let formData = new FormData();
+        let files = [];
+        let selectedShopValue = '';
+        let modal = null;
+        let totalAmountRupees = 0; // Declare outside if/else blocks
+        
+        if (isPrintModal) {
+          // Handle print modal
         const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
         const vendorId = selectedVendorData ? selectedVendorData.vendor_id : 'vendor1';
         const vendorEmail = selectedVendorData ? (selectedVendorData.vendor_email || '') : '';
         const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
 
         // Prepare form data (files + settings) but DO NOT upload yet
-        const formData = new FormData();
+          formData = new FormData();
 
         for (let i = 0; i < uploadedFiles.length; i++) {
           const fileObj = uploadedFiles[i];
@@ -18698,7 +19661,7 @@
           // Convert images to PDF based on settings
           if (fileObj.isImage && fileObj.originalImageFile) {
             try {
-              proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
+              confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
               fileToUpload = await convertImageToPDF(fileObj.originalImageFile, settings);
               finalFilename = fileObj.name.replace(/\.[^/.]+$/, ".pdf");
             } catch (error) {
@@ -18744,15 +19707,13 @@
 
         formData.append('file_count', uploadedFiles.length);
         formData.append('selected_vendor', selectedVendor);
-        
-        // vendor_id, vendorEmail, and userEmail are already declared above
         formData.append('vendor_id', vendorId);
         formData.append('vendor_email', vendorEmail);
         if (userEmail) {
           formData.append('user_email', userEmail);
         }
         
-        // Add points information if points were applied (for regular print modal)
+          // Add points information if points were applied
         const printModal = document.getElementById('printModal');
         const pointsApplied = printModal.dataset.pointsApplied === 'true';
         const pointsUsed = printModal.dataset.pointsUsed || '0';
@@ -18762,10 +19723,10 @@
         formData.append('points_used', pointsUsed);
         formData.append('final_amount', finalAmount);
         
-        // Get pricing details from modal metadata if available
+          // Get pricing details
         let pricingDetails = null;
-        const calculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
-        const pricingBreakdown = document.getElementById('printModal').dataset.pricingBreakdown;
+          const calculatedPrice = printModal.dataset.calculatedPrice;
+          const pricingBreakdown = printModal.dataset.pricingBreakdown;
         
         if (calculatedPrice && pricingBreakdown) {
           try {
@@ -18779,15 +19740,13 @@
               additional_options: breakdownObj.additional_options || [],
               subtotal: breakdownObj.subtotal || parseFloat(calculatedPrice)
             };
-            // Compute and store platform profit (not displayed to user)
+              // Compute platform profit
             try {
-              const breakdownObj = pricingDetails.pricing_breakdown || {};
               const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
               const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
               const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
               pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-            } catch (e) { /* ignore profit calc errors silently */ }
-            console.log('💰 Pricing details stored in job metadata for A4 print:', pricingDetails);
+              } catch (e) { /* ignore */ }
             
             // Update all settingsJson objects to include pricing details
             for (let i = 0; i < uploadedFiles.length; i++) {
@@ -18796,29 +19755,218 @@
                 const settingsObj = JSON.parse(existingSettings);
                 settingsObj.pricing_details = pricingDetails;
                 formData.append(`settings_${i}`, JSON.stringify(settingsObj));
-                console.log(`💰 Updated settings_${i} with pricing details`);
               }
             }
           } catch (error) {
             console.error('Error parsing pricing breakdown:', error);
           }
-        } else {
-          console.log('⚠️ No pricing details available for A4 print job');
         }
 
-        // 1) Create Razorpay order from server using final amount after points applied
+          // Calculate final amount for payment
         const isPointsApplied = printModal.dataset.pointsApplied === 'true';
-        const finalAmountAfterPoints = isPointsApplied ? parseFloat(printModal.dataset.finalAmount || '0') : parseFloat(calculatedPrice);
-        const totalAmountRupees = finalAmountAfterPoints;
+          const finalAmountAfterPoints = isPointsApplied ? parseFloat(printModal.dataset.finalAmount || '0') : parseFloat(calculatedPrice || '0');
+          totalAmountRupees = finalAmountAfterPoints;
+        } else {
+          // Handle service modals (digital, gloss, jumbo, passport, photo, goldenemboss)
+          modal = document.getElementById(sourceModalId);
+          if (!modal) {
+            throw new Error('Source modal not found');
+          }
+          
+          files = modal._uploadedFiles || [];
+          if (files.length === 0 && !modal.dataset.fileName) {
+            throw new Error('No files attached to the print job');
+          }
+          
+          // Get shop selection
+          const shopSelect = modal.querySelector(`#${serviceType}-shop-select`);
+          selectedShopValue = shopSelect ? shopSelect.value : '';
+          const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
+          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+          const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
+          const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
+          
+          // Get service template
+          const tmpl = serviceModalTemplates[serviceType];
+          if (!tmpl) {
+            throw new Error(`Service template not found for ${serviceType}`);
+          }
+          
+          // Prepare form data
+          formData = new FormData();
+          const allFileNames = files.map(f => f.name);
+          
+          // Handle files
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Passport photo selection logic
+            if (serviceType === 'passport') {
+              const filePreview = modal.querySelector(`#${serviceType}-file-preview`);
+              let selectedVersion = filePreview?.dataset.selectedVersion || 'original';
+              let enhancedUrl = filePreview?.dataset.enhancedUrl || null;
+              let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
+              if (selectedVersion === 'enhanced' && enhancedReady && enhancedUrl) {
+                try {
+                  const resp = await fetch(enhancedUrl);
+                  const blob = await resp.blob();
+                  const enhancedFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
+                  formData.append(`file_${i}`, enhancedFile);
+                } catch (err) {
+                  formData.append(`file_${i}`, file);
+                }
+              } else {
+                formData.append(`file_${i}`, file);
+              }
+            } else {
+              formData.append(`file_${i}`, file);
+            }
+          }
+          
+          // Collect field values
+          const form = modal.querySelector(`#${serviceType}-modal-form`);
+          let copies = 1;
+          let pageSize = 'A4';
+          let color = 'Black and White';
+          let orientation = 'portrait';
+          let quality = 'standard';
+          let thickness = '120gsm';
+          let country = 'india';
+          let colorRange = '';
+          let bwRange = '';
+          
+          if (form) {
+            tmpl.fields.forEach((f, idx) => {
+              if (f.type === 'file') return;
+              let val = form.querySelector(`#${serviceType}-field-${idx}`)?.value;
+              
+              if (f.label.toLowerCase().includes('quantity') || f.label.toLowerCase().includes('copies')) copies = parseInt(val) || 1;
+              if (f.label.toLowerCase().includes('paper size') || f.label.toLowerCase().includes('size') || f.label.toLowerCase().includes('photo size')) pageSize = val;
+              if (f.label.toLowerCase().includes('color') || f.label.toLowerCase().includes('print color') || f.label.toLowerCase().includes('color set')) color = val;
+              if (f.label.toLowerCase().includes('orientation')) orientation = val;
+              if (f.label.toLowerCase().includes('package') || f.label.toLowerCase().includes('photo package')) copies = parseInt(val) || 8;
+              if (f.label.toLowerCase().includes('quality') || f.label.toLowerCase().includes('gloss level')) quality = val;
+              if (f.label.toLowerCase().includes('thickness')) thickness = val;
+              if (f.label.toLowerCase().includes('country')) country = val;
+              if (f.label.toLowerCase().includes('number of print copies')) copies = parseInt(val) || 1;
+              if (f.label.toLowerCase().includes('color range')) colorRange = val || '';
+              if (f.label.toLowerCase().includes('black & white range')) bwRange = val || '';
+              
+              formData.append(`field_${idx}`, val);
+            });
+            
+            const feedbackTextarea = form.querySelector(`#${serviceType}-feedback`);
+            const feedback = feedbackTextarea ? feedbackTextarea.value.trim() : '';
+            formData.append('feedback', feedback);
+          }
+          
+          // Add vendor and user info
+          formData.append('selected_vendor', selectedShopValue);
+          formData.append('vendor_id', vendorId);
+          formData.append('vendor_email', vendorEmail);
+          if (userEmail) {
+            formData.append('user_email', userEmail);
+          }
+          formData.append('storage_folder', 'vendor_print_jobs');
+          
+          // Add points information
+          const pointsApplied = modal.dataset.pointsApplied === 'true';
+          const pointsUsed = modal.dataset.pointsUsed || '0';
+          const finalAmount = modal.dataset.finalAmount || modal.dataset.calculatedPrice;
+          
+          formData.append('points_applied', pointsApplied.toString());
+          formData.append('points_used', pointsUsed);
+          formData.append('final_amount', finalAmount);
+          
+          // Get pricing details
+          let pricingDetails = null;
+          const calculatedPrice = modal.dataset.calculatedPrice;
+          const pricingBreakdown = modal.dataset.pricingBreakdown;
+          const structuredPricing = modal.dataset.structuredPricing;
+          
+          if (calculatedPrice && pricingBreakdown) {
+            try {
+              pricingDetails = {
+                total_price: parseFloat(calculatedPrice),
+                pricing_breakdown: JSON.parse(pricingBreakdown),
+                calculation_timestamp: new Date().toISOString(),
+                vendor_email: selectedShopData ? selectedShopData.vendor_email : null
+              };
+              
+              try {
+                const breakdownObj = pricingDetails.pricing_breakdown || {};
+                const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
+                const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
+                const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
+                pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
+              } catch (e) { /* ignore */ }
+              
+              if (serviceType === 'goldenemboss' && structuredPricing) {
+                pricingDetails.structured_data = JSON.parse(structuredPricing);
+              }
+              pricingDetails.user_email = userEmail || null;
+            } catch (error) {
+              console.error('Error parsing pricing breakdown:', error);
+            }
+          }
+          
+          // Create metadata for each file
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const settingsJson = {
+              filename: file.name,
+              service_type: tmpl.service_type,
+              service_name: tmpl.title,
+              copies: serviceType === 'passport' ? 1 : copies,
+              color: color,
+              orientation: orientation,
+              pageRange: 'all',
+              specificPages: '',
+              pageSize: pageSize,
+              quality: quality,
+              thickness: thickness,
+              feedback: form.querySelector(`#${serviceType}-feedback`)?.value.trim() || '',
+              country: country,
+              spiralBinding: 'No',
+              lamination: 'No',
+              timestamp: new Date().toISOString(),
+              status: 'pending',
+              job_completed: 'NO',
+              trash: 'NO',
+              is_manual_job: 'YES',
+              colorRange: colorRange,
+              bwRange: bwRange,
+              pricing_details: pricingDetails,
+              all_document_names: allFileNames,
+              document_count: files.length,
+              vendor_email: vendorEmail || '',
+              user_email: userEmail || ''
+            };
+            formData.append(`settings_${i}`, JSON.stringify(settingsJson));
+          }
+          
+          formData.append('file_count', files.length);
+          
+          // Calculate final amount for payment
+          const isPointsApplied = modal.dataset.pointsApplied === 'true';
+          const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : parseFloat(calculatedPrice || '0');
+          totalAmountRupees = finalAmountAfterPoints;
+        }
+        
+        if (!totalAmountRupees || isNaN(totalAmountRupees) || totalAmountRupees <= 0) {
+          throw new Error('Invalid amount. Please calculate price again.');
+        }
+        
         const amountPaise = Math.round(totalAmountRupees * 100);
 
+        // 1) Create Razorpay order from server
         const orderResp = await fetch('/payments/create-order/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
           },
-          body: JSON.stringify({ amount_paise: amountPaise, receipt: `print_${Date.now()}` })
+          body: JSON.stringify({ amount_paise: amountPaise, receipt: `${serviceType}_${Date.now()}` })
         });
 
         const orderData = await safeParseJson(orderResp);
@@ -18827,12 +19975,23 @@
         }
 
         // 2) Open Razorpay Checkout
+        const serviceNames = {
+          'digital': 'Digital Paper Printing',
+          'gloss': 'Gloss Paper Printing',
+          'jumbo': 'Jumbo Printing',
+          'passport': 'Passport Photo',
+          'photo': 'Photo Printing',
+          'goldenemboss': 'Golden Emboss Printing',
+          'print': 'Document Printing'
+        };
+        const serviceDescription = serviceNames[serviceType] || 'Printing Service';
+        
         const options = {
           key: orderData.key_id,
           amount: amountPaise,
           currency: 'INR',
           name: 'SmartPrint',
-          description: 'Document Printing',
+          description: serviceDescription,
           order_id: orderData.order.id,
           handler: async function (paymentResponse) {
             try {
@@ -18860,121 +20019,74 @@
                     throw new Error(verifyData.error || 'Payment verification failed');
                   }
 
-                  // Check for failed uploads and show appropriate message
+                  // Check for failed uploads
                   if (verifyData.files_failed > 0) {
                     const failedFiles = verifyData.failed_files || [];
                     const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                     alert(`Payment successful but ${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\nYou have been compensated with points for the failed uploads.`);
                   }
 
-                  // Finalize Google Drive files after successful payment
-                  if (driveFiles.size > 0) {
+                  // Finalize Google Drive files if needed
+                  if (typeof driveFiles !== 'undefined' && driveFiles.size > 0) {
                     try {
                       await finalizeDriveFiles();
-                      console.log('Google Drive files finalized successfully');
                     } catch (error) {
                       console.error('Error finalizing Drive files:', error);
-                      // Don't fail the payment for Drive finalization errors
                     }
                   }
 
                   // Update job list dynamically
-                  updateJobListAfterPayment();
-
-                  // Try to prepend a new job card instantly (without waiting for refresh)
-                  try {
-                    const firstFile = uploadedFiles && uploadedFiles[0];
-                    const newJob = {
-                      filename: firstFile ? (firstFile.name || firstFile.file?.name || 'New Job') : 'New Job',
-                      uploaded_at: new Date().toISOString().slice(0,16).replace('T',' '),
-                      pages: (window.lastCalculatedPages) || (firstFile?.pages || 1),
-                      copies: (window.lastCalculatedCopies) || 1,
-                      color: (window.lastSelectedColor) || 'Black and White',
-                      pageSize: (window.lastSelectedPageSize) || 'A4',
-                      status: 'Pending',
-                      job_completed: 'NO',
-                      service_type: 'regular',
-                      vendor: selectedVendorData?.vendor_email || selectedVendorData?.shop_name || '',
-                      vendor_lat: selectedVendorData?.latitude || '',
-                      vendor_lng: selectedVendorData?.longitude || '',
-                      pricing_details: pricingDetails || null,
-                      token: verifyData.token || ''
-                    };
-                  vendorCoordinateRegistry.rememberJob(newJob);
-                    if (typeof userJobs === 'undefined' || !Array.isArray(userJobs)) { window.userJobs = []; }
-                    userJobs = [newJob, ...userJobs];
-                    const container = document.getElementById('jobsContainer');
-                    if (container && typeof window.createJobCard === 'function') {
-                      const cardHTML = window.createJobCard(newJob);
-                      const temp = document.createElement('div');
-                      temp.innerHTML = cardHTML;
-                      const node = temp.firstElementChild;
-                      if (node) container.insertBefore(node, container.firstChild);
-                      updateJobTrackDistances();
-                    }
-                    
-                    // Update layout when new job is added
-                    updateLayoutBasedOnJobs();
-                  } catch (e) { console.warn('Could not prepend new job card:', e); }
+                  if (typeof updateJobListAfterPayment === 'function') {
+                    updateJobListAfterPayment();
+                  }
                 } catch (err) {
                   console.error('Background storage error:', err);
-                  // Don't show error to user since payment succeeded
                 }
               })();
 
-              // Reset UI immediately after showing success
-              uploadedFiles = [];
-              selectedFileIndex = -1;
-              fileSettings = {};
-              updateFileList();
-              updateUI();
+              // Reset UI for print modal
+              if (isPrintModal) {
+                uploadedFiles = [];
+                selectedFileIndex = -1;
+                fileSettings = {};
+                if (typeof updateFileList === 'function') updateFileList();
+                if (typeof updateUI === 'function') updateUI();
+              }
               
               // Reset button state
-              proceedBtn.disabled = false;
-              proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+              confirmPayBtn.disabled = false;
+              confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
             } catch (err) {
               console.error('Payment handler error:', err);
               hidePaymentProcessingState();
               alert(err.message || 'Payment processing failed. Please try again.');
-              proceedBtn.disabled = false;
-              proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+              confirmPayBtn.disabled = false;
+              confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
             }
           }
         };
 
+        // Ensure Razorpay is loaded
+        if (typeof Razorpay === 'undefined') {
+          throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
+        }
+        
         const rzp = new Razorpay(options);
-        // Ensure processing overlay is not shown on failure/cancel
+        
+        // Handle payment failure
         rzp.on('payment.failed', async function (response) {
           console.error('Payment failed:', response.error);
           hidePaymentProcessingState();
           
-          // Check if we're on localhost
           const isLocalhost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+          const sourceModal = isPrintModal ? document.getElementById('printModal') : modal;
+          const pointsApplied = sourceModal?.dataset.pointsApplied === 'true';
+          const pointsUsed = parseInt(sourceModal?.dataset.pointsUsed || '0');
           
-          // Get points information from modal
-          const pointsApplied = printModal.dataset.pointsApplied === 'true';
-          const pointsUsed = parseInt(printModal.dataset.pointsUsed || '0');
-          
-          // Return points if payment failed on localhost or if points were applied
+          // Return points if payment failed
           if ((isLocalhost || pointsApplied) && pointsUsed > 0) {
             try {
-              // Get user email - try multiple sources
-              let userEmail = null;
-              // Try from form data first (most reliable)
-              const formDataEntries = Array.from(formData.entries());
-              const userEmailEntry = formDataEntries.find(([key]) => key === 'user_email');
-              if (userEmailEntry) {
-                userEmail = userEmailEntry[1];
-              }
-              // Fallback to body dataset
-              if (!userEmail) {
-                userEmail = document.body.dataset.userEmail;
-              }
-              // Last resort: try to get from Django template variable if available
-              if (!userEmail && typeof userEmailFromTemplate !== 'undefined') {
-                userEmail = userEmailFromTemplate;
-              }
-              
+              const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
               if (userEmail) {
                 const returnResp = await fetch('/payments/return-points/', {
                   method: 'POST',
@@ -18993,14 +20105,11 @@
                 
                 const returnData = await returnResp.json();
                 if (returnData.success) {
-                  console.log(`✅ Returned ${pointsUsed} points to user due to payment failure`);
-                  // Update local points variable
                   if (typeof userPoints !== 'undefined') {
                     userPoints = (userPoints || 0) + pointsUsed;
                   }
                   alert(`Payment failed. ${pointsUsed} points have been returned to your account.`);
                 } else {
-                  console.error('Failed to return points:', returnData.error);
                   alert('Payment failed. Please contact support to return your points.');
                 }
               }
@@ -19009,35 +20118,61 @@
               alert('Payment failed. Please contact support if points were deducted.');
             }
           } else {
-            // Simple, quick failure message
             alert('Payment failed. Please try again.');
           }
           
-          proceedBtn.disabled = false;
-          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+          confirmPayBtn.disabled = false;
+          confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
         });
-        // Also handle checkout close without payment
+        
+        // Handle payment cancellation
         if (rzp && rzp.on) {
           rzp.on('payment.cancel', function(){
             hidePaymentProcessingState();
             alert('Payment cancelled.');
-            proceedBtn.disabled = false;
-            proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+            confirmPayBtn.disabled = false;
+            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
           });
         }
 
         rzp.open();
       } catch (error) {
         console.error('Error submitting print job:', error);
-        // Hide processing state on error
         hidePaymentProcessingState();
         alert(`Error: ${error.message || 'Failed to submit print job. Please try again.'}`);
-      } finally {
-        // Button state is reset in success/failure handlers. Keep a safety reset here if checkout did not open.
-        if (proceedBtn.disabled) {
-        proceedBtn.disabled = false;
-        proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-        }
+        confirmPayBtn.disabled = false;
+        confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+      }
+    }
+
+    // Event listeners for order summary modal
+    document.addEventListener('DOMContentLoaded', function() {
+      // Close button
+      const closeOrderSummaryModalBtn = document.getElementById('closeOrderSummaryModal');
+      if (closeOrderSummaryModalBtn) {
+        closeOrderSummaryModalBtn.addEventListener('click', closeOrderSummaryModal);
+      }
+      
+      // Cancel button
+      const orderSummaryCancelBtn = document.getElementById('orderSummaryCancelBtn');
+      if (orderSummaryCancelBtn) {
+        orderSummaryCancelBtn.addEventListener('click', closeOrderSummaryModal);
+      }
+      
+      // Confirm & Pay button
+      const orderSummaryConfirmPayBtn = document.getElementById('orderSummaryConfirmPayBtn');
+      if (orderSummaryConfirmPayBtn) {
+        orderSummaryConfirmPayBtn.addEventListener('click', processPrintPayment);
+      }
+      
+      // Close modal when clicking outside
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal) {
+        orderSummaryModal.addEventListener('click', function(e) {
+          if (e.target === orderSummaryModal) {
+            closeOrderSummaryModal();
+          }
+        });
       }
     });
 
@@ -19061,10 +20196,9 @@
       return cookieValue;
     }
 
-    // Google Maps Location System - Replaces Leaflet + HTML5 GPS
-    // API key is now securely stored on the backend - no longer exposed to frontend
-    
-    // Location picker state variables removed - using browser geolocation only
+    // Google Maps Location System - browser geolocation + Google Maps JS APIs only
+    let userGeocoder = null;
+    let distanceMatrixService = null;
 
     // Format distance helper (fallback for edge cases)
     function formatDistance(distanceText) {
@@ -19072,114 +20206,75 @@
       return distanceText;
     }
 
-    // Fallback to browser geolocation API
-    async function fallbackToBrowserGeolocation() {
-      return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-          console.warn("⚠️ Browser geolocation not available");
-          resolve(null);
-          return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const locationData = {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              fromCache: false,
-              fromBrowser: true
-            };
-            
-            // Cache for later
-            localStorage.setItem("printmax_user_lat", locationData.latitude);
-            localStorage.setItem("printmax_user_lon", locationData.longitude);
-            
-            window.__userLocation = locationData;
-            userLocation = locationData;
-            
-            console.log("✅ Browser geolocation success:", locationData);
-            resolve(locationData);
-          },
-          (error) => {
-            console.warn("⚠️ Browser geolocation failed:", error.message);
-            resolve(null);
-          },
-          {
-            enableHighAccuracy: false,
-            timeout: 10000,
-            maximumAge: 300000 // 5 minutes
-          }
-        );
-      });
+    function getUserGeocoder() {
+      if (!userGeocoder) {
+        userGeocoder = new google.maps.Geocoder();
+      }
+      return userGeocoder;
     }
 
-    // Get user location using Google Geolocation API via backend
-    // Unified function for automatic location detection
+    function getDistanceMatrixService() {
+      if (!distanceMatrixService) {
+        distanceMatrixService = new google.maps.DistanceMatrixService();
+      }
+      return distanceMatrixService;
+    }
+
+    // Get user location using browser geolocation + Google Maps Geocoding (LIVE GPS only)
     async function fetchAccurateUserLocation(forceRefresh = false) {
       try {
-        if (!forceRefresh) {
-          const cachedLat = localStorage.getItem("printmax_user_lat");
-          const cachedLng = localStorage.getItem("printmax_user_lon");
-          if (cachedLat && cachedLng) {
-            const cachedLocation = {
-              latitude: parseFloat(cachedLat),
-              longitude: parseFloat(cachedLng),
-              fromCache: true
-            };
-            window.__userLocation = cachedLocation;
-            userLocation = cachedLocation;
-            return cachedLocation;
-          }
-        }
-
-        const response = await fetch("/api/get-accurate-location/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({})
-        });
-
-        // Handle non-200 responses
-        if (!response.ok) {
-          console.warn("⚠️ Location API returned error status, falling back to browser geolocation");
-          return await fallbackToBrowserGeolocation();
-        }
-
-        const data = await response.json();
-
-        if (!data.success) {
-          console.warn("⚠️ Location API failed:", data.message || "Unknown error");
-          // If API suggests fallback, use browser geolocation
-          if (data.fallback_to_browser) {
-            return await fallbackToBrowserGeolocation();
-          }
+        if (!navigator.geolocation) {
+          console.warn("⚠️ Browser geolocation not available");
           return null;
         }
 
-        const { latitude, longitude } = data;
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0
+            }
+          );
+        });
 
-        // Cache for later
-        localStorage.setItem("printmax_user_lat", latitude);
-        localStorage.setItem("printmax_user_lon", longitude);
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        console.log("LIVE GPS (userdashboard):", latitude, longitude);
 
         const locationData = {
           latitude,
           longitude,
-          accuracy: data.accuracy,
-          fromCache: false
+          accuracy: position.coords.accuracy,
+          fromCache: false,
+          fromBrowser: true
         };
 
         window.__userLocation = locationData;
         userLocation = locationData;
+        window.userLat = latitude;
+        window.userLng = longitude;
 
-        console.log("✅ Accurate user location:", locationData);
+        // Optional reverse geocoding with Google Maps Geocoding API
+        try {
+          const geocoder = getUserGeocoder();
+          console.log("Using these coordinates for reverse geocoding (userdashboard):", latitude, longitude);
+          geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+            if (status === "OK" && results && results[0]) {
+              console.log("✅ Reverse geocoded user location:", results[0].formatted_address);
+            }
+          });
+        } catch (geoErr) {
+          console.warn("Reverse geocoding failed:", geoErr);
+        }
+
+        console.log("✅ Browser geolocation user location:", locationData);
         return locationData;
       } catch (err) {
-        console.error("❌ Error fetching accurate user location:", err);
-        // Fallback to browser geolocation on network errors
-        return await fallbackToBrowserGeolocation();
+        console.error("❌ Error fetching user location:", err);
+        return null;
       }
     }
 
@@ -19187,8 +20282,6 @@
     async function getUserLocation(forceRefresh = false) {
       return await fetchAccurateUserLocation(forceRefresh);
     }
-
-    // Location picker functions removed - now using browser's native geolocation only
 
     // Function to manually refresh location
     window.refreshLocation = async function() {
@@ -19202,18 +20295,33 @@
       }
     }
 
-    // Google Distance Matrix API - Get road distance between two points
-    // Uses secure backend proxy to prevent CORS errors and keep API key hidden
+    // Google Distance Matrix API - Get road distance between two points (frontend JS)
     async function getGoogleDistance(userLat, userLng, shopLat, shopLng) {
       try {
-        const res = await fetch(
-          `/api/get-distance/?user_lat=${userLat}&user_lng=${userLng}&shop_lat=${shopLat}&shop_lng=${shopLng}`
-        );
-        const data = await res.json();
-        const element = data?.rows?.[0]?.elements?.[0];
+        const service = getDistanceMatrixService();
+
+        const response = await new Promise((resolve, reject) => {
+          service.getDistanceMatrix(
+            {
+              origins: [{ lat: userLat, lng: userLng }],
+              destinations: [{ lat: shopLat, lng: shopLng }],
+              travelMode: google.maps.TravelMode.DRIVING,
+            },
+            (result, status) => {
+              if (status !== google.maps.DistanceMatrixStatus.OK) {
+                reject(new Error(status));
+              } else {
+                resolve(result);
+              }
+            }
+          );
+        });
+
+        const element = response?.rows?.[0]?.elements?.[0];
         if (!element || element.status !== "OK") {
           return { distanceKm: null, distanceText: "N/A" };
         }
+
         const km = element.distance.value / 1000;
         return {
           distanceKm: km,
@@ -20106,6 +21214,10 @@
       border-radius: 16px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
     }
+    
+    [data-theme="dark"] .pricing-summary-modal {
+      background: #fff;
+    }
 
     .pricing-header {
       display: flex;
@@ -20116,6 +21228,11 @@
       background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
       border-radius: 16px 16px 0 0;
     }
+    
+    [data-theme="dark"] .pricing-header {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-bottom-color: #e5e7eb;
+    }
 
     .pricing-header h2 {
       margin: 0;
@@ -20125,6 +21242,10 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+    
+    [data-theme="dark"] .pricing-header h2 {
+      color: #111827;
     }
 
     .pricing-header h2 i {
@@ -20146,6 +21267,15 @@
       background: #f3f4f6;
       color: #374151;
     }
+    
+    [data-theme="dark"] .close-btn {
+      color: #374151;
+    }
+    
+    [data-theme="dark"] .close-btn:hover {
+      background: #e5e7eb;
+      color: #111827;
+    }
 
     .pricing-content {
       padding: 24px;
@@ -20158,6 +21288,11 @@
       margin-bottom: 20px;
       border: 1px solid #e2e8f0;
     }
+    
+    [data-theme="dark"] .pricing-breakdown {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
 
     .pricing-item {
       display: flex;
@@ -20166,6 +21301,10 @@
       padding: 12px 0;
       border-bottom: 1px solid #e5e7eb;
       font-size: 1rem;
+    }
+    
+    [data-theme="dark"] .pricing-item {
+      border-bottom-color: #e5e7eb;
     }
 
     .pricing-item:last-child {
@@ -20187,10 +21326,18 @@
       color: #374151;
       font-weight: 500;
     }
+    
+    [data-theme="dark"] .pricing-label {
+      color: #111827;
+    }
 
     .pricing-value {
       color: #1e293b;
       font-weight: 600;
+    }
+    
+    [data-theme="dark"] .pricing-value {
+      color: #111827;
     }
 
     .points-section {
