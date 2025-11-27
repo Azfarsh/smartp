@@ -5189,16 +5189,26 @@ def vendor_location_mobile(request):
     })
 
 
-@require_POST
-def create_vendor_location_session(request):
+@require_GET
+def user_location_mobile(request):
     """
-    Generate a unique session ID + mobile deep link used for QR-based location capture.
+    Mobile-first view for end users to share precise GPS coordinates via phone.
+    """
+    session_id = request.GET.get('session_id', '').strip()
+    return render(request, 'user_location_mobile.html', {
+        'session_id': session_id,
+    })
+
+
+def _build_location_session_response(request, mobile_view_name):
+    """
+    Shared helper to create QR-based location sessions for vendors or users.
     """
     try:
         _cleanup_stale_location_sessions()
         session = VendorLocationSession.objects.create(session_id=uuid.uuid4().hex)
         mobile_url = request.build_absolute_uri(
-            f"{reverse('vendor_location_mobile')}?session_id={session.session_id}"
+            f"{reverse(mobile_view_name)}?session_id={session.session_id}"
         )
         return JsonResponse({
             'success': True,
@@ -5207,19 +5217,56 @@ def create_vendor_location_session(request):
             'expires_in': LOCATION_SESSION_TTL_MINUTES * 60,
         })
     except Exception as exc:
-        print(f"❌ Failed to create vendor location session: {exc}")
+        print(f"❌ Failed to create {mobile_view_name} session: {exc}")
         return JsonResponse({
             'success': False,
             'message': 'Could not start location verification. Please try again.',
         }, status=500)
 
 
+@require_POST
+def create_vendor_location_session(request):
+    """
+    Generate a unique session ID + mobile deep link used for vendor QR-based location capture.
+    """
+    return _build_location_session_response(request, 'vendor_location_mobile')
+
+
+@require_POST
+def create_user_location_session(request):
+    """
+    Generate a unique session ID + mobile deep link used for user QR-based location capture.
+    """
+    return _build_location_session_response(request, 'user_location_mobile')
+
+
 @csrf_exempt  # Mobile deep link already carries random session_id token
 @require_POST
 def vendor_set_location(request):
     """
-    Called from the mobile page after GPS permission is granted.
+    Called from the vendor mobile page after GPS permission is granted.
     Saves coordinates + reverse geocoded address against the session.
+    """
+    return _handle_location_submission(request, context_label='vendor')
+
+
+@csrf_exempt  # Mobile deep link already carries random session_id token
+@require_POST
+def user_set_location(request):
+    """
+    Called from the user mobile page after GPS permission is granted.
+    Saves coordinates + reverse geocoded address against the session.
+    """
+    return _handle_location_submission(
+        request,
+        context_label='user',
+        include_location_payload=True,
+    )
+
+
+def _handle_location_submission(request, *, context_label='vendor', include_location_payload=False):
+    """
+    Shared handler for vendor/user mobile GPS submission.
     """
     try:
         payload = json.loads(request.body or '{}')
@@ -5241,7 +5288,19 @@ def vendor_set_location(request):
     if session.status == VendorLocationSession.STATUS_EXPIRED:
         return JsonResponse({'success': False, 'message': 'Session expired'}, status=410)
     if session.status == VendorLocationSession.STATUS_COMPLETED:
-        return JsonResponse({'success': True, 'message': 'Location already captured'})
+        response_payload = {'success': True, 'message': 'Location already captured'}
+        if include_location_payload:
+            response_payload['location'] = {
+                'latitude': float(session.latitude) if session.latitude is not None else None,
+                'longitude': float(session.longitude) if session.longitude is not None else None,
+                'full_address': session.full_address,
+                'locality': session.locality,
+                'city': session.city,
+                'state': session.state,
+                'pincode': session.pincode,
+                'captured_at': session.updated_at.isoformat() if session.updated_at else '',
+            }
+        return JsonResponse(response_payload)
 
     try:
         lat_float = float(latitude)
@@ -5252,7 +5311,7 @@ def vendor_set_location(request):
     try:
         geo_details = _reverse_geocode_coordinates(lat_float, lng_float)
     except Exception as exc:
-        print(f"❌ Reverse geocoding failed: {exc}")
+        print(f"❌ Reverse geocoding failed ({context_label}): {exc}")
         return JsonResponse({
             'success': False,
             'message': 'Unable to verify address from GPS. Please retry.',
@@ -5271,7 +5330,19 @@ def vendor_set_location(request):
         'city', 'state', 'pincode', 'status', 'updated_at'
     ])
 
-    return JsonResponse({'success': True, 'message': 'Location captured successfully'})
+    response_payload = {'success': True, 'message': 'Location captured successfully'}
+    if include_location_payload:
+        response_payload['location'] = {
+            'latitude': lat_float,
+            'longitude': lng_float,
+            'full_address': session.full_address,
+            'locality': session.locality,
+            'city': session.city,
+            'state': session.state,
+            'pincode': session.pincode,
+            'captured_at': session.updated_at.isoformat() if session.updated_at else '',
+        }
+    return JsonResponse(response_payload)
 
 
 @require_GET
@@ -5308,6 +5379,14 @@ def vendor_location_status(request):
     }
 
     return JsonResponse({'success': True, 'location': location_payload})
+
+
+@require_GET
+def user_location_status(request):
+    """
+    User dashboard polling endpoint (delegates to vendor handler).
+    """
+    return vendor_location_status(request)
 
 
 def vendor_documents(request):
@@ -5534,48 +5613,60 @@ def vendor_pricing(request):
     Render the pricing form on GET, handle pricing submission on POST.
     """
     if request.method == 'GET':
-        # Get vendor email from URL parameters
-        vendor_email = request.GET.get('vendorEmail')
-        
-        # If vendor email is provided, fetch vendor details
+        load_pricing = request.GET.get('load_pricing')
+
+        # Prefer session-scoped vendor identity; fall back to URL param only if necessary
+        vendor_email = (request.session.get('vendor_email') or '').strip()
+        url_vendor_email = (request.GET.get('vendorEmail') or request.GET.get('email') or '').strip()
+        if url_vendor_email:
+            vendor_email = url_vendor_email
+
+        if not vendor_email:
+            if load_pricing:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Vendor email missing in session'
+                }, status=400)
+            messages.error(request, 'Please complete registration or login again to continue pricing setup.')
+            return redirect('vendor_register')
+
+        # Fetch vendor profile with D1-first strategy and R2 fallback
         vendor_details = None
+        try:
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                # Newly created vendors might still be propagating; retry once
+                time.sleep(1)
+                vendor_details = get_vendor_details_by_email(vendor_email)
+        except Exception as e:
+            print(f"❌ Failed to fetch vendor details for pricing: {e}")
+
+        # Load existing pricing data when requested
+        pricing_data = None
         if vendor_email:
             try:
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
-                
-                key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                vendor_details = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                print(f"❌ Error fetching vendor details: {str(e)}")
-                vendor_details = None
-        
-        # Check if load_pricing parameter is present
-        load_pricing = request.GET.get('load_pricing')
-        pricing_data = None
-        
-        if load_pricing and vendor_email:
-            try:
-                # Try to load existing pricing data
-                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
-                
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                print(f"ℹ️ No existing pricing data found for {vendor_email}: {str(e)}")
-                pricing_data = None
-        
-        # If this is an AJAX request for loading pricing data, return JSON
-        if load_pricing and vendor_email:
+                s3 = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.R2_ACCESS_KEY,
+                    aws_secret_access_key=settings.R2_SECRET_KEY,
+                    endpoint_url=settings.R2_ENDPOINT,
+                    region_name='auto'
+                )
+            except Exception as s3_error:
+                s3 = None
+                print(f"⚠️ Unable to initialise R2 client for pricing fetch: {s3_error}")
+        else:
+            s3 = None
+
+        if load_pricing:
+            if s3:
+                try:
+                    pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                except Exception as e:
+                    print(f"ℹ️ No existing pricing data found for {vendor_email}: {e}")
+                    pricing_data = None
             if pricing_data:
                 return JsonResponse({
                     'success': True,
@@ -5583,15 +5674,15 @@ def vendor_pricing(request):
                     'categorized_pricing': pricing_data.get('categorized_pricing', {}),
                     'services_summary': pricing_data.get('services_summary', {})
                 })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'No pricing data found'
-                })
-        
+            return JsonResponse({
+                'success': False,
+                'message': 'No pricing data found'
+            })
+
         context = {
             'vendor_email': vendor_email,
-            'vendor_details': vendor_details,
+            'vendor': vendor_details or {},
+            'vendor_details': vendor_details or {},
             'pricing_data': pricing_data
         }
         return render(request, 'vendor_pricing.html', context)
@@ -6372,6 +6463,14 @@ def vendor_register_api(request):
             shop_folder_name = sanitize_shop_name(vendor_name)
 
             print(f"🎉 Registration completed successfully for {email}")
+
+            # Persist newly registered vendor in session so downstream steps don't need URL params
+            request.session['vendor_email'] = email
+            request.session['vendor_name'] = vendor_name
+            request.session['vendor_id'] = vendor_id
+            request.session['vendor_token'] = vendor_token
+            request.session.modified = True
+
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful' + (" (Welcome email sent)" if email_sent else " (Welcome email will be sent later)"),

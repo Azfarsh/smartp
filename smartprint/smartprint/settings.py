@@ -319,6 +319,9 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 CSRF_TRUSTED_ORIGINS += _split_env_list(os.getenv('CSRF_TRUSTED_ORIGINS_EXTRA'))
 
+# Desktop QR location flow override (needed when phones can't reach localhost)
+LOCATION_QR_BASE_URL = os.getenv('LOCATION_QR_BASE_URL', '').rstrip('/')
+
 # ✅ Security Settings for local HTTP testing
 SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = None

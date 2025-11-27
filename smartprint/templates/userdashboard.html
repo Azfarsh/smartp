@@ -5599,6 +5599,228 @@
     [data-theme="dark"] .custom-toggle input:checked + .toggle-track + .toggle-knob {
       background: #ffffff;
     }
+
+    /* Desktop accurate location modal */
+    .location-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 2200;
+    }
+
+    .location-modal-overlay.show {
+      display: flex;
+    }
+
+    .location-modal {
+      width: min(520px, 100%);
+      background: var(--surface, #ffffff);
+      border-radius: var(--radius-2xl, 24px);
+      padding: 2rem;
+      box-shadow: var(--shadow-xl, 0 30px 80px rgba(15, 23, 42, 0.35));
+      border: 1px solid var(--outline, rgba(148, 163, 184, 0.35));
+      animation: locationModalPop 0.35s ease;
+    }
+
+    .location-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .location-modal-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: var(--primary-light);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.75rem;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
+    }
+
+    .location-modal-header h3 {
+      margin: 0;
+      font-size: 1.4rem;
+      color: var(--on-surface, #111827);
+      font-weight: 700;
+    }
+
+    .location-modal-subtitle {
+      margin: 0.25rem 0 0;
+      color: var(--on-surface-variant, #4b5563);
+      font-size: 0.95rem;
+    }
+
+    .location-modal-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .location-primary-btn,
+    .location-secondary-btn {
+      flex: 1 1 160px;
+      border-radius: var(--radius-lg, 12px);
+      border: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.85rem 1.25rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .location-primary-btn {
+      background: var(--gradient-primary, linear-gradient(135deg, #2563eb, #1d4ed8));
+      color: #fff;
+      box-shadow: 0 15px 35px rgba(37, 99, 235, 0.35);
+    }
+
+    .location-primary-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .location-secondary-btn {
+      background: rgba(15, 23, 42, 0.05);
+      color: var(--on-surface, #111827);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="dark"] .location-secondary-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f8fafc;
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .location-secondary-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+    }
+
+    .location-helper-text {
+      font-size: 0.9rem;
+      color: var(--on-surface-variant, #4b5563);
+      margin: 0 0 0.5rem 0;
+    }
+
+    .location-helper-text.small {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+      margin-top: 0.25rem;
+    }
+
+    .qr-wrapper {
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: var(--radius-xl, 18px);
+      padding: 1.25rem 1rem 1.5rem;
+      margin-top: 0.5rem;
+      text-align: center;
+      background: var(--primary-light, #f8fafc);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .qr-wrapper[hidden] {
+      display: none !important;
+    }
+
+    #userLocationQrCanvas {
+      width: 220px;
+      height: 220px;
+    }
+
+    .qr-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      word-break: break-all;
+    }
+
+    .location-status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      background: #fff;
+      color: var(--on-surface, #111827);
+      margin-top: 0.35rem;
+    }
+
+    .location-status--pending {
+      background: rgba(37, 99, 235, 0.1);
+      border-color: rgba(37, 99, 235, 0.2);
+      color: var(--primary);
+    }
+
+    .location-status--success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+
+    .location-status--error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: var(--error);
+    }
+
+    .location-status--idle {
+      background: rgba(15, 23, 42, 0.05);
+      border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    .location-modal-note {
+      font-size: 0.78rem;
+      color: var(--gray-500);
+      margin-top: 0.75rem;
+      text-align: center;
+    }
+
+    @keyframes locationModalPop {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .location-modal {
+        padding: 1.5rem;
+      }
+      .location-modal-buttons {
+        flex-direction: column;
+      }
+      .location-primary-btn,
+      .location-secondary-btn {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body data-theme="light" data-user-email="{{ user.email }}">
@@ -5607,6 +5829,7 @@
   <!-- Google Drive Picker API with error handling -->
   <script src="https://apis.google.com/js/api.js" onerror="console.warn('Failed to load Google API script');"></script>
   <script src="https://apis.google.com/js/picker.js" onerror="console.warn('Failed to load Google Picker script');"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   
   <!-- Suppress Chrome extension message passing errors (harmless but annoying) -->
   <script>
@@ -6451,6 +6674,49 @@
     </section>
     <!-- Service Modals (one for each service) -->
     <div id="serviceModalsContainer"></div>
+
+    <!-- Desktop accurate location modal -->
+    <div id="accurateLocationModal" class="location-modal-overlay" aria-hidden="true">
+      <div class="location-modal" role="dialog" aria-labelledby="locationModalTitle">
+        <div class="location-modal-header">
+          <span class="material-icons location-modal-icon">my_location</span>
+          <div>
+            <h3 id="locationModalTitle">Accurate location required</h3>
+            <p class="location-modal-subtitle">To get accurate location, please scan the QR from your phone.</p>
+          </div>
+        </div>
+        <div class="location-modal-body">
+          <div class="location-modal-buttons" id="locationModalButtons">
+            <button type="button" class="location-primary-btn" id="startUserLocationFlowBtn">
+              <span class="material-icons">qr_code_scanner</span>
+              Yes
+            </button>
+            <button type="button" class="location-secondary-btn" id="skipUserLocationBtn">
+              <span class="material-icons">close</span>
+              No
+            </button>
+          </div>
+          <p class="location-helper-text">
+            Use your phone camera to scan the QR. The secure page captures GPS from your phone.
+          </p>
+          <div class="qr-wrapper" id="userQrWrapper" hidden>
+            <canvas id="userLocationQrCanvas" width="220" height="220"></canvas>
+            <a href="#" id="userLocationQrLink" class="qr-link" target="_blank" rel="noreferrer">
+              <span class="material-icons" style="font-size: 1rem;">open_in_new</span>
+              Open link directly
+            </a>
+            <p class="location-helper-text small">
+              Keep the mobile page open until it says “Location verified”.
+            </p>
+            <div class="location-status-chip location-status--idle" id="userLocationStatusChip">
+              <span class="material-icons" id="userLocationStatusIcon" style="font-size: 1rem;">gps_fixed</span>
+              <span id="userLocationStatusText">Waiting to generate QR</span>
+            </div>
+          </div>
+          <p class="location-modal-note">We only ask for precise location on laptops to find the closest print shops accurately.</p>
+        </div>
+      </div>
+    </div>
     <style>
       .service-modal-overlay {
         position: fixed;
@@ -9578,8 +9844,478 @@
         }
       };
 
+      const MOBILE_DEVICE_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+      const DESKTOP_VIEWPORT_MIN_WIDTH = 768;
+
+      function isDesktopViewport() {
+        const ua = navigator.userAgent || '';
+        return window.innerWidth >= DESKTOP_VIEWPORT_MIN_WIDTH && !MOBILE_DEVICE_REGEX.test(ua);
+      }
+
+      function readStoredUserCoordinates() {
+        try {
+          const latRaw = localStorage.getItem('user_lat');
+          const lngRaw = localStorage.getItem('user_lng');
+          if (!latRaw || !lngRaw) {
+            return null;
+          }
+          const lat = parseFloat(latRaw);
+          const lng = parseFloat(lngRaw);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return null;
+          }
+          return { latitude: lat, longitude: lng };
+        } catch (error) {
+          console.warn('Unable to read stored coordinates', error);
+          return null;
+        }
+      }
+
+      function clearStoredUserCoordinates() {
+        try {
+          localStorage.removeItem('user_lat');
+          localStorage.removeItem('user_lng');
+        } catch (error) {
+          console.warn('Unable to clear stored coordinates', error);
+        }
+        window.__userLocation = null;
+        window.userLocation = null;
+        delete window.userLat;
+        delete window.userLng;
+      }
+
+      function syncUserLocationState(lat, lng, meta = {}) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        const payload = {
+          latitude: lat,
+          longitude: lng,
+          accuracy: meta.accuracy ?? null,
+          source: meta.source || 'stored',
+          fromStorage: Boolean(meta.fromStorage),
+          fromBrowser: Boolean(meta.fromBrowser)
+        };
+        window.__userLocation = payload;
+        window.userLocation = payload;
+        window.userLat = lat;
+        window.userLng = lng;
+        return payload;
+      }
+
+      (function hydrateStoredUserLocation() {
+        const cached = readStoredUserCoordinates();
+        if (cached) {
+          syncUserLocationState(cached.latitude, cached.longitude, { source: 'localStorage', fromStorage: true });
+        }
+      })();
+
+      // Desktop accurate location flow (QR via phone)
+      window.userLocationFlow = (() => {
+        const endpoints = {
+          create: "{% url 'user_start_location_session' %}",
+          status: "{% url 'user_check_location' %}"
+        };
+        const state = {
+          sessionId: null,
+          pollingId: null,
+          pendingServiceName: null,
+          pendingCallback: null,
+          dismissedForLoad: false,
+          qrInstance: null,
+          isStarting: false
+        };
+        const els = {};
+        const statusIconMap = {
+          idle: 'gps_fixed',
+          pending: 'sync',
+          success: 'check_circle',
+          error: 'error'
+        };
+
+        function cacheElements() {
+          els.modal = document.getElementById('accurateLocationModal');
+          els.startBtn = document.getElementById('startUserLocationFlowBtn');
+          els.skipBtn = document.getElementById('skipUserLocationBtn');
+          els.qrWrapper = document.getElementById('userQrWrapper');
+          els.qrCanvas = document.getElementById('userLocationQrCanvas');
+          els.qrLink = document.getElementById('userLocationQrLink');
+          els.statusChip = document.getElementById('userLocationStatusChip');
+          els.statusIcon = document.getElementById('userLocationStatusIcon');
+          els.statusText = document.getElementById('userLocationStatusText');
+        }
+
+        function hasStoredCoords() {
+          return Boolean(readStoredUserCoordinates());
+        }
+
+        function needsAccurateLocation() {
+          return isDesktopViewport() && !hasStoredCoords();
+        }
+
+        function resolveCsrf() {
+          if (window.csrfToken) return window.csrfToken;
+          if (typeof getCookie === 'function') {
+            return getCookie('csrftoken');
+          }
+          const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+          return input ? input.value : '';
+        }
+
+        function setStatus(message, variant = 'idle') {
+          cacheElements();
+          if (els.statusText) {
+            els.statusText.textContent = message;
+          }
+          if (els.statusIcon && statusIconMap[variant]) {
+            els.statusIcon.textContent = statusIconMap[variant];
+          }
+          if (!els.statusChip) return;
+          els.statusChip.classList.remove('location-status--idle', 'location-status--pending', 'location-status--success', 'location-status--error');
+          const classMap = {
+            idle: 'location-status--idle',
+            pending: 'location-status--pending',
+            success: 'location-status--success',
+            error: 'location-status--error'
+          };
+          els.statusChip.classList.add(classMap[variant] || classMap.idle);
+        }
+
+        function resetUi() {
+          cacheElements();
+          if (els.qrWrapper) {
+            els.qrWrapper.hidden = true;
+          }
+          if (els.startBtn) {
+            els.startBtn.disabled = false;
+            els.startBtn.textContent = 'Yes, show QR';
+          }
+          setStatus('Scan the QR with your phone when ready.', 'idle');
+        }
+
+        function showModal() {
+          cacheElements();
+          if (!els.modal) return;
+          resetUi();
+          els.modal.classList.add('show');
+          els.modal.setAttribute('aria-hidden', 'false');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function hideModal(options = {}) {
+          cacheElements();
+          if (!els.modal) return;
+          els.modal.classList.remove('show');
+          els.modal.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+          stopPolling();
+          state.sessionId = null;
+          if (!options.preservePending) {
+            state.pendingServiceName = null;
+            state.pendingCallback = null;
+          }
+          if (!options.keepUi) {
+            resetUi();
+          }
+        }
+
+        function notify(type, message) {
+          if (typeof showCursorNotification === 'function') {
+            const status = type === 'success' ? 'Location verified' :
+              type === 'error' ? 'Action needed' :
+              type === 'warning' ? 'Heads up' : 'Update';
+            showCursorNotification('Location', status, message, type, 5000);
+          } else {
+            console.log(`[location:${type}]`, message);
+          }
+        }
+
+        function ensureQrInstance() {
+          cacheElements();
+          if (state.qrInstance || !els.qrCanvas || typeof QRious === 'undefined') return;
+          state.qrInstance = new QRious({
+            element: els.qrCanvas,
+            size: 220,
+            value: ''
+          });
+        }
+
+        function renderQr(value) {
+          ensureQrInstance();
+          if (state.qrInstance) {
+            state.qrInstance.value = value;
+          }
+        }
+
+        function showQr(mobileUrl) {
+          cacheElements();
+          if (!els.qrWrapper) return;
+          els.qrWrapper.hidden = false;
+          renderQr(mobileUrl);
+          if (els.qrLink) {
+            els.qrLink.href = mobileUrl;
+            els.qrLink.textContent = mobileUrl;
+          }
+        }
+
+        async function startSession() {
+          cacheElements();
+          if (!needsAccurateLocation()) {
+            state.dismissedForLoad = true;
+            hideModal();
+            return;
+          }
+          if (state.isStarting) return;
+          state.isStarting = true;
+          setStatus('Generating secure QR for your phone...', 'pending');
+          if (els.startBtn) {
+            els.startBtn.disabled = true;
+            els.startBtn.textContent = 'Generating...';
+          }
+          try {
+            const response = await fetch(endpoints.create, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': resolveCsrf()
+              },
+              credentials: 'same-origin',
+              body: JSON.stringify({})
+            });
+            if (!response.ok) {
+              throw new Error('Unable to start location verification. Please try again.');
+            }
+            const data = await response.json();
+            if (!data.success || !data.session_id || !data.mobile_url) {
+              throw new Error(data.message || 'Server did not return a valid QR link.');
+            }
+            state.sessionId = data.session_id;
+            showQr(data.mobile_url);
+            setStatus('Waiting for phone confirmation...', 'pending');
+            notify('info', 'Scan the QR with your phone and keep that page open.');
+            startPolling();
+          } catch (error) {
+            console.error('Failed to create user location session:', error);
+            setStatus(error.message || 'Unable to start verification. Try again.', 'error');
+            if (els.startBtn) {
+              els.startBtn.disabled = false;
+              els.startBtn.textContent = 'Generate QR again';
+            }
+          } finally {
+            state.isStarting = false;
+          }
+        }
+
+        function startPolling() {
+          stopPolling();
+          if (!state.sessionId) return;
+          state.pollingId = setInterval(pollStatus, 3000);
+          pollStatus();
+        }
+
+        async function pollStatus() {
+          if (!state.sessionId) {
+            stopPolling();
+            return;
+          }
+          try {
+            const response = await fetch(`${endpoints.status}?session_id=${encodeURIComponent(state.sessionId)}&t=${Date.now()}`, {
+              cache: 'no-store'
+            });
+            const data = await response.json();
+            if (response.status === 410 || data.status === 'expired') {
+              handleSessionExpired('Location verification expired. Please generate a new QR.');
+              return;
+            }
+            if (response.status === 404 || data.status === 'not_found') {
+              handleSessionExpired('Session not found. Generate a new QR.');
+              return;
+            }
+            if (data.success && data.location) {
+              handleLocationCaptured(data.location);
+            }
+          } catch (error) {
+            console.warn('Polling user location failed', error);
+          }
+        }
+
+        function handleSessionExpired(message) {
+          stopPolling();
+          state.sessionId = null;
+          setStatus(message, 'error');
+          if (els.startBtn) {
+            els.startBtn.disabled = false;
+            els.startBtn.textContent = 'Generate QR again';
+          }
+          notify('warning', message);
+        }
+
+        function stopPolling() {
+          if (state.pollingId) {
+            clearInterval(state.pollingId);
+            state.pollingId = null;
+          }
+        }
+
+        function storeLocation(location) {
+          if (!location) return;
+          try {
+            const lat = parseFloat(location.latitude);
+            const lng = parseFloat(location.longitude);
+            if (Number.isFinite(lat)) {
+              localStorage.setItem('user_lat', lat);
+            }
+            if (Number.isFinite(lng)) {
+              localStorage.setItem('user_lng', lng);
+            }
+            syncUserLocationState(lat, lng, {
+              source: 'qr',
+              fromStorage: false,
+              fromBrowser: false
+            });
+          } catch (error) {
+            console.warn('Unable to cache accurate location', error);
+          }
+        }
+
+        function handleLocationCaptured(location) {
+          storeLocation(location);
+          setStatus('Location verified! You can continue.', 'success');
+          notify('success', 'Accurate location received.');
+          const pendingService = state.pendingServiceName;
+          const pendingCallback = state.pendingCallback;
+          stopPolling();
+          state.sessionId = null;
+          setTimeout(() => {
+            hideModal({ preservePending: true });
+            state.pendingServiceName = null;
+            state.pendingCallback = null;
+            if (pendingService && typeof window.openServiceModal === 'function') {
+              setTimeout(() => window.openServiceModal(pendingService, { skipLocationCheck: true }), 50);
+            } else if (pendingCallback && typeof pendingCallback === 'function') {
+              setTimeout(() => pendingCallback(), 50);
+            }
+          }, 900);
+        }
+
+        function dismissPrompt() {
+          state.dismissedForLoad = true;
+          state.pendingServiceName = null;
+          state.pendingCallback = null;
+          hideModal();
+        }
+
+        function maybePromptOnLoad() {
+          if (needsAccurateLocation() && !state.dismissedForLoad) {
+            showModal();
+          }
+        }
+
+        function attachEvents() {
+          cacheElements();
+          if (!els.modal || els.modal.dataset.initialized === 'true') return;
+          els.modal.dataset.initialized = 'true';
+          if (els.startBtn) {
+            els.startBtn.addEventListener('click', startSession);
+          }
+          if (els.skipBtn) {
+            els.skipBtn.addEventListener('click', dismissPrompt);
+          }
+        }
+
+        function init() {
+          cacheElements();
+          if (!els.modal) return;
+          attachEvents();
+          maybePromptOnLoad();
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+
+        return {
+          shouldGateForService: () => needsAccurateLocation(),
+          promptForService: (serviceName, callback) => {
+            cacheElements();
+            if (!els.modal) return;
+            state.pendingServiceName = typeof serviceName === 'string' && serviceName ? serviceName : null;
+            state.pendingCallback = typeof callback === 'function' ? callback : null;
+            state.dismissedForLoad = false;
+            showModal();
+          }
+        };
+      })();
+
+      // Modal reset helpers to keep every service modal stateless between sessions
+      function emitHiddenBsModalEvent(modalElement) {
+        if (!modalElement) return;
+        const hiddenEvent = new CustomEvent('hidden.bs.modal', { bubbles: true });
+        modalElement.dispatchEvent(hiddenEvent);
+      }
+
+      function attachModalResetOnHide(modalElement, resetFn) {
+        if (!modalElement || typeof resetFn !== 'function') return;
+        if (modalElement.dataset.resetHandlerAttached === 'true') return;
+        modalElement.addEventListener('hidden.bs.modal', resetFn);
+        modalElement.dataset.resetHandlerAttached = 'true';
+      }
+
+      function resetPhotoPrintModal() {
+        resetServiceModal('photo');
+        const successModal = document.getElementById('successModal');
+        if (successModal) {
+          successModal.classList.remove('active');
+        }
+        hidePaymentProcessingState();
+      }
+
+      function resetPassportPhotoModal() {
+        resetServiceModal('passport');
+      }
+
+      function resetGlossPrintModal() {
+        resetServiceModal('gloss');
+      }
+
+      function resetJumboPrintModal() {
+        resetServiceModal('jumbo');
+      }
+
+      function resetBlackBookModal() {
+        resetServiceModal('goldenemboss');
+      }
+
+      function resetDigitalPrintModal() {
+        resetServiceModal('digital');
+      }
+
+      const serviceModalResetHandlers = {
+        photo: resetPhotoPrintModal,
+        passport: resetPassportPhotoModal,
+        gloss: resetGlossPrintModal,
+        jumbo: resetJumboPrintModal,
+        goldenemboss: resetBlackBookModal,
+        digital: resetDigitalPrintModal
+      };
+
+      function registerServiceModalResetHandler(service, modalElement) {
+        const resetFn = serviceModalResetHandlers[service];
+        if (!resetFn) return;
+        attachModalResetOnHide(modalElement, resetFn);
+      }
+
       // Define openServiceModal in global scope immediately to ensure it's available for onclick handlers
-      window.openServiceModal = function openServiceModal(service) {
+      window.openServiceModal = function openServiceModal(service, options) {
+        const opts = options || {};
+        if (!opts.skipLocationCheck &&
+            window.userLocationFlow &&
+            window.userLocationFlow.shouldGateForService()) {
+          window.userLocationFlow.promptForService(service);
+          return;
+        }
         const modalId = `service-modal-${service}`;
         let modal = document.getElementById(modalId);
         if (!modal) {
@@ -9657,14 +10393,15 @@
             }
           }
         }
+
+        registerServiceModalResetHandler(service, modal);
       };
 
       function closeServiceModal(service) {
         const modal = document.getElementById(`service-modal-${service}`);
         if (modal) {
           modal.classList.remove('active');
-          // Reset the modal immediately
-          resetServiceModal(service);
+          emitHiddenBsModalEvent(modal);
           // Prevent any success messages or animations when closing modal (especially for photo print)
           if (service === 'photo') {
             // Hide any success modals that might be showing
@@ -9685,15 +10422,14 @@
         if (printModal) {
           printModal.classList.remove('active');
           document.body.style.overflow = '';
-          resetPrintModal();
+          emitHiddenBsModalEvent(printModal);
         }
         
         // Close all service modals
         const serviceModals = document.querySelectorAll('.service-modal-overlay');
         serviceModals.forEach(modal => {
           modal.classList.remove('active');
-          const service = modal.id.replace('service-modal-', '');
-          resetServiceModal(service);
+          emitHiddenBsModalEvent(modal);
         });
         
         // Close completed jobs modal
@@ -17736,6 +18472,10 @@
     const orderSummary = document.getElementById('orderSummary');
     const actionButtons = document.getElementById('actionButtons');
 
+    if (printModal) {
+      attachModalResetOnHide(printModal, resetDocumentPrintModal);
+    }
+
     const copiesCount = document.getElementById('copiesCount');
     const decreaseCopies = document.getElementById('decreaseCopies');
     const increaseCopies = document.getElementById('increaseCopies');
@@ -17756,6 +18496,120 @@
     // const totalAmount = document.getElementById('totalAmount');
 
     // Modal functions
+    function resetDocumentPrintModal() {
+      resetPrintModal();
+
+      // Reset JS state holders
+      if (Array.isArray(uploadedFiles)) {
+        uploadedFiles.length = 0;
+      } else {
+        uploadedFiles = [];
+      }
+      fileSettings = {};
+      selectedFileIndex = -1;
+      pdfDocument = null;
+      pdfLoadedForFileId = null;
+      filteredPageNumbers = [];
+      currentPreviewPageIdx = 0;
+      selectedVendor = '';
+
+      // Reset vendor UI
+      const vendorSelection = document.getElementById('vendorSelection');
+      if (vendorSelection) {
+        vendorSelection.style.display = 'none';
+      }
+      const vendorOptions = document.getElementById('vendorOptions');
+      if (vendorOptions) {
+        vendorOptions.innerHTML = `
+          <div class="loading-message" style="text-align: center; padding: 1rem;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading available shops...</p>
+          </div>
+        `;
+      }
+
+      // Hide dynamic sections
+      if (printSettings) {
+        printSettings.style.display = 'none';
+      }
+      if (fileSettingsInfo) {
+        fileSettingsInfo.style.display = 'none';
+      }
+      if (actionButtons) {
+        actionButtons.style.display = 'none';
+        actionButtons.classList.remove('show');
+      }
+      const pointsAppliedDisplay = document.getElementById('printModal-points-applied-display');
+      if (pointsAppliedDisplay) {
+        pointsAppliedDisplay.style.display = 'none';
+      }
+      const pointsSection = document.getElementById('printModal-points-section');
+      if (pointsSection) {
+        pointsSection.style.display = 'none';
+      }
+      const applyPointsBtn = document.getElementById('printModal-apply-points-btn');
+      const removePointsBtn = document.getElementById('printModal-remove-points-btn');
+      if (applyPointsBtn) applyPointsBtn.style.display = '';
+      if (removePointsBtn) removePointsBtn.style.display = 'none';
+      const pointsUsedLabel = document.getElementById('printModal-points-used');
+      const finalAmountLabel = document.getElementById('printModal-final-amount');
+      if (pointsUsedLabel) {
+        pointsUsedLabel.textContent = '0';
+      }
+      if (finalAmountLabel) {
+        finalAmountLabel.textContent = '₹0.00';
+      }
+      const printModalElement = document.getElementById('printModal');
+      if (printModalElement) {
+        delete printModalElement.dataset.pointsApplied;
+        delete printModalElement.dataset.pointsUsed;
+      }
+
+      // Reset preview and counters
+      const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+      if (imagePreviewContainer) {
+        imagePreviewContainer.style.display = 'none';
+      }
+      const previewCanvas = document.getElementById('previewCanvas');
+      if (previewCanvas) {
+        const ctx = previewCanvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        }
+      }
+      const previewDefaults = {
+        previewDimensions: 'Dimensions: -',
+        previewOrientation: 'Orientation: Portrait',
+        previewPages: 'Pages: -'
+      };
+      Object.entries(previewDefaults).forEach(([id, text]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      });
+      const pageCounter = document.getElementById('pageCounter');
+      if (pageCounter) {
+        pageCounter.textContent = '0 / 0';
+      }
+      const prevBtn = document.getElementById('prevPageBtn');
+      const nextBtn = document.getElementById('nextPageBtn');
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+
+      // Reset batch preview summary
+      if (batchPreviewPanel) {
+        batchPreviewPanel.classList.remove('show');
+      }
+      if (batchPreviewList) {
+        batchPreviewList.innerHTML = '<div class="batch-preview-empty">Upload files to see a combined summary.</div>';
+      }
+      if (batchFileCount) {
+        batchFileCount.textContent = '0 files';
+      }
+      if (noFilesMessage) {
+        noFilesMessage.style.display = '';
+      }
+    }
+
     function openModal() {
       // Remove any delays and make modal open instantly
       printModal.classList.add('active');
@@ -17786,6 +18640,7 @@
       if (fileInput) fileInput.value = '';
       const body = printModal.querySelector('.modal-body');
       if (body) body.removeEventListener('scroll', ensureModalButtonsVisible);
+      emitHiddenBsModalEvent(printModal);
     }
 
     function resetPrintModal() {
@@ -18840,7 +19695,14 @@
     }
 
     // Event listeners (Complete R2 Integration)
-    printBtn.addEventListener('click', openModal);
+    printBtn.addEventListener('click', function(e) {
+      if (window.userLocationFlow && window.userLocationFlow.shouldGateForService()) {
+        e.preventDefault();
+        window.userLocationFlow.promptForService(null, openModal);
+        return;
+      }
+      openModal();
+    });
     closeModal.addEventListener('click', closeModalFunc);
 
     printModal.addEventListener('click', (e) => {
@@ -20220,9 +21082,31 @@
       return distanceMatrixService;
     }
 
-    // Get user location using browser geolocation + Google Maps Geocoding (LIVE GPS only)
+    // Get user location (desktop uses QR flow, mobile can fall back to browser geolocation)
     async function fetchAccurateUserLocation(forceRefresh = false) {
+      const desktopMode = isDesktopViewport();
       try {
+        if (desktopMode) {
+          if (forceRefresh) {
+            clearStoredUserCoordinates();
+            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+              window.userLocationFlow.promptForService(null);
+            }
+            return null;
+          }
+          const stored = readStoredUserCoordinates();
+          if (stored) {
+            console.log("✅ Using QR verified desktop coordinates:", stored);
+            const synced = syncUserLocationState(stored.latitude, stored.longitude, {
+              source: 'localStorage',
+              fromStorage: true
+            });
+            return synced || stored;
+          }
+          console.warn("⚠️ Desktop requires QR-based location. Awaiting phone scan.");
+          return null;
+        }
+
         if (!navigator.geolocation) {
           console.warn("⚠️ Browser geolocation not available");
           return null;
@@ -20242,7 +21126,7 @@
 
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
-        console.log("LIVE GPS (userdashboard):", latitude, longitude);
+        console.log("LIVE GPS (userdashboard mobile):", latitude, longitude);
 
         const locationData = {
           latitude,
@@ -20252,10 +21136,18 @@
           fromBrowser: true
         };
 
-        window.__userLocation = locationData;
-        userLocation = locationData;
-        window.userLat = latitude;
-        window.userLng = longitude;
+        syncUserLocationState(latitude, longitude, {
+          accuracy: position.coords.accuracy,
+          source: 'browser',
+          fromBrowser: true
+        });
+
+        try {
+          localStorage.setItem('user_lat', latitude);
+          localStorage.setItem('user_lng', longitude);
+        } catch (storageError) {
+          console.warn('Unable to persist browser coordinates', storageError);
+        }
 
         // Optional reverse geocoding with Google Maps Geocoding API
         try {
@@ -20477,9 +21369,9 @@
         await loadAvailableShops(forceLocationRefresh);
         console.log('📦 Available shops loaded:', availableShops.length);
         
-        // Try to get user location using Google Geolocation API via backend
+        // Try to get user location using QR flow (desktop) or browser GPS (mobile)
         try {
-          console.log('📍 Getting user location via Google Geolocation API...');
+          console.log('📍 Getting user location via PrintMax location flow...');
           const userLoc = await fetchAccurateUserLocation(forceLocationRefresh);
           
           if (!userLoc) {
@@ -20552,11 +21444,10 @@
       }
     }
 
-    // Prompt user about location (non-blocking banner) - now using Google Geolocation API
+    // Prompt user about location (legacy banner placeholder)
     function showLocationPrompt() {
-      // This function is kept for compatibility but location is now fetched automatically via Google Geolocation API
-      // No user action required - location is determined server-side
-      console.log('📍 Location will be fetched automatically via Google Geolocation API');
+      // This function is kept for compatibility but location is now handled via QR (desktop) or mobile GPS.
+      console.log('📍 Location is fetched automatically via QR/mobile flow.');
       return;
       
       let banner = document.getElementById('locationPermissionBanner');
