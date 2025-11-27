@@ -1080,6 +1080,157 @@
             color: var(--info);
         }
 
+        .location-verification-card {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            background: var(--gray-50);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            align-items: center;
+        }
+
+        .location-verification-card h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.2rem;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .location-verification-card p {
+            font-family: 'Inter', sans-serif;
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        .location-verification-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .location-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-lg);
+            border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-md);
+        }
+
+        .location-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .location-status {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-200);
+            background: var(--white);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .location-status--idle {
+            color: var(--gray-600);
+        }
+
+        .location-status--pending {
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.3);
+            background: rgba(245, 158, 11, 0.08);
+        }
+
+        .location-status--success {
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .location-status--error {
+            color: var(--error);
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .read-only-hint {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-top: 0.2rem;
+            text-align: left;
+        }
+
+        .qr-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 1rem;
+        }
+
+        .qr-modal-content {
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            padding: 2rem;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-2xl);
+            position: relative;
+        }
+
+        .qr-modal-close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            border: none;
+            background: transparent;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-500);
+        }
+
+        .qr-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--primary);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .qr-instructions {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin: 0.5rem 0 1rem;
+        }
+
+        .auto-info {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-top: 0.3rem;
+        }
+
         @keyframes slideInFromRight {
             from {
                 transform: translateX(100%);
@@ -1124,6 +1275,19 @@
         <div style="background:#fff; border-radius:20px; padding:24px 28px; box-shadow:0 12px 40px rgba(0,0,0,0.2); width:min(92vw,440px); text-align:center;">
             <dotlottie-player id="successAnim" src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto 8px;"></dotlottie-player>
             <div id="successText" style="font-family:'Poppins',sans-serif; font-weight:700; font-size:1.15rem; color:#111827; margin-top:4px;">Success</div>
+        </div>
+    </div>
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-modal-content">
+            <button type="button" class="qr-modal-close" id="closeQrModal">&times;</button>
+                    <h3 class="form-title" style="margin-bottom:0.4rem;">Verify Location Using Phone</h3>
+            <p class="qr-instructions">Scan with your phone to open a secure page that captures the shop’s GPS.</p>
+            <canvas id="qrCanvas" width="220" height="220" style="margin:0 auto;"></canvas>
+            <a href="#" id="qrLink" class="qr-link" target="_blank" rel="noreferrer">
+                <span class="material-icons" style="font-size:1rem;">open_in_new</span>
+                Open link directly
+            </a>
+            <p class="qr-instructions" style="margin-top:1rem;">Keep that page open until it says “Location verified”.</p>
         </div>
     </div>
     <div class="container">
@@ -1174,6 +1338,13 @@
                     <!-- Registration Form -->
                     <form id="vendorRegisterForm" onsubmit="handleRegistration(event)">
                         {% csrf_token %}
+
+                        <div class="location-verification-card" style="padding:0; background:transparent; border:none; box-shadow:none; text-align:left; display:block;">
+                            <button type="button" class="location-button" id="startLocationVerification" style="justify-content:flex-start; min-width:260px;">
+                                <span class="material-icons">my_location</span>
+                                Verify Location Using Phone
+                            </button>
+                        </div>
 
                         <div class="form-grid">
                             <div class="form-group">
@@ -1238,47 +1409,9 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="state" class="form-label">State</label>
+                                <label for="state" class="form-label">State (auto)</label>
                                 <div class="input-wrapper">
-                                    <select class="form-input" id="state" name="state" required>
-                                        <option value="">--Select State--</option>
-                                        <option value="Andhra Pradesh">Andhra Pradesh</option>
-                                        <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                                        <option value="Assam">Assam</option>
-                                        <option value="Bihar">Bihar</option>
-                                        <option value="Chhattisgarh">Chhattisgarh</option>
-                                        <option value="Goa">Goa</option>
-                                        <option value="Gujarat">Gujarat</option>
-                                        <option value="Haryana">Haryana</option>
-                                        <option value="Himachal Pradesh">Himachal Pradesh</option>
-                                        <option value="Jharkhand">Jharkhand</option>
-                                        <option value="Karnataka">Karnataka</option>
-                                        <option value="Kerala">Kerala</option>
-                                        <option value="Madhya Pradesh">Madhya Pradesh</option>
-                                        <option value="Maharashtra">Maharashtra</option>
-                                        <option value="Manipur">Manipur</option>
-                                        <option value="Meghalaya">Meghalaya</option>
-                                        <option value="Mizoram">Mizoram</option>
-                                        <option value="Nagaland">Nagaland</option>
-                                        <option value="Odisha">Odisha</option>
-                                        <option value="Punjab">Punjab</option>
-                                        <option value="Rajasthan">Rajasthan</option>
-                                        <option value="Sikkim">Sikkim</option>
-                                        <option value="Tamil Nadu">Tamil Nadu</option>
-                                        <option value="Telangana">Telangana</option>
-                                        <option value="Tripura">Tripura</option>
-                                        <option value="Uttar Pradesh">Uttar Pradesh</option>
-                                        <option value="Uttarakhand">Uttarakhand</option>
-                                        <option value="West Bengal">West Bengal</option>
-                                        <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
-                                        <option value="Chandigarh">Chandigarh</option>
-                                        <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
-                                        <option value="Delhi">Delhi</option>
-                                        <option value="Jammu and Kashmir">Jammu and Kashmir</option>
-                                        <option value="Ladakh">Ladakh</option>
-                                        <option value="Lakshadweep">Lakshadweep</option>
-                                        <option value="Puducherry">Puducherry</option>
-                                    </select>
+                                    <input type="text" class="form-input" id="state" name="state" required readonly placeholder="Auto-filled after verification">
                                     <span class="material-icons input-icon">map</span>
                                 </div>
                                 <div class="error-message" id="stateError"></div>
@@ -1289,7 +1422,7 @@
                         <div class="form-group">
                                 <label for="city" class="form-label">City/District/Town</label>
                             <div class="input-wrapper">
-                                    <input type="text" class="form-input" id="city" name="city" required>
+                                    <input type="text" class="form-input" id="city" name="city" required readonly placeholder="Auto-filled after verification">
                                     <span class="material-icons input-icon">location_city</span>
                             </div>
                                 <div class="error-message" id="cityError"></div>
@@ -1298,7 +1431,7 @@
                         <div class="form-group">
                             <label for="pincode" class="form-label">PIN Code</label>
                             <div class="input-wrapper">
-                                <input type="text" class="form-input" id="pincode" name="pincode" required maxlength="6">
+                                <input type="text" class="form-input" id="pincode" name="pincode" required maxlength="6" readonly placeholder="Auto-filled after verification">
                                 <span class="material-icons input-icon">markunread_mailbox</span>
                             </div>
                             <div class="error-message" id="pincodeError"></div>
@@ -1306,20 +1439,20 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="locality" class="form-label">Locality/Area</label>
+                            <label for="locality" class="form-label">Locality/Area (auto)</label>
                             <div class="input-wrapper">
                                 <input type="text" class="form-input" id="locality" name="locality" required 
-                                       placeholder="Enter your locality or area">
+                                       placeholder="Filled after verification" readonly>
                                 <span class="material-icons input-icon">place</span>
                             </div>
                             <div class="error-message" id="localityError"></div>
                         </div>
 
                         <div class="form-group">
-                            <label for="shopAddress" class="form-label">Complete Address</label>
+                            <label for="shopAddress" class="form-label">Complete Address (auto)</label>
                             <div class="input-wrapper">
                                 <input type="text" class="form-input" id="shopAddress" name="shopAddress" required 
-                                       placeholder="Enter your complete shop address">
+                                       placeholder="Auto-filled after verification" readonly>
                                 <span class="material-icons input-icon">location_on</span>
                             </div>
                             <div class="error-message" id="shopAddressError"></div>
@@ -1432,8 +1565,22 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
     <script>
-        // Global validation functions
+        const LOCATION_SESSION_TTL_MS = 15 * 60 * 1000;
+        const locationVerification = {
+            sessionId: null,
+            intervalId: null,
+            completed: false,
+            expiresAt: null
+        };
+        let qrInstance = null;
+
+        const endpoints = {
+            createSession: "{% url 'create_vendor_location_session' %}",
+            status: "{% url 'vendor_location_status' %}"
+        };
+
         function checkPasswordStrength(password) {
             let strength = 0;
             if (password.length >= 8) strength += 1;
@@ -1460,7 +1607,6 @@
             }
         }
 
-        // Global validation functions
         const validations = {
             email: (value) => {
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1517,9 +1663,7 @@
             }
         };
 
-        // Global notification function
         function showNotification(message, type = 'info') {
-            // Remove existing notification
             const existingNotification = document.querySelector('.location-notification');
             if (existingNotification) {
                 existingNotification.remove();
@@ -1534,7 +1678,6 @@
             
             document.body.appendChild(notification);
             
-            // Auto remove after 5 seconds
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.remove();
@@ -1542,59 +1685,246 @@
             }, 5000);
         }
 
-        // Enhanced form functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            // Password toggle functionality
-            function setupPasswordToggle(inputId, toggleId) {
-                const input = document.getElementById(inputId);
-                const toggle = document.getElementById(toggleId);
-                
-                toggle.addEventListener('click', function() {
-                    const icon = toggle.querySelector('.material-icons');
-                    if (input.type === 'password') {
-                        input.type = 'text';
-                        icon.textContent = 'visibility';
-                    } else {
-                        input.type = 'password';
-                        icon.textContent = 'visibility_off';
-                    }
-                });
-            }
+        function setupPasswordToggle(inputId, toggleId) {
+            const input = document.getElementById(inputId);
+            const toggle = document.getElementById(toggleId);
+            if (!input || !toggle) return;
+            
+            toggle.addEventListener('click', function() {
+                const icon = toggle.querySelector('.material-icons');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility';
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility_off';
+                }
+            });
+        }
 
+        function updatePasswordStrength(password) {
+            const strength = checkPasswordStrength(password);
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+            
+            if (!strengthFill || !strengthText) return;
+            strengthFill.className = 'strength-fill';
+            
+            if (strength <= 1) {
+                strengthFill.style.width = '25%';
+                strengthText.textContent = 'Password strength: Weak';
+                strengthFill.style.background = 'var(--error)';
+            } else if (strength <= 2) {
+                strengthFill.style.width = '50%';
+                strengthFill.style.background = 'var(--warning)';
+                strengthText.textContent = 'Password strength: Fair';
+            } else if (strength <= 3) {
+                strengthFill.style.width = '75%';
+                strengthFill.style.background = 'var(--warning)';
+                strengthText.textContent = 'Password strength: Good';
+            } else {
+                strengthFill.style.width = '100%';
+                strengthFill.style.background = 'var(--success)';
+                strengthText.textContent = 'Password strength: Strong';
+            }
+        }
+
+        function updateLocationStatusUI(message, state = 'idle') {
+            const badge = document.getElementById('locationStatusBadge');
+            if (!badge) return;
+            const classMap = {
+                idle: 'location-status--idle',
+                pending: 'location-status--pending',
+                success: 'location-status--success',
+                error: 'location-status--error'
+            };
+            Object.values(classMap).forEach(cls => badge.classList.remove(cls));
+            badge.classList.add(classMap[state] || classMap.idle);
+            const iconMap = {
+                idle: 'gps_fixed',
+                pending: 'sync',
+                success: 'check_circle',
+                error: 'error'
+            };
+            badge.innerHTML = `<span class="material-icons" style="font-size:1rem;">${iconMap[state] || iconMap.idle}</span>${message}`;
+        }
+
+        function toggleQrModal(visible) {
+            const modal = document.getElementById('qrModal');
+            if (!modal) return;
+            modal.style.display = visible ? 'flex' : 'none';
+        }
+
+        function renderQrCode(mobileUrl) {
+            const canvas = document.getElementById('qrCanvas');
+            if (!canvas) return;
+            if (!qrInstance) {
+                qrInstance = new QRious({
+                    element: canvas,
+                    size: 220,
+                    value: mobileUrl
+                });
+            } else {
+                qrInstance.value = mobileUrl;
+            }
+            const qrLink = document.getElementById('qrLink');
+            if (qrLink) {
+                qrLink.href = mobileUrl;
+                qrLink.textContent = mobileUrl;
+            }
+        }
+
+        function resetLocationFields() {
+            ['latitude', 'longitude', 'vendor_lat', 'vendor_lng'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.value = '';
+            });
+            ['state', 'city', 'locality', 'shopAddress', 'pincode'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.value = '';
+                    field.style.borderColor = '';
+                    field.style.boxShadow = '';
+                }
+            });
+        }
+
+        async function startLocationVerification() {
+            const verifyBtn = document.getElementById('startLocationVerification');
+            if (!verifyBtn) return;
+
+            resetLocationFields();
+            stopLocationPolling();
+            locationVerification.completed = false;
+            updateLocationStatusUI('Generating secure QR for your phone...', 'pending');
+
+            verifyBtn.disabled = true;
+            try {
+                const response = await fetch(endpoints.createSession, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (!response.ok) {
+                    throw new Error('Unable to start location verification. Please try again.');
+                }
+
+                const data = await response.json();
+                locationVerification.sessionId = data.session_id;
+                locationVerification.expiresAt = Date.now() + (data.expires_in ? data.expires_in * 1000 : LOCATION_SESSION_TTL_MS);
+                renderQrCode(data.mobile_url);
+                toggleQrModal(true);
+                startLocationPolling();
+                updateLocationStatusUI('Waiting for phone confirmation...', 'pending');
+                showNotification('Scan the QR with your phone to capture GPS.', 'info');
+            } catch (error) {
+                console.error('Failed to start verification', error);
+                updateLocationStatusUI('Verification failed. Please try again.', 'error');
+                showNotification(error.message || 'Unable to start verification. Try again.', 'error');
+            } finally {
+                verifyBtn.disabled = false;
+            }
+        }
+
+        function startLocationPolling() {
+            stopLocationPolling();
+            locationVerification.intervalId = setInterval(async () => {
+                if (!locationVerification.sessionId) return;
+                try {
+                    const resp = await fetch(`${endpoints.status}?session_id=${encodeURIComponent(locationVerification.sessionId)}`, {
+                        cache: 'no-store'
+                    });
+                    const data = await resp.json();
+
+                    if (resp.status === 410 || data.status === 'expired') {
+                        stopLocationPolling();
+                        locationVerification.sessionId = null;
+                        updateLocationStatusUI('Session expired. Please verify again.', 'error');
+                        showNotification('Location verification expired. Start again.', 'warning');
+                        return;
+                    }
+
+                    if (resp.status === 404 || data.status === 'not_found') {
+                        stopLocationPolling();
+                        updateLocationStatusUI('Session not found. Please retry.', 'error');
+                        return;
+                    }
+
+                    if (data.success && data.location) {
+                        handleLocationSuccess(data.location);
+                    }
+                } catch (error) {
+                    console.warn('Location polling failed', error);
+                }
+            }, 2000);
+        }
+
+        function stopLocationPolling() {
+            if (locationVerification.intervalId) {
+                clearInterval(locationVerification.intervalId);
+                locationVerification.intervalId = null;
+            }
+        }
+
+        function handleLocationSuccess(location) {
+            stopLocationPolling();
+            locationVerification.completed = true;
+            locationVerification.sessionId = null;
+            fillLocationFields(location);
+            updateLocationStatusUI('Location verified via phone.', 'success');
+            toggleQrModal(false);
+            showNotification('Location verified — continue registration.', 'success');
+        }
+
+        function fillLocationFields(location) {
+            const shopAddressInput = document.getElementById('shopAddress');
+            if (shopAddressInput) shopAddressInput.value = location.full_address || '';
+
+            const cityInput = document.getElementById('city');
+            if (cityInput) cityInput.value = location.city || location.locality || '';
+
+            const stateInput = document.getElementById('state');
+            if (stateInput) stateInput.value = location.state || '';
+
+            const localityInput = document.getElementById('locality');
+            if (localityInput) localityInput.value = location.locality || location.city || '';
+
+            const pincodeInput = document.getElementById('pincode');
+            if (pincodeInput) pincodeInput.value = location.pincode || '';
+
+            const latInput = document.getElementById('latitude');
+            const lngInput = document.getElementById('longitude');
+            const vendorLat = document.getElementById('vendor_lat');
+            const vendorLng = document.getElementById('vendor_lng');
+
+            if (latInput) latInput.value = location.latitude || '';
+            if (lngInput) lngInput.value = location.longitude || '';
+            if (vendorLat) vendorLat.value = location.latitude || '';
+            if (vendorLng) vendorLng.value = location.longitude || '';
+
+            ['state', 'city', 'locality', 'shopAddress', 'pincode'].forEach(fieldId => {
+                const validator = validations[fieldId];
+                if (validator) {
+                    validateField(fieldId, `${fieldId}Error`, validator);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
             setupPasswordToggle('password', 'togglePassword');
             setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
 
-            function updatePasswordStrength(password) {
-                const strength = checkPasswordStrength(password);
-                const strengthFill = document.getElementById('strengthFill');
-                const strengthText = document.getElementById('strengthText');
-                
-                strengthFill.className = 'strength-fill';
-                
-                if (strength <= 1) {
-                    strengthFill.style.width = '25%';
-                    strengthText.textContent = 'Password strength: Weak';
-                    strengthFill.style.background = 'var(--error)';
-                } else if (strength <= 2) {
-                    strengthFill.style.width = '50%';
-                    strengthFill.style.background = 'var(--warning)';
-                    strengthText.textContent = 'Password strength: Fair';
-                } else if (strength <= 3) {
-                    strengthFill.style.width = '75%';
-                    strengthFill.style.background = 'var(--warning)';
-                    strengthText.textContent = 'Password strength: Good';
-                } else {
-                    strengthFill.style.width = '100%';
-                    strengthFill.style.background = 'var(--success)';
-                    strengthText.textContent = 'Password strength: Strong';
-                }
+            const passwordInput = document.getElementById('password');
+            if (passwordInput) {
+                passwordInput.addEventListener('input', function() {
+                    updatePasswordStrength(this.value);
+                });
             }
 
-            document.getElementById('password').addEventListener('input', function() {
-                updatePasswordStrength(this.value);
-            });
-
-            // Add validation on input and turn fields green when valid
             Object.keys(validations).forEach(fieldId => {
                 const field = document.getElementById(fieldId);
                 if (field) {
@@ -1612,207 +1942,41 @@
                 }
             });
 
-             // Auto-fetch vendor location on page load
-             window.addEventListener("load", () => {
-                 console.log("🚀 Fetching accurate vendor location...");
-                 (async () => {
-                     try {
-                         showNotification('📍 Fetching your location for accurate service delivery...', 'info');
-                         const loc = await fetchAccurateVendorLocation();
-                         if (loc) {
-                             showNotification('✅ Location detected successfully! Your shop location has been recorded.', 'success');
-                         } else {
-                             showNotification('⚠️ Location could not be determined. Please try again.', 'warning');
-                             // Disable submit button if location is required
-                             const submitBtn = document.getElementById('submitBtn');
-                             submitBtn.disabled = true;
-                             submitBtn.innerHTML = '<span class="material-icons">location_off</span>Location Required';
-                             submitBtn.style.background = 'var(--error)';
-                         }
-                     } catch (error) {
-                         console.error('❌ Location fetch error:', error);
-                         showNotification('❌ Location fetch failed. Please refresh the page and try again.', 'error');
-                         
-                         // Disable submit button if location is required
-                         const submitBtn = document.getElementById('submitBtn');
-                         submitBtn.disabled = true;
-                         submitBtn.innerHTML = '<span class="material-icons">location_off</span>Location Required';
-                         submitBtn.style.background = 'var(--error)';
-                     }
-                 })();
-             });
+            const verifyBtn = document.getElementById('startLocationVerification');
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', startLocationVerification);
+            }
 
-            // Timeline continue button functionality (to Pricing)
+            const closeModal = document.getElementById('closeQrModal');
+            if (closeModal) {
+                closeModal.addEventListener('click', () => toggleQrModal(false));
+            }
+
+            const qrModal = document.getElementById('qrModal');
+            if (qrModal) {
+                qrModal.addEventListener('click', (event) => {
+                    if (event.target.id === 'qrModal') {
+                        toggleQrModal(false);
+                    }
+                });
+            }
+
             const continuePricingBtn = document.getElementById('continuePricingBtn');
-            if (continuePricingBtn) continuePricingBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const email = document.getElementById('email').value;
-                if (email) {
-                    // Add a small delay to ensure the notification is visible
-                    setTimeout(() => {
-                        window.location.href = `/vendor-pricing?vendorEmail=${encodeURIComponent(email)}`;
-                    }, 1000);
-                } else {
-                    showNotification('Email not found. Please try registering again.', 'error');
-                }
-            });
+            if (continuePricingBtn) {
+                continuePricingBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const email = document.getElementById('email').value;
+                    if (email) {
+                        setTimeout(() => {
+                            window.location.href = `/vendor-pricing?vendorEmail=${encodeURIComponent(email)}`;
+                        }, 1000);
+                    } else {
+                        showNotification('Email not found. Please try registering again.', 'error');
+                    }
+                });
+            }
         });
 
-        // Global functions for location handling (accessible from handleRegistration)
-        
-        // Validate if coordinates are within India bounds (roughly 6°N-37°N, 68°E-97°E)
-        function isValidIndiaCoordinates(lat, lng) {
-            if (!lat || !lng) return false;
-            const latNum = parseFloat(lat);
-            const lngNum = parseFloat(lng);
-            // India bounds: latitude 6°N to 37°N, longitude 68°E to 97°E
-            return (latNum >= 6 && latNum <= 37 && lngNum >= 68 && lngNum <= 97);
-        }
-        
-        // Fallback to browser geolocation API (more accurate than IP-based geolocation)
-        async function fallbackToBrowserGeolocation() {
-            return new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    console.warn("⚠️ Browser geolocation not available");
-                    resolve(null);
-                    return;
-                }
-                
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const locationData = {
-                            success: true,
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy: position.coords.accuracy,
-                            fromBrowser: true
-                        };
-                        
-                        console.log("✅ Browser geolocation success:", locationData);
-                        resolve(locationData);
-                    },
-                    (error) => {
-                        console.warn("⚠️ Browser geolocation failed:", error.message);
-                        resolve(null);
-                    },
-                    {
-                        enableHighAccuracy: true, // Use GPS if available
-                        timeout: 15000,
-                        maximumAge: 0 // Don't use cached location
-                    }
-                );
-            });
-        }
-        
-        // Fetch vendor location using Google Geolocation API via backend, with browser fallback
-        async function fetchAccurateVendorLocation() {
-            try {
-                const response = await fetch("/api/get-accurate-location/", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({})
-                });
-                
-                const data = await response.json();
-                console.log("🌍 Accurate vendor location response:", data);
-                
-                if (data.success) {
-                    const { latitude, longitude } = data;
-                    
-                    // Validate coordinates - check if they're reasonable for India
-                    if (!isValidIndiaCoordinates(latitude, longitude)) {
-                        console.warn("⚠️ Google Geolocation returned coordinates outside India bounds. Falling back to browser geolocation.");
-                        console.warn(`   Received: lat=${latitude}, lng=${longitude}`);
-                        const browserLocation = await fallbackToBrowserGeolocation();
-                        if (browserLocation && browserLocation.success) {
-                            // Use browser geolocation instead
-                            const lat = browserLocation.latitude;
-                            const lng = browserLocation.longitude;
-                            
-                            // Set both old and new field names for compatibility
-                            document.getElementById("latitude").value = lat;
-                            document.getElementById("longitude").value = lng;
-                            document.getElementById("vendor_lat").value = lat;
-                            document.getElementById("vendor_lng").value = lng;
-                            
-                            console.log("📍 Stored vendor lat/lng from browser:", lat, lng);
-                            return { success: true, latitude: lat, longitude: lng, fromBrowser: true };
-                        } else {
-                            // Browser geolocation also failed, but still use Google's result (user can manually correct)
-                            console.warn("⚠️ Browser geolocation also failed. Using Google's result (may need manual correction).");
-                        }
-                    }
-                    
-                    // Set both old and new field names for compatibility
-                    document.getElementById("latitude").value = latitude;
-                    document.getElementById("longitude").value = longitude;
-                    document.getElementById("vendor_lat").value = latitude;
-                    document.getElementById("vendor_lng").value = longitude;
-                    
-                    console.log("📍 Stored vendor lat/lng:", latitude, longitude);
-                    return data;
-                } else {
-                    console.warn("⚠️ Google Geolocation API failed, falling back to browser geolocation");
-                    // Fallback to browser geolocation
-                    const browserLocation = await fallbackToBrowserGeolocation();
-                    if (browserLocation && browserLocation.success) {
-                        const lat = browserLocation.latitude;
-                        const lng = browserLocation.longitude;
-                        
-                        // Set both old and new field names for compatibility
-                        document.getElementById("latitude").value = lat;
-                        document.getElementById("longitude").value = lng;
-                        document.getElementById("vendor_lat").value = lat;
-                        document.getElementById("vendor_lng").value = lng;
-                        
-                        console.log("📍 Stored vendor lat/lng from browser fallback:", lat, lng);
-                        return { success: true, latitude: lat, longitude: lng, fromBrowser: true };
-                    }
-                    console.error("❌ Location fetch failed:", data);
-                    return null;
-                }
-            } catch (err) {
-                console.error("❌ Error calling location API, falling back to browser geolocation:", err);
-                // Fallback to browser geolocation on network errors
-                const browserLocation = await fallbackToBrowserGeolocation();
-                if (browserLocation && browserLocation.success) {
-                    const lat = browserLocation.latitude;
-                    const lng = browserLocation.longitude;
-                    
-                    // Set both old and new field names for compatibility
-                    document.getElementById("latitude").value = lat;
-                    document.getElementById("longitude").value = lng;
-                    document.getElementById("vendor_lat").value = lat;
-                    document.getElementById("vendor_lng").value = lng;
-                    
-                    console.log("📍 Stored vendor lat/lng from browser fallback:", lat, lng);
-                    return { success: true, latitude: lat, longitude: lng, fromBrowser: true };
-                }
-                return null;
-            }
-        }
-        
-        // Ensure vendor location is loaded before form submission
-        async function ensureVendorLocationLoaded() {
-            let lat = document.getElementById("vendor_lat").value;
-            let lng = document.getElementById("vendor_lng").value;
-            
-            if (!lat || !lng || lat === '0' || lng === '0') {
-                console.warn("⚠️ Location not ready, retrying...");
-                await fetchAccurateVendorLocation();
-                // Wait a bit for the API call to complete
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                lat = document.getElementById("vendor_lat").value;
-                lng = document.getElementById("vendor_lng").value;
-            }
-            
-            return lat && lng && lat !== '0' && lng !== '0';
-        }
-
-        // Get CSRF token
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -1828,20 +1992,24 @@
             return cookieValue;
         }
 
-        // Form submission
         async function handleRegistration(event) {
             event.preventDefault();
-            
-            // ⛔ DO NOT SUBMIT WITHOUT LOCATION
-            const locationReady = await ensureVendorLocationLoaded();
-            if (!locationReady) {
-                alert("Fetching accurate location... Please try again in 2 seconds.");
+
+            if (!locationVerification.completed) {
+                showNotification('Please verify your shop location using your phone first.', 'warning');
+                return;
+            }
+
+            const latField = document.getElementById('vendor_lat');
+            const lngField = document.getElementById('vendor_lng');
+            const latVal = latField ? latField.value : '';
+            const lngVal = lngField ? lngField.value : '';
+
+            if (!latVal || !lngVal) {
+                showNotification('⚠️ We could not detect your location yet. Please verify again.', 'warning');
                 return;
             }
             
-            console.log("📍 Vendor location confirmed, proceeding with registration.");
-            
-            // Validate all fields
             const validationResults = [
                 validateField('email', 'emailError', validations.email),
                 validateField('vendorName', 'vendorNameError', validations.vendorName),
@@ -1859,27 +2027,19 @@
                 return;
             }
 
-            // Get latitude and longitude from hidden fields (set by Google Geolocation API)
-            const latitude = document.getElementById('latitude').value || document.getElementById('vendor_lat').value;
-            const longitude = document.getElementById('longitude').value || document.getElementById('vendor_lng').value;
-            
-             // Coordinates are ready to be sent
-            
-            // Allow submit even if location is unavailable (non-blocking like contact form)
+            const latitude = document.getElementById('latitude').value || latVal;
+            const longitude = document.getElementById('longitude').value || lngVal;
 
-            // Prevent duplicate submits without changing button design
             if (window.__registerSubmitting) return;
             window.__registerSubmitting = true;
 
-             // Show registration animation
-             const animation = document.getElementById('registrationAnimation');
-             animation.style.display = 'flex';
+            const animation = document.getElementById('registrationAnimation');
+            animation.style.display = 'flex';
 
-             // Show loading state on button
-             const submitBtn = document.getElementById('submitBtn');
-             const loadingSpinner = document.getElementById('loadingSpinner');
-             submitBtn.disabled = true;
-             loadingSpinner.style.display = 'inline-block';
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            submitBtn.disabled = true;
+            loadingSpinner.style.display = 'inline-block';
 
             const formData = {
                 email: document.getElementById('email').value,
@@ -1890,15 +2050,15 @@
                 city: document.getElementById('city').value,
                 locality: document.getElementById('locality').value,
                 shop_address: document.getElementById('shopAddress').value,
+                full_address: document.getElementById('shopAddress').value,
                 pincode: document.getElementById('pincode').value,
                 latitude: latitude,
                 longitude: longitude,
-                vendor_lat: document.getElementById('vendor_lat').value || latitude,
-                vendor_lng: document.getElementById('vendor_lng').value || longitude
+                vendor_lat: latVal,
+                vendor_lng: lngVal
             };
 
             try {
-                console.log('Sending registration request...', formData);
                 const response = await fetch('/vendor-register-api/', {
                     method: 'POST',
                     headers: {
@@ -1907,7 +2067,6 @@
                     },
                     body: JSON.stringify(formData)
                 });
-                console.log('Registration response status:', response.status);
 
                 // Check if response is ok
                 if (!response.ok) {

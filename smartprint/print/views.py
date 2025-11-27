@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -20,6 +21,7 @@ import time
 import jwt  # For local token decoding fallback
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
+from django.urls import reverse
 import os
 import base64
 from django.core.mail import send_mail
@@ -28,12 +30,12 @@ from django.utils.html import strip_tags
 import traceback
 from PIL import Image, ImageDraw
 import io
-from django.views.decorators.http import require_POST
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods, require_GET
 import threading
 from urllib.parse import urlparse, urlunparse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from .models import VendorLocationSession
 
 
 KNOWN_WORKER_ENDPOINTS = {
@@ -5073,6 +5075,98 @@ def photoprint(request):
     return render(request, 'photoprint.html')
 
 
+LOCATION_SESSION_TTL_MINUTES = 15
+LOCATION_SESSION_MAX_AGE_MINUTES = 60
+
+
+def _cleanup_stale_location_sessions():
+    """
+    Remove stale vendor location sessions older than an hour to keep table lean.
+    """
+    expiry_threshold = timezone.now() - datetime.timedelta(minutes=LOCATION_SESSION_MAX_AGE_MINUTES)
+    VendorLocationSession.objects.filter(created_at__lt=expiry_threshold).delete()
+
+
+def _mark_session_expired_if_needed(session):
+    """
+    Mark pending sessions as expired when they cross the TTL.
+    """
+    if not session:
+        return None
+
+    if session.status == VendorLocationSession.STATUS_COMPLETED:
+        return session
+
+    age = timezone.now() - session.created_at
+    if age > datetime.timedelta(minutes=LOCATION_SESSION_TTL_MINUTES):
+        if session.status != VendorLocationSession.STATUS_EXPIRED:
+            session.status = VendorLocationSession.STATUS_EXPIRED
+            session.save(update_fields=['status', 'updated_at'])
+    return session
+
+
+def _parse_geocode_components(components):
+    """
+    Extract city, state, locality, and pincode from Google Geocoder components.
+    """
+    result = {
+        'city': '',
+        'state': '',
+        'locality': '',
+        'pincode': '',
+    }
+
+    for comp in components or []:
+        types = comp.get('types', [])
+        long_name = comp.get('long_name', '')
+        if 'postal_code' in types and not result['pincode']:
+            result['pincode'] = long_name
+        if 'administrative_area_level_1' in types and not result['state']:
+            result['state'] = long_name
+        if 'locality' in types:
+            result['city'] = long_name or result['city']
+        if 'administrative_area_level_2' in types and not result['city']:
+            result['city'] = long_name
+        if ('sublocality' in types or 'sublocality_level_1' in types) and not result['locality']:
+            result['locality'] = long_name
+
+    return result
+
+
+def _reverse_geocode_coordinates(latitude, longitude):
+    """
+    Use Google Maps Geocoding API to resolve a full address from coordinates.
+    """
+    api_key = getattr(settings, 'GOOGLE_MAPS_API', '') or getattr(settings, 'GOOGLE_DEVELOPER_KEY', '')
+    if not api_key:
+        raise RuntimeError('Google Maps API key is not configured')
+
+    endpoint = 'https://maps.googleapis.com/maps/api/geocode/json'
+    params = {
+        'latlng': f'{latitude},{longitude}',
+        'key': api_key,
+    }
+
+    response = requests.get(endpoint, params=params, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    if data.get('status') != 'OK' or not data.get('results'):
+        raise RuntimeError(f"Google Geocoding failed: {data.get('status')}")
+
+    primary = data['results'][0]
+    components = _parse_geocode_components(primary.get('address_components', []))
+    components['full_address'] = primary.get('formatted_address', '')
+    return components
+
+
+def _to_decimal_or_none(value):
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
 # ─────────────────────────────────────────────────────────────
 # VENDOR REGISTRATION AND PRICING VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -5082,6 +5176,138 @@ def vendor_register(request):
     Render the vendor registration page
     """
     return render(request, 'vendor_register.html')
+
+
+@require_GET
+def vendor_location_mobile(request):
+    """
+    Lightweight mobile-only view where vendors approve precise GPS coordinates.
+    """
+    session_id = request.GET.get('session_id', '').strip()
+    return render(request, 'vendor_location_mobile.html', {
+        'session_id': session_id,
+    })
+
+
+@require_POST
+def create_vendor_location_session(request):
+    """
+    Generate a unique session ID + mobile deep link used for QR-based location capture.
+    """
+    try:
+        _cleanup_stale_location_sessions()
+        session = VendorLocationSession.objects.create(session_id=uuid.uuid4().hex)
+        mobile_url = request.build_absolute_uri(
+            f"{reverse('vendor_location_mobile')}?session_id={session.session_id}"
+        )
+        return JsonResponse({
+            'success': True,
+            'session_id': session.session_id,
+            'mobile_url': mobile_url,
+            'expires_in': LOCATION_SESSION_TTL_MINUTES * 60,
+        })
+    except Exception as exc:
+        print(f"❌ Failed to create vendor location session: {exc}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Could not start location verification. Please try again.',
+        }, status=500)
+
+
+@csrf_exempt  # Mobile deep link already carries random session_id token
+@require_POST
+def vendor_set_location(request):
+    """
+    Called from the mobile page after GPS permission is granted.
+    Saves coordinates + reverse geocoded address against the session.
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    session_id = str(payload.get('session_id', '')).strip()
+    latitude = payload.get('latitude')
+    longitude = payload.get('longitude')
+
+    if not session_id or latitude is None or longitude is None:
+        return JsonResponse({'success': False, 'message': 'Missing session or coordinates'}, status=400)
+
+    session = VendorLocationSession.objects.filter(session_id=session_id).first()
+    if not session:
+        return JsonResponse({'success': False, 'message': 'Session not found'}, status=404)
+
+    _mark_session_expired_if_needed(session)
+    if session.status == VendorLocationSession.STATUS_EXPIRED:
+        return JsonResponse({'success': False, 'message': 'Session expired'}, status=410)
+    if session.status == VendorLocationSession.STATUS_COMPLETED:
+        return JsonResponse({'success': True, 'message': 'Location already captured'})
+
+    try:
+        lat_float = float(latitude)
+        lng_float = float(longitude)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid coordinates'}, status=400)
+
+    try:
+        geo_details = _reverse_geocode_coordinates(lat_float, lng_float)
+    except Exception as exc:
+        print(f"❌ Reverse geocoding failed: {exc}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Unable to verify address from GPS. Please retry.',
+        }, status=502)
+
+    session.latitude = _to_decimal_or_none(lat_float)
+    session.longitude = _to_decimal_or_none(lng_float)
+    session.full_address = geo_details.get('full_address', '')
+    session.locality = geo_details.get('locality', '')
+    session.city = geo_details.get('city', '')
+    session.state = geo_details.get('state', '')
+    session.pincode = geo_details.get('pincode', '')
+    session.status = VendorLocationSession.STATUS_COMPLETED
+    session.save(update_fields=[
+        'latitude', 'longitude', 'full_address', 'locality',
+        'city', 'state', 'pincode', 'status', 'updated_at'
+    ])
+
+    return JsonResponse({'success': True, 'message': 'Location captured successfully'})
+
+
+@require_GET
+def vendor_location_status(request):
+    """
+    Laptop polls this endpoint every 2 seconds to check if the phone reported coordinates.
+    """
+    session_id = request.GET.get('session_id', '').strip()
+    if not session_id:
+        return JsonResponse({'success': False, 'status': 'missing_session'}, status=400)
+
+    try:
+        session = VendorLocationSession.objects.get(session_id=session_id)
+    except VendorLocationSession.DoesNotExist:
+        return JsonResponse({'success': False, 'status': 'not_found'}, status=404)
+
+    session = _mark_session_expired_if_needed(session)
+
+    if session.status == VendorLocationSession.STATUS_PENDING:
+        return JsonResponse({'success': False, 'status': 'pending'})
+
+    if session.status == VendorLocationSession.STATUS_EXPIRED:
+        return JsonResponse({'success': False, 'status': 'expired'}, status=410)
+
+    location_payload = {
+        'latitude': float(session.latitude) if session.latitude is not None else None,
+        'longitude': float(session.longitude) if session.longitude is not None else None,
+        'full_address': session.full_address,
+        'locality': session.locality,
+        'city': session.city,
+        'state': session.state,
+        'pincode': session.pincode,
+        'captured_at': session.updated_at.isoformat() if session.updated_at else '',
+    }
+
+    return JsonResponse({'success': True, 'location': location_payload})
 
 
 def vendor_documents(request):
@@ -5894,6 +6120,9 @@ def vendor_register_api(request):
             city = data.get('city', '').strip()
             locality = data.get('locality', '').strip()
             shop_address = data.get('shop_address', '').strip()
+            full_address = data.get('full_address', '').strip()
+            if full_address:
+                shop_address = full_address
             pincode = data.get('pincode', '').strip()
             # Support both old (latitude/longitude) and new (vendor_lat/vendor_lng) field names
             latitude = data.get('vendor_lat') or data.get('latitude', '0')
@@ -5939,6 +6168,7 @@ def vendor_register_api(request):
                 'city': city,
                 'locality': locality,
                 'shop_address': shop_address,
+                'full_address': shop_address,
                 'pincode': pincode
             }
             
@@ -6027,9 +6257,14 @@ def vendor_register_api(request):
                 'city': city,
                 'locality': locality,
                 'shop_address': shop_address,
+                'full_address': shop_address,
                 'pincode': pincode,
-                'latitude': str(lat_float),
-                'longitude': str(lng_float),
+                # Store coordinates as proper numeric values
+                'latitude': lat_float,
+                'longitude': lng_float,
+                # Also expose vendor_lat/vendor_lng for downstream consumers
+                'vendor_lat': lat_float,
+                'vendor_lng': lng_float,
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
                 'status': 'pending'
