@@ -9846,10 +9846,36 @@
 
       const MOBILE_DEVICE_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
       const DESKTOP_VIEWPORT_MIN_WIDTH = 768;
+      const LOCATION_LOCK_KEY = 'location_locked';
 
       function isDesktopViewport() {
         const ua = navigator.userAgent || '';
         return window.innerWidth >= DESKTOP_VIEWPORT_MIN_WIDTH && !MOBILE_DEVICE_REGEX.test(ua);
+      }
+
+      function isLocationLocked() {
+        try {
+          return localStorage.getItem(LOCATION_LOCK_KEY) === '1';
+        } catch (error) {
+          console.warn('Unable to read location lock flag', error);
+          return false;
+        }
+      }
+
+      function lockLocationUpdates() {
+        try {
+          localStorage.setItem(LOCATION_LOCK_KEY, '1');
+        } catch (error) {
+          console.warn('Unable to persist location lock flag', error);
+        }
+      }
+
+      function unlockLocationUpdates() {
+        try {
+          localStorage.removeItem(LOCATION_LOCK_KEY);
+        } catch (error) {
+          console.warn('Unable to clear location lock flag', error);
+        }
       }
 
       function readStoredUserCoordinates() {
@@ -9875,6 +9901,7 @@
         try {
           localStorage.removeItem('user_lat');
           localStorage.removeItem('user_lng');
+          unlockLocationUpdates();
         } catch (error) {
           console.warn('Unable to clear stored coordinates', error);
         }
@@ -10168,6 +10195,7 @@
             if (Number.isFinite(lng)) {
               localStorage.setItem('user_lng', lng);
             }
+            lockLocationUpdates(); // prevent laptop geolocation from overriding mobile-provided coordinates
             syncUserLocationState(lat, lng, {
               source: 'qr',
               fromStorage: false,
@@ -21086,15 +21114,32 @@
     async function fetchAccurateUserLocation(forceRefresh = false) {
       const desktopMode = isDesktopViewport();
       try {
-        if (desktopMode) {
-          if (forceRefresh) {
-            clearStoredUserCoordinates();
-            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-              window.userLocationFlow.promptForService(null);
-            }
+        if (forceRefresh) {
+          clearStoredUserCoordinates();
+          if (desktopMode && window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+            window.userLocationFlow.promptForService(null);
             return null;
           }
-          const stored = readStoredUserCoordinates();
+        }
+
+        let locationLocked = isLocationLocked();
+        const stored = readStoredUserCoordinates();
+
+        if (locationLocked) {
+          if (stored) {
+            console.log("🔒 Using QR verified coordinates (locked):", stored);
+            const syncedLocked = syncUserLocationState(stored.latitude, stored.longitude, {
+              source: 'localStorage',
+              fromStorage: true
+            });
+            return syncedLocked || stored;
+          }
+          console.warn("⚠️ Location lock present without coordinates. Unlocking to allow refresh.");
+          unlockLocationUpdates();
+          locationLocked = false;
+        }
+
+        if (desktopMode) {
           if (stored) {
             console.log("✅ Using QR verified desktop coordinates:", stored);
             const synced = syncUserLocationState(stored.latitude, stored.longitude, {
@@ -21105,6 +21150,11 @@
           }
           console.warn("⚠️ Desktop requires QR-based location. Awaiting phone scan.");
           return null;
+        }
+
+        if (locationLocked) {
+          console.log("🔒 Skipping browser geolocation because location is locked.");
+          return stored || null;
         }
 
         if (!navigator.geolocation) {
@@ -22985,5 +23035,6 @@
 </html>
 </html>
 </html>
+
 
 
