@@ -337,7 +337,8 @@
             align-items: center;
             justify-content: center;
             gap: 24px;
-            padding: 20px 32px 20px 32px;
+            padding: 20px 32px 24px 32px;
+            margin-bottom: 20px;
             background: #f1f5f9;
             border-top: 1px solid #e5e7eb;
             position: sticky;
@@ -975,7 +976,8 @@
                 padding: 0.85rem 10px;
             }
             .footer-controls {
-                padding: 16px 10px 16px 10px;
+                padding: 16px 10px 20px 10px;
+                margin-bottom: 16px;
             }
         }
         @media (min-width: 801px) {
@@ -2160,14 +2162,37 @@ async function handlePrint() {
                         formData.append('razorpay_payment_id', response.razorpay_payment_id);
                         formData.append('razorpay_order_id', response.razorpay_order_id);
                         formData.append('razorpay_signature', response.razorpay_signature);
-                        const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
-                        const verifyData = await parseJsonResponse(verifyResp);
-                        if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
-                        const serverToken = verifyData.token || token;
-                        const successMessage = '✅ Print job sent to print successfully.';
+                        // Close modal immediately
                         closePhotoPrintModalView();
+                        
+                        // Redirect to dashboard immediately - PDF creation will happen in background
+                        window.location.replace('/userdashboard/');
+                        
+                        // Store success state for dashboard to show animation
+                        try {
+                            sessionStorage.setItem('photoPrintSuccess', JSON.stringify({
+                                message: 'Your job sent to print successfully',
+                                token: token || '',
+                                timestamp: Date.now()
+                            }));
+                        } catch (storageError) {
+                            console.warn('Unable to persist success state:', storageError);
+                        }
+                        
+                        // Continue with payment verification in background (non-blocking)
+                        (async () => {
+                            try {
+                                const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                                const verifyData = await parseJsonResponse(verifyResp);
+                                if (!verifyResp.ok || !verifyData.success) {
+                                    console.error('Payment verification failed:', verifyData.error);
+                                }
+                            } catch (err) {
+                                console.error('Payment verification error:', err);
+                            }
+                        })();
+                        
                         resolve();
-                        redirectToDashboardWithSuccess(successMessage, serverToken);
                         return;
                     } catch (err) {
                         alert(err.message || 'Payment verified but upload failed');

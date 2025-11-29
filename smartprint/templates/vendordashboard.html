@@ -4640,7 +4640,33 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // First, check if vendor is authenticated, if not try auto-login
+            try {
+                const authCheck = await fetch('/get-print-requests/', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (!authCheck.ok || authCheck.status === 401 || authCheck.status === 403) {
+                    // Not authenticated, try auto-login
+                    const autoLoginSuccess = await autoLoginVendor();
+                    if (!autoLoginSuccess) {
+                        // Auto-login failed or redirected, stop execution
+                        return;
+                    }
+                    // If auto-login succeeded, page will reload, so we return here
+                    return;
+                }
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+                // Try auto-login on error
+                const autoLoginSuccess = await autoLoginVendor();
+                if (!autoLoginSuccess) {
+                    return;
+                }
+            }
+            
             initTheme();
             // Load vendor availability status
             try { loadVendorAvailability(); } catch (e) { console.error('Error loading vendor availability:', e); }
@@ -4853,7 +4879,24 @@
                 return;
             }
             
-            let url = `/vendor-reports/?vendor_id=${vendorId}`;
+            // Get vendor email from vendor details
+            const vendorEmail = '{{ vendor_details.vendor_email }}';
+            if (!vendorEmail) {
+                if (loading) loading.style.display = 'none';
+                if (container) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Vendor Email Not Found</h3>
+                            <p>Unable to load transaction history. Please contact support.</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            // Use D1 database endpoint for vendor transactions
+            let url = `/admin-dashboard/transactions/?vendor_email=${encodeURIComponent(vendorEmail)}`;
             if (selectedMonth) {
                 url += `&month=${selectedMonth}`;
             }
@@ -5114,6 +5157,12 @@
             const count = document.getElementById('notificationCount');
             const list = document.getElementById('notificationList');
 
+            // Check if elements exist before accessing
+            if (!badge || !count || !list) {
+                console.warn('Notification UI elements not found');
+                return;
+            }
+
             // Update badge
             if (unreadCount > 0) {
                 badge.textContent = unreadCount;
@@ -5137,13 +5186,13 @@
                 list.innerHTML = notifications.map(notification => `
                     <div class="notification-item ${!notification.read ? 'unread' : ''}">
                         <div class="notification-content">
-                            <div class="notification-message">${notification.message}</div>
+                            <div class="notification-message">${notification.message || 'Notification'}</div>
                             <div class="notification-meta">
                                 <div class="notification-time">
                                     <i class="fas fa-clock"></i>
-                                    <span>${notification.time}</span>
+                                    <span>${notification.time || 'Just now'}</span>
                                 </div>
-                                <span class="notification-type">${notification.level.toUpperCase()}</span>
+                                <span class="notification-type">${(notification.level || 'INFO').toUpperCase()}</span>
                             </div>
                         </div>
                     </div>
@@ -7561,6 +7610,161 @@
             return cookieValue;
         }
 
+        // Vendor Credential Encryption Utilities (same as login.html)
+        const VENDOR_CREDENTIAL_KEY = 'vendor_encrypted_creds';
+        
+        // Generate a key from a password using PBKDF2
+        async function deriveKeyFromPassword(password, salt) {
+            const encoder = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(password),
+                'PBKDF2',
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+            
+            return crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+        
+        // Decrypt vendor credentials
+        async function decryptVendorCredentials(encryptedData, email) {
+            try {
+                // Convert from base64
+                const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+                
+                // Extract salt, IV, and encrypted data
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 28);
+                const encrypted = combined.slice(28);
+                
+                // Derive the key using the same password
+                const keyPassword = email + '|vendor_secret_key_2024';
+                const key = await deriveKeyFromPassword(keyPassword, salt);
+                
+                // Decrypt
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    key,
+                    encrypted
+                );
+                
+                const decoder = new TextDecoder();
+                const data = JSON.parse(decoder.decode(decrypted));
+                return data;
+            } catch (error) {
+                console.error('Error decrypting vendor credentials:', error);
+                return null;
+            }
+        }
+        
+        // Get and decrypt vendor credentials from localStorage
+        async function getVendorCredentials() {
+            try {
+                const encrypted = localStorage.getItem(VENDOR_CREDENTIAL_KEY);
+                const email = localStorage.getItem('vendor_email_cache');
+                
+                if (!encrypted || !email) {
+                    return null;
+                }
+                
+                const decrypted = await decryptVendorCredentials(encrypted, email);
+                return decrypted;
+            } catch (error) {
+                console.error('Error getting vendor credentials:', error);
+                return null;
+            }
+        }
+        
+        // Clear vendor credentials (for logout)
+        function clearVendorCredentials() {
+            try {
+                localStorage.removeItem(VENDOR_CREDENTIAL_KEY);
+                localStorage.removeItem('vendor_email_cache');
+                // Set a flag to prevent auto-login after explicit logout
+                sessionStorage.setItem('vendor_logged_out', 'true');
+            } catch (error) {
+                console.error('Error clearing vendor credentials:', error);
+            }
+        }
+        
+        // Auto-login vendor using cached credentials
+        async function autoLoginVendor() {
+            try {
+                // Check if user explicitly logged out (don't auto-login)
+                if (sessionStorage.getItem('vendor_logged_out') === 'true') {
+                    sessionStorage.removeItem('vendor_logged_out');
+                    window.location.href = '/login/';
+                    return false;
+                }
+                
+                // Check if we're already authenticated (session exists)
+                const response = await fetch('/get-print-requests/', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                // If we get a successful response, we're already logged in
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.print_requests !== undefined) {
+                        // Already authenticated, no need to auto-login
+                        return true;
+                    }
+                }
+                
+                // If not authenticated, try auto-login with cached credentials
+                const credentials = await getVendorCredentials();
+                if (!credentials || !credentials.email || !credentials.password) {
+                    // No cached credentials, redirect to login
+                    window.location.href = '/login/';
+                    return false;
+                }
+                
+                // Attempt to login with cached credentials
+                const loginResponse = await fetch('/vendor-login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ 
+                        email: credentials.email, 
+                        password: credentials.password 
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                if (loginData.success) {
+                    // Auto-login successful, reload the page to refresh session
+                    console.log('✅ Auto-login successful');
+                    window.location.reload();
+                    return true;
+                } else {
+                    // Auto-login failed, clear cached credentials and redirect to login
+                    console.warn('⚠️ Auto-login failed, clearing cached credentials');
+                    clearVendorCredentials();
+                    window.location.href = '/login/';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error during auto-login:', error);
+                // On error, redirect to login page
+                window.location.href = '/login/';
+                return false;
+            }
+        }
 
     </script>
 </body>

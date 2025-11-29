@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -20,6 +21,7 @@ import time
 import jwt  # For local token decoding fallback
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
+from django.urls import reverse
 import os
 import base64
 from django.core.mail import send_mail
@@ -28,12 +30,12 @@ from django.utils.html import strip_tags
 import traceback
 from PIL import Image, ImageDraw
 import io
-from django.views.decorators.http import require_POST
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods, require_GET
 import threading
 from urllib.parse import urlparse, urlunparse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from .models import VendorLocationSession
 
 
 KNOWN_WORKER_ENDPOINTS = {
@@ -1251,8 +1253,11 @@ def userdashboard(request):
 
     try:
         # ULTRA-FAST: Avoid synchronous job loading; fetch details only
+        # STRICTLY NOTE: Print jobs are rendered ONLY from User_print_jobs table (D1 database)
+        # NOT from R2 storage or Vendor_print_jobs table
+        # job_completed status is read ONLY from User_print_jobs table, NOT from R2 metadata
         user_details = get_user_details_from_d1(request.user.email) or {}
-        preloaded_jobs = get_user_jobs_from_d1(request.user.email)
+        preloaded_jobs = get_user_jobs_from_d1(request.user.email, fallback_to_r2=False)
         if not isinstance(preloaded_jobs, list):
             preloaded_jobs = []
         pending_job_list = [
@@ -1365,8 +1370,15 @@ def userdashboard(request):
 
 def get_user_jobs_from_d1(user_email, fallback_to_r2=True):
     """
-    Fetch user print jobs from D1 database via Worker API
+    Fetch user print jobs from D1 database via Worker API (User_print_jobs table ONLY)
     Returns list of jobs with R2 paths from database
+    
+    STRICTLY NOTE: 
+    - Print jobs are fetched ONLY from User_print_jobs table (D1 database)
+    - NOT from R2 storage or Vendor_print_jobs table
+    - job_completed status is read ONLY from User_print_jobs table, NOT from R2 storage metadata
+    - R2 is ONLY used for generating presigned URLs for file access
+    - Set fallback_to_r2=False to strictly prevent R2 fallback (recommended for user dashboard)
     """
     def _maybe_fallback():
         if not fallback_to_r2:
@@ -1601,9 +1613,12 @@ def userdashboard_data(request):
     
     try:
         # Load user data quickly
+        # STRICTLY NOTE: Print jobs are rendered ONLY from User_print_jobs table (D1 database)
+        # NOT from R2 storage or Vendor_print_jobs table
+        # job_completed status is read ONLY from User_print_jobs table, NOT from R2 metadata
         user_details = get_user_details_from_d1(request.user.email)
-        # Fetch jobs from D1 database instead of R2
-        user_jobs = get_user_jobs_from_d1(request.user.email)
+        # Fetch jobs from D1 database ONLY - no R2 fallback
+        user_jobs = get_user_jobs_from_d1(request.user.email, fallback_to_r2=False)
         
         # Calculate statistics
         total_jobs = len(user_jobs)
@@ -2074,7 +2089,36 @@ def get_print_requests(request):
             print(f"🖨️ Loaded printer configuration: {printer_config}")
         
         # Fetch pending jobs from D1 database using vendor email fallback
-        files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
+        pending_files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
+        
+        # Also fetch completed jobs to check if any were completed today
+        completed_files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='YES') or []
+        
+        # Filter completed jobs: only include if completed today
+        today = datetime.datetime.now().date()
+        today_completed_files = []
+        for job in completed_files:
+            completion_time = job.get('completion_time') or job.get('timestamp')
+            if completion_time:
+                try:
+                    # Try parsing as ISO string
+                    if isinstance(completion_time, str):
+                        if 'T' in completion_time or ' ' in completion_time:
+                            completion_date = datetime.datetime.fromisoformat(completion_time.replace('Z', '+00:00')).date()
+                        else:
+                            # Try parsing as timestamp
+                            completion_date = datetime.datetime.fromtimestamp(float(completion_time)).date()
+                    else:
+                        completion_date = datetime.datetime.fromtimestamp(float(completion_time)).date()
+                    
+                    if completion_date == today:
+                        today_completed_files.append(job)
+                except Exception as e:
+                    print(f"⚠️ Error parsing completion_time for job {job.get('filename', 'unknown')}: {e}")
+        
+        # Combine pending and today's completed jobs
+        files = pending_files + today_completed_files
+        
         if not files:
             print(f"ℹ️ No jobs returned from D1 for vendor {vendor_id}")
         
@@ -2136,11 +2180,13 @@ def get_print_requests(request):
         
         print(f"📊 AJAX Job categorization - Manual: {len(categorized_jobs['manual'])}, Requests: {len(categorized_jobs['requests'])}, Completed: {len(categorized_jobs['completed'])}")
         
-        # Return only pending jobs in print_requests, completed jobs in categorized
+        # Return pending jobs + today's completed jobs in print_requests
         pending_jobs = categorized_jobs['manual'] + categorized_jobs['requests']
+        # Include today's completed jobs in print_requests
+        all_print_requests = pending_jobs + categorized_jobs['completed']
         
         return JsonResponse({
-            "print_requests": pending_jobs,  # Only pending jobs
+            "print_requests": all_print_requests,  # Pending jobs + today's completed jobs
             "categorized": categorized_jobs,
             "counts": {
                 "manual": len(categorized_jobs['manual']),
@@ -5095,6 +5141,98 @@ def photoprint(request):
     return render(request, 'photoprint.html')
 
 
+LOCATION_SESSION_TTL_MINUTES = 15
+LOCATION_SESSION_MAX_AGE_MINUTES = 60
+
+
+def _cleanup_stale_location_sessions():
+    """
+    Remove stale vendor location sessions older than an hour to keep table lean.
+    """
+    expiry_threshold = timezone.now() - datetime.timedelta(minutes=LOCATION_SESSION_MAX_AGE_MINUTES)
+    VendorLocationSession.objects.filter(created_at__lt=expiry_threshold).delete()
+
+
+def _mark_session_expired_if_needed(session):
+    """
+    Mark pending sessions as expired when they cross the TTL.
+    """
+    if not session:
+        return None
+
+    if session.status == VendorLocationSession.STATUS_COMPLETED:
+        return session
+
+    age = timezone.now() - session.created_at
+    if age > datetime.timedelta(minutes=LOCATION_SESSION_TTL_MINUTES):
+        if session.status != VendorLocationSession.STATUS_EXPIRED:
+            session.status = VendorLocationSession.STATUS_EXPIRED
+            session.save(update_fields=['status', 'updated_at'])
+    return session
+
+
+def _parse_geocode_components(components):
+    """
+    Extract city, state, locality, and pincode from Google Geocoder components.
+    """
+    result = {
+        'city': '',
+        'state': '',
+        'locality': '',
+        'pincode': '',
+    }
+
+    for comp in components or []:
+        types = comp.get('types', [])
+        long_name = comp.get('long_name', '')
+        if 'postal_code' in types and not result['pincode']:
+            result['pincode'] = long_name
+        if 'administrative_area_level_1' in types and not result['state']:
+            result['state'] = long_name
+        if 'locality' in types:
+            result['city'] = long_name or result['city']
+        if 'administrative_area_level_2' in types and not result['city']:
+            result['city'] = long_name
+        if ('sublocality' in types or 'sublocality_level_1' in types) and not result['locality']:
+            result['locality'] = long_name
+
+    return result
+
+
+def _reverse_geocode_coordinates(latitude, longitude):
+    """
+    Use Google Maps Geocoding API to resolve a full address from coordinates.
+    """
+    api_key = getattr(settings, 'GOOGLE_MAPS_API', '') or getattr(settings, 'GOOGLE_DEVELOPER_KEY', '')
+    if not api_key:
+        raise RuntimeError('Google Maps API key is not configured')
+
+    endpoint = 'https://maps.googleapis.com/maps/api/geocode/json'
+    params = {
+        'latlng': f'{latitude},{longitude}',
+        'key': api_key,
+    }
+
+    response = requests.get(endpoint, params=params, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+
+    if data.get('status') != 'OK' or not data.get('results'):
+        raise RuntimeError(f"Google Geocoding failed: {data.get('status')}")
+
+    primary = data['results'][0]
+    components = _parse_geocode_components(primary.get('address_components', []))
+    components['full_address'] = primary.get('formatted_address', '')
+    return components
+
+
+def _to_decimal_or_none(value):
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
 # ─────────────────────────────────────────────────────────────
 # VENDOR REGISTRATION AND PRICING VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -5104,6 +5242,217 @@ def vendor_register(request):
     Render the vendor registration page
     """
     return render(request, 'vendor_register.html')
+
+
+@require_GET
+def vendor_location_mobile(request):
+    """
+    Lightweight mobile-only view where vendors approve precise GPS coordinates.
+    """
+    session_id = request.GET.get('session_id', '').strip()
+    return render(request, 'vendor_location_mobile.html', {
+        'session_id': session_id,
+    })
+
+
+@require_GET
+def user_location_mobile(request):
+    """
+    Mobile-first view for end users to share precise GPS coordinates via phone.
+    """
+    session_id = request.GET.get('session_id', '').strip()
+    return render(request, 'user_location_mobile.html', {
+        'session_id': session_id,
+    })
+
+
+def _build_location_session_response(request, mobile_view_name):
+    """
+    Shared helper to create QR-based location sessions for vendors or users.
+    """
+    try:
+        _cleanup_stale_location_sessions()
+        session = VendorLocationSession.objects.create(session_id=uuid.uuid4().hex)
+        mobile_url = request.build_absolute_uri(
+            f"{reverse(mobile_view_name)}?session_id={session.session_id}"
+        )
+        return JsonResponse({
+            'success': True,
+            'session_id': session.session_id,
+            'mobile_url': mobile_url,
+            'expires_in': LOCATION_SESSION_TTL_MINUTES * 60,
+        })
+    except Exception as exc:
+        print(f"❌ Failed to create {mobile_view_name} session: {exc}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Could not start location verification. Please try again.',
+        }, status=500)
+
+
+@require_POST
+def create_vendor_location_session(request):
+    """
+    Generate a unique session ID + mobile deep link used for vendor QR-based location capture.
+    """
+    return _build_location_session_response(request, 'vendor_location_mobile')
+
+
+@require_POST
+def create_user_location_session(request):
+    """
+    Generate a unique session ID + mobile deep link used for user QR-based location capture.
+    """
+    return _build_location_session_response(request, 'user_location_mobile')
+
+
+@csrf_exempt  # Mobile deep link already carries random session_id token
+@require_POST
+def vendor_set_location(request):
+    """
+    Called from the vendor mobile page after GPS permission is granted.
+    Saves coordinates + reverse geocoded address against the session.
+    """
+    return _handle_location_submission(request, context_label='vendor')
+
+
+@csrf_exempt  # Mobile deep link already carries random session_id token
+@require_POST
+def user_set_location(request):
+    """
+    Called from the user mobile page after GPS permission is granted.
+    Saves coordinates + reverse geocoded address against the session.
+    """
+    return _handle_location_submission(
+        request,
+        context_label='user',
+        include_location_payload=True,
+    )
+
+
+def _handle_location_submission(request, *, context_label='vendor', include_location_payload=False):
+    """
+    Shared handler for vendor/user mobile GPS submission.
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    session_id = str(payload.get('session_id', '')).strip()
+    latitude = payload.get('latitude')
+    longitude = payload.get('longitude')
+
+    if not session_id or latitude is None or longitude is None:
+        return JsonResponse({'success': False, 'message': 'Missing session or coordinates'}, status=400)
+
+    session = VendorLocationSession.objects.filter(session_id=session_id).first()
+    if not session:
+        return JsonResponse({'success': False, 'message': 'Session not found'}, status=404)
+
+    _mark_session_expired_if_needed(session)
+    if session.status == VendorLocationSession.STATUS_EXPIRED:
+        return JsonResponse({'success': False, 'message': 'Session expired'}, status=410)
+    if session.status == VendorLocationSession.STATUS_COMPLETED:
+        response_payload = {'success': True, 'message': 'Location already captured'}
+        if include_location_payload:
+            response_payload['location'] = {
+                'latitude': float(session.latitude) if session.latitude is not None else None,
+                'longitude': float(session.longitude) if session.longitude is not None else None,
+                'full_address': session.full_address,
+                'locality': session.locality,
+                'city': session.city,
+                'state': session.state,
+                'pincode': session.pincode,
+                'captured_at': session.updated_at.isoformat() if session.updated_at else '',
+            }
+        return JsonResponse(response_payload)
+
+    try:
+        lat_float = float(latitude)
+        lng_float = float(longitude)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid coordinates'}, status=400)
+
+    try:
+        geo_details = _reverse_geocode_coordinates(lat_float, lng_float)
+    except Exception as exc:
+        print(f"❌ Reverse geocoding failed ({context_label}): {exc}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Unable to verify address from GPS. Please retry.',
+        }, status=502)
+
+    session.latitude = _to_decimal_or_none(lat_float)
+    session.longitude = _to_decimal_or_none(lng_float)
+    session.full_address = geo_details.get('full_address', '')
+    session.locality = geo_details.get('locality', '')
+    session.city = geo_details.get('city', '')
+    session.state = geo_details.get('state', '')
+    session.pincode = geo_details.get('pincode', '')
+    session.status = VendorLocationSession.STATUS_COMPLETED
+    session.save(update_fields=[
+        'latitude', 'longitude', 'full_address', 'locality',
+        'city', 'state', 'pincode', 'status', 'updated_at'
+    ])
+
+    response_payload = {'success': True, 'message': 'Location captured successfully'}
+    if include_location_payload:
+        response_payload['location'] = {
+            'latitude': lat_float,
+            'longitude': lng_float,
+            'full_address': session.full_address,
+            'locality': session.locality,
+            'city': session.city,
+            'state': session.state,
+            'pincode': session.pincode,
+            'captured_at': session.updated_at.isoformat() if session.updated_at else '',
+        }
+    return JsonResponse(response_payload)
+
+
+@require_GET
+def vendor_location_status(request):
+    """
+    Laptop polls this endpoint every 2 seconds to check if the phone reported coordinates.
+    """
+    session_id = request.GET.get('session_id', '').strip()
+    if not session_id:
+        return JsonResponse({'success': False, 'status': 'missing_session'}, status=400)
+
+    try:
+        session = VendorLocationSession.objects.get(session_id=session_id)
+    except VendorLocationSession.DoesNotExist:
+        return JsonResponse({'success': False, 'status': 'not_found'}, status=404)
+
+    session = _mark_session_expired_if_needed(session)
+
+    if session.status == VendorLocationSession.STATUS_PENDING:
+        return JsonResponse({'success': False, 'status': 'pending'})
+
+    if session.status == VendorLocationSession.STATUS_EXPIRED:
+        return JsonResponse({'success': False, 'status': 'expired'}, status=410)
+
+    location_payload = {
+        'latitude': float(session.latitude) if session.latitude is not None else None,
+        'longitude': float(session.longitude) if session.longitude is not None else None,
+        'full_address': session.full_address,
+        'locality': session.locality,
+        'city': session.city,
+        'state': session.state,
+        'pincode': session.pincode,
+        'captured_at': session.updated_at.isoformat() if session.updated_at else '',
+    }
+
+    return JsonResponse({'success': True, 'location': location_payload})
+
+
+@require_GET
+def user_location_status(request):
+    """
+    User dashboard polling endpoint (delegates to vendor handler).
+    """
+    return vendor_location_status(request)
 
 
 def vendor_documents(request):
@@ -5330,48 +5679,60 @@ def vendor_pricing(request):
     Render the pricing form on GET, handle pricing submission on POST.
     """
     if request.method == 'GET':
-        # Get vendor email from URL parameters
-        vendor_email = request.GET.get('vendorEmail')
-        
-        # If vendor email is provided, fetch vendor details
+        load_pricing = request.GET.get('load_pricing')
+
+        # Prefer session-scoped vendor identity; fall back to URL param only if necessary
+        vendor_email = (request.session.get('vendor_email') or '').strip()
+        url_vendor_email = (request.GET.get('vendorEmail') or request.GET.get('email') or '').strip()
+        if url_vendor_email:
+            vendor_email = url_vendor_email
+
+        if not vendor_email:
+            if load_pricing:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Vendor email missing in session'
+                }, status=400)
+            messages.error(request, 'Please complete registration or login again to continue pricing setup.')
+            return redirect('vendor_register')
+
+        # Fetch vendor profile with D1-first strategy and R2 fallback
         vendor_details = None
+        try:
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                # Newly created vendors might still be propagating; retry once
+                time.sleep(1)
+                vendor_details = get_vendor_details_by_email(vendor_email)
+        except Exception as e:
+            print(f"❌ Failed to fetch vendor details for pricing: {e}")
+
+        # Load existing pricing data when requested
+        pricing_data = None
         if vendor_email:
             try:
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
-                
-                key = f'vendor_register_details/{sanitize_email(vendor_email)}/registration_details.json'
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                vendor_details = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                print(f"❌ Error fetching vendor details: {str(e)}")
-                vendor_details = None
-        
-        # Check if load_pricing parameter is present
-        load_pricing = request.GET.get('load_pricing')
-        pricing_data = None
-        
-        if load_pricing and vendor_email:
-            try:
-                # Try to load existing pricing data
-                pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
-                
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
-                pricing_data = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                print(f"ℹ️ No existing pricing data found for {vendor_email}: {str(e)}")
-                pricing_data = None
-        
-        # If this is an AJAX request for loading pricing data, return JSON
-        if load_pricing and vendor_email:
+                s3 = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.R2_ACCESS_KEY,
+                    aws_secret_access_key=settings.R2_SECRET_KEY,
+                    endpoint_url=settings.R2_ENDPOINT,
+                    region_name='auto'
+                )
+            except Exception as s3_error:
+                s3 = None
+                print(f"⚠️ Unable to initialise R2 client for pricing fetch: {s3_error}")
+        else:
+            s3 = None
+
+        if load_pricing:
+            if s3:
+                try:
+                    pricing_key = f'vendor_register_details/{sanitize_email(vendor_email)}/pricing.json'
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=pricing_key)
+                    pricing_data = json.loads(response['Body'].read().decode('utf-8'))
+                except Exception as e:
+                    print(f"ℹ️ No existing pricing data found for {vendor_email}: {e}")
+                    pricing_data = None
             if pricing_data:
                 return JsonResponse({
                     'success': True,
@@ -5379,15 +5740,15 @@ def vendor_pricing(request):
                     'categorized_pricing': pricing_data.get('categorized_pricing', {}),
                     'services_summary': pricing_data.get('services_summary', {})
                 })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'No pricing data found'
-                })
-        
+            return JsonResponse({
+                'success': False,
+                'message': 'No pricing data found'
+            })
+
         context = {
             'vendor_email': vendor_email,
-            'vendor_details': vendor_details,
+            'vendor': vendor_details or {},
+            'vendor_details': vendor_details or {},
             'pricing_data': pricing_data
         }
         return render(request, 'vendor_pricing.html', context)
@@ -5916,6 +6277,9 @@ def vendor_register_api(request):
             city = data.get('city', '').strip()
             locality = data.get('locality', '').strip()
             shop_address = data.get('shop_address', '').strip()
+            full_address = data.get('full_address', '').strip()
+            if full_address:
+                shop_address = full_address
             pincode = data.get('pincode', '').strip()
             # Support both old (latitude/longitude) and new (vendor_lat/vendor_lng) field names
             latitude = data.get('vendor_lat') or data.get('latitude', '0')
@@ -5961,6 +6325,7 @@ def vendor_register_api(request):
                 'city': city,
                 'locality': locality,
                 'shop_address': shop_address,
+                'full_address': shop_address,
                 'pincode': pincode
             }
             
@@ -6049,9 +6414,14 @@ def vendor_register_api(request):
                 'city': city,
                 'locality': locality,
                 'shop_address': shop_address,
+                'full_address': shop_address,
                 'pincode': pincode,
-                'latitude': str(lat_float),
-                'longitude': str(lng_float),
+                # Store coordinates as proper numeric values
+                'latitude': lat_float,
+                'longitude': lng_float,
+                # Also expose vendor_lat/vendor_lng for downstream consumers
+                'vendor_lat': lat_float,
+                'vendor_lng': lng_float,
                 'vendor_id': vendor_id,
                 'vendor_token': vendor_token,
                 'status': 'pending'
@@ -6159,6 +6529,14 @@ def vendor_register_api(request):
             shop_folder_name = sanitize_shop_name(vendor_name)
 
             print(f"🎉 Registration completed successfully for {email}")
+
+            # Persist newly registered vendor in session so downstream steps don't need URL params
+            request.session['vendor_email'] = email
+            request.session['vendor_name'] = vendor_name
+            request.session['vendor_id'] = vendor_id
+            request.session['vendor_token'] = vendor_token
+            request.session.modified = True
+
             return JsonResponse({
                 'success': True,
                 'message': 'Registration successful' + (" (Welcome email sent)" if email_sent else " (Welcome email will be sent later)"),
@@ -9131,40 +9509,10 @@ def get_vendor_email_by_vendor_id(vendor_id):
 # ─────────────────────────────────────────────────────────────
 
 def free_token_in_vendor_pool(vendor_email: str, token: str) -> bool:
-    """Mark a token as 'free' in vendor_register_details/{email}/token.json AND in Vendor_tokens D1 table"""
+    """Mark a token as 'free' in Vendor_tokens D1 table based on vendor_email"""
     try:
         if not token:
             return False
-
-        # Free token in R2 (legacy storage)
-        sanitized = sanitize_email(vendor_email)
-        token_key = f'vendor_register_details/{sanitized}/token.json'
-
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-
-        r2_freed = False
-        try:
-            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=token_key)
-            token_data = json.loads(response['Body'].read().decode('utf-8'))
-            token_str = str(token)
-            if token_str in token_data:
-                token_data[token_str] = "free"
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=token_key,
-                    Body=json.dumps(token_data, indent=4),
-                    ContentType='application/json'
-                )
-                r2_freed = True
-                print(f"✅ Freed token {token_str} in R2 for vendor {vendor_email}")
-            else:
-                print(f"⚠️ Token {token_str} not found in R2 token.json for {vendor_email}")
-        except Exception as e:
-            print(f"⚠️ Could not free token in R2 for {vendor_email}: {str(e)}")
 
         # Free token in D1 Vendor_tokens table (primary storage)
         d1_freed = False
@@ -9207,8 +9555,8 @@ def free_token_in_vendor_pool(vendor_email: str, token: str) -> bool:
         except Exception as e:
             print(f"⚠️ Error freeing token in D1 for {vendor_email}: {str(e)}")
 
-        # Return True if at least one storage was updated successfully
-        return r2_freed or d1_freed
+        # Return True if D1 update was successful
+        return d1_freed
     except Exception as e:
         print(f"❌ Error freeing token for {vendor_email}: {str(e)}")
         return False
@@ -10450,6 +10798,100 @@ def accept_job(request):
         print(f"Error accepting job: {e}")
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
+def get_2day_period_for_date(date_obj):
+    """
+    Calculate the 2-day period for a given date.
+    Returns (period_start, period_end) as date objects.
+    Ensures non-overlapping periods: 27-28, 28-29, etc.
+    """
+    # Get the day of month
+    day = date_obj.day
+    
+    # Calculate which 2-day period this date belongs to
+    # Periods: 1-2, 3-4, 5-6, ..., 27-28, 29-30, 31 (if applicable)
+    # For odd days: start is the day itself, end is day+1
+    # For even days: start is day-1, end is the day itself
+    
+    if day % 2 == 1:  # Odd day (1, 3, 5, ..., 27, 29, 31)
+        period_start = date_obj
+        period_end = date_obj + datetime.timedelta(days=1)
+    else:  # Even day (2, 4, 6, ..., 28, 30)
+        period_start = date_obj - datetime.timedelta(days=1)
+        period_end = date_obj
+    
+    # Handle month boundaries
+    if period_end.month != period_start.month:
+        # If period_end goes into next month, adjust to last day of current month
+        import calendar
+        last_day = calendar.monthrange(period_start.year, period_start.month)[1]
+        period_end = datetime.date(period_start.year, period_start.month, last_day)
+    
+    return period_start, period_end
+
+def create_or_update_vendor_transaction(vendor_email, vendor_id, vendor_name, completion_date, filename, total_price, platform_profit):
+    """
+    Create or update vendor transaction report for the 2-day period containing completion_date.
+    This ensures all jobs completed within the same 2-day period are aggregated together.
+    """
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            print("⚠️ Worker API not configured - skipping transaction report creation")
+            return False
+        
+        # Calculate 2-day period
+        period_start, period_end = get_2day_period_for_date(completion_date)
+        period_start_str = period_start.strftime('%Y-%m-%d')
+        period_end_str = period_end.strftime('%Y-%m-%d')
+        
+        print(f"📊 Creating/updating transaction report for period: {period_start_str} to {period_end_str}")
+        
+        # Get job details to calculate totals
+        # We'll aggregate all jobs in this period, but for now add this single job
+        total_earning = float(total_price) - float(platform_profit)
+        
+        # Call worker API to create or update transaction
+        worker_endpoint = api_url.rstrip('/') + '/aggregate-vendor-transaction'
+        
+        payload = {
+            'vendor_email': vendor_email,
+            'vendor_id': vendor_id,
+            'vendor_name': vendor_name,
+            'current_date': completion_date.strftime('%Y-%m-%d'),
+            'period_start': period_start_str,
+            'period_end': period_end_str,
+            'total_price': float(total_price),
+            'platform_profit': float(platform_profit),
+            'total_earning': total_earning,
+            'total_documents': 1,
+            'filename': filename  # Include filename to prevent double counting
+        }
+        
+        response = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            print(f"✅ Transaction report created/updated for {vendor_email} (period: {period_start_str} to {period_end_str})")
+            return True
+        else:
+            print(f"⚠️ Failed to create/update transaction report: {response.status_code} - {response.text[:200]}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error creating/updating vendor transaction: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 @csrf_exempt
 def mark_job_completed(request):
     """Mark a print job as completed by updating job_completed to 'YES' and free the token"""
@@ -10532,6 +10974,88 @@ def mark_job_completed(request):
                 print(f"⚠️ Error updating D1 database: {e}")
             
             if success:
+                # Get pricing details from job metadata for transaction report
+                total_price = 0.0
+                platform_profit = 0.0
+                
+                # First, try to get from D1 database Vendor_print_jobs table
+                try:
+                    api_url = getattr(settings, 'WORKER_API_URL', '')
+                    api_key = getattr(settings, 'WORKER_API_KEY', '')
+                    
+                    if api_url and api_key:
+                        # Get job from Vendor_print_jobs table
+                        worker_endpoint = api_url.rstrip('/') + '/get-vendor-print-jobs'
+                        job_response = requests.post(
+                            worker_endpoint,
+                            json={'vendor_id': vendor_id, 'filename': filename},
+                            headers={
+                                'Content-Type': 'application/json',
+                                'x-api-key': api_key
+                            },
+                            timeout=10
+                        )
+                        
+                        if job_response.status_code == 200:
+                            job_data = job_response.json()
+                            if job_data.get('success') and job_data.get('data'):
+                                jobs = job_data.get('data', [])
+                                # Filter by filename to get exact match
+                                matching_jobs = [j for j in jobs if j.get('filename') == filename]
+                                if matching_jobs:
+                                    job = matching_jobs[0]  # Get first matching job
+                                    total_price = float(job.get('total_price', 0.0))
+                                    platform_profit = float(job.get('platform_profit', 0.0))
+                                    print(f"✅ Retrieved pricing from D1: total_price={total_price}, platform_profit={platform_profit}")
+                except Exception as e:
+                    print(f"⚠️ Error getting pricing from D1: {e}")
+                
+                # Fallback to R2 metadata if D1 doesn't have pricing
+                if total_price == 0.0 or platform_profit == 0.0:
+                    try:
+                        s3 = boto3.client('s3',
+                                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                                          endpoint_url=settings.R2_ENDPOINT,
+                                          region_name='auto')
+                        
+                        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                        try:
+                            result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                            metadata = result.get('Metadata', {})
+                            
+                            # Extract pricing_details
+                            pricing_details_str = metadata.get('pricing_details')
+                            if pricing_details_str:
+                                try:
+                                    pricing_obj = json.loads(pricing_details_str)
+                                    if total_price == 0.0:
+                                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                                    if platform_profit == 0.0:
+                                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                                except:
+                                    pass
+                            
+                            # Fallback to metadata if pricing_details not available
+                            if total_price == 0.0:
+                                total_price = float(metadata.get('total_price', 0.0))
+                            if platform_profit == 0.0:
+                                platform_profit = float(metadata.get('platform_profit', 0.0))
+                        except Exception as e:
+                            print(f"⚠️ Error getting pricing from R2 metadata: {e}")
+                    except Exception as e:
+                        print(f"⚠️ Error accessing S3 for pricing: {e}")
+                
+                # Create or update vendor transaction report for 2-day period
+                completion_date = datetime.datetime.now().date()
+                try:
+                    create_or_update_vendor_transaction(
+                        vendor_email, vendor_id, vendor_name, 
+                        completion_date, filename, total_price, platform_profit
+                    )
+                except Exception as e:
+                    print(f"⚠️ Error creating transaction report: {e}")
+                
                 # Free the token if it was found
                 token_freed = False
                 if job_token:
@@ -11813,13 +12337,32 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         if formatted_service_type == 'Print Job':
             formatted_service_type = 'Document Printing'
         
-        # Extract document name from filename (remove extension and token)
-        document_name = os.path.splitext(filename)[0]
-        if '_' in document_name:
-            # Remove token part if present
-            parts = document_name.split('_')
+        # Extract document name from filename - show PDF name with extension
+        # Get the base filename (without path)
+        base_filename = os.path.basename(filename)
+        file_ext = os.path.splitext(base_filename)[1]  # Get extension (.pdf, .jpg, etc.)
+        document_name_without_ext = os.path.splitext(base_filename)[0]
+        
+        # Extract the actual document name (remove token if present)
+        # Format is usually: DocumentName_Token.pdf
+        if '_' in document_name_without_ext:
+            parts = document_name_without_ext.split('_')
             if len(parts) > 1:
-                document_name = '_'.join(parts[:-1])
+                # Take all parts except the last one (which is usually the token)
+                document_name_base = '_'.join(parts[:-1])
+            else:
+                document_name_base = document_name_without_ext
+        else:
+            document_name_base = document_name_without_ext
+        
+        # Create display name with extension (e.g., "Azfar...pdf")
+        if len(document_name_base) > 20:
+            display_name = document_name_base[:17] + '...' + file_ext
+        else:
+            display_name = document_name_base + file_ext
+        
+        # Format token without # symbol
+        token_display = str(token) if token else 'Unknown'
         
         notification_data = {
             'notification_id': notification_id,
@@ -11832,11 +12375,11 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'created_at': datetime.datetime.now().isoformat(),
             'read': False,
             'type': 'job_completed',
-            'title': '🎉 Print Job Successfully Completed!',
-            'message': f'Your {formatted_service_type} order for "{document_name}" has been completed and is ready for pickup. Token: #{token}',
-            'detailed_message': f'Document: {document_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: #{token}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
+            'title': 'Print Job Completed',
+            'message': f'Your document "{display_name}" is ready for pickup. Token: {token_display}',
+            'detailed_message': f'Document: {display_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: {token_display}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
             'token': token,
-            'document_name': document_name,
+            'document_name': document_name_base,
             'service_type': formatted_service_type,
             'platform_profit': platform_profit,
             'total_price': total_price

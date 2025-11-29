@@ -7,6 +7,14 @@ from firebase_admin import credentials
 # Load environment variables
 load_dotenv()
 
+
+def _split_env_list(value):
+    """Return a cleaned list from a comma-separated env var."""
+    if not value:
+        return []
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -17,8 +25,18 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 # Default to True for local testing (override via .env DEBUG=False in prod)
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-# Local testing hosts + production domain
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'printmax.onrender.com', 'printmax.in','192.168.1.4']
+# Local testing hosts + production domain + tunneling domains
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    'printmax.onrender.com',
+    'printmax.in',
+    '.ngrok-free.app',
+    '.ngrok-free.dev',
+]
+ALLOWED_HOSTS += _split_env_list(os.getenv('ALLOWED_HOSTS_EXTRA'))
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))  # Drop duplicates while preserving order
 
 # Application definition
 INSTALLED_APPS = [
@@ -289,14 +307,20 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/userdashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
-# ✅ CSRF Settings for local testing
+# ✅ CSRF Settings for local testing + public tunnels
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'http://0.0.0.0:8000',
     'https://printmax.onrender.com',
     'https://printmax.in',
+    'https://*.ngrok-free.app',
+    'https://*.ngrok-free.dev',
 ]
+CSRF_TRUSTED_ORIGINS += _split_env_list(os.getenv('CSRF_TRUSTED_ORIGINS_EXTRA'))
+
+# Desktop QR location flow override (needed when phones can't reach localhost)
+LOCATION_QR_BASE_URL = os.getenv('LOCATION_QR_BASE_URL', '').rstrip('/')
 
 # ✅ Security Settings for local HTTP testing
 SECURE_SSL_REDIRECT = False

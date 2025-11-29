@@ -1,0 +1,305 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Location | PrintMax</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--gray-50);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .mobile-card {
+            background: #fff;
+            width: min(460px, 100%);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 20px 45px rgba(37, 99, 235, 0.15);
+            text-align: center;
+        }
+        .logo {
+            width: 110px;
+            margin: 0 auto 1rem;
+            display: block;
+        }
+        h1 {
+            font-size: 1.4rem;
+            color: var(--gray-800);
+            margin-bottom: 0.4rem;
+        }
+        p.subtitle {
+            color: var(--gray-600);
+            margin-bottom: 1.25rem;
+            font-size: 0.95rem;
+        }
+        .status-card {
+            border: 1px solid var(--gray-200);
+            border-radius: 18px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+        .status-card .material-icons {
+            font-size: 1.8rem;
+        }
+        .status-info {
+            border-color: rgba(37, 99, 235, 0.2);
+            background: rgba(37, 99, 235, 0.06);
+            color: var(--primary);
+        }
+        .status-pending {
+            border-color: rgba(245, 158, 11, 0.2);
+            background: rgba(245, 158, 11, 0.08);
+            color: var(--warning);
+        }
+        .status-success {
+            border-color: rgba(16, 185, 129, 0.2);
+            background: rgba(16, 185, 129, 0.08);
+            color: var(--success);
+        }
+        .status-error {
+            border-color: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.08);
+            color: var(--error);
+        }
+        .status-text h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .status-text p {
+            margin: 0.25rem 0 0;
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+        .primary-btn, .ghost-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            border-radius: 999px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .primary-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            box-shadow: 0 12px 20px rgba(37, 99, 235, 0.25);
+        }
+        .primary-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .ghost-btn {
+            background: transparent;
+            border: 1px dashed var(--gray-200);
+            color: var(--gray-600);
+        }
+        .helper-text {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-card">
+        <img src="{% static 'images/printmaxdaylogo.png' %}" alt="PrintMax" class="logo">
+        <h1>Verify Your Location</h1>
+        <p class="subtitle">Allow GPS access so we can capture your exact location securely.</p>
+
+        <div id="statusCard" class="status-card status-info">
+            <span class="material-icons" id="statusIcon">gps_fixed</span>
+            <div class="status-text">
+                <h2 id="statusTitle">Waiting for permission</h2>
+                <p id="statusMessage">Please allow location access when prompted.</p>
+            </div>
+        </div>
+
+        <button id="retryBtn" class="primary-btn" style="display:none;">
+            <span class="material-icons">refresh</span>
+            Retry location access
+        </button>
+        <button id="openSettingsBtn" class="ghost-btn" style="display:none;">
+            <span class="material-icons">settings</span>
+            Open browser settings
+        </button>
+
+        <p class="helper-text">
+            Keep this page open until you see “Location verified — return to your laptop”.
+        </p>
+    </div>
+
+    <script>
+        const sessionId = new URLSearchParams(window.location.search).get('session_id') || "{{ session_id|default:'' }}";
+
+        const statusCard = document.getElementById('statusCard');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusMessage = document.getElementById('statusMessage');
+        const retryBtn = document.getElementById('retryBtn');
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+
+        const statusClasses = ['status-info', 'status-pending', 'status-success', 'status-error'];
+
+        function updateStatus(state, title, message) {
+            statusClasses.forEach(cls => statusCard.classList.remove(cls));
+            const classMap = {
+                info: 'status-info',
+                pending: 'status-pending',
+                success: 'status-success',
+                error: 'status-error'
+            };
+            statusCard.classList.add(classMap[state] || classMap.info);
+            const iconMap = {
+                info: 'gps_fixed',
+                pending: 'sync',
+                success: 'check_circle',
+                error: 'error'
+            };
+            statusIcon.textContent = iconMap[state] || iconMap.info;
+            statusTitle.textContent = title;
+            statusMessage.textContent = message;
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function startCapture() {
+            retryBtn.style.display = 'none';
+            openSettingsBtn.style.display = 'none';
+
+            if (!sessionId) {
+                updateStatus('error', 'Invalid link', 'Session ID missing. Please rescan the QR code.');
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                updateStatus('error', 'Unsupported device', 'Your browser does not support GPS. Please try a different phone.');
+                retryBtn.style.display = 'inline-flex';
+                return;
+            }
+
+            updateStatus('info', 'Requesting GPS access', 'Allow location access so we can capture accurate coordinates.');
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    updateStatus('pending', 'Capturing location', 'Almost done. Please wait...');
+                    await sendLocation(position.coords);
+                },
+                (error) => {
+                    console.error('Geolocation error', error);
+                    let message = 'Please enable GPS/location for your browser and try again.';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        message = 'Location access denied. Please enable permissions and try again.';
+                        openSettingsBtn.style.display = 'inline-flex';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        message = 'Unable to detect your location. Move to an open area and retry.';
+                    } else if (error.code === error.TIMEOUT) {
+                        message = 'Location request timed out. Please retry.';
+                    }
+                    updateStatus('error', 'Location required', message);
+                    retryBtn.style.display = 'inline-flex';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 20000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        async function sendLocation(coords) {
+            try {
+                const payload = {
+                    session_id: sessionId,
+                    latitude: coords.latitude,
+                    longitude: coords.longitude
+                };
+
+                const response = await fetch("{% url 'user_set_location' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload)
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                const rawBody = await response.text();
+                const data = contentType.includes('application/json') ? JSON.parse(rawBody || '{}') : null;
+
+                if (!response.ok || !data || !data.success) {
+                    const fallbackMessage = data && data.message ? data.message : (rawBody && rawBody.slice(0, 120)) || 'Unable to save location';
+                    throw new Error(fallbackMessage);
+                }
+
+                updateStatus('success', 'Location verified', 'Return to your laptop to continue.');
+                retryBtn.style.display = 'none';
+                openSettingsBtn.style.display = 'none';
+                setTimeout(() => {
+                    window.close();
+                }, 1500);
+            } catch (error) {
+                console.error('Failed to send location', error);
+                updateStatus('error', 'Verification failed', error.message || 'Unable to save your location. Please retry.');
+                retryBtn.style.display = 'inline-flex';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            retryBtn.addEventListener('click', startCapture);
+            openSettingsBtn.addEventListener('click', () => {
+                updateStatus('info', 'Open browser settings', 'Enable location permissions for your browser and come back.');
+            });
+            startCapture();
+        });
+    </script>
+</body>
+</html>
+
