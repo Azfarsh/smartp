@@ -2143,50 +2143,38 @@ def process_vendor_documents_from_r2_date_range(s3, vendor_id, start_date, end_d
 
 
 def get_vendor_reports_for_history(request):
-    """Get vendor reports for history section (no auth required)"""
+    """Get vendor reports for history section from D1 database (no auth required)"""
     try:
         vendor_id = request.GET.get('vendor_id')
+        vendor_email = request.GET.get('vendor_email')
         month = request.GET.get('month')
         
-        if not vendor_id:
+        if not vendor_id and not vendor_email:
             return JsonResponse({
                 'success': False,
-                'error': 'Vendor ID is required'
+                'error': 'Vendor ID or email is required'
             }, status=400)
         
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-        
-        # First, find the vendor's email to get the correct path
-        vendor_email = ''
-        try:
-            reg_prefix = "vendor_register_details/"
-            reg_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=reg_prefix)
+        # If vendor_id provided, get vendor_email from D1
+        if vendor_id and not vendor_email:
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
             
-            if 'Contents' in reg_objects:
-                for obj in reg_objects['Contents']:
-                    key = obj["Key"]
-                    if key.endswith('registration_details.json'):
-                        try:
-                            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                            reg_data = json.loads(response['Body'].read().decode('utf-8'))
-                            
-                            if reg_data.get('vendor_id') == vendor_id:
-                                vendor_email = reg_data.get('vendor_email', '')
-                                # If vendor_email is not in the data, extract from folder path
-                                if not vendor_email:
-                                    # Extract email from folder path: vendor_register_details/email_at_domain_dot_com/
-                                    folder_path = key.split('/')[1]  # Get the folder name
-                                    vendor_email = folder_path.replace('_at_', '@').replace('_dot_', '.')
-                                break
-                        except Exception as e:
-                            print(f"Error reading vendor registration {key}: {str(e)}")
-                            continue
-        except Exception as e:
-            print(f"Error getting vendor email for {vendor_id}: {str(e)}")
+            if api_url and api_key:
+                try:
+                    worker_endpoint = api_url.rstrip('/') + '/get-vendor-register-details'
+                    resp = requests.post(
+                        worker_endpoint,
+                        json={'vendor_id': vendor_id},
+                        headers={'x-api-key': api_key, 'Content-Type': 'application/json'},
+                        timeout=10
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get('success') and data.get('data'):
+                            vendor_email = data['data'].get('email', '')
+                except Exception as e:
+                    print(f"Error getting vendor email: {e}")
         
         if not vendor_email:
             return JsonResponse({
@@ -2194,54 +2182,85 @@ def get_vendor_reports_for_history(request):
                 'error': 'Vendor not found'
             }, status=404)
         
-        # Sanitize email for folder name
-        sanitized_email = vendor_email.replace('@', '_at_').replace('.', '_dot_')
+        # Get transactions from D1
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
         
-        # List all reports for this vendor
-        reports_prefix = f"vendor_register_details/{sanitized_email}/transactionreports/"
-        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=reports_prefix)
+        if not api_url or not api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'Worker API not configured'
+            }, status=500)
         
-        reports = []
-        available_months = set()
+        worker_endpoint = api_url.rstrip('/') + '/get-vendor-transactions'
+        payload = {'vendor_email': vendor_email}
+        if month:
+            payload['month'] = month
         
-        if 'Contents' in objects:
-            for obj in objects['Contents']:
-                key = obj["Key"]
-                if key.endswith('.json'):
-                    try:
-                        # Get report data
-                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                        report_data = json.loads(response['Body'].read().decode('utf-8'))
-                        
-                        # Add month to available months
-                        report_date_str = report_data.get('generated_at', report_data.get('report_date', ''))
-                        if report_date_str:
-                            report_date = datetime.datetime.fromisoformat(report_date_str.replace('Z', '+00:00'))
-                            report_month = report_date.strftime('%Y-%m')
-                            available_months.add(report_month)
-                            
-                            # Filter by month if specified
-                            if month and report_month != month:
-                                continue
-                        
-                        reports.append(report_data)
-                        
-                    except Exception as e:
-                        print(f"Error reading report {key}: {str(e)}")
-                        continue
-        
-        # Sort by report date (newest first)
-        reports.sort(key=lambda x: x.get('generated_at', x.get('report_date', '')), reverse=True)
-        
-        # Convert available months to sorted list
-        available_months_list = sorted(list(available_months), reverse=True)
-        
-        return JsonResponse({
-            'success': True,
-            'reports': reports,
-            'available_months_list': available_months_list,
-            'total_count': len(reports)
-        })
+        try:
+            resp = requests.post(
+                worker_endpoint,
+                json=payload,
+                headers={'x-api-key': api_key, 'Content-Type': 'application/json'},
+                timeout=20
+            )
+            
+            if resp.status_code != 200:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Failed to fetch transactions: {resp.status_code}'
+                }, status=500)
+            
+            data = resp.json()
+            if not data.get('success'):
+                return JsonResponse({
+                    'success': False,
+                    'error': data.get('error', 'Unknown error')
+                }, status=500)
+            
+            transactions = data.get('transactions', []) or []
+            
+            # Format transactions as reports for compatibility
+            reports = []
+            available_months = set()
+            
+            for trans in transactions:
+                period_start = trans.get('period_start', '')
+                if period_start:
+                    report_month = period_start[:7]  # YYYY-MM
+                    available_months.add(report_month)
+                
+                # Format as report data
+                report_data = {
+                    'generated_at': trans.get('created_at', ''),
+                    'report_date': trans.get('created_at', ''),
+                    'total_amount': trans.get('total_earning', 0.0),
+                    'total_earning': trans.get('total_earning', 0.0),
+                    'total_documents': trans.get('total_documents', 0),
+                    'period_start': trans.get('period_start', ''),
+                    'period_end': trans.get('period_end', ''),
+                    'payment_status': trans.get('payment_status', 'not_completed'),
+                    'amount_paid': trans.get('amount_paid', 0.0)
+                }
+                reports.append(report_data)
+            
+            # Sort by date (newest first)
+            reports.sort(key=lambda x: x.get('generated_at', ''), reverse=True)
+            available_months_list = sorted(list(available_months), reverse=True)
+            
+            return JsonResponse({
+                'success': True,
+                'reports': reports,
+                'available_months_list': available_months_list,
+                'total_count': len(reports)
+            })
+            
+        except Exception as e:
+            print(f"Error fetching vendor transactions: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
         
     except Exception as e:
         return JsonResponse({
@@ -2559,93 +2578,120 @@ def generate_historical_reports():
 
 @staff_member_required
 def admin_transactions_data(request):
-    """Get all vendor transaction reports for admin dashboard with optional month filter"""
+    """Get all vendor transaction reports for admin dashboard from D1 database with optional month filter"""
     try:
         selected_month = request.GET.get('month')  # format YYYY-MM
 
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
 
-        # Collect all vendor emails from registration files
-        reg_prefix = "vendor_register_details/"
-        reg_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=reg_prefix)
+        if not api_url or not api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'Worker API not configured'
+            }, status=500)
 
-        all_reports = []
-        available_months = set()
+        worker_endpoint = api_url.rstrip('/') + '/get-vendor-transactions'
+        payload = {}
+        if selected_month:
+            payload['month'] = selected_month
 
-        if 'Contents' in reg_objects:
-            for obj in reg_objects['Contents']:
-                key = obj["Key"]
-                if key.endswith('registration_details.json'):
+        try:
+            resp = requests.post(
+                worker_endpoint,
+                json=payload,
+                headers={
+                    'x-api-key': api_key,
+                    'Content-Type': 'application/json'
+                },
+                timeout=20
+            )
+
+            if resp.status_code != 200:
+                error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
+                print(f"⚠️ Failed to get transactions from D1: {resp.status_code} - {error_text}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Failed to fetch transactions: {resp.status_code}'
+                }, status=500)
+
+            data = resp.json()
+            if not data.get('success'):
+                error_msg = data.get('error', 'Unknown error')
+                print(f"⚠️ Worker API returned error for transactions: {error_msg}")
+                return JsonResponse({
+                    'success': False,
+                    'error': error_msg
+                }, status=500)
+
+            transactions = data.get('transactions', []) or []
+            
+            # Format transactions for display
+            all_reports = []
+            available_months = set()
+            
+            for trans in transactions:
+                # Format period display
+                period_start = trans.get('period_start', '')
+                period_end = trans.get('period_end', '')
+                period_display = f"{period_start[5:]} - {period_end[5:]}" if period_start and period_end else ''
+                
+                # Extract month from period_start
+                if period_start:
                     try:
-                        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
-                        reg_data = json.loads(response['Body'].read().decode('utf-8'))
+                        report_month = period_start[:7]  # YYYY-MM
+                        available_months.add(report_month)
+                    except Exception:
+                        pass
+                
+                # Format transaction data
+                report_data = {
+                    'id': trans.get('id'),
+                    'transaction_id': trans.get('id'),
+                    'vendor_email': trans.get('vendor_email', ''),
+                    'vendor_id': trans.get('vendor_id', ''),
+                    'vendor_name': trans.get('vendor_name', 'Unknown'),
+                    'total_documents': trans.get('total_documents', 0),
+                    'total_earning': trans.get('total_earning', 0.0),
+                    'total_price': trans.get('total_price', 0.0),
+                    'platform_profit': trans.get('platform_profit', 0.0),
+                    'amount_paid': trans.get('amount_paid', 0.0),
+                    'payment_status': trans.get('payment_status', 'not_completed'),
+                    'period_start': period_start,
+                    'period_end': period_end,
+                    'period_display': period_display,
+                    'created_at': trans.get('created_at', ''),
+                    'updated_at': trans.get('updated_at', ''),
+                    # For compatibility with existing UI
+                    '__vendor_email': trans.get('vendor_email', ''),
+                    '__vendor_name': trans.get('vendor_name', 'Unknown'),
+                    '__vendor_id': trans.get('vendor_id', ''),
+                }
+                
+                all_reports.append(report_data)
 
-                        vendor_email = reg_data.get('vendor_email', '')
-                        vendor_name = reg_data.get('vendor_name', 'Unknown')
-                        vendor_id = reg_data.get('vendor_id')
-
-                        # Fallback: infer email from folder
-                        if not vendor_email:
-                            folder_path = key.split('/')[1]
-                            vendor_email = folder_path.replace('_at_', '@').replace('_dot_', '.')
-
-                        if not vendor_email:
-                            continue
-
-                        sanitized_email = vendor_email.replace('@', '_at_').replace('.', '_dot_')
-                        reports_prefix = f"vendor_register_details/{sanitized_email}/transactionreports/"
-                        rep_objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=reports_prefix)
-
-                        if 'Contents' in rep_objects:
-                            for robj in rep_objects['Contents']:
-                                rkey = robj['Key']
-                                if not rkey.endswith('.json'):
-                                    continue
-                                try:
-                                    rresp = s3.get_object(Bucket=settings.R2_BUCKET, Key=rkey)
-                                    report_data = json.loads(rresp['Body'].read().decode('utf-8'))
-
-                                    # Compute month for filtering and available months
-                                    report_date_str = report_data.get('generated_at', report_data.get('report_date', ''))
-                                    report_month = None
-                                    if report_date_str:
-                                        try:
-                                            rdt = datetime.datetime.fromisoformat(report_date_str.replace('Z', '+00:00'))
-                                            report_month = rdt.strftime('%Y-%m')
-                                            available_months.add(report_month)
-                                        except Exception:
-                                            pass
-
-                                    if selected_month and report_month and report_month != selected_month:
-                                        continue
-
-                                    # Attach identification fields to allow updates from admin UI
-                                    report_data['__vendor_email'] = vendor_email
-                                    report_data['__vendor_name'] = vendor_name
-                                    report_data['__vendor_id'] = vendor_id
-                                    report_data['__report_key'] = rkey
-
-                                    all_reports.append(report_data)
-                                except Exception as e:
-                                    print(f"Error reading report {rkey}: {str(e)}")
-                                    continue
-                    except Exception as e:
-                        print(f"Error reading vendor registration {key}: {str(e)}")
-                        continue
-
-        # Sort newest first
-        all_reports.sort(key=lambda x: x.get('generated_at', x.get('report_date', '')), reverse=True)
-        
-        return JsonResponse({
-            'success': True,
-            'transactions': all_reports,
-            'available_months': sorted(list(available_months), reverse=True),
-            'total_count': len(all_reports)
-        })
+            # Sort newest first
+            all_reports.sort(key=lambda x: x.get('period_start', ''), reverse=True)
+            
+            return JsonResponse({
+                'success': True,
+                'transactions': all_reports,
+                'available_months': sorted(list(available_months), reverse=True),
+                'total_count': len(all_reports)
+            })
+            
+        except requests.exceptions.RequestException as exc:
+            print(f"⚠️ Network error fetching transactions from D1: {exc}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Network error: {str(exc)}'
+            }, status=500)
+        except Exception as exc:
+            print(f"⚠️ Unexpected error fetching transactions from D1: {exc}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Unexpected error: {str(exc)}'
+            }, status=500)
         
     except Exception as e:
         return JsonResponse({
@@ -2656,18 +2702,102 @@ def admin_transactions_data(request):
 
 @staff_member_required
 def admin_update_report_payment_status(request):
-    """Update a specific report's payment_status field (e.g., not completed -> completed)"""
+    """Update vendor transaction payment status and amount in D1 database"""
     try:
         if request.method != 'POST':
             return JsonResponse({'success': False, 'error': 'POST required'}, status=405)
 
         data = json.loads(request.body or '{}')
+        transaction_id = data.get('transaction_id') or data.get('id')
         vendor_email = data.get('vendor_email')
-        report_key = data.get('report_key')  # full key preferred
+        amount_paid = data.get('amount_paid', 0.0)
         new_status = data.get('payment_status', 'completed')
 
-        if not vendor_email:
-            return JsonResponse({'success': False, 'error': 'vendor_email is required'}, status=400)
+        if not transaction_id and not vendor_email:
+            return JsonResponse({'success': False, 'error': 'transaction_id or vendor_email is required'}, status=400)
+
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+        if not api_url or not api_key:
+            return JsonResponse({
+                'success': False,
+                'error': 'Worker API not configured'
+            }, status=500)
+
+        worker_endpoint = api_url.rstrip('/') + '/update-vendor-transaction'
+        payload = {
+            'transaction_id': transaction_id,
+            'vendor_email': vendor_email,
+            'amount_paid': float(amount_paid),
+            'payment_status': new_status
+        }
+
+        try:
+            resp = requests.post(
+                worker_endpoint,
+                json=payload,
+                headers={
+                    'x-api-key': api_key,
+                    'Content-Type': 'application/json'
+                },
+                timeout=20
+            )
+
+            if resp.status_code != 200:
+                error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
+                print(f"⚠️ Failed to update transaction in D1: {resp.status_code} - {error_text}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Failed to update transaction: {resp.status_code}'
+                }, status=500)
+
+            data = resp.json()
+            if not data.get('success'):
+                error_msg = data.get('error', 'Unknown error')
+                print(f"⚠️ Worker API returned error: {error_msg}")
+                return JsonResponse({
+                    'success': False,
+                    'error': error_msg
+                }, status=500)
+
+            # If marking as completed, also aggregate the transaction data
+            if new_status == 'completed' and vendor_email:
+                try:
+                    aggregate_endpoint = api_url.rstrip('/') + '/aggregate-vendor-transaction'
+                    aggregate_payload = {
+                        'vendor_email': vendor_email,
+                        'current_date': datetime.datetime.now().isoformat().split('T')[0]
+                    }
+                    requests.post(
+                        aggregate_endpoint,
+                        json=aggregate_payload,
+                        headers={
+                            'x-api-key': api_key,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout=20
+                    )
+                except Exception as agg_error:
+                    print(f"⚠️ Failed to aggregate transaction (non-critical): {agg_error}")
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Transaction updated successfully'
+            })
+            
+        except requests.exceptions.RequestException as exc:
+            print(f"⚠️ Network error updating transaction in D1: {exc}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Network error: {str(exc)}'
+            }, status=500)
+        except Exception as exc:
+            print(f"⚠️ Unexpected error updating transaction in D1: {exc}")
+            return JsonResponse({
+                'success': False,
+                'error': f'Unexpected error: {str(exc)}'
+            }, status=500)
 
         s3 = boto3.client('s3',
                           aws_access_key_id=settings.R2_ACCESS_KEY,

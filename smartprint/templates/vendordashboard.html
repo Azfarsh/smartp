@@ -4853,7 +4853,24 @@
                 return;
             }
             
-            let url = `/vendor-reports/?vendor_id=${vendorId}`;
+            // Get vendor email from vendor details
+            const vendorEmail = '{{ vendor_details.vendor_email }}';
+            if (!vendorEmail) {
+                if (loading) loading.style.display = 'none';
+                if (container) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Vendor Email Not Found</h3>
+                            <p>Unable to load transaction history. Please contact support.</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            // Use D1 database endpoint for vendor transactions
+            let url = `/admin-dashboard/transactions/?vendor_email=${encodeURIComponent(vendorEmail)}`;
             if (selectedMonth) {
                 url += `&month=${selectedMonth}`;
             }

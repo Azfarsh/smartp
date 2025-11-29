@@ -830,10 +830,6 @@
                     <i class="fas fa-address-book"></i>
                     Contact Data
                 </a>
-                <a href="#" class="menu-item" data-category="installations">
-                    <i class="fas fa-download"></i>
-                    New Vendor Installation
-                </a>
                 <a href="#" class="menu-item" data-category="activity">
                     <i class="fas fa-chart-line"></i>
                     Total Activity
@@ -1132,8 +1128,6 @@
                                              <th style="text-align: right;">Total Cost</th>
                                              <th style="text-align: right;">Platform Revenue</th>
                                              <th style="text-align: right;">Last Activity</th>
-                                             <th style="text-align: center;">Invoice Amount</th>
-                                             <th style="text-align: center;">Action</th>
                                          </tr>
                                      </thead>
                                     <tbody id="vendors-table-body">
@@ -1185,6 +1179,7 @@
                                             <th style="text-align:right;">Earnings</th>
                                             <th>Period</th>
                                             <th>Status</th>
+                                            <th style="text-align:center;">Invoice Amount</th>
                                             <th style="text-align:right;">Action</th>
                                         </tr>
                                     </thead>
@@ -1329,10 +1324,95 @@
                 </div>
 
                 <div id="activity-category" class="category-content hidden">
-                    <div class="empty-state">
-                        <i class="fas fa-chart-line"></i>
-                        <h3>Activity Data</h3>
-                        <p>Activity monitoring section coming soon...</p>
+                    <div class="search-filter-section">
+                        <div class="search-filter-row">
+                            <div class="month-selector">
+                                <label for="activity-month-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Select Month:</label>
+                                <select id="activity-month-select" class="month-dropdown">
+                                    <option value="">All Months</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Platform Revenue Cards -->
+                    <div class="overview-cards" style="margin-bottom: 30px;">
+                        <div class="overview-card revenue">
+                            <div class="card-header">
+                                <div class="card-icon revenue">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Platform Revenue</div>
+                                    <div class="card-value" id="activity-total-revenue">₹0.00</div>
+                                    <div class="card-subtitle">From all transactions</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overview-card cost">
+                            <div class="card-header">
+                                <div class="card-icon cost">
+                                    <i class="fas fa-rupee-sign"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total User Payments</div>
+                                    <div class="card-value" id="activity-total-payments">₹0.00</div>
+                                    <div class="card-subtitle">All user payments</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overview-card growth">
+                            <div class="card-header">
+                                <div class="card-icon growth">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Users</div>
+                                    <div class="card-value" id="activity-total-users">0</div>
+                                    <div class="card-subtitle">Active users</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overview-card growth">
+                            <div class="card-header">
+                                <div class="card-icon growth">
+                                    <i class="fas fa-store"></i>
+                                </div>
+                                <div>
+                                    <div class="card-title">Total Vendors</div>
+                                    <div class="card-value" id="activity-total-vendors">0</div>
+                                    <div class="card-subtitle">Active vendors</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts Container -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <!-- Pie Chart -->
+                        <div class="data-container">
+                            <div class="data-header">
+                                <i class="fas fa-chart-pie"></i> Revenue Distribution
+                            </div>
+                            <div class="data-content" style="padding: 20px;">
+                                <canvas id="activity-pie-chart" style="max-height: 300px;"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Bar Graph -->
+                        <div class="data-container">
+                            <div class="data-header">
+                                <i class="fas fa-chart-bar"></i> Monthly Revenue Trend
+                            </div>
+                            <div class="data-content" style="padding: 20px;">
+                                <canvas id="activity-bar-chart" style="max-height: 300px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="activity-loading" class="loading" style="display: none;">
+                        <i class="fas fa-spinner"></i>
+                        <p>Loading activity data...</p>
                     </div>
                 </div>
             </div>
@@ -2051,20 +2131,9 @@
                 'vendors': 'Vendor Data',
                 'transactions': 'Vendor Transactions',
                 'contacts': 'Contact Data',
-                'installations': 'New Vendor Installation',
                 'activity': 'Total Activity'
             };
-            document.getElementById('category-title').textContent = titles[category];
-
-            // Hide/show top bar for installations
-            const topBar = document.querySelector('.top-bar');
-            if (topBar) {
-                if (category === 'installations') {
-                    topBar.style.display = 'none';
-                } else {
-                    topBar.style.display = '';
-                }
-            }
+            document.getElementById('category-title').textContent = titles[category] || 'Dashboard';
 
             // Load data for active category
             if (category === 'users') {
@@ -2073,12 +2142,10 @@
                 loadVendorsData();
             } else if (category === 'transactions') {
                 loadTransactions();
-            } else if (category === 'installations') {
-                // Ensure installations UI is initialized and vendors shown
-                initAvailabilityUI();
-                loadInstallationsVendors();
             } else if (category === 'contacts') {
                 loadContacts();
+            } else if (category === 'activity') {
+                loadActivityData();
             }
         }
 
@@ -2448,40 +2515,9 @@
                         <td class="total-price" style="text-align: right;">₹${totalCost}</td>
                         <td class="platform-profit" style="text-align: right;">₹${platformRevenue}</td>
                         <td class="last-activity" style="text-align: right;">${lastActivity}</td>
-                        <td class="amount-input" style="text-align: center;">
-                            <input type="number" 
-                                   class="amount-field" 
-                                   data-vendor-email="${vendorEmail}"
-                                   placeholder="Enter amount" 
-                                   style="width: 100px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
-                        </td>
-                        <td class="action" style="text-align: center;">
-                            <button class="btn-submit-invoice" 
-                                    data-vendor-email="${vendorEmail}"
-                                    style="background: #4CAF50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
-                                Submit
-                            </button>
-                        </td>
                     </tr>
                 `;
             }).join('');
-             
-             // Add event listeners for submit buttons
-             document.querySelectorAll('.btn-submit-invoice').forEach(button => {
-                 button.addEventListener('click', function() {
-                     const vendorEmail = this.getAttribute('data-vendor-email');
-                     const amountInput = document.querySelector(`input[data-vendor-email="${vendorEmail}"]`);
-                     const amount = amountInput ? amountInput.value : '';
-                     
-                     if (!amount || amount <= 0) {
-                         alert('Please enter a valid amount');
-                         return;
-                     }
-                     
-                     // Submit invoice
-                     submitInvoice(vendorEmail, amount);
-                 });
-             });
         }
 
         // Submit invoice function
@@ -2759,24 +2795,53 @@
             tbody.innerHTML = items.map(rep => {
                 const payCompleted = (rep.payment_status || '').toLowerCase() === 'completed';
                 const period = rep.period_display || `${(rep.period_start||'').slice(5)} - ${(rep.period_end||'').slice(5)}`;
+                const transactionId = rep.id || rep.transaction_id || '';
+                const vendorEmail = (rep.__vendor_email || rep.vendor_email || '').replace(/'/g, "&#39;");
                 return `
                     <tr>
                         <td class="user-email">${rep.__vendor_name || '-'}</td>
                         <td class="user-email">${rep.__vendor_email || rep.vendor_email || '-'}</td>
                         <td class="user-email">${rep.__vendor_id || rep.vendor_id || '-'}</td>
                         <td class="documents-count">${rep.total_documents || 0}</td>
-                        <td class="cost-amount">₹${(rep.total_earning || 0).toFixed(2)}</td>
+                        <td class="cost-amount">₹${(rep.total_earning || rep.total_price || 0).toFixed(2)}</td>
                         <td>${period}</td>
                         <td>
                             <span class="status-badge ${payCompleted ? 'completed' : 'not-completed'}">${payCompleted ? 'Completed' : 'Not Completed'}</span>
                         </td>
+                        <td class="amount-input" style="text-align: center;">
+                            <input type="number" 
+                                   class="amount-field" 
+                                   data-transaction-id="${transactionId}"
+                                   data-vendor-email="${vendorEmail}"
+                                   placeholder="Enter amount" 
+                                   value="${rep.amount_paid || ''}"
+                                   style="width: 100px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;">
+                        </td>
                         <td style="text-align:right; display:flex; gap:10px; justify-content:flex-end; align-items:center;">
-                            ${payCompleted ? '' : `<button class=\"filter-btn\" onclick=\"markReportCompleted('${(rep.__vendor_email || rep.vendor_email || '').replace(/'/g, "&#39;")}', '${(rep.__report_key||'').replace(/'/g, "&#39;")}')\"><i class=\\\"fas fa-check\\\"></i> Mark Completed</button>`}
+                            ${payCompleted ? '' : `<button class=\"filter-btn btn-submit-transaction\" data-transaction-id=\"${transactionId}\" data-vendor-email=\"${vendorEmail}\"><i class=\"fas fa-check\"></i> Mark Completed</button>`}
                             <button class="row-close" title="Hide row" onclick="hideTransactionRow(this)">×</button>
                         </td>
                     </tr>
                 `;
             }).join('');
+            
+            // Add event listeners for submit buttons
+            document.querySelectorAll('.btn-submit-transaction').forEach(button => {
+                button.addEventListener('click', function() {
+                    const transactionId = this.getAttribute('data-transaction-id');
+                    const vendorEmail = this.getAttribute('data-vendor-email');
+                    const amountInput = document.querySelector(`input[data-transaction-id="${transactionId}"]`);
+                    const amount = amountInput ? amountInput.value : '';
+                    
+                    if (!amount || amount <= 0) {
+                        alert('Please enter a valid amount');
+                        return;
+                    }
+                    
+                    // Submit transaction
+                    submitTransaction(transactionId, vendorEmail, amount);
+                });
+            });
         }
 
         function updateTransactionsMonthSelector(months, selected) {
@@ -2814,6 +2879,37 @@
                 return bd.localeCompare(ad);
             });
             displayTransactions(filteredTransactions);
+        }
+
+        // Submit transaction function
+        function submitTransaction(transactionId, vendorEmail, amount) {
+            fetch('/admin-dashboard/transactions/update-payment-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    transaction_id: transactionId,
+                    vendor_email: vendorEmail,
+                    amount_paid: amount,
+                    payment_status: 'completed'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Transaction updated successfully for ${vendorEmail}`);
+                    // Reload transactions
+                    loadTransactions();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating transaction');
+            });
         }
 
         function markReportCompleted(vendorEmail, reportKey) {
@@ -2869,6 +2965,93 @@
             const tr = btn.closest('tr');
             if (tr) tr.remove();
         }
+
+        // Load activity data
+        function loadActivityData() {
+            const loading = document.getElementById('activity-loading');
+            const selectedMonth = document.getElementById('activity-month-select')?.value || '';
+            
+            if (loading) loading.style.display = 'block';
+            
+            // Fetch user and vendor data
+            Promise.all([
+                fetch(`/admin-dashboard/users/?month=${selectedMonth}`).then(r => r.json()),
+                fetch(`/admin-dashboard/vendors/?month=${selectedMonth}`).then(r => r.json()),
+                fetch(`/admin-dashboard/transactions/?month=${selectedMonth}`).then(r => r.json())
+            ]).then(([usersData, vendorsData, transactionsData]) => {
+                if (loading) loading.style.display = 'none';
+                
+                // Calculate totals
+                const totalRevenue = (transactionsData.transactions || []).reduce((sum, t) => sum + (parseFloat(t.platform_profit) || 0), 0);
+                const totalPayments = (usersData.users || []).reduce((sum, u) => sum + (parseFloat(u.total_cost) || 0), 0);
+                const totalUsers = (usersData.users || []).length;
+                const totalVendors = (vendorsData.vendors || []).length;
+                
+                // Update cards
+                document.getElementById('activity-total-revenue').textContent = `₹${totalRevenue.toFixed(2)}`;
+                document.getElementById('activity-total-payments').textContent = `₹${totalPayments.toFixed(2)}`;
+                document.getElementById('activity-total-users').textContent = totalUsers;
+                document.getElementById('activity-total-vendors').textContent = totalVendors;
+                
+                // Update charts (simplified - would need Chart.js library)
+                updateActivityCharts(usersData, vendorsData, transactionsData);
+            }).catch(error => {
+                console.error('Error loading activity data:', error);
+                if (loading) loading.style.display = 'none';
+            });
+        }
+
+        function updateActivityCharts(usersData, vendorsData, transactionsData) {
+            // Pie chart data - revenue distribution
+            const pieCtx = document.getElementById('activity-pie-chart');
+            if (pieCtx && typeof Chart !== 'undefined') {
+                const userRevenue = (usersData.users || []).reduce((sum, u) => sum + (parseFloat(u.platform_revenue) || 0), 0);
+                const vendorRevenue = (transactionsData.transactions || []).reduce((sum, t) => sum + (parseFloat(t.platform_profit) || 0), 0);
+                
+                new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['User Revenue', 'Vendor Revenue'],
+                        datasets: [{
+                            data: [userRevenue, vendorRevenue],
+                            backgroundColor: ['#3b82f6', '#10b981']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+            
+            // Bar chart data - monthly trend
+            const barCtx = document.getElementById('activity-bar-chart');
+            if (barCtx && typeof Chart !== 'undefined') {
+                // Group by month
+                const monthlyData = {};
+                (transactionsData.transactions || []).forEach(t => {
+                    const month = t.period_start ? t.period_start.substring(0, 7) : '';
+                    if (month) {
+                        if (!monthlyData[month]) monthlyData[month] = 0;
+                        monthlyData[month] += parseFloat(t.platform_profit || 0);
+                    }
+                });
+                
+                const months = Object.keys(monthlyData).sort();
+                const revenues = months.map(m => monthlyData[m]);
+                
+                new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Platform Revenue',
+                            data: revenues,
+                            backgroundColor: '#3b82f6'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </body>
 </html>

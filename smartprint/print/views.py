@@ -9443,40 +9443,10 @@ def get_vendor_email_by_vendor_id(vendor_id):
 # ─────────────────────────────────────────────────────────────
 
 def free_token_in_vendor_pool(vendor_email: str, token: str) -> bool:
-    """Mark a token as 'free' in vendor_register_details/{email}/token.json AND in Vendor_tokens D1 table"""
+    """Mark a token as 'free' in Vendor_tokens D1 table based on vendor_email"""
     try:
         if not token:
             return False
-
-        # Free token in R2 (legacy storage)
-        sanitized = sanitize_email(vendor_email)
-        token_key = f'vendor_register_details/{sanitized}/token.json'
-
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-
-        r2_freed = False
-        try:
-            response = s3.get_object(Bucket=settings.R2_BUCKET, Key=token_key)
-            token_data = json.loads(response['Body'].read().decode('utf-8'))
-            token_str = str(token)
-            if token_str in token_data:
-                token_data[token_str] = "free"
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=token_key,
-                    Body=json.dumps(token_data, indent=4),
-                    ContentType='application/json'
-                )
-                r2_freed = True
-                print(f"✅ Freed token {token_str} in R2 for vendor {vendor_email}")
-            else:
-                print(f"⚠️ Token {token_str} not found in R2 token.json for {vendor_email}")
-        except Exception as e:
-            print(f"⚠️ Could not free token in R2 for {vendor_email}: {str(e)}")
 
         # Free token in D1 Vendor_tokens table (primary storage)
         d1_freed = False
@@ -9519,8 +9489,8 @@ def free_token_in_vendor_pool(vendor_email: str, token: str) -> bool:
         except Exception as e:
             print(f"⚠️ Error freeing token in D1 for {vendor_email}: {str(e)}")
 
-        # Return True if at least one storage was updated successfully
-        return r2_freed or d1_freed
+        # Return True if D1 update was successful
+        return d1_freed
     except Exception as e:
         print(f"❌ Error freeing token for {vendor_email}: {str(e)}")
         return False
