@@ -4907,6 +4907,7 @@ def verify_razorpay_payment(request):
                     print(f"✅ Successfully uploaded file: {fobj.name}")
                     
                     # Store print job in D1 database (R2 storage is already done above)
+                    print(f"\n💾 Attempting to store print job in database for file: {fobj.name}")
                     try:
                         # vendor_email is already extracted above, use it directly
                         # Fallback to vendor_id lookup only if still not set
@@ -4922,6 +4923,14 @@ def verify_razorpay_payment(request):
                             print(f"⚠️ Warning: vendor_email is empty for vendor_id {vendor_id}, attempting to proceed anyway")
                         
                         # Store vendor print job with improved error handling
+                        # Ensure pricing_details is a dict (not JSON string) when passing to store function
+                        pricing_details_for_db = pricing_details
+                        if isinstance(pricing_details, str):
+                            try:
+                                pricing_details_for_db = json.loads(pricing_details)
+                            except:
+                                pricing_details_for_db = None
+                        
                         vendor_stored = store_vendor_print_job_in_db(
                             vendor_id=vendor_id,
                             vendor_email=vendor_email or '',
@@ -4930,7 +4939,7 @@ def verify_razorpay_payment(request):
                             storage_folder=storage_folder,
                             r2_path=vendor_file_key,
                             metadata=metadata,
-                            pricing_details=pricing_details,
+                            pricing_details=pricing_details_for_db,
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
@@ -4945,9 +4954,18 @@ def verify_razorpay_payment(request):
                         # Don't fail the upload if database storage fails
 
                     try:
+                        print(f"\n💾 Attempting to store user print job in database for file: {fobj.name}")
                         user_metadata = dict(metadata)
                         user_metadata['storage_folder'] = 'users'
                         # Store user print job with improved error handling
+                        # Ensure pricing_details is a dict (not JSON string) when passing to store function
+                        pricing_details_for_db = pricing_details
+                        if isinstance(pricing_details, str):
+                            try:
+                                pricing_details_for_db = json.loads(pricing_details)
+                            except:
+                                pricing_details_for_db = None
+                        
                         user_stored = store_user_print_job_in_db(
                             vendor_id=vendor_id,
                             vendor_email=vendor_email or '',
@@ -4956,7 +4974,7 @@ def verify_razorpay_payment(request):
                             storage_folder='users',
                             r2_path=user_file_key,
                             metadata=user_metadata,
-                            pricing_details=pricing_details,
+                            pricing_details=pricing_details_for_db,
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
@@ -11855,11 +11873,21 @@ def return_user_points(request):
 def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
     """Store vendor print job in D1 database via Worker API"""
     try:
+        print(f"\n🔵 Storing vendor print job:")
+        print(f"   vendor_id: {vendor_id}")
+        print(f"   vendor_email: {vendor_email}")
+        print(f"   user_email: {user_email}")
+        print(f"   filename: {filename}")
+        print(f"   storage_folder: {storage_folder}")
+        print(f"   r2_path: {r2_path}")
+        
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
         
         if not api_url or not api_key:
             print(f"⚠️ Worker API not configured, skipping database storage")
+            print(f"   WORKER_API_URL: {api_url}")
+            print(f"   WORKER_API_KEY: {'SET' if api_key else 'NOT SET'}")
             return False
 
         # Construct the Worker API endpoint
@@ -12032,6 +12060,9 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 payload['final_amount'] = None
         
+        print(f"📦 Vendor Print Job Payload keys: {list(payload.keys())}")
+        print(f"📦 Payload preview: vendor_id={payload.get('vendor_id')}, user_email={payload.get('user_email')}, filename={payload.get('filename')}")
+        
         resp = requests.post(
             worker_endpoint,
             json=payload,
@@ -12042,11 +12073,24 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             timeout=10
         )
         
+        print(f"📡 Vendor Print Job API Response: {resp.status_code}")
+        print(f"📄 Response Body: {resp.text[:500]}")
+        
         if resp.status_code == 200:
-            print(f"✅ Stored print job in database: {filename} in {storage_folder}")
-            return True
+            try:
+                result = resp.json()
+                if result.get('success'):
+                    print(f"✅ Stored vendor print job in database: {filename} in {storage_folder}")
+                    return True
+                else:
+                    print(f"❌ API returned success=false: {result.get('error', 'Unknown error')}")
+                    return False
+            except Exception as json_err:
+                print(f"⚠️ Failed to parse response JSON: {json_err}")
+                print(f"⚠️ Response text: {resp.text[:200]}")
+                return False
         else:
-            print(f"⚠️ Failed to store print job in database: {resp.status_code} - {resp.text[:200]}")
+            print(f"⚠️ Failed to store vendor print job in database: {resp.status_code} - {resp.text[:200]}")
             return False
             
     except Exception as e:
@@ -12056,11 +12100,21 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
 def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
     """Store user print job in D1 database via Worker API"""
     try:
+        print(f"\n🟢 Storing user print job:")
+        print(f"   vendor_id: {vendor_id}")
+        print(f"   vendor_email: {vendor_email}")
+        print(f"   user_email: {user_email}")
+        print(f"   filename: {filename}")
+        print(f"   storage_folder: {storage_folder}")
+        print(f"   r2_path: {r2_path}")
+        
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
 
         if not api_url or not api_key:
             print(f"⚠️ Worker API not configured, skipping user print job storage")
+            print(f"   WORKER_API_URL: {api_url}")
+            print(f"   WORKER_API_KEY: {'SET' if api_key else 'NOT SET'}")
             return False
 
         if '/add-contact' in api_url:
@@ -12217,6 +12271,9 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         if payload['final_amount']:
             payload['final_amount'] = to_float(payload['final_amount'])
 
+        print(f"📦 User Print Job Payload keys: {list(payload.keys())}")
+        print(f"📦 Payload preview: vendor_id={payload.get('vendor_id')}, user_email={payload.get('user_email')}, filename={payload.get('filename')}")
+
         resp = requests.post(
             worker_endpoint,
             json=payload,
@@ -12227,9 +12284,22 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             timeout=10
         )
 
+        print(f"📡 User Print Job API Response: {resp.status_code}")
+        print(f"📄 Response Body: {resp.text[:500]}")
+        
         if resp.status_code == 200:
-            print(f"✅ Stored user print job in database: {filename}")
-            return True
+            try:
+                result = resp.json()
+                if result.get('success'):
+                    print(f"✅ Stored user print job in database: {filename}")
+                    return True
+                else:
+                    print(f"❌ API returned success=false: {result.get('error', 'Unknown error')}")
+                    return False
+            except Exception as json_err:
+                print(f"⚠️ Failed to parse response JSON: {json_err}")
+                print(f"⚠️ Response text: {resp.text[:200]}")
+                return False
         else:
             print(f"⚠️ Failed to store user print job in database: {resp.status_code} - {resp.text[:200]}")
             return False
