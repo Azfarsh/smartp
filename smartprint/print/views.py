@@ -4916,9 +4916,15 @@ def verify_razorpay_payment(request):
                                 print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
                             except Exception as e:
                                 print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
-                        store_vendor_print_job_in_db(
+                        
+                        # Ensure vendor_email is set before storing
+                        if not vendor_email:
+                            print(f"⚠️ Warning: vendor_email is empty for vendor_id {vendor_id}, attempting to proceed anyway")
+                        
+                        # Store vendor print job with improved error handling
+                        vendor_stored = store_vendor_print_job_in_db(
                             vendor_id=vendor_id,
-                            vendor_email=vendor_email,
+                            vendor_email=vendor_email or '',
                             user_email=user_email,
                             filename=fobj.name,
                             storage_folder=storage_folder,
@@ -4928,16 +4934,23 @@ def verify_razorpay_payment(request):
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
+                        if vendor_stored:
+                            print(f"✅ Successfully stored vendor print job in D1: {fobj.name}")
+                        else:
+                            print(f"❌ Failed to store vendor print job in D1: {fobj.name}")
                     except Exception as db_err:
+                        import traceback
                         print(f"⚠️ Error storing vendor print job in database: {db_err}")
+                        traceback.print_exc()
                         # Don't fail the upload if database storage fails
 
                     try:
                         user_metadata = dict(metadata)
                         user_metadata['storage_folder'] = 'users'
-                        store_user_print_job_in_db(
+                        # Store user print job with improved error handling
+                        user_stored = store_user_print_job_in_db(
                             vendor_id=vendor_id,
-                            vendor_email=vendor_email,
+                            vendor_email=vendor_email or '',
                             user_email=user_email,
                             filename=fobj.name,
                             storage_folder='users',
@@ -4947,8 +4960,14 @@ def verify_razorpay_payment(request):
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
+                        if user_stored:
+                            print(f"✅ Successfully stored user print job in D1: {fobj.name}")
+                        else:
+                            print(f"❌ Failed to store user print job in D1: {fobj.name}")
                     except Exception as user_db_err:
+                        import traceback
                         print(f"⚠️ Error storing user print job in database: {user_db_err}")
+                        traceback.print_exc()
                     
                 except Exception as upload_error:
                     files_failed += 1
