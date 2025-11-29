@@ -4916,9 +4916,15 @@ def verify_razorpay_payment(request):
                                 print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
                             except Exception as e:
                                 print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
-                        store_vendor_print_job_in_db(
+                        
+                        # Ensure vendor_email is set before storing
+                        if not vendor_email:
+                            print(f"⚠️ Warning: vendor_email is empty for vendor_id {vendor_id}, attempting to proceed anyway")
+                        
+                        # Store vendor print job with improved error handling
+                        vendor_stored = store_vendor_print_job_in_db(
                             vendor_id=vendor_id,
-                            vendor_email=vendor_email,
+                            vendor_email=vendor_email or '',
                             user_email=user_email,
                             filename=fobj.name,
                             storage_folder=storage_folder,
@@ -4928,16 +4934,23 @@ def verify_razorpay_payment(request):
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
+                        if vendor_stored:
+                            print(f"✅ Successfully stored vendor print job in D1: {fobj.name}")
+                        else:
+                            print(f"❌ Failed to store vendor print job in D1: {fobj.name}")
                     except Exception as db_err:
+                        import traceback
                         print(f"⚠️ Error storing vendor print job in database: {db_err}")
+                        traceback.print_exc()
                         # Don't fail the upload if database storage fails
 
                     try:
                         user_metadata = dict(metadata)
                         user_metadata['storage_folder'] = 'users'
-                        store_user_print_job_in_db(
+                        # Store user print job with improved error handling
+                        user_stored = store_user_print_job_in_db(
                             vendor_id=vendor_id,
-                            vendor_email=vendor_email,
+                            vendor_email=vendor_email or '',
                             user_email=user_email,
                             filename=fobj.name,
                             storage_folder='users',
@@ -4947,8 +4960,14 @@ def verify_razorpay_payment(request):
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
+                        if user_stored:
+                            print(f"✅ Successfully stored user print job in D1: {fobj.name}")
+                        else:
+                            print(f"❌ Failed to store user print job in D1: {fobj.name}")
                     except Exception as user_db_err:
+                        import traceback
                         print(f"⚠️ Error storing user print job in database: {user_db_err}")
+                        traceback.print_exc()
                     
                 except Exception as upload_error:
                     files_failed += 1
@@ -11921,13 +11940,44 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 pages_value = None
         
-        # Store pricing_details as JSON string if available
+        # Store pricing_details as JSON string if available - format to match test file structure
         pricing_details_str = None
         if pricing_details:
             if isinstance(pricing_details, str):
-                pricing_details_str = pricing_details
+                # Try to parse and reformat to match test file structure
+                try:
+                    parsed = json.loads(pricing_details)
+                    # Reformat to match test file: total_price, platform_profit, price_per_page, page_count, num_copies
+                    formatted_pricing = {
+                        'total_price': float(total_price) if total_price is not None else (parsed.get('total_price') or parsed.get('total') or 0),
+                        'platform_profit': float(platform_profit) if platform_profit is not None else (parsed.get('platform_profit') or 0),
+                        'price_per_page': float(price_per_page) if price_per_page is not None else (parsed.get('price_per_page') or parsed.get('per_page') or 0),
+                        'page_count': int(page_count) if page_count is not None else (parsed.get('page_count') or parsed.get('pages') or 0),
+                        'num_copies': int(num_copies) if num_copies is not None else (parsed.get('num_copies') or parsed.get('copies') or 0)
+                    }
+                    pricing_details_str = json.dumps(formatted_pricing)
+                except:
+                    pricing_details_str = pricing_details
             else:
-                pricing_details_str = json.dumps(pricing_details)
+                # Format dict to match test file structure
+                formatted_pricing = {
+                    'total_price': float(total_price) if total_price is not None else 0,
+                    'platform_profit': float(platform_profit) if platform_profit is not None else 0,
+                    'price_per_page': float(price_per_page) if price_per_page is not None else 0,
+                    'page_count': int(page_count) if page_count is not None else 0,
+                    'num_copies': int(num_copies) if num_copies is not None else 0
+                }
+                pricing_details_str = json.dumps(formatted_pricing)
+        elif total_price is not None or page_count is not None:
+            # Create pricing_details from extracted values if available
+            formatted_pricing = {
+                'total_price': float(total_price) if total_price is not None else 0,
+                'platform_profit': float(platform_profit) if platform_profit is not None else 0,
+                'price_per_page': float(price_per_page) if price_per_page is not None else 0,
+                'page_count': int(page_count) if page_count is not None else 0,
+                'num_copies': int(num_copies) if num_copies is not None else 0
+            }
+            pricing_details_str = json.dumps(formatted_pricing)
         
         payload = {
             'vendor_id': vendor_id,
@@ -11957,7 +12007,7 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'quality': metadata.get('quality', ''),
             'thickness': metadata.get('thickness', ''),
             'points_applied': metadata.get('points_applied', 'false'),
-            'points_used': metadata.get('points_used', '0'),
+            'points_used': int(metadata.get('points_used', '0') or '0'),
             'timestamp': metadata.get('timestamp', datetime.datetime.now().isoformat()),
             'completion_time': metadata.get('completion_time', ''),
             'rendered_status': metadata.get('rendered_status', 'NO'),
@@ -12079,9 +12129,44 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         num_copies = to_int(num_copies)
         pages_value = to_int(pages_value)
 
+        # Store pricing_details as JSON string if available - format to match test file structure
         pricing_details_str = None
         if pricing_details:
-            pricing_details_str = pricing_details if isinstance(pricing_details, str) else json.dumps(pricing_details)
+            if isinstance(pricing_details, str):
+                # Try to parse and reformat to match test file structure
+                try:
+                    parsed = json.loads(pricing_details)
+                    # Reformat to match test file: total_price, platform_profit, price_per_page, page_count, num_copies
+                    formatted_pricing = {
+                        'total_price': float(total_price) if total_price is not None else (parsed.get('total_price') or parsed.get('total') or 0),
+                        'platform_profit': float(platform_profit) if platform_profit is not None else (parsed.get('platform_profit') or 0),
+                        'price_per_page': float(price_per_page) if price_per_page is not None else (parsed.get('price_per_page') or parsed.get('per_page') or 0),
+                        'page_count': int(page_count) if page_count is not None else (parsed.get('page_count') or parsed.get('pages') or 0),
+                        'num_copies': int(num_copies) if num_copies is not None else (parsed.get('num_copies') or parsed.get('copies') or 0)
+                    }
+                    pricing_details_str = json.dumps(formatted_pricing)
+                except:
+                    pricing_details_str = pricing_details
+            else:
+                # Format dict to match test file structure
+                formatted_pricing = {
+                    'total_price': float(total_price) if total_price is not None else 0,
+                    'platform_profit': float(platform_profit) if platform_profit is not None else 0,
+                    'price_per_page': float(price_per_page) if price_per_page is not None else 0,
+                    'page_count': int(page_count) if page_count is not None else 0,
+                    'num_copies': int(num_copies) if num_copies is not None else 0
+                }
+                pricing_details_str = json.dumps(formatted_pricing)
+        elif total_price is not None or page_count is not None:
+            # Create pricing_details from extracted values if available
+            formatted_pricing = {
+                'total_price': float(total_price) if total_price is not None else 0,
+                'platform_profit': float(platform_profit) if platform_profit is not None else 0,
+                'price_per_page': float(price_per_page) if price_per_page is not None else 0,
+                'page_count': int(page_count) if page_count is not None else 0,
+                'num_copies': int(num_copies) if num_copies is not None else 0
+            }
+            pricing_details_str = json.dumps(formatted_pricing)
 
         payload = {
             'vendor_id': vendor_id,
@@ -12111,7 +12196,7 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'quality': metadata.get('quality', ''),
             'thickness': metadata.get('thickness', ''),
             'points_applied': metadata.get('points_applied', 'false'),
-            'points_used': metadata.get('points_used', '0'),
+            'points_used': int(metadata.get('points_used', '0') or '0'),
             'timestamp': metadata.get('timestamp', datetime.datetime.now().isoformat()),
             'completion_time': metadata.get('completion_time', ''),
             'rendered_status': metadata.get('rendered_status', 'NO'),
