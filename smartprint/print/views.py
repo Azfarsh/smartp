@@ -11890,6 +11890,17 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             print(f"   WORKER_API_KEY: {'SET' if api_key else 'NOT SET'}")
             return False
 
+        # Validate required fields before making API call
+        if not vendor_id or not vendor_id.strip():
+            print(f"❌ Error: vendor_id is required but was: {repr(vendor_id)}")
+            return False
+        if not filename or not filename.strip():
+            print(f"❌ Error: filename is required but was: {repr(filename)}")
+            return False
+        if not storage_folder or not storage_folder.strip():
+            print(f"❌ Error: storage_folder is required but was: {repr(storage_folder)}")
+            return False
+        
         # Construct the Worker API endpoint
         if '/add-contact' in api_url:
             worker_endpoint = api_url.replace('/add-contact', '/add-vendor-print-job')
@@ -12076,6 +12087,15 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
         print(f"📡 Vendor Print Job API Response: {resp.status_code}")
         print(f"📄 Response Body: {resp.text[:500]}")
         
+        if resp.status_code == 400:
+            # Log full error details for 400 errors
+            try:
+                error_detail = resp.json()
+                print(f"❌ 400 Bad Request Error Details: {error_detail}")
+            except:
+                print(f"❌ 400 Bad Request - Full Response: {resp.text}")
+            print(f"📦 Payload sent: vendor_id={payload.get('vendor_id')}, filename={payload.get('filename')}, storage_folder={payload.get('storage_folder')}")
+        
         if resp.status_code == 200:
             try:
                 result = resp.json()
@@ -12117,6 +12137,14 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             print(f"   WORKER_API_KEY: {'SET' if api_key else 'NOT SET'}")
             return False
 
+        # Validate required fields before making API call
+        if not user_email or not user_email.strip():
+            print(f"❌ Error: user_email is required but was: {repr(user_email)}")
+            return False
+        if not filename or not filename.strip():
+            print(f"❌ Error: filename is required but was: {repr(filename)}")
+            return False
+        
         if '/add-contact' in api_url:
             worker_endpoint = api_url.replace('/add-contact', '/add-user-print-job')
         elif '/add-vendor-register' in api_url:
@@ -12286,6 +12314,15 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
 
         print(f"📡 User Print Job API Response: {resp.status_code}")
         print(f"📄 Response Body: {resp.text[:500]}")
+        
+        if resp.status_code == 400:
+            # Log full error details for 400 errors
+            try:
+                error_detail = resp.json()
+                print(f"❌ 400 Bad Request Error Details: {error_detail}")
+            except:
+                print(f"❌ 400 Bad Request - Full Response: {resp.text}")
+            print(f"📦 Payload sent: user_email={payload.get('user_email')}, filename={payload.get('filename')}")
         
         if resp.status_code == 200:
             try:
