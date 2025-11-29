@@ -10732,6 +10732,99 @@ def accept_job(request):
         print(f"Error accepting job: {e}")
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
+def get_2day_period_for_date(date_obj):
+    """
+    Calculate the 2-day period for a given date.
+    Returns (period_start, period_end) as date objects.
+    Ensures non-overlapping periods: 27-28, 28-29, etc.
+    """
+    # Get the day of month
+    day = date_obj.day
+    
+    # Calculate which 2-day period this date belongs to
+    # Periods: 1-2, 3-4, 5-6, ..., 27-28, 29-30, 31 (if applicable)
+    # For odd days: start is the day itself, end is day+1
+    # For even days: start is day-1, end is the day itself
+    
+    if day % 2 == 1:  # Odd day (1, 3, 5, ..., 27, 29, 31)
+        period_start = date_obj
+        period_end = date_obj + datetime.timedelta(days=1)
+    else:  # Even day (2, 4, 6, ..., 28, 30)
+        period_start = date_obj - datetime.timedelta(days=1)
+        period_end = date_obj
+    
+    # Handle month boundaries
+    if period_end.month != period_start.month:
+        # If period_end goes into next month, adjust to last day of current month
+        import calendar
+        last_day = calendar.monthrange(period_start.year, period_start.month)[1]
+        period_end = datetime.date(period_start.year, period_start.month, last_day)
+    
+    return period_start, period_end
+
+def create_or_update_vendor_transaction(vendor_email, vendor_id, vendor_name, completion_date, filename, total_price, platform_profit):
+    """
+    Create or update vendor transaction report for the 2-day period containing completion_date.
+    This ensures all jobs completed within the same 2-day period are aggregated together.
+    """
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            print("⚠️ Worker API not configured - skipping transaction report creation")
+            return False
+        
+        # Calculate 2-day period
+        period_start, period_end = get_2day_period_for_date(completion_date)
+        period_start_str = period_start.strftime('%Y-%m-%d')
+        period_end_str = period_end.strftime('%Y-%m-%d')
+        
+        print(f"📊 Creating/updating transaction report for period: {period_start_str} to {period_end_str}")
+        
+        # Get job details to calculate totals
+        # We'll aggregate all jobs in this period, but for now add this single job
+        total_earning = float(total_price) - float(platform_profit)
+        
+        # Call worker API to create or update transaction
+        worker_endpoint = api_url.rstrip('/') + '/aggregate-vendor-transaction'
+        
+        payload = {
+            'vendor_email': vendor_email,
+            'vendor_id': vendor_id,
+            'vendor_name': vendor_name,
+            'current_date': completion_date.strftime('%Y-%m-%d'),
+            'period_start': period_start_str,
+            'period_end': period_end_str,
+            'total_price': float(total_price),
+            'platform_profit': float(platform_profit),
+            'total_earning': total_earning,
+            'total_documents': 1
+        }
+        
+        response = requests.post(
+            worker_endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            print(f"✅ Transaction report created/updated for {vendor_email} (period: {period_start_str} to {period_end_str})")
+            return True
+        else:
+            print(f"⚠️ Failed to create/update transaction report: {response.status_code} - {response.text[:200]}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error creating/updating vendor transaction: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 @csrf_exempt
 def mark_job_completed(request):
     """Mark a print job as completed by updating job_completed to 'YES' and free the token"""
@@ -10835,6 +10928,51 @@ def mark_job_completed(request):
                 print(f"⚠️ Error updating D1 database: {e}")
             
             if success:
+                # Get pricing details from job metadata for transaction report
+                total_price = 0.0
+                platform_profit = 0.0
+                try:
+                    s3 = boto3.client('s3',
+                                      aws_access_key_id=settings.R2_ACCESS_KEY,
+                                      aws_secret_access_key=settings.R2_SECRET_KEY,
+                                      endpoint_url=settings.R2_ENDPOINT,
+                                      region_name='auto')
+                    
+                    vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                    try:
+                        result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                        metadata = result.get('Metadata', {})
+                        
+                        # Extract pricing_details
+                        pricing_details_str = metadata.get('pricing_details')
+                        if pricing_details_str:
+                            try:
+                                pricing_obj = json.loads(pricing_details_str)
+                                total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                                platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                            except:
+                                pass
+                        
+                        # Fallback to metadata if pricing_details not available
+                        if total_price == 0.0:
+                            total_price = float(metadata.get('total_price', 0.0))
+                        if platform_profit == 0.0:
+                            platform_profit = float(metadata.get('platform_profit', 0.0))
+                    except Exception as e:
+                        print(f"⚠️ Error getting pricing from metadata: {e}")
+                except Exception as e:
+                    print(f"⚠️ Error accessing S3 for pricing: {e}")
+                
+                # Create or update vendor transaction report for 2-day period
+                completion_date = datetime.datetime.now().date()
+                try:
+                    create_or_update_vendor_transaction(
+                        vendor_email, vendor_id, vendor_name, 
+                        completion_date, filename, total_price, platform_profit
+                    )
+                except Exception as e:
+                    print(f"⚠️ Error creating transaction report: {e}")
+                
                 # Free the token if it was found
                 token_freed = False
                 if job_token:
@@ -12116,13 +12254,32 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         if formatted_service_type == 'Print Job':
             formatted_service_type = 'Document Printing'
         
-        # Extract document name from filename (remove extension and token)
-        document_name = os.path.splitext(filename)[0]
-        if '_' in document_name:
-            # Remove token part if present
-            parts = document_name.split('_')
+        # Extract document name from filename - show PDF name with extension
+        # Get the base filename (without path)
+        base_filename = os.path.basename(filename)
+        file_ext = os.path.splitext(base_filename)[1]  # Get extension (.pdf, .jpg, etc.)
+        document_name_without_ext = os.path.splitext(base_filename)[0]
+        
+        # Extract the actual document name (remove token if present)
+        # Format is usually: DocumentName_Token.pdf
+        if '_' in document_name_without_ext:
+            parts = document_name_without_ext.split('_')
             if len(parts) > 1:
-                document_name = '_'.join(parts[:-1])
+                # Take all parts except the last one (which is usually the token)
+                document_name_base = '_'.join(parts[:-1])
+            else:
+                document_name_base = document_name_without_ext
+        else:
+            document_name_base = document_name_without_ext
+        
+        # Create display name with extension (e.g., "Azfar...pdf")
+        if len(document_name_base) > 20:
+            display_name = document_name_base[:17] + '...' + file_ext
+        else:
+            display_name = document_name_base + file_ext
+        
+        # Format token without # symbol
+        token_display = str(token) if token else 'Unknown'
         
         notification_data = {
             'notification_id': notification_id,
@@ -12135,11 +12292,11 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'created_at': datetime.datetime.now().isoformat(),
             'read': False,
             'type': 'job_completed',
-            'title': '🎉 Print Job Successfully Completed!',
-            'message': f'Your {formatted_service_type} order for "{document_name}" has been completed and is ready for pickup. Token: #{token}',
-            'detailed_message': f'Document: {document_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: #{token}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
+            'title': 'Print Job Completed',
+            'message': f'Your document "{display_name}" is ready for pickup. Token: {token_display}',
+            'detailed_message': f'Document: {display_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: {token_display}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
             'token': token,
-            'document_name': document_name,
+            'document_name': document_name_base,
             'service_type': formatted_service_type,
             'platform_profit': platform_profit,
             'total_price': total_price

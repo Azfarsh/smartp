@@ -2165,9 +2165,19 @@ async function handlePrint() {
                         // Close modal immediately
                         closePhotoPrintModalView();
                         
-                        // Show success message immediately (like document print modal)
-                        const successMessage = '✅ Print job sent to print successfully.';
-                        redirectToDashboardWithSuccess(successMessage, token);
+                        // Redirect to dashboard immediately - PDF creation will happen in background
+                        window.location.replace('/userdashboard/');
+                        
+                        // Store success state for dashboard to show animation
+                        try {
+                            sessionStorage.setItem('photoPrintSuccess', JSON.stringify({
+                                message: 'Your job sent to print successfully',
+                                token: token || '',
+                                timestamp: Date.now()
+                            }));
+                        } catch (storageError) {
+                            console.warn('Unable to persist success state:', storageError);
+                        }
                         
                         // Continue with payment verification in background (non-blocking)
                         (async () => {

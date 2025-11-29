@@ -5131,6 +5131,12 @@
             const count = document.getElementById('notificationCount');
             const list = document.getElementById('notificationList');
 
+            // Check if elements exist before accessing
+            if (!badge || !count || !list) {
+                console.warn('Notification UI elements not found');
+                return;
+            }
+
             // Update badge
             if (unreadCount > 0) {
                 badge.textContent = unreadCount;
@@ -5154,13 +5160,13 @@
                 list.innerHTML = notifications.map(notification => `
                     <div class="notification-item ${!notification.read ? 'unread' : ''}">
                         <div class="notification-content">
-                            <div class="notification-message">${notification.message}</div>
+                            <div class="notification-message">${notification.message || 'Notification'}</div>
                             <div class="notification-meta">
                                 <div class="notification-time">
                                     <i class="fas fa-clock"></i>
-                                    <span>${notification.time}</span>
+                                    <span>${notification.time || 'Just now'}</span>
                                 </div>
-                                <span class="notification-type">${notification.level.toUpperCase()}</span>
+                                <span class="notification-type">${(notification.level || 'INFO').toUpperCase()}</span>
                             </div>
                         </div>
                     </div>

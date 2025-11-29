@@ -5956,6 +5956,12 @@
         </a>
       </li>
       <li class="nav-item">
+        <a href="#" class="nav-link" id="servicePricesBtn">
+          <i class="fas fa-tags"></i>
+          Service Prices
+        </a>
+      </li>
+      <li class="nav-item">
         <a href="#" class="nav-link" id="sidebarModeToggle">
           <i class="fas fa-adjust"></i>
           Mode
@@ -6091,8 +6097,8 @@
 
   <div class="photo-success-overlay" id="dashboardSuccessOverlay" aria-hidden="true">
     <div class="photo-success-card">
-      <dotlottie-player src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto;"></dotlottie-player>
-      <div class="photo-success-text" id="dashboardSuccessText">✅ Print job sent to print successfully.</div>
+      <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
+      <div class="photo-success-text" id="dashboardSuccessText">Your job sent to print successfully</div>
     </div>
   </div>
 
@@ -13498,14 +13504,42 @@
       const jobsSection = document.getElementById('jobsSection');
       if (!container) return;
       
-      // STRICT FILTER: Only render jobs with job_completed === 'NO' (case-insensitive check)
-      const pendingJobs = (jobs || []).filter(job => {
+      // Get current date for filtering
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      // Filter jobs by current date and status
+      const filteredJobs = (jobs || []).filter(job => {
+        // Get job date from timestamp or created_at
+        let jobDate = '';
+        if (job.timestamp) {
+          jobDate = new Date(job.timestamp).toISOString().split('T')[0];
+        } else if (job.created_at) {
+          jobDate = new Date(job.created_at).toISOString().split('T')[0];
+        } else if (job.date) {
+          jobDate = new Date(job.date).toISOString().split('T')[0];
+        }
+        
+        // Only include jobs from today
+        return jobDate === todayStr;
+      });
+      
+      // Separate pending and completed jobs
+      const pendingJobs = filteredJobs.filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
         return jobCompleted !== 'YES';
       });
       
+      const completedJobs = filteredJobs.filter(job => {
+        const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        return jobCompleted === 'YES';
+      });
+      
+      // Combine: pending first, then completed
+      const sortedJobs = [...pendingJobs, ...completedJobs];
+      
       // If jobs found, hide animation immediately and show Print Requests section
-      if (pendingJobs && pendingJobs.length > 0) {
+      if (sortedJobs && sortedJobs.length > 0) {
         console.log('📄 PDF Animation: Jobs found, hiding animation immediately');
         hidePdfAnimation();
         
@@ -13518,10 +13552,10 @@
           }, 10);
         }
         
-        // Render actual jobs (only pending ones)
+        // Render actual jobs (pending first, then completed)
           const fragment = document.createDocumentFragment();
           const tempDiv = document.createElement('div');
-        const jobsHTML = pendingJobs.map(job => window.createJobCard(job)).join('');
+        const jobsHTML = sortedJobs.map(job => window.createJobCard(job)).join('');
           tempDiv.innerHTML = jobsHTML;
           while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
           container.innerHTML = '';
@@ -15796,8 +15830,21 @@
               if (!Number.isNaN(createdTs) && createdTs > lastSeen) {
                 const token = latestUnread.token || 'Unknown';
                 const status = (latestUnread.status || 'completed').toString().toUpperCase();
-                const filename = latestUnread.filename || 'Document';
-                showToast('Print Job Ready!', `Job: ${filename} | Token: #${token} | Status: ${status}`);
+                // Format filename to show PDF name properly
+                const fullFilename = latestUnread.filename || 'Document';
+                const baseFilename = fullFilename.split('/').pop() || fullFilename;
+                const parts = baseFilename.split('.');
+                const ext = parts.length > 1 ? '.' + parts.pop() : '';
+                const nameWithoutExt = parts.join('.');
+                let documentNameBase = nameWithoutExt;
+                if (nameWithoutExt.includes('_')) {
+                  const nameParts = nameWithoutExt.split('_');
+                  if (nameParts.length > 1) {
+                    documentNameBase = nameParts.slice(0, -1).join('_');
+                  }
+                }
+                const displayName = documentNameBase.length > 15 ? documentNameBase.substring(0, 12) + '...' + ext : documentNameBase + ext;
+                showToast('Print Job Ready!', `Document: ${displayName} | Token: ${token} | Status: ${status}`);
                 localStorage.setItem('notifications:lastSeenTs', String(createdTs));
               }
             }
@@ -15881,12 +15928,37 @@
         token = `${baseName}_${randomNum}`;
       }
       
-      const filename = notification.filename || 'Document';
+      // Format filename to show PDF name properly (e.g., "Azfar...pdf")
+      const fullFilename = notification.filename || 'Document';
+      const baseFilename = fullFilename.split('/').pop() || fullFilename;
+      const parts = baseFilename.split('.');
+      const ext = parts.length > 1 ? '.' + parts.pop() : '';
+      const nameWithoutExt = parts.join('.');
+      
+      // Extract the actual document name (remove token if present)
+      let documentNameBase = nameWithoutExt;
+      if (nameWithoutExt.includes('_')) {
+        const nameParts = nameWithoutExt.split('_');
+        if (nameParts.length > 1) {
+          // Take all parts except the last one (which is usually the token)
+          documentNameBase = nameParts.slice(0, -1).join('_');
+        }
+      }
+      
+      // Create display name with extension
+      let displayName;
+      if (documentNameBase.length > 20) {
+        displayName = documentNameBase.substring(0, 17) + '...' + ext;
+      } else {
+        displayName = documentNameBase + ext;
+      }
+      
       const status = (notification.status || 'completed').toString().toUpperCase();
       const serviceType = notification.service_type || 'Document Print';
       
-      // Create a more descriptive title
+      // Use notification message if available, otherwise use title
       const title = notification.title || 'Print Job Completed';
+      const message = notification.message || `Your document "${displayName}" is ready for pickup. Token: ${token || 'Unknown'}`;
       
       return `
         <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${notification.notification_id || notification.id}" onclick="handleNotificationClick('${notification.notification_id || notification.id}')">
@@ -15897,11 +15969,11 @@
             <div class="notification-title-text" style="font-size: 0.9rem; font-weight: 600; color: var(--on-surface); margin-bottom: 0.25rem;">${title}</div>
             <div class="notification-message" style="font-size: 0.8rem; color: var(--on-surface-variant); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
               <i class="fas fa-file-pdf" style="color:#e53935; font-size: 0.75rem;"></i> 
-              <span style="font-weight: 500;">PDF:</span> <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${filename}</span>
+              <span style="font-weight: 500;">PDF:</span> <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${displayName}</span>
             </div>
             <div class="notification-message" style="font-size: 0.8rem; color: var(--on-surface-variant); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
               <i class="fas fa-ticket-alt" style="color:#2563eb; font-size: 0.75rem;"></i> 
-              <span style="font-weight: 500;">Token:</span> <span style="font-family: monospace;">#${token}</span>
+              <span style="font-weight: 500;">Token:</span> <span style="font-family: monospace;">${token || 'Unknown'}</span>
             </div>
             <div class="notification-message" style="font-size: 0.8rem; color: var(--on-surface-variant); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
               <i class="fas fa-tags" style="color:#059669; font-size: 0.75rem;"></i> 
@@ -16082,8 +16154,9 @@
         sessionStorage.removeItem('photoPrintSuccess');
         let parsed = {};
         try { parsed = JSON.parse(stored); } catch (err) { parsed = {}; }
-        const message = parsed?.message || '✅ Print job sent to print successfully.';
-        showDashboardSuccess(message);
+        const message = parsed?.message || 'Your job sent to print successfully';
+        // Show success modal with animation (same as document print)
+        showSuccessModalWithAnimation();
       }
     } catch (error) {
       console.warn('Unable to read photo print success state', error);
@@ -21674,6 +21747,7 @@
           });
         }
 
+
         function openCompletedJobsModal() {
           renderCompletedJobs();
           completedJobsModal.classList.add('active');
@@ -21695,7 +21769,130 @@
       } else {
         console.error('History modal elements not found');
       }
+
+      // Service Prices Button Handler
+      const servicePricesBtn = document.getElementById('servicePricesBtn');
+      if (servicePricesBtn) {
+        servicePricesBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          openServicePricesModal();
+        });
+      }
     });
+
+    // Service Prices Modal Functions (Global scope)
+    function openServicePricesModal() {
+      const modal = document.getElementById('servicePricesModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        loadServicePrices();
+      }
+    }
+
+    function closeServicePricesModal() {
+      const modal = document.getElementById('servicePricesModal');
+      if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    }
+
+    async function loadServicePrices() {
+      const content = document.getElementById('servicePricesContent');
+      if (!content) return;
+
+      // Get vendor email from available shops (use first shop if available)
+      let vendorEmail = '';
+      if (typeof availableShops !== 'undefined' && availableShops.length > 0) {
+        vendorEmail = availableShops[0].vendor_email || '';
+      }
+
+      if (!vendorEmail) {
+        content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #f59e0b; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.25rem;">No Vendor Selected</h3><p style="margin: 0; color: #6b7280;">Please select a vendor first to view pricing information.</p></div>';
+        return;
+      }
+
+      try {
+        // Fetch vendor pricing from API
+        const response = await fetch('/get-vendor-pricing/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ vendor_email: vendorEmail })
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.pricing) {
+          renderServicePrices(data.pricing, data.categorized_pricing || {});
+        } else {
+          content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.25rem;">Pricing Not Available</h3><p style="margin: 0; color: #6b7280;">' + (data.error || 'Unable to load pricing information for this vendor.') + '</p></div>';
+        }
+      } catch (error) {
+        console.error('Error loading service prices:', error);
+        content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.25rem;">Error Loading Prices</h3><p style="margin: 0; color: #6b7280;">Please try again later.</p></div>';
+      }
+    }
+
+    function renderServicePrices(pricing, categorizedPricing) {
+      const content = document.getElementById('servicePricesContent');
+      if (!content) return;
+
+      // Service name mapping
+      const serviceNames = {
+        'a4_print_bw': 'A4 Print (Black & White)',
+        'a4_print_color': 'A4 Print (Color)',
+        'photo_print_a4_bw': 'Photo Print A4 (Black & White)',
+        'photo_print_a4_color': 'Photo Print A4 (Color)',
+        'passport_photo': 'Passport Photo',
+        'digital_print': 'Digital Print',
+        'gloss_print': 'Gloss Print',
+        'jumbo_print': 'Jumbo Print',
+        'golden_embossing': 'Golden Embossing',
+        'lamination': 'Lamination',
+        'binding': 'Binding'
+      };
+
+      // Group pricing by category
+      const categories = {
+        'Document Printing': ['a4_print_bw', 'a4_print_color'],
+        'Photo Printing': ['photo_print_a4_bw', 'photo_print_a4_color', 'passport_photo'],
+        'Special Services': ['digital_print', 'gloss_print', 'jumbo_print', 'golden_embossing', 'lamination', 'binding']
+      };
+
+      let html = '';
+
+      Object.entries(categories).forEach(function(categoryEntry) {
+        const categoryName = categoryEntry[0];
+        const serviceKeys = categoryEntry[1];
+        const categoryItems = [];
+        
+        serviceKeys.forEach(function(key) {
+          const price = pricing[key] || categorizedPricing[key] || null;
+          if (price !== null && price !== undefined && price !== '') {
+            const serviceName = serviceNames[key] || key.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+            categoryItems.push({ name: serviceName, price: parseFloat(price) });
+          }
+        });
+
+        if (categoryItems.length > 0) {
+          html += '<div style="background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;"><h3 style="margin: 0 0 16px 0; font-size: 1.25rem; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;"><i class="fas fa-folder" style="color: #3b82f6;"></i>' + categoryName + '</h3><div style="display: grid; gap: 12px;">';
+          categoryItems.forEach(function(item) {
+            html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border-radius: 8px; border: 1px solid #e5e7eb;"><span style="font-size: 1rem; color: #374151; font-weight: 500;">' + item.name + '</span><span style="font-size: 1.125rem; color: #059669; font-weight: 600;">₹' + item.price.toFixed(2) + '</span></div>';
+          });
+          html += '</div></div>';
+        }
+      });
+
+      if (!html) {
+        html = '<div style="text-align: center; padding: 40px;"><i class="fas fa-info-circle" style="font-size: 3rem; color: #6b7280; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.25rem;">No Pricing Available</h3><p style="margin: 0; color: #6b7280;">This vendor has not set up pricing information yet.</p></div>';
+      }
+
+      content.innerHTML = html;
+    }
 
     function hideNotification(notificationId) {
       let hidden = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');
@@ -22113,14 +22310,30 @@
   <!-- Success Modal - Compact & Impressive -->
   <div id="successModal" class="success-modal-overlay">
     <div class="success-modal">
-      <div class="success-check-circle">
-        <svg class="success-checkmark" viewBox="0 0 52 52">
-          <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
-          <path class="success-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-        </svg>
+      <div class="success-lottie-container">
+        <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
       </div>
-      <h3 class="success-title">Success!</h3>
-      <p class="success-subtitle">Your print job has been sent to print successfully.</p>
+      <p class="success-subtitle">Your job sent to print successfully</p>
+    </div>
+  </div>
+
+  <!-- Service Prices Modal -->
+  <div id="servicePricesModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #e5e7eb;">
+        <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; color: #1e293b;">Service Prices</h2>
+        <button onclick="closeServicePricesModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 24px;">
+        <div id="servicePricesContent" style="display: flex; flex-direction: column; gap: 20px;">
+          <div style="text-align: center; padding: 20px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #3b82f6;"></i>
+            <p style="margin-top: 12px; color: #6b7280;">Loading pricing information...</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -22491,6 +22704,16 @@
 
     .success-modal-overlay.active .success-modal {
       transform: scale(1) translateY(0);
+    }
+
+    .success-lottie-container {
+      width: 200px;
+      height: 200px;
+      margin: 0 auto 1.5rem;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .success-check-circle {
