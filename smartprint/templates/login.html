@@ -1956,6 +1956,192 @@
     return false;
   }
 
+  // Vendor Credential Encryption Utilities
+  const VENDOR_CREDENTIAL_KEY = 'vendor_encrypted_creds';
+  
+  // Generate a key from a password using PBKDF2
+  async function deriveKeyFromPassword(password, salt) {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveBits', 'deriveKey']
+    );
+    
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+  
+  // Encrypt vendor credentials
+  async function encryptVendorCredentials(email, password) {
+    try {
+      // Generate a random salt and IV
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      
+      // Use a combination of email and a fixed secret for key derivation
+      // This ensures each vendor has a unique encryption key
+      const keyPassword = email + '|vendor_secret_key_2024';
+      const key = await deriveKeyFromPassword(keyPassword, salt);
+      
+      // Encrypt the credentials
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify({ email, password }));
+      
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        data
+      );
+      
+      // Combine salt, IV, and encrypted data
+      const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+      combined.set(salt, 0);
+      combined.set(iv, salt.length);
+      combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+      
+      // Convert to base64 for storage
+      const base64 = btoa(String.fromCharCode(...combined));
+      return base64;
+    } catch (error) {
+      console.error('Error encrypting vendor credentials:', error);
+      return null;
+    }
+  }
+  
+  // Decrypt vendor credentials
+  async function decryptVendorCredentials(encryptedData, email) {
+    try {
+      // Convert from base64
+      const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+      
+      // Extract salt, IV, and encrypted data
+      const salt = combined.slice(0, 16);
+      const iv = combined.slice(16, 28);
+      const encrypted = combined.slice(28);
+      
+      // Derive the key using the same password
+      const keyPassword = email + '|vendor_secret_key_2024';
+      const key = await deriveKeyFromPassword(keyPassword, salt);
+      
+      // Decrypt
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        encrypted
+      );
+      
+      const decoder = new TextDecoder();
+      const data = JSON.parse(decoder.decode(decrypted));
+      return data;
+    } catch (error) {
+      console.error('Error decrypting vendor credentials:', error);
+      return null;
+    }
+  }
+  
+  // Save encrypted vendor credentials to localStorage
+  async function saveVendorCredentials(email, password) {
+    try {
+      const encrypted = await encryptVendorCredentials(email, password);
+      if (encrypted) {
+        localStorage.setItem(VENDOR_CREDENTIAL_KEY, encrypted);
+        // Also store email separately (not encrypted) for decryption key derivation
+        localStorage.setItem('vendor_email_cache', email);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error saving vendor credentials:', error);
+      return false;
+    }
+  }
+  
+  // Get and decrypt vendor credentials from localStorage
+  async function getVendorCredentials() {
+    try {
+      const encrypted = localStorage.getItem(VENDOR_CREDENTIAL_KEY);
+      const email = localStorage.getItem('vendor_email_cache');
+      
+      if (!encrypted || !email) {
+        return null;
+      }
+      
+      const decrypted = await decryptVendorCredentials(encrypted, email);
+      return decrypted;
+    } catch (error) {
+      console.error('Error getting vendor credentials:', error);
+      return null;
+    }
+  }
+  
+  // Clear vendor credentials from localStorage
+  function clearVendorCredentials() {
+    try {
+      localStorage.removeItem(VENDOR_CREDENTIAL_KEY);
+      localStorage.removeItem('vendor_email_cache');
+      // Clear logout flag if it exists
+      sessionStorage.removeItem('vendor_logged_out');
+    } catch (error) {
+      console.error('Error clearing vendor credentials:', error);
+    }
+  }
+  
+  // Check if vendor should be auto-logged in on login page load
+  document.addEventListener('DOMContentLoaded', async function() {
+    // Only auto-login if we're on the login page and have cached credentials
+    // and user hasn't explicitly logged out
+    if (sessionStorage.getItem('vendor_logged_out') === 'true') {
+      // User explicitly logged out, don't auto-login
+      sessionStorage.removeItem('vendor_logged_out');
+      return;
+    }
+    
+    // Check if we have cached credentials and try to auto-login
+    const credentials = await getVendorCredentials();
+    if (credentials && credentials.email && credentials.password) {
+      // Try to auto-login silently (don't show welcome screen)
+      try {
+        const loginResponse = await fetch('/vendor-login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ 
+            email: credentials.email, 
+            password: credentials.password 
+          })
+        });
+        
+        const loginData = await loginResponse.json();
+        if (loginData.success) {
+          // Auto-login successful, redirect to dashboard
+          window.location.href = '/vendordashboard/';
+        } else {
+          // Auto-login failed, clear cached credentials
+          clearVendorCredentials();
+        }
+      } catch (error) {
+        console.error('Error during auto-login on login page:', error);
+        // Clear credentials on error
+        clearVendorCredentials();
+      }
+    }
+  });
+
   async function vendorLogin(event) {
     event.preventDefault();
     const email = document.getElementById('vendorEmail').value;
@@ -1984,6 +2170,9 @@
       });
       const data = await response.json();
       if (data.success) {
+        // Save encrypted credentials for auto-login
+        await saveVendorCredentials(email, password);
+        
         // Already showing welcome; update message if available
         try { showWelcome(data.vendor?.vendor_name || 'Vendor', true); } catch (_) {}
         const elapsed = Date.now() - authStart;
