@@ -4047,12 +4047,22 @@
 
     /* Vertical Invoice Modal Style */
     .invoice-modal {
-      width: min(400px, 90vw);
-      max-height: 80vh;
+      width: min(600px, 95vw);
+      max-width: 600px;
+      max-height: 85vh;
       background: #fff;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-modal {
+        width: min(95vw, 500px);
+        max-width: 95vw;
+        max-height: 90vh;
+        margin: 1rem auto;
+      }
     }
     
     [data-theme="dark"] .invoice-modal {
@@ -4062,9 +4072,16 @@
     
     .invoice-header {
       position: relative;
-      padding: 24px 24px 16px 24px;
+      padding: 20px 24px 16px 24px;
       text-align: center;
       border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-header {
+        padding: 16px 20px 12px 20px;
+      }
     }
     
     [data-theme="dark"] .invoice-header {
@@ -4076,6 +4093,14 @@
       font-weight: 700;
       color: #111827;
       margin: 0 0 8px 0;
+      line-height: 1.2;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-title {
+        font-size: 20px;
+        margin: 0 0 6px 0;
+      }
     }
     
     [data-theme="dark"] .invoice-title {
@@ -4086,6 +4111,14 @@
       font-size: 14px;
       color: #6b7280;
       margin-bottom: 16px;
+      line-height: 1.4;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-date {
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
     }
     
     [data-theme="dark"] .invoice-date {
@@ -4122,8 +4155,14 @@
     
     .invoice-content {
       padding: 0;
-      max-height: 50vh;
+      max-height: calc(85vh - 200px);
       overflow-y: auto;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-content {
+        max-height: calc(90vh - 180px);
+      }
     }
     
     .invoice-items {
@@ -4136,6 +4175,21 @@
       align-items: center;
       padding: 16px 24px;
       border-bottom: 1px solid #f3f4f6;
+      transition: background-color 0.2s ease;
+      gap: 1rem;
+    }
+    
+    .invoice-item:hover {
+      background-color: #f9fafb;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-item {
+        padding: 14px 20px;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.75rem;
+      }
     }
     
     [data-theme="dark"] .invoice-item {
@@ -4147,9 +4201,19 @@
     }
     
     .invoice-item-label {
-      font-size: 16px;
-      color: #374151;
+      font-size: 15px;
+      color: #4b5563;
       font-weight: 500;
+      line-height: 1.5;
+      flex: 1;
+      min-width: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-item-label {
+        font-size: 14px;
+        flex: 1;
+      }
     }
     
     [data-theme="dark"] .invoice-item-label {
@@ -4160,6 +4224,17 @@
       font-size: 16px;
       color: #111827;
       font-weight: 600;
+      line-height: 1.5;
+      text-align: right;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-item-value {
+        font-size: 15px;
+        text-align: right;
+      }
     }
     
     [data-theme="dark"] .invoice-item-value {
@@ -4178,18 +4253,46 @@
     }
     
     .invoice-total {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
       color: #fff;
       font-weight: 700;
       font-size: 18px;
+      margin-top: 0.75rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      border: none;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-total {
+        font-size: 17px;
+        margin-top: 0.75rem;
+        border-radius: 10px;
+      }
     }
     
     .invoice-total .invoice-item-label {
       color: #fff;
+      font-size: 17px;
+      font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-total .invoice-item-label {
+        font-size: 16px;
+      }
     }
     
     .invoice-total .invoice-item-value {
       color: #fff;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-total .invoice-item-value {
+        font-size: 20px;
+      }
     }
     
     .invoice-footer {
@@ -4198,6 +4301,13 @@
       display: flex;
       gap: 12px;
       justify-content: flex-end;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-footer {
+        padding: 16px 20px;
+        justify-content: center;
+      }
     }
     
     [data-theme="dark"] .invoice-footer {
@@ -4211,6 +4321,15 @@
       cursor: pointer;
       border: none;
       transition: all 0.2s;
+      min-width: 120px;
+    }
+    
+    @media (max-width: 768px) {
+      .invoice-footer .btn {
+        padding: 12px 20px;
+        min-width: 100px;
+        font-size: 0.9rem;
+      }
     }
     
     .invoice-footer .btn-secondary {
@@ -4868,62 +4987,134 @@
       }
     }
 
-    /* Professional Bill Styles */
+    /* Professional Bill Styles - Enhanced for Desktop and Mobile */
     .professional-bill {
       background: #ffffff;
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
       overflow: hidden;
-      font-family: 'Inter', sans-serif;
-      margin: 0.75rem 0; /* slightly tighter */
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin: 0;
+      border: 1px solid #e5e7eb;
+      width: 100%;
     }
 
     .bill-header {
       background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
       color: white;
-      padding: 0.8rem 1rem; /* smaller header */
+      padding: 1.75rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: .75rem;
-      flex-wrap: wrap;
+      gap: 1.5rem;
+      flex-wrap: nowrap;
+      position: relative;
+    }
+    
+    @media (max-width: 768px) {
+      .bill-header {
+        padding: 1.25rem 1.5rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
     }
 
     .bill-identity {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.875rem;
       flex: 1;
       min-width: 0;
     }
+    
+    @media (max-width: 768px) {
+      .bill-identity {
+        width: 100%;
+        gap: 0.75rem;
+      }
+    }
 
     .bill-logo {
-      width: 36px; /* small thumbnail */
-      height: 36px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
+      font-size: 1.5rem;
       overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    @media (max-width: 768px) {
+      .bill-logo {
+        width: 44px;
+        height: 44px;
+        font-size: 1.3rem;
+      }
     }
 
-    .bill-title h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+    .bill-title h3 { 
+      margin: 0; 
+      font-size: 1.5rem; 
+      font-weight: 700; 
+      letter-spacing: -0.02em;
+    }
+    
+    @media (max-width: 768px) {
+      .bill-title h3 {
+        font-size: 1.35rem;
+      }
+    }
 
-    .bill-subtitle { margin: 0.15rem 0 0 0; opacity: 0.9; font-size: 0.8rem; }
+    .bill-subtitle { 
+      margin: 0.25rem 0 0 0; 
+      opacity: 0.95; 
+      font-size: 0.9rem; 
+      font-weight: 500;
+    }
+    
+    @media (max-width: 768px) {
+      .bill-subtitle {
+        font-size: 0.85rem;
+      }
+    }
 
     .bill-date {
       text-align: right;
-      font-size: 0.85rem;
-      opacity: 0.9;
+      font-size: 0.9rem;
+      opacity: 0.95;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .bill-date {
+        text-align: left;
+        font-size: 0.85rem;
+        width: 100%;
+        white-space: normal;
+      }
     }
 
     .bill-date p {
-      margin: 0.25rem 0;
+      margin: 0.3rem 0;
+      line-height: 1.5;
     }
 
-    .bill-content { padding: 1rem; }
+    .bill-content { 
+      padding: 1.75rem 2rem; 
+    }
+    
+    @media (max-width: 768px) {
+      .bill-content {
+        padding: 1.25rem 1.5rem;
+      }
+    }
 
     .service-info {
       margin-bottom: 0;
@@ -4932,10 +5123,18 @@
     }
 
     .service-info h4 {
-      margin: 0 0 0.75rem 0;
+      margin: 0 0 1rem 0;
       color: #374151;
-      font-size: 1.1rem;
+      font-size: 1.125rem;
       font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    
+    @media (max-width: 768px) {
+      .service-info h4 {
+        font-size: 1rem;
+        margin: 0 0 0.875rem 0;
+      }
     }
 
     .service-row {
@@ -4943,22 +5142,54 @@
       justify-content: space-between;
       align-items: center;
       background: #f8fafc;
-      padding: 0.75rem 1rem;
+      padding: 0.875rem 1.125rem;
       border-radius: 8px;
+      gap: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+      .service-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+      }
     }
 
     .service-name {
       font-weight: 600;
       color: #1f2937;
+      font-size: 0.95rem;
+      flex: 1;
+    }
+    
+    @media (max-width: 768px) {
+      .service-name {
+        width: 100%;
+        font-size: 0.9rem;
+      }
     }
 
     .service-status {
-      background: #10b981;
+      background: linear-gradient(135deg, #10b981, #059669);
       color: white;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
+      padding: 0.4rem 1rem;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .service-status {
+        align-self: flex-end;
+        font-size: 0.8rem;
+        padding: 0.35rem 0.875rem;
+      }
     }
 
     .bill-items { margin-bottom: 1rem; }
@@ -5082,12 +5313,13 @@
     @media (max-width: 768px) {
       .bill-header {
         flex-direction: column;
-        text-align: center;
+        align-items: flex-start;
         gap: 1rem;
       }
 
       .bill-date {
-        text-align: center;
+        text-align: left;
+        width: 100%;
       }
 
       .bill-item-header,
@@ -5109,8 +5341,8 @@
 
       .service-row {
         flex-direction: column;
-        gap: 0.5rem;
-        text-align: center;
+        align-items: flex-start;
+        gap: 0.75rem;
       }
     }
 
@@ -6400,6 +6632,9 @@
     </style>
 
     <!-- Recent Jobs -->
+    <!-- STRICTLY NOTE: Print jobs in this section are rendered ONLY from User_print_jobs table (D1 database) -->
+    <!-- NOT from R2 storage or Vendor_print_jobs table -->
+    <!-- job_completed status is read ONLY from User_print_jobs table, NOT from R2 storage metadata -->
     <section class="jobs-section" id="jobsSection" style="display: none; opacity: 0; transition: opacity 0.3s ease-in-out;">
       <div class="section-header">
         <h2 class="section-title">
@@ -7994,29 +8229,35 @@
       @media (max-width: 768px) {
         .professional-bill {
           font-size: 0.875rem;
+          margin: 0;
         }
         
         .bill-header {
-          padding: 1rem;
-        flex-direction: row;
-        text-align: left;
-        gap: 0.75rem;
+          padding: 1.25rem 1.5rem;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1rem;
         }
 
-      .bill-identity {
-        width: 100%;
-      }
+        .bill-identity {
+          width: 100%;
+        }
         
         .bill-title h3 {
           font-size: 1.25rem;
         }
         
-        .bill-title p {
-          font-size: 0.75rem;
+        .bill-subtitle {
+          font-size: 0.85rem;
         }
         
         .bill-date {
-          font-size: 0.75rem;
+          font-size: 0.85rem;
+          width: 100%;
+        }
+        
+        .bill-content {
+          padding: 1.25rem 1.5rem;
         }
         
         .service-info h4 {
@@ -8024,7 +8265,7 @@
         }
         
         .invoice-item {
-          padding: 0.5rem 0;
+          padding: 14px 20px;
           font-size: 0.875rem;
         }
         
@@ -13504,43 +13745,73 @@
       const jobsSection = document.getElementById('jobsSection');
       if (!container) return;
       
-      // Get current date for filtering
+      // Get current date for filtering completed jobs
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-      
-      // Filter jobs by current date and status
-      const filteredJobs = (jobs || []).filter(job => {
-        // Get job date from timestamp or created_at
-        let jobDate = '';
-        if (job.timestamp) {
-          jobDate = new Date(job.timestamp).toISOString().split('T')[0];
-        } else if (job.created_at) {
-          jobDate = new Date(job.created_at).toISOString().split('T')[0];
-        } else if (job.date) {
-          jobDate = new Date(job.date).toISOString().split('T')[0];
-        }
-        
-        // Only include jobs from today
-        return jobDate === todayStr;
-      });
+      today.setHours(0, 0, 0, 0);
       
       // Separate pending and completed jobs
-      const pendingJobs = filteredJobs.filter(job => {
+      const pendingJobs = (jobs || []).filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
         return jobCompleted !== 'YES';
       });
       
-      const completedJobs = filteredJobs.filter(job => {
+      // Filter completed jobs: only show if completed today
+      const completedJobs = (jobs || []).filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
-        return jobCompleted === 'YES';
+        if (jobCompleted !== 'YES') return false;
+        
+        // Get completion date - handle both ISO strings and timestamps
+        let completionDate = null;
+        if (job.completion_time) {
+          try {
+            // Try parsing as ISO string first
+            if (typeof job.completion_time === 'string' && (job.completion_time.includes('T') || job.completion_time.includes(' '))) {
+              completionDate = new Date(job.completion_time);
+            } else {
+              // Try parsing as timestamp (seconds or milliseconds)
+              const timestamp = typeof job.completion_time === 'number' ? job.completion_time : parseFloat(job.completion_time);
+              completionDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+            }
+          } catch (e) {
+            console.error('Error parsing completion_time:', e);
+          }
+        } else if (job.completed_at) {
+          try {
+            completionDate = new Date(job.completed_at);
+          } catch (e) {
+            console.error('Error parsing completed_at:', e);
+          }
+        } else if (job.timestamp && jobCompleted === 'YES') {
+          // If no completion_time, use timestamp as fallback
+          try {
+            if (typeof job.timestamp === 'string' && (job.timestamp.includes('T') || job.timestamp.includes(' '))) {
+              completionDate = new Date(job.timestamp);
+            } else {
+              const timestamp = typeof job.timestamp === 'number' ? job.timestamp : parseFloat(job.timestamp);
+              completionDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+            }
+          } catch (e) {
+            console.error('Error parsing timestamp:', e);
+          }
+        }
+        
+        // Only show completed jobs if completed today
+        if (completionDate && !isNaN(completionDate.getTime())) {
+          completionDate.setHours(0, 0, 0, 0);
+          return completionDate.getTime() === today.getTime();
+        }
+        
+        // If no completion date or invalid date, don't show (likely old completed job)
+        return false;
       });
       
-      // Combine: pending first, then completed
+      // Combine: pending first, then completed (only today's completed)
       const sortedJobs = [...pendingJobs, ...completedJobs];
       
       // If jobs found, hide animation immediately and show Print Requests section
       if (sortedJobs && sortedJobs.length > 0) {
         console.log('📄 PDF Animation: Jobs found, hiding animation immediately');
+        console.log(`📊 Rendering ${pendingJobs.length} pending jobs and ${completedJobs.length} completed jobs (today only)`);
         hidePdfAnimation();
         
         // Show the Print Requests section with smooth fade-in
@@ -13552,15 +13823,19 @@
           }, 10);
         }
         
-        // Render actual jobs (pending first, then completed)
-          const fragment = document.createDocumentFragment();
-          const tempDiv = document.createElement('div');
-        const jobsHTML = sortedJobs.map(job => window.createJobCard(job)).join('');
-          tempDiv.innerHTML = jobsHTML;
-          while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
-          container.innerHTML = '';
-          container.appendChild(fragment);
-          updateJobTrackDistances();
+        // Render actual jobs (pending first, then completed) - all with proper badges
+        const fragment = document.createDocumentFragment();
+        const tempDiv = document.createElement('div');
+        const jobsHTML = sortedJobs.map(job => {
+          // Ensure job_completed is properly set for rendering
+          const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+          return window.createJobCard(job);
+        }).join('');
+        tempDiv.innerHTML = jobsHTML;
+        while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
+        container.innerHTML = '';
+        container.appendChild(fragment);
+        updateJobTrackDistances();
       } else {
         // No jobs found, let animation continue for 3 seconds, then hide Print Requests section
         console.log('📄 PDF Animation: No jobs found, animation will run for 3 seconds');
@@ -13781,10 +14056,26 @@
       // Get pages from pricing_details directly - check both levels like pricing button does
       const pricingDetails = job.pricing_details || {};
       const breakdown = pricingDetails.pricing_breakdown || {};
-      const pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
-      const copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
-      const resolvedPages = pagesFromPricing || job.pages || 1;
-      const resolvedCopies = copiesFromPricing || job.copies || 1;
+      // Try multiple sources for pages
+      let pagesFromPricing = breakdown.page_count || breakdown.pages || breakdown.total_pages || 
+                             pricingDetails.page_count || pricingDetails.pages || pricingDetails.total_pages ||
+                             job.page_count || job.pages || job.total_pages;
+      // Convert to number and ensure it's valid
+      pagesFromPricing = Number(pagesFromPricing);
+      if (isNaN(pagesFromPricing) || pagesFromPricing <= 0) {
+        pagesFromPricing = 1;
+      }
+      // Try multiple sources for copies
+      let copiesFromPricing = breakdown.num_copies || breakdown.copies || 
+                             pricingDetails.num_copies || pricingDetails.copies ||
+                             job.num_copies || job.copies;
+      // Convert to number and ensure it's valid
+      copiesFromPricing = Number(copiesFromPricing);
+      if (isNaN(copiesFromPricing) || copiesFromPricing <= 0) {
+        copiesFromPricing = 1;
+      }
+      const resolvedPages = pagesFromPricing;
+      const resolvedCopies = copiesFromPricing;
       const getJobToken = (jobObj) => {
         if (jobObj.token) return String(jobObj.token);
         if (jobObj.job_token) return String(jobObj.job_token);
@@ -13820,7 +14111,7 @@
               </div>
           <div class="job-card-badges">
             <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
-            <div class="job-card-status-badge ${job.job_completed === 'YES' ? 'status-completed' : getStatusClass(job.status)}">${job.job_completed === 'YES' ? 'COMPLETED' : job.status}</div>
+            <div class="job-card-status-badge ${String(job.job_completed || 'NO').trim().toUpperCase() === 'YES' ? 'status-completed' : getStatusClass(job.status)}">${String(job.job_completed || 'NO').trim().toUpperCase() === 'YES' ? 'COMPLETED' : (job.status || 'PENDING').toUpperCase()}</div>
           </div>
             </div>
             
@@ -13831,7 +14122,7 @@
               </div>
               <div class="job-card-detail-row">
                 <i class="fas fa-file-alt job-detail-icon"></i>
-                <span class="job-detail-text pages-count-text">${parseInt(resolvedPages)} page${parseInt(resolvedPages)===1?'':'s'}</span>
+                <span class="job-detail-text pages-count-text">${resolvedPages} page${resolvedPages===1?'':'s'}</span>
               </div>
             </div>
             
@@ -14549,7 +14840,7 @@
               </div>
           <div class="job-card-badges">
             <span class="job-token-badge"><i class="fas fa-ticket-alt"></i> Token ${jobTokenText}</span>
-            <div class="job-card-status-badge ${job.job_completed === 'YES' ? 'status-completed' : getStatusClass(job.status)}">${job.job_completed === 'YES' ? 'COMPLETED' : job.status}</div>
+            <div class="job-card-status-badge ${String(job.job_completed || 'NO').trim().toUpperCase() === 'YES' ? 'status-completed' : getStatusClass(job.status)}">${String(job.job_completed || 'NO').trim().toUpperCase() === 'YES' ? 'COMPLETED' : (job.status || 'PENDING').toUpperCase()}</div>
           </div>
             </div>
             
@@ -15271,7 +15562,7 @@
 
         // Platform fee removed as requested
 
-        // Add total (without commission since platform fee is shown as zero)
+        // Grand total only (no subtotal)
         html += `
           <div class="invoice-item invoice-total">
             <span class="invoice-item-label">Grand Total</span>
@@ -17991,14 +18282,64 @@
         return;
       }
 
+      // Get current date for filtering completed jobs
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       // Filter jobs efficiently - STRICT FILTER: Only pending jobs (case-insensitive)
       const pendingJobs = userJobs.filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
         return jobCompleted !== 'YES';
       });
+      
+      // Filter completed jobs: only show if completed today
       const completedJobs = userJobs.filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
-        return jobCompleted === 'YES';
+        if (jobCompleted !== 'YES') return false;
+        
+        // Get completion date - handle both ISO strings and timestamps
+        let completionDate = null;
+        if (job.completion_time) {
+          try {
+            // Try parsing as ISO string first
+            if (typeof job.completion_time === 'string' && (job.completion_time.includes('T') || job.completion_time.includes(' '))) {
+              completionDate = new Date(job.completion_time);
+            } else {
+              // Try parsing as timestamp (seconds or milliseconds)
+              const timestamp = typeof job.completion_time === 'number' ? job.completion_time : parseFloat(job.completion_time);
+              completionDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+            }
+          } catch (e) {
+            console.error('Error parsing completion_time:', e);
+          }
+        } else if (job.completed_at) {
+          try {
+            completionDate = new Date(job.completed_at);
+          } catch (e) {
+            console.error('Error parsing completed_at:', e);
+          }
+        } else if (job.timestamp && jobCompleted === 'YES') {
+          // If no completion_time, use timestamp as fallback
+          try {
+            if (typeof job.timestamp === 'string' && (job.timestamp.includes('T') || job.timestamp.includes(' '))) {
+              completionDate = new Date(job.timestamp);
+            } else {
+              const timestamp = typeof job.timestamp === 'number' ? job.timestamp : parseFloat(job.timestamp);
+              completionDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+            }
+          } catch (e) {
+            console.error('Error parsing timestamp:', e);
+          }
+        }
+        
+        // Only show completed jobs if completed today
+        if (completionDate && !isNaN(completionDate.getTime())) {
+          completionDate.setHours(0, 0, 0, 0);
+          return completionDate.getTime() === today.getTime();
+        }
+        
+        // If no completion date or invalid date, don't show (likely old completed job)
+        return false;
       });
 
       // Render pending jobs in main container
@@ -18338,6 +18679,27 @@
         return;
       }
 
+      // Get service display name
+      const serviceType = (job.service_type || job.service || '').toString().toLowerCase();
+      const serviceNames = {
+        'digital_print': 'Digital Printing',
+        'digital': 'Digital Printing',
+        'gloss_printing': 'Gloss Printing',
+        'gloss': 'Gloss Printing',
+        'jumbo_printing': 'Jumbo Printing',
+        'jumbo': 'Jumbo Printing',
+        'passport_print': 'Passport Photo',
+        'passport': 'Passport Photo',
+        'photo_print': 'Photo Printing',
+        'photo': 'Photo Printing',
+        'goldenemboss': 'Golden Emboss Printing',
+        'emboss': 'Golden Emboss Printing',
+        'project_binding': 'Project Binding',
+        'regular_print': 'Regular Print',
+        'regular': 'Regular Print'
+      };
+      const serviceDisplayName = serviceNames[serviceType] || 'Printing Service';
+
       // Set current date and time
       const now = new Date();
       const options = { 
@@ -18354,16 +18716,83 @@
         invoiceDate.textContent = formattedDate;
       }
 
-      // Build vertical invoice format
-      let html = '';
+      // Build professional bill format matching the modal
+      let html = `
+        <div class="professional-bill">
+          <div class="bill-header">
+            <div class="bill-identity">
+              <div class="bill-logo">
+                <i class="fas fa-print"></i>
+              </div>
+              <div class="bill-title">
+                <h3>PrintMax Invoice</h3>
+                <p class="bill-subtitle">Professional Printing Services</p>
+              </div>
+            </div>
+            <div class="bill-date">
+              <p>Date: ${new Date().toLocaleDateString()}</p>
+              <p>Time: ${new Date().toLocaleTimeString()}</p>
+            </div>
+          </div>
+          
+          <div class="bill-content">
+            <div class="service-info">
+              <h4>Service Details</h4>
+              <div class="service-row">
+                <span class="service-name">${serviceDisplayName}</span>
+                <span class="service-status">Completed</span>
+              </div>
+            </div>
+            
+            <div class="invoice-items">
+      `;
+
       let subtotal = 0;
 
-      // Service type
-      if (breakdown.pricing_key_used) {
+      // Service specifics - Special handling for golden embossing
+      if (serviceType.includes('emboss') && breakdown.emboss_cost !== undefined) {
+        const pages = breakdown.page_count || 1;
+        const copies = breakdown.num_copies || 1;
+        
+        if (breakdown.paper_cost && breakdown.paper_cost > 0) {
+          const paperCost = Number(breakdown.paper_cost || 0);
+          html += `
+            <div class="invoice-item">
+              <span class="invoice-item-label">Printing Cost (${pages} pages × ${copies} copies)</span>
+              <span class="invoice-item-value">₹${paperCost.toFixed(2)}</span>
+            </div>
+          `;
+          subtotal += paperCost;
+        }
+        
+        const embossCost = Number(breakdown.emboss_cost || 0);
+        if (embossCost > 0) {
+          html += `
+            <div class="invoice-item">
+              <span class="invoice-item-label">Golden Embossing Black Cover (${copies} ${copies === 1 ? 'book' : 'books'})</span>
+              <span class="invoice-item-value">₹${embossCost.toFixed(2)}</span>
+            </div>
+          `;
+          subtotal += embossCost;
+        }
+      } else if (breakdown.pricing_key_used) {
         const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const qty = (breakdown.page_count || breakdown.pages || 1) * (breakdown.num_copies || 1);
-        const rate = Number(breakdown.base_price || breakdown.price_per_page || 0);
-        const amount = rate * qty;
+        const qty = breakdown.page_count || breakdown.print_quantity || 1;
+        const copies = breakdown.num_copies || 1;
+        const totalQty = qty * copies;
+        const rate = Number(breakdown.base_price || 0);
+        const amount = rate * totalQty;
+        
+        html += `
+          <div class="invoice-item">
+            <span class="invoice-item-label">${serviceDesc}</span>
+            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
+          </div>
+        `;
+        subtotal += amount;
+      } else {
+        const serviceDesc = serviceDisplayName;
+        const amount = Number(breakdown.total_price || pricing.total_price || 0);
         
         html += `
           <div class="invoice-item">
@@ -18374,7 +18803,28 @@
         subtotal += amount;
       }
 
-      // Quality upgrade
+      // Add pages, color, and copies details
+      const pages = breakdown.page_count || breakdown.pages || breakdown.print_quantity || 1;
+      const copies = breakdown.num_copies || breakdown.copies || 1;
+      const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || 'Black and White';
+      const size = breakdown.print_size || breakdown.size || 'N/A';
+      
+      html += `
+        <div class="invoice-item">
+          <span class="invoice-item-label">Pages</span>
+          <span class="invoice-item-value">${pages}</span>
+        </div>
+        <div class="invoice-item">
+          <span class="invoice-item-label">Color</span>
+          <span class="invoice-item-value">${color}</span>
+        </div>
+        <div class="invoice-item">
+          <span class="invoice-item-label">Copies</span>
+          <span class="invoice-item-value">${copies}</span>
+        </div>
+      `;
+
+      // Optional extras
       if (Number(breakdown.quality_upgrade || 0) > 0) {
         html += `
           <div class="invoice-item">
@@ -18384,24 +18834,22 @@
         `;
         subtotal += Number(breakdown.quality_upgrade);
       }
-
-      // Pages and copies details
-      if (breakdown.page_count && breakdown.num_copies) {
-        html += `
-          <div class="invoice-item">
-            <span class="invoice-item-label">Pages × Copies</span>
-            <span class="invoice-item-value">${breakdown.page_count} × ${breakdown.num_copies}</span>
-          </div>
-        `;
+      
+      // Additional options (spiral binding, lamination, tape binding)
+      if (breakdown.additional_options && Array.isArray(breakdown.additional_options)) {
+        breakdown.additional_options.forEach(option => {
+          const optionPrice = Number(option.price || 0);
+          if (optionPrice > 0) {
+            html += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">${option.name}</span>
+                <span class="invoice-item-value">₹${optionPrice.toFixed(2)}</span>
+              </div>
+            `;
+            subtotal += optionPrice;
+          }
+        });
       }
-
-      // Subtotal
-      html += `
-        <div class="invoice-item invoice-subtotal">
-          <span class="invoice-item-label">Subtotal</span>
-          <span class="invoice-item-value">₹${subtotal.toFixed(2)}</span>
-        </div>
-      `;
 
       // Points discount
       if ((pricing.points_applied === true || pricing.points_applied === 'true') && Number(pricing.points_used || 0) > 0) {
@@ -18415,24 +18863,31 @@
         subtotal -= discount;
       }
 
-      // Platform fee (if applicable)
-      const platformFee = Number(pricing.platform_fee || 0);
-      if (platformFee > 0) {
-        html += `
-          <div class="invoice-item">
-            <span class="invoice-item-label">Platform Fee</span>
-            <span class="invoice-item-value">₹${platformFee.toFixed(2)}</span>
-          </div>
-        `;
-        subtotal += platformFee;
-      }
-
-      // Grand total
-      const total = pricing.total_price || subtotal;
+      // Calculate final total (no subtotal shown)
+      const finalTotal = subtotal > 0 ? subtotal : Number(pricing.total_price || breakdown.total_price || 0);
+      
+      // Grand total only (no subtotal)
       html += `
         <div class="invoice-item invoice-total">
           <span class="invoice-item-label">Grand Total</span>
-          <span class="invoice-item-value">₹${Number(total).toFixed(2)}</span>
+          <span class="invoice-item-value">₹${Number(finalTotal).toFixed(2)}</span>
+        </div>
+      `;
+
+      html += `
+            </div>
+            
+            <div class="bill-footer">
+              <div class="payment-info">
+                <p><strong>Payment Method:</strong> Online Payment</p>
+                <p><strong>Status:</strong> <span class="status-paid" style="color: #059669; font-weight: 600;">Paid</span></p>
+              </div>
+              <div class="contact-info">
+                <p>Thank you for choosing PrintMax!</p>
+                <p>For queries, contact: support@printmax.com</p>
+              </div>
+            </div>
+          </div>
         </div>
       `;
 
@@ -21462,44 +21917,48 @@
       let displayShops = [];
       
       if (searchText.length === 0) {
-        // DEFAULT MODE: Show shops within 3km, but if none exist, show all shops (fallback)
-        if (within3km.length > 0) {
-          displayShops = [...within3km].sort((a, b) => {
-            if (a.distanceKm == null) return 1;
-            if (b.distanceKm == null) return -1;
-            return a.distanceKm - b.distanceKm;
-          });
-        } else {
-          // Fallback: Show all shops if no shops within 3km (or distance not calculated)
-          displayShops = [...shops].sort((a, b) => {
-            if (a.distanceKm == null && b.distanceKm == null) return 0;
-            if (a.distanceKm == null) return 1;
-            if (b.distanceKm == null) return -1;
-            return a.distanceKm - b.distanceKm;
-          });
-          console.log("No shops within 3km, showing all shops:", displayShops.length);
-        }
+        // DEFAULT MODE: STRICTLY show only shops within 3km
+        displayShops = [...within3km].sort((a, b) => {
+          if (a.distanceKm == null) return 1;
+          if (b.distanceKm == null) return -1;
+          return a.distanceKm - b.distanceKm;
+        });
+        console.log("Showing shops within 3km only:", displayShops.length);
       } else {
-        // SEARCH MODE: Show all shops matching search text (case-insensitive)
+        // SEARCH MODE: Show shops matching search text, but prioritize within 3km
         const searchLower = searchText.toLowerCase();
         const matchedShops = shops.filter(shop => {
           const shopName = (shop.shop_name || '').toLowerCase();
           const shopAddress = (shop.shop_address || '').toLowerCase();
           const shopCity = (shop.city || '').toLowerCase();
+          const shopPincode = (shop.pincode || '').toString();
           return shopName.includes(searchLower) || 
                  shopAddress.includes(searchLower) || 
-                 shopCity.includes(searchLower);
+                 shopCity.includes(searchLower) ||
+                 shopPincode.includes(searchLower);
         });
         
-        // Sort matched shops by distance
-        displayShops = matchedShops.sort((a, b) => {
-          if (a.distanceKm == null && b.distanceKm == null) return 0;
-          if (a.distanceKm == null) return 1;
-          if (b.distanceKm == null) return -1;
-          return a.distanceKm - b.distanceKm;
-        });
+        // Filter matched shops to only show those within 3km
+        const matchedWithin3km = matchedShops.filter(shop => shop.distanceKm != null && shop.distanceKm <= 3);
         
-        console.log("Matched shops:", displayShops.length);
+        // If search results have shops within 3km, show only those; otherwise show all matched (for location/name search)
+        if (matchedWithin3km.length > 0) {
+          displayShops = matchedWithin3km.sort((a, b) => {
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+          });
+        } else {
+          // If no matches within 3km, show all matched shops (for name/location search)
+          displayShops = matchedShops.sort((a, b) => {
+            if (a.distanceKm == null && b.distanceKm == null) return 0;
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+          });
+        }
+        
+        console.log("Matched shops:", displayShops.length, "Within 3km:", matchedWithin3km.length);
       }
       
       console.log("Rendered shops:", displayShops.length);

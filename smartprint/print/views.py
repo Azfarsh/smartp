@@ -1253,8 +1253,11 @@ def userdashboard(request):
 
     try:
         # ULTRA-FAST: Avoid synchronous job loading; fetch details only
+        # STRICTLY NOTE: Print jobs are rendered ONLY from User_print_jobs table (D1 database)
+        # NOT from R2 storage or Vendor_print_jobs table
+        # job_completed status is read ONLY from User_print_jobs table, NOT from R2 metadata
         user_details = get_user_details_from_d1(request.user.email) or {}
-        preloaded_jobs = get_user_jobs_from_d1(request.user.email)
+        preloaded_jobs = get_user_jobs_from_d1(request.user.email, fallback_to_r2=False)
         if not isinstance(preloaded_jobs, list):
             preloaded_jobs = []
         pending_job_list = [
@@ -1367,8 +1370,15 @@ def userdashboard(request):
 
 def get_user_jobs_from_d1(user_email, fallback_to_r2=True):
     """
-    Fetch user print jobs from D1 database via Worker API
+    Fetch user print jobs from D1 database via Worker API (User_print_jobs table ONLY)
     Returns list of jobs with R2 paths from database
+    
+    STRICTLY NOTE: 
+    - Print jobs are fetched ONLY from User_print_jobs table (D1 database)
+    - NOT from R2 storage or Vendor_print_jobs table
+    - job_completed status is read ONLY from User_print_jobs table, NOT from R2 storage metadata
+    - R2 is ONLY used for generating presigned URLs for file access
+    - Set fallback_to_r2=False to strictly prevent R2 fallback (recommended for user dashboard)
     """
     def _maybe_fallback():
         if not fallback_to_r2:
@@ -1603,9 +1613,12 @@ def userdashboard_data(request):
     
     try:
         # Load user data quickly
+        # STRICTLY NOTE: Print jobs are rendered ONLY from User_print_jobs table (D1 database)
+        # NOT from R2 storage or Vendor_print_jobs table
+        # job_completed status is read ONLY from User_print_jobs table, NOT from R2 metadata
         user_details = get_user_details_from_d1(request.user.email)
-        # Fetch jobs from D1 database instead of R2
-        user_jobs = get_user_jobs_from_d1(request.user.email)
+        # Fetch jobs from D1 database ONLY - no R2 fallback
+        user_jobs = get_user_jobs_from_d1(request.user.email, fallback_to_r2=False)
         
         # Calculate statistics
         total_jobs = len(user_jobs)
@@ -2076,7 +2089,36 @@ def get_print_requests(request):
             print(f"🖨️ Loaded printer configuration: {printer_config}")
         
         # Fetch pending jobs from D1 database using vendor email fallback
-        files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
+        pending_files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
+        
+        # Also fetch completed jobs to check if any were completed today
+        completed_files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='YES') or []
+        
+        # Filter completed jobs: only include if completed today
+        today = datetime.datetime.now().date()
+        today_completed_files = []
+        for job in completed_files:
+            completion_time = job.get('completion_time') or job.get('timestamp')
+            if completion_time:
+                try:
+                    # Try parsing as ISO string
+                    if isinstance(completion_time, str):
+                        if 'T' in completion_time or ' ' in completion_time:
+                            completion_date = datetime.datetime.fromisoformat(completion_time.replace('Z', '+00:00')).date()
+                        else:
+                            # Try parsing as timestamp
+                            completion_date = datetime.datetime.fromtimestamp(float(completion_time)).date()
+                    else:
+                        completion_date = datetime.datetime.fromtimestamp(float(completion_time)).date()
+                    
+                    if completion_date == today:
+                        today_completed_files.append(job)
+                except Exception as e:
+                    print(f"⚠️ Error parsing completion_time for job {job.get('filename', 'unknown')}: {e}")
+        
+        # Combine pending and today's completed jobs
+        files = pending_files + today_completed_files
+        
         if not files:
             print(f"ℹ️ No jobs returned from D1 for vendor {vendor_id}")
         
@@ -2138,11 +2180,13 @@ def get_print_requests(request):
         
         print(f"📊 AJAX Job categorization - Manual: {len(categorized_jobs['manual'])}, Requests: {len(categorized_jobs['requests'])}, Completed: {len(categorized_jobs['completed'])}")
         
-        # Return only pending jobs in print_requests, completed jobs in categorized
+        # Return pending jobs + today's completed jobs in print_requests
         pending_jobs = categorized_jobs['manual'] + categorized_jobs['requests']
+        # Include today's completed jobs in print_requests
+        all_print_requests = pending_jobs + categorized_jobs['completed']
         
         return JsonResponse({
-            "print_requests": pending_jobs,  # Only pending jobs
+            "print_requests": all_print_requests,  # Pending jobs + today's completed jobs
             "categorized": categorized_jobs,
             "counts": {
                 "manual": len(categorized_jobs['manual']),
@@ -10799,7 +10843,8 @@ def create_or_update_vendor_transaction(vendor_email, vendor_id, vendor_name, co
             'total_price': float(total_price),
             'platform_profit': float(platform_profit),
             'total_earning': total_earning,
-            'total_documents': 1
+            'total_documents': 1,
+            'filename': filename  # Include filename to prevent double counting
         }
         
         response = requests.post(
@@ -10931,37 +10976,74 @@ def mark_job_completed(request):
                 # Get pricing details from job metadata for transaction report
                 total_price = 0.0
                 platform_profit = 0.0
+                
+                # First, try to get from D1 database Vendor_print_jobs table
                 try:
-                    s3 = boto3.client('s3',
-                                      aws_access_key_id=settings.R2_ACCESS_KEY,
-                                      aws_secret_access_key=settings.R2_SECRET_KEY,
-                                      endpoint_url=settings.R2_ENDPOINT,
-                                      region_name='auto')
+                    api_url = getattr(settings, 'WORKER_API_URL', '')
+                    api_key = getattr(settings, 'WORKER_API_KEY', '')
                     
-                    vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-                    try:
-                        result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                        metadata = result.get('Metadata', {})
+                    if api_url and api_key:
+                        # Get job from Vendor_print_jobs table
+                        worker_endpoint = api_url.rstrip('/') + '/get-vendor-print-jobs'
+                        job_response = requests.post(
+                            worker_endpoint,
+                            json={'vendor_id': vendor_id, 'filename': filename},
+                            headers={
+                                'Content-Type': 'application/json',
+                                'x-api-key': api_key
+                            },
+                            timeout=10
+                        )
                         
-                        # Extract pricing_details
-                        pricing_details_str = metadata.get('pricing_details')
-                        if pricing_details_str:
-                            try:
-                                pricing_obj = json.loads(pricing_details_str)
-                                total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
-                                platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                            except:
-                                pass
-                        
-                        # Fallback to metadata if pricing_details not available
-                        if total_price == 0.0:
-                            total_price = float(metadata.get('total_price', 0.0))
-                        if platform_profit == 0.0:
-                            platform_profit = float(metadata.get('platform_profit', 0.0))
-                    except Exception as e:
-                        print(f"⚠️ Error getting pricing from metadata: {e}")
+                        if job_response.status_code == 200:
+                            job_data = job_response.json()
+                            if job_data.get('success') and job_data.get('data'):
+                                jobs = job_data.get('data', [])
+                                # Filter by filename to get exact match
+                                matching_jobs = [j for j in jobs if j.get('filename') == filename]
+                                if matching_jobs:
+                                    job = matching_jobs[0]  # Get first matching job
+                                    total_price = float(job.get('total_price', 0.0))
+                                    platform_profit = float(job.get('platform_profit', 0.0))
+                                    print(f"✅ Retrieved pricing from D1: total_price={total_price}, platform_profit={platform_profit}")
                 except Exception as e:
-                    print(f"⚠️ Error accessing S3 for pricing: {e}")
+                    print(f"⚠️ Error getting pricing from D1: {e}")
+                
+                # Fallback to R2 metadata if D1 doesn't have pricing
+                if total_price == 0.0 or platform_profit == 0.0:
+                    try:
+                        s3 = boto3.client('s3',
+                                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                                          endpoint_url=settings.R2_ENDPOINT,
+                                          region_name='auto')
+                        
+                        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                        try:
+                            result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                            metadata = result.get('Metadata', {})
+                            
+                            # Extract pricing_details
+                            pricing_details_str = metadata.get('pricing_details')
+                            if pricing_details_str:
+                                try:
+                                    pricing_obj = json.loads(pricing_details_str)
+                                    if total_price == 0.0:
+                                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                                    if platform_profit == 0.0:
+                                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                                except:
+                                    pass
+                            
+                            # Fallback to metadata if pricing_details not available
+                            if total_price == 0.0:
+                                total_price = float(metadata.get('total_price', 0.0))
+                            if platform_profit == 0.0:
+                                platform_profit = float(metadata.get('platform_profit', 0.0))
+                        except Exception as e:
+                            print(f"⚠️ Error getting pricing from R2 metadata: {e}")
+                    except Exception as e:
+                        print(f"⚠️ Error accessing S3 for pricing: {e}")
                 
                 # Create or update vendor transaction report for 2-day period
                 completion_date = datetime.datetime.now().date()
