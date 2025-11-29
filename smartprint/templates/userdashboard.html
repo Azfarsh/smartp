@@ -1200,7 +1200,7 @@
       font-size: 1.1rem;
       font-weight: 600;
       color: #0f172a;
-      margin-top: 4px;
+      margin-top: 10px;
     }
 
     /* Simple User Profile in Header */
@@ -6329,10 +6329,8 @@
 
   <div class="photo-success-overlay" id="dashboardSuccessOverlay" aria-hidden="true">
     <div class="photo-success-card">
-      <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto 4px;"></dotlottie-player>
-      <div class="photo-success-text" id="dashboardSuccessText">✅ Your job sent to print successfully</div>
-      <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto 4px;"></dotlottie-player>
-      <div class="photo-success-text" id="dashboardSuccessText">✅ Your job sent to print successfully</div>
+      <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
+      <div class="photo-success-text" id="dashboardSuccessText">Your job sent to print successfully</div>
     </div>
   </div>
 
@@ -6634,9 +6632,6 @@
     </style>
 
     <!-- Recent Jobs -->
-    <!-- STRICTLY NOTE: Print jobs in this section are rendered ONLY from User_print_jobs table (D1 database) -->
-    <!-- NOT from R2 storage or Vendor_print_jobs table -->
-    <!-- job_completed status is read ONLY from User_print_jobs table, NOT from R2 storage metadata -->
     <section class="jobs-section" id="jobsSection" style="display: none; opacity: 0; transition: opacity 0.3s ease-in-out;">
       <div class="section-header">
         <h2 class="section-title">
@@ -12246,7 +12241,7 @@
                     showSuccessModalWithAnimation();
                   }
                   
-                  // Update job list dynamically IMMEDIATELY (no delay)
+                  // Update job list dynamically
                   updateJobListAfterPayment();
                   
                   // Clear all modal inputs and preview data after successful payment
@@ -21482,8 +21477,6 @@
                   if (typeof updateJobListAfterPayment === 'function') {
                     updateJobListAfterPayment();
                   }
-                  // Update job list dynamically IMMEDIATELY (no delay)
-                  updateJobListAfterPayment();
                 } catch (err) {
                   console.error('Background storage error:', err);
                 }
@@ -22797,8 +22790,6 @@
           </div>
         </div>
       </div>
-      <h3 class="success-title">Print Job Sent!</h3>
-      <p class="success-subtitle">Your print job has been sent to print successfully.</p>
     </div>
   </div>
 
@@ -23127,15 +23118,15 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.75);
+      background-color: rgba(0, 0, 0, 0.6);
       z-index: 9999;
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0;
       visibility: hidden;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      backdrop-filter: blur(8px);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(4px);
     }
 
     .success-modal-overlay.active {
@@ -23145,33 +23136,16 @@
 
     .success-modal {
       background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-      border-radius: 28px;
-      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3), 
-                  0 0 0 1px rgba(0, 0, 0, 0.05),
-                  0 0 100px rgba(16, 185, 129, 0.2);
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
       width: 90%;
-      max-width: 360px;
-      padding: 3rem 2.5rem;
+      max-width: 320px;
+      padding: 2.5rem 2rem;
       text-align: center;
-      transform: scale(0.7) translateY(30px) rotate(-5deg);
-      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform: scale(0.85) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       position: relative;
-      overflow: visible;
-      animation: modal-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    @keyframes modal-entrance {
-      0% {
-        transform: scale(0.7) translateY(30px) rotate(-5deg);
-        opacity: 0;
-      }
-      60% {
-        transform: scale(1.05) translateY(-5px) rotate(2deg);
-      }
-      100% {
-        transform: scale(1) translateY(0) rotate(0deg);
-        opacity: 1;
-      }
+      overflow: hidden;
     }
 
     .success-modal::before {
@@ -23180,46 +23154,12 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 5px;
-      background: linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #10b981 100%);
-      background-size: 200% 100%;
-      animation: shimmer 2s linear infinite;
-    }
-
-    @keyframes shimmer {
-      0% {
-        background-position: -200% 0;
-      }
-      100% {
-        background-position: 200% 0;
-      }
-    }
-
-    .success-modal::after {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
-      animation: pulse-ring 2s ease-out infinite;
-      pointer-events: none;
-    }
-
-    @keyframes pulse-ring {
-      0% {
-        transform: scale(0.8);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(1.2);
-        opacity: 0;
-      }
+      height: 4px;
+      background: linear-gradient(90deg, #10b981 0%, #3b82f6 100%);
     }
 
     .success-modal-overlay.active .success-modal {
-      transform: scale(1) translateY(0) rotate(0deg);
+      transform: scale(1) translateY(0);
     }
 
     .success-lottie-container {
@@ -23233,68 +23173,39 @@
     }
 
     .success-check-circle {
-      width: 100px;
-      height: 100px;
-      margin: 0 auto 2rem;
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
       position: relative;
-      animation: check-circle-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    @keyframes check-circle-entrance {
-      0% {
-        transform: scale(0) rotate(-180deg);
-        opacity: 0;
-      }
-      60% {
-        transform: scale(1.15) rotate(10deg);
-      }
-      100% {
-        transform: scale(1) rotate(0deg);
-        opacity: 1;
-      }
     }
 
     .success-checkmark {
-      width: 100px;
-      height: 100px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       display: block;
-      stroke-width: 4;
+      stroke-width: 3;
       stroke: #10b981;
       stroke-miterlimit: 10;
-      filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
-      animation: checkmark-glow 2s ease-in-out infinite;
-    }
-
-    @keyframes checkmark-glow {
-      0%, 100% {
-        filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
-      }
-      50% {
-        filter: drop-shadow(0 6px 16px rgba(16, 185, 129, 0.5));
-      }
+      box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+      animation: success-fill 0.4s ease-in-out 0.4s forwards, success-scale 0.3s ease-in-out 0.9s both;
     }
 
     .success-checkmark-circle {
       stroke-dasharray: 166;
       stroke-dashoffset: 166;
-      stroke-width: 4;
+      stroke-width: 3;
       stroke-miterlimit: 10;
       stroke: #10b981;
       fill: none;
-      animation: success-stroke 0.8s cubic-bezier(0.65, 0, 0.45, 1) 0.3s forwards;
-      filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2));
+      animation: success-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
     }
 
     .success-checkmark-check {
       transform-origin: 50% 50%;
       stroke-dasharray: 48;
       stroke-dashoffset: 48;
-      stroke-width: 4;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      animation: success-stroke 0.5s cubic-bezier(0.65, 0, 0.45, 1) 1s forwards,
-                 check-bounce 0.4s ease-out 1.5s;
+      animation: success-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
     }
 
     @keyframes success-stroke {
@@ -23303,24 +23214,9 @@
       }
     }
 
-    @keyframes check-bounce {
-      0%, 100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.1);
-      }
-    }
-
     @keyframes success-fill {
-      0% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-      }
-      50% {
-        box-shadow: 0 0 0 20px rgba(16, 185, 129, 0.2);
-      }
       100% {
-        box-shadow: 0 0 0 40px rgba(16, 185, 129, 0);
+        box-shadow: 0 0 0 30px rgba(16, 185, 129, 0);
       }
     }
 
@@ -23334,49 +23230,21 @@
     }
 
     .success-title {
-      margin: 0 0 0.75rem 0;
+      margin: 0 0 0.5rem 0;
       padding: 0;
-      font-size: 1.875rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: #1e293b;
       letter-spacing: -0.02em;
-      animation: title-fade-in 0.6s ease-out 1.2s both;
-      background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    @keyframes title-fade-in {
-      0% {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
     }
 
     .success-subtitle {
       margin: 0;
       padding: 0;
-      font-size: 1.05rem;
+      font-size: 0.95rem;
       color: #64748b;
       font-weight: 400;
-      line-height: 1.6;
-      animation: subtitle-fade-in 0.6s ease-out 1.4s both;
-    }
-
-    @keyframes subtitle-fade-in {
-      0% {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      line-height: 1.5;
     }
 
     @media (max-width: 768px) {
@@ -23589,112 +23457,36 @@
 
       // Enhanced showSuccessModal with animation initialization
       function showSuccessModalWithAnimation() {
-        // Show modal immediately with enhanced animation
+        // Show modal immediately with animation
         const modal = document.getElementById('successModal');
         if (modal) {
           modal.classList.add('active');
           
-          // Create confetti effect
-          createConfettiEffect();
-          
-          // Initialize enhanced animation after modal is shown
+          // Initialize animation after modal is shown
           setTimeout(() => {
             initializeLottieAnimation();
           }, 100);
           
-          // Auto-close after 3 seconds (increased for better visibility)
+          // Auto-close after 2 seconds
           setTimeout(() => {
             hideSuccessModal();
-          }, 3000);
+          }, 2000);
         }
         
-        // Update job list IMMEDIATELY (no delay) - jobs should appear instantly
+        // Update job list dynamically after a short delay
+      setTimeout(() => {
         updateJobListAfterPayment();
-      }
-      
-      // Create confetti effect for success animation
-      function createConfettiEffect() {
-        const modal = document.getElementById('successModal');
-        if (!modal) return;
-        
-        // Remove any existing confetti
-        const existingConfetti = modal.querySelector('.confetti-container');
-        if (existingConfetti) existingConfetti.remove();
-        
-        // Create confetti container
-        const confettiContainer = document.createElement('div');
-        confettiContainer.className = 'confetti-container';
-        confettiContainer.style.cssText = `
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-          overflow: hidden;
-          z-index: 1;
-        `;
-        modal.appendChild(confettiContainer);
-        
-        // Create confetti particles
-        const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-        const particleCount = 50;
-        
-        for (let i = 0; i < particleCount; i++) {
-          const particle = document.createElement('div');
-          const color = colors[Math.floor(Math.random() * colors.length)];
-          const size = Math.random() * 8 + 4;
-          const startX = Math.random() * 100;
-          const startY = -10;
-          const endY = 110;
-          const rotation = Math.random() * 360;
-          const duration = Math.random() * 1 + 1.5;
-          const delay = Math.random() * 0.5;
-          
-          particle.style.cssText = `
-            position: absolute;
-            width: ${size}px;
-            height: ${size}px;
-            background: ${color};
-            left: ${startX}%;
-            top: ${startY}%;
-            border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
-            opacity: 0.9;
-            animation: confetti-fall ${duration}s ease-out ${delay}s forwards;
-            transform: rotate(${rotation}deg);
-          `;
-          
-          confettiContainer.appendChild(particle);
-        }
-        
-        // Add CSS animation if not already added
-        if (!document.getElementById('confetti-styles')) {
-          const style = document.createElement('style');
-          style.id = 'confetti-styles';
-          style.textContent = `
-            @keyframes confetti-fall {
-              0% {
-                transform: translateY(0) rotate(0deg);
-                opacity: 1;
-              }
-              100% {
-                transform: translateY(${window.innerHeight + 100}px) rotate(720deg);
-                opacity: 0;
-              }
-            }
-          `;
-          document.head.appendChild(style);
-        }
-      }
+      }, 1500); // Update job list while success modal is still showing
+    }
 
-    // Function to update job list after payment without page reload - INSTANT UPDATE
+    // Function to update job list after payment without page reload
     async function updateJobListAfterPayment() {
       try {
         // Clear cache to force fresh data
         localStorage.removeItem('userJobsCache');
         localStorage.removeItem('userJobsCacheTimestamp');
         
-        // Fetch updated job list immediately (no delay)
+        // Fetch updated job list immediately
         const response = await fetch('/userdashboard-data/', {
           cache: 'no-cache',
           headers: {
@@ -23714,13 +23506,11 @@
             localStorage.setItem('userJobsCache', JSON.stringify(userJobs));
             localStorage.setItem('userJobsCacheTimestamp', Date.now().toString());
             
-            // Update the print requests section IMMEDIATELY
+            // Update the print requests section immediately
             const pendingJobs = userJobs.filter(job => {
-              const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
-              return jobCompleted !== 'YES';
-            });
-            
-            // Render jobs instantly with animation
+            const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+            return jobCompleted !== 'YES';
+          });
             renderJobsWithAnimation(pendingJobs);
             
             // Update job counts
@@ -23734,28 +23524,15 @@
               if (el && val !== undefined) el.textContent = val; 
             });
             
-            // Ensure Print Requests section is visible
-            const jobsSection = document.getElementById('jobsSection');
-            if (jobsSection && pendingJobs.length > 0) {
-              jobsSection.style.display = 'block';
-              setTimeout(() => {
-                jobsSection.style.opacity = '1';
-              }, 10);
-            }
-            
-            console.log(`✅ INSTANT UPDATE: ${pendingJobs.length} pending jobs displayed immediately`);
+            console.log(`✅ Updated job list: ${pendingJobs.length} pending jobs displayed`);
           }
-        } else {
-          console.warn('Failed to fetch updated jobs, will retry...');
-          // Retry once after a short delay
-          setTimeout(() => updateJobListAfterPayment(), 500);
         }
       } catch (error) {
         console.error('Error updating job list:', error);
-        // Retry once on error
+        // Fallback to page reload if dynamic update fails
         setTimeout(() => {
-          updateJobListAfterPayment();
-        }, 1000);
+          window.location.reload();
+        }, 2000);
       }
     }
 
@@ -23960,4 +23737,5 @@
 </html>
 </html>
 </html>
+
 

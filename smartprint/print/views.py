@@ -1253,11 +1253,8 @@ def userdashboard(request):
 
     try:
         # ULTRA-FAST: Avoid synchronous job loading; fetch details only
-        # STRICTLY NOTE: Print jobs are rendered ONLY from User_print_jobs table (D1 database)
-        # NOT from R2 storage or Vendor_print_jobs table
-        # job_completed status is read ONLY from User_print_jobs table, NOT from R2 metadata
         user_details = get_user_details_from_d1(request.user.email) or {}
-        preloaded_jobs = get_user_jobs_from_d1(request.user.email, fallback_to_r2=False)
+        preloaded_jobs = get_user_jobs_from_d1(request.user.email)
         if not isinstance(preloaded_jobs, list):
             preloaded_jobs = []
         pending_job_list = [
@@ -1370,15 +1367,8 @@ def userdashboard(request):
 
 def get_user_jobs_from_d1(user_email, fallback_to_r2=True):
     """
-    Fetch user print jobs from D1 database via Worker API (User_print_jobs table ONLY)
+    Fetch user print jobs from D1 database via Worker API
     Returns list of jobs with R2 paths from database
-    
-    STRICTLY NOTE: 
-    - Print jobs are fetched ONLY from User_print_jobs table (D1 database)
-    - NOT from R2 storage or Vendor_print_jobs table
-    - job_completed status is read ONLY from User_print_jobs table, NOT from R2 storage metadata
-    - R2 is ONLY used for generating presigned URLs for file access
-    - Set fallback_to_r2=False to strictly prevent R2 fallback (recommended for user dashboard)
     """
     def _maybe_fallback():
         if not fallback_to_r2:
@@ -1613,12 +1603,9 @@ def userdashboard_data(request):
     
     try:
         # Load user data quickly
-        # STRICTLY NOTE: Print jobs are rendered ONLY from User_print_jobs table (D1 database)
-        # NOT from R2 storage or Vendor_print_jobs table
-        # job_completed status is read ONLY from User_print_jobs table, NOT from R2 metadata
         user_details = get_user_details_from_d1(request.user.email)
-        # Fetch jobs from D1 database ONLY - no R2 fallback
-        user_jobs = get_user_jobs_from_d1(request.user.email, fallback_to_r2=False)
+        # Fetch jobs from D1 database instead of R2
+        user_jobs = get_user_jobs_from_d1(request.user.email)
         
         # Calculate statistics
         total_jobs = len(user_jobs)
@@ -4707,10 +4694,6 @@ def verify_razorpay_payment(request):
                 'error': 'User email is required to finalize the print job'
             }, status=400)
 
-        # Extract points information from request (used for all files)
-        points_applied_global = request.POST.get('points_applied', 'false').lower() == 'true'
-        points_used_global = int(request.POST.get('points_used', '0'))
-
         # Get vendor_email from form data (preferred) or fallback to shop folder lookup
         selected_vendor = request.POST.get('selected_vendor') or ''
         vendor_email = (request.POST.get('vendor_email') or '').strip()
@@ -4791,19 +4774,6 @@ def verify_razorpay_payment(request):
                 
                 # Build metadata (extend base with payment details)
                 # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
-                # Get points from print_settings first, fallback to global values from request
-                file_points_applied = print_settings.get('points_applied', 'false')
-                if file_points_applied == 'false' or file_points_applied == False:
-                    file_points_applied = str(points_applied_global).lower()
-                else:
-                    file_points_applied = str(file_points_applied).lower()
-                
-                file_points_used = print_settings.get('points_used', '0')
-                if not file_points_used or file_points_used == '0' or file_points_used == 0:
-                    file_points_used = str(points_used_global)
-                else:
-                    file_points_used = str(file_points_used)
-                
                 metadata = {
                     'copies': str(print_settings.get('copies', '1')),
                     'color': print_settings.get('color', 'Black and White'),
@@ -4813,16 +4783,11 @@ def verify_razorpay_payment(request):
                     'pageSize': str(print_settings.get('pageSize', 'A4')),
                     'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
                     'lamination': str(print_settings.get('lamination', 'No')),
-                    'quality': str(print_settings.get('quality', '')),
-                    'thickness': str(print_settings.get('thickness', '')),
-                    'feedback': str(print_settings.get('feedback', '')),
-                    'points_applied': file_points_applied,
-                    'points_used': file_points_used,
-                    'timestamp': datetime.datetime.now().isoformat(),
-                    'status': 'pending',
-                    'job_completed': 'NO',
-                    'vendor_status': 'not sended',
-                    'trash': 'NO',
+                                  'timestamp': datetime.datetime.now().isoformat(),
+                                  'status': 'pending',
+                                  'job_completed': 'NO',
+                                  'vendor_status': 'not sended',
+                                  'trash': 'NO',
                     'user': user_email,
                     'vendor': vendor_id,
                     'vendor_id': vendor_id,  # Explicitly include vendor_id
@@ -4832,8 +4797,8 @@ def verify_razorpay_payment(request):
                     'service_name': str(print_settings.get('service_name', '')),
                     'token': token_value,  # Explicitly include token
                     'printer_name': '',
-                    'payment_id': payment_id,
-                    'order_id': order_id
+                                  'payment_id': payment_id,
+                                  'order_id': order_id
                 }
 
                 # Ensure default rendered_status
@@ -4907,7 +4872,6 @@ def verify_razorpay_payment(request):
                     print(f"✅ Successfully uploaded file: {fobj.name}")
                     
                     # Store print job in D1 database (R2 storage is already done above)
-                    print(f"\n💾 Attempting to store print job in database for file: {fobj.name}")
                     try:
                         # vendor_email is already extracted above, use it directly
                         # Fallback to vendor_id lookup only if still not set
@@ -4917,75 +4881,39 @@ def verify_razorpay_payment(request):
                                 print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
                             except Exception as e:
                                 print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
-                        
-                        # Ensure vendor_email is set before storing
-                        if not vendor_email:
-                            print(f"⚠️ Warning: vendor_email is empty for vendor_id {vendor_id}, attempting to proceed anyway")
-                        
-                        # Store vendor print job with improved error handling
-                        # Ensure pricing_details is a dict (not JSON string) when passing to store function
-                        pricing_details_for_db = pricing_details
-                        if isinstance(pricing_details, str):
-                            try:
-                                pricing_details_for_db = json.loads(pricing_details)
-                            except:
-                                pricing_details_for_db = None
-                        
-                        vendor_stored = store_vendor_print_job_in_db(
+                        store_vendor_print_job_in_db(
                             vendor_id=vendor_id,
-                            vendor_email=vendor_email or '',
+                            vendor_email=vendor_email,
                             user_email=user_email,
                             filename=fobj.name,
                             storage_folder=storage_folder,
                             r2_path=vendor_file_key,
                             metadata=metadata,
-                            pricing_details=pricing_details_for_db,
+                            pricing_details=pricing_details,
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
-                        if vendor_stored:
-                            print(f"✅ Successfully stored vendor print job in D1: {fobj.name}")
-                        else:
-                            print(f"❌ Failed to store vendor print job in D1: {fobj.name}")
                     except Exception as db_err:
-                        import traceback
                         print(f"⚠️ Error storing vendor print job in database: {db_err}")
-                        traceback.print_exc()
                         # Don't fail the upload if database storage fails
 
                     try:
-                        print(f"\n💾 Attempting to store user print job in database for file: {fobj.name}")
                         user_metadata = dict(metadata)
                         user_metadata['storage_folder'] = 'users'
-                        # Store user print job with improved error handling
-                        # Ensure pricing_details is a dict (not JSON string) when passing to store function
-                        pricing_details_for_db = pricing_details
-                        if isinstance(pricing_details, str):
-                            try:
-                                pricing_details_for_db = json.loads(pricing_details)
-                            except:
-                                pricing_details_for_db = None
-                        
-                        user_stored = store_user_print_job_in_db(
+                        store_user_print_job_in_db(
                             vendor_id=vendor_id,
-                            vendor_email=vendor_email or '',
+                            vendor_email=vendor_email,
                             user_email=user_email,
                             filename=fobj.name,
                             storage_folder='users',
                             r2_path=user_file_key,
                             metadata=user_metadata,
-                            pricing_details=pricing_details_for_db,
+                            pricing_details=pricing_details,
                             user_id=str(request.user.id) if request.user.is_authenticated else None,
                             shop_id=vendor_id
                         )
-                        if user_stored:
-                            print(f"✅ Successfully stored user print job in D1: {fobj.name}")
-                        else:
-                            print(f"❌ Failed to store user print job in D1: {fobj.name}")
                     except Exception as user_db_err:
-                        import traceback
                         print(f"⚠️ Error storing user print job in database: {user_db_err}")
-                        traceback.print_exc()
                     
                 except Exception as upload_error:
                     files_failed += 1
@@ -10970,41 +10898,62 @@ def mark_job_completed(request):
                 api_key = getattr(settings, 'WORKER_API_KEY', '')
                 
                 if api_url and api_key:
-                    # Use the update-job-completed endpoint which handles status updates and vendor transactions
-                    worker_endpoint = api_url.rstrip('/') + '/update-job-completed'
-                    worker_payload = {
+                    # Update User_print_jobs table using add endpoint (handles updates on conflict)
+                    # First, we need to get the job details to update it properly
+                    # For now, use a simple update approach - the add endpoint handles updates
+                    worker_endpoint_user = api_url.rstrip('/') + '/add-user-print-job'
+                    # Note: This requires the full job data, but we'll update just the completion status
+                    # The worker endpoint will handle the UPDATE on conflict
+                    worker_payload_user = {
                         'filename': filename,
-                        'job_completed': 'YES',
-                        'vendor_email': vendor_email,
                         'user_email': user_email if user_email else '',
-                        'vendor_id': vendor_id,
-                        'vendor_name': vendor_name,
-                        'completion_time': completion_time
+                        'job_completed': 'YES',
+                        'completion_time': completion_time,
+                        'storage_folder': 'users'  # Default storage folder
                     }
                     try:
-                        resp = requests.post(
-                            worker_endpoint,
-                            json=worker_payload,
+                        resp_user = requests.post(
+                            worker_endpoint_user,
+                            json=worker_payload_user,
                             headers={
                                 'x-api-key': api_key,
                                 'Content-Type': 'application/json'
                             },
                             timeout=10
                         )
-                        if resp.status_code == 200:
-                            resp_data = resp.json()
-                            print(f"✅ Updated job status in database for {filename}")
-                            if resp_data.get('token_freed'):
-                                print(f"✅ Token {resp_data.get('token_number')} freed")
+                        if resp_user.status_code == 200:
+                            print(f"✅ Updated User_print_jobs table for {filename}")
                         else:
-                            print(f"⚠️ Failed to update job status: {resp.status_code}")
-                            try:
-                                error_data = resp.json()
-                                print(f"⚠️ Error details: {error_data.get('error', 'Unknown error')}")
-                            except:
-                                print(f"⚠️ Response: {resp.text[:200]}")
+                            print(f"⚠️ Failed to update User_print_jobs: {resp_user.status_code}")
                     except Exception as e:
-                        print(f"⚠️ Error updating job status in database: {e}")
+                        print(f"⚠️ Error updating User_print_jobs: {e}")
+                    
+                    # Update Vendor_print_jobs table using add endpoint (handles updates on conflict)
+                    worker_endpoint_vendor = api_url.rstrip('/') + '/add-vendor-print-job'
+                    worker_payload_vendor = {
+                        'filename': filename,
+                        'vendor_id': vendor_id,
+                        'user_email': user_email if user_email else '',
+                        'job_completed': 'YES',
+                        'completion_time': completion_time,
+                        'storage_folder': 'vendor_print_jobs'  # Default storage folder
+                    }
+                    try:
+                        resp_vendor = requests.post(
+                            worker_endpoint_vendor,
+                            json=worker_payload_vendor,
+                            headers={
+                                'x-api-key': api_key,
+                                'Content-Type': 'application/json'
+                            },
+                            timeout=10
+                        )
+                        if resp_vendor.status_code == 200:
+                            print(f"✅ Updated Vendor_print_jobs table for {filename}")
+                        else:
+                            print(f"⚠️ Failed to update Vendor_print_jobs: {resp_vendor.status_code}")
+                    except Exception as e:
+                        print(f"⚠️ Error updating Vendor_print_jobs: {e}")
                 else:
                     print("⚠️ Worker API not configured - skipping D1 database update")
             except Exception as e:
@@ -11873,34 +11822,13 @@ def return_user_points(request):
 def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
     """Store vendor print job in D1 database via Worker API"""
     try:
-        print(f"\n🔵 Storing vendor print job:")
-        print(f"   vendor_id: {vendor_id}")
-        print(f"   vendor_email: {vendor_email}")
-        print(f"   user_email: {user_email}")
-        print(f"   filename: {filename}")
-        print(f"   storage_folder: {storage_folder}")
-        print(f"   r2_path: {r2_path}")
-        
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
         
         if not api_url or not api_key:
             print(f"⚠️ Worker API not configured, skipping database storage")
-            print(f"   WORKER_API_URL: {api_url}")
-            print(f"   WORKER_API_KEY: {'SET' if api_key else 'NOT SET'}")
             return False
 
-        # Validate required fields before making API call
-        if not vendor_id or not vendor_id.strip():
-            print(f"❌ Error: vendor_id is required but was: {repr(vendor_id)}")
-            return False
-        if not filename or not filename.strip():
-            print(f"❌ Error: filename is required but was: {repr(filename)}")
-            return False
-        if not storage_folder or not storage_folder.strip():
-            print(f"❌ Error: storage_folder is required but was: {repr(storage_folder)}")
-            return False
-        
         # Construct the Worker API endpoint
         if '/add-contact' in api_url:
             worker_endpoint = api_url.replace('/add-contact', '/add-vendor-print-job')
@@ -11979,44 +11907,13 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 pages_value = None
         
-        # Store pricing_details as JSON string if available - format to match test file structure
+        # Store pricing_details as JSON string if available
         pricing_details_str = None
         if pricing_details:
             if isinstance(pricing_details, str):
-                # Try to parse and reformat to match test file structure
-                try:
-                    parsed = json.loads(pricing_details)
-                    # Reformat to match test file: total_price, platform_profit, price_per_page, page_count, num_copies
-                    formatted_pricing = {
-                        'total_price': float(total_price) if total_price is not None else (parsed.get('total_price') or parsed.get('total') or 0),
-                        'platform_profit': float(platform_profit) if platform_profit is not None else (parsed.get('platform_profit') or 0),
-                        'price_per_page': float(price_per_page) if price_per_page is not None else (parsed.get('price_per_page') or parsed.get('per_page') or 0),
-                        'page_count': int(page_count) if page_count is not None else (parsed.get('page_count') or parsed.get('pages') or 0),
-                        'num_copies': int(num_copies) if num_copies is not None else (parsed.get('num_copies') or parsed.get('copies') or 0)
-                    }
-                    pricing_details_str = json.dumps(formatted_pricing)
-                except:
-                    pricing_details_str = pricing_details
+                pricing_details_str = pricing_details
             else:
-                # Format dict to match test file structure
-                formatted_pricing = {
-                    'total_price': float(total_price) if total_price is not None else 0,
-                    'platform_profit': float(platform_profit) if platform_profit is not None else 0,
-                    'price_per_page': float(price_per_page) if price_per_page is not None else 0,
-                    'page_count': int(page_count) if page_count is not None else 0,
-                    'num_copies': int(num_copies) if num_copies is not None else 0
-                }
-                pricing_details_str = json.dumps(formatted_pricing)
-        elif total_price is not None or page_count is not None:
-            # Create pricing_details from extracted values if available
-            formatted_pricing = {
-                'total_price': float(total_price) if total_price is not None else 0,
-                'platform_profit': float(platform_profit) if platform_profit is not None else 0,
-                'price_per_page': float(price_per_page) if price_per_page is not None else 0,
-                'page_count': int(page_count) if page_count is not None else 0,
-                'num_copies': int(num_copies) if num_copies is not None else 0
-            }
-            pricing_details_str = json.dumps(formatted_pricing)
+                pricing_details_str = json.dumps(pricing_details)
         
         payload = {
             'vendor_id': vendor_id,
@@ -12046,7 +11943,7 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'quality': metadata.get('quality', ''),
             'thickness': metadata.get('thickness', ''),
             'points_applied': metadata.get('points_applied', 'false'),
-            'points_used': int(metadata.get('points_used', '0') or '0'),
+            'points_used': metadata.get('points_used', '0'),
             'timestamp': metadata.get('timestamp', datetime.datetime.now().isoformat()),
             'completion_time': metadata.get('completion_time', ''),
             'rendered_status': metadata.get('rendered_status', 'NO'),
@@ -12071,9 +11968,6 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 payload['final_amount'] = None
         
-        print(f"📦 Vendor Print Job Payload keys: {list(payload.keys())}")
-        print(f"📦 Payload preview: vendor_id={payload.get('vendor_id')}, user_email={payload.get('user_email')}, filename={payload.get('filename')}")
-        
         resp = requests.post(
             worker_endpoint,
             json=payload,
@@ -12084,33 +11978,11 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             timeout=10
         )
         
-        print(f"📡 Vendor Print Job API Response: {resp.status_code}")
-        print(f"📄 Response Body: {resp.text[:500]}")
-        
-        if resp.status_code == 400:
-            # Log full error details for 400 errors
-            try:
-                error_detail = resp.json()
-                print(f"❌ 400 Bad Request Error Details: {error_detail}")
-            except:
-                print(f"❌ 400 Bad Request - Full Response: {resp.text}")
-            print(f"📦 Payload sent: vendor_id={payload.get('vendor_id')}, filename={payload.get('filename')}, storage_folder={payload.get('storage_folder')}")
-        
         if resp.status_code == 200:
-            try:
-                result = resp.json()
-                if result.get('success'):
-                    print(f"✅ Stored vendor print job in database: {filename} in {storage_folder}")
-                    return True
-                else:
-                    print(f"❌ API returned success=false: {result.get('error', 'Unknown error')}")
-                    return False
-            except Exception as json_err:
-                print(f"⚠️ Failed to parse response JSON: {json_err}")
-                print(f"⚠️ Response text: {resp.text[:200]}")
-                return False
+            print(f"✅ Stored print job in database: {filename} in {storage_folder}")
+            return True
         else:
-            print(f"⚠️ Failed to store vendor print job in database: {resp.status_code} - {resp.text[:200]}")
+            print(f"⚠️ Failed to store print job in database: {resp.status_code} - {resp.text[:200]}")
             return False
             
     except Exception as e:
@@ -12120,31 +11992,13 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
 def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
     """Store user print job in D1 database via Worker API"""
     try:
-        print(f"\n🟢 Storing user print job:")
-        print(f"   vendor_id: {vendor_id}")
-        print(f"   vendor_email: {vendor_email}")
-        print(f"   user_email: {user_email}")
-        print(f"   filename: {filename}")
-        print(f"   storage_folder: {storage_folder}")
-        print(f"   r2_path: {r2_path}")
-        
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
 
         if not api_url or not api_key:
             print(f"⚠️ Worker API not configured, skipping user print job storage")
-            print(f"   WORKER_API_URL: {api_url}")
-            print(f"   WORKER_API_KEY: {'SET' if api_key else 'NOT SET'}")
             return False
 
-        # Validate required fields before making API call
-        if not user_email or not user_email.strip():
-            print(f"❌ Error: user_email is required but was: {repr(user_email)}")
-            return False
-        if not filename or not filename.strip():
-            print(f"❌ Error: filename is required but was: {repr(filename)}")
-            return False
-        
         if '/add-contact' in api_url:
             worker_endpoint = api_url.replace('/add-contact', '/add-user-print-job')
         elif '/add-vendor-register' in api_url:
@@ -12211,44 +12065,9 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         num_copies = to_int(num_copies)
         pages_value = to_int(pages_value)
 
-        # Store pricing_details as JSON string if available - format to match test file structure
         pricing_details_str = None
         if pricing_details:
-            if isinstance(pricing_details, str):
-                # Try to parse and reformat to match test file structure
-                try:
-                    parsed = json.loads(pricing_details)
-                    # Reformat to match test file: total_price, platform_profit, price_per_page, page_count, num_copies
-                    formatted_pricing = {
-                        'total_price': float(total_price) if total_price is not None else (parsed.get('total_price') or parsed.get('total') or 0),
-                        'platform_profit': float(platform_profit) if platform_profit is not None else (parsed.get('platform_profit') or 0),
-                        'price_per_page': float(price_per_page) if price_per_page is not None else (parsed.get('price_per_page') or parsed.get('per_page') or 0),
-                        'page_count': int(page_count) if page_count is not None else (parsed.get('page_count') or parsed.get('pages') or 0),
-                        'num_copies': int(num_copies) if num_copies is not None else (parsed.get('num_copies') or parsed.get('copies') or 0)
-                    }
-                    pricing_details_str = json.dumps(formatted_pricing)
-                except:
-                    pricing_details_str = pricing_details
-            else:
-                # Format dict to match test file structure
-                formatted_pricing = {
-                    'total_price': float(total_price) if total_price is not None else 0,
-                    'platform_profit': float(platform_profit) if platform_profit is not None else 0,
-                    'price_per_page': float(price_per_page) if price_per_page is not None else 0,
-                    'page_count': int(page_count) if page_count is not None else 0,
-                    'num_copies': int(num_copies) if num_copies is not None else 0
-                }
-                pricing_details_str = json.dumps(formatted_pricing)
-        elif total_price is not None or page_count is not None:
-            # Create pricing_details from extracted values if available
-            formatted_pricing = {
-                'total_price': float(total_price) if total_price is not None else 0,
-                'platform_profit': float(platform_profit) if platform_profit is not None else 0,
-                'price_per_page': float(price_per_page) if price_per_page is not None else 0,
-                'page_count': int(page_count) if page_count is not None else 0,
-                'num_copies': int(num_copies) if num_copies is not None else 0
-            }
-            pricing_details_str = json.dumps(formatted_pricing)
+            pricing_details_str = pricing_details if isinstance(pricing_details, str) else json.dumps(pricing_details)
 
         payload = {
             'vendor_id': vendor_id,
@@ -12278,7 +12097,7 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'quality': metadata.get('quality', ''),
             'thickness': metadata.get('thickness', ''),
             'points_applied': metadata.get('points_applied', 'false'),
-            'points_used': int(metadata.get('points_used', '0') or '0'),
+            'points_used': metadata.get('points_used', '0'),
             'timestamp': metadata.get('timestamp', datetime.datetime.now().isoformat()),
             'completion_time': metadata.get('completion_time', ''),
             'rendered_status': metadata.get('rendered_status', 'NO'),
@@ -12299,9 +12118,6 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         if payload['final_amount']:
             payload['final_amount'] = to_float(payload['final_amount'])
 
-        print(f"📦 User Print Job Payload keys: {list(payload.keys())}")
-        print(f"📦 Payload preview: vendor_id={payload.get('vendor_id')}, user_email={payload.get('user_email')}, filename={payload.get('filename')}")
-
         resp = requests.post(
             worker_endpoint,
             json=payload,
@@ -12312,31 +12128,9 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             timeout=10
         )
 
-        print(f"📡 User Print Job API Response: {resp.status_code}")
-        print(f"📄 Response Body: {resp.text[:500]}")
-        
-        if resp.status_code == 400:
-            # Log full error details for 400 errors
-            try:
-                error_detail = resp.json()
-                print(f"❌ 400 Bad Request Error Details: {error_detail}")
-            except:
-                print(f"❌ 400 Bad Request - Full Response: {resp.text}")
-            print(f"📦 Payload sent: user_email={payload.get('user_email')}, filename={payload.get('filename')}")
-        
         if resp.status_code == 200:
-            try:
-                result = resp.json()
-                if result.get('success'):
-                    print(f"✅ Stored user print job in database: {filename}")
-                    return True
-                else:
-                    print(f"❌ API returned success=false: {result.get('error', 'Unknown error')}")
-                    return False
-            except Exception as json_err:
-                print(f"⚠️ Failed to parse response JSON: {json_err}")
-                print(f"⚠️ Response text: {resp.text[:200]}")
-                return False
+            print(f"✅ Stored user print job in database: {filename}")
+            return True
         else:
             print(f"⚠️ Failed to store user print job in database: {resp.status_code} - {resp.text[:200]}")
             return False
