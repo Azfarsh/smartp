@@ -1672,13 +1672,36 @@
       padding: 0.2rem 0;
     }
 
-    /* Mobile layout for new job cards */
+    /* Mobile layout for new job cards - horizontal scroll */
     @media (max-width: 768px) {
       .jobs-row {
-        flex-direction: column;
-        gap: 0.5rem; /* tighter spacing between cards */
-        min-width: auto;
-        padding: 0;
+        flex-direction: row; /* Keep horizontal for mobile */
+        gap: 0.75rem; /* spacing between cards */
+        min-width: max-content; /* Allow horizontal scrolling */
+        padding: 0; /* Padding handled by scroll wrapper */
+      }
+      
+      /* Ensure horizontal scrolling on mobile */
+      .jobs-scroll-wrapper {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        scroll-snap-type: x proximity; /* Optional: snap to cards */
+        padding-right: 1.5rem; /* Extra padding to show peek of second card */
+        padding-left: 0.5rem; /* Left padding for first card */
+      }
+      
+      /* Job cards on mobile - fixed width to show peek of next card */
+      .jobs-row .job-card,
+      .jobs-row .job-card-mobile {
+        flex-shrink: 0; /* Prevent cards from shrinking */
+        width: calc(100vw - 3rem); /* Card width: viewport minus left padding (0.5rem) and right space (2.5rem) to show peek of next card */
+        min-width: calc(100vw - 3rem) !important; /* Override base min-width */
+        max-width: calc(100vw - 3rem) !important; /* Override base max-width */
+        box-sizing: border-box; /* Include padding and border in width */
+        margin-left: 0 !important; /* Remove left margin for horizontal scroll */
+        margin-right: 0 !important; /* Remove right margin, gap handles spacing */
+        margin-bottom: 0 !important; /* Remove bottom margin for horizontal layout */
       }
       
       /* Fix overview blocks to show 3 per row on mobile (hide Total Jobs) */
@@ -10659,12 +10682,10 @@
           modal._uploadedFiles = [];
         }
         
-        // Ensure file upload area is visible and reset to initial state
+        // Ensure file upload button/label is visible and reset
         const fileUploadArea = modal.querySelector(`#${service}-file-upload`);
         if (fileUploadArea) {
           fileUploadArea.style.display = '';
-          // Remove any dragover classes
-          fileUploadArea.classList.remove('dragover');
         }
 
         // Remove reset animation class after brief delay
@@ -14722,7 +14743,7 @@
     }
 
     // Global state management (Complete R2 Integration)
-    window.uploadedFiles = window.uploadedFiles || [];
+    let uploadedFiles = [];
     let selectedFileIndex = -1;
     let fileSettings = {};
     // PDF preview state
@@ -16704,7 +16725,7 @@
           if (titleEl) titleEl.textContent = name;
           if (subEl) subEl.textContent = addr || meta;
           // Auto-calc pricing when vendor changes and files are present
-          if (selectedVendor && window.uploadedFiles && window.uploadedFiles.length > 0) {
+          if (selectedVendor && uploadedFiles && uploadedFiles.length > 0) {
             calculateA4PrintPrice();
           }
         });
@@ -16926,7 +16947,7 @@
           selectedVendor = shopId;
           
           // Auto-calc pricing when vendor changes and files are present
-          if (selectedVendor && window.uploadedFiles && window.uploadedFiles.length > 0) {
+          if (selectedVendor && uploadedFiles && uploadedFiles.length > 0) {
             calculateA4PrintPrice();
           }
         }
@@ -18687,15 +18708,11 @@
       const uploadBtn = document.getElementById('uploadBtn');
       const addMoreBtn = document.getElementById('addMoreBtn');
 
-      // Reset file input
+      // Reset file input and list
       if (fileInput) fileInput.value = '';
-      
-      // Always clear file list
       if (fileList) {
         fileList.innerHTML = '<div class="no-files-message" id="noFilesMessage">No files selected yet</div>';
       }
-      
-      // Always clear batch preview
       if (batchPreviewPanel && batchPreviewList && batchFileCount) {
         batchPreviewPanel.classList.remove('show');
         batchPreviewList.innerHTML = '<div class="batch-preview-empty">Upload files to see a combined summary.</div>';
@@ -18761,7 +18778,7 @@
         addMoreBtn.innerHTML = '<i class="fas fa-plus"></i> Add More Files';
       }
 
-      // Always clear global variables
+      // Clear global variables
       window.uploadedFiles = [];
       window.lastCalculatedPages = 0;
       window.lastCalculatedPrice = 0;
@@ -18806,7 +18823,7 @@
         console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
 
         if (isValidFile(file)) {
-          const isDuplicate = window.uploadedFiles.some(existingFile => 
+          const isDuplicate = uploadedFiles.some(existingFile => 
             existingFile.name === file.name && existingFile.size === file.size
           );
 
@@ -18833,7 +18850,7 @@
               originalImageFile: file.type.startsWith('image/') ? file : null
             };
 
-            window.uploadedFiles.push(fileObj);
+            uploadedFiles.push(fileObj);
             fileSettings[fileId] = { ...defaultSettings };
             filesAdded = true;
             console.log('File added successfully:', file.name, 'with', pages, 'pages');
@@ -18849,17 +18866,7 @@
       loadingMessage.remove();
 
       if (filesAdded) {
-        console.log('Updating UI with', window.uploadedFiles.length, 'total files');
-        // Update preserved files so they're available when modal is reopened
-        preservedFiles = [...window.uploadedFiles];
-        preservedFileList = fileList ? fileList.innerHTML : null;
-        if (batchPreviewPanel && batchPreviewList && batchFileCount) {
-          preservedBatchPreview = {
-            html: batchPreviewList ? batchPreviewList.innerHTML : null,
-            show: batchPreviewPanel.classList.contains('show'),
-            count: batchFileCount ? batchFileCount.textContent : null
-          };
-        }
+        console.log('Updating UI with', uploadedFiles.length, 'total files');
         updateFileList();
         updateUI();
       } else {
@@ -18922,14 +18929,14 @@
       const nextBtn = document.getElementById('nextPageBtn');
 
       // Clear when no file
-      if (selectedFileIndex === -1 || window.uploadedFiles.length === 0) {
+      if (selectedFileIndex === -1 || uploadedFiles.length === 0) {
         canvas.width = 0; canvas.height = 0;
         pageCounter.textContent = '0 / 0';
         prevBtn.disabled = true; nextBtn.disabled = true;
         return;
       }
 
-      const fileObj = window.uploadedFiles[selectedFileIndex];
+      const fileObj = uploadedFiles[selectedFileIndex];
       const settings = fileSettings[fileObj.id];
 
       // Only handle non-images here
@@ -19021,7 +19028,7 @@
     }
 
     function updateFileList() {
-      if (window.uploadedFiles.length === 0) {
+      if (uploadedFiles.length === 0) {
         fileList.innerHTML = '<div class="no-files-message">No files selected yet</div>';
         renderBatchPreview();
         return;
@@ -19052,7 +19059,7 @@
 
     function renderBatchPreview() {
       if (!batchPreviewPanel || !batchPreviewList || !batchFileCount) return;
-      if (window.uploadedFiles.length === 0) {
+      if (uploadedFiles.length === 0) {
         batchPreviewPanel.classList.remove('show');
         batchPreviewList.innerHTML = '<div class="batch-preview-empty">Upload files to see a combined summary.</div>';
         batchFileCount.textContent = '0 files';
@@ -19060,10 +19067,10 @@
       }
 
       batchPreviewPanel.classList.add('show');
-      const totalLabel = window.uploadedFiles.length === 1 ? 'file' : 'files';
-      batchFileCount.textContent = `${window.uploadedFiles.length} ${totalLabel}`;
+      const totalLabel = uploadedFiles.length === 1 ? 'file' : 'files';
+      batchFileCount.textContent = `${uploadedFiles.length} ${totalLabel}`;
 
-      batchPreviewList.innerHTML = window.uploadedFiles.map((fileObj, index) => {
+      batchPreviewList.innerHTML = uploadedFiles.map((fileObj, index) => {
         const settings = fileSettings[fileObj.id] || defaultSettings;
         const colorLabel = settings.color === 'color' ? 'Color' : 'Black & White';
         return `
@@ -19109,7 +19116,7 @@
       delete fileSettings[fileId];
 
       if (selectedFileIndex === index) {
-        selectedFileIndex = window.uploadedFiles.length > 0 ? 0 : -1;
+        selectedFileIndex = uploadedFiles.length > 0 ? 0 : -1;
       } else if (selectedFileIndex > index) {
         selectedFileIndex--;
       }
@@ -19282,7 +19289,7 @@
     function updateCurrentFileSettings(key, value) {
       if (selectedFileIndex === -1) return;
 
-      const selectedFile = window.uploadedFiles[selectedFileIndex];
+      const selectedFile = uploadedFiles[selectedFileIndex];
       fileSettings[selectedFile.id][key] = value;
       
       // Update image preview if it's an image and orientation/pageSize changed
@@ -19809,7 +19816,7 @@
     // Settings controls (Complete functionality)
     decreaseCopies.addEventListener('click', () => {
       if (selectedFileIndex === -1) return;
-      const currentCopies = fileSettings[window.uploadedFiles[selectedFileIndex].id].copies;
+      const currentCopies = fileSettings[uploadedFiles[selectedFileIndex].id].copies;
       if (currentCopies > 1) {
         updateCurrentFileSettings('copies', currentCopies - 1);
         copiesCount.textContent = currentCopies - 1;
@@ -19822,7 +19829,7 @@
 
     increaseCopies.addEventListener('click', () => {
       if (selectedFileIndex === -1) return;
-      const currentCopies = fileSettings[window.uploadedFiles[selectedFileIndex].id].copies;
+      const currentCopies = fileSettings[uploadedFiles[selectedFileIndex].id].copies;
       if (currentCopies < 99) {
         updateCurrentFileSettings('copies', currentCopies + 1);
         copiesCount.textContent = currentCopies + 1;
@@ -19954,7 +19961,7 @@
         return; 
       }
 
-      if (window.uploadedFiles.length === 0) { 
+      if (uploadedFiles.length === 0) { 
         if (!suppress) alert('Please upload at least one file first'); 
         return; 
       }
@@ -21884,35 +21891,21 @@
     previewContainer.innerHTML = `
       <style>
         .passport-preview-flex { width: 100%; display: flex; gap: 2rem; justify-content: center; align-items: flex-start; margin: 1.5rem 0; flex-wrap: wrap; box-sizing: border-box; }
-        .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+        .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
         .selectable-image.selected { border: 2.5px solid #2563eb; box-shadow: 0 4px 18px #2563eb22; }
-        .selectable-image .photo-wrap { width: 100%; display: flex; justify-content: center; align-items: center; margin-bottom: 0.5rem; }
-        .selectable-image.original .photo-wrap { min-height: 260px; max-height: 260px; }
-        .selectable-image.enhanced .photo-wrap { min-height: 220px; max-height: 220px; }
-        .selectable-image img { display: block; margin: 0 auto; width: 100%; max-width: 100%; height: auto; object-fit: contain; border-radius: 12px; background: #fff; }
-        .selectable-image.original img { max-height: 260px; min-height: 240px; }
-        .selectable-image.enhanced img { max-height: 220px; min-height: 200px; }
-        .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; width: 100%; }
+        .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
+        .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
         .select-radio { position: absolute; top: 16px; right: 18px; z-index: 2; width: 22px; height: 22px; }
         .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
         .enhanced-extra { margin-top: 0.7em; color: #10b981; font-size: 1.08em; font-weight: 600; text-align: center; }
         .enhanced-cost { margin-top: 0.3em; color: #888; font-size: 1em; text-align: center; }
-        @media (max-width: 700px) { 
-          .passport-preview-flex { flex-direction: column; gap: 2.5rem; align-items: center; }
-          .selectable-image { width: 100%; max-width: 100%; min-width: auto; margin: 0; }
-          .selectable-image.original .photo-wrap { min-height: 240px; max-height: 240px; }
-          .selectable-image.enhanced .photo-wrap { min-height: 200px; max-height: 200px; }
-          .selectable-image.original img { max-height: 240px; min-height: 220px; }
-          .selectable-image.enhanced img { max-height: 200px; min-height: 180px; }
-        }
+        @media (max-width: 700px) { .passport-preview-flex { flex-direction: column; gap: 2.5rem; } }
       </style>
       <div class="passport-preview-flex">
         <div class="selectable-image original selected" tabindex="0">
           <div class="selectable-label">Original</div>
           <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original"></span>
-          <div class="photo-wrap">
-            <img src="${uploadedFileUrl}" alt="Original" />
-          </div>
+          <img src="${uploadedFileUrl}" alt="Original" />
         </div>
         <div class="selectable-image enhanced" tabindex="0">
           <div class="selectable-label">Enhanced</div>
