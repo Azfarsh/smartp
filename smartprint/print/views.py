@@ -4661,6 +4661,10 @@ def verify_razorpay_payment(request):
                 'error': 'User email is required to finalize the print job'
             }, status=400)
 
+        # Extract points information from request (used for all files)
+        points_applied_global = request.POST.get('points_applied', 'false').lower() == 'true'
+        points_used_global = int(request.POST.get('points_used', '0'))
+
         # Get vendor_email from form data (preferred) or fallback to shop folder lookup
         selected_vendor = request.POST.get('selected_vendor') or ''
         vendor_email = (request.POST.get('vendor_email') or '').strip()
@@ -4741,6 +4745,19 @@ def verify_razorpay_payment(request):
                 
                 # Build metadata (extend base with payment details)
                 # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
+                # Get points from print_settings first, fallback to global values from request
+                file_points_applied = print_settings.get('points_applied', 'false')
+                if file_points_applied == 'false' or file_points_applied == False:
+                    file_points_applied = str(points_applied_global).lower()
+                else:
+                    file_points_applied = str(file_points_applied).lower()
+                
+                file_points_used = print_settings.get('points_used', '0')
+                if not file_points_used or file_points_used == '0' or file_points_used == 0:
+                    file_points_used = str(points_used_global)
+                else:
+                    file_points_used = str(file_points_used)
+                
                 metadata = {
                     'copies': str(print_settings.get('copies', '1')),
                     'color': print_settings.get('color', 'Black and White'),
@@ -4750,11 +4767,16 @@ def verify_razorpay_payment(request):
                     'pageSize': str(print_settings.get('pageSize', 'A4')),
                     'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
                     'lamination': str(print_settings.get('lamination', 'No')),
-                                  'timestamp': datetime.datetime.now().isoformat(),
-                                  'status': 'pending',
-                                  'job_completed': 'NO',
-                                  'vendor_status': 'not sended',
-                                  'trash': 'NO',
+                    'quality': str(print_settings.get('quality', '')),
+                    'thickness': str(print_settings.get('thickness', '')),
+                    'feedback': str(print_settings.get('feedback', '')),
+                    'points_applied': file_points_applied,
+                    'points_used': file_points_used,
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'status': 'pending',
+                    'job_completed': 'NO',
+                    'vendor_status': 'not sended',
+                    'trash': 'NO',
                     'user': user_email,
                     'vendor': vendor_id,
                     'vendor_id': vendor_id,  # Explicitly include vendor_id
@@ -4764,8 +4786,8 @@ def verify_razorpay_payment(request):
                     'service_name': str(print_settings.get('service_name', '')),
                     'token': token_value,  # Explicitly include token
                     'printer_name': '',
-                                  'payment_id': payment_id,
-                                  'order_id': order_id
+                    'payment_id': payment_id,
+                    'order_id': order_id
                 }
 
                 # Ensure default rendered_status
@@ -10469,62 +10491,41 @@ def mark_job_completed(request):
                 api_key = getattr(settings, 'WORKER_API_KEY', '')
                 
                 if api_url and api_key:
-                    # Update User_print_jobs table using add endpoint (handles updates on conflict)
-                    # First, we need to get the job details to update it properly
-                    # For now, use a simple update approach - the add endpoint handles updates
-                    worker_endpoint_user = api_url.rstrip('/') + '/add-user-print-job'
-                    # Note: This requires the full job data, but we'll update just the completion status
-                    # The worker endpoint will handle the UPDATE on conflict
-                    worker_payload_user = {
+                    # Use the update-job-completed endpoint which handles status updates and vendor transactions
+                    worker_endpoint = api_url.rstrip('/') + '/update-job-completed'
+                    worker_payload = {
                         'filename': filename,
-                        'user_email': user_email if user_email else '',
                         'job_completed': 'YES',
-                        'completion_time': completion_time,
-                        'storage_folder': 'users'  # Default storage folder
-                    }
-                    try:
-                        resp_user = requests.post(
-                            worker_endpoint_user,
-                            json=worker_payload_user,
-                            headers={
-                                'x-api-key': api_key,
-                                'Content-Type': 'application/json'
-                            },
-                            timeout=10
-                        )
-                        if resp_user.status_code == 200:
-                            print(f"✅ Updated User_print_jobs table for {filename}")
-                        else:
-                            print(f"⚠️ Failed to update User_print_jobs: {resp_user.status_code}")
-                    except Exception as e:
-                        print(f"⚠️ Error updating User_print_jobs: {e}")
-                    
-                    # Update Vendor_print_jobs table using add endpoint (handles updates on conflict)
-                    worker_endpoint_vendor = api_url.rstrip('/') + '/add-vendor-print-job'
-                    worker_payload_vendor = {
-                        'filename': filename,
+                        'vendor_email': vendor_email,
+                        'user_email': user_email if user_email else '',
                         'vendor_id': vendor_id,
-                        'user_email': user_email if user_email else '',
-                        'job_completed': 'YES',
-                        'completion_time': completion_time,
-                        'storage_folder': 'vendor_print_jobs'  # Default storage folder
+                        'vendor_name': vendor_name,
+                        'completion_time': completion_time
                     }
                     try:
-                        resp_vendor = requests.post(
-                            worker_endpoint_vendor,
-                            json=worker_payload_vendor,
+                        resp = requests.post(
+                            worker_endpoint,
+                            json=worker_payload,
                             headers={
                                 'x-api-key': api_key,
                                 'Content-Type': 'application/json'
                             },
                             timeout=10
                         )
-                        if resp_vendor.status_code == 200:
-                            print(f"✅ Updated Vendor_print_jobs table for {filename}")
+                        if resp.status_code == 200:
+                            resp_data = resp.json()
+                            print(f"✅ Updated job status in database for {filename}")
+                            if resp_data.get('token_freed'):
+                                print(f"✅ Token {resp_data.get('token_number')} freed")
                         else:
-                            print(f"⚠️ Failed to update Vendor_print_jobs: {resp_vendor.status_code}")
+                            print(f"⚠️ Failed to update job status: {resp.status_code}")
+                            try:
+                                error_data = resp.json()
+                                print(f"⚠️ Error details: {error_data.get('error', 'Unknown error')}")
+                            except:
+                                print(f"⚠️ Response: {resp.text[:200]}")
                     except Exception as e:
-                        print(f"⚠️ Error updating Vendor_print_jobs: {e}")
+                        print(f"⚠️ Error updating job status in database: {e}")
                 else:
                     print("⚠️ Worker API not configured - skipping D1 database update")
             except Exception as e:
