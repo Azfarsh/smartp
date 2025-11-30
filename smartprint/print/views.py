@@ -4830,6 +4830,12 @@ def verify_razorpay_payment(request):
                             page_count = breakdown.get('page_count', 0)
                             num_copies = breakdown.get('num_copies', 0)
                             pricing_key = breakdown.get('pricing_key_used', '')
+                        # Also try to get from print_settings directly if not in breakdown
+                        if page_count == 0:
+                            page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                        if num_copies == 0:
+                            num_copies = print_settings.get('copies', 1)
+                        
                         compact_pricing = {
                             'total': pricing_details.get('total_price', 0),
                             'per_page': price_per_page,
@@ -4844,8 +4850,23 @@ def verify_razorpay_payment(request):
                             compact_pricing['platform_profit'] = pricing_details['platform_profit']
                         metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
                         metadata['total_price'] = str(pricing_details.get('total_price', 0))
-                    except Exception:
+                        # Explicitly store page_count and num_copies in metadata for database storage
+                        metadata['page_count'] = str(page_count)
+                        metadata['num_copies'] = str(num_copies)
+                        metadata['price_per_page'] = str(price_per_page)
+                        if 'platform_profit' in pricing_details:
+                            metadata['platform_profit'] = str(pricing_details['platform_profit'])
+                    except Exception as e:
+                        print(f"⚠️ Error processing pricing details: {e}")
                         pass
+                else:
+                    # Even without pricing_details, try to extract page_count and num_copies from print_settings
+                    page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                    num_copies = print_settings.get('copies', 1)
+                    if page_count:
+                        metadata['page_count'] = str(page_count)
+                    if num_copies:
+                        metadata['num_copies'] = str(num_copies)
 
                 # Try to store files with error handling
                 try:
@@ -12037,9 +12058,9 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         if price_per_page is None:
             price_per_page = metadata.get('price_per_page')
         if page_count is None:
-            page_count = metadata.get('page_count')
+            page_count = metadata.get('page_count') or metadata.get('pages')
         if num_copies is None:
-            num_copies = metadata.get('num_copies')
+            num_copies = metadata.get('num_copies') or metadata.get('copies')
         pages_value = metadata.get('page_count') or metadata.get('pages')
 
         def to_float(value):

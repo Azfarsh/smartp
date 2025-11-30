@@ -14,6 +14,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2">
     <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Official Google Maps JavaScript API for location, geocoding & Distance Matrix -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDSnR0aMTXytHzeVlX6dU0aeMFQld1zhF8&libraries=places,geometry"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
@@ -1264,109 +1266,328 @@ function buildPhotoPricingBreakdown(breakdown, commission) {
         `;
     }).join('');
 }
-// Distance calculation functions (same as dashboard)
+// Location and distance calculation functions (same as userdashboard)
 let userLocation = null;
+let distanceMatrixService = null;
+let userGeocoder = null;
 
-function calculateDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+// Helper functions for Google Maps services
+function getDistanceMatrixService() {
+    if (!distanceMatrixService && typeof google !== 'undefined' && google.maps) {
+        distanceMatrixService = new google.maps.DistanceMatrixService();
+    }
+    return distanceMatrixService;
 }
 
-function formatDistance(distance) {
-    if (distance < 1) {
-        return Math.round(distance * 1000) + ' m';
-    } else {
-        return distance.toFixed(1) + ' km';
+function getUserGeocoder() {
+    if (!userGeocoder && typeof google !== 'undefined' && google.maps) {
+        userGeocoder = new google.maps.Geocoder();
+    }
+    return userGeocoder;
+}
+
+// Check if device is desktop
+function isDesktopViewport() {
+    return window.innerWidth >= 768;
+}
+
+// Google Distance Matrix API - Get road distance between two points
+async function getGoogleDistance(userLat, userLng, shopLat, shopLng) {
+    try {
+        const service = getDistanceMatrixService();
+        if (!service) {
+            console.warn('Google Maps Distance Matrix service not available');
+            return { distanceKm: null, distanceText: "N/A" };
+        }
+
+        const response = await new Promise((resolve, reject) => {
+            service.getDistanceMatrix(
+                {
+                    origins: [{ lat: userLat, lng: userLng }],
+                    destinations: [{ lat: shopLat, lng: shopLng }],
+                    travelMode: google.maps.TravelMode.DRIVING,
+                },
+                (result, status) => {
+                    if (status !== google.maps.DistanceMatrixStatus.OK) {
+                        reject(new Error(status));
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+        });
+
+        const element = response?.rows?.[0]?.elements?.[0];
+        if (!element || element.status !== "OK") {
+            return { distanceKm: null, distanceText: "N/A" };
+        }
+
+        const km = element.distance.value / 1000;
+        return {
+            distanceKm: km,
+            distanceText: element.distance.text
+        };
+    } catch (err) {
+        console.error("Distance error", err);
+        return { distanceKm: null, distanceText: "N/A" };
     }
 }
 
-function getUserLocation() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation is not supported'));
-            return;
+// Get user location (desktop uses QR flow, mobile can fall back to browser geolocation)
+async function fetchAccurateUserLocation(forceRefresh = false) {
+    const desktopMode = isDesktopViewport();
+    try {
+        // Check for stored location first
+        const stored = readStoredUserCoordinates();
+        
+        if (desktopMode) {
+            // Always ask for location on desktop devices
+            if (forceRefresh || !stored) {
+                console.log("🔄 Desktop mode: Requesting fresh location via QR flow");
+                // For photoprint page, we'll use a simple prompt since QR flow might not be available
+                // In production, you might want to integrate with the same QR flow system
+                if (!stored) {
+                    console.warn("⚠️ Desktop requires location. Please enable location services.");
+                    return null;
+                }
+            }
+            return stored;
         }
 
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 60000
+        if (!navigator.geolocation) {
+            console.warn("⚠️ Browser geolocation not available");
+            return stored || null;
+        }
+
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+                resolve,
+                reject,
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        console.log("LIVE GPS (photoprint mobile):", latitude, longitude);
+
+        const locationData = {
+            latitude,
+            longitude,
+            accuracy: position.coords.accuracy,
+            fromCache: false,
+            fromBrowser: true
         };
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    timestamp: Date.now()
-                };
-                resolve(userLocation);
-            },
-            (error) => {
-                console.log('Location error:', error.message);
-                reject(error);
-            },
-            options
-        );
-    });
+        try {
+            localStorage.setItem('user_lat', latitude);
+            localStorage.setItem('user_lng', longitude);
+        } catch (storageError) {
+            console.warn('Unable to persist browser coordinates', storageError);
+        }
+
+        return locationData;
+    } catch (err) {
+        console.error("❌ Error fetching user location:", err);
+        return readStoredUserCoordinates() || null;
+    }
 }
 
-function loadShops() {
-    fetch('/get-available-shops/', {headers: {'X-CSRFToken': getCookie('csrftoken')}})
-        .then(r=>r.json())
-        .then(data=>{
-            if(data.success && data.shops.length>0){
-                availableShops = data.shops;
+// Helper function to read stored coordinates
+function readStoredUserCoordinates() {
+    try {
+        const lat = localStorage.getItem('user_lat');
+        const lng = localStorage.getItem('user_lng');
+        if (lat && lng) {
+            return {
+                latitude: parseFloat(lat),
+                longitude: parseFloat(lng),
+                fromStorage: true
+            };
+        }
+    } catch (e) {
+        console.warn('Error reading stored coordinates:', e);
+    }
+    return null;
+}
+
+// Alias for backward compatibility
+async function getUserLocation(forceRefresh = false) {
+    return await fetchAccurateUserLocation(forceRefresh);
+}
+
+// Filter shops by location using Google Distance Matrix API
+async function filterShopsByLocation(shops, userLat, userLng) {
+    console.log('🔍 Filtering shops by location using Google Distance Matrix:');
+    console.log('👤 User coordinates:', { lat: userLat, lng: userLng });
+    console.log('🏪 Total shops to filter:', shops.length);
+
+    if (!userLat || !userLng || !shops || shops.length === 0) {
+        console.log('⚠️ No location data or shops, returning all shops');
+        return shops;
+    }
+
+    // Filter shops with coordinates
+    const shopsWithCoords = shops.filter(shop => {
+        return shop.latitude && shop.longitude && 
+               shop.latitude !== '' && shop.longitude !== '';
+    });
+
+    console.log(`📍 Calculating distances for ${shopsWithCoords.length} shops using Google Distance Matrix...`);
+
+    // Calculate distances using Google Distance Matrix API
+    const distancePromises = shopsWithCoords.map(async (shop) => {
+        const shopLat = parseFloat(shop.latitude);
+        const shopLng = parseFloat(shop.longitude);
+        
+        const distanceData = await getGoogleDistance(userLat, userLng, shopLat, shopLng);
+        
+        console.log(`📍 ${shop.shop_name}: ${distanceData.distanceText}`);
+        
+        return {
+            ...shop,
+            distanceKm: distanceData.distanceKm,
+            distanceText: distanceData.distanceText || 'N/A',
+            formattedDistance: distanceData.distanceText || 'N/A'
+        };
+    });
+
+    const shopsWithDistance = await Promise.all(distancePromises);
+    
+    // Sort by distance (null distances go to the end)
+    shopsWithDistance.sort((a, b) => {
+        if (a.distanceKm == null && b.distanceKm == null) return 0;
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+    });
+
+    // Add shops without coordinates
+    const shopsWithoutCoords = shops
+        .filter(shop => !shop.latitude || !shop.longitude || 
+                       shop.latitude === '' || shop.longitude === '')
+        .map(shop => ({
+            ...shop,
+            distanceKm: null,
+            formattedDistance: 'Location not available'
+        }));
+    
+    return [...shopsWithDistance, ...shopsWithoutCoords];
+}
+
+async function loadLocationBasedShops(forceLocationRefresh = false) {
+    try {
+        console.log('🏪 Loading location-based shops using Google Distance Matrix...');
+        
+        // First load all shops
+        const response = await fetch('/get-available-shops/', {
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        });
+        const data = await response.json();
+        
+        if (!data.success || !data.shops || data.shops.length === 0) {
+            availableShops = [];
+            return;
+        }
+        
+        availableShops = data.shops;
+        console.log('📦 Available shops loaded:', availableShops.length);
+        
+        // Try to get user location
+        try {
+            console.log('📍 Getting user location...');
+            const userLoc = await fetchAccurateUserLocation(forceLocationRefresh);
+            
+            if (!userLoc) {
+                console.warn('⚠️ Could not get accurate user location, skipping distance filtering.');
+                availableShops = availableShops.map(shop => ({
+                    ...shop,
+                    distanceKm: null,
+                    formattedDistance: 'Location unavailable'
+                }));
+                console.log('📦 Using all shops without distance info:', availableShops.length);
+            } else {
+                userLocation = userLoc;
+                console.log('✅ User location obtained:', userLocation);
                 
-                // Calculate distances if user location is available
-                if (userLocation) {
-                    availableShops = availableShops.map(shop => {
-                        if (shop.latitude && shop.longitude && 
-                            shop.latitude !== '' && shop.longitude !== '') {
-                            const shopLat = parseFloat(shop.latitude);
-                            const shopLng = parseFloat(shop.longitude);
-                            const distance = calculateDistance(
-                                userLocation.latitude, 
-                                userLocation.longitude, 
-                                shopLat, 
-                                shopLng
-                            );
-                            return {
-                                ...shop,
-                                distance: distance,
-                                distanceKm: distance,
-                                formattedDistance: formatDistance(distance)
-                            };
-                        } else {
-                            return {
-                                ...shop,
-                                distance: null,
-                                distanceKm: null,
-                                formattedDistance: 'Location not available'
-                            };
-                        }
-                    }).sort((a, b) => {
-                        if (a.distance === null && b.distance === null) return 0;
-                        if (a.distance === null) return 1;
-                        if (b.distance === null) return -1;
-                        return a.distance - b.distance;
+                // Filter shops by location using Google Distance Matrix
+                console.log('🔍 Calculating distances using Google Distance Matrix API...');
+                availableShops = await filterShopsByLocation(
+                    availableShops, 
+                    userLocation.latitude, 
+                    userLocation.longitude
+                );
+                
+                console.log('🎯 Location-based shops found:', availableShops.length);
+                if (availableShops.length > 0) {
+                    console.log('📊 Closest shops:');
+                    availableShops.slice(0, 3).forEach((shop, index) => {
+                        console.log(`${index + 1}. ${shop.shop_name} - ${shop.formattedDistance}`);
                     });
                 }
-            } else {
-                availableShops = [];
             }
-        })
-        .catch(()=>{ availableShops = []; });
+        } catch (locationError) {
+            console.log('⚠️ Location fetch failed:', locationError.message);
+            availableShops = availableShops.map(shop => ({
+                ...shop,
+                distanceKm: null,
+                formattedDistance: 'Location unavailable'
+            }));
+        }
+        
+        // Filter to only shops within 3km and update selected vendor to first available shop
+        const shopsWithin3km = availableShops.filter(shop => {
+            return shop.distanceKm != null && shop.distanceKm <= 3;
+        });
+        
+        if (shopsWithin3km.length > 0) {
+            selectedShop = shopsWithin3km[0].shop_folder;
+            if (shopSelect) shopSelect.value = selectedShop;
+            console.log('🏆 Selected nearest shop within 3km:', selectedShop);
+        } else if (availableShops.length > 0) {
+            // Fallback: if no shops within 3km, use first available (shouldn't happen with proper filtering)
+            selectedShop = availableShops[0].shop_folder;
+            if (shopSelect) shopSelect.value = selectedShop;
+            console.log('⚠️ No shops within 3km, using first available:', selectedShop);
+        }
+        
+        // Reload shops in modal if it's open
+        if (document.getElementById('photo-shop-selection-modal')?.classList.contains('open')) {
+            loadShopsInPhotoModal();
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading location-based shops:', error);
+        availableShops = [];
+    }
 }
 
-// Function to open shop selection modal for photo print
-function openPhotoShopSelectionModal() {
+// Legacy function for backward compatibility
+function loadShops() {
+    loadLocationBasedShops(false);
+}
+
+// Function to open shop selection modal for photo print (with location gating)
+async function openPhotoShopSelectionModal() {
+    // Gate: Check location before opening modal (same as other modals)
+    const desktopMode = isDesktopViewport();
+    if (desktopMode) {
+        const loc = await fetchAccurateUserLocation(false);
+        if (!loc) {
+            alert('Location is required to view nearby print shops. Please enable location services.');
+            return;
+        }
+        userLocation = loc;
+        // Reload shops with location if not already loaded
+        if (!availableShops || availableShops.length === 0 || !availableShops[0].distanceKm) {
+            await loadLocationBasedShops(false);
+        }
+    }
+    
     let modal = document.getElementById('photo-shop-selection-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -1403,7 +1624,7 @@ function openPhotoShopSelectionModal() {
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
     
-    // Load shops
+    // Load shops (will filter to 3km)
     loadShopsInPhotoModal();
     
     // Focus search input
@@ -1463,7 +1684,7 @@ function setupPhotoShopSelectionModalEvents(modal) {
     });
 }
 
-// Function to load shops in modal
+// Function to load shops in modal (filtered to 3km like document print modal)
 function loadShopsInPhotoModal() {
     const shopList = document.getElementById('photo-shop-selection-list');
     if (!shopList) return;
@@ -1478,25 +1699,37 @@ function loadShopsInPhotoModal() {
         return;
     }
 
-    const shopItemsHtml = availableShops.map((shop) => {
-        // Calculate distance if available
-        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : 
-                          (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
-        let distance = '';
-        if (distanceKm !== null && distanceKm !== undefined) {
-            distance = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`;
-        } else if (shop.formattedDistance) {
-            distance = shop.formattedDistance;
-        } else if (shop.distance_km) {
-            const dist = Number(shop.distance_km);
-            distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
-        } else {
-            distance = 'Distance not available';
-        }
+    // Filter shops to only show those within 3km (same as document print modal)
+    const shopsWithin3km = availableShops.filter(shop => {
+        return shop.distanceKm != null && shop.distanceKm <= 3;
+    });
+    
+    // If no shops within 3km, show message
+    if (shopsWithin3km.length === 0) {
+        shopList.innerHTML = `
+          <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
+            <i class="fas fa-map-marker-alt" style="font-size: 2rem; margin-bottom: 1rem; color: #3b82f6;"></i>
+            <p style="font-weight: 600; margin-bottom: 0.5rem;">No shops within 3km</p>
+            <p style="font-size: 0.9rem;">No print shops found within 3km of your location.</p>
+          </div>
+        `;
+        return;
+    }
+
+    // Sort by distance (closest first)
+    shopsWithin3km.sort((a, b) => {
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+    });
+
+    const shopItemsHtml = shopsWithin3km.map((shop) => {
+        // Use formattedDistance from Google Distance Matrix (same as userdashboard)
+        const distance = shop.formattedDistance || shop.distanceText || 'N/A';
         
-        const address = [shop.shop_address, shop.city, shop.pincode].filter(Boolean).join(', ') || 
-                       [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code].filter(Boolean).join(', ') || 
-                       [shop.area, shop.city].filter(Boolean).join(', ') || 'Address not available';
+        const address = [shop.shop_address, shop.city, shop.pincode]
+          .filter(Boolean)
+          .join(', ');
         
         return `
           <div class="shop-selection-item" 
@@ -1514,10 +1747,9 @@ function loadShopsInPhotoModal() {
                 <div class="shop-selection-item-address">${address}</div>
               </div>
               <div class="shop-selection-item-meta">
-                <i class="fas fa-location-arrow" style="color: #3b82f6; font-size: 14px; margin-right: 6px;"></i>
                 <span class="shop-selection-item-distance">${distance || ''}</span>
                 <button type="button" class="shop-selection-item-track" title="Track" onclick="event.stopPropagation(); trackShop('${shop.latitude || ''}', '${shop.longitude || ''}')">
-                  <i class="fas fa-map-marker-alt" style="color: #fff; font-size: 14px;"></i>
+                  <i class="fas fa-map-marker-alt"></i>
                 </button>
               </div>
             </div>
@@ -2413,12 +2645,57 @@ function showPointsSection(service) {
     }
 }
 
-// Initialize: Get location first, then load shops with distance
-getUserLocation().then(() => {
-loadShops();
-}).catch(() => {
-    // If location fails, just load shops without distance
-    loadShops();
+// Initialize: Load shops with location-based distance calculation
+document.addEventListener('DOMContentLoaded', function() {
+    // Gate: Don't load shops until location is obtained (same as other modals)
+    const desktopMode = isDesktopViewport();
+    
+    async function initializeWithLocation() {
+        if (desktopMode) {
+            console.log('🔄 Desktop mode detected: Requesting location before loading shops');
+            // For desktop, require location before showing shops
+            const loc = await fetchAccurateUserLocation(true);
+            if (loc) {
+                userLocation = loc;
+                await loadLocationBasedShops(true);
+            } else {
+                // Location not available - show message or prompt
+                console.warn('⚠️ Location required for desktop. Please enable location services.');
+                // Don't load shops without location on desktop
+                const shopList = document.getElementById('photo-shop-selection-list');
+                if (shopList) {
+                    shopList.innerHTML = `
+                        <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
+                            <i class="fas fa-map-marker-alt" style="font-size: 2rem; margin-bottom: 1rem; color: #3b82f6;"></i>
+                            <p style="font-weight: 600; margin-bottom: 0.5rem;">Location Required</p>
+                            <p style="font-size: 0.9rem;">Please enable location services to view nearby print shops.</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+        } else {
+            // For mobile, try to get location but allow fallback
+            try {
+                const loc = await fetchAccurateUserLocation(false);
+                if (loc) {
+                    userLocation = loc;
+                    await loadLocationBasedShops(false);
+                } else {
+                    // Fallback: load shops without distance
+                    await loadLocationBasedShops(false);
+                }
+            } catch (error) {
+                console.warn('Location fetch failed, loading shops without distance:', error);
+                await loadLocationBasedShops(false);
+            }
+        }
+    }
+    
+    // Small delay to ensure page is fully loaded
+    setTimeout(() => {
+        initializeWithLocation();
+    }, 500);
 });
 
 loadUserPoints();

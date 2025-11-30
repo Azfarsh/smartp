@@ -13865,6 +13865,23 @@
     
     // INSTANT JOBS RENDERING - Use preloaded data, else fetch async
     document.addEventListener('DOMContentLoaded', function() {
+      // Force location request for desktop devices on page load
+      const desktopMode = isDesktopViewport();
+      if (desktopMode) {
+        console.log('🔄 Desktop mode detected: Requesting location on page load');
+        // Small delay to ensure page is fully loaded
+        setTimeout(() => {
+          if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+            window.userLocationFlow.promptForService(null);
+          } else {
+            // Fallback: use fetchAccurateUserLocation
+            fetchAccurateUserLocation(true).catch(err => {
+              console.warn('Location request failed on page load:', err);
+            });
+          }
+        }, 500);
+      }
+      
       const container = document.getElementById('jobsContainer');
       
       // Start PDF animation timer immediately
@@ -14065,23 +14082,45 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Get pages from pricing_details directly - check both levels like pricing button does
-      const pricingDetails = job.pricing_details || {};
-      const breakdown = pricingDetails.pricing_breakdown || {};
-      // Try multiple sources for pages
-      let pagesFromPricing = breakdown.page_count || breakdown.pages || breakdown.total_pages || 
-                             pricingDetails.page_count || pricingDetails.pages || pricingDetails.total_pages ||
-                             job.page_count || job.pages || job.total_pages;
+      // Get pages from database fields first (page_count, num_copies), then fallback to pricing_details
+      // Priority: job.page_count > job.pages > pricing_details > breakdown
+      let pagesFromPricing = null;
+      let copiesFromPricing = null;
+      
+      // First try database fields directly
+      if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
+        pagesFromPricing = Number(job.page_count);
+      } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
+        pagesFromPricing = Number(job.pages);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        pagesFromPricing = breakdown.page_count || breakdown.pages || breakdown.total_pages || 
+                           pricingDetails.page_count || pricingDetails.pages || pricingDetails.total_pages ||
+                           job.total_pages;
+        pagesFromPricing = pagesFromPricing ? Number(pagesFromPricing) : null;
+      }
+      
+      // First try database fields directly for copies
+      if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
+        copiesFromPricing = Number(job.num_copies);
+      } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
+        copiesFromPricing = Number(job.copies);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        copiesFromPricing = breakdown.num_copies || breakdown.copies || 
+                           pricingDetails.num_copies || pricingDetails.copies;
+        copiesFromPricing = copiesFromPricing ? Number(copiesFromPricing) : null;
+      }
+      
       // Convert to number and ensure it's valid
       pagesFromPricing = Number(pagesFromPricing);
       if (isNaN(pagesFromPricing) || pagesFromPricing <= 0) {
         pagesFromPricing = 1;
       }
-      // Try multiple sources for copies
-      let copiesFromPricing = breakdown.num_copies || breakdown.copies || 
-                             pricingDetails.num_copies || pricingDetails.copies ||
-                             job.num_copies || job.copies;
-      // Convert to number and ensure it's valid
       copiesFromPricing = Number(copiesFromPricing);
       if (isNaN(copiesFromPricing) || copiesFromPricing <= 0) {
         copiesFromPricing = 1;
@@ -14810,13 +14849,48 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Get pages from pricing_details directly - check both levels like pricing button does
-      const pricingDetails = job.pricing_details || {};
-      const breakdown = pricingDetails.pricing_breakdown || {};
-      const pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
-      const copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
-      const resolvedPages = pagesFromPricing || job.pages || 1;
-      const resolvedCopies = copiesFromPricing || job.copies || 1;
+      // Get pages from database fields first (page_count, num_copies), then fallback to pricing_details
+      let pagesFromPricing = null;
+      let copiesFromPricing = null;
+      
+      // First try database fields directly
+      if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
+        pagesFromPricing = Number(job.page_count);
+      } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
+        pagesFromPricing = Number(job.pages);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
+        pagesFromPricing = pagesFromPricing ? Number(pagesFromPricing) : null;
+      }
+      
+      // First try database fields directly for copies
+      if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
+        copiesFromPricing = Number(job.num_copies);
+      } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
+        copiesFromPricing = Number(job.copies);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
+        copiesFromPricing = copiesFromPricing ? Number(copiesFromPricing) : null;
+      }
+      
+      // Ensure valid numbers
+      pagesFromPricing = Number(pagesFromPricing);
+      if (isNaN(pagesFromPricing) || pagesFromPricing <= 0) {
+        pagesFromPricing = 1;
+      }
+      copiesFromPricing = Number(copiesFromPricing);
+      if (isNaN(copiesFromPricing) || copiesFromPricing <= 0) {
+        copiesFromPricing = 1;
+      }
+      
+      const resolvedPages = pagesFromPricing;
+      const resolvedCopies = copiesFromPricing;
       const getJobToken = (jobObj) => {
         if (jobObj.token) return String(jobObj.token);
         if (jobObj.job_token) return String(jobObj.job_token);
@@ -23264,10 +23338,11 @@
     .success-subtitle {
       margin: 0;
       padding: 0;
-      font-size: 0.95rem;
-      color: #64748b;
-      font-weight: 400;
-      line-height: 1.5;
+      font-size: 1.1rem;
+      color: #1e293b;
+      font-weight: 600;
+      line-height: 1.6;
+      text-align: center;
     }
 
     @media (max-width: 768px) {
@@ -23292,7 +23367,15 @@
       }
       
       .success-subtitle {
-        font-size: 0.9rem;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+    }
+    
+    @media (min-width: 769px) {
+      .success-subtitle {
+        font-size: 1.2rem;
+        font-weight: 600;
       }
     }
 
