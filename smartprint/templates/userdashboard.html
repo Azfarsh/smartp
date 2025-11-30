@@ -6330,7 +6330,7 @@
   <div class="photo-success-overlay" id="dashboardSuccessOverlay" aria-hidden="true">
     <div class="photo-success-card">
       <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
-      <div class="photo-success-text" id="dashboardSuccessText">Your job sent to print successfully</div>
+      <div class="photo-success-text" id="dashboardSuccessText">✅ Print job sent to print successfully.</div>
     </div>
   </div>
 
@@ -10605,6 +10605,21 @@
       // Define openServiceModal in global scope immediately to ensure it's available for onclick handlers
       window.openServiceModal = function openServiceModal(service, options) {
         const opts = options || {};
+        // Always request location for desktop devices
+        const desktopMode = isDesktopViewport();
+        if (desktopMode && !opts.skipLocationCheck) {
+          // Force location request for desktop
+          if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+            window.userLocationFlow.promptForService(service);
+            return;
+          }
+          // Fallback: request location via fetchAccurateUserLocation
+          fetchAccurateUserLocation(true).then(() => {
+            // Location obtained, continue with modal opening
+          }).catch(() => {
+            // Location failed, but continue anyway
+          });
+        }
         if (!opts.skipLocationCheck &&
             window.userLocationFlow &&
             window.userLocationFlow.shouldGateForService()) {
@@ -16442,7 +16457,7 @@
         sessionStorage.removeItem('photoPrintSuccess');
         let parsed = {};
         try { parsed = JSON.parse(stored); } catch (err) { parsed = {}; }
-        const message = parsed?.message || 'Your job sent to print successfully';
+        const message = parsed?.message || '✅ Print job sent to print successfully.';
         // Show success modal with animation (same as document print)
         showSuccessModalWithAnimation();
       }
@@ -21688,13 +21703,21 @@
         }
 
         if (desktopMode) {
-          if (stored) {
-            console.log("✅ Using QR verified desktop coordinates:", stored);
-            const synced = syncUserLocationState(stored.latitude, stored.longitude, {
-              source: 'localStorage',
-              fromStorage: true
-            });
-            return synced || stored;
+          // Always ask for location on desktop devices
+          if (forceRefresh || !stored) {
+            console.log("🔄 Desktop mode: Requesting fresh location via QR flow");
+            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+              window.userLocationFlow.promptForService(null);
+              return null;
+            }
+            console.warn("⚠️ Desktop requires QR-based location. Awaiting phone scan.");
+            return null;
+          }
+          // If not forcing refresh and stored exists, still prompt for fresh location on desktop
+          console.log("🔄 Desktop mode: Prompting for fresh location (always ask on desktop)");
+          if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+            window.userLocationFlow.promptForService(null);
+            return null;
           }
           console.warn("⚠️ Desktop requires QR-based location. Awaiting phone scan.");
           return null;
@@ -22769,7 +22792,7 @@
       <div class="success-lottie-container">
         <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
       </div>
-      <p class="success-subtitle">Your job sent to print successfully</p>
+      <p class="success-subtitle">✅ Print job sent to print successfully.</p>
     </div>
   </div>
 
