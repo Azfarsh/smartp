@@ -6961,13 +6961,13 @@
             Use your phone camera to scan the QR. The secure page captures GPS from your phone.
           </p>
           <div class="qr-wrapper" id="userQrWrapper" hidden>
-            <canvas id="userLocationQrCanvas" width="220" height="220"></canvas>
+            <canvas id="userLocationQrCanvas" width="220" height="220" style="width: 220px; height: 220px; display: block; margin: 0 auto;"></canvas>
             <a href="#" id="userLocationQrLink" class="qr-link" target="_blank" rel="noreferrer">
               <span class="material-icons" style="font-size: 1rem;">open_in_new</span>
               Open link directly
             </a>
             <p class="location-helper-text small">
-              Keep the mobile page open until it says “Location verified”.
+              Keep the mobile page open until it says "Location verified".
             </p>
             <div class="location-status-chip location-status--idle" id="userLocationStatusChip">
               <span class="material-icons" id="userLocationStatusIcon" style="font-size: 1rem;">gps_fixed</span>
@@ -10326,18 +10326,47 @@
 
         function ensureQrInstance() {
           cacheElements();
-          if (state.qrInstance || !els.qrCanvas || typeof QRious === 'undefined') return;
-          state.qrInstance = new QRious({
-            element: els.qrCanvas,
-            size: 220,
-            value: ''
-          });
+          if (state.qrInstance || !els.qrCanvas) return;
+          
+          // Wait for QRious to load if not available
+          if (typeof QRious === 'undefined') {
+            console.warn('QRious library not loaded, waiting...');
+            setTimeout(ensureQrInstance, 100);
+            return;
+          }
+          
+          // Ensure canvas has explicit dimensions
+          if (els.qrCanvas) {
+            els.qrCanvas.setAttribute('width', '220');
+            els.qrCanvas.setAttribute('height', '220');
+            els.qrCanvas.style.width = '220px';
+            els.qrCanvas.style.height = '220px';
+          }
+          
+          try {
+            state.qrInstance = new QRious({
+              element: els.qrCanvas,
+              size: 220,
+              value: ''
+            });
+          } catch (error) {
+            console.error('Error initializing QRious:', error);
+          }
         }
 
         function renderQr(value) {
           ensureQrInstance();
-          if (state.qrInstance) {
-            state.qrInstance.value = value;
+          if (state.qrInstance && value) {
+            try {
+              state.qrInstance.value = value;
+              // Force canvas update
+              if (els.qrCanvas) {
+                els.qrCanvas.setAttribute('width', '220');
+                els.qrCanvas.setAttribute('height', '220');
+              }
+            } catch (error) {
+              console.error('Error rendering QR code:', error);
+            }
           }
         }
 
