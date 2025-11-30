@@ -4572,45 +4572,6 @@ def drive_fetch_file(request):
 
 
 @csrf_exempt
-def download_drive_file_from_r2(request):
-    """
-    Download a file from R2 using temp_key and return it as a file download.
-    Used to convert drive files to File objects before payment.
-    """
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
-
-    try:
-        body = json.loads(request.body or '{}')
-        temp_key = body.get('temp_key')
-        if not temp_key:
-            return JsonResponse({'success': False, 'error': 'temp_key is required'}, status=400)
-
-        s3 = boto3.client('s3',
-                          aws_access_key_id=settings.R2_ACCESS_KEY,
-                          aws_secret_access_key=settings.R2_SECRET_KEY,
-                          endpoint_url=settings.R2_ENDPOINT,
-                          region_name='auto')
-
-        # Get object from R2
-        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=temp_key)
-        file_content = response['Body'].read()
-        content_type = response.get('ContentType', 'application/octet-stream')
-        
-        # Get filename from metadata or temp_key
-        filename = response.get('Metadata', {}).get('original_filename', temp_key.rsplit('/', 1)[-1])
-        if filename.startswith('temp_drive_uploads'):
-            filename = temp_key.rsplit('/', 1)[-1].split('_', 1)[-1] if '_' in temp_key.rsplit('/', 1)[-1] else temp_key.rsplit('/', 1)[-1]
-
-        from django.http import HttpResponse
-        resp = HttpResponse(file_content, content_type=content_type)
-        resp['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return resp
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
 def finalize_drive_upload(request):
     """
     After successful payment, move the temporary object into a permanent location.
