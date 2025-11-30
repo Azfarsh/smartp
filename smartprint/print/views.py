@@ -4836,19 +4836,13 @@ def verify_razorpay_payment(request):
                         if num_copies == 0:
                             num_copies = print_settings.get('copies', 1)
                         
-                        compact_pricing = {
-                            'total': pricing_details.get('total_price', 0),
-                            'per_page': price_per_page,
-                            'pages': page_count,
-                            'copies': num_copies,
-                            'key': pricing_key,
-                            'quality': breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
-                        }
+                        # Store only base_price in pricing_details (not full JSON)
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = pricing_details.get('base_price', 0)
                         
-                        # Include platform_profit if available in original pricing_details
-                        if 'platform_profit' in pricing_details:
-                            compact_pricing['platform_profit'] = pricing_details['platform_profit']
-                        metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
+                        # Store only base_price value, not full JSON
+                        metadata['pricing_details'] = str(base_price) if base_price else None
                         metadata['total_price'] = str(pricing_details.get('total_price', 0))
                         # Explicitly store page_count and num_copies in metadata for database storage
                         metadata['page_count'] = str(page_count)
@@ -11928,13 +11922,31 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 pages_value = None
         
-        # Store pricing_details as JSON string if available
+        # Store only base_price in pricing_details (not full JSON)
         pricing_details_str = None
         if pricing_details:
-            if isinstance(pricing_details, str):
-                pricing_details_str = pricing_details
-            else:
-                pricing_details_str = json.dumps(pricing_details)
+            if isinstance(pricing_details, dict):
+                # Extract base_price from pricing_breakdown or directly from pricing_details
+                breakdown = pricing_details.get('pricing_breakdown', {})
+                base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                if base_price == 0:
+                    base_price = pricing_details.get('base_price', 0)
+                pricing_details_str = str(base_price) if base_price else None
+            elif isinstance(pricing_details, str):
+                # If it's already a string, try to parse and extract base_price
+                try:
+                    parsed = json.loads(pricing_details)
+                    if isinstance(parsed, dict):
+                        breakdown = parsed.get('pricing_breakdown', {})
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = parsed.get('base_price', 0)
+                        pricing_details_str = str(base_price) if base_price else None
+                    else:
+                        pricing_details_str = str(parsed) if parsed else None
+                except:
+                    # If parsing fails, assume it's already just a base_price value
+                    pricing_details_str = pricing_details
         
         payload = {
             'vendor_id': vendor_id,
@@ -12086,9 +12098,31 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         num_copies = to_int(num_copies)
         pages_value = to_int(pages_value)
 
+        # Store only base_price in pricing_details (not full JSON)
         pricing_details_str = None
         if pricing_details:
-            pricing_details_str = pricing_details if isinstance(pricing_details, str) else json.dumps(pricing_details)
+            if isinstance(pricing_details, dict):
+                # Extract base_price from pricing_breakdown or directly from pricing_details
+                breakdown = pricing_details.get('pricing_breakdown', {})
+                base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                if base_price == 0:
+                    base_price = pricing_details.get('base_price', 0)
+                pricing_details_str = str(base_price) if base_price else None
+            elif isinstance(pricing_details, str):
+                # If it's already a string, try to parse and extract base_price
+                try:
+                    parsed = json.loads(pricing_details)
+                    if isinstance(parsed, dict):
+                        breakdown = parsed.get('pricing_breakdown', {})
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = parsed.get('base_price', 0)
+                        pricing_details_str = str(base_price) if base_price else None
+                    else:
+                        pricing_details_str = str(parsed) if parsed else None
+                except:
+                    # If parsing fails, assume it's already just a base_price value
+                    pricing_details_str = pricing_details
 
         payload = {
             'vendor_id': vendor_id,

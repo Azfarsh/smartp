@@ -10361,6 +10361,12 @@
           }
           if (state.isStarting) return;
           state.isStarting = true;
+          
+          // Show QR wrapper instantly for desktop devices
+          if (els.qrWrapper) {
+            els.qrWrapper.hidden = false;
+          }
+          
           setStatus('Generating secure QR for your phone...', 'pending');
           if (els.startBtn) {
             els.startBtn.disabled = true;
@@ -10394,6 +10400,10 @@
             if (els.startBtn) {
               els.startBtn.disabled = false;
               els.startBtn.textContent = 'Generate QR again';
+            }
+            // Hide QR wrapper on error
+            if (els.qrWrapper) {
+              els.qrWrapper.hidden = true;
             }
           } finally {
             state.isStarting = false;
@@ -12126,13 +12136,21 @@
                   vendor_email: selectedShopData ? selectedShopData.vendor_email : null
                 };
                 // Compute and store platform profit (not displayed to user)
-                try {
-                  const breakdownObj = pricingDetails.pricing_breakdown || {};
-                  const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-                  const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
-                  const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
-                  pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-                } catch (e) { /* ignore profit calc errors silently */ }
+              try {
+                const breakdownObj = pricingDetails.pricing_breakdown || {};
+                // Get service key for commission calculation
+                const serviceKey = getServiceKey(service, form ? Object.fromEntries(new FormData(form)) : {});
+                const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
+                const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 15; // Default 15%
+                const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
+                pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
+                
+                // Store base_price only in pricing_details (not full JSON)
+                pricingDetails.base_price = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+              } catch (e) { 
+                console.error('Error calculating platform profit:', e);
+                pricingDetails.platform_profit = 0;
+              }
                 
                 // Add structured data for golden embossing if available
                 if (service === 'goldenemboss' && structuredPricing) {
@@ -21267,13 +21285,26 @@
               additional_options: breakdownObj.additional_options || [],
               subtotal: breakdownObj.subtotal || parseFloat(calculatedPrice)
             };
-              // Compute platform profit
+              // Compute platform profit from service percentage (same as photo print)
             try {
+              // Get service key for commission calculation
+              const colorType = uploadedFiles.length > 0 && fileSettings[uploadedFiles[0].id] 
+                ? fileSettings[uploadedFiles[0].id].color 
+                : 'Black and White';
+              const serviceKey = colorType === 'color' ? 'a4_print_color' : 'a4_print_bw';
+              
+              // Calculate platform profit from service percentage
               const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-              const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
-              const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
+              const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 20; // Default 20%
+              const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
               pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-              } catch (e) { /* ignore */ }
+              
+              // Store base_price only in pricing_details (not full JSON)
+              pricingDetails.base_price = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+              } catch (e) { 
+                console.error('Error calculating platform profit:', e);
+                pricingDetails.platform_profit = 0;
+              }
             
             // Update all settingsJson objects to include pricing details
             for (let i = 0; i < uploadedFiles.length; i++) {
@@ -21422,11 +21453,19 @@
               
               try {
                 const breakdownObj = pricingDetails.pricing_breakdown || {};
+                // Get service key for commission calculation
+                const serviceKey = getServiceKey(serviceType, {});
                 const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-                const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
-                const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
+                const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 15; // Default 15%
+                const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
                 pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-              } catch (e) { /* ignore */ }
+                
+                // Store base_price only in pricing_details (not full JSON)
+                pricingDetails.base_price = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+              } catch (e) { 
+                console.error('Error calculating platform profit:', e);
+                pricingDetails.platform_profit = 0;
+              }
               
               if (serviceType === 'goldenemboss' && structuredPricing) {
                 pricingDetails.structured_data = JSON.parse(structuredPricing);
@@ -21562,9 +21601,15 @@
                     }
                   }
 
-                  // Update job list dynamically
+                  // Update job list dynamically and immediately
                   if (typeof updateJobListAfterPayment === 'function') {
+                    // Call immediately to show print job block instantly
                     updateJobListAfterPayment();
+                  } else {
+                    // Fallback: reload page after a short delay if function doesn't exist
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1000);
                   }
                 } catch (err) {
                   console.error('Background storage error:', err);
@@ -22866,7 +22911,7 @@
       <div class="success-lottie-container">
         <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
       </div>
-      <p class="success-subtitle">✅ Print job sent to print successfully.</p>
+      <p class="success-subtitle" style="margin-top: 0.5rem;">✅ Print job sent to print successfully.</p>
     </div>
   </div>
 
@@ -23262,7 +23307,7 @@
     .success-lottie-container {
       width: 200px;
       height: 200px;
-      margin: 0 auto 1.5rem;
+      margin: 0 auto 0.5rem;
       position: relative;
       display: flex;
       align-items: center;
