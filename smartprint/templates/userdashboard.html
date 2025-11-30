@@ -12025,6 +12025,14 @@
           const modalWidth = sourceModalInner ? sourceModalInner.offsetWidth : null;
           const modalMaxWidth = sourceModalInner ? window.getComputedStyle(sourceModalInner).maxWidth : null;
           
+          // IMPORTANT: Store files in order summary modal before closing service modal
+          // This ensures files persist even if service modal gets reset
+          if (orderSummaryModal && files.length > 0) {
+            // Store files as a property on the order summary modal (File objects can't be in dataset)
+            orderSummaryModal._pendingFiles = files;
+            console.log('📁 Files stored in order summary modal:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+          }
+          
           // Close service modal and open order summary modal
           closeServiceModal(service);
           openOrderSummaryModal(modalWidth, modalMaxWidth);
@@ -21360,24 +21368,36 @@
             throw new Error('Source modal not found');
           }
           
-          // Try to get files from modal._uploadedFiles first
-          files = modal._uploadedFiles || [];
-          
-          // Fallback: If no files in modal._uploadedFiles, try to get from file input element
-          if (files.length === 0) {
-            const fileInput = modal.querySelector(`#${serviceType}-file-input`);
-            if (fileInput && fileInput.files && fileInput.files.length > 0) {
-              files = Array.from(fileInput.files);
-              // Also update modal._uploadedFiles for consistency
-              modal._uploadedFiles = files;
-              console.log('📁 Files retrieved from file input element:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+          // Try multiple sources for files (in order of preference):
+          // 1. Order summary modal's _pendingFiles (stored before closing service modal)
+          // 2. Service modal's _uploadedFiles (if modal wasn't reset)
+          // 3. File input element (fallback)
+          const orderSummaryModal = document.getElementById('orderSummaryModal');
+          if (orderSummaryModal && orderSummaryModal._pendingFiles && orderSummaryModal._pendingFiles.length > 0) {
+            files = orderSummaryModal._pendingFiles;
+            console.log('📁 Files retrieved from order summary modal:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+          } else {
+            // Try to get files from modal._uploadedFiles
+            files = modal._uploadedFiles || [];
+            
+            // Fallback: If no files in modal._uploadedFiles, try to get from file input element
+            if (files.length === 0) {
+              const fileInput = modal.querySelector(`#${serviceType}-file-input`);
+              if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                files = Array.from(fileInput.files);
+                // Also update modal._uploadedFiles for consistency
+                modal._uploadedFiles = files;
+                console.log('📁 Files retrieved from file input element:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+              }
             }
           }
           
           // Final validation: ensure we have files
           if (files.length === 0) {
-            console.error('❌ No files found in modal._uploadedFiles or file input');
-            console.error('Modal:', modal);
+            console.error('❌ No files found in any source');
+            console.error('Order summary modal _pendingFiles:', orderSummaryModal?._pendingFiles);
+            console.error('Service modal _uploadedFiles:', modal._uploadedFiles);
+            console.error('Service modal:', modal);
             console.error('Service type:', serviceType);
             throw new Error('No files attached to the print job. Please upload files again.');
           }
@@ -21667,6 +21687,13 @@
                     setTimeout(() => {
                       window.location.reload();
                     }, 1000);
+                  }
+                  
+                  // Clean up stored files from order summary modal after successful payment
+                  const orderSummaryModal = document.getElementById('orderSummaryModal');
+                  if (orderSummaryModal && orderSummaryModal._pendingFiles) {
+                    delete orderSummaryModal._pendingFiles;
+                    console.log('✅ Cleaned up stored files from order summary modal');
                   }
                 } catch (err) {
                   console.error('Background storage error:', err);
