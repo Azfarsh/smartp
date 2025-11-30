@@ -93,7 +93,6 @@ urlpatterns = [
     # Mobile-friendly Google Drive upload flow
     path('drive/fetch/', views.drive_fetch_file, name='drive_fetch_file'),
     path('drive/finalize/', views.finalize_drive_upload, name='finalize_drive_upload'),
-    path('drive/download-from-r2/', views.download_drive_file_from_r2, name='download_drive_file_from_r2'),
 ]
 
 urlpatterns += [
