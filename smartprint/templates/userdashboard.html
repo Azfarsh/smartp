@@ -21232,6 +21232,41 @@
           let fileToUpload = fileObj.file;
           let finalFilename = fileObj.name;
 
+          // Handle drive files: download from R2 using temp_key
+          if (fileObj.isDriveFile && fileObj.driveFileId) {
+            try {
+              const driveFileData = driveFiles.get(fileObj.driveFileId);
+              if (driveFileData && driveFileData.temp_key) {
+                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading from Drive...';
+                // Download file from R2 using temp_key
+                const downloadResponse = await fetch('/drive/download-from-r2/', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                  },
+                  body: JSON.stringify({ temp_key: driveFileData.temp_key })
+                });
+
+                if (downloadResponse.ok) {
+                  const blob = await downloadResponse.blob();
+                  // Convert blob to File object
+                  fileToUpload = new File([blob], driveFileData.filename, { type: driveFileData.mimeType || 'application/octet-stream' });
+                  finalFilename = driveFileData.filename;
+                  console.log('✅ Downloaded drive file from R2:', finalFilename);
+                } else {
+                  throw new Error('Failed to download drive file from R2');
+                }
+              } else {
+                throw new Error('Drive file data not found');
+              }
+            } catch (error) {
+              console.error('Error downloading drive file:', error);
+              alert(`Error downloading ${fileObj.name} from Drive. Please try again.`);
+              throw error;
+            }
+          }
+
           // Convert images to PDF based on settings
           if (fileObj.isImage && fileObj.originalImageFile) {
             try {
@@ -21385,7 +21420,41 @@
           
           // Handle files
           for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+            let file = files[i];
+            
+            // Handle drive files: download from R2 using temp_key
+            if (file.isDriveFile && file.driveFileId) {
+              try {
+                const driveFileData = driveFiles.get(file.driveFileId);
+                if (driveFileData && driveFileData.temp_key) {
+                  confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading from Drive...';
+                  // Download file from R2 using temp_key
+                  const downloadResponse = await fetch('/drive/download-from-r2/', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ temp_key: driveFileData.temp_key })
+                  });
+
+                  if (downloadResponse.ok) {
+                    const blob = await downloadResponse.blob();
+                    // Convert blob to File object
+                    file = new File([blob], driveFileData.filename, { type: driveFileData.mimeType || 'application/octet-stream' });
+                    console.log('✅ Downloaded drive file from R2:', driveFileData.filename);
+                  } else {
+                    throw new Error('Failed to download drive file from R2');
+                  }
+                } else {
+                  throw new Error('Drive file data not found');
+                }
+              } catch (error) {
+                console.error('Error downloading drive file:', error);
+                alert(`Error downloading ${file.name} from Drive. Please try again.`);
+                throw error;
+              }
+            }
             
             // Passport photo selection logic
             if (serviceType === 'passport') {
@@ -23917,5 +23986,4 @@
 </html>
 </html>
 </html>
-
 
