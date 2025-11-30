@@ -4572,6 +4572,45 @@ def drive_fetch_file(request):
 
 
 @csrf_exempt
+def download_drive_file_from_r2(request):
+    """
+    Download a file from R2 using temp_key and return it as a file download.
+    Used to convert drive files to File objects before payment.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body or '{}')
+        temp_key = body.get('temp_key')
+        if not temp_key:
+            return JsonResponse({'success': False, 'error': 'temp_key is required'}, status=400)
+
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        # Get object from R2
+        response = s3.get_object(Bucket=settings.R2_BUCKET, Key=temp_key)
+        file_content = response['Body'].read()
+        content_type = response.get('ContentType', 'application/octet-stream')
+        
+        # Get filename from metadata or temp_key
+        filename = response.get('Metadata', {}).get('original_filename', temp_key.rsplit('/', 1)[-1])
+        if filename.startswith('temp_drive_uploads'):
+            filename = temp_key.rsplit('/', 1)[-1].split('_', 1)[-1] if '_' in temp_key.rsplit('/', 1)[-1] else temp_key.rsplit('/', 1)[-1]
+
+        from django.http import HttpResponse
+        resp = HttpResponse(file_content, content_type=content_type)
+        resp['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return resp
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
 def finalize_drive_upload(request):
     """
     After successful payment, move the temporary object into a permanent location.
@@ -4830,22 +4869,37 @@ def verify_razorpay_payment(request):
                             page_count = breakdown.get('page_count', 0)
                             num_copies = breakdown.get('num_copies', 0)
                             pricing_key = breakdown.get('pricing_key_used', '')
-                        compact_pricing = {
-                            'total': pricing_details.get('total_price', 0),
-                            'per_page': price_per_page,
-                            'pages': page_count,
-                            'copies': num_copies,
-                            'key': pricing_key,
-                            'quality': breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
-                        }
+                        # Also try to get from print_settings directly if not in breakdown
+                        if page_count == 0:
+                            page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                        if num_copies == 0:
+                            num_copies = print_settings.get('copies', 1)
                         
-                        # Include platform_profit if available in original pricing_details
-                        if 'platform_profit' in pricing_details:
-                            compact_pricing['platform_profit'] = pricing_details['platform_profit']
-                        metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
+                        # Store only base_price in pricing_details (not full JSON)
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = pricing_details.get('base_price', 0)
+                        
+                        # Store only base_price value, not full JSON
+                        metadata['pricing_details'] = str(base_price) if base_price else None
                         metadata['total_price'] = str(pricing_details.get('total_price', 0))
-                    except Exception:
+                        # Explicitly store page_count and num_copies in metadata for database storage
+                        metadata['page_count'] = str(page_count)
+                        metadata['num_copies'] = str(num_copies)
+                        metadata['price_per_page'] = str(price_per_page)
+                        if 'platform_profit' in pricing_details:
+                            metadata['platform_profit'] = str(pricing_details['platform_profit'])
+                    except Exception as e:
+                        print(f"⚠️ Error processing pricing details: {e}")
                         pass
+                else:
+                    # Even without pricing_details, try to extract page_count and num_copies from print_settings
+                    page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                    num_copies = print_settings.get('copies', 1)
+                    if page_count:
+                        metadata['page_count'] = str(page_count)
+                    if num_copies:
+                        metadata['num_copies'] = str(num_copies)
 
                 # Try to store files with error handling
                 try:
@@ -11907,13 +11961,31 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 pages_value = None
         
-        # Store pricing_details as JSON string if available
+        # Store only base_price in pricing_details (not full JSON)
         pricing_details_str = None
         if pricing_details:
-            if isinstance(pricing_details, str):
-                pricing_details_str = pricing_details
-            else:
-                pricing_details_str = json.dumps(pricing_details)
+            if isinstance(pricing_details, dict):
+                # Extract base_price from pricing_breakdown or directly from pricing_details
+                breakdown = pricing_details.get('pricing_breakdown', {})
+                base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                if base_price == 0:
+                    base_price = pricing_details.get('base_price', 0)
+                pricing_details_str = str(base_price) if base_price else None
+            elif isinstance(pricing_details, str):
+                # If it's already a string, try to parse and extract base_price
+                try:
+                    parsed = json.loads(pricing_details)
+                    if isinstance(parsed, dict):
+                        breakdown = parsed.get('pricing_breakdown', {})
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = parsed.get('base_price', 0)
+                        pricing_details_str = str(base_price) if base_price else None
+                    else:
+                        pricing_details_str = str(parsed) if parsed else None
+                except:
+                    # If parsing fails, assume it's already just a base_price value
+                    pricing_details_str = pricing_details
         
         payload = {
             'vendor_id': vendor_id,
@@ -12037,9 +12109,9 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         if price_per_page is None:
             price_per_page = metadata.get('price_per_page')
         if page_count is None:
-            page_count = metadata.get('page_count')
+            page_count = metadata.get('page_count') or metadata.get('pages')
         if num_copies is None:
-            num_copies = metadata.get('num_copies')
+            num_copies = metadata.get('num_copies') or metadata.get('copies')
         pages_value = metadata.get('page_count') or metadata.get('pages')
 
         def to_float(value):
@@ -12065,9 +12137,31 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         num_copies = to_int(num_copies)
         pages_value = to_int(pages_value)
 
+        # Store only base_price in pricing_details (not full JSON)
         pricing_details_str = None
         if pricing_details:
-            pricing_details_str = pricing_details if isinstance(pricing_details, str) else json.dumps(pricing_details)
+            if isinstance(pricing_details, dict):
+                # Extract base_price from pricing_breakdown or directly from pricing_details
+                breakdown = pricing_details.get('pricing_breakdown', {})
+                base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                if base_price == 0:
+                    base_price = pricing_details.get('base_price', 0)
+                pricing_details_str = str(base_price) if base_price else None
+            elif isinstance(pricing_details, str):
+                # If it's already a string, try to parse and extract base_price
+                try:
+                    parsed = json.loads(pricing_details)
+                    if isinstance(parsed, dict):
+                        breakdown = parsed.get('pricing_breakdown', {})
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = parsed.get('base_price', 0)
+                        pricing_details_str = str(base_price) if base_price else None
+                    else:
+                        pricing_details_str = str(parsed) if parsed else None
+                except:
+                    # If parsing fails, assume it's already just a base_price value
+                    pricing_details_str = pricing_details
 
         payload = {
             'vendor_id': vendor_id,

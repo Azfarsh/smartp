@@ -6961,13 +6961,13 @@
             Use your phone camera to scan the QR. The secure page captures GPS from your phone.
           </p>
           <div class="qr-wrapper" id="userQrWrapper" hidden>
-            <canvas id="userLocationQrCanvas" width="220" height="220"></canvas>
+            <canvas id="userLocationQrCanvas" width="220" height="220" style="width: 220px; height: 220px; display: block; margin: 0 auto;"></canvas>
             <a href="#" id="userLocationQrLink" class="qr-link" target="_blank" rel="noreferrer">
               <span class="material-icons" style="font-size: 1rem;">open_in_new</span>
               Open link directly
             </a>
             <p class="location-helper-text small">
-              Keep the mobile page open until it says “Location verified”.
+              Keep the mobile page open until it says "Location verified".
             </p>
             <div class="location-status-chip location-status--idle" id="userLocationStatusChip">
               <span class="material-icons" id="userLocationStatusIcon" style="font-size: 1rem;">gps_fixed</span>
@@ -10326,18 +10326,47 @@
 
         function ensureQrInstance() {
           cacheElements();
-          if (state.qrInstance || !els.qrCanvas || typeof QRious === 'undefined') return;
-          state.qrInstance = new QRious({
-            element: els.qrCanvas,
-            size: 220,
-            value: ''
-          });
+          if (state.qrInstance || !els.qrCanvas) return;
+          
+          // Wait for QRious to load if not available
+          if (typeof QRious === 'undefined') {
+            console.warn('QRious library not loaded, waiting...');
+            setTimeout(ensureQrInstance, 100);
+            return;
+          }
+          
+          // Ensure canvas has explicit dimensions
+          if (els.qrCanvas) {
+            els.qrCanvas.setAttribute('width', '220');
+            els.qrCanvas.setAttribute('height', '220');
+            els.qrCanvas.style.width = '220px';
+            els.qrCanvas.style.height = '220px';
+          }
+          
+          try {
+            state.qrInstance = new QRious({
+              element: els.qrCanvas,
+              size: 220,
+              value: ''
+            });
+          } catch (error) {
+            console.error('Error initializing QRious:', error);
+          }
         }
 
         function renderQr(value) {
           ensureQrInstance();
-          if (state.qrInstance) {
-            state.qrInstance.value = value;
+          if (state.qrInstance && value) {
+            try {
+              state.qrInstance.value = value;
+              // Force canvas update
+              if (els.qrCanvas) {
+                els.qrCanvas.setAttribute('width', '220');
+                els.qrCanvas.setAttribute('height', '220');
+              }
+            } catch (error) {
+              console.error('Error rendering QR code:', error);
+            }
           }
         }
 
@@ -10361,6 +10390,12 @@
           }
           if (state.isStarting) return;
           state.isStarting = true;
+          
+          // Show QR wrapper instantly for desktop devices
+          if (els.qrWrapper) {
+            els.qrWrapper.hidden = false;
+          }
+          
           setStatus('Generating secure QR for your phone...', 'pending');
           if (els.startBtn) {
             els.startBtn.disabled = true;
@@ -10394,6 +10429,10 @@
             if (els.startBtn) {
               els.startBtn.disabled = false;
               els.startBtn.textContent = 'Generate QR again';
+            }
+            // Hide QR wrapper on error
+            if (els.qrWrapper) {
+              els.qrWrapper.hidden = true;
             }
           } finally {
             state.isStarting = false;
@@ -12126,13 +12165,21 @@
                   vendor_email: selectedShopData ? selectedShopData.vendor_email : null
                 };
                 // Compute and store platform profit (not displayed to user)
-                try {
-                  const breakdownObj = pricingDetails.pricing_breakdown || {};
-                  const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-                  const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
-                  const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
-                  pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-                } catch (e) { /* ignore profit calc errors silently */ }
+              try {
+                const breakdownObj = pricingDetails.pricing_breakdown || {};
+                // Get service key for commission calculation
+                const serviceKey = getServiceKey(service, form ? Object.fromEntries(new FormData(form)) : {});
+                const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
+                const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 15; // Default 15%
+                const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
+                pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
+                
+                // Store base_price only in pricing_details (not full JSON)
+                pricingDetails.base_price = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+              } catch (e) { 
+                console.error('Error calculating platform profit:', e);
+                pricingDetails.platform_profit = 0;
+              }
                 
                 // Add structured data for golden embossing if available
                 if (service === 'goldenemboss' && structuredPricing) {
@@ -13865,6 +13912,23 @@
     
     // INSTANT JOBS RENDERING - Use preloaded data, else fetch async
     document.addEventListener('DOMContentLoaded', function() {
+      // Force location request for desktop devices on page load
+      const desktopMode = isDesktopViewport();
+      if (desktopMode) {
+        console.log('🔄 Desktop mode detected: Requesting location on page load');
+        // Small delay to ensure page is fully loaded
+        setTimeout(() => {
+          if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+            window.userLocationFlow.promptForService(null);
+          } else {
+            // Fallback: use fetchAccurateUserLocation
+            fetchAccurateUserLocation(true).catch(err => {
+              console.warn('Location request failed on page load:', err);
+            });
+          }
+        }, 500);
+      }
+      
       const container = document.getElementById('jobsContainer');
       
       // Start PDF animation timer immediately
@@ -14065,23 +14129,45 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Get pages from pricing_details directly - check both levels like pricing button does
-      const pricingDetails = job.pricing_details || {};
-      const breakdown = pricingDetails.pricing_breakdown || {};
-      // Try multiple sources for pages
-      let pagesFromPricing = breakdown.page_count || breakdown.pages || breakdown.total_pages || 
-                             pricingDetails.page_count || pricingDetails.pages || pricingDetails.total_pages ||
-                             job.page_count || job.pages || job.total_pages;
+      // Get pages from database fields first (page_count, num_copies), then fallback to pricing_details
+      // Priority: job.page_count > job.pages > pricing_details > breakdown
+      let pagesFromPricing = null;
+      let copiesFromPricing = null;
+      
+      // First try database fields directly
+      if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
+        pagesFromPricing = Number(job.page_count);
+      } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
+        pagesFromPricing = Number(job.pages);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        pagesFromPricing = breakdown.page_count || breakdown.pages || breakdown.total_pages || 
+                           pricingDetails.page_count || pricingDetails.pages || pricingDetails.total_pages ||
+                           job.total_pages;
+        pagesFromPricing = pagesFromPricing ? Number(pagesFromPricing) : null;
+      }
+      
+      // First try database fields directly for copies
+      if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
+        copiesFromPricing = Number(job.num_copies);
+      } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
+        copiesFromPricing = Number(job.copies);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        copiesFromPricing = breakdown.num_copies || breakdown.copies || 
+                           pricingDetails.num_copies || pricingDetails.copies;
+        copiesFromPricing = copiesFromPricing ? Number(copiesFromPricing) : null;
+      }
+      
       // Convert to number and ensure it's valid
       pagesFromPricing = Number(pagesFromPricing);
       if (isNaN(pagesFromPricing) || pagesFromPricing <= 0) {
         pagesFromPricing = 1;
       }
-      // Try multiple sources for copies
-      let copiesFromPricing = breakdown.num_copies || breakdown.copies || 
-                             pricingDetails.num_copies || pricingDetails.copies ||
-                             job.num_copies || job.copies;
-      // Convert to number and ensure it's valid
       copiesFromPricing = Number(copiesFromPricing);
       if (isNaN(copiesFromPricing) || copiesFromPricing <= 0) {
         copiesFromPricing = 1;
@@ -14810,13 +14896,48 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Get pages from pricing_details directly - check both levels like pricing button does
-      const pricingDetails = job.pricing_details || {};
-      const breakdown = pricingDetails.pricing_breakdown || {};
-      const pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
-      const copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
-      const resolvedPages = pagesFromPricing || job.pages || 1;
-      const resolvedCopies = copiesFromPricing || job.copies || 1;
+      // Get pages from database fields first (page_count, num_copies), then fallback to pricing_details
+      let pagesFromPricing = null;
+      let copiesFromPricing = null;
+      
+      // First try database fields directly
+      if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
+        pagesFromPricing = Number(job.page_count);
+      } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
+        pagesFromPricing = Number(job.pages);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        pagesFromPricing = breakdown.page_count || pricingDetails.pages || pricingDetails.page_count || pricingDetails.total_pages;
+        pagesFromPricing = pagesFromPricing ? Number(pagesFromPricing) : null;
+      }
+      
+      // First try database fields directly for copies
+      if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
+        copiesFromPricing = Number(job.num_copies);
+      } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
+        copiesFromPricing = Number(job.copies);
+      } else {
+        // Fallback to pricing_details
+        const pricingDetails = job.pricing_details || {};
+        const breakdown = pricingDetails.pricing_breakdown || {};
+        copiesFromPricing = breakdown.num_copies || pricingDetails.copies || pricingDetails.num_copies;
+        copiesFromPricing = copiesFromPricing ? Number(copiesFromPricing) : null;
+      }
+      
+      // Ensure valid numbers
+      pagesFromPricing = Number(pagesFromPricing);
+      if (isNaN(pagesFromPricing) || pagesFromPricing <= 0) {
+        pagesFromPricing = 1;
+      }
+      copiesFromPricing = Number(copiesFromPricing);
+      if (isNaN(copiesFromPricing) || copiesFromPricing <= 0) {
+        copiesFromPricing = 1;
+      }
+      
+      const resolvedPages = pagesFromPricing;
+      const resolvedCopies = copiesFromPricing;
       const getJobToken = (jobObj) => {
         if (jobObj.token) return String(jobObj.token);
         if (jobObj.job_token) return String(jobObj.job_token);
@@ -21111,6 +21232,41 @@
           let fileToUpload = fileObj.file;
           let finalFilename = fileObj.name;
 
+          // Handle drive files: download from R2 using temp_key
+          if (fileObj.isDriveFile && fileObj.driveFileId) {
+            try {
+              const driveFileData = driveFiles.get(fileObj.driveFileId);
+              if (driveFileData && driveFileData.temp_key) {
+                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading from Drive...';
+                // Download file from R2 using temp_key
+                const downloadResponse = await fetch('/drive/download-from-r2/', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                  },
+                  body: JSON.stringify({ temp_key: driveFileData.temp_key })
+                });
+
+                if (downloadResponse.ok) {
+                  const blob = await downloadResponse.blob();
+                  // Convert blob to File object
+                  fileToUpload = new File([blob], driveFileData.filename, { type: driveFileData.mimeType || 'application/octet-stream' });
+                  finalFilename = driveFileData.filename;
+                  console.log('✅ Downloaded drive file from R2:', finalFilename);
+                } else {
+                  throw new Error('Failed to download drive file from R2');
+                }
+              } else {
+                throw new Error('Drive file data not found');
+              }
+            } catch (error) {
+              console.error('Error downloading drive file:', error);
+              alert(`Error downloading ${fileObj.name} from Drive. Please try again.`);
+              throw error;
+            }
+          }
+
           // Convert images to PDF based on settings
           if (fileObj.isImage && fileObj.originalImageFile) {
             try {
@@ -21193,13 +21349,26 @@
               additional_options: breakdownObj.additional_options || [],
               subtotal: breakdownObj.subtotal || parseFloat(calculatedPrice)
             };
-              // Compute platform profit
+              // Compute platform profit from service percentage (same as photo print)
             try {
+              // Get service key for commission calculation
+              const colorType = uploadedFiles.length > 0 && fileSettings[uploadedFiles[0].id] 
+                ? fileSettings[uploadedFiles[0].id].color 
+                : 'Black and White';
+              const serviceKey = colorType === 'color' ? 'a4_print_color' : 'a4_print_bw';
+              
+              // Calculate platform profit from service percentage
               const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-              const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
-              const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
+              const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 20; // Default 20%
+              const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
               pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-              } catch (e) { /* ignore */ }
+              
+              // Store base_price only in pricing_details (not full JSON)
+              pricingDetails.base_price = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+              } catch (e) { 
+                console.error('Error calculating platform profit:', e);
+                pricingDetails.platform_profit = 0;
+              }
             
             // Update all settingsJson objects to include pricing details
             for (let i = 0; i < uploadedFiles.length; i++) {
@@ -21251,7 +21420,41 @@
           
           // Handle files
           for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+            let file = files[i];
+            
+            // Handle drive files: download from R2 using temp_key
+            if (file.isDriveFile && file.driveFileId) {
+              try {
+                const driveFileData = driveFiles.get(file.driveFileId);
+                if (driveFileData && driveFileData.temp_key) {
+                  confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading from Drive...';
+                  // Download file from R2 using temp_key
+                  const downloadResponse = await fetch('/drive/download-from-r2/', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ temp_key: driveFileData.temp_key })
+                  });
+
+                  if (downloadResponse.ok) {
+                    const blob = await downloadResponse.blob();
+                    // Convert blob to File object
+                    file = new File([blob], driveFileData.filename, { type: driveFileData.mimeType || 'application/octet-stream' });
+                    console.log('✅ Downloaded drive file from R2:', driveFileData.filename);
+                  } else {
+                    throw new Error('Failed to download drive file from R2');
+                  }
+                } else {
+                  throw new Error('Drive file data not found');
+                }
+              } catch (error) {
+                console.error('Error downloading drive file:', error);
+                alert(`Error downloading ${file.name} from Drive. Please try again.`);
+                throw error;
+              }
+            }
             
             // Passport photo selection logic
             if (serviceType === 'passport') {
@@ -21348,11 +21551,19 @@
               
               try {
                 const breakdownObj = pricingDetails.pricing_breakdown || {};
+                // Get service key for commission calculation
+                const serviceKey = getServiceKey(serviceType, {});
                 const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-                const totalUserAmountNum = parseFloat(finalAmount || String(pricingDetails.total_price || '0')) || 0;
-                const platformProfit = Math.max(0, totalUserAmountNum - vendorPriceNum);
+                const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 15; // Default 15%
+                const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
                 pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
-              } catch (e) { /* ignore */ }
+                
+                // Store base_price only in pricing_details (not full JSON)
+                pricingDetails.base_price = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+              } catch (e) { 
+                console.error('Error calculating platform profit:', e);
+                pricingDetails.platform_profit = 0;
+              }
               
               if (serviceType === 'goldenemboss' && structuredPricing) {
                 pricingDetails.structured_data = JSON.parse(structuredPricing);
@@ -21488,9 +21699,15 @@
                     }
                   }
 
-                  // Update job list dynamically
+                  // Update job list dynamically and immediately
                   if (typeof updateJobListAfterPayment === 'function') {
+                    // Call immediately to show print job block instantly
                     updateJobListAfterPayment();
+                  } else {
+                    // Fallback: reload page after a short delay if function doesn't exist
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1000);
                   }
                 } catch (err) {
                   console.error('Background storage error:', err);
@@ -22792,7 +23009,7 @@
       <div class="success-lottie-container">
         <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
       </div>
-      <p class="success-subtitle">✅ Print job sent to print successfully.</p>
+      <p class="success-subtitle" style="margin-top: 0.5rem;">✅ Print job sent to print successfully.</p>
     </div>
   </div>
 
@@ -23188,7 +23405,7 @@
     .success-lottie-container {
       width: 200px;
       height: 200px;
-      margin: 0 auto 1.5rem;
+      margin: 0 auto 0.5rem;
       position: relative;
       display: flex;
       align-items: center;
@@ -23264,10 +23481,11 @@
     .success-subtitle {
       margin: 0;
       padding: 0;
-      font-size: 0.95rem;
-      color: #64748b;
-      font-weight: 400;
-      line-height: 1.5;
+      font-size: 1.1rem;
+      color: #1e293b;
+      font-weight: 600;
+      line-height: 1.6;
+      text-align: center;
     }
 
     @media (max-width: 768px) {
@@ -23292,7 +23510,15 @@
       }
       
       .success-subtitle {
-        font-size: 0.9rem;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+    }
+    
+    @media (min-width: 769px) {
+      .success-subtitle {
+        font-size: 1.2rem;
+        font-weight: 600;
       }
     }
 
@@ -23760,5 +23986,4 @@
 </html>
 </html>
 </html>
-
 
