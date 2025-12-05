@@ -11,6 +11,71 @@
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
     </script>
+    
+    <!-- Suppress Chrome extension message passing errors (harmless but annoying) -->
+    <script>
+        // Suppress Chrome extension message passing errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            const message = args.join(' ');
+            // Suppress Chrome extension message passing errors
+            if (message.includes('message channel closed') || 
+                message.includes('asynchronous response') ||
+                message.includes('listener indicated')) {
+                return; // Suppress these errors
+            }
+            originalError.apply(console, args);
+        };
+        
+        // Enhanced error handler to suppress browser extension errors (harmless)
+        window.addEventListener('error', function(e) {
+            const errorMessage = e.message || '';
+            const errorSource = e.filename || '';
+            
+            // Suppress Google accounts CSP report errors (from browser extensions)
+            if (errorMessage.includes('accounts.google.com') ||
+                errorMessage.includes('cspreport') ||
+                errorMessage.includes('fine-allowlist') ||
+                (errorSource.includes('accounts.google.com') && errorSource.includes('cspreport'))) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Suppress message listener errors from browser extensions
+            if (errorMessage.includes('listener indicated an asynchronous response') || 
+                errorMessage.includes('message channel closed')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Suppress Google API loading errors (often from extensions)
+            if (errorSource.includes('gapi.loaded') || errorSource.includes('googleapis.com')) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+        
+        // Also handle unhandled promise rejections (browser extension errors)
+        window.addEventListener('unhandledrejection', function(e) {
+            const reason = e.reason || '';
+            const reasonString = String(reason);
+            
+            // Suppress message listener promise rejections from browser extensions
+            if (reasonString.includes('listener indicated an asynchronous response') || 
+                reasonString.includes('message channel closed')) {
+                e.preventDefault(); // Suppress this error
+                return;
+            }
+            
+            // Suppress Google API related rejections
+            if (reasonString.includes('accounts.google.com') || 
+                reasonString.includes('gapi.loaded')) {
+                e.preventDefault();
+                return;
+            }
+        });
+    </script>
+    
     <title>PrintMax Print Shop Dashboard</title>
     
     <!-- Favicon -->
@@ -1197,18 +1262,33 @@
             font-weight: 700;
         }
 
-        .nav-link.active {
+        /* Print Shop Dashboard always stays blue */
+        .nav-link.dashboard-active {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: var(--on-primary);
         }
 
-        .nav-link.active .nav-badge {
+        .nav-link.dashboard-active .nav-badge {
             color: var(--on-primary);
             background: rgba(255, 255, 255, 0.2);
             opacity: 1;
             font-weight: 700;
             transform: scale(1.05);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Other nav items when active - subtle highlight, not blue */
+        .nav-link.active:not(.dashboard-active) {
+            background: var(--surface-container);
+            color: var(--on-surface);
+            font-weight: 600;
+        }
+
+        .nav-link.active:not(.dashboard-active) .nav-badge {
+            color: var(--primary);
+            background: var(--surface-container-high);
+            opacity: 1;
+            font-weight: 700;
         }
 
         .nav-link i {
@@ -2857,19 +2937,19 @@
             transform: translateX(-50%);
             background: var(--surface);
             border: 1px solid var(--outline);
-            border-radius: 16px;
-            padding: 20px 32px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 10px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
             z-index: 10000;
             animation: slideInTop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            max-width: 500px;
-            min-width: 350px;
-            font-size: 16px;
-            font-weight: 600;
+            max-width: 350px;
+            min-width: 200px;
+            font-size: 0.875rem;
+            font-weight: 500;
             color: var(--on-surface);
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 10px;
             text-align: left;
             backdrop-filter: blur(10px);
             border-left: 4px solid var(--primary);
@@ -2882,15 +2962,15 @@
         .toast-content {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             width: 100%;
         }
 
         .toast-content i {
-            font-size: 20px;
+            font-size: 16px;
             flex-shrink: 0;
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2943,15 +3023,16 @@
             border: none;
             color: var(--on-surface-variant);
             cursor: pointer;
-            padding: 4px;
+            padding: 2px;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
             margin-left: auto;
+            font-size: 0.75rem;
         }
 
         .toast-close:hover {
@@ -2959,6 +3040,17 @@
             color: var(--on-surface);
         }
 
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
         @keyframes slideInTop {
             from {
                 transform: translateX(-50%) translateY(-100%);
@@ -3576,83 +3668,41 @@
         <!-- Navigation Menu -->
         <nav class="nav-menu">
             <div class="nav-item">
-                <a href="#" class="nav-link active" onclick="return false;" style="pointer-events: none; opacity: 0.9;">
+                <a href="#" class="nav-link dashboard-active" onclick="return false;" style="pointer-events: none; opacity: 0.9;">
                     <i class="fas fa-home"></i>
                     <span>Print Shop Dashboard</span>
                 </a>
             </div>
+
             <div class="nav-item">
-                <a href="#document-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('doc-section')" title="Document Printing">
-                    <i class="fas fa-file-alt"></i>
-                    <span>Document Printing</span>
-                    <span class="nav-badge" id="docNavBadge">0</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#photo-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('photo-section')" title="Photo Printing">
-                    <i class="fas fa-camera"></i>
-                    <span>Photo Printing</span>
-                    <span class="nav-badge" id="photoNavBadge">0</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#passport-photo" class="nav-link" onclick="setActiveNav(this); scrollToSection('passport-section')" title="Passport Photo Printing">
-                    <i class="fas fa-passport"></i>
-                    <span>Passport Photo</span>
-                    <span class="nav-badge" id="passportNavBadge">0</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#jumbo-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('jumbo-section')" title="Jumbo Paper Printing">
-                    <i class="fas fa-expand"></i>
-                    <span>Jumbo Printing</span>
-                    <span class="nav-badge" id="jumboNavBadge">0</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#golden-embossing" class="nav-link" onclick="setActiveNav(this); scrollToSection('golden-section')" title="Golden Embossing / Black Book">
-                    <i class="fas fa-book"></i>
-                    <span>Golden/Black Book</span>
-                    <span class="nav-badge" id="goldenNavBadge">0</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#digital-printing" class="nav-link" onclick="setActiveNav(this); scrollToSection('digital-section')" title="Digital Paper Printing">
-                    <i class="fas fa-print"></i>
-                    <span>Digital Printing</span>
-                    <span class="nav-badge" id="digitalNavBadge">0</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="#completed-jobs" class="nav-link" onclick="setActiveNav(this); scrollToSection('completed-section')" title="Completed">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Completed</span>
-                    <span class="nav-badge" id="completedNavBadge">0</span>
+                <a href="#" class="nav-link" id="vendorServicePricesBtn" onclick="event.preventDefault(); event.stopPropagation(); if(typeof setActiveNav === 'function') setActiveNav(this); openVendorServicePricesModal(); return false;">
+                    <i class="fas fa-tags"></i>
+                    <span>Printing Prices</span>
                 </a>
             </div>
 
             <div class="nav-item">
-                <a href="/vendor-pricing/?from_dashboard=1&vendorEmail={{ vendor_details.vendor_email }}" class="nav-link" onclick="setActiveNav(this)">
+                <a href="/vendor-pricing/?from_dashboard=1&vendorEmail={{ vendor_details.vendor_email }}" class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this);">
                     <i class="fas fa-rupee-sign"></i>
-                    <span>Pricing</span>
+                    <span>Pricing Update</span>
                 </a>
             </div>
             
             <div class="nav-item">
-                <a href="#history" class="nav-link" onclick="setActiveNav(this); showHistory()">
+                <a href="#history" class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showHistory()">
                     <i class="fas fa-history"></i>
                     <span>History</span>
                 </a>
             </div>
          
             <div class="nav-item">
-                <a href="#profile" class="nav-link" onclick="setActiveNav(this); showProfile()">
+                <a href="#profile" class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showProfile()">
                     <i class="fas fa-user-circle"></i>
                     <span>Profile</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#settings" class="nav-link" onclick="setActiveNav(this); openSettingsModal(); return false;">
+                <a href="#settings" class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this); openSettingsModal(); return false;">
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
                 </a>
@@ -3664,13 +3714,13 @@
                 </a>
             </div>
             <div class="nav-item">
-                <a href="/contact/" class="nav-link" onclick="setActiveNav(this)">
+                <a href="/contact/" class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this);">
                     <i class="fas fa-envelope"></i>
                     <span>Contact Us</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="#rules" class="nav-link" onclick="setActiveNav(this); showRulesModal(); return false;">
+                <a href="#rules" class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showRulesModal(); return false;">
                     <i class="fas fa-gavel"></i>
                     <span>Rules & Guidelines</span>
                 </a>
@@ -3700,6 +3750,9 @@
                 <div class="stat-header">
                     <div class="stat-icon manual">
                         <i class="fas fa-tools"></i>
+                    </div>
+                    <div class="stat-alert-icon" id="pendingJobsAlert" style="display: none;">
+                        <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 1.2em; margin-left: 8px;"></i>
                     </div>
                 </div>
                 <div class="stat-number" id="manualStatCount">0</div>
@@ -4459,22 +4512,6 @@
                 countElement.textContent = count;
             }
             
-            // Update navigation badges
-            const navBadgeMap = {
-                document: 'docNavBadge',
-                photo: 'photoNavBadge',
-                passport: 'passportNavBadge', 
-                jumbo: 'jumboNavBadge',
-                golden: 'goldenNavBadge',
-                digital: 'digitalNavBadge',
-                completed: 'completedNavBadge'
-            };
-            
-            const navBadge = document.getElementById(navBadgeMap[type]);
-            if (navBadge) {
-                navBadge.textContent = count;
-            }
-            
             // Update overview stats
             const totalPending = (filteredJobs.document?.length || 0) + 
                                (filteredJobs.photo?.length || 0) + 
@@ -4488,6 +4525,16 @@
             document.getElementById('requestsStatCount').textContent = totalRequests;
             document.getElementById('manualStatCount').textContent = totalPending;
             document.getElementById('completedStatCount').textContent = totalCompleted;
+            
+            // Show/hide alert icon for pending jobs
+            const pendingJobsAlert = document.getElementById('pendingJobsAlert');
+            if (pendingJobsAlert) {
+                if (totalPending > 0) {
+                    pendingJobsAlert.style.display = 'block';
+                } else {
+                    pendingJobsAlert.style.display = 'none';
+                }
+            }
         }
 
         // Render a single job with animation (only on initial load)
@@ -4561,7 +4608,7 @@
                     <div class="job-content" style="margin:0;">
                         <div class="job-title" title="${job.filename}" style="display:flex; align-items:center; gap:6px; font-size:15px; font-weight:700; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             <i class="fas fa-file-pdf" style="color:#ef4444; min-width:14px;"></i>
-                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${job.filename}</span>
+                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${truncateFilename(job.filename)}</span>
                         </div>
                         <div class="job-meta" style="display:flex; gap:8px; align-items:center; margin:6px 0 0 0; flex-wrap:nowrap;">
                             <span class="job-meta-pill" style="background:#f1f5f9;border:1px solid #e5e7eb;color:#334155;border-radius:8px;padding:5px 8px;font-weight:600;font-size:11px;display:inline-flex;align-items:center;gap:6px;">
@@ -4579,7 +4626,7 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-danger" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
+                        <button class="btn-small btn-danger" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); confirmClearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
                             <i class="fas fa-times"></i> Cancel
                         </button>
                     </div>
@@ -4590,6 +4637,9 @@
         // Render all completed jobs quickly in the same location
         function renderAllCompletedJobs() {
             const completedJobs = allJobs.filter(job => {
+                // Filter out cancelled jobs
+                const jobCompleted = (job.job_completed || '').toString().trim().toUpperCase();
+                if (jobCompleted === 'CANCELLED') return false;
                 if (job.job_completed !== 'YES') return false;
                 const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
                 // Show all completed jobs except those explicitly cleared by vendor (persist until Cancel pressed)
@@ -4639,6 +4689,22 @@
             updateSingleCount('completed', completedJobs.length);
         }
 
+        // Navigation - Define early to avoid reference errors
+        function setActiveNav(element) {
+            // Don't remove active from Print Shop Dashboard
+            document.querySelectorAll('.nav-link:not(.dashboard-active)').forEach(link => {
+                link.classList.remove('active');
+            });
+            // Only add active if it's not the dashboard
+            if (!element.classList.contains('dashboard-active')) {
+                element.classList.add('active');
+            }
+            
+            if (window.innerWidth <= 768) {
+                toggleSidebar(true);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             // First, check if vendor is authenticated, if not try auto-login
@@ -4648,7 +4714,8 @@
                     credentials: 'include'
                 });
                 
-                if (!authCheck.ok || authCheck.status === 401 || authCheck.status === 403) {
+                // Only treat 401/403 as authentication errors, not 500 (server errors)
+                if (authCheck.status === 401 || authCheck.status === 403) {
                     // Not authenticated, try auto-login
                     const autoLoginSuccess = await autoLoginVendor();
                     if (!autoLoginSuccess) {
@@ -4657,22 +4724,50 @@
                     }
                     // If auto-login succeeded, page will reload, so we return here
                     return;
-                }
-            } catch (error) {
-                console.error('Error checking authentication:', error);
-                // Try auto-login on error
-                const autoLoginSuccess = await autoLoginVendor();
-                if (!autoLoginSuccess) {
+                } else if (!authCheck.ok && authCheck.status !== 500) {
+                    // Other non-500 errors might be auth issues
+                    const autoLoginSuccess = await autoLoginVendor();
+                    if (!autoLoginSuccess) {
+                        return;
+                    }
                     return;
                 }
+                // If status is 500, continue - it's a server error, not an auth error
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+                // Only try auto-login on network errors, not on server errors
+                // If it's a fetch error (network issue), try auto-login
+                if (error.name === 'TypeError' || error.message.includes('fetch')) {
+                    const autoLoginSuccess = await autoLoginVendor();
+                    if (!autoLoginSuccess) {
+                        return;
+                    }
+                }
+                // For other errors, continue - might be server issues
             }
             
             initTheme();
             // Load vendor availability status
             try { loadVendorAvailability(); } catch (e) { console.error('Error loading vendor availability:', e); }
             
+            // Load initial jobs from backend context immediately for fast rendering
+            try {
+                const initialJobsScript = document.getElementById('initial-jobs-data');
+                if (initialJobsScript) {
+                    const initialJobsData = JSON.parse(initialJobsScript.textContent);
+                    if (Array.isArray(initialJobsData) && initialJobsData.length > 0) {
+                        allJobs = initialJobsData;
+                        categorizeJobs();
+                        // Cache initial jobs
+                        localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading initial jobs:', e);
+            }
+            
             // Load jobs from cache first, then fetch new ones
-                    loadJobs();
+            loadJobs();
 
             // After login/load, ensure loaders stop after 10s if no jobs found
             setTimeout(() => {
@@ -4786,18 +4881,6 @@
                     sidebar.classList.remove('collapsed');
                     mainContent.classList.remove('full-width');
                 }
-            }
-        }
-
-        // Navigation
-        function setActiveNav(element) {
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            element.classList.add('active');
-            
-            if (window.innerWidth <= 768) {
-                toggleSidebar(true);
             }
         }
 
@@ -5632,6 +5715,22 @@
 
                 // The backend will automatically filter jobs based on the vendor's session
                 const response = await fetch('/get-print-requests/');
+                
+                // Handle server errors gracefully - don't break if API returns 500
+                if (!response.ok && response.status === 500) {
+                    console.error('Server error loading jobs:', response.status);
+                    // If we have cached jobs, keep using them
+                    if (allJobs.length > 0) {
+                        categorizeJobs();
+                        showToast('Using cached jobs - server error occurred', 'warning');
+                    } else {
+                        // No cached jobs, show empty state
+                        allJobs = [];
+                        categorizeJobs();
+                    }
+                    return;
+                }
+                
                 const data = await response.json();
 
                 if (data.print_requests && data.print_requests.length > 0) {
@@ -5700,24 +5799,36 @@
                 }
             } catch (error) {
                 console.error('Error loading jobs:', error);
-                showToast(`Error loading jobs: ${formatErrorMessage(error.message)}`, 'error');
-                // Show empty state on error
-                allJobs = [];
-                categorizeJobs();
+                // If we have cached jobs, keep using them
+                if (allJobs.length > 0) {
+                    categorizeJobs();
+                    showToast('Using cached jobs - error loading from server', 'warning');
+                } else {
+                    // No cached jobs, show empty state
+                    showToast(`Error loading jobs: ${formatErrorMessage(error.message)}`, 'error');
+                    allJobs = [];
+                    categorizeJobs();
+                }
             }
         }
 
         function categorizeJobs() {
+            // Filter out cancelled jobs first - they should not be displayed anywhere
+            const activeJobs = allJobs.filter(j => {
+                const jobCompleted = (j.job_completed || '').toString().trim().toUpperCase();
+                return jobCompleted !== 'CANCELLED';
+            });
+            
             // Map jobs into explicit sections by service_type
-            const documentJobs = allJobs.filter(j => j.job_completed === 'NO' && ['regular_print', 'regular print', ''].includes((j.service_type || '').trim().toLowerCase()));
-            const photoJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'photo_print');
-            const passportJobs = allJobs.filter(j => j.job_completed === 'NO' && ['passport_print','passport_photo'].includes((j.service_type || '').trim().toLowerCase()));
-            const jumboJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'jumbo_printing');
-            const goldenJobs = allJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase()));
-            const digitalJobs = allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print');
+            const documentJobs = activeJobs.filter(j => j.job_completed === 'NO' && ['regular_print', 'regular print', ''].includes((j.service_type || '').trim().toLowerCase()));
+            const photoJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'photo_print');
+            const passportJobs = activeJobs.filter(j => j.job_completed === 'NO' && ['passport_print','passport_photo'].includes((j.service_type || '').trim().toLowerCase()));
+            const jumboJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'jumbo_printing');
+            const goldenJobs = activeJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase()));
+            const digitalJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print');
 
             // FIXED: Completed jobs should remain visible until vendor explicitly clears them
-            const completed = allJobs.filter(job => {
+            const completed = activeJobs.filter(job => {
                 if (job.job_completed !== 'YES') return false;
                 const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
                 if (vendorStatus === 'clear') return false; // hide only when cleared
@@ -5757,6 +5868,16 @@
             document.getElementById('completedStatCount').textContent = counts.completed;
             // Earnings placeholder (sum not computed yet) => keep as ₹0
 
+            // Show/hide alert icon for pending jobs
+            const pendingJobsAlert = document.getElementById('pendingJobsAlert');
+            if (pendingJobsAlert) {
+                if (totalPending > 0) {
+                    pendingJobsAlert.style.display = 'block';
+                } else {
+                    pendingJobsAlert.style.display = 'none';
+                }
+            }
+
             // Section counts
             if (document.getElementById('docCount')) document.getElementById('docCount').textContent = counts.document;
             if (document.getElementById('photoCount')) document.getElementById('photoCount').textContent = counts.photo;
@@ -5765,15 +5886,6 @@
             if (document.getElementById('goldenCount')) document.getElementById('goldenCount').textContent = counts.golden;
             if (document.getElementById('digitalCount')) document.getElementById('digitalCount').textContent = counts.digital;
             document.getElementById('completedCount').textContent = counts.completed;
-
-            // Sidebar badges
-            document.getElementById('docNavBadge').textContent = counts.document;
-            document.getElementById('photoNavBadge').textContent = counts.photo;
-            document.getElementById('passportNavBadge').textContent = counts.passport;
-            document.getElementById('jumboNavBadge').textContent = counts.jumbo;
-            document.getElementById('goldenNavBadge').textContent = counts.golden;
-            document.getElementById('digitalNavBadge').textContent = counts.digital;
-            document.getElementById('completedNavBadge').textContent = counts.completed;
         }
 
 
@@ -5981,7 +6093,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmClearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
                             <i class="fas fa-times"></i> Cancel
                         </button>
                     </div>
@@ -6016,7 +6128,7 @@
                     </div>
                     <div class="job-filename main-info" title="${job.filename}">
                         ${getFileTypeIcon(job.filename)}
-                        ${job.filename}
+                        ${truncateFilename(job.filename)}
                     </div>
                     <div class="job-meta compact">
                         <div class="job-meta-item" title="Pages">
@@ -6141,6 +6253,20 @@
                 }
                 showToast(`Error marking job as completed: ${err.message}`);
             });
+        }
+
+        // Helper: Truncate filename to 6 characters + extension
+        function truncateFilename(filename) {
+            if (!filename) return '';
+            const lastDotIndex = filename.lastIndexOf('.');
+            if (lastDotIndex === -1) {
+                // No extension, just return first 6 characters
+                return filename.length > 6 ? filename.substring(0, 6) : filename;
+            }
+            const name = filename.substring(0, lastDotIndex);
+            const ext = filename.substring(lastDotIndex);
+            const truncatedName = name.length > 6 ? name.substring(0, 6) : name;
+            return truncatedName + ext;
         }
 
         // Helper: Get file type icon based on filename
@@ -6278,22 +6404,95 @@
             }
         }
 
-        // Cancel job function
+        // Cancel job function with modal
         function confirmCancelJob(filename, userEmail, jobPrice) {
-            const points = Math.round(jobPrice); // 1 rupee = 1 point
-            const confirmMessage = `Are you sure you want to cancel this print job?\n\n` +
-                                 `Job: ${filename}\n` +
-                                 `User will be refunded with ${points} points (₹${jobPrice})\n\n` +
-                                 `This action cannot be undone.`;
+            // Show custom modal instead of alert
+            const modal = document.getElementById('cancelJobModal');
+            const jobNameEl = document.getElementById('cancelJobName');
+            const pointsEl = document.getElementById('cancelJobPoints');
+            const priceEl = document.getElementById('cancelJobPrice');
             
-            if (confirm(confirmMessage)) {
-                cancelJob(filename, userEmail, jobPrice);
+            if (modal && jobNameEl && pointsEl) {
+                jobNameEl.textContent = filename;
+                
+                // Ensure jobPrice is a valid number
+                const price = parseFloat(jobPrice) || 0;
+                const points = Math.round(price); // Round to nearest integer for points
+                
+                // Format price to show 2 decimal places if needed, otherwise show as integer
+                const formattedPrice = price % 1 === 0 ? price.toFixed(0) : price.toFixed(2);
+                
+                // Display points and price accurately
+                pointsEl.textContent = `${points} points (₹${formattedPrice})`;
+                if (priceEl) {
+                    priceEl.textContent = `₹${formattedPrice}`;
+                }
+                
+                // Update modal title and message for cancel job
+                const modalTitle = modal.querySelector('h3');
+                const modalMessage = modal.querySelector('p');
+                const infoText = document.getElementById('cancelJobInfoText');
+                if (modalTitle) {
+                    modalTitle.textContent = 'Cancel Print Job?';
+                }
+                if (modalMessage) {
+                    modalMessage.textContent = 'Are you sure you want to cancel this print job?';
+                }
+                if (infoText) {
+                    infoText.textContent = 'This action cannot be undone. The user will be refunded.';
+                }
+                
+                // Store job details for confirmation (store as number)
+                modal.dataset.filename = filename;
+                modal.dataset.userEmail = userEmail;
+                modal.dataset.jobPrice = price; // Store as number
+                modal.dataset.action = 'cancel'; // Mark this as a cancel action
+                
+                modal.style.display = 'flex';
+            }
+        }
+        
+        function closeCancelJobModal() {
+            const modal = document.getElementById('cancelJobModal');
+            if (modal) {
+                modal.style.display = 'none';
+                // Reset modal data
+                delete modal.dataset.filename;
+                delete modal.dataset.userEmail;
+                delete modal.dataset.jobPrice;
+                delete modal.dataset.token;
+                delete modal.dataset.action;
+            }
+        }
+        
+        function proceedCancelJob() {
+            const modal = document.getElementById('cancelJobModal');
+            if (modal) {
+                const filename = modal.dataset.filename;
+                const action = modal.dataset.action;
+                
+                closeCancelJobModal();
+                
+                // Check if this is a clear completed job action or cancel job action
+                if (action === 'clearCompleted') {
+                    const token = modal.dataset.token || '';
+                    clearCompletedJob(filename, token);
+                } else {
+                    // Regular cancel job action
+                    const userEmail = modal.dataset.userEmail;
+                    const jobPrice = parseFloat(modal.dataset.jobPrice);
+                    cancelJob(filename, userEmail, jobPrice);
+                }
             }
         }
 
         async function cancelJob(filename, userEmail, jobPrice) {
             try {
                 showToast(`Cancelling job "${filename}"...`, 'info');
+                
+                // Ensure jobPrice is a valid number
+                const price = parseFloat(jobPrice) || 0;
+                const points = Math.round(price);
                 
                 const response = await fetch('/cancel-print-job/', {
                     method: 'POST',
@@ -6304,7 +6503,7 @@
                     body: JSON.stringify({
                         filename: filename,
                         user_email: userEmail,
-                        job_price: jobPrice
+                        job_price: price  // Send as number, not string
                     })
                 });
 
@@ -6318,7 +6517,7 @@
                         categorizeJobs();
                     }
                     
-                    showToast(`Job "${filename}" cancelled successfully. User refunded with ${Math.round(jobPrice)} points.`, 'success');
+                    showToast(`Job "${filename}" cancelled successfully. User refunded with ${points} points.`, 'success');
                 } else {
                     showToast(`Error cancelling job: ${data.error || 'Unknown error'}`, 'error');
                 }
@@ -6656,6 +6855,61 @@
             }
         }
 
+        // Confirm clear completed job function - shows modal with job information
+        function confirmClearCompletedJob(filename, token) {
+            // Find the job to get details
+            const job = allJobs.find(job => job.filename === filename);
+            if (!job) {
+                showToast('Job not found', 'error');
+                return;
+            }
+
+            // Show custom modal with job information
+            const modal = document.getElementById('cancelJobModal');
+            const jobNameEl = document.getElementById('cancelJobName');
+            const pointsEl = document.getElementById('cancelJobPoints');
+            const priceEl = document.getElementById('cancelJobPrice');
+            
+            if (modal && jobNameEl && pointsEl) {
+                jobNameEl.textContent = filename;
+                
+                // Get job price and format it accurately
+                const jobPrice = getJobPrice(job);
+                const price = parseFloat(jobPrice) || 0;
+                const points = Math.round(price); // Round to nearest integer for points
+                
+                // Format price to show 2 decimal places if needed, otherwise show as integer
+                const formattedPrice = price % 1 === 0 ? price.toFixed(0) : price.toFixed(2);
+                
+                // Display points and price accurately
+                pointsEl.textContent = `${points} points (₹${formattedPrice})`;
+                if (priceEl) {
+                    priceEl.textContent = `₹${formattedPrice}`;
+                }
+                
+                // Update modal title and message for clearing completed job
+                const modalTitle = modal.querySelector('h3');
+                const modalMessage = modal.querySelector('p');
+                const infoText = document.getElementById('cancelJobInfoText');
+                if (modalTitle) {
+                    modalTitle.textContent = 'Clear Completed Job?';
+                }
+                if (modalMessage) {
+                    modalMessage.textContent = 'Are you sure you want to clear this completed job from your dashboard?';
+                }
+                if (infoText) {
+                    infoText.textContent = 'This will remove the job from your completed section.';
+                }
+                
+                // Store job details for confirmation
+                modal.dataset.filename = filename;
+                modal.dataset.token = token || '';
+                modal.dataset.action = 'clearCompleted'; // Mark this as a clear action, not cancel
+                
+                modal.style.display = 'flex';
+            }
+        }
+        
         // Clear completed job function - updates vendor status to 'clear'
         async function clearCompletedJob(filename, token) {
             // INSTANTLY remove the job from completed section BEFORE API call
@@ -6838,18 +7092,7 @@
             });
         }
 
-        // Cancel job with confirmation
-        function confirmCancelJob(filename, userEmail, jobPrice) {
-            const points = Math.round(jobPrice); // 1 rupee = 1 point
-            const confirmMessage = `Are you sure you want to cancel this print job?\n\n` +
-                                 `Job: ${filename}\n` +
-                                 `User will be compensated with ${points} points (₹${jobPrice})\n\n` +
-                                 `This action cannot be undone.`;
-            
-            if (confirm(confirmMessage)) {
-                cancelJob(filename, userEmail, jobPrice);
-            }
-        }
+        // Cancel job with confirmation (duplicate removed - using the one above)
 
         // Manual Job Functions
         function printJob(filename, downloadUrl, serviceType) {
@@ -6919,43 +7162,55 @@
 
                 const userEmail = job.user_email || job.metadata?.user || 'Unknown';
                 const jobPrice = getJobPrice(job);
-                const points = Math.round(jobPrice);
-
-                const confirmMessage = `Are you sure you want to cancel this manual print job?\n\n` +
-                                     `Job: ${filename}\n` +
-                                     `User will be compensated with ${points} points (₹${jobPrice})\n\n` +
-                                     `This action cannot be undone.`;
                 
-                if (confirm(confirmMessage)) {
-                    // INSTANTLY remove the job from manual section
-                    const jobIndex = allJobs.findIndex(job => job.filename === filename);
-                    if (jobIndex !== -1) {
-                        allJobs.splice(jobIndex, 1);
-                        categorizeJobs(); // Refresh the display immediately
-                    }
+                // Use the same modal for manual jobs
+                confirmCancelJob(filename, userEmail, jobPrice);
+                return;
+            } catch (error) {
+                console.error('Error in cancelManualJob:', error);
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Original cancelManualJob logic moved to proceedCancelManualJob
+        async function proceedCancelManualJob() {
+            const modal = document.getElementById('cancelJobModal');
+            if (!modal) return;
+            
+            const filename = modal.dataset.filename;
+            const userEmail = modal.dataset.userEmail;
+            const jobPrice = parseFloat(modal.dataset.jobPrice);
+            
+            try {
+                // INSTANTLY remove the job from manual section
+                const jobIndex = allJobs.findIndex(job => job.filename === filename);
+                if (jobIndex !== -1) {
+                    allJobs.splice(jobIndex, 1);
+                    categorizeJobs(); // Refresh the display immediately
+                }
 
-                    // Make API call to cancel job and compensate user
-                    const response = await fetch('/cancel-print-job/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: JSON.stringify({
-                            filename: filename,
-                            user_email: userEmail,
-                            job_price: jobPrice
-                        })
-                    });
+                // Make API call to cancel job and compensate user
+                const response = await fetch('/cancel-print-job/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        user_email: userEmail,
+                        job_price: jobPrice
+                    })
+                });
 
-                    const data = await response.json();
-                    if (data.success) {
-                        showToast(`Job cancelled and user compensated with ${points} points`, 'success');
-                    } else {
-                        showToast(`Error cancelling job: ${data.error}`, 'error');
-                        // Reload jobs to restore the cancelled job
-                        loadJobs();
-                    }
+                const data = await response.json();
+                if (data.success) {
+                    const points = Math.round(jobPrice);
+                    showToast(`Job cancelled and user compensated with ${points} points`, 'success');
+                } else {
+                    showToast(`Error cancelling job: ${data.error}`, 'error');
+                    // Reload jobs to restore the cancelled job
+                    loadJobs();
                 }
             } catch (error) {
                 console.error('Error cancelling manual job:', error);
@@ -7153,7 +7408,26 @@
             existingToasts.forEach(toast => toast.remove());
             
             // Format error messages to be more user-friendly
-            const displayMessage = type === 'error' ? formatErrorMessage(message) : message;
+            let displayMessage = type === 'error' ? formatErrorMessage(message) : message;
+            
+            // Shorten notification messages - extract only 6 letters of PDF filename and make message short
+            if (displayMessage && typeof displayMessage === 'string') {
+                // Extract PDF filename if present (look for patterns like "photo_layout_photo_1764482434385_6ncec6i91.pdf")
+                const pdfMatch = displayMessage.match(/([a-zA-Z0-9_]+\.pdf)/i);
+                if (pdfMatch) {
+                    const fullFilename = pdfMatch[1];
+                    // Get first 6 characters before the extension
+                    const nameWithoutExt = fullFilename.replace(/\.pdf$/i, '');
+                    const shortName = nameWithoutExt.substring(0, 6).toUpperCase();
+                    // Replace the full filename with short version
+                    displayMessage = displayMessage.replace(fullFilename, `${shortName}...pdf`);
+                }
+                
+                // Shorten long messages - limit to 60 characters
+                if (displayMessage.length > 60) {
+                    displayMessage = displayMessage.substring(0, 57) + '...';
+                }
+            }
             
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
@@ -7767,5 +8041,403 @@
         }
 
     </script>
+
+    <!-- Cancel Job Confirmation Modal -->
+    <div id="cancelJobModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 10001; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: var(--surface); border-radius: 16px; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); position: relative; animation: modalSlideIn 0.3s ease-out;">
+            <div style="padding: 24px; text-align: center;">
+                <div style="margin-bottom: 20px;">
+                    <div style="width: 64px; height: 64px; margin: 0 auto 16px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 32px; color: white;"></i>
+                    </div>
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.5rem; font-weight: 700; color: var(--on-surface);">Cancel Print Job?</h3>
+                    <p style="margin: 0 0 20px 0; font-size: 0.95rem; color: var(--on-surface-variant); line-height: 1.5;">
+                        Are you sure you want to cancel this print job?
+                    </p>
+                </div>
+                
+                <div style="background: var(--surface-variant); border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: left;">
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size: 0.85rem; color: var(--on-surface-variant); margin-bottom: 4px;">Job:</div>
+                        <div id="cancelJobName" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); word-break: break-all;"></div>
+                    </div>
+                    <div style="padding-top: 12px; border-top: 1px solid var(--outline);">
+                        <div style="font-size: 0.85rem; color: var(--on-surface-variant); margin-bottom: 4px;">User will be compensated with:</div>
+                        <div id="cancelJobPoints" style="font-size: 1.1rem; font-weight: 700; color: var(--success);"></div>
+                    </div>
+                </div>
+                
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 8px; margin-bottom: 24px; text-align: left;">
+                    <div style="display: flex; align-items: start; gap: 8px;">
+                        <i class="fas fa-info-circle" style="color: #f59e0b; margin-top: 2px; font-size: 0.9rem;"></i>
+                        <span id="cancelJobInfoText" class="info-box-text" style="font-size: 0.875rem; color: #92400e; line-height: 1.4;">This action cannot be undone.</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="closeCancelJobModal()" style="flex: 1; padding: 12px 24px; background: var(--surface-variant); color: var(--on-surface); border: 2px solid var(--outline); border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='var(--surface-container)'" onmouseout="this.style.background='var(--surface-variant)'">
+                        Cancel
+                    </button>
+                    <button onclick="proceedCancelJob()" style="flex: 1; padding: 12px 24px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)'">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printing Prices Modal -->
+    <div id="vendorServicePricesModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: var(--surface); border-radius: 12px; max-width: 500px; width: 90%; max-height: 70vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); position: relative;">
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--outline); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, var(--surface-variant) 0%, var(--surface-container) 100%); border-radius: 12px 12px 0 0;">
+                <h2 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--on-surface); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-print" style="color: var(--primary);"></i>
+                    Printing Prices
+                </h2>
+                <button onclick="closeVendorServicePricesModal()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--on-surface-variant); padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='var(--surface-container-high)'" onmouseout="this.style.background='none'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding: 16px 20px;">
+                <div id="vendorServicePricesContent" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="text-align: center; padding: 20px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        <p style="margin-top: 12px; color: var(--on-surface-variant); font-size: 0.9rem;">Loading pricing information...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Service Prices Modal Functions for Vendor Dashboard
+        function openVendorServicePricesModal() {
+            const modal = document.getElementById('vendorServicePricesModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                // Load prices asynchronously without blocking modal display
+                loadVendorServicePrices().catch(function(error) {
+                    console.error('Error loading vendor service prices:', error);
+                    const content = document.getElementById('vendorServicePricesContent');
+                    if (content) {
+                        content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: var(--on-surface); font-size: 1.25rem;">Error Loading Prices</h3><p style="margin: 0; color: var(--on-surface-variant);">Please try again later.</p></div>';
+                    }
+                });
+            }
+        }
+
+        function closeVendorServicePricesModal() {
+            const modal = document.getElementById('vendorServicePricesModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('vendorServicePricesModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeVendorServicePricesModal();
+                    }
+                });
+            }
+        });
+
+        async function loadVendorServicePrices() {
+            const content = document.getElementById('vendorServicePricesContent');
+            if (!content) return;
+
+            const vendorEmail = '{{ vendor_details.vendor_email }}';
+            if (!vendorEmail) {
+                content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #f59e0b; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: var(--on-surface); font-size: 1.25rem;">Vendor Email Not Found</h3><p style="margin: 0; color: var(--on-surface-variant);">Unable to load pricing information.</p></div>';
+                return;
+            }
+
+            try {
+                // Fetch vendor pricing from API - prevent redirects
+                const response = await fetch('/get-vendor-pricing/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ vendor_email: vendorEmail }),
+                    credentials: 'include',
+                    redirect: 'manual' // Prevent automatic redirects
+                });
+
+                // Check if response is a redirect
+                if (response.type === 'opaqueredirect' || response.status === 0) {
+                    throw new Error('Authentication required. Please refresh the page and try again.');
+                }
+
+                // Check for error status
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to load pricing' }));
+                    throw new Error(errorData.error || 'Failed to load pricing');
+                }
+
+                const data = await response.json();
+                
+                if (data.success && data.pricing) {
+                    renderVendorServicePrices(data.pricing, data.categorized_pricing || {});
+                } else {
+                    content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: var(--on-surface); font-size: 1.25rem;">Pricing Not Available</h3><p style="margin: 0; color: var(--on-surface-variant);">' + (data.error || 'Unable to load pricing information. Please update your pricing in the Pricing section.') + '</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading service prices:', error);
+                content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: var(--on-surface); font-size: 1.25rem;">Error Loading Prices</h3><p style="margin: 0; color: var(--on-surface-variant);">' + (error.message || 'Please try again later.') + '</p></div>';
+            }
+        }
+
+        function renderVendorServicePrices(pricing, categorizedPricing) {
+            const content = document.getElementById('vendorServicePricesContent');
+            if (!content) return;
+
+            // Service name mapping for display
+            const serviceDisplayNames = {
+                'regular_print_a4_bw': 'A4 Print (Black & White)',
+                'regular_print_a4_color': 'A4 Print (Color)',
+                'photo_print_a4_bw': 'Photo Print A4 (Black & White)',
+                'photo_print_a4_color': 'Photo Print A4 (Color)',
+                'passport_print_standard': 'Passport Photo',
+                'passport_print_premium': 'Passport Photo (Premium)',
+                'digital_print_a4_color': 'Digital Print A4',
+                'digital_print_a3_color': 'Digital Print A3',
+                'digital_print_12x18_color': 'Digital Print 12x18',
+                'digital_print_a2_color': 'Digital Print A2',
+                'digital_print_a1_color': 'Digital Print A1',
+                'digital_print_a0_color': 'Digital Print A0',
+                'gloss_print_a4_color': 'Gloss Print A4',
+                'gloss_print_a3_color': 'Gloss Print A3',
+                'gloss_print_a2_color': 'Gloss Print A2',
+                'gloss_print_a1_color': 'Gloss Print A1',
+                'gloss_print_a0_color': 'Gloss Print A0',
+                'jumbo_print_a3_bw': 'Jumbo Print A3 (B&W)',
+                'jumbo_print_a3_color': 'Jumbo Print A3 (Color)',
+                'jumbo_print_a2_bw': 'Jumbo Print A2 (B&W)',
+                'jumbo_print_a2_color': 'Jumbo Print A2 (Color)',
+                'golden_emboss_a4': 'Golden Embossing A4',
+                'golden_emboss_a3': 'Golden Embossing A3',
+                'lamination_a4_standard': 'Lamination A4 (Standard)',
+                'lamination_a4_glossy': 'Lamination A4 (Glossy)',
+                'lamination_a3_standard': 'Lamination A3 (Standard)',
+                'lamination_a3_glossy': 'Lamination A3 (Glossy)',
+                'tape_binding_a4_100': 'Tape Binding A4 (100 pages)',
+                'tape_binding_a4_200': 'Tape Binding A4 (200 pages)',
+                'spiral_binding_a4_100': 'Spiral Binding A4 (100 pages)',
+                'spiral_binding_a4_200': 'Spiral Binding A4 (200 pages)'
+            };
+
+            // Category mapping - map category keys to display names with specific categories
+            const categoryDisplayNames = {
+                'a4_print': 'Document Printing',
+                'regular_print': 'Document Printing',
+                'photo_print': 'Photo Printing',
+                'passport_photo': 'Photo Printing',
+                'digital_print': 'Digital Printing',
+                'gloss_print': 'Gloss Printing',
+                'gloss_printing': 'Gloss Printing',
+                'jumbo_print': 'Jumbo Printing',
+                'jumbo_printing': 'Jumbo Printing',
+                'golden_embossing': 'Golden Embossing',
+                'lamination': 'Lamination',
+                'binding': 'Binding',
+                'project_binding': 'Binding',
+                'tape_binding': 'Binding',
+                'spiral_binding': 'Binding'
+            };
+
+            let html = '';
+            const categoryGroups = {};
+
+            // First, collect all pricing from categorized_pricing structure
+            if (categorizedPricing && typeof categorizedPricing === 'object') {
+                Object.entries(categorizedPricing).forEach(function([categoryKey, services]) {
+                    if (services && typeof services === 'object') {
+                        // Skip "Categorized Pricing" and "Services Summary" categories
+                        const categoryKeyLower = categoryKey.toLowerCase();
+                        if (categoryKeyLower === 'categorized_pricing' || categoryKeyLower === 'categorized pricing' ||
+                            categoryKeyLower === 'services_summary' || categoryKeyLower === 'services summary') {
+                            return; // Skip this category
+                        }
+                        
+                        const categoryDisplayName = categoryDisplayNames[categoryKey] || 'Other Services';
+                        
+                        // Also skip if the display name is "Categorized Pricing" or "Services Summary"
+                        if (categoryDisplayName === 'Categorized Pricing' || categoryDisplayName === 'Services Summary') {
+                            return; // Skip this category
+                        }
+                        
+                        if (!categoryGroups[categoryDisplayName]) {
+                            categoryGroups[categoryDisplayName] = [];
+                        }
+
+                        Object.entries(services).forEach(function([serviceKey, price]) {
+                            // Skip "Categorized Pricing" and "Services Summary" service keys
+                            const serviceKeyLower = serviceKey.toLowerCase();
+                            if (serviceKeyLower === 'categorized_pricing' || serviceKeyLower === 'categorized pricing' ||
+                                serviceKeyLower === 'services_summary' || serviceKeyLower === 'services summary') {
+                                return; // Skip this service
+                            }
+                            
+                            // Include all services, even with price 0 (will display as NA)
+                            const priceStr = String(price || '').trim().toUpperCase();
+                            const priceNum = parseFloat(price);
+                            // Only exclude if it's explicitly NA, N/A, -, null, undefined, or empty string
+                            if (price !== null && price !== undefined && price !== '' && 
+                                priceStr !== 'NA' && priceStr !== 'N/A' && priceStr !== '-') {
+                                const displayName = serviceDisplayNames[serviceKey] || serviceKey.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+                                
+                                // Skip if display name is "Categorized Pricing" or "Services Summary"
+                                if (displayName === 'Categorized Pricing' || displayName === 'Services Summary') {
+                                    return; // Skip this service
+                                }
+                                
+                                categoryGroups[categoryDisplayName].push({
+                                    name: displayName,
+                                    price: (!isNaN(priceNum) && priceNum > 0) ? priceNum : 0, // Store 0 for display as NA
+                                    key: serviceKey,
+                                    isNA: (isNaN(priceNum) || priceNum === 0) // Flag to show as NA
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Also check flat pricing object for any missing services
+            if (pricing && typeof pricing === 'object') {
+                Object.entries(pricing).forEach(function([serviceKey, price]) {
+                    // Skip "Categorized Pricing" and "Services Summary" service keys
+                    const serviceKeyLower = serviceKey.toLowerCase();
+                    if (serviceKeyLower === 'categorized_pricing' || serviceKeyLower === 'categorized pricing' ||
+                        serviceKeyLower === 'services_summary' || serviceKeyLower === 'services summary') {
+                        return; // Skip this service
+                    }
+                    
+                    // Include all services, even with price 0 (will display as NA)
+                    const priceStr = String(price || '').trim().toUpperCase();
+                    const priceNum = parseFloat(price);
+                    // Only exclude if it's explicitly NA, N/A, -, null, undefined, or empty string
+                    if (price !== null && price !== undefined && price !== '' && 
+                        priceStr !== 'NA' && priceStr !== 'N/A' && priceStr !== '-') {
+                        // Determine category from service key with specific categories
+                        let categoryDisplayName = 'Other Services';
+                        if (serviceKey.startsWith('regular_print') || serviceKey.startsWith('a4_print')) {
+                            categoryDisplayName = 'Document Printing';
+                        } else if (serviceKey.startsWith('photo_print') || serviceKey.startsWith('passport_print')) {
+                            categoryDisplayName = 'Photo Printing';
+                        } else if (serviceKey.startsWith('digital_print')) {
+                            categoryDisplayName = 'Digital Printing';
+                        } else if (serviceKey.startsWith('gloss_print')) {
+                            categoryDisplayName = 'Gloss Printing';
+                        } else if (serviceKey.startsWith('jumbo_print')) {
+                            categoryDisplayName = 'Jumbo Printing';
+                        } else if (serviceKey.startsWith('golden_emboss')) {
+                            categoryDisplayName = 'Golden Embossing';
+                        } else if (serviceKey.startsWith('lamination')) {
+                            categoryDisplayName = 'Lamination';
+                        } else if (serviceKey.startsWith('tape_binding') || serviceKey.startsWith('spiral_binding') || 
+                                   serviceKey.startsWith('project_binding')) {
+                            categoryDisplayName = 'Binding';
+                        }
+
+                        // Check if this service is already in categoryGroups
+                        const existingCategory = categoryGroups[categoryDisplayName] || [];
+                        const alreadyExists = existingCategory.some(item => item.key === serviceKey);
+                        
+                        if (!alreadyExists) {
+                            const displayName = serviceDisplayNames[serviceKey] || serviceKey.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+                            
+                            // Skip if display name is "Categorized Pricing" or "Services Summary"
+                            if (displayName === 'Categorized Pricing' || displayName === 'Services Summary') {
+                                return; // Skip this service
+                            }
+                            
+                            if (!categoryGroups[categoryDisplayName]) {
+                                categoryGroups[categoryDisplayName] = [];
+                            }
+                            categoryGroups[categoryDisplayName].push({
+                                name: displayName,
+                                price: (!isNaN(priceNum) && priceNum > 0) ? priceNum : 0, // Store 0 for display as NA
+                                key: serviceKey,
+                                isNA: (isNaN(priceNum) || priceNum === 0) // Flag to show as NA
+                            });
+                        }
+                    }
+                });
+            }
+
+            // Render categories in tabular format
+            let totalServices = 0;
+            let totalPrice = 0;
+            let totalServicesWithPrice = 0; // Count only services with valid prices
+            
+            Object.entries(categoryGroups).forEach(function([categoryName, items]) {
+                if (items.length > 0) {
+                    // Sort items by name for better organization
+                    items.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                    
+                    totalServices += items.length;
+                    items.forEach(function(item) { 
+                        if (!item.isNA && item.price > 0) {
+                            totalPrice += item.price;
+                            totalServicesWithPrice++;
+                        }
+                    });
+                    
+                    html += '<div style="margin-bottom: 16px;">';
+                    html += '<h3 style="margin: 0 0 10px 0; font-size: 1rem; font-weight: 600; color: var(--on-surface); display: flex; align-items: center; gap: 6px; padding: 0 4px;"><i class="fas fa-folder" style="color: var(--primary); font-size: 0.9rem;"></i>' + categoryName + ' <span style="font-size: 0.85rem; font-weight: 500; color: var(--on-surface-variant); margin-left: 4px;">(' + items.length + ')</span></h3>';
+                    html += '<table style="width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--outline);">';
+                    html += '<thead><tr style="background: var(--surface-variant);"><th style="padding: 8px 12px; text-align: left; font-size: 0.85rem; font-weight: 600; color: var(--on-surface); border-bottom: 1px solid var(--outline);">Service</th><th style="padding: 8px 12px; text-align: right; font-size: 0.85rem; font-weight: 600; color: var(--on-surface); border-bottom: 1px solid var(--outline);">Price</th></tr></thead>';
+                    html += '<tbody>';
+                    items.forEach(function(item, index) {
+                        const rowStyle = index % 2 === 0 ? 'background: var(--surface);' : 'background: var(--surface-variant);';
+                        const priceDisplay = (item.isNA || item.price === 0) ? '<span style="color: var(--on-surface-variant);">NA</span>' : '<span style="color: var(--success);">₹' + item.price.toFixed(2) + '</span>';
+                        html += '<tr style="' + rowStyle + '"><td style="padding: 8px 12px; font-size: 0.875rem; color: var(--on-surface); font-weight: 500;">' + item.name + '</td><td style="padding: 8px 12px; text-align: right; font-size: 0.875rem; font-weight: 600;">' + priceDisplay + '</td></tr>';
+                    });
+                    html += '</tbody></table></div>';
+                }
+            });
+            
+            // Add summary at the top if there are services
+            if (totalServices > 0) {
+                const averagePrice = totalServicesWithPrice > 0 ? (totalPrice / totalServicesWithPrice).toFixed(2) : '0.00';
+                html = '<div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; color: white;"><div><div style="font-size: 0.75rem; opacity: 0.9; margin-bottom: 2px;">Total Services</div><div style="font-size: 1.1rem; font-weight: 700;">' + totalServices + ' Services</div></div><div style="text-align: right;"><div style="font-size: 0.75rem; opacity: 0.9; margin-bottom: 2px;">Average Price</div><div style="font-size: 1.1rem; font-weight: 700;">₹' + averagePrice + '</div></div></div>' + html;
+            }
+
+            if (!html) {
+                html = '<div style="text-align: center; padding: 40px;"><i class="fas fa-info-circle" style="font-size: 3rem; color: var(--on-surface-variant); margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: var(--on-surface); font-size: 1.25rem;">No Pricing Available</h3><p style="margin: 0; color: var(--on-surface-variant);">Please update your pricing in the <a href="/vendor-pricing/?from_dashboard=1&vendorEmail={{ vendor_details.vendor_email }}" style="color: var(--primary); text-decoration: underline;">Pricing</a> section.</p></div>';
+            }
+
+            content.innerHTML = html;
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+
+    <!-- Initial Jobs Data from Backend - for fast rendering -->
+    {% if initial_jobs %}
+    {{ initial_jobs|json_script:"initial-jobs-data" }}
+    {% endif %}
 </body>
 </html>

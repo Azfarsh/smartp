@@ -3176,38 +3176,48 @@
 
             showLoadingState(true);
 
-            // Optimized data collection - collect only enabled inputs
+            // Optimized data collection - collect all inputs (enabled and disabled)
             const pricingData = {};
             const allPriceInputs = document.querySelectorAll('.price-input');
+            const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
 
-            // Fast collection - only process enabled inputs
+            // Create a map of input IDs to their corresponding checkboxes
+            const inputToCheckboxMap = {};
+            allCheckboxes.forEach(checkbox => {
+                const onchangeAttr = checkbox.getAttribute('onchange');
+                if (onchangeAttr) {
+                    const match = onchangeAttr.match(/'([^']+)'/);
+                    if (match && match[1]) {
+                        inputToCheckboxMap[match[1]] = checkbox;
+                    }
+                }
+            });
+
+            // Collect all pricing data - enabled inputs get their values, disabled/unchecked get 'NA'
             allPriceInputs.forEach(input => {
                 const inputName = input.name;
+                const inputId = input.id;
+                const checkbox = inputToCheckboxMap[inputId];
+                const isChecked = checkbox ? checkbox.checked : false;
                 const inputValue = input.value.trim();
                 const isEnabled = !input.disabled;
                 
-                if (isEnabled && inputValue && inputValue !== '') {
+                // If checkbox is checked and has a value, use the value
+                if (isChecked && isEnabled && inputValue && inputValue !== '') {
                     pricingData[inputName] = parseFloat(inputValue);
+                } else {
+                    // Mark unchecked or empty prices as 'NA'
+                    pricingData[inputName] = 'NA';
                 }
             });
             
             // Check if this is an update from vendor dashboard
             if (isFromDashboardUpdate) {
-                console.log('🔄 Update from vendor dashboard - only sending changed values');
+                console.log('🔄 Update from vendor dashboard - sending all values including NA');
                 
-                // Filter out empty pricing data
-                const filteredPricingData = {};
-                Object.entries(pricingData).forEach(([key, value]) => {
-                    if (value && value > 0) {
-                        filteredPricingData[key] = value;
-                    }
-                });
-                
-                // Update the data objects
-                Object.keys(pricingData).forEach(key => delete pricingData[key]);
-                Object.assign(pricingData, filteredPricingData);
-                
-                console.log('📊 Filtered pricing data for dashboard update:', pricingData);
+                // Keep all pricing data including 'NA' values for unchecked services
+                // This allows vendors to continuously set prices for multiple services
+                console.log('📊 Pricing data for dashboard update (including NA):', pricingData);
             }
 
             console.log('📊 Collected pricing data:', pricingData);

@@ -284,6 +284,11 @@ _R2_METADATA_BLOCKLIST = {
     'user',
 }
 
+# Hard upper bound for any single metadata value stored in R2 headers.
+# This prevents "Request max total header size exceeded" errors when
+# verbose text (e.g. feedback, long page lists) is present.
+_R2_METADATA_MAX_VALUE_LENGTH = 200
+
 
 def sanitize_r2_metadata(metadata):
     """
@@ -292,15 +297,40 @@ def sanitize_r2_metadata(metadata):
     """
     if not metadata:
         return {}
+
     cleaned = {}
     for key, value in metadata.items():
         if key is None:
             continue
+
         lower_key = str(key).lower()
         if lower_key in _R2_METADATA_BLOCKLIST:
+            # These fields are now stored in D1 and don't need to be
+            # duplicated in R2 object metadata.
             continue
-        cleaned[str(key)] = '' if value is None else str(value)
+
+        # Always coerce to string for R2 compatibility and hard‑limit length
+        str_key = str(key)
+        if value is None:
+            str_value = ''
+        else:
+            str_value = str(value)
+            if len(str_value) > _R2_METADATA_MAX_VALUE_LENGTH:
+                # Truncate excessively long values to keep total header size small
+                str_value = str_value[:_R2_METADATA_MAX_VALUE_LENGTH]
+
+        cleaned[str_key] = str_value
+
     return cleaned
+
+def get_minimal_r2_metadata(filename):
+    """
+    Return minimal R2 metadata containing only filename.
+    Used for userdashboard and photoprint modals where all details are stored in D1.
+    """
+    return {
+        'filename': str(filename) if filename else ''
+    }
 
 def get_next_sequential_token():
     """
@@ -926,6 +956,10 @@ def vendordashboard(request):
             is_hidden = job.get('is_hidden', 'false').lower() == 'true'
             
             print(f"🔍 Job: {job.get('filename', 'unknown')} - job_completed: {job_completed}, service_type: {service_type}, vendor_status: {vendor_status}")
+            
+            # Skip cancelled jobs - they should not be displayed
+            if job_completed == 'CANCELLED':
+                continue
             
             if job_completed == 'YES':
                 # Completed jobs - regardless of service type
@@ -2069,12 +2103,6 @@ def get_print_requests(request):
             print("❌ No vendor ID found in session - returning empty job list")
             return JsonResponse({"print_requests": []}, status=200)
         
-        # Get vendor printer configuration
-        printer_config = {}
-        if vendor_email:
-            printer_config = get_vendor_printer_configuration(vendor_email)
-            print(f"🖨️ Loaded printer configuration: {printer_config}")
-        
         # Fetch pending jobs from D1 database using vendor email fallback
         pending_files = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
         
@@ -2114,14 +2142,10 @@ def get_print_requests(request):
             if 'rendered_status' not in job:
                 job['rendered_status'] = job.get('metadata', {}).get('rendered_status', 'NO')
         
-        # Assign printers per job using alternating rules
+        # Set default printer assignment (no longer using printer selection)
         for job in files:
-            service_type = (job.get('service_type') or '').strip()
-            pages = job.get('pages') or job.get('metadata', {}).get('pages', '0')
-            assigned = _assign_printer_alternating(vendor_id, printer_config, service_type, pages)
-            job['assigned_printer'] = assigned
-            # Preserve original field for UI if used elsewhere
-            job['printer_name'] = assigned
+            job['assigned_printer'] = 'Not Assigned'
+            job['printer_name'] = 'Not Assigned'
         
         # Define service types for categorization (same as vendordashboard)
         manual_services = [
@@ -2149,6 +2173,10 @@ def get_print_requests(request):
             
             service_type = (job.get('service_type') or '').strip().lower()
             vendor_status = job.get('vendor_status', 'not sended').lower()
+            
+            # Skip cancelled jobs - they should not be displayed
+            if job_completed == 'CANCELLED':
+                continue
             
             if job_completed == 'YES':
                 # Completed jobs - regardless of service type
@@ -3610,6 +3638,7 @@ def upload_to_r2(request):
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
+                    is_manual_job = print_settings.get('is_manual_job', 'NO') == 'YES'
                     
                     # Store every user dashboard job under vendor_print_jobs to keep metadata consistent with D1
                     storage_folder = 'vendor_print_jobs'
@@ -3622,11 +3651,20 @@ def upload_to_r2(request):
                     if 'rendered_status' not in file_metadata:
                         file_metadata['rendered_status'] = 'NO'
 
+                    # Determine if we should use minimal metadata (only filename) for R2 storage
+                    # For userdashboard modals (is_manual_job=YES) and photoprint modals, use minimal metadata
+                    # All details will be stored in D1 database
+                    use_minimal_metadata = is_manual_job or service_type in ['photo_print', 'passport_photo']
+                    
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
                         if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
-                            # Use the same keys as above
-                            r2_metadata = sanitize_r2_metadata(file_metadata)
+                            # Use minimal metadata for R2 (only filename), all details go to D1
+                            if use_minimal_metadata:
+                                r2_metadata = get_minimal_r2_metadata(file.name)
+                                print(f"📦 Using minimal R2 metadata (filename only) for {service_type}")
+                            else:
+                                r2_metadata = sanitize_r2_metadata(file_metadata)
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=vendor_file_key,
@@ -3697,8 +3735,12 @@ def upload_to_r2(request):
                                         'original_filename': file.name,
                                         'paper_size': layout_config['paper_size']
                                     })
-                                # Use the same keys as above
-                                r2_metadata = sanitize_r2_metadata(file_metadata)
+                                # Use minimal metadata for R2 (only filename), all details go to D1
+                                if use_minimal_metadata:
+                                    r2_metadata = get_minimal_r2_metadata(file.name)
+                                    print(f"📦 Using minimal R2 metadata (filename only) for {service_type}")
+                                else:
+                                    r2_metadata = sanitize_r2_metadata(file_metadata)
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
                                     Key=vendor_file_key,
@@ -3720,7 +3762,12 @@ def upload_to_r2(request):
                                 return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
                     else:
                         # Regular file upload for non-passport services
-                        r2_metadata = sanitize_r2_metadata(file_metadata)
+                        # Use minimal metadata for R2 (only filename) if this is a manual job, all details go to D1
+                        if use_minimal_metadata:
+                            r2_metadata = get_minimal_r2_metadata(file.name)
+                            print(f"📦 Using minimal R2 metadata (filename only) for manual job")
+                        else:
+                            r2_metadata = sanitize_r2_metadata(file_metadata)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=vendor_file_key,
@@ -4962,8 +5009,8 @@ def verify_razorpay_payment(request):
             try:
                 user_email = request.user.email if request.user.is_authenticated else 'anonymous'
                 if user_email != 'anonymous':
-                    # Convert payment amount to points (1 rupee = 1 point)
-                    points_to_assign = int(total_payment_amount)
+                    # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
+                    points_to_assign = float(total_payment_amount)
                     success = add_user_points(user_email, points_to_assign, f"Compensation for {files_failed} failed upload(s) after payment {payment_id}")
                     if success:
                         print(f"💰 Assigned {points_to_assign} points to {user_email} for {files_failed} failed upload(s)")
@@ -11166,7 +11213,7 @@ def cancel_failed_job(request):
             
             # Compensate user with points
             if user_email and job_price > 0:
-                points = int(job_price)  # 1 rupee = 1 point
+                points = float(job_price)  # Preserve decimal values (1 rupee = 1 point)
                 # Add points to user account
                 add_user_points(user_email, points, f"Compensation for cancelled job: {filename}")
                 print(f"💰 Compensated user {user_email} with {points} points for cancelled job: {filename}")
@@ -11199,12 +11246,21 @@ def cancel_failed_job(request):
 
 @csrf_exempt
 def cancel_print_job(request):
-    """Cancel a print job and refund user - using same approach as accept button"""
+    """Cancel a print job and refund user - updates D1 database only, not R2"""
     try:
         data = json.loads(request.body)
         filename = data.get('filename')
         user_email = data.get('user_email')
-        job_price = float(data.get('job_price', 0))
+        
+        # Handle job_price - can be None, string, or number
+        job_price_raw = data.get('job_price')
+        if job_price_raw is None or job_price_raw == '':
+            job_price = 0.0
+        else:
+            try:
+                job_price = float(job_price_raw)
+            except (ValueError, TypeError):
+                job_price = 0.0
         
         if not filename:
             return JsonResponse({
@@ -11212,7 +11268,7 @@ def cancel_print_job(request):
                 'error': 'Missing filename parameter'
             }, status=400)
         
-        # Get vendor_id from session (same as accept button)
+        # Get vendor_id from session
         vendor_id = request.session.get('vendor_id')
         if not vendor_id:
             return JsonResponse({
@@ -11220,34 +11276,137 @@ def cancel_print_job(request):
                 'error': 'Vendor not authenticated'
             }, status=401)
         
-        print(f"🔄 Cancelling job {filename} for vendor {vendor_id}")
-        print(f"📧 User email: {user_email}")
-        print(f"💰 Job price: {job_price}")
-        
-        # Use the same function as accept button to update vendor status
-        success = update_vendor_status_in_r2(filename, 'cancelled', vendor_id)
-        
-        if success:
-            # Add points to user's compensation folder
-            if user_email and job_price > 0:
-                points = int(job_price)  # 1 rupee = 1 point
-                add_user_points(user_email, points, f"Refund for cancelled job: {filename}")
-                print(f"💰 Refunded user {user_email} with {points} points for cancelled job: {filename}")
-            
-            # Clear vendor cache to ensure fresh data on next load (same as accept)
-            vendor_email = request.session.get('vendor_email')
-            if vendor_email:
-                clear_vendor_cache(vendor_email, vendor_id)
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Job {filename} cancelled and user refunded with {int(job_price)} points'
-            })
-        else:
+        # Get vendor_email from session
+        vendor_email = request.session.get('vendor_email')
+        if not vendor_email:
             return JsonResponse({
                 'success': False,
-                'error': 'Failed to cancel job - job not found'
+                'error': 'Vendor not authenticated'
+            }, status=401)
+        
+        print(f"🔄 Cancelling job {filename} for vendor {vendor_id}")
+        print(f"📧 User email (provided): {user_email}")
+        print(f"💰 Job price: {job_price}")
+        
+        # Get user_email from D1 database if not provided
+        if not user_email:
+            try:
+                api_url = getattr(settings, 'WORKER_API_URL', '')
+                api_key = getattr(settings, 'WORKER_API_KEY', '')
+                
+                if api_url and api_key:
+                    # Construct the Worker API endpoint to get job details
+                    if '/add-contact' in api_url:
+                        worker_endpoint = api_url.replace('/add-contact', '/get-vendor-print-jobs')
+                    elif '/add-vendor-register' in api_url:
+                        worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-print-jobs')
+                    else:
+                        worker_endpoint = api_url.rstrip('/') + '/get-vendor-print-jobs'
+                    
+                    # Get job details from D1 database
+                    payload = {
+                        'filename': filename,
+                        'vendor_id': vendor_id,
+                        'vendor_email': vendor_email
+                    }
+                    
+                    resp = requests.post(
+                        worker_endpoint,
+                        json=payload,
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-api-key': api_key
+                        },
+                        timeout=10
+                    )
+                    
+                    if resp.status_code == 200:
+                        job_data = resp.json()
+                        if job_data.get('success') and job_data.get('data'):
+                            jobs = job_data.get('data', [])
+                            if jobs and len(jobs) > 0:
+                                user_email = jobs[0].get('user_email', '')
+                                if user_email:
+                                    print(f"📧 Retrieved user email from D1 database: {user_email}")
+                                    # Also get job_price from D1 if not provided
+                                    if job_price == 0.0:
+                                        job_price = float(jobs[0].get('total_price', jobs[0].get('final_amount', 0.0)) or 0.0)
+                                        print(f"💰 Retrieved job price from D1 database: {job_price}")
+            except Exception as e:
+                print(f"⚠️ Error getting user email from D1 database: {str(e)}")
+                # Continue without user_email - will skip points refund
+        
+        # Update Vendor_print_jobs and User_print_jobs tables in D1 database only
+        completion_time = datetime.datetime.now().isoformat()
+        db_update_success = False
+        
+        try:
+            # Update job_completed status in Vendor_print_jobs and User_print_jobs tables via Worker API
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+            
+            if api_url and api_key:
+                # Construct the Worker API endpoint
+                if '/add-contact' in api_url:
+                    worker_endpoint = api_url.replace('/add-contact', '/update-job-completed')
+                elif '/add-vendor-register' in api_url:
+                    worker_endpoint = api_url.replace('/add-vendor-register', '/update-job-completed')
+                else:
+                    worker_endpoint = api_url.rstrip('/') + '/update-job-completed'
+                
+                # Set job_completed to 'CANCELLED' (uppercase) to mark as cancelled (worker API expects uppercase)
+                payload = {
+                    'filename': filename,
+                    'job_completed': 'CANCELLED',  # Worker API expects 'CANCELLED' (uppercase)
+                    'vendor_email': vendor_email,
+                    'vendor_id': vendor_id,
+                    'completion_time': completion_time,
+                    'user_email': user_email if user_email else ''  # Include user_email to update User_print_jobs table
+                }
+                
+                resp = requests.post(
+                    worker_endpoint,
+                    json=payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=10
+                )
+                
+                if resp.status_code == 200:
+                    db_update_success = True
+                    print(f"✅ Updated Vendor_print_jobs and User_print_jobs tables in D1: {filename} -> job_completed='CANCELLED'")
+                else:
+                    print(f"⚠️ Failed to update D1 database tables: {resp.status_code} - {resp.text}")
+            else:
+                print(f"⚠️ Worker API not configured")
+        except Exception as e:
+            print(f"⚠️ Error updating D1 database tables: {str(e)}")
+            traceback.print_exc()
+        
+        if not db_update_success:
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to update database - job may not exist in D1 database'
             }, status=500)
+        
+        # Add points to user's account in D1 database - preserve decimal values
+        if user_email and job_price > 0:
+            points = float(job_price)  # Preserve decimal values (2.4 -> 2.4, 2.5 -> 2.5)
+            points_success = add_user_points(user_email, points, f"Refund for cancelled job: {filename}")
+            if points_success:
+                print(f"💰 Refunded user {user_email} with {points} points (₹{job_price}) for cancelled job: {filename}")
+            else:
+                print(f"⚠️ Failed to add points for user {user_email}")
+        
+        # Clear vendor cache to ensure fresh data on next load
+        clear_vendor_cache(vendor_email, vendor_id)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Job {filename} cancelled and user refunded with {round(job_price)} points'
+        })
             
     except Exception as e:
         print(f"Error cancelling print job: {e}")
@@ -11326,8 +11485,8 @@ def vendor_dashboard_notification(request):
                     'error': 'Missing required compensation data'
                 }, status=400)
             
-            # Compensate user with points (1 rupee = 1 point)
-            points = int(job_price)
+            # Compensate user with points (1 rupee = 1 point) - preserve decimal values
+            points = float(job_price)
             success = add_user_points(user_email, points, reason)
             
             if success:
@@ -11749,7 +11908,7 @@ def mark_notification_read(request):
         print(f"Error in mark_notification_read: {e}")
         return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
 
-def get_total_user_points(user_email: str) -> int:
+def get_total_user_points(user_email: str) -> float:
     """Get total points for the user from D1 database. Returns 0 if none."""
     try:
         # Get from D1 database via Worker API
@@ -11782,8 +11941,10 @@ def get_total_user_points(user_email: str) -> int:
             response_data = resp.json()
             if response_data.get('success'):
                 total_points = response_data.get('total_points', 0)
+                # Preserve decimal precision - round to 1 decimal place
+                total_points = round(float(total_points), 1)
                 print(f"💰 Total points for {user_email}: {total_points}")
-                return int(total_points)
+                return total_points
         
         print(f"⚠️ Failed to get points from database: {resp.status_code}")
         return 0
@@ -11812,7 +11973,7 @@ def return_user_points(request):
     try:
         body = json.loads(request.body.decode('utf-8')) if request.body else {}
         user_email = body.get('user_email')
-        points = int(body.get('points', 0))
+        points = float(body.get('points', 0))  # Preserve decimal values
         reason = body.get('reason', 'Points returned due to payment failure')
         
         if not user_email:
