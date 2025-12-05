@@ -46,11 +46,21 @@ def admin_users_data(request):
             period_type = 'month'
             selected_period = selected_month
         else:
-            # Default to current month
-            selected_month = datetime.datetime.now().strftime('%Y-%m')
-            selected_period = selected_month
-            users_data = get_all_users_from_d1(selected_month)
+            # Default: fetch all data (no month filter) to show all available data
+            # The frontend will filter by month if needed
+            selected_period = None
+            users_data = get_all_users_from_d1(None)  # No month filter - get all data
             period_type = 'month'
+            # Try to determine the month from the data if available
+            if users_data and len(users_data) > 0:
+                # Get the most recent month from available months
+                available_months_temp = get_available_months_from_d1()
+                if available_months_temp:
+                    selected_month = available_months_temp[0]
+                else:
+                    selected_month = datetime.datetime.now().strftime('%Y-%m')
+            else:
+                selected_month = datetime.datetime.now().strftime('%Y-%m')
         
         # Get available months for dropdown
         available_months = get_available_months_from_d1()
@@ -723,7 +733,14 @@ def get_service_commission_rate(service_type):
 # ==================== D1 Database Functions ====================
 
 def fetch_user_jobs_from_worker(payload=None, timeout=20):
-    """Call Worker API to fetch user print jobs with optional filters."""
+    """
+    Call Worker API to fetch user print jobs / notifications with optional filters.
+    
+    Primary source is the D1 `User_notifications` table via the
+    `/get-all-user-notifications` endpoint. For backward compatibility, we
+    gracefully fall back to the older `/get-all-user-jobs` endpoint if the
+    notifications endpoint is not available on the Worker.
+    """
     api_url = getattr(settings, 'WORKER_API_URL', '')
     api_key = getattr(settings, 'WORKER_API_KEY', '')
 
@@ -731,10 +748,15 @@ def fetch_user_jobs_from_worker(payload=None, timeout=20):
         print("⚠️ Worker API not configured for D1 database")
         return []
 
-    worker_endpoint = api_url.rstrip('/') + '/get-all-user-jobs'
-    try:
+    base_url = api_url.rstrip('/')
+
+    # Try new notifications-based endpoint first
+    primary_endpoint = base_url + '/get-all-user-notifications'
+    legacy_endpoint = base_url + '/get-all-user-jobs'
+
+    def _call_worker(endpoint):
         resp = requests.post(
-            worker_endpoint,
+            endpoint,
             json=payload or {},
             headers={
                 'x-api-key': api_key,
@@ -742,19 +764,36 @@ def fetch_user_jobs_from_worker(payload=None, timeout=20):
             },
             timeout=timeout
         )
+        return resp
+
+    try:
+        resp = _call_worker(primary_endpoint)
+
+        # If the new endpoint is missing on the Worker (404 / 405 etc),
+        # fall back to the legacy jobs endpoint so existing setups keep working.
+        if resp.status_code in (404, 405):
+            print(f"ℹ️ User notifications endpoint {primary_endpoint} not available "
+                  f"(status {resp.status_code}), falling back to legacy {legacy_endpoint}")
+            resp = _call_worker(legacy_endpoint)
 
         if resp.status_code != 200:
             error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
-            print(f"⚠️ Failed to get jobs from D1: {resp.status_code} - {error_text}")
+            print(f"⚠️ Failed to get user jobs/notifications from D1: {resp.status_code} - {error_text}")
             return []
 
         data = resp.json()
         if not data.get('success'):
             error_msg = data.get('error', 'Unknown error')
-            print(f"⚠️ Worker API returned error for user jobs: {error_msg}")
+            print(f"⚠️ Worker API returned error for user jobs/notifications: {error_msg}")
             return []
 
-        return data.get('data', []) or []
+        jobs_data = data.get('data', []) or []
+        print(f"📦 Worker API returned {len(jobs_data)} notifications/jobs")
+        if jobs_data and len(jobs_data) > 0:
+            print(f"📋 Sample job keys: {list(jobs_data[0].keys()) if jobs_data[0] else 'N/A'}")
+            print(f"📋 Sample job: user_email={jobs_data[0].get('user_email')}, completion_time={jobs_data[0].get('completion_time')}, created_at={jobs_data[0].get('created_at')}")
+        
+        return jobs_data
     except requests.exceptions.RequestException as exc:
         print(f"⚠️ Network error fetching user jobs from D1: {exc}")
         return []
@@ -855,15 +894,19 @@ def get_job_timestamp(job):
 
 
 def get_all_users_from_d1(selected_month=None):
-    """Get all users data from D1 database User_print_jobs table with month filtering
+    """Get all users data from D1 database User_notifications table with month filtering
     Uses same pattern as get_all_vendors_from_d1 for consistency"""
     try:
         payload = {}
         if selected_month:
             payload['month'] = selected_month
         
+        print(f"🔍 Fetching user data from D1 with payload: {payload}")
         all_jobs = fetch_user_jobs_from_worker(payload)
+        print(f"📊 Received {len(all_jobs) if all_jobs else 0} jobs from Worker API")
+        
         if not all_jobs:
+            print("⚠️ No jobs returned from Worker API")
             return []
         
         # Group jobs by user_email (same pattern as vendor code)
@@ -874,6 +917,8 @@ def get_all_users_from_d1(selected_month=None):
                 continue
             user_jobs_map.setdefault(user_email, []).append(job)
         
+        print(f"👥 Grouped into {len(user_jobs_map)} unique users")
+        
         # Process each user's data
         users_data = []
         for user_email, jobs in user_jobs_map.items():
@@ -881,13 +926,17 @@ def get_all_users_from_d1(selected_month=None):
             if user_data and user_data.get('total_documents', 0) > 0:
                 users_data.append(user_data)
         
+        print(f"✅ Processed {len(users_data)} users with data")
+        
         # Sort by last activity (most recent first)
         users_data.sort(key=lambda x: x.get('last_activity_date') or datetime.datetime.min, reverse=True)
         
         return users_data
         
     except Exception as e:
-        print(f"Error getting all users from D1: {str(e)}")
+        print(f"❌ Error getting all users from D1: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -2626,6 +2675,11 @@ def admin_transactions_data(request):
 
             transactions = data.get('transactions', []) or []
             
+            # Filter out transactions with payment_status = 'completed' - only show pending payments
+            transactions = [t for t in transactions if t.get('payment_status', 'not_completed') != 'completed']
+            
+            print(f"📊 Filtered transactions: {len(transactions)} non-completed transactions (excluded completed)")
+            
             # Format transactions for display
             all_reports = []
             available_months = set()
@@ -2713,8 +2767,14 @@ def admin_update_report_payment_status(request):
         amount_paid = data.get('amount_paid', 0.0)
         new_status = data.get('payment_status', 'completed')
 
-        if not transaction_id and not vendor_email:
-            return JsonResponse({'success': False, 'error': 'transaction_id or vendor_email is required'}, status=400)
+        # Require transaction_id to ensure we update the existing row, not create a new one
+        if not transaction_id:
+            return JsonResponse({
+                'success': False, 
+                'error': 'transaction_id is required to update existing transaction. This prevents creating duplicate rows.'
+            }, status=400)
+        
+        print(f"🔄 Updating transaction_id={transaction_id} with payment_status={new_status}, amount_paid={amount_paid}")
 
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
@@ -2761,25 +2821,9 @@ def admin_update_report_payment_status(request):
                     'error': error_msg
                 }, status=500)
 
-            # If marking as completed, also aggregate the transaction data
-            if new_status == 'completed' and vendor_email:
-                try:
-                    aggregate_endpoint = api_url.rstrip('/') + '/aggregate-vendor-transaction'
-                    aggregate_payload = {
-                        'vendor_email': vendor_email,
-                        'current_date': datetime.datetime.now().isoformat().split('T')[0]
-                    }
-                    requests.post(
-                        aggregate_endpoint,
-                        json=aggregate_payload,
-                        headers={
-                            'x-api-key': api_key,
-                            'Content-Type': 'application/json'
-                        },
-                        timeout=20
-                    )
-                except Exception as agg_error:
-                    print(f"⚠️ Failed to aggregate transaction (non-critical): {agg_error}")
+            # Transaction updated successfully - no need to aggregate as it might create duplicates
+            # The update endpoint already handles updating the existing row by transaction_id
+            print(f"✅ Successfully updated transaction_id={transaction_id} to payment_status={new_status}")
 
             return JsonResponse({
                 'success': True,
