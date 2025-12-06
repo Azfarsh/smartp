@@ -3491,6 +3491,18 @@
       overflow: hidden;
     }
 
+    /* Desktop: Make order summary more compact and readable */
+    @media (min-width: 769px) {
+      #orderSummaryModal .service-modal {
+        max-width: 500px;
+      }
+      
+      #orderSummaryModal .modal-body {
+        padding: 1rem 1.25rem;
+        padding-bottom: 1.5rem;
+      }
+    }
+
     #orderSummaryModal .modal-body {
       flex: 1;
       overflow-y: auto;
@@ -5344,6 +5356,32 @@
       position: relative;
     }
     
+    /* Desktop: Make bill header more compact for order summary modal */
+    @media (min-width: 769px) {
+      #orderSummaryModal .bill-header {
+        padding: 1rem 1.25rem;
+        gap: 1rem;
+      }
+      
+      #orderSummaryModal .bill-logo {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+      }
+      
+      #orderSummaryModal .bill-title h3 {
+        font-size: 1.125rem;
+      }
+      
+      #orderSummaryModal .bill-subtitle {
+        font-size: 0.8rem;
+      }
+      
+      #orderSummaryModal .bill-date {
+        font-size: 0.8rem;
+      }
+    }
+    
     @media (max-width: 768px) {
       .bill-header {
         padding: 1.25rem 1.5rem;
@@ -5441,6 +5479,71 @@
 
     .bill-content { 
       padding: 1.75rem 2rem; 
+    }
+    
+    /* Desktop: Make bill content more compact for order summary modal */
+    @media (min-width: 769px) {
+      #orderSummaryModal .bill-content {
+        padding: 1rem 1.25rem;
+      }
+      
+      #orderSummaryModal .service-info h4 {
+        font-size: 0.95rem;
+        margin-bottom: 0.75rem;
+      }
+      
+      #orderSummaryModal .service-row {
+        padding: 0.625rem 0.875rem;
+      }
+      
+      #orderSummaryModal .service-name {
+        font-size: 0.875rem;
+      }
+      
+      #orderSummaryModal .service-status {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.875rem;
+      }
+      
+      #orderSummaryModal .shop-name-row {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-size: 0.8rem;
+      }
+      
+      #orderSummaryModal .shop-label {
+        font-size: 0.8rem;
+      }
+      
+      #orderSummaryModal .shop-value {
+        font-size: 0.8rem;
+      }
+      
+      #orderSummaryModal .invoice-item {
+        padding: 0.625rem 0;
+        font-size: 0.875rem;
+      }
+      
+      #orderSummaryModal .invoice-item-label {
+        font-size: 0.875rem;
+      }
+      
+      #orderSummaryModal .invoice-item-value {
+        font-size: 0.875rem;
+      }
+      
+      #orderSummaryModal .invoice-item.invoice-total {
+        padding: 0.875rem 1rem;
+        font-size: 1rem;
+      }
+      
+      #orderSummaryModal .invoice-item.invoice-total .invoice-item-label {
+        font-size: 1rem;
+      }
+      
+      #orderSummaryModal .invoice-item.invoice-total .invoice-item-value {
+        font-size: 1.125rem;
+      }
     }
     
     @media (max-width: 768px) {
@@ -22362,7 +22465,7 @@
         shopAddressEl.style.overflowWrap = 'break-word';
         shopAddressEl.style.overflow = 'visible';
         shopAddressEl.style.textOverflow = '';
-        shopAddressEl.style.fontSize = '0.75rem';
+        shopAddressEl.style.fontSize = '';
         shopAddressEl.style.lineHeight = '1.4';
         shopAddressEl.style.maxWidth = '100%';
         shopAddressEl.style.padding = '0';
@@ -22683,7 +22786,7 @@
         shopAddressEl.style.overflowWrap = 'break-word';
         shopAddressEl.style.overflow = 'visible';
         shopAddressEl.style.textOverflow = '';
-        shopAddressEl.style.fontSize = '0.75rem';
+        shopAddressEl.style.fontSize = '';
         shopAddressEl.style.lineHeight = '1.4';
         shopAddressEl.style.maxWidth = '100%';
         shopAddressEl.style.padding = '0';
@@ -22983,6 +23086,16 @@
       confirmPayBtn.disabled = true;
       confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
       
+      // CRITICAL: Read amount and pricing data from order summary modal BEFORE closing it
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      const orderSummaryFinalAmount = orderSummaryModal?.dataset.finalAmount;
+      const orderSummaryCalculatedPrice = orderSummaryModal?.dataset.calculatedPrice;
+      const orderSummaryPricingBreakdown = orderSummaryModal?.dataset.pricingBreakdown;
+      const orderSummaryPointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true';
+      const orderSummaryPointsUsed = orderSummaryModal?.dataset.pointsUsed || '0';
+      const orderSummaryServiceType = orderSummaryModal?.dataset.serviceType || 'print';
+      const orderSummarySourceModal = orderSummaryModal?.dataset.sourceModal;
+      
       // Close order summary modal
       closeOrderSummaryModal();
       
@@ -22990,10 +23103,9 @@
       showPaymentProcessingState();
 
       try {
-        // Get service type and source modal from order summary modal
-        const orderSummaryModal = document.getElementById('orderSummaryModal');
-        const serviceType = orderSummaryModal.dataset.serviceType || 'print';
-        const sourceModalId = orderSummaryModal.dataset.sourceModal;
+        // Get service type and source modal from stored values
+        const serviceType = orderSummaryServiceType;
+        const sourceModalId = orderSummarySourceModal;
         
         // Determine if this is from print modal or service modal
         const isPrintModal = serviceType === 'print' || !sourceModalId;
@@ -23077,20 +23189,21 @@
           formData.append('user_email', userEmail);
         }
         
-          // Add points information if points were applied
+          // Add points information if points were applied - use order summary modal data first
         const printModal = document.getElementById('printModal');
-        const pointsApplied = printModal.dataset.pointsApplied === 'true';
-        const pointsUsed = printModal.dataset.pointsUsed || '0';
-        const finalAmount = printModal.dataset.finalAmount || printModal.dataset.calculatedPrice;
+        const pointsApplied = orderSummaryPointsApplied || printModal.dataset.pointsApplied === 'true';
+        const pointsUsed = orderSummaryPointsUsed || printModal.dataset.pointsUsed || '0';
+        // Use order summary finalAmount first (most accurate), then fallback to printModal
+        const finalAmount = orderSummaryFinalAmount || orderSummaryCalculatedPrice || printModal.dataset.finalAmount || printModal.dataset.calculatedPrice;
         
         formData.append('points_applied', pointsApplied.toString());
         formData.append('points_used', pointsUsed);
         formData.append('final_amount', finalAmount);
         
-          // Get pricing details
+          // Get pricing details - use order summary modal data first
         let pricingDetails = null;
-          const calculatedPrice = printModal.dataset.calculatedPrice;
-          const pricingBreakdown = printModal.dataset.pricingBreakdown;
+          const calculatedPrice = orderSummaryCalculatedPrice || printModal.dataset.calculatedPrice;
+          const pricingBreakdown = orderSummaryPricingBreakdown || printModal.dataset.pricingBreakdown;
         
         if (calculatedPrice && pricingBreakdown) {
           try {
@@ -23139,10 +23252,22 @@
           }
         }
 
-          // Calculate final amount for payment
-        const isPointsApplied = printModal.dataset.pointsApplied === 'true';
-          const finalAmountAfterPoints = isPointsApplied ? parseFloat(printModal.dataset.finalAmount || '0') : parseFloat(calculatedPrice || '0');
-          totalAmountRupees = finalAmountAfterPoints;
+          // Calculate final amount for payment - use order summary modal data first (most accurate)
+        const isPointsApplied = orderSummaryPointsApplied || printModal.dataset.pointsApplied === 'true';
+        // Priority: orderSummaryFinalAmount > orderSummaryCalculatedPrice > printModal finalAmount > printModal calculatedPrice
+        let finalAmountAfterPoints = 0;
+        if (orderSummaryFinalAmount) {
+          finalAmountAfterPoints = parseFloat(orderSummaryFinalAmount);
+        } else if (orderSummaryCalculatedPrice) {
+          finalAmountAfterPoints = parseFloat(orderSummaryCalculatedPrice);
+        } else if (isPointsApplied && printModal.dataset.finalAmount) {
+          finalAmountAfterPoints = parseFloat(printModal.dataset.finalAmount);
+        } else if (calculatedPrice) {
+          finalAmountAfterPoints = parseFloat(calculatedPrice);
+        } else if (pricingDetails?.total_price) {
+          finalAmountAfterPoints = Number(pricingDetails.total_price);
+        }
+        totalAmountRupees = finalAmountAfterPoints;
         } else {
           // Handle service modals (digital, gloss, jumbo, passport, photo, goldenemboss)
           modal = document.getElementById(sourceModalId);
@@ -23286,22 +23411,22 @@
           }
           formData.append('storage_folder', 'vendor_print_jobs');
           
-          // Add points information - try order summary modal first
-          const orderSummaryModalForPoints = document.getElementById('orderSummaryModal');
-          const pointsApplied = (orderSummaryModalForPoints?.dataset.pointsApplied || modal.dataset.pointsApplied) === 'true';
-          const pointsUsed = orderSummaryModalForPoints?.dataset.pointsUsed || modal.dataset.pointsUsed || '0';
-          const finalAmountForFormData = orderSummaryModalForPoints?.dataset.finalAmount || modal.dataset.finalAmount || orderSummaryModalForPoints?.dataset.calculatedPrice || modal.dataset.calculatedPrice;
+          // Add points information - use stored order summary modal values first
+          const pointsApplied = orderSummaryPointsApplied || modal.dataset.pointsApplied === 'true';
+          const pointsUsed = orderSummaryPointsUsed || modal.dataset.pointsUsed || '0';
+          const finalAmountForFormData = orderSummaryFinalAmount || orderSummaryCalculatedPrice || modal.dataset.finalAmount || modal.dataset.calculatedPrice;
           
           formData.append('points_applied', pointsApplied.toString());
           formData.append('points_used', pointsUsed);
           formData.append('final_amount', finalAmountForFormData);
           
-          // Get pricing details - try order summary modal first (more reliable after modal close)
+          // Get pricing details - use stored order summary modal values first
           let pricingDetails = null;
-          const orderSummaryModalForPricing = document.getElementById('orderSummaryModal');
-          let calculatedPrice = orderSummaryModalForPricing?.dataset.calculatedPrice || modal.dataset.calculatedPrice;
-          let pricingBreakdown = orderSummaryModalForPricing?.dataset.pricingBreakdown || modal.dataset.pricingBreakdown;
-          let structuredPricing = orderSummaryModalForPricing?.dataset.structuredPricing || modal.dataset.structuredPricing;
+          let calculatedPrice = orderSummaryCalculatedPrice || modal.dataset.calculatedPrice;
+          let pricingBreakdown = orderSummaryPricingBreakdown || modal.dataset.pricingBreakdown;
+          // Get structured pricing from modal (not stored in order summary, so get from modal)
+          const orderSummaryModalForStructured = document.getElementById('orderSummaryModal');
+          let structuredPricing = orderSummaryModalForStructured?.dataset.structuredPricing || modal.dataset.structuredPricing;
           
           console.log('💰 Pricing retrieved:', {
             fromOrderSummary: !!orderSummaryModalForPricing?.dataset.calculatedPrice,
@@ -23372,24 +23497,17 @@
           
           formData.append('file_count', files.length);
           
-          // Calculate final amount for payment - ALWAYS use order summary modal's finalAmount first
-          const orderSummaryModalForAmount = document.getElementById('orderSummaryModal');
-          const finalAmountFromOrderSummary = orderSummaryModalForAmount?.dataset.finalAmount;
-          const calculatedPriceFromOrderSummary = orderSummaryModalForAmount?.dataset.calculatedPrice;
-          
-          // Get points information for service modals
-          const isPointsApplied = (orderSummaryModalForAmount?.dataset.pointsApplied || modal.dataset.pointsApplied) === 'true';
-          const finalAmountFromModal = modal.dataset.finalAmount;
-          const calculatedPriceForAmount = calculatedPrice;
+          // Calculate final amount for payment - use stored order summary modal values first
+          const isPointsApplied = orderSummaryPointsApplied || modal.dataset.pointsApplied === 'true';
           
           let finalAmountAfterPoints = 0;
-          // Priority 1: Use finalAmount from order summary modal (includes points if applied)
-          if (finalAmountFromOrderSummary) {
-            finalAmountAfterPoints = parseFloat(finalAmountFromOrderSummary);
+          // Priority 1: Use finalAmount from stored order summary modal data (includes points if applied)
+          if (orderSummaryFinalAmount) {
+            finalAmountAfterPoints = parseFloat(orderSummaryFinalAmount);
           } 
-          // Priority 2: Use calculatedPrice from order summary modal
-          else if (calculatedPriceFromOrderSummary) {
-            finalAmountAfterPoints = parseFloat(calculatedPriceFromOrderSummary);
+          // Priority 2: Use calculatedPrice from stored order summary modal data
+          else if (orderSummaryCalculatedPrice) {
+            finalAmountAfterPoints = parseFloat(orderSummaryCalculatedPrice);
           }
           // Priority 3: Fallback to modal's finalAmount
           else if (modal.dataset.finalAmount) {
@@ -23408,19 +23526,27 @@
           
           console.log('💰 Final amount calculation:', {
             isPointsApplied,
-            finalAmountFromOrderSummary,
-            finalAmountFromModal,
-            calculatedPriceForAmount,
-            orderSummaryCalculatedPrice: orderSummaryModalForAmount?.dataset.calculatedPrice,
+            orderSummaryFinalAmount,
+            orderSummaryCalculatedPrice,
+            finalAmountFromModal: modal.dataset.finalAmount,
+            calculatedPriceForAmount: calculatedPrice,
             finalAmountAfterPoints,
             totalAmountRupees,
-            orderSummaryModalExists: !!orderSummaryModalForAmount,
-            orderSummaryModalDataset: orderSummaryModalForAmount ? Object.keys(orderSummaryModalForAmount.dataset) : []
+            pricingDetailsTotalPrice: pricingDetails?.total_price
           });
         }
         
+        // Validate amount with detailed error message
         if (!totalAmountRupees || isNaN(totalAmountRupees) || totalAmountRupees <= 0) {
-          throw new Error('Invalid amount. Please calculate price again.');
+          console.error('❌ Invalid amount detected:', {
+            totalAmountRupees,
+            isNaN: isNaN(totalAmountRupees),
+            orderSummaryFinalAmount,
+            orderSummaryCalculatedPrice,
+            serviceType,
+            isPrintModal
+          });
+          throw new Error('Invalid amount. Please calculate price again and ensure the order summary shows a valid amount.');
         }
         
         const amountPaise = Math.round(totalAmountRupees * 100);
@@ -23614,7 +23740,22 @@
           });
         }
 
-        rzp.open();
+        // Open Razorpay with error handling for storage access issues
+        try {
+          rzp.open();
+        } catch (rzpError) {
+          console.error('Error opening Razorpay:', rzpError);
+          // If it's a storage access error, provide helpful message
+          if (rzpError.message && rzpError.message.includes('storage')) {
+            alert('Payment gateway cannot access browser storage. Please check your browser settings and allow cookies/storage for this site, then try again.');
+          } else {
+            alert('Failed to open payment gateway. Please try again or contact support if the issue persists.');
+          }
+          hidePaymentProcessingState();
+          confirmPayBtn.disabled = false;
+          confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+          throw rzpError;
+        }
       } catch (error) {
         console.error('Error submitting print job:', error);
         hidePaymentProcessingState();
