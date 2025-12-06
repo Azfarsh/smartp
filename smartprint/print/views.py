@@ -5816,6 +5816,12 @@ def vendor_pricing(request):
                 service_type = entry.get('service_type', '')
                 price = entry.get('price', 0)
                 
+                # Convert price to float if it's a string
+                try:
+                    price = float(price) if price else 0
+                except (ValueError, TypeError):
+                    price = 0
+                
                 # Only update if price is provided and greater than 0
                 if price and price > 0:
                     # Update the main pricing_data structure
@@ -5848,9 +5854,16 @@ def vendor_pricing(request):
             
             # Calculate services summary based on all pricing data (existing + new)
             all_pricing_entries = list(updated_pricing_data.values())
-            total_services = len([price for price in all_pricing_entries if price and price > 0])
-            available_services = len([price for price in all_pricing_entries if price and price > 0])
-            not_available_services = len([price for price in all_pricing_entries if price == 0 or not price])
+            # Convert all prices to float for comparison
+            def safe_float_compare(price):
+                try:
+                    return float(price) > 0 if price else False
+                except (ValueError, TypeError):
+                    return False
+            
+            total_services = len([price for price in all_pricing_entries if safe_float_compare(price)])
+            available_services = len([price for price in all_pricing_entries if safe_float_compare(price)])
+            not_available_services = len([price for price in all_pricing_entries if not safe_float_compare(price)])
             
             # Save to D1 database via Worker API (REQUIRED - no R2 storage)
             api_url = getattr(settings, 'WORKER_API_URL', '')
@@ -5865,67 +5878,85 @@ def vendor_pricing(request):
                 else:
                     worker_endpoint = api_url.rstrip('/') + '/add-vendor-pricing'
                 
-                # Prepare pricing data for D1 database (map form fields to DB columns)
+                # Helper function to safely convert price to float
+                def safe_float_price(price):
+                    try:
+                        return float(price) if price else 0.0
+                    except (ValueError, TypeError):
+                        return 0.0
+                
+                # Prepare pricing data for D1 database - ONLY include fields that are actually provided
+                # This prevents overwriting existing values with zeros for fields not in the form
                 worker_payload = {
                     'vendor_email': vendor_email,
                     'last_updated': datetime.datetime.now().isoformat(),
-                    'is_active': 'yes',
-                    # Digital Print
-                    'digital_print_a4_color': updated_pricing_data.get('digital_print_a4_color', 0),
-                    'digital_print_a3_color': updated_pricing_data.get('digital_print_a3_color', 0),
-                    'digital_print_12x18_color': updated_pricing_data.get('digital_print_12x18_color', 0),
-                    'digital_print_a2_color': updated_pricing_data.get('digital_print_a2_color', 0),
-                    'digital_print_a1_color': updated_pricing_data.get('digital_print_a1_color', 0),
-                    'digital_print_a0_color': updated_pricing_data.get('digital_print_a0_color', 0),
-                    # Regular Print
-                    'regular_print_a4_bw': updated_pricing_data.get('regular_print_a4_bw', 0),
-                    'regular_print_a4_color': updated_pricing_data.get('regular_print_a4_color', 0),
-                    # Photo Print
-                    'photo_print_a4_bw': updated_pricing_data.get('photo_print_a4_bw', 0),
-                    'photo_print_a4_color': updated_pricing_data.get('photo_print_a4_color', 0),
-                    # Gloss Print
-                    'gloss_print_a4_color': updated_pricing_data.get('gloss_print_a4_color', 0),
-                    'gloss_print_a3_color': updated_pricing_data.get('gloss_print_a3_color', 0),
-                    'gloss_print_a2_color': updated_pricing_data.get('gloss_print_a2_color', 0),
-                    'gloss_print_a1_color': updated_pricing_data.get('gloss_print_a1_color', 0),
-                    'gloss_print_a0_color': updated_pricing_data.get('gloss_print_a0_color', 0),
-                    # Jumbo Print
-                    'jumbo_print_a3_bw': updated_pricing_data.get('jumbo_print_a3_bw', 0),
-                    'jumbo_print_a3_color': updated_pricing_data.get('jumbo_print_a3_color', 0),
-                    'jumbo_print_a2_bw': updated_pricing_data.get('jumbo_print_a2_bw', 0),
-                    'jumbo_print_a2_color': updated_pricing_data.get('jumbo_print_a2_color', 0),
-                    'jumbo_print_a1_bw': updated_pricing_data.get('jumbo_print_a1_bw', 0),
-                    'jumbo_print_a1_color': updated_pricing_data.get('jumbo_print_a1_color', 0),
-                    'jumbo_print_a0_bw': updated_pricing_data.get('jumbo_print_a0_bw', 0),
-                    'jumbo_print_a0_color': updated_pricing_data.get('jumbo_print_a0_color', 0),
-                    # Passport Photo
-                    'passport_print_8': updated_pricing_data.get('passport_print_8', 0),
-                    'passport_print_16': updated_pricing_data.get('passport_print_16', 0),
-                    'passport_print_30': updated_pricing_data.get('passport_print_30', 0),
-                    # Golden Embossing
-                    'golden_emboss_cover': updated_pricing_data.get('golden_emboss_cover', 0),
-                    'golden_emboss_bond_color': updated_pricing_data.get('golden_emboss_bond_color', 0),
-                    # Lamination
-                    'lamination_a4_standard': updated_pricing_data.get('lamination_a4_standard', 0),
-                    'lamination_a4_glossy': updated_pricing_data.get('lamination_a4_glossy', 0),
-                    'lamination_a3_standard': updated_pricing_data.get('lamination_a3_standard', 0),
-                    'lamination_a3_glossy': updated_pricing_data.get('lamination_a3_glossy', 0),
-                    'lamination_a2_standard': updated_pricing_data.get('lamination_a2_standard', 0),
-                    'lamination_a2_glossy': updated_pricing_data.get('lamination_a2_glossy', 0),
-                    'lamination_a1_standard': updated_pricing_data.get('lamination_a1_standard', 0),
-                    'lamination_a1_glossy': updated_pricing_data.get('lamination_a1_glossy', 0),
-                    'lamination_a0_standard': updated_pricing_data.get('lamination_a0_standard', 0),
-                    'lamination_a0_glossy': updated_pricing_data.get('lamination_a0_glossy', 0),
-                    # Binding
-                    'tape_binding_a4_100': updated_pricing_data.get('tape_binding_a4_100', 0),
-                    'tape_binding_a4_200': updated_pricing_data.get('tape_binding_a4_200', 0),
-                    'tape_binding_a3_100': updated_pricing_data.get('tape_binding_a3_100', 0),
-                    'tape_binding_a3_200': updated_pricing_data.get('tape_binding_a3_200', 0),
-                    'spiral_binding_a4_100': updated_pricing_data.get('spiral_binding_a4_100', 0),
-                    'spiral_binding_a4_200': updated_pricing_data.get('spiral_binding_a4_200', 0),
-                    'spiral_binding_a3_100': updated_pricing_data.get('spiral_binding_a3_100', 0),
-                    'spiral_binding_a3_200': updated_pricing_data.get('spiral_binding_a3_200', 0),
+                    'is_active': 'yes'
                 }
+                
+                # Only add pricing fields that are actually in updated_pricing_data (i.e., were provided in the form)
+                # Map form field names to database column names
+                field_mapping = {
+                    # Digital Print
+                    'digital_print_a4_color': 'digital_print_a4_color',
+                    'digital_print_a3_color': 'digital_print_a3_color',
+                    'digital_print_12x18_color': 'digital_print_12x18_color',
+                    'digital_print_a2_color': 'digital_print_a2_color',
+                    'digital_print_a1_color': 'digital_print_a1_color',
+                    'digital_print_a0_color': 'digital_print_a0_color',
+                    # Regular Print
+                    'regular_print_a4_bw': 'regular_print_a4_bw',
+                    'regular_print_a4_color': 'regular_print_a4_color',
+                    # Photo Print
+                    'photo_print_a4_bw': 'photo_print_a4_bw',
+                    'photo_print_a4_color': 'photo_print_a4_color',
+                    # Gloss Print
+                    'gloss_print_a4_color': 'gloss_print_a4_color',
+                    'gloss_print_a3_color': 'gloss_print_a3_color',
+                    'gloss_print_a2_color': 'gloss_print_a2_color',
+                    'gloss_print_a1_color': 'gloss_print_a1_color',
+                    'gloss_print_a0_color': 'gloss_print_a0_color',
+                    # Jumbo Print
+                    'jumbo_print_a3_bw': 'jumbo_print_a3_bw',
+                    'jumbo_print_a3_color': 'jumbo_print_a3_color',
+                    'jumbo_print_a2_bw': 'jumbo_print_a2_bw',
+                    'jumbo_print_a2_color': 'jumbo_print_a2_color',
+                    'jumbo_print_a1_bw': 'jumbo_print_a1_bw',
+                    'jumbo_print_a1_color': 'jumbo_print_a1_color',
+                    'jumbo_print_a0_bw': 'jumbo_print_a0_bw',
+                    'jumbo_print_a0_color': 'jumbo_print_a0_color',
+                    # Passport Photo
+                    'passport_print_8': 'passport_print_8',
+                    'passport_print_16': 'passport_print_16',
+                    'passport_print_30': 'passport_print_30',
+                    # Golden Embossing
+                    'golden_emboss_cover': 'golden_emboss_cover',
+                    'golden_emboss_bond_color': 'golden_emboss_bond_color',
+                    # Lamination
+                    'lamination_a4_standard': 'lamination_a4_standard',
+                    'lamination_a4_glossy': 'lamination_a4_glossy',
+                    'lamination_a3_standard': 'lamination_a3_standard',
+                    'lamination_a3_glossy': 'lamination_a3_glossy',
+                    'lamination_a2_standard': 'lamination_a2_standard',
+                    'lamination_a2_glossy': 'lamination_a2_glossy',
+                    'lamination_a1_standard': 'lamination_a1_standard',
+                    'lamination_a1_glossy': 'lamination_a1_glossy',
+                    'lamination_a0_standard': 'lamination_a0_standard',
+                    'lamination_a0_glossy': 'lamination_a0_glossy',
+                    # Binding
+                    'tape_binding_a4_100': 'tape_binding_a4_100',
+                    'tape_binding_a4_200': 'tape_binding_a4_200',
+                    'tape_binding_a3_100': 'tape_binding_a3_100',
+                    'tape_binding_a3_200': 'tape_binding_a3_200',
+                    'spiral_binding_a4_100': 'spiral_binding_a4_100',
+                    'spiral_binding_a4_200': 'spiral_binding_a4_200',
+                    'spiral_binding_a3_100': 'spiral_binding_a3_100',
+                    'spiral_binding_a3_200': 'spiral_binding_a3_200',
+                }
+                
+                # Only include fields that are actually in updated_pricing_data
+                for form_field, db_field in field_mapping.items():
+                    if form_field in updated_pricing_data:
+                        worker_payload[db_field] = safe_float_price(updated_pricing_data[form_field])
                 
                 print(f"💾 Saving vendor pricing to D1 database via Worker API...")
                 print(f"🔗 Worker endpoint: {worker_endpoint}")
@@ -6032,9 +6063,16 @@ def vendor_pricing(request):
                 print("ℹ️ Dashboard update detected - skipping token regeneration to speed up response.")
 
             # Calculate detailed statistics for success message
-            total_services = len([price for price in updated_pricing_data.values() if price and price > 0])
-            available_services = len([price for price in updated_pricing_data.values() if price and price > 0])
-            not_available_services = len([price for price in updated_pricing_data.values() if price == 0 or not price])
+            # Convert all prices to float for comparison
+            def safe_float_compare(price):
+                try:
+                    return float(price) > 0 if price else False
+                except (ValueError, TypeError):
+                    return False
+            
+            total_services = len([price for price in updated_pricing_data.values() if safe_float_compare(price)])
+            available_services = len([price for price in updated_pricing_data.values() if safe_float_compare(price)])
+            not_available_services = len([price for price in updated_pricing_data.values() if not safe_float_compare(price)])
             
             # Create detailed success message based on update type
             if from_dashboard:
@@ -12109,6 +12147,16 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
                     # If parsing fails, assume it's already just a base_price value
                     pricing_details_str = pricing_details
         
+        # Get shop address from metadata or vendor data
+        shop_address = metadata.get('shop_address', '')
+        if not shop_address and vendor_email:
+            try:
+                vendor_data = get_vendor_coordinates_from_email(vendor_email)
+                if vendor_data:
+                    shop_address = vendor_data.get('shop_address', '')
+            except:
+                pass
+        
         payload = {
             'vendor_id': vendor_id,
             'vendor_email': vendor_email or '',
@@ -12152,7 +12200,8 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'paper_type': metadata.get('paper_type', ''),
             'color_mode': metadata.get('color_mode', metadata.get('color', '')),
             'layout_type': metadata.get('layout_type', ''),
-            'pricing_details': pricing_details_str
+            'pricing_details': pricing_details_str,
+            'shop_address': shop_address
         }
         
         # Convert final_amount to float if present
@@ -12285,6 +12334,16 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
                     # If parsing fails, assume it's already just a base_price value
                     pricing_details_str = pricing_details
 
+        # Get shop address from metadata or vendor data
+        shop_address = metadata.get('shop_address', '')
+        if not shop_address and vendor_email:
+            try:
+                vendor_data = get_vendor_coordinates_from_email(vendor_email)
+                if vendor_data:
+                    shop_address = vendor_data.get('shop_address', '')
+            except:
+                pass
+        
         payload = {
             'vendor_id': vendor_id,
             'vendor_email': vendor_email or '',
@@ -12328,7 +12387,8 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'paper_type': metadata.get('paper_type', ''),
             'color_mode': metadata.get('color_mode', metadata.get('color', '')),
             'layout_type': metadata.get('layout_type', ''),
-            'pricing_details': pricing_details_str
+            'pricing_details': pricing_details_str,
+            'shop_address': shop_address
         }
 
         if payload['final_amount']:
