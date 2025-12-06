@@ -5527,22 +5527,67 @@
 
     .shop-name-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.5rem;
       margin-top: 0.75rem;
       padding-top: 0.75rem;
       border-top: 1px solid #e5e7eb;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     .shop-label {
       color: #6b7280;
       font-weight: 500;
+      font-size: 0.85rem;
+      flex-shrink: 0;
     }
 
     .shop-value {
       color: #1f2937;
+      font-weight: 500;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+    #orderSummaryShopAddress {
+      white-space: pre-line;
+      word-wrap: break-word;
+      word-break: break-word;
+      max-width: 100%;
+      display: block;
+      line-height: 1.5;
+      color: #374151;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+    .shop-name-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .shop-name-row:last-of-type {
+      border-bottom: none;
+    }
+    .shop-name-row .shop-label {
+      display: block;
+      width: 100%;
       font-weight: 600;
+      color: #4b5563;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+    .shop-name-row .shop-value {
+      display: block;
+      width: 100%;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      color: #1f2937;
+      font-size: 0.95rem;
+      line-height: 1.6;
     }
     
     @media (max-width: 768px) {
@@ -8496,7 +8541,8 @@
       #service-modal-passport .pricing-summary,
       #service-modal-goldenemboss .pricing-summary,
       #service-modal-digital .pricing-summary,
-      #service-modal-gloss .pricing-summary {
+      #service-modal-gloss .pricing-summary,
+      #service-modal-photo .pricing-summary {
         display: none !important;
       }
       
@@ -10865,16 +10911,41 @@
             syncUserLocationState(cached.latitude, cached.longitude, { source: 'localStorage', fromStorage: true });
           }
         } catch (error) {
-          console.warn('Unable to hydrate stored user location:', error);
+          // Silently handle storage access errors (e.g., in iframe contexts)
+          if (error.name === 'SecurityError' || error.message.includes('storage') || error.message.includes('Access')) {
+            console.warn('Storage access not allowed in this context:', error.message);
+          } else {
+            console.warn('Unable to hydrate stored user location:', error);
+          }
         }
       }
       
-      // Delay hydration until DOM is ready or execute safely
+      // Delay hydration until DOM is ready or execute safely with promise-based error handling
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', hydrateStoredUserLocation);
+        document.addEventListener('DOMContentLoaded', () => {
+          try {
+            hydrateStoredUserLocation();
+          } catch (error) {
+            // Handle promise rejection or sync errors
+            if (error && (error.name === 'SecurityError' || error.message && error.message.includes('storage'))) {
+              console.warn('Storage access not allowed in this context');
+            }
+          }
+        });
       } else {
         // DOM already loaded, execute immediately but safely
-        setTimeout(hydrateStoredUserLocation, 0);
+        Promise.resolve().then(() => {
+          try {
+            hydrateStoredUserLocation();
+          } catch (error) {
+            // Handle promise rejection or sync errors
+            if (error && (error.name === 'SecurityError' || error.message && error.message.includes('storage'))) {
+              console.warn('Storage access not allowed in this context');
+            }
+          }
+        }).catch(() => {
+          // Silently handle any promise rejections
+        });
       }
 
       // Desktop accurate location flow (QR via phone)
@@ -12420,8 +12491,9 @@
                         <span>Please upload a photo first to calculate pricing</span>
                       </div>
                     `;
-                    // Don't show pricing summary for passport, golden embossing, digital, and gloss modals
-                    if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+                    // Don't show pricing summary for passport, golden embossing, digital, gloss, and photo modals
+                    // Photo print modal should use order summary modal like passport, not show pricing in input modal
+                    if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss' && service !== 'photo') {
                       pricingSummary.classList.add('active');
                     }
                   }
@@ -12479,9 +12551,9 @@
                 // Don't auto-calculate pricing when shop changes - user must click Print button
               }
               
-              // For passport, golden embossing, digital, and gloss modals, always hide pricing summary
+              // For passport, golden embossing, digital, gloss, and jumbo modals, always hide pricing summary
               // It should only show when print button is clicked
-              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss' || service === 'jumbo') {
                 const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
                 if (pricingSummary) {
                   pricingSummary.classList.remove('active');
@@ -12497,9 +12569,9 @@
           // Only calculate when user explicitly clicks Calculate button, so hide auto-calc
           formInputs.forEach(input => {
             input.addEventListener('change', () => {
-              // For passport, golden embossing, digital, and gloss modals, hide pricing summary
+              // For passport, golden embossing, digital, gloss, and jumbo modals, hide pricing summary
               // It should only show when print button is clicked
-              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss' || service === 'jumbo') {
                 const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
                 if (pricingSummary) pricingSummary.classList.remove('active');
                 modal.dataset.calculatedPrice = '';
@@ -12517,9 +12589,9 @@
               }
             });
             input.addEventListener('input', () => {
-              // For passport, golden embossing, digital, and gloss modals, hide pricing summary
+              // For passport, golden embossing, digital, gloss, and jumbo modals, hide pricing summary
               // It should only show when print button is clicked
-              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+              if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss' || service === 'jumbo') {
                 const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
                 if (pricingSummary) pricingSummary.classList.remove('active');
                 modal.dataset.calculatedPrice = '';
@@ -12538,6 +12610,34 @@
             });
           });
         }, 600);
+        
+        // Jumbo print preview update when print size changes
+        if (service === 'jumbo') {
+          setTimeout(() => {
+            const printSizeSelect = modal.querySelector(`#${service}-field-1`); // Print Size is first field
+            const fileInput = modal.querySelector(`#${service}-field-0`); // File upload is field 0
+            
+            if (printSizeSelect) {
+              printSizeSelect.addEventListener('change', function() {
+                // Update preview if image is already loaded
+                const filePreview = modal.querySelector(`#${service}-file-preview`);
+                if (filePreview && filePreview.querySelector(`#${service}PreviewCanvas`)) {
+                  const currentFile = modal.dataset.currentFile ? JSON.parse(modal.dataset.currentFile) : null;
+                  if (currentFile && fileInput && fileInput.files && fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    if (file.type.startsWith('image/')) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        updateServiceImagePreview(service, file, reader.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }
+                }
+              });
+            }
+          }, 700);
+        }
         
         // Country selection handler for passport photos
         if (service === 'passport') {
@@ -12816,8 +12916,8 @@
               }
             }
             
-            // For passport, golden embossing, digital, and gloss modals, show pricing summary when print button is clicked
-            if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss') {
+            // For passport, golden embossing, digital, gloss, and jumbo modals, show pricing summary when print button is clicked
+            if (service === 'passport' || service === 'goldenemboss' || service === 'digital' || service === 'gloss' || service === 'jumbo') {
               const pricingSummary = modal.querySelector(`#${service}-pricing-summary`);
               if (pricingSummary && modal.dataset.calculatedPrice) {
                 pricingSummary.classList.add('active');
@@ -12869,10 +12969,18 @@
           
           // IMPORTANT: Store files in order summary modal before closing service modal
           // This ensures files persist even if service modal gets reset
+          // For photo print modal, store files like passport photo modal
           if (orderSummaryModal && files.length > 0) {
             // Store files as a property on the order summary modal (File objects can't be in dataset)
             orderSummaryModal._pendingFiles = files;
             console.log('📁 Files stored in order summary modal:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+          }
+          
+          // For photo print modal, create PDF in background (like passport photo modal)
+          if (service === 'photo' && files.length > 0) {
+            // Photo print files are already images, no need to convert to PDF
+            // The backend will handle the photo print processing
+            console.log('📸 Photo print files ready for processing:', files.length);
           }
           
           // Close service modal and open order summary modal
@@ -13093,9 +13201,22 @@
             }
             
           try {
-            // Use final amount after points applied, fallback to total_price if no points applied
-            const isPointsApplied = modal.dataset.pointsApplied === 'true';
-            const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : (pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0);
+            // Get final amount from order summary modal first (most accurate), then fallback to modal
+            const orderSummaryModal = document.getElementById('orderSummaryModal');
+            const finalAmountFromOrderSummary = orderSummaryModal?.dataset.finalAmount;
+            const isPointsApplied = modal.dataset.pointsApplied === 'true' || orderSummaryModal?.dataset.pointsApplied === 'true';
+            
+            let finalAmountAfterPoints = 0;
+            if (finalAmountFromOrderSummary) {
+              finalAmountAfterPoints = parseFloat(finalAmountFromOrderSummary);
+            } else if (isPointsApplied && modal.dataset.finalAmount) {
+              finalAmountAfterPoints = parseFloat(modal.dataset.finalAmount);
+            } else if (pricingDetails?.total_price) {
+              finalAmountAfterPoints = Number(pricingDetails.total_price);
+            } else if (modal.dataset.calculatedPrice) {
+              finalAmountAfterPoints = parseFloat(modal.dataset.calculatedPrice);
+            }
+            
             const amountRs = finalAmountAfterPoints;
             if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
             const orderResp = await fetch('/payments/create-order/', {
@@ -13777,9 +13898,10 @@
         `;
 
         pricingDetails.innerHTML = html;
-        // For passport, golden embossing, digital, and gloss modals, don't show pricing summary automatically
-        // It should only show when print button is clicked
-        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+        // For passport, golden embossing, digital, gloss, jumbo, and photo modals, don't show pricing summary automatically
+        // Photo print modal should use order summary modal like passport, not show pricing in input modal
+        // It should only show when print button is clicked (for passport, golden embossing, digital, gloss, jumbo)
+        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss' && service !== 'jumbo' && service !== 'photo') {
           pricingSummary.classList.add('active');
         }
 
@@ -15357,7 +15479,26 @@
           <h4 class="settings-label">Choose Print Shop</h4>
           <p class="settings-subtitle">Select the print shop where you want to print your documents</p>
 
-          <div class="vendor-options" id="vendorOptions">
+          <!-- Shop Selection Button - Matching jumbo print modal design -->
+          <div class="shop-selection-button" id="print-shop-selection-button" onclick="openShopSelectionModal('print')">
+            <div class="shop-selection-content">
+              <div class="shop-selection-icon">
+                <i class="fas fa-store"></i>
+              </div>
+              <div class="shop-selection-info">
+                <div class="shop-selection-title">Select a shop to print</div>
+                <div class="shop-selection-subtitle" id="print-shop-subtitle">Name • Address • Distance</div>
+              </div>
+              <div class="shop-selection-arrow">
+                <i class="fas fa-chevron-right"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden input to store selected shop -->
+          <input type="hidden" id="print-shop-select" value="" />
+
+          <div class="vendor-options" id="vendorOptions" style="display: none;">
             <div class="loading-message" style="text-align: center; padding: 1rem;">
               <i class="fas fa-spinner fa-spin"></i>
               <p>Loading available shops...</p>
@@ -16583,9 +16724,10 @@
         `;
 
         pricingDetails.innerHTML = html;
-        // For passport, golden embossing, digital, and gloss modals, don't show pricing summary automatically
-        // It should only show when print button is clicked
-        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+        // For passport, golden embossing, digital, gloss, jumbo, and photo modals, don't show pricing summary automatically
+        // Photo print modal should use order summary modal like passport, not show pricing in input modal
+        // It should only show when print button is clicked (for passport, golden embossing, digital, gloss, jumbo)
+        if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss' && service !== 'jumbo' && service !== 'photo') {
           pricingSummary.classList.add('active');
         }
 
@@ -18718,23 +18860,30 @@
                       <span>Please complete all required fields to calculate pricing</span>
                     </div>
                   `;
-                  // Don't show pricing summary for passport, golden embossing, digital, and gloss modals
-                  if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss') {
+                  // Don't show pricing summary for passport, golden embossing, digital, gloss, and photo modals
+                  // Photo print modal should use order summary modal like passport, not show pricing in input modal
+                  if (service !== 'passport' && service !== 'goldenemboss' && service !== 'digital' && service !== 'gloss' && service !== 'photo') {
                     pricingSummary.classList.add('active');
                   }
                 }
               }
-            } else {
-              const fnMap = {
-                'digital': window.calculateDigitalPrintPrice,
-                'gloss': window.calculateGlossPrintPrice,
-                'jumbo': window.calculateJumboPrintPrice,
-                'goldenemboss': window.calculateGoldenEmbossPrice,
-                'passport': window.calculatePassportPhotoPrice
-              };
-              const fn = fnMap[service];
-              if (typeof fn === 'function') fn(service);
+          } else if (service === 'print') {
+            // For document print modal, update selectedVendor and trigger pricing if files are uploaded
+            selectedVendor = shopFolder;
+            if (selectedVendor && uploadedFiles && uploadedFiles.length > 0) {
+              calculateA4PrintPrice();
             }
+          } else {
+            const fnMap = {
+              'digital': window.calculateDigitalPrintPrice,
+              'gloss': window.calculateGlossPrintPrice,
+              'jumbo': window.calculateJumboPrintPrice,
+              'goldenemboss': window.calculateGoldenEmbossPrice,
+              'passport': window.calculatePassportPhotoPrice
+            };
+            const fn = fnMap[service];
+            if (typeof fn === 'function') fn(service);
+          }
           } else if (serviceModal) {
             // Show message to upload file first
             const pricingDetails = serviceModal.querySelector(`#${service}-pricing-details`);
@@ -18763,10 +18912,13 @@
       const distance = selectedItem.querySelector('.shop-selection-item-distance')?.textContent || '';
       
       const titleEl = button.querySelector('.shop-selection-title');
-      const subtitleEl = button.querySelector('.shop-selection-subtitle');
+      const subtitleEl = button.querySelector('.shop-selection-subtitle') || document.getElementById(`${service}-shop-subtitle`);
       
       if (titleEl) titleEl.textContent = name;
-      if (subtitleEl) subtitleEl.textContent = [address, distance].filter(Boolean).join(' • ');
+      // Show only address (like photo print modal) - address only, same font and size
+      if (subtitleEl) {
+        subtitleEl.textContent = address || 'Choose a nearby print shop';
+      }
     }
 
     // Function to reset shop selection button to default state
@@ -20986,35 +21138,96 @@
         const img = new Image();
 
         img.onload = function() {
-          // Set canvas size to fit the image with better quality
-          const maxWidth = 600;
-          const maxHeight = 500;
-          let { width, height } = img;
-          
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width *= ratio;
-            height *= ratio;
+          // For jumbo print, show exact preview like document print modal
+          if (service === 'jumbo') {
+            // Get print size from form to determine page dimensions
+            const modal = document.getElementById(`service-modal-${service}`);
+            const printSizeSelect = modal ? modal.querySelector(`#${service}-field-1`) : null;
+            const printSize = printSizeSelect ? printSizeSelect.value : 'A3';
+            
+            // Define jumbo print sizes in pixels (at 72 DPI for preview)
+            const jumboSizes = {
+              'A3': { width: 842, height: 1191 },   // A3 at 72 DPI
+              'A2': { width: 1191, height: 1684 },  // A2 at 72 DPI
+              'A1': { width: 1684, height: 2384 },  // A1 at 72 DPI
+              'A0': { width: 2384, height: 3370 }   // A0 at 72 DPI
+            };
+            
+            const pageDimensions = jumboSizes[printSize] || jumboSizes['A3'];
+            
+            // Set canvas size to page dimensions (scaled down for preview)
+            const previewScale = 0.5; // Scale down for preview
+            canvas.width = pageDimensions.width * previewScale;
+            canvas.height = pageDimensions.height * previewScale;
+            
+            // Clear canvas with white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate image scaling to fit within page while maintaining aspect ratio
+            const imgAspect = img.width / img.height;
+            const pageAspect = canvas.width / canvas.height;
+            
+            let drawWidth, drawHeight, drawX, drawY;
+            
+            if (imgAspect > pageAspect) {
+              // Image is wider than page aspect ratio
+              drawWidth = canvas.width * 0.9; // 90% of page width with margin
+              drawHeight = drawWidth / imgAspect;
+            } else {
+              // Image is taller than page aspect ratio
+              drawHeight = canvas.height * 0.9; // 90% of page height with margin
+              drawWidth = drawHeight * imgAspect;
+            }
+            
+            // Center the image
+            drawX = (canvas.width - drawWidth) / 2;
+            drawY = (canvas.height - drawHeight) / 2;
+            
+            // Draw white page and the image
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+            
+            // Update preview info
+            const dimensionsEl = document.getElementById(`${service}PreviewDimensions`);
+            const pagesEl = document.getElementById(`${service}PreviewPages`);
+            const pageCounter = document.getElementById(`${service}PageCounter`);
+            
+            if (dimensionsEl) dimensionsEl.textContent = `Size: ${printSize} (${pageDimensions.width} x ${pageDimensions.height}px)`;
+            if (pagesEl) pagesEl.textContent = 'Pages: 1';
+            if (pageCounter) pageCounter.textContent = '1 / 1';
+          } else {
+            // For other services, use the original preview logic
+            const maxWidth = 600;
+            const maxHeight = 500;
+            let { width, height } = img;
+            
+            if (width > maxWidth || height > maxHeight) {
+              const ratio = Math.min(maxWidth / width, maxHeight / height);
+              width *= ratio;
+              height *= ratio;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw image
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Update preview info
+            const dimensionsEl = document.getElementById(`${service}PreviewDimensions`);
+            const pagesEl = document.getElementById(`${service}PreviewPages`);
+            const pageCounter = document.getElementById(`${service}PageCounter`);
+            
+            if (dimensionsEl) dimensionsEl.textContent = `Dimensions: ${img.naturalWidth} x ${img.naturalHeight}`;
+            if (pagesEl) pagesEl.textContent = 'Pages: 1';
+            if (pageCounter) pageCounter.textContent = '1 / 1';
           }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          // Draw white background
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          // Draw image
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Update preview info
-          const dimensionsEl = document.getElementById(`${service}PreviewDimensions`);
-          const pagesEl = document.getElementById(`${service}PreviewPages`);
-          const pageCounter = document.getElementById(`${service}PageCounter`);
-          
-          if (dimensionsEl) dimensionsEl.textContent = `Dimensions: ${img.naturalWidth} x ${img.naturalHeight}`;
-          if (pagesEl) pagesEl.textContent = 'Pages: 1';
-          if (pageCounter) pageCounter.textContent = '1 / 1';
         };
 
         img.src = imageData;
@@ -21912,48 +22125,92 @@
       
       // Populate and show the order summary modal
       populateOrderSummaryModal();
+      
+      // Set service type for payment processing and update modal title
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal) {
+        orderSummaryModal.dataset.serviceType = 'print';
+        orderSummaryModal.dataset.sourceModal = 'printModal';
+        // Store pricing information - get from printModal dataset
+        const printModal = document.getElementById('printModal');
+        const calculatedPrice = printModal ? printModal.dataset.calculatedPrice : null;
+        const pricingBreakdown = printModal ? printModal.dataset.pricingBreakdown : null;
+        if (calculatedPrice) {
+          orderSummaryModal.dataset.calculatedPrice = calculatedPrice;
+        }
+        if (pricingBreakdown) {
+          orderSummaryModal.dataset.pricingBreakdown = pricingBreakdown;
+        }
+        
+        // Update order summary modal title and icon for document print
+        const orderSummaryTitle = orderSummaryModal.querySelector('.modal-title');
+        const orderSummarySubtitle = orderSummaryModal.querySelector('.modal-subtitle');
+        const orderSummaryIcon = orderSummaryModal.querySelector('.modal-icon i');
+        
+        if (orderSummaryTitle) {
+          orderSummaryTitle.textContent = 'Document Printing';
+        }
+        if (orderSummarySubtitle) {
+          orderSummarySubtitle.textContent = 'Review your order and proceed to payment';
+        }
+        if (orderSummaryIcon) {
+          orderSummaryIcon.className = 'fas fa-file-alt';
+        }
+      }
+      
       openOrderSummaryModal(modalWidth, modalMaxWidth, modalPosition);
     });
 
     // Function to populate order summary modal with current data
     function populateOrderSummaryModal() {
       const printModal = document.getElementById('printModal');
-      const calculatedPrice = printModal.dataset.calculatedPrice;
+      if (!printModal) {
+        console.error('printModal not found');
+        return;
+      }
+      
+      const calculatedPrice = parseFloat(printModal.dataset.calculatedPrice || '0');
       const pricingBreakdown = printModal.dataset.pricingBreakdown;
       
       // Get shop name
       const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
       const shopName = selectedVendorData ? (selectedVendorData.shop_name || selectedVendorData.vendor_name || selectedVendorData.vendor_email || '-') : '-';
       
-      // Calculate totals from uploaded files
+      // Calculate totals from uploaded files - check if variables exist
       let totalPagesCount = 0;
       let totalCopiesCount = 0;
       let colorTypes = new Set();
       let orientationTypes = new Set();
       
-      uploadedFiles.forEach(fileObj => {
-        const settings = fileSettings[fileObj.id];
-        const pages = calculatePages(fileObj, settings);
-        const copies = settings.copies;
-        
-        totalPagesCount += pages;
-        totalCopiesCount += copies;
-        colorTypes.add(settings.color);
-        orientationTypes.add(settings.orientation);
-      });
+      // Check if uploadedFiles and fileSettings exist
+      if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        uploadedFiles.forEach(fileObj => {
+          if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id]) {
+            const settings = fileSettings[fileObj.id];
+            const pages = typeof calculatePages === 'function' ? calculatePages(fileObj, settings) : (fileObj.pageCount || 1);
+            const copies = settings.copies || 1;
+            
+            totalPagesCount += pages;
+            totalCopiesCount += copies;
+            if (settings.color) colorTypes.add(settings.color);
+            if (settings.orientation) orientationTypes.add(settings.orientation);
+          }
+        });
+      } else {
+        // Fallback: try to get from pricing breakdown
+        if (pricingBreakdown) {
+          try {
+            const breakdown = JSON.parse(pricingBreakdown);
+            totalPagesCount = breakdown.total_pages || breakdown.page_count || 0;
+            totalCopiesCount = breakdown.total_copies || breakdown.num_copies || breakdown.copies || 0;
+            if (breakdown.color) colorTypes.add(breakdown.color);
+          } catch (e) {
+            console.error('Error parsing pricing breakdown:', e);
+          }
+        }
+      }
       
-      // Determine service name
-      const colorType = colorTypes.size === 1 ? Array.from(colorTypes)[0] : 'Mixed';
-      const printType = colorType === 'color' ? 'single_color' : 'single_bw';
-      const serviceName = `A4 Print ${printType === 'single_color' ? 'Single Color' : 'Single Bw'}`;
-      
-      // Format color display text
-      const colorDisplayText = colorType === 'color' ? 'Color' : (colorType === 'bw' ? 'Black and White' : 'Mixed');
-      
-      // Get orientation (use first file's orientation or default)
-      const orientation = orientationTypes.size === 1 ? Array.from(orientationTypes)[0] : (uploadedFiles.length > 0 ? fileSettings[uploadedFiles[0].id].orientation : 'Portrait');
-      
-      // Parse pricing breakdown to get commission details
+      // Parse pricing breakdown to get commission details first
       let breakdownObj = {};
       let additionalOptions = [];
       let commissionPercent = 0;
@@ -21976,16 +22233,91 @@
         }
       }
       
-      // Calculate commission if not available
-      if (commissionPercent === 0 && basePrice > 0) {
-        const serviceKey = colorType === 'color' ? 'a4_print_color' : 'a4_print_bw';
-        commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 20;
-        commissionAmount = (basePrice * commissionPercent) / 100;
+      // Determine service name - get from breakdown if colorTypes is empty
+      let colorType = 'Mixed';
+      if (colorTypes.size === 1) {
+        colorType = Array.from(colorTypes)[0];
+      } else if (breakdownObj && breakdownObj.color) {
+        colorType = breakdownObj.color;
+      } else if (breakdownObj && breakdownObj.print_type) {
+        colorType = breakdownObj.print_type.includes('color') ? 'color' : 'bw';
+      } else if (breakdownObj && breakdownObj.print_color) {
+        colorType = breakdownObj.print_color.toLowerCase().includes('color') ? 'color' : 'bw';
       }
       
-      // Get final amount (with points if applied)
+      const printType = colorType === 'color' ? 'single_color' : 'single_bw';
+      // Service name should be just "A4 print"
+      const serviceName = 'A4 print';
+      
+      // Format color display text - show exact color type, not Mixed
+      let colorDisplayText = 'Black and White'; // Default
+      if (colorType === 'color') {
+        colorDisplayText = 'Color';
+      } else if (colorType === 'bw' || colorType === 'black_white' || colorType === 'Black & White' || colorType === 'Black and White') {
+        colorDisplayText = 'Black and White';
+      } else if (breakdownObj && breakdownObj.color) {
+        // Use breakdown color if available
+        const breakdownColor = breakdownObj.color.toLowerCase();
+        if (breakdownColor.includes('color')) {
+          colorDisplayText = 'Color';
+        } else if (breakdownColor.includes('black') || breakdownColor.includes('white') || breakdownColor.includes('bw')) {
+          colorDisplayText = 'Black and White';
+        } else {
+          colorDisplayText = breakdownObj.color;
+        }
+      } else if (breakdownObj && breakdownObj.print_color) {
+        const printColor = breakdownObj.print_color.toLowerCase();
+        if (printColor.includes('color')) {
+          colorDisplayText = 'Color';
+        } else {
+          colorDisplayText = 'Black and White';
+        }
+      }
+      
+      // Calculate commission if not available - use same method as jumbo print
+      if (commissionPercent === 0) {
+        const serviceKey = colorType === 'color' ? 'a4_print_color' : 'a4_print_bw';
+        commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 20;
+      }
+      
+      // Get base total price (before commission) from breakdown - same method as jumbo print
+      // The breakdown from frontend has: subtotal (base + options), vendor_price, and total_price (with commission)
+      let baseTotalPrice = 0;
+      
+      // Priority: subtotal > vendor_price > calculatedPrice > base_price
+      if (breakdownObj.subtotal && breakdownObj.subtotal > 0) {
+        // subtotal is base price + additional options (before commission)
+        baseTotalPrice = parseFloat(breakdownObj.subtotal);
+      } else if (breakdownObj.vendor_price && breakdownObj.vendor_price > 0) {
+        // vendor_price is the vendor price before commission
+        baseTotalPrice = parseFloat(breakdownObj.vendor_price);
+      } else if (calculatedPrice > 0) {
+        // If we have calculatedPrice, we need to reverse-calculate base price
+        // calculatedPrice = baseTotalPrice * (1 + commissionPercent/100)
+        // baseTotalPrice = calculatedPrice / (1 + commissionPercent/100)
+        baseTotalPrice = calculatedPrice / (1 + commissionPercent / 100);
+      } else if (breakdownObj.base_price && breakdownObj.base_price > 0) {
+        // Fallback to base_price (per page) - multiply by pages and copies
+        const pages = breakdownObj.total_pages || breakdownObj.page_count || 1;
+        const copies = breakdownObj.total_copies || breakdownObj.num_copies || 1;
+        baseTotalPrice = parseFloat(breakdownObj.base_price) * pages * copies;
+      }
+      
+      // Calculate grand total: baseTotalPrice × (1 + commissionPercent/100) - same as jumbo print
+      let grandTotal = baseTotalPrice * (1 + commissionPercent / 100);
+      
+      // If breakdown.total_price exists and commission is already applied, use it directly
+      // (This is the case when using completeBreakdown from frontend)
+      if (breakdownObj.total_price && breakdownObj.commission_amount && breakdownObj.commission_amount > 0) {
+        grandTotal = parseFloat(breakdownObj.total_price);
+      } else if (calculatedPrice > 0 && calculatedPrice >= baseTotalPrice) {
+        // If calculatedPrice is available and seems valid, use it (it already includes commission)
+        grandTotal = calculatedPrice;
+      }
+      
+      // Get final amount (with points if applied) - same method as jumbo print
       const pointsApplied = printModal.dataset.pointsApplied === 'true';
-      const finalAmount = pointsApplied ? parseFloat(printModal.dataset.finalAmount || calculatedPrice) : parseFloat(calculatedPrice || '0');
+      const finalAmount = pointsApplied ? parseFloat(printModal.dataset.finalAmount || grandTotal) : grandTotal;
       
       // Set date and time
       const now = new Date();
@@ -21996,12 +22328,28 @@
       document.getElementById('orderSummaryShopName').textContent = shopName;
       document.getElementById('orderSummaryServiceName').textContent = serviceName;
       
-      // Get and display shop address if available
+      // Get and display shop address if available - show complete address like jumbo print modal
       const shopAddress = selectedVendorData ? (selectedVendorData.shop_address || selectedVendorData.address || '') : '';
       const shopAddressRow = document.getElementById('orderSummaryShopAddressRow');
       const shopAddressEl = document.getElementById('orderSummaryShopAddress');
       if (shopAddress && shopAddressRow && shopAddressEl) {
-        shopAddressEl.textContent = shopAddress;
+        // Format address to display on multiple lines - split by commas or newlines, remove empty spaces
+        const formattedAddress = shopAddress
+          .split(/[,\n]/)
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join(', ');
+        shopAddressEl.textContent = formattedAddress;
+        shopAddressEl.style.whiteSpace = 'normal';
+        shopAddressEl.style.wordWrap = 'break-word';
+        shopAddressEl.style.overflowWrap = 'break-word';
+        shopAddressEl.style.overflow = 'visible';
+        shopAddressEl.style.textOverflow = '';
+        shopAddressEl.style.fontSize = '0.75rem';
+        shopAddressEl.style.lineHeight = '1.4';
+        shopAddressEl.style.maxWidth = '100%';
+        shopAddressEl.style.padding = '0';
+        shopAddressEl.style.margin = '0';
         shopAddressRow.style.display = 'flex';
       } else if (shopAddressRow) {
         shopAddressRow.style.display = 'none';
@@ -22013,8 +22361,11 @@
         let invoiceHtml = '';
         let documentPricesSum = 0;
         
+        // Check if we have uploaded files data
+        const hasUploadedFiles = typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0;
+        
         // If multiple documents, show individual document prices
-        if (uploadedFiles.length > 1) {
+        if (hasUploadedFiles && uploadedFiles.length > 1) {
           // Get the total calculated price (which already includes commission)
           const totalCalculatedPrice = parseFloat(calculatedPrice || '0');
           
@@ -22074,18 +22425,40 @@
             </div>
           `;
         } else {
-          // Single document - show standard format
-          // Base price with commission percentage
-          if (basePrice > 0) {
-            invoiceHtml += `
-              <div class="invoice-item">
-                <span class="invoice-item-label">Base Price (${commissionPercent}% commission included)</span>
-                <span class="invoice-item-value">₹${basePrice.toFixed(2)}</span>
-              </div>
-            `;
+          // Single document or no files - show standard format with accurate details
+          // Service details
+          // Ensure we have valid values
+          const displayPages = totalPagesCount > 0 ? totalPagesCount : (breakdownObj?.total_pages || breakdownObj?.page_count || 1);
+          const displayCopies = totalCopiesCount > 0 ? totalCopiesCount : (breakdownObj?.total_copies || breakdownObj?.num_copies || breakdownObj?.copies || 1);
+          // Use colorDisplayText which already handles exact color type (not Mixed)
+          const displayColor = colorDisplayText;
+          
+          // Get page range information if available
+          let pageRangeDisplay = '';
+          if (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined') {
+            const firstFile = uploadedFiles[0];
+            const firstFileSettings = fileSettings[firstFile.id];
+            if (firstFileSettings && firstFileSettings.pageRange) {
+              const pageRange = firstFileSettings.pageRange;
+              if (pageRange === 'odd') {
+                pageRangeDisplay = ' (Odd pages)';
+              } else if (pageRange === 'even') {
+                pageRangeDisplay = ' (Even pages)';
+              } else if (pageRange === 'specific' && firstFileSettings.specificPages) {
+                pageRangeDisplay = ` (Pages: ${firstFileSettings.specificPages})`;
+              }
+            }
+          } else if (breakdownObj && breakdownObj.pageRange) {
+            const pageRange = breakdownObj.pageRange;
+            if (pageRange === 'odd') {
+              pageRangeDisplay = ' (Odd pages)';
+            } else if (pageRange === 'even') {
+              pageRangeDisplay = ' (Even pages)';
+            } else if (pageRange === 'specific' && breakdownObj.specificPages) {
+              pageRangeDisplay = ` (Pages: ${breakdownObj.specificPages})`;
+            }
           }
           
-          // Service details
           invoiceHtml += `
             <div class="invoice-item">
               <span class="invoice-item-label">Print Name</span>
@@ -22093,17 +22466,18 @@
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">Pages</span>
-              <span class="invoice-item-value">${totalPagesCount}</span>
+              <span class="invoice-item-value">${displayPages}${pageRangeDisplay}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">Color</span>
-              <span class="invoice-item-value">${colorDisplayText}</span>
+              <span class="invoice-item-value">${displayColor}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">Copies</span>
-              <span class="invoice-item-value">${totalCopiesCount}</span>
+              <span class="invoice-item-value">${displayCopies}</span>
             </div>
           `;
+          // Use the calculated price which already includes all costs
           documentPricesSum = parseFloat(calculatedPrice || '0');
         }
         
@@ -22120,17 +22494,24 @@
           });
         }
         
-        // Calculate final grand total (commission already included in document prices)
-        const grandTotal = documentPricesSum > 0 ? documentPricesSum : finalAmount;
-        
         serviceSpecificContainer.innerHTML = invoiceHtml;
         
-        // Update grand total in the summary modal (matching passport photo modal design)
+        // Update grand total in the summary modal - use same method as jumbo print
         // The grand total element already exists in the HTML template, we just update its value
-        document.getElementById('orderSummaryTotalAmount').textContent = `₹${grandTotal.toFixed(2)}`;
+        const grandTotalEl = document.getElementById('orderSummaryTotalAmount');
+        if (grandTotalEl) {
+          grandTotalEl.textContent = `₹${finalAmount.toFixed(2)}`;
+        } else {
+          console.error('orderSummaryTotalAmount element not found');
+        }
       } else {
-        // Update grand total if container doesn't exist
-        document.getElementById('orderSummaryTotalAmount').textContent = `₹${finalAmount.toFixed(2)}`;
+        // Update grand total if container doesn't exist - use same method as jumbo print
+        const grandTotalEl = document.getElementById('orderSummaryTotalAmount');
+        if (grandTotalEl) {
+          grandTotalEl.textContent = `₹${finalAmount.toFixed(2)}`;
+        } else {
+          console.error('orderSummaryTotalAmount element not found');
+        }
       }
     }
 
@@ -22268,12 +22649,28 @@
       document.getElementById('orderSummaryShopName').textContent = shopName;
       document.getElementById('orderSummaryServiceName').textContent = serviceDisplayName;
       
-      // Get and display shop address if available
+      // Get and display shop address if available - show complete address in next line
       const shopAddress = selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : '';
       const shopAddressRow = document.getElementById('orderSummaryShopAddressRow');
       const shopAddressEl = document.getElementById('orderSummaryShopAddress');
       if (shopAddress && shopAddressRow && shopAddressEl) {
-        shopAddressEl.textContent = shopAddress;
+        // Format address to display on multiple lines - split by commas or newlines, remove empty spaces
+        const formattedAddress = shopAddress
+          .split(/[,\n]/)
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .join(', ');
+        shopAddressEl.textContent = formattedAddress;
+        shopAddressEl.style.whiteSpace = 'normal';
+        shopAddressEl.style.wordWrap = 'break-word';
+        shopAddressEl.style.overflowWrap = 'break-word';
+        shopAddressEl.style.overflow = 'visible';
+        shopAddressEl.style.textOverflow = '';
+        shopAddressEl.style.fontSize = '0.75rem';
+        shopAddressEl.style.lineHeight = '1.4';
+        shopAddressEl.style.maxWidth = '100%';
+        shopAddressEl.style.padding = '0';
+        shopAddressEl.style.margin = '0';
         shopAddressRow.style.display = 'flex';
       } else if (shopAddressRow) {
         shopAddressRow.style.display = 'none';
@@ -22290,18 +22687,61 @@
         let pages = 1;
         let copies = 1;
         
-        // Get values from breakdown or form details
+        // Get values from form inputs first (most accurate), then fallback to breakdown
+        const form = modal.querySelector(`#${service}-modal-form`);
+        if (form) {
+          // Get copies/quantity/package from form
+          const copiesInput = form.querySelector('input[type="number"][id*="copies"], input[type="number"][id*="quantity"], input[type="number"][id*="package"], select[id*="copies"], select[id*="quantity"], select[id*="package"]');
+          if (copiesInput) {
+            copies = parseInt(copiesInput.value) || copies;
+          }
+          
+          // Get pages from form if available
+          const pagesInput = form.querySelector('input[type="number"][id*="pages"], select[id*="pages"]');
+          if (pagesInput) {
+            pages = parseInt(pagesInput.value) || pages;
+          }
+          
+          // Get color from form
+          const colorInput = form.querySelector('select[id*="color"], input[id*="color"]');
+          if (colorInput) {
+            const colorValue = colorInput.value || printColor;
+            // Handle passport photo color_photo value
+            if (colorValue === 'color_photo' || colorValue === 'Color Photo') {
+              printColor = 'Color';
+            } else if (colorValue === 'Black & White' || colorValue === 'black_white') {
+              printColor = 'Black and White';
+            } else {
+              printColor = colorValue;
+            }
+          }
+        }
+        
+        // Fallback to breakdown if form values not found
         if (breakdownObj) {
-          pages = breakdownObj.page_count || breakdownObj.print_quantity || breakdownObj.total_pages || 1;
-          copies = breakdownObj.num_copies || breakdownObj.copies || 1;
-          printColor = breakdownObj.print_color || breakdownObj.color || breakdownObj.color_photo || breakdownObj['Print Color'] || 'N/A';
+          if (pages === 1) pages = breakdownObj.page_count || breakdownObj.print_quantity || breakdownObj.total_pages || pages;
+          if (copies === 1) copies = breakdownObj.num_copies || breakdownObj.copies || copies;
+          if (printColor === 'N/A') printColor = breakdownObj.print_color || breakdownObj.color || breakdownObj.color_photo || breakdownObj['Print Color'] || printColor;
         }
         
         // For passport photos, always show "Color" instead of "N/A"
         if (service === 'passport') {
-          printColor = 'Color';
-          // Get copies from photo_package if available
-          if (breakdownObj && breakdownObj.photo_package) {
+          // Get color from form first, then default to "Color"
+          const passportColorInput = form ? form.querySelector('select[id*="color"], input[id*="color"]') : null;
+          if (passportColorInput && passportColorInput.value) {
+            const colorValue = passportColorInput.value;
+            if (colorValue === 'color_photo' || colorValue === 'Color Photo') {
+              printColor = 'Color';
+            } else if (colorValue === 'Black & White' || colorValue === 'black_white') {
+              printColor = 'Black and White';
+            } else {
+              printColor = 'Color'; // Default to Color for passport photos
+            }
+          } else {
+            printColor = 'Color'; // Default to Color for passport photos
+          }
+          // Get copies from photo_package if available in breakdown
+          if (breakdownObj && breakdownObj.photo_package && copies === 1) {
             copies = breakdownObj.photo_package;
           }
         }
@@ -22310,17 +22750,43 @@
         serviceSpecificDetails.forEach(detail => {
           const labelLower = detail.label.toLowerCase();
           if (labelLower.includes('color') && service !== 'passport') {
-            printColor = detail.value;
-          } else if (labelLower.includes('copies') || labelLower.includes('quantity') || labelLower.includes('package')) {
+            const colorValue = detail.value;
+            if (colorValue === 'color_photo' || colorValue === 'Color Photo') {
+              printColor = 'Color';
+            } else if (colorValue === 'Black & White' || colorValue === 'black_white') {
+              printColor = 'Black and White';
+            } else {
+              printColor = colorValue;
+            }
+          } else if ((labelLower.includes('copies') || labelLower.includes('quantity') || labelLower.includes('package')) && copies === 1) {
             copies = parseInt(detail.value) || copies;
-          } else if (labelLower.includes('pages')) {
+          } else if (labelLower.includes('pages') && pages === 1) {
             pages = parseInt(detail.value) || pages;
           }
         });
         
-        // Ensure passport photos always show "Color"
-        if (service === 'passport') {
+        // Ensure passport photos always show "Color" (unless explicitly set to Black and White)
+        if (service === 'passport' && printColor === 'N/A') {
           printColor = 'Color';
+        }
+        
+        // Special handling for jumbo print - get color from form
+        if (service === 'jumbo' && printColor === 'N/A') {
+          const jumboColorInput = form ? form.querySelector('select[id*="color"], input[id*="color"]') : null;
+          if (jumboColorInput && jumboColorInput.value) {
+            const colorValue = jumboColorInput.value;
+            if (colorValue === 'Color' || colorValue === 'color') {
+              printColor = 'Color';
+            } else if (colorValue === 'Black & White' || colorValue === 'black_white' || colorValue === 'Black and White') {
+              printColor = 'Black and White';
+            } else {
+              printColor = colorValue;
+            }
+          } else if (breakdownObj && breakdownObj['Print Color']) {
+            printColor = breakdownObj['Print Color'];
+          } else {
+            printColor = 'Black and White'; // Default for jumbo
+          }
         }
         
         // Special handling for golden embossing
@@ -22377,7 +22843,7 @@
               <span class="invoice-item-value">${printColor}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Copies</span>
+              <span class="invoice-item-label">${service === 'passport' ? 'Total Photos' : 'Copies'}</span>
               <span class="invoice-item-value">${copies}</span>
             </div>
           `;
@@ -22577,7 +23043,8 @@
             // Add pricing details if available (will be populated after pricing calculation)
             pricing_details: null,
             vendor_email: vendorEmail || '',
-            user_email: userEmail || ''
+            user_email: userEmail || '',
+            shop_address: selectedVendorData ? (selectedVendorData.shop_address || selectedVendorData.address || '') : ''
           };
 
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
@@ -22878,33 +23345,39 @@
               all_document_names: allFileNames,
               document_count: files.length,
               vendor_email: vendorEmail || '',
-              user_email: userEmail || ''
+              user_email: userEmail || '',
+              shop_address: selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : ''
             };
             formData.append(`settings_${i}`, JSON.stringify(settingsJson));
           }
           
           formData.append('file_count', files.length);
           
-          // Calculate final amount for payment - try order summary modal first
+          // Calculate final amount for payment - ALWAYS use order summary modal's finalAmount first
           const orderSummaryModalForAmount = document.getElementById('orderSummaryModal');
-          const isPointsApplied = (orderSummaryModalForAmount?.dataset.pointsApplied || modal.dataset.pointsApplied) === 'true';
           const finalAmountFromOrderSummary = orderSummaryModalForAmount?.dataset.finalAmount;
-          const finalAmountFromModal = modal.dataset.finalAmount;
-          const calculatedPriceForAmount = calculatedPrice || '0';
+          const calculatedPriceFromOrderSummary = orderSummaryModalForAmount?.dataset.calculatedPrice;
           
           let finalAmountAfterPoints = 0;
-          if (isPointsApplied && finalAmountFromOrderSummary) {
+          // Priority 1: Use finalAmount from order summary modal (includes points if applied)
+          if (finalAmountFromOrderSummary) {
             finalAmountAfterPoints = parseFloat(finalAmountFromOrderSummary);
-          } else if (isPointsApplied && finalAmountFromModal) {
-            finalAmountAfterPoints = parseFloat(finalAmountFromModal);
-          } else if (calculatedPriceForAmount && calculatedPriceForAmount !== '0') {
-            finalAmountAfterPoints = parseFloat(calculatedPriceForAmount);
-          } else {
-            // Last resort: try to get from order summary modal's calculatedPrice
-            const orderSummaryCalculatedPrice = orderSummaryModalForAmount?.dataset.calculatedPrice;
-            if (orderSummaryCalculatedPrice) {
-              finalAmountAfterPoints = parseFloat(orderSummaryCalculatedPrice);
-            }
+          } 
+          // Priority 2: Use calculatedPrice from order summary modal
+          else if (calculatedPriceFromOrderSummary) {
+            finalAmountAfterPoints = parseFloat(calculatedPriceFromOrderSummary);
+          }
+          // Priority 3: Fallback to modal's finalAmount
+          else if (modal.dataset.finalAmount) {
+            finalAmountAfterPoints = parseFloat(modal.dataset.finalAmount);
+          }
+          // Priority 4: Fallback to modal's calculatedPrice
+          else if (calculatedPrice && calculatedPrice !== '0') {
+            finalAmountAfterPoints = parseFloat(calculatedPrice);
+          }
+          // Last resort: try pricing details
+          else if (pricingDetails?.total_price) {
+            finalAmountAfterPoints = Number(pricingDetails.total_price);
           }
           
           totalAmountRupees = finalAmountAfterPoints;
@@ -23895,12 +24368,21 @@
     }
 
     function hideNotification(notificationId) {
-      let hidden = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');
-      if (!hidden.includes(notificationId)) {
-        hidden.push(notificationId);
-        localStorage.setItem('hiddenNotifications', JSON.stringify(hidden));
+      if (!isStorageAvailable()) {
+        updateNotificationUI();
+        return;
       }
-      updateNotificationUI();
+      try {
+        let hidden = JSON.parse(localStorage.getItem('hiddenNotifications') || '[]');
+        if (!hidden.includes(notificationId)) {
+          hidden.push(notificationId);
+          localStorage.setItem('hiddenNotifications', JSON.stringify(hidden));
+        }
+        updateNotificationUI();
+      } catch (error) {
+        console.warn('Unable to hide notification:', error);
+        updateNotificationUI();
+      }
     }
 
     function updateMapWithCoordinates(coords) {
@@ -24091,6 +24573,9 @@
         .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
         .selectable-image.selected { border: 2.5px solid #2563eb; box-shadow: 0 4px 18px #2563eb22; }
         .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
+        .selectable-image.original .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 220px; }
+        .dark-mode .selectable-image.original .photo-wrap { background: #111827; }
+        .selectable-image.original .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
         .select-radio { position: absolute; top: 16px; right: 18px; z-index: 2; width: 22px; height: 22px; }
         .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
@@ -24102,7 +24587,9 @@
         <div class="selectable-image original selected" tabindex="0">
           <div class="selectable-label">Original</div>
           <span class="select-radio"><input type="radio" name="passport-select" id="select-original" value="original"></span>
-          <img src="${uploadedFileUrl}" alt="Original" />
+          <div class="photo-wrap">
+            <img src="${uploadedFileUrl}" alt="Original" />
+          </div>
         </div>
         <div class="selectable-image enhanced" tabindex="0">
           <div class="selectable-label">Enhanced</div>
