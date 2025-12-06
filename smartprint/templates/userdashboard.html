@@ -22319,6 +22319,23 @@
       const pointsApplied = printModal.dataset.pointsApplied === 'true';
       const finalAmount = pointsApplied ? parseFloat(printModal.dataset.finalAmount || grandTotal) : grandTotal;
       
+      // Store pricing information in order summary modal dataset for payment processing
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal) {
+        orderSummaryModal.dataset.calculatedPrice = calculatedPrice.toString();
+        orderSummaryModal.dataset.finalAmount = finalAmount.toString();
+        if (pricingBreakdown) {
+          orderSummaryModal.dataset.pricingBreakdown = pricingBreakdown;
+        }
+        if (pointsApplied) {
+          orderSummaryModal.dataset.pointsApplied = 'true';
+          orderSummaryModal.dataset.pointsUsed = printModal.dataset.pointsUsed || '0';
+        } else {
+          orderSummaryModal.dataset.pointsApplied = 'false';
+          orderSummaryModal.dataset.pointsUsed = '0';
+        }
+      }
+      
       // Set date and time
       const now = new Date();
       document.getElementById('orderSummaryDate').textContent = now.toLocaleDateString();
@@ -22907,11 +22924,13 @@
         if (modal.dataset.pointsUsed) {
           orderSummaryModal.dataset.pointsUsed = modal.dataset.pointsUsed;
         }
-        if (modal.dataset.finalAmount) {
-          orderSummaryModal.dataset.finalAmount = modal.dataset.finalAmount;
-        } else if (calculatedPrice) {
-          // If no finalAmount (points not applied), use calculatedPrice
-          orderSummaryModal.dataset.finalAmount = calculatedPrice;
+        // Store the calculated finalAmount (includes points if applied) - use the one calculated above
+        orderSummaryModal.dataset.finalAmount = finalAmount.toString();
+        // Also store points information explicitly
+        if (pointsApplied) {
+          orderSummaryModal.dataset.pointsApplied = 'true';
+        } else {
+          orderSummaryModal.dataset.pointsApplied = 'false';
         }
         console.log('📊 Pricing stored in order summary modal:', {
           calculatedPrice: orderSummaryModal.dataset.calculatedPrice,
@@ -23357,6 +23376,11 @@
           const orderSummaryModalForAmount = document.getElementById('orderSummaryModal');
           const finalAmountFromOrderSummary = orderSummaryModalForAmount?.dataset.finalAmount;
           const calculatedPriceFromOrderSummary = orderSummaryModalForAmount?.dataset.calculatedPrice;
+          
+          // Get points information for service modals
+          const isPointsApplied = (orderSummaryModalForAmount?.dataset.pointsApplied || modal.dataset.pointsApplied) === 'true';
+          const finalAmountFromModal = modal.dataset.finalAmount;
+          const calculatedPriceForAmount = calculatedPrice;
           
           let finalAmountAfterPoints = 0;
           // Priority 1: Use finalAmount from order summary modal (includes points if applied)
