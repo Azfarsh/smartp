@@ -1399,28 +1399,19 @@ def userdashboard(request):
         })
 
 
-def get_user_jobs_from_d1(user_email, fallback_to_r2=True):
+def get_user_jobs_from_d1(user_email):
     """
-    Fetch user print jobs from D1 database via Worker API
+    Fetch user print jobs from D1 database via Worker API ONLY
     Returns list of jobs with R2 paths from database
+    STRICTLY NO R2 FALLBACK - Only returns data from User_print_jobs table
     """
-    def _maybe_fallback():
-        if not fallback_to_r2:
-            return []
-        try:
-            print(f"ℹ️ Falling back to R2 for user jobs: {user_email}")
-            return get_user_jobs_from_r2(user_email)
-        except Exception as fallback_error:
-            print(f"⚠️ R2 fallback failed for {user_email}: {fallback_error}")
-            return []
-
     try:
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
         
         if not api_url or not api_key:
             print("⚠️ Worker API not configured for D1 database")
-            return _maybe_fallback()
+            return []
         
         # Construct Worker API endpoint
         worker_endpoint = api_url.rstrip('/') + '/get-user-print-jobs'
@@ -1614,18 +1605,18 @@ def get_user_jobs_from_d1(user_email, fallback_to_r2=True):
                         reverse=True,
                     )
                     return processed_jobs
-                print(f"ℹ️ D1 returned no jobs for {user_email}, attempting fallback")
-                return _maybe_fallback()
+                print(f"ℹ️ D1 returned no jobs for {user_email}")
+                return []
             else:
                 print(f"⚠️ Worker API returned error: {data.get('error', 'Unknown error')}")
-                return _maybe_fallback()
+                return []
         else:
             print(f"⚠️ Worker API request failed with status {resp.status_code}")
-            return _maybe_fallback()
+            return []
             
     except Exception as e:
         print(f"⚠️ Error fetching user jobs from D1: {str(e)}")
-        return _maybe_fallback()
+        return []
 
 
 def userdashboard_data(request):
@@ -4909,9 +4900,15 @@ def verify_razorpay_payment(request):
                     if num_copies:
                         metadata['num_copies'] = str(num_copies)
 
-                # Try to store files with error handling
+                # ATOMIC STORAGE: Store files in R2 and both database tables - all must succeed
+                vendor_stored = False
+                user_stored = False
+                vendor_r2_stored = False
+                user_r2_stored = False
+                upload_error_msg = None
+                
                 try:
-                    # Store to vendor folder
+                    # Step 1: Store to vendor folder in R2
                     r2_metadata = sanitize_r2_metadata(metadata)
                     s3.put_object(
                         Bucket=settings.R2_BUCKET,
@@ -4920,8 +4917,10 @@ def verify_razorpay_payment(request):
                         ContentType=fobj.content_type,
                         Metadata=r2_metadata
                     )
+                    vendor_r2_stored = True
+                    print(f"✅ Stored {fobj.name} to vendor R2 folder")
 
-                    # Store a copy under the user's folder
+                    # Step 2: Store a copy under the user's folder in R2
                     s3.put_object(
                         Bucket=settings.R2_BUCKET,
                         Key=user_file_key,
@@ -4929,62 +4928,78 @@ def verify_razorpay_payment(request):
                         ContentType=fobj.content_type,
                         Metadata=r2_metadata
                     )
-
-                    files_processed += 1
-                    print(f"✅ Successfully uploaded file: {fobj.name}")
+                    user_r2_stored = True
+                    print(f"✅ Stored {fobj.name} to user R2 folder")
                     
-                    # Store print job in D1 database (R2 storage is already done above)
-                    try:
-                        # vendor_email is already extracted above, use it directly
-                        # Fallback to vendor_id lookup only if still not set
-                        if not vendor_email and vendor_id:
-                            try:
-                                vendor_email = get_vendor_email_by_vendor_id(vendor_id)
-                                print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
-                            except Exception as e:
-                                print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
-                        store_vendor_print_job_in_db(
-                            vendor_id=vendor_id,
-                            vendor_email=vendor_email,
-                            user_email=user_email,
-                            filename=fobj.name,
-                            storage_folder=storage_folder,
-                            r2_path=vendor_file_key,
-                            metadata=metadata,
-                            pricing_details=pricing_details,
-                            user_id=str(request.user.id) if request.user.is_authenticated else None,
-                            shop_id=vendor_id
-                        )
-                    except Exception as db_err:
-                        print(f"⚠️ Error storing vendor print job in database: {db_err}")
-                        # Don't fail the upload if database storage fails
-
-                    try:
-                        user_metadata = dict(metadata)
-                        user_metadata['storage_folder'] = 'users'
-                        store_user_print_job_in_db(
-                            vendor_id=vendor_id,
-                            vendor_email=vendor_email,
-                            user_email=user_email,
-                            filename=fobj.name,
-                            storage_folder='users',
-                            r2_path=user_file_key,
-                            metadata=user_metadata,
-                            pricing_details=pricing_details,
-                            user_id=str(request.user.id) if request.user.is_authenticated else None,
-                            shop_id=vendor_id
-                        )
-                    except Exception as user_db_err:
-                        print(f"⚠️ Error storing user print job in database: {user_db_err}")
+                    # Step 3: Store in vendor_print_jobs table (CRITICAL - must succeed)
+                    if not vendor_email and vendor_id:
+                        try:
+                            vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                            print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
+                        except Exception as e:
+                            print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
+                    
+                    vendor_stored = store_vendor_print_job_in_db(
+                        vendor_id=vendor_id,
+                        vendor_email=vendor_email,
+                        user_email=user_email,
+                        filename=fobj.name,
+                        storage_folder=storage_folder,
+                        r2_path=vendor_file_key,
+                        metadata=metadata,
+                        pricing_details=pricing_details,
+                        user_id=str(request.user.id) if request.user.is_authenticated else None,
+                        shop_id=vendor_id
+                    )
+                    
+                    if not vendor_stored:
+                        raise Exception("Failed to store in vendor_print_jobs table")
+                    
+                    # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
+                    user_metadata = dict(metadata)
+                    user_metadata['storage_folder'] = 'users'
+                    user_stored = store_user_print_job_in_db(
+                        vendor_id=vendor_id,
+                        vendor_email=vendor_email,
+                        user_email=user_email,
+                        filename=fobj.name,
+                        storage_folder='users',
+                        r2_path=user_file_key,
+                        metadata=user_metadata,
+                        pricing_details=pricing_details,
+                        user_id=str(request.user.id) if request.user.is_authenticated else None,
+                        shop_id=vendor_id
+                    )
+                    
+                    if not user_stored:
+                        raise Exception("Failed to store in user_print_jobs table")
+                    
+                    # All steps succeeded - mark as processed
+                    files_processed += 1
+                    print(f"✅ Successfully stored file {fobj.name} in R2 and both database tables")
                     
                 except Exception as upload_error:
+                    upload_error_msg = str(upload_error)
+                    print(f"❌ Failed to store file {fobj.name}: {upload_error_msg}")
+                    
+                    # ROLLBACK: Delete R2 files if they were stored but database failed
+                    try:
+                        if vendor_r2_stored:
+                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=vendor_file_key)
+                            print(f"🔄 Rolled back vendor R2 file: {fobj.name}")
+                        if user_r2_stored:
+                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=user_file_key)
+                            print(f"🔄 Rolled back user R2 file: {fobj.name}")
+                    except Exception as rollback_err:
+                        print(f"⚠️ Error during rollback: {rollback_err}")
+                    
+                    # Track failed file and calculate refund amount
                     files_failed += 1
                     failed_files.append({
                         'filename': fobj.name,
-                        'error': str(upload_error),
+                        'error': upload_error_msg,
                         'pricing_details': pricing_details
                     })
-                    print(f"❌ Failed to upload file {fobj.name}: {str(upload_error)}")
                     
                     # Calculate payment amount for this failed file
                     if pricing_details:
@@ -5004,29 +5019,70 @@ def verify_razorpay_payment(request):
         except Exception as e:
             print(f"⚠️ Error deducting points after payment: {str(e)}")
 
-        # Assign points for failed uploads
+        # REFUND LOGIC: If files failed to upload, refund the payment amount
         if files_failed > 0 and total_payment_amount > 0:
             try:
-                user_email = request.user.email if request.user.is_authenticated else 'anonymous'
-                if user_email != 'anonymous':
-                    # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
-                    points_to_assign = float(total_payment_amount)
-                    success = add_user_points(user_email, points_to_assign, f"Compensation for {files_failed} failed upload(s) after payment {payment_id}")
-                    if success:
-                        print(f"💰 Assigned {points_to_assign} points to {user_email} for {files_failed} failed upload(s)")
+                # Convert amount to paise (Razorpay uses paise)
+                refund_amount_paise = int(float(total_payment_amount) * 100)
+                
+                # Attempt Razorpay refund
+                refund_success = False
+                refund_id = None
+                try:
+                    if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+                        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                        refund_data = {
+                            'amount': refund_amount_paise,
+                            'notes': {
+                                'reason': 'Document upload failed',
+                                'failed_files': ', '.join([f['filename'] for f in failed_files]),
+                                'payment_id': payment_id
+                            }
+                        }
+                        refund_response = client.payment.refund(payment_id, refund_data)
+                        if refund_response and refund_response.get('id'):
+                            refund_id = refund_response.get('id')
+                            refund_success = True
+                            print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
+                        else:
+                            print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
                     else:
-                        print(f"❌ Failed to assign points to {user_email} for failed uploads")
+                        print(f"⚠️ Razorpay keys not configured, cannot process refund")
+                except Exception as refund_err:
+                    print(f"❌ Razorpay refund failed: {str(refund_err)}")
+                    # Fallback to points if refund fails
+                    refund_success = False
+                
+                # If refund failed, compensate with points
+                if not refund_success:
+                    user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
+                    if user_email_for_refund != 'anonymous':
+                        # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
+                        points_to_assign = float(total_payment_amount)
+                        success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_id}")
+                        if success:
+                            print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
+                        else:
+                            print(f"❌ Failed to assign points to {user_email_for_refund} for failed uploads")
             except Exception as e:
-                print(f"⚠️ Error assigning points for failed uploads: {str(e)}")
+                print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
 
-        return JsonResponse({
+        # Prepare response with refund information
+        response_data = {
             'success': True, 
             'files_processed': files_processed,
             'files_failed': files_failed,
             'failed_files': failed_files,
             'token': token_value,
             'printer_name': metadata.get('printer_name', '') if files_processed else ''
-        })
+        }
+        
+        # Add refund information if files failed
+        if files_failed > 0 and total_payment_amount > 0:
+            response_data['refund_amount'] = total_payment_amount
+            response_data['refund_message'] = f"Payment of ₹{total_payment_amount} has been refunded due to document upload failure. Please check your payment method for the refund."
+        
+        return JsonResponse(response_data)
     except Exception as e:
         # If payment verification fails but payment was attempted, return points if they were deducted
         try:
@@ -7223,13 +7279,10 @@ def calculate_golden_emboss_pricing(request):
             vendor_email = data.get('vendor_email')
             print_color = data.get('print_color', 'Color')
             paper_type = data.get('paper_type', 'A4')
-            course = data.get('course', '')
-            branch = data.get('branch', '')
-            college = data.get('college', '')
             num_copies = data.get('num_copies', 1)
             page_count = data.get('page_count', 1)
             
-            print(f"Received golden emboss data: vendor_email={vendor_email}, print_color={print_color}, paper_type={paper_type}, course={course}, branch={branch}, college={college}, num_copies={num_copies}, page_count={page_count}")
+            print(f"Received golden emboss data: vendor_email={vendor_email}, print_color={print_color}, paper_type={paper_type}, num_copies={num_copies}, page_count={page_count}")
             
             # Convert page_count to int
             try:

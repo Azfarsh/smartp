@@ -3227,6 +3227,11 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .modal-field-group:last-child {
+      margin-bottom: 0;
     }
     
     .modal-field-group label {
@@ -3235,6 +3240,40 @@
       margin-bottom: 4px;
       font-size: 1rem;
       display: block;
+    }
+    
+    /* Highlight invalid/missing fields */
+    .modal-field-group.error input,
+    .modal-field-group.error select,
+    .modal-field-group.error textarea {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+      background-color: #fef2f2;
+    }
+    
+    .file-item.error {
+      border-color: #ef4444;
+      background-color: #fef2f2;
+      animation: shake 0.5s;
+    }
+    
+    .settings-group.error {
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      padding: 1rem;
+      background-color: #fef2f2;
+      animation: shake 0.5s;
+    }
+    
+    .settings-group.error .settings-label {
+      color: #ef4444;
+      font-weight: 700;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
     }
     
     .modal-field-group input,
@@ -4916,6 +4955,40 @@
       width: 100%;
       height: auto;
       max-height: 400px;
+    }
+    
+    /* Desktop view: Match document modal preview size for all service modals */
+    @media (min-width: 769px) {
+      #service-modal-jumbo .preview-canvas-container,
+      #service-modal-goldenemboss .preview-canvas-container,
+      #service-modal-gloss .preview-canvas-container,
+      #service-modal-digital .preview-canvas-container {
+        width: 100%;
+        max-width: 400px;
+        min-height: 400px;
+        margin: 0 auto;
+        background: #f8fafc;
+        border-radius: var(--radius-md);
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      }
+      
+      #service-modal-jumbo .preview-canvas,
+      #service-modal-goldenemboss .preview-canvas,
+      #service-modal-gloss .preview-canvas,
+      #service-modal-digital .preview-canvas {
+        width: 100%;
+        height: auto;
+        max-height: 400px;
+      }
+      
+      #service-modal-jumbo .image-preview-container,
+      #service-modal-goldenemboss .image-preview-container,
+      #service-modal-gloss .image-preview-container,
+      #service-modal-digital .image-preview-container {
+        max-width: 400px;
+        margin: 0 auto;
+      }
     }
 
     .preview-title {
@@ -7640,6 +7713,8 @@
 
       .field-label {
         flex: 1;
+        display: flex;
+        align-items: center;
       }
 
       .field-title {
@@ -7647,6 +7722,46 @@
         font-size: 1rem;
         color: #222;
         display: block;
+        text-align: left;
+        width: 100%;
+      }
+      
+      /* Desktop view: Ensure proper label alignment - text and asterisk beside icon */
+      @media (min-width: 769px) {
+        .service-modal .field-header,
+        .modal .field-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        
+        .service-modal .field-label,
+        .modal .field-label {
+          display: flex;
+          align-items: center;
+          flex: 1;
+          gap: 0.25rem;
+        }
+        
+        .service-modal .field-label .field-title,
+        .modal .field-label .field-title {
+          display: inline-block;
+          width: auto;
+          text-align: left;
+          margin: 0;
+        }
+        
+        .service-modal .field-label .field-required,
+        .modal .field-label .field-required {
+          display: inline-block;
+          margin-left: 0.25rem;
+        }
+        
+        .service-modal .field-label .field-optional,
+        .modal .field-label .field-optional {
+          display: inline-block;
+          margin-left: 0.25rem;
+        }
       }
 
       .field-required {
@@ -8786,12 +8901,53 @@
         gap: 1rem;
       }
       
-      /* Remove any gaps between modal border and input blocks for golden emboss and gloss modals */
-      #service-modal-goldenemboss .modal-field-group,
-      #service-modal-gloss .modal-field-group {
-        margin: 0;
+      /* Add proper spacing between input field groups for all modals */
+      .service-modal .modal-field-group,
+      .modal .modal-field-group {
+        margin-bottom: 1.5rem;
         padding: 0;
         gap: 0.5rem;
+      }
+      
+      .service-modal .modal-field-group:last-child,
+      .modal .modal-field-group:last-child {
+        margin-bottom: 0;
+      }
+      
+      /* Ensure proper spacing between field headers and inputs */
+      .modal-field-group .field-header {
+        margin-bottom: 0.5rem;
+      }
+      
+      .modal-field-group .field-description {
+        margin-bottom: 0.75rem;
+        margin-top: 0.25rem;
+      }
+      
+      /* Mobile: Consistent spacing for all modals */
+      @media (max-width: 768px) {
+        .service-modal .modal-field-group,
+        .modal .modal-field-group {
+          margin-bottom: 1.25rem;
+        }
+        
+        .service-modal .modal-field-group:last-child,
+        .modal .modal-field-group:last-child {
+          margin-bottom: 0;
+        }
+      }
+      
+      /* Desktop: Consistent spacing for all modals */
+      @media (min-width: 769px) {
+        .service-modal .modal-field-group,
+        .modal .modal-field-group {
+          margin-bottom: 1.75rem;
+        }
+        
+        .service-modal .modal-field-group:last-child,
+        .modal .modal-field-group:last-child {
+          margin-bottom: 0;
+        }
       }
       
       /* Match digital print modal input field dimensions exactly */
@@ -10646,27 +10802,6 @@
               required: true,
               description: 'Choose page orientation for printing',
               icon: 'fas fa-arrows-alt'
-            },
-            { 
-              label: 'Course', 
-              type: 'text', 
-              required: true,
-              description: 'Enter your course name (e.g., Computer Science, Engineering)',
-              icon: 'fas fa-graduation-cap'
-            },
-            { 
-              label: 'Branch', 
-              type: 'text', 
-              required: true,
-              description: 'Enter your branch/specialization (e.g., Information Technology, Mechanical)',
-              icon: 'fas fa-code-branch'
-            },
-            { 
-              label: 'College', 
-              type: 'text', 
-              required: true,
-              description: 'Enter your college/university name',
-              icon: 'fas fa-university'
             },
             { 
               label: 'Number of Copies', 
@@ -13358,11 +13493,12 @@
                   // Hide processing state
                   hidePaymentProcessingState();
                   
-                  // Check for failed uploads and show appropriate message
+                  // Check for failed uploads and show refund message
                   if (verifyData.files_failed > 0) {
                     const failedFiles = verifyData.failed_files || [];
                     const failedFileNames = failedFiles.map(f => f.filename).join(', ');
-                    alert(`Payment successful but ${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\nYou have been compensated with points for the failed uploads.`);
+                    const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
+                    alert(`⚠️ Document Upload Issue\n\n${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\n${refundMessage}\n\nPlease check your payment method for the refund.`);
                   } else {
                     // Show success message for successful uploads
                     showSuccessModalWithAnimation();
@@ -14084,13 +14220,23 @@
         // Collect form data
         const copiesField = modal.querySelector(`#${service}-field-4`);
         const qualityField = modal.querySelector(`#${service}-field-5`);
+        const paperSizeField = modal.querySelector(`#${service}-field-2`);
+        const printColorField = modal.querySelector(`#${service}-field-1`);
+        
+        // Ensure all required fields have values
+        const paper_size = paperSizeField?.value || 'A4';
+        const print_color = printColorField?.value || 'Color';
+        const num_copies = parseInt(copiesField?.value, 10) || 1;
+        const print_quality = qualityField?.value || 'standard_quality';
+        const page_count = parseInt(pageCount, 10) || 1;
+        
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          paper_size: modal.querySelector(`#${service}-field-2`)?.value, // Paper Size
-          print_color: modal.querySelector(`#${service}-field-1`)?.value, // Print Color
-          num_copies: parseInt(copiesField?.value, 10) || 1, // Number of Copies
-          print_quality: qualityField ? qualityField.value : 'standard_quality', // Print Quality
-          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
+          paper_size: paper_size,
+          print_color: print_color,
+          num_copies: num_copies,
+          print_quality: print_quality,
+          page_count: page_count
         };
         
         console.log('Form data being sent:', formData); // Debug log
@@ -14354,13 +14500,25 @@
         }
 
         // Collect form data for jumbo print
+        const printSizeField = modal.querySelector(`#${service}-field-1`);
+        const printColorField = modal.querySelector(`#${service}-field-2`);
+        const printQualityField = modal.querySelector(`#${service}-field-3`);
+        const copiesField = modal.querySelector(`#${service}-field-5`);
+        
+        // Ensure all required fields have values
+        const print_size = printSizeField?.value || 'A3';
+        const print_color = printColorField?.value || 'Color';
+        const print_quality = printQualityField?.value || 'standard_quality';
+        const num_copies = parseInt(copiesField?.value, 10) || 1;
+        const page_count = parseInt(pageCount, 10) || 1;
+        
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          print_size: modal.querySelector(`#${service}-field-1`)?.value, // Print Size
-          print_color: modal.querySelector(`#${service}-field-2`)?.value, // Print Color
-          print_quality: modal.querySelector(`#${service}-field-3`)?.value, // Print Quality
-          num_copies: parseInt(modal.querySelector(`#${service}-field-5`)?.value, 10) || 1, // Number of Copies
-          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
+          print_size: print_size,
+          print_color: print_color,
+          print_quality: print_quality,
+          num_copies: num_copies,
+          page_count: page_count
         };
         
         console.log('Jumbo print form data being sent:', formData); // Debug log
@@ -14475,15 +14633,22 @@
         }
 
         // Collect form data for golden embossing
+        const printColorField = modal.querySelector(`#${service}-field-1`);
+        const paperTypeField = modal.querySelector(`#${service}-field-2`);
+        const copiesField = modal.querySelector(`#${service}-field-4`);
+        
+        // Ensure all required fields have values
+        const print_color = printColorField?.value || 'Color';
+        const paper_type = paperTypeField?.value || 'A4';
+        const num_copies = parseInt(copiesField?.value, 10) || 1;
+        const page_count = parseInt(pageCount, 10) || 1;
+        
         const formData = {
           vendor_email: selectedVendor.vendor_email,
-          print_color: modal.querySelector(`#${service}-field-1`)?.value, // Print Color
-          paper_type: modal.querySelector(`#${service}-field-2`)?.value, // Paper Type
-          course: modal.querySelector(`#${service}-field-4`)?.value, // Course
-          branch: modal.querySelector(`#${service}-field-5`)?.value, // Branch
-          college: modal.querySelector(`#${service}-field-6`)?.value, // College
-          num_copies: parseInt(modal.querySelector(`#${service}-field-7`)?.value, 10) || 1, // Number of Copies
-          page_count: parseInt(pageCount, 10) || 1 // Ensure page count is a number
+          print_color: print_color,
+          paper_type: paper_type,
+          num_copies: num_copies,
+          page_count: page_count
         };
         
         console.log('Golden embossing form data being sent:', formData); // Debug log
@@ -15195,46 +15360,32 @@
       };
 
       const serviceInfo = getServiceInfo(job);
-      // Get pages from database fields first (page_count, num_copies), then fallback to pricing_details
-      // Priority: job.page_count > job.pages > pricing_details > breakdown
+      // STRICT: Get pages and copies ONLY from database fields (User_print_jobs table)
+      // DO NOT use pricing_details or metadata - only use database fields
+      // Priority: job.page_count > job.pages (both from database)
       let pagesFromPricing = null;
       let copiesFromPricing = null;
       
-      // First try database fields directly
+      // ONLY use database fields - no fallback to metadata
       if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
         pagesFromPricing = Number(job.page_count);
       } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
         pagesFromPricing = Number(job.pages);
-      } else {
-        // Fallback to pricing_details
-        const pricingDetails = job.pricing_details || {};
-        const breakdown = pricingDetails.pricing_breakdown || {};
-        pagesFromPricing = breakdown.page_count || breakdown.pages || breakdown.total_pages || 
-                           pricingDetails.page_count || pricingDetails.pages || pricingDetails.total_pages ||
-                           job.total_pages;
-        pagesFromPricing = pagesFromPricing ? Number(pagesFromPricing) : null;
       }
       
-      // First try database fields directly for copies
+      // ONLY use database fields for copies - no fallback to metadata
       if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
         copiesFromPricing = Number(job.num_copies);
       } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
         copiesFromPricing = Number(job.copies);
-      } else {
-        // Fallback to pricing_details
-        const pricingDetails = job.pricing_details || {};
-        const breakdown = pricingDetails.pricing_breakdown || {};
-        copiesFromPricing = breakdown.num_copies || breakdown.copies || 
-                           pricingDetails.num_copies || pricingDetails.copies;
-        copiesFromPricing = copiesFromPricing ? Number(copiesFromPricing) : null;
       }
       
-      // Convert to number and ensure it's valid
-      pagesFromPricing = Number(pagesFromPricing);
+      // Convert to number and ensure it's valid (default to 1 if not found in database)
+      pagesFromPricing = pagesFromPricing !== null ? Number(pagesFromPricing) : 1;
       if (isNaN(pagesFromPricing) || pagesFromPricing <= 0) {
         pagesFromPricing = 1;
       }
-      copiesFromPricing = Number(copiesFromPricing);
+      copiesFromPricing = copiesFromPricing !== null ? Number(copiesFromPricing) : 1;
       if (isNaN(copiesFromPricing) || copiesFromPricing <= 0) {
         copiesFromPricing = 1;
       }
@@ -16848,7 +16999,10 @@
           vendor_price: vendorPrice,
           base_price: commission.base_price,
           commission_amount: commission.amount,
-          commission_percentage: commission.percentage
+          commission_percentage: commission.percentage,
+          // Ensure page_count and num_copies are included for database storage
+          page_count: breakdown.page_count || breakdown.pages || 1,
+          num_copies: breakdown.num_copies || breakdown.copies || 1
         });
       }
 
@@ -19632,9 +19786,33 @@
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Filter jobs efficiently - STRICT FILTER: Only pending jobs (case-insensitive)
+      // Filter jobs efficiently - STRICT FILTER: Only pending jobs (case-insensitive), exclude cancelled jobs older than a day
       const pendingJobs = userJobs.filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        
+        // Filter out cancelled jobs that are older than a day
+        if (jobCompleted === 'CANCELLED') {
+          const cancellationTime = job.cancellation_time || job.timestamp || '';
+          if (cancellationTime) {
+            let cancellationDate = null;
+            try {
+              if (typeof cancellationTime === 'string' && (cancellationTime.includes('T') || cancellationTime.includes(' '))) {
+                cancellationDate = new Date(cancellationTime);
+              } else {
+                const timestamp = typeof cancellationTime === 'number' ? cancellationTime : parseFloat(cancellationTime);
+                cancellationDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+              }
+              if (cancellationDate && !isNaN(cancellationDate.getTime())) {
+                cancellationDate.setHours(0, 0, 0, 0);
+                return cancellationDate.getTime() === today.getTime();
+              }
+            } catch (e) {
+              console.error('Error parsing cancellation_time:', e);
+            }
+          }
+          return false; // Don't show old cancelled jobs
+        }
+        
         return jobCompleted !== 'YES';
       });
       
@@ -19733,12 +19911,26 @@
 
     // Function to create a completed job card for history section
     function createCompletedJobCard(job) {
-      // Prefer pages/copies from pricing metadata when available
-      const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
-      const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
-      const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
-      const resolvedPages = pagesFromMetadata || job.pages || 1;
-      const resolvedCopies = copiesFromMetadata || job.copies || 1;
+      // STRICT: Use ONLY database fields from User_print_jobs table, NOT metadata
+      // Priority: job.page_count > job.pages (both from database)
+      let resolvedPages = 1;
+      let resolvedCopies = 1;
+      
+      if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
+        resolvedPages = Number(job.page_count);
+      } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
+        resolvedPages = Number(job.pages);
+      }
+      
+      if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
+        resolvedCopies = Number(job.num_copies);
+      } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
+        resolvedCopies = Number(job.copies);
+      }
+      
+      // Ensure valid numbers
+      if (isNaN(resolvedPages) || resolvedPages <= 0) resolvedPages = 1;
+      if (isNaN(resolvedCopies) || resolvedCopies <= 0) resolvedCopies = 1;
       const completionTime = job.completion_time ? new Date(job.completion_time * 1000).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -20942,8 +21134,11 @@
         const isComplete = settings && settings.color && settings.orientation && settings.pageSize && settings.copies && settings.copies >= 1;
         const statusIcon = isComplete ? '<i class="fas fa-check-circle" style="color: #10b981; margin-left: 8px;"></i>' : '<i class="fas fa-exclamation-circle" style="color: #f59e0b; margin-left: 8px;" title="Provide details"></i>';
         
+        // Remove error class if file is now complete
+        const errorClass = isComplete ? '' : '';
+        
         return `
-          <div class="file-item ${isSelected ? 'selected' : ''}" data-index="${index}" onclick="selectFile(${index})">
+          <div class="file-item ${isSelected ? 'selected' : ''} ${errorClass}" data-index="${index}" onclick="selectFile(${index})">
             <div class="file-icon">
               <i class="fas fa-file-alt"></i>
             </div>
@@ -21047,18 +21242,12 @@
       // Keep order summary hidden until user explicitly calculates price (if element exists)
       if (orderSummary) orderSummary.style.display = 'none';
       
-      // Update print button based on document completion status
+      // Update print button - always show Print button (validation happens on click)
       const proceedBtn = document.getElementById('proceedBtn');
       if (proceedBtn && hasFiles) {
-        if (allDocumentsConfigured) {
-          proceedBtn.disabled = false;
-          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-          proceedBtn.title = 'Click to view order summary';
-        } else {
-          proceedBtn.disabled = true;
-          proceedBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Provide Details';
-          proceedBtn.title = 'Please configure settings for all documents before proceeding';
-        }
+        proceedBtn.disabled = false;
+        proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+        proceedBtn.title = 'Click to view order summary';
       }
       
       // Only show action buttons after successful file upload
@@ -21803,6 +21992,31 @@
       }
     });
 
+    // Helper function to remove error highlighting
+    function removeErrorHighlighting(fieldType) {
+      // Remove error from file items
+      document.querySelectorAll('.file-item.error').forEach(item => {
+        const fileIndex = parseInt(item.dataset.index);
+        if (fileIndex === selectedFileIndex) {
+          item.classList.remove('error');
+        }
+      });
+      
+      // Remove error from specific settings group
+      const allSettingsGroups = document.querySelectorAll('.settings-group');
+      allSettingsGroups.forEach(group => {
+        if (fieldType === 'copies' && group.querySelector('#copiesCount')) {
+          group.classList.remove('error');
+        } else if (fieldType === 'color' && group.querySelector('.color-options')) {
+          group.classList.remove('error');
+        } else if (fieldType === 'orientation' && group.querySelector('.orientation-options')) {
+          group.classList.remove('error');
+        } else if (fieldType === 'pageSize' && group.querySelector('.page-size-options')) {
+          group.classList.remove('error');
+        }
+      });
+    }
+
     // Settings controls (Complete functionality)
     decreaseCopies.addEventListener('click', () => {
       if (selectedFileIndex === -1) return;
@@ -21810,6 +22024,7 @@
       if (currentCopies > 1) {
         updateCurrentFileSettings('copies', currentCopies - 1);
         copiesCount.textContent = currentCopies - 1;
+        removeErrorHighlighting('copies');
         // Recalculate pricing when copies change
         if (selectedVendor && uploadedFiles.length > 0) {
           debounceCalculateA4();
@@ -21823,6 +22038,7 @@
       if (currentCopies < 99) {
         updateCurrentFileSettings('copies', currentCopies + 1);
         copiesCount.textContent = currentCopies + 1;
+        removeErrorHighlighting('copies');
         // Recalculate pricing when copies change
         if (selectedVendor && uploadedFiles.length > 0) {
           debounceCalculateA4();
@@ -21837,6 +22053,7 @@
         colorOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('color', option.dataset.color);
+        removeErrorHighlighting('color');
         if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
@@ -21848,6 +22065,7 @@
         orientationOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('orientation', option.dataset.orientation);
+        removeErrorHighlighting('orientation');
         if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
@@ -21883,6 +22101,7 @@
         pageSizeOptions.forEach(opt => opt.classList.remove('selected'));
         option.classList.add('selected');
         updateCurrentFileSettings('pageSize', option.dataset.size);
+        removeErrorHighlighting('pageSize');
         if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
       });
     });
@@ -22141,7 +22360,7 @@
     // Function to validate all documents are configured
     function validateAllDocumentsConfigured() {
       if (uploadedFiles.length === 0) {
-        return { valid: false, message: 'Please add at least one file to print.' };
+        return { valid: false, message: 'Please add at least one file to print.', unconfiguredFiles: [] };
       }
       
       // Ensure all documents (up to 3) have their settings configured
@@ -22150,26 +22369,93 @@
         const fileObj = uploadedFiles[i];
         const settings = fileSettings[fileObj.id];
         
-        // Check if essential settings are configured
-        if (!settings || !settings.color || !settings.orientation || !settings.pageSize || !settings.copies || settings.copies < 1) {
+        // Check which specific fields are missing
+        const missingFields = [];
+        if (!settings || !settings.color) missingFields.push('color');
+        if (!settings || !settings.orientation) missingFields.push('orientation');
+        if (!settings || !settings.pageSize) missingFields.push('pageSize');
+        if (!settings || !settings.copies || settings.copies < 1) missingFields.push('copies');
+        
+        if (missingFields.length > 0) {
           unconfiguredFiles.push({
             name: fileObj.name,
-            index: i + 1
+            index: i,
+            fileId: fileObj.id,
+            missingFields: missingFields
           });
         }
       }
       
       if (unconfiguredFiles.length > 0) {
         const fileList = unconfiguredFiles.length === 1 
-          ? `File ${unconfiguredFiles[0].index}: ${unconfiguredFiles[0].name}`
-          : unconfiguredFiles.map(f => `File ${f.index}: ${f.name}`).join(', ');
+          ? `File ${unconfiguredFiles[0].index + 1}: ${unconfiguredFiles[0].name}`
+          : unconfiguredFiles.map(f => `File ${f.index + 1}: ${f.name}`).join(', ');
         return { 
           valid: false, 
-          message: `Please provide details for all documents before proceeding. Missing details for: ${fileList}. Click on each file to configure its settings.` 
+          message: `Please provide details for all documents before proceeding. Missing details for: ${fileList}. Click on each file to configure its settings.`,
+          unconfiguredFiles: unconfiguredFiles
         };
       }
       
-      return { valid: true };
+      return { valid: true, unconfiguredFiles: [] };
+    }
+    
+    // Function to highlight missing fields in document print modal
+    function highlightMissingFields(unconfiguredFiles) {
+      // Remove previous error highlights
+      document.querySelectorAll('.file-item.error').forEach(item => {
+        item.classList.remove('error');
+      });
+      document.querySelectorAll('.settings-group.error').forEach(group => {
+        group.classList.remove('error');
+      });
+      
+      // Highlight file items that are missing details
+      unconfiguredFiles.forEach(fileInfo => {
+        const fileItem = document.querySelector(`.file-item[data-index="${fileInfo.index}"]`);
+        if (fileItem) {
+          fileItem.classList.add('error');
+          // Scroll to file item if not visible
+          fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      
+      // If a file is selected and it has missing fields, highlight those specific fields
+      if (selectedFileIndex !== -1 && uploadedFiles.length > selectedFileIndex) {
+        const selectedFile = uploadedFiles[selectedFileIndex];
+        const fileInfo = unconfiguredFiles.find(f => f.fileId === selectedFile.id);
+        
+        if (fileInfo) {
+          // Select the file to show its settings
+          selectFile(fileInfo.index);
+          
+          // Highlight missing field groups
+          const missingFields = fileInfo.missingFields;
+          
+          // Find settings groups by their content
+          const allSettingsGroups = document.querySelectorAll('.settings-group');
+          allSettingsGroups.forEach(group => {
+            if (missingFields.includes('copies') && group.querySelector('#copiesCount')) {
+              group.classList.add('error');
+            }
+            if (missingFields.includes('color') && group.querySelector('.color-options')) {
+              group.classList.add('error');
+            }
+            if (missingFields.includes('orientation') && group.querySelector('.orientation-options')) {
+              group.classList.add('error');
+            }
+            if (missingFields.includes('pageSize') && group.querySelector('.page-size-options')) {
+              group.classList.add('error');
+            }
+          });
+          
+          // Scroll to print settings if not visible
+          const printSettings = document.getElementById('printSettings');
+          if (printSettings) {
+            printSettings.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }
     }
 
     // Open Order Summary Modal when Print button is clicked
@@ -22178,14 +22464,25 @@
       
       // Validate inputs
       if (uploadedFiles.length === 0) {
-        alert('Please add at least one file to print.');
+        // Highlight upload area if no files
+        const uploadArea = document.getElementById('uploadArea');
+        if (uploadArea) {
+          uploadArea.style.border = '2px solid #ef4444';
+          uploadArea.style.backgroundColor = '#fef2f2';
+          uploadArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            uploadArea.style.border = '';
+            uploadArea.style.backgroundColor = '';
+          }, 3000);
+        }
         return;
       }
       
       // Validate all documents are configured (for up to 3 documents)
       const validation = validateAllDocumentsConfigured();
       if (!validation.valid) {
-        alert(validation.message);
+        // Highlight missing fields instead of showing alert
+        highlightMissingFields(validation.unconfiguredFiles || []);
         return;
       }
       
@@ -23049,6 +23346,13 @@
       if (orderSummaryModal) {
         const orderSummaryModalInner = orderSummaryModal.querySelector('.service-modal');
         
+        // Reset Pay Now button state when modal opens
+        const confirmPayBtn = document.getElementById('orderSummaryConfirmPayBtn');
+        if (confirmPayBtn) {
+          confirmPayBtn.disabled = false;
+          confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+        }
+        
         // Apply same width and max-width as printModal if provided
         if (modalWidth && orderSummaryModalInner) {
           orderSummaryModalInner.style.setProperty('width', `${modalWidth}px`, 'important');
@@ -23083,6 +23387,12 @@
     // Generic payment function - works for all services (print modal and service modals)
     async function processPrintPayment() {
       const confirmPayBtn = document.getElementById('orderSummaryConfirmPayBtn');
+      if (!confirmPayBtn) {
+        console.error('Pay Now button not found');
+        return;
+      }
+      // Store original button text
+      const originalButtonText = confirmPayBtn.innerHTML;
       confirmPayBtn.disabled = true;
       confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
       
@@ -23429,16 +23739,24 @@
           let structuredPricing = orderSummaryModalForStructured?.dataset.structuredPricing || modal.dataset.structuredPricing;
           
           console.log('💰 Pricing retrieved:', {
-            fromOrderSummary: !!orderSummaryModalForPricing?.dataset.calculatedPrice,
+            fromOrderSummary: !!orderSummaryModalForStructured?.dataset.calculatedPrice,
             calculatedPrice: calculatedPrice,
             fromModal: modal.dataset.calculatedPrice
           });
+          
+          // Extract page_count and num_copies from pricing breakdown for database storage
+          let pageCountForDb = 1;
+          let numCopiesForDb = copies;
           
           if (calculatedPrice && pricingBreakdown) {
             try {
               const breakdownObj = JSON.parse(pricingBreakdown);
               const serviceKey = getServiceKey(serviceType, {});
               const commissionInfo = calculatePlatformCommission(serviceKey, breakdownObj);
+
+              // Extract page_count and num_copies from breakdown
+              pageCountForDb = breakdownObj.page_count || breakdownObj.pages || 1;
+              numCopiesForDb = breakdownObj.num_copies || breakdownObj.copies || copies;
 
               pricingDetails = {
                 total_price: commissionInfo.total || parseFloat(calculatedPrice),
@@ -23486,6 +23804,9 @@
               colorRange: colorRange,
               bwRange: bwRange,
               pricing_details: pricingDetails,
+              page_count: pageCountForDb,
+              num_copies: numCopiesForDb,
+              pages: pageCountForDb, // Also include 'pages' for backward compatibility
               all_document_names: allFileNames,
               document_count: files.length,
               vendor_email: vendorEmail || '',
@@ -23611,11 +23932,12 @@
                     throw new Error(verifyData.error || 'Payment verification failed');
                   }
 
-                  // Check for failed uploads
+                  // Check for failed uploads and show refund message
                   if (verifyData.files_failed > 0) {
                     const failedFiles = verifyData.failed_files || [];
                     const failedFileNames = failedFiles.map(f => f.filename).join(', ');
-                    alert(`Payment successful but ${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\nYou have been compensated with points for the failed uploads.`);
+                    const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
+                    alert(`⚠️ Document Upload Issue\n\n${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\n${refundMessage}\n\nPlease check your payment method for the refund.`);
                   }
 
                   // Finalize Google Drive files if needed
@@ -23659,14 +23981,18 @@
               }
               
               // Reset button state
-              confirmPayBtn.disabled = false;
-              confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+              if (confirmPayBtn) {
+                confirmPayBtn.disabled = false;
+                confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+              }
             } catch (err) {
               console.error('Payment handler error:', err);
               hidePaymentProcessingState();
               alert(err.message || 'Payment processing failed. Please try again.');
-              confirmPayBtn.disabled = false;
-              confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+              if (confirmPayBtn) {
+                confirmPayBtn.disabled = false;
+                confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+              }
             }
           }
         };
@@ -23726,8 +24052,10 @@
             alert('Payment failed. Please try again.');
           }
           
-          confirmPayBtn.disabled = false;
-          confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+          if (confirmPayBtn) {
+            confirmPayBtn.disabled = false;
+            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+          }
         });
         
         // Handle payment cancellation
@@ -23735,8 +24063,10 @@
           rzp.on('payment.cancel', function(){
             hidePaymentProcessingState();
             alert('Payment cancelled.');
-            confirmPayBtn.disabled = false;
-            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+            if (confirmPayBtn) {
+              confirmPayBtn.disabled = false;
+              confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+            }
           });
         }
 
@@ -23752,16 +24082,21 @@
             alert('Failed to open payment gateway. Please try again or contact support if the issue persists.');
           }
           hidePaymentProcessingState();
-          confirmPayBtn.disabled = false;
-          confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+          if (confirmPayBtn) {
+            confirmPayBtn.disabled = false;
+            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+          }
           throw rzpError;
         }
       } catch (error) {
         console.error('Error submitting print job:', error);
         hidePaymentProcessingState();
         alert(`Error: ${error.message || 'Failed to submit print job. Please try again.'}`);
-        confirmPayBtn.disabled = false;
-        confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay';
+        const confirmPayBtn = document.getElementById('orderSummaryConfirmPayBtn');
+        if (confirmPayBtn) {
+          confirmPayBtn.disabled = false;
+          confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+        }
       }
     }
 
@@ -24334,11 +24669,21 @@
               }
               
               completedJobsList.innerHTML = completedJobs.map(job => {
-                const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
-                const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
-                const copiesFromMetadata = pricingBreakdown && (pricingBreakdown.num_copies || pricingBreakdown.copies);
-                const resolvedPages = pagesFromMetadata || job.pages || 'N/A';
-                const resolvedCopies = copiesFromMetadata || job.copies || '1';
+                // STRICT: Use ONLY database fields from User_print_jobs table, NOT metadata
+                let resolvedPages = 'N/A';
+                let resolvedCopies = '1';
+                
+                if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
+                  resolvedPages = String(job.page_count);
+                } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
+                  resolvedPages = String(job.pages);
+                }
+                
+                if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
+                  resolvedCopies = String(job.num_copies);
+                } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
+                  resolvedCopies = String(job.copies);
+                }
                 const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (
                   parseInt(job.pages||1)*parseInt(job.copies||1)*(job.color==='color'?5:3)
                   + (job.spiralBinding==='Yes' ? 20*parseInt(job.copies||1) : 0)
@@ -24738,9 +25083,17 @@
         .selectable-image { position: relative; flex: 1 1 320px; min-width: 220px; max-width: 420px; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px #0001; margin: 0 0.5rem; padding: 1.2rem 1rem 2.2rem 1rem; transition: box-shadow 0.2s, border 0.2s; border: 2px solid #e5e7eb; cursor: pointer; }
         .selectable-image.selected { border: 2.5px solid #2563eb; box-shadow: 0 4px 18px #2563eb22; }
         .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
-        .selectable-image.original .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 220px; }
+        .selectable-image.original .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 220px; border-radius: 12px; overflow: hidden; }
         .dark-mode .selectable-image.original .photo-wrap { background: #111827; }
         .selectable-image.original .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        /* Desktop view: Make original preview same size as enhanced */
+        @media (min-width: 769px) {
+          .selectable-image.original { min-width: 320px; max-width: 420px; }
+          .selectable-image.enhanced { min-width: 320px; max-width: 420px; }
+          .selectable-image.original .photo-wrap { min-height: 280px; }
+          .selectable-image.enhanced .photo-wrap { min-height: 280px; }
+        }
         .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
         .select-radio { position: absolute; top: 16px; right: 18px; z-index: 2; width: 22px; height: 22px; }
         .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
