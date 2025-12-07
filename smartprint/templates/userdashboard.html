@@ -3933,6 +3933,22 @@
         border-top: 1px solid #e5e7eb;
         font-size: 0.75rem;
       }
+      
+      #orderSummaryModal #orderSummaryShopAddressRow {
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 10;
+        padding: 0.75rem 0;
+        margin-top: 0.5rem;
+        border-top: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      
+      [data-theme="dark"] #orderSummaryModal #orderSummaryShopAddressRow {
+        background: #ffffff;
+      }
 
       #orderSummaryModal .invoice-items {
         margin-top: 0.75rem;
@@ -4437,6 +4453,13 @@
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      margin: 2rem auto; /* Add margin for desktop view readability */
+    }
+    
+    @media (min-width: 769px) {
+      .invoice-modal {
+        margin: 3rem auto; /* More margin on larger desktop screens */
+      }
     }
     
     @media (max-width: 768px) {
@@ -5194,7 +5217,14 @@
     }
 
     /* Color and Orientation Options */
-    .color-options, .orientation-options {
+    .color-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    
+    .orientation-options {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
@@ -5202,32 +5232,106 @@
     }
 
     .color-option, .orientation-option {
-      padding: 1rem;
+      padding: 1.25rem 1rem;
       border: 2px solid var(--outline);
       border-radius: var(--radius-sm);
       background-color: var(--surface-variant);
       cursor: pointer;
-      transition: all var(--transition-fast);
+      transition: all 0.2s ease;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100px;
     }
 
     .color-option:hover, .orientation-option:hover {
       border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .color-option.selected, .orientation-option.selected {
       border-color: var(--primary);
       background-color: rgba(25, 118, 210, 0.1);
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
     }
 
     .color-option-icon, .orientation-icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
     }
 
     .color-option-label, .orientation-label {
-      font-weight: 500;
+      font-weight: 600;
       color: var(--on-surface);
+      font-size: 0.95rem;
+    }
+    
+    @media (max-width: 768px) {
+      /* Keep color options in one row on mobile */
+      .color-options {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem;
+      }
+      
+      /* Keep orientation options in one row on mobile */
+      .orientation-options {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+      }
+      
+      /* Keep page size options in one row on mobile */
+      .page-size-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        flex-wrap: nowrap;
+      }
+      
+      /* Make options smaller on mobile to fit in row */
+      .color-option, .orientation-option, .page-size-option {
+        padding: 0.75rem 0.5rem;
+        min-height: 80px;
+      }
+      
+      .color-option-icon, .orientation-icon {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .color-option-label, .orientation-label, .page-size-label {
+        font-size: 0.85rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      /* Keep all 3 color options in one row on very small screens */
+      .color-options {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.3rem;
+      }
+      
+      .page-size-options {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.4rem;
+      }
+      
+      .color-option, .orientation-option, .page-size-option {
+        padding: 0.5rem 0.3rem;
+        min-height: 65px;
+      }
+      
+      .color-option-icon, .orientation-icon {
+        font-size: 1.3rem;
+        margin-bottom: 0.3rem;
+      }
+      
+      .color-option-label, .orientation-label, .page-size-label {
+        font-size: 0.7rem;
+        line-height: 1.2;
+      }
     }
 
     /* Page Size Options */
@@ -5431,27 +5535,34 @@
     
     /* Desktop: Make bill header more compact for order summary modal */
     @media (min-width: 769px) {
+      #orderSummaryModal .professional-bill {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 1rem;
+        border-radius: 12px;
+      }
+      
       #orderSummaryModal .bill-header {
-        padding: 1rem 1.25rem;
-        gap: 1rem;
+        padding: 0.875rem 1rem;
+        gap: 0.875rem;
       }
       
       #orderSummaryModal .bill-logo {
-        width: 36px;
-        height: 36px;
-        font-size: 1.1rem;
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
       }
       
       #orderSummaryModal .bill-title h3 {
-        font-size: 1.125rem;
+        font-size: 1rem;
       }
       
       #orderSummaryModal .bill-subtitle {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
       }
       
       #orderSummaryModal .bill-date {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
       }
     }
     
@@ -5554,42 +5665,196 @@
       padding: 1.75rem 2rem; 
     }
     
+    /* Desktop: Make bill in print job block (pricingSummaryModal) more readable with spacing and reduce size */
+    @media (min-width: 769px) {
+      #pricingSummaryModal .professional-bill {
+        max-width: 550px;
+        margin: 1rem auto;
+        padding: 0.75rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+      
+      #pricingSummaryModal .bill-header {
+        padding: 0.75rem 0.875rem;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      #pricingSummaryModal .bill-logo {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+      }
+      
+      #pricingSummaryModal .bill-title h3 {
+        font-size: 0.95rem;
+      }
+      
+      #pricingSummaryModal .bill-subtitle {
+        font-size: 0.7rem;
+      }
+      
+      #pricingSummaryModal .bill-date {
+        font-size: 0.7rem;
+      }
+      
+      #pricingSummaryModal .bill-content {
+        padding: 0.75rem 0.875rem;
+      }
+      
+      #pricingSummaryModal .service-info {
+        margin-bottom: 0.625rem;
+        padding-bottom: 0.625rem;
+      }
+      
+      #pricingSummaryModal .service-info h4 {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      #pricingSummaryModal .service-row {
+        padding: 0.5rem 0.625rem;
+        gap: 0.625rem;
+      }
+      
+      #pricingSummaryModal .service-name {
+        font-size: 0.8rem;
+      }
+      
+      #pricingSummaryModal .service-status {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.625rem;
+      }
+      
+      #pricingSummaryModal .shop-name-row {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        font-size: 0.7rem;
+        gap: 0.375rem;
+      }
+      
+      #pricingSummaryModal .shop-label {
+        font-size: 0.7rem;
+      }
+      
+      #pricingSummaryModal .shop-value {
+        font-size: 0.7rem;
+        line-height: 1.4;
+      }
+      
+      #pricingSummaryModal .invoice-items {
+        margin-top: 0.625rem;
+        padding-top: 0.625rem;
+        border-top: 1px solid #e5e7eb;
+      }
+      
+      #pricingSummaryModal .invoice-item {
+        padding: 0.4rem 0;
+        font-size: 0.75rem;
+      }
+      
+      #pricingSummaryModal .invoice-item-label {
+        font-size: 0.75rem;
+      }
+      
+      #pricingSummaryModal .invoice-item-value {
+        font-size: 0.8rem;
+      }
+      
+      #pricingSummaryModal .invoice-item.invoice-total {
+        margin-top: 0.625rem;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.85rem;
+      }
+      
+      #pricingSummaryModal .invoice-item.invoice-total .invoice-item-label {
+        font-size: 0.85rem;
+      }
+      
+      #pricingSummaryModal .invoice-item.invoice-total .invoice-item-value {
+        font-size: 0.95rem;
+      }
+    }
+    
     /* Desktop: Make bill content more compact for order summary modal */
     @media (min-width: 769px) {
       #orderSummaryModal .bill-content {
-        padding: 1rem 1.25rem;
+        padding: 0.875rem 1rem;
+      }
+      
+      #orderSummaryModal .service-info {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
       }
       
       #orderSummaryModal .service-info h4 {
-        font-size: 0.95rem;
-        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        margin-bottom: 0.625rem;
       }
       
       #orderSummaryModal .service-row {
-        padding: 0.625rem 0.875rem;
+        padding: 0.5rem 0.75rem;
+        gap: 0.75rem;
       }
       
       #orderSummaryModal .service-name {
-        font-size: 0.875rem;
+        font-size: 0.85rem;
       }
       
       #orderSummaryModal .service-status {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.875rem;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.75rem;
       }
       
       #orderSummaryModal .shop-name-row {
         margin-top: 0.5rem;
         padding-top: 0.5rem;
-        font-size: 0.8rem;
+        padding-bottom: 0.5rem;
+        font-size: 0.75rem;
+        gap: 0.375rem;
       }
       
       #orderSummaryModal .shop-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
       }
       
       #orderSummaryModal .shop-value {
+        font-size: 0.75rem;
+      }
+      
+      #orderSummaryModal .invoice-items {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e5e7eb;
+      }
+      
+      #orderSummaryModal .invoice-item {
+        padding: 0.5rem 0;
         font-size: 0.8rem;
+      }
+      
+      #orderSummaryModal .invoice-item-label {
+        font-size: 0.8rem;
+      }
+      
+      #orderSummaryModal .invoice-item-value {
+        font-size: 0.85rem;
+      }
+      
+      #orderSummaryModal .invoice-item.invoice-total {
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+      }
+      
+      #orderSummaryModal .invoice-item.invoice-total .invoice-item-label {
+        font-size: 0.9rem;
+      }
+      
+      #orderSummaryModal .invoice-item.invoice-total .invoice-item-value {
+        font-size: 1rem;
       }
       
       #orderSummaryModal .invoice-item {
@@ -6044,6 +6309,18 @@
       color: var(--on-surface);
       font-family: inherit;
       margin-top: 0.5rem;
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+    }
+    
+    .page-range-input:disabled,
+    .page-range-input[readonly] {
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
     }
 
     .page-range-input:focus {
@@ -6055,7 +6332,23 @@
     .page-range-help {
       font-size: 0.75rem;
       color: var(--on-surface-variant);
-      margin-top: 0.25rem;
+      margin-top: 0.5rem;
+      line-height: 1.4;
+    }
+    
+    .color-range-group {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: var(--surface-variant);
+      border-radius: var(--radius-sm);
+    }
+    
+    .color-range-group:first-of-type {
+      margin-top: 1rem;
+    }
+    
+    .page-range-settings {
+      margin-top: 1rem;
     }
 
     .file-settings-info {
@@ -13324,13 +13617,21 @@
             selectedShopValue = shopSelect.value;
           }
           const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
-          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
-          const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
+          if (!selectedShopData || !selectedShopData.vendor_id) {
+            alert('Please select a valid shop before submitting.');
+            return;
+          }
+          const vendorId = selectedShopData.vendor_id;
+          const vendorEmail = selectedShopData.vendor_email || '';
+          const shopName = selectedShopData.shop_name || selectedShopData.vendor_name || '';
+          const shopAddress = selectedShopData.shop_address || selectedShopData.address || '';
           const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
             
           formData.append('selected_vendor', selectedShopValue);
           formData.append('vendor_id', vendorId);
           formData.append('vendor_email', vendorEmail);
+          formData.append('shop_name', shopName);
+          formData.append('shop_address', shopAddress);
           if (userEmail) {
             formData.append('user_email', userEmail);
           }
@@ -13418,7 +13719,9 @@
               all_document_names: allFileNames,
               document_count: files.length,
               vendor_email: vendorEmail || '',
-              user_email: userEmail || ''
+              user_email: userEmail || '',
+              shop_name: shopName || '',
+              shop_address: shopAddress || ''
             };
             
             formData.append(`settings_${i}`, JSON.stringify(settingsJson));
@@ -13493,15 +13796,29 @@
                   // Hide processing state
                   hidePaymentProcessingState();
                   
-                  // Check for failed uploads and show refund message
+                  // Check for failed uploads and show refund message in modal
                   if (verifyData.files_failed > 0) {
                     const failedFiles = verifyData.failed_files || [];
                     const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                     const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
-                    alert(`⚠️ Document Upload Issue\n\n${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\n${refundMessage}\n\nPlease check your payment method for the refund.`);
+                    showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
                   } else {
                     // Show success message for successful uploads
                     showSuccessModalWithAnimation();
+                    
+                    // Update points if allotted
+                    if (verifyData.points_allotted && verifyData.points_allotted > 0) {
+                      if (typeof userPoints !== 'undefined') {
+                        userPoints = (userPoints || 0) + verifyData.points_allotted;
+                        updatePointsDisplay();
+                        // Update the dashboard points display
+                        const totalPointsElement = document.getElementById('totalPointsCount');
+                        if (totalPointsElement) {
+                          const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                          totalPointsElement.textContent = displayPoints;
+                        }
+                      }
+                    }
                   }
                   
                   // Update job list dynamically
@@ -15783,7 +16100,6 @@
           <!-- Color Options -->
           <div class="settings-group">
             <label class="settings-label">Choose print colour</label>
-            <p class="settings-subtitle">Save money with black & white or get color printouts</p>
             <div class="color-options">
               <div class="color-option" data-color="Black and White">
                 <div class="color-option-icon">
@@ -15797,32 +16113,32 @@
                 </div>
                 <div class="color-option-label">Color</div>
               </div>
+              <div class="color-option" data-color="Mixed">
+                <div class="color-option-icon">
+                  <i class="fas fa-adjust" style="color: #9C27B0;"></i>
+                </div>
+                <div class="color-option-label">Both</div>
+              </div>
             </div>
 
-            <!-- Page Range Settings for Color/Black and White -->
-            <div class="page-range-settings" id="pageRangeSettings">
-              <label class="settings-label">Page Range Selection</label>
-              <div class="page-range-options">
-                <div class="page-range-option">
-                  <input type="radio" id="allPages" name="pageRange" value="all">
-                  <label for="allPages">All pages</label>
-                </div>
-                <div class="page-range-option">
-                  <input type="radio" id="oddPages" name="pageRange" value="odd">
-                  <label for="oddPages">Odd pages only</label>
-                </div>
-                <div class="page-range-option">
-                  <input type="radio" id="evenPages" name="pageRange" value="even">
-                  <label for="evenPages">Even pages only</label>
-                </div>
-                <div class="page-range-option">
-                  <input type="radio" id="specificPages" name="pageRange" value="specific">
-                  <label for="specificPages">Specific pages or ranges</label>
+            <!-- Page Range Settings for Mixed (Both) -->
+            <div class="page-range-settings" id="pageRangeSettings" style="display: none;">
+              <!-- Black and White Range Settings -->
+              <div class="color-range-group" id="bwRangeGroup" style="display: none;">
+                <label class="settings-label">Black and White Pages</label>
+                <input type="text" class="page-range-input" id="bwPageRangeInput" placeholder="e.g., 1-5, 8, 10-12 or odd/even" autocomplete="off" spellcheck="false" inputmode="text" style="pointer-events: auto; opacity: 1; cursor: text; user-select: auto; -webkit-user-select: auto;">
+                <div class="page-range-help" id="bwPageRangeHelp">
+                  Enter page numbers separated by commas, use hyphens for ranges, or type "odd" or "even" (e.g., 1-5, 8, 10-12, odd, even)
                 </div>
               </div>
-              <input type="text" class="page-range-input" id="pageRangeInput" placeholder="e.g., 1-5, 8, 10-12" disabled>
-              <div class="page-range-help" id="pageRangeHelp">
-                Enter page numbers separated by commas. Use hyphens for ranges (e.g., 1-5, 8, 10-12)
+              
+              <!-- Color Range Settings -->
+              <div class="color-range-group" id="colorRangeGroup" style="display: none;">
+                <label class="settings-label">Color Pages</label>
+                <input type="text" class="page-range-input" id="colorPageRangeInput" placeholder="e.g., 1-5, 8, 10-12 or odd/even" autocomplete="off" spellcheck="false" inputmode="text" style="pointer-events: auto; opacity: 1; cursor: text; user-select: auto; -webkit-user-select: auto;">
+                <div class="page-range-help" id="colorPageRangeHelp">
+                  Enter page numbers separated by commas, use hyphens for ranges, or type "odd" or "even" (e.g., 1-5, 8, 10-12, odd, even)
+                </div>
               </div>
             </div>
           </div>
@@ -16727,10 +17043,12 @@
           value: `₹${subtotal}` 
         });
         
-        // Store page range info in breakdown for display
+        // Store page range info in breakdown for display and server
         breakdown.pageRange = pageRange;
         breakdown.actualPages = actualPages;
         breakdown.totalPages = pages;
+        breakdown.page_count = actualPages; // Use actualPages as page_count for server
+        breakdown.num_copies = copies; // Store copies for server
         
         total += subtotal;
 
@@ -17080,6 +17398,10 @@
       orientation: 'portrait',
       pageRange: 'all',
       specificPages: '',
+      bwPageRange: 'all',
+      bwPageRangeValue: '',
+      colorPageRange: 'all',
+      colorPageRangeValue: '',
       pageSize: 'a4',
       spiralBinding: false,
       lamination: false,
@@ -20788,6 +21110,13 @@
       if (noFilesMessage) {
         noFilesMessage.style.display = '';
       }
+      
+      // Re-attach color option listeners after reset to ensure they work
+      setTimeout(() => {
+        if (typeof attachColorOptionListeners === 'function') {
+          attachColorOptionListeners();
+        }
+      }, 100);
     }
 
     function openModal() {
@@ -20802,7 +21131,7 @@
         // Restore preview if a file is selected
         if (selectedFileIndex >= 0 && selectedFileIndex < uploadedFiles.length) {
           updateSettingsDisplay();
-          updateDocumentPreview();
+          debouncedUpdateDocumentPreview();
         }
       }
       // Reset actions visibility on open
@@ -21011,6 +21340,10 @@
         console.log('Updating UI with', uploadedFiles.length, 'total files');
         updateFileList();
         updateUI();
+        // Re-attach color option listeners to ensure they work after file upload
+        if (typeof attachColorOptionListeners === 'function') {
+          setTimeout(() => attachColorOptionListeners(), 50);
+        }
       } else {
         console.log('No files were added');
       }
@@ -21063,7 +21396,37 @@
     }
 
     // Render PDF preview according to filters
+    let currentRenderTask = null; // Track current render task for cancellation
+    let previewUpdateTimeout = null; // Debounce timeout for preview updates
+    let isRendering = false; // Flag to prevent concurrent renders
+    
+    // Debounced wrapper for updateDocumentPreview
+    function debouncedUpdateDocumentPreview() {
+      if (previewUpdateTimeout) {
+        clearTimeout(previewUpdateTimeout);
+      }
+      previewUpdateTimeout = setTimeout(() => {
+        updateDocumentPreview();
+      }, 150);
+    }
+    
     async function updateDocumentPreview() {
+      // Cancel any pending debounced calls
+      if (previewUpdateTimeout) {
+        clearTimeout(previewUpdateTimeout);
+        previewUpdateTimeout = null;
+      }
+      
+      // If already rendering, wait for it to complete or cancel it
+      if (isRendering && currentRenderTask) {
+        try {
+          currentRenderTask.cancel();
+        } catch (e) {
+          // Ignore cancellation errors
+        }
+        currentRenderTask = null;
+      }
+      
       const canvas = document.getElementById('previewCanvas');
       const ctx = canvas.getContext('2d');
       const pageCounter = document.getElementById('pageCounter');
@@ -21072,9 +21435,20 @@
 
       // Clear when no file
       if (selectedFileIndex === -1 || uploadedFiles.length === 0) {
+        // Cancel any ongoing render
+        if (currentRenderTask) {
+          try {
+            currentRenderTask.cancel();
+          } catch (e) {
+            // Ignore cancellation errors
+          }
+          currentRenderTask = null;
+        }
+        isRendering = false;
         canvas.width = 0; canvas.height = 0;
-        pageCounter.textContent = '0 / 0';
-        prevBtn.disabled = true; nextBtn.disabled = true;
+        if (pageCounter) pageCounter.textContent = '0 / 0';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
         return;
       }
 
@@ -21083,13 +21457,34 @@
 
       // Only handle non-images here
       if (fileObj.isImage) {
-        pageCounter.textContent = '1 / 1';
-        prevBtn.disabled = true; nextBtn.disabled = true;
+        // Cancel any ongoing render
+        if (currentRenderTask) {
+          try {
+            currentRenderTask.cancel();
+          } catch (e) {
+            // Ignore cancellation errors
+          }
+          currentRenderTask = null;
+        }
+        isRendering = false;
+        if (pageCounter) pageCounter.textContent = '1 / 1';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
         return;
       }
 
       // Load PDF if needed or file changed
       if (!pdfDocument || pdfLoadedForFileId !== fileObj.id) {
+        // Cancel any ongoing render before loading new PDF
+        if (currentRenderTask) {
+          try {
+            currentRenderTask.cancel();
+          } catch (e) {
+            // Ignore cancellation errors
+          }
+          currentRenderTask = null;
+        }
+        isRendering = false;
         const bytes = await fileObj.file.arrayBuffer();
         const task = pdfjsLib.getDocument({ data: bytes });
         pdfDocument = await task.promise;
@@ -21097,34 +21492,115 @@
       }
 
       // Build filtered pages based on selection
-      filteredPageNumbers = buildFilteredPages(pdfDocument.numPages, settings.pageRange, settings.specificPages);
+      // Use new range settings based on color selection
+      let rangeType = 'all';
+      let rangeText = '';
+      if (settings.color === 'color') {
+        rangeType = settings.colorPageRange || 'all';
+        rangeText = settings.colorPageRangeValue || '';
+      } else if (settings.color === 'Mixed') {
+        // For Mixed, we need to handle both ranges
+        // Use the appropriate range based on current page being viewed
+        rangeType = settings.colorPageRange || 'all';
+        rangeText = settings.colorPageRangeValue || '';
+      } else {
+        rangeType = settings.bwPageRange || 'all';
+        rangeText = settings.bwPageRangeValue || '';
+      }
+      
+      // Handle 'range' type - check if rangeText is 'odd' or 'even'
+      if (rangeType === 'range') {
+        const rangeTextLower = rangeText.trim().toLowerCase();
+        if (rangeTextLower === 'odd') {
+          rangeType = 'odd';
+          rangeText = '';
+        } else if (rangeTextLower === 'even') {
+          rangeType = 'even';
+          rangeText = '';
+        } else {
+          rangeType = 'specific';
+        }
+      }
+      
+      filteredPageNumbers = buildFilteredPages(pdfDocument.numPages, rangeType, rangeText);
       if (filteredPageNumbers.length === 0) filteredPageNumbers = [1];
       if (currentPreviewPageIdx >= filteredPageNumbers.length) currentPreviewPageIdx = 0;
 
       async function renderCurrent() {
-        const pageNumber = filteredPageNumbers[currentPreviewPageIdx];
-        const page = await pdfDocument.getPage(pageNumber);
-        const viewport = page.getViewport({ scale: 1.2 });
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const renderCtx = { canvasContext: ctx, viewport };
-        await page.render(renderCtx).promise;
-        pageCounter.textContent = `${currentPreviewPageIdx + 1} / ${filteredPageNumbers.length}`;
-        prevBtn.disabled = currentPreviewPageIdx === 0;
-        nextBtn.disabled = currentPreviewPageIdx === filteredPageNumbers.length - 1;
+        // Cancel any previous render task and wait a bit for it to complete
+        if (currentRenderTask) {
+          try {
+            currentRenderTask.cancel();
+            // Wait a small amount to ensure cancellation is processed
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } catch (e) {
+            // Ignore cancellation errors
+          }
+          currentRenderTask = null;
+        }
+        
+        // Clear canvas before rendering
+        if (canvas) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        isRendering = true;
+        
+        try {
+          const pageNumber = filteredPageNumbers[currentPreviewPageIdx];
+          const page = await pdfDocument.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1.2 });
+          
+          // Set canvas dimensions before rendering
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          
+          // Clear canvas again after resizing
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          const renderCtx = { canvasContext: ctx, viewport };
+          
+          // Create render task and track it
+          const renderTask = page.render(renderCtx);
+          currentRenderTask = renderTask;
+          
+          await renderTask.promise;
+          
+          // Only update UI if this is still the current task
+          if (currentRenderTask === renderTask && isRendering) {
+            if (pageCounter) pageCounter.textContent = `${currentPreviewPageIdx + 1} / ${filteredPageNumbers.length}`;
+            if (prevBtn) prevBtn.disabled = currentPreviewPageIdx === 0;
+            if (nextBtn) nextBtn.disabled = currentPreviewPageIdx === filteredPageNumbers.length - 1;
+            currentRenderTask = null;
+            isRendering = false;
+          }
+        } catch (error) {
+          // Ignore cancellation errors
+          if (error.name !== 'RenderingCancelledException' && error.message && !error.message.includes('cancelled')) {
+            console.error('Error rendering PDF preview:', error);
+          }
+          currentRenderTask = null;
+          isRendering = false;
+        }
       }
 
       // Attach once
       if (!prevBtn._wired) {
         prevBtn._wired = true;
         prevBtn.addEventListener('click', () => {
-          if (currentPreviewPageIdx > 0) { currentPreviewPageIdx--; renderCurrent(); }
+          if (currentPreviewPageIdx > 0) { 
+            currentPreviewPageIdx--; 
+            renderCurrent(); 
+          }
         });
       }
       if (!nextBtn._wired) {
         nextBtn._wired = true;
         nextBtn.addEventListener('click', () => {
-          if (currentPreviewPageIdx < filteredPageNumbers.length - 1) { currentPreviewPageIdx++; renderCurrent(); }
+          if (currentPreviewPageIdx < filteredPageNumbers.length - 1) { 
+            currentPreviewPageIdx++; 
+            renderCurrent(); 
+          }
         });
       }
 
@@ -21260,7 +21736,7 @@
       updateSettingsDisplay();
       // Reset PDF state when switching files
       pdfDocument = null;
-      updateDocumentPreview();
+      debouncedUpdateDocumentPreview();
     }
 
     function removeFile(index) {
@@ -21295,10 +21771,15 @@
       
       // Update print button - always show Print button (validation happens on click)
       const proceedBtn = document.getElementById('proceedBtn');
-      if (proceedBtn && hasFiles) {
-        proceedBtn.disabled = false;
-        proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
-        proceedBtn.title = 'Click to view order summary';
+      if (proceedBtn) {
+        if (hasFiles) {
+          proceedBtn.style.display = 'flex'; // Show the button
+          proceedBtn.disabled = false;
+          proceedBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+          proceedBtn.title = 'Click to view order summary';
+        } else {
+          proceedBtn.style.display = 'none'; // Hide when no files
+        }
       }
       
       // Only show action buttons after successful file upload
@@ -21364,9 +21845,31 @@
 
       if (copiesCount) copiesCount.textContent = settings.copies;
 
-      colorOptions.forEach(option => {
+      // Re-query color options to ensure we have current DOM elements
+      const currentColorOptions = document.querySelectorAll('.color-option');
+      currentColorOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.color === settings.color);
       });
+      
+      // Show/hide range groups based on selected color
+      const pageRangeSettings = document.getElementById('pageRangeSettings');
+      const bwRangeGroup = document.getElementById('bwRangeGroup');
+      const colorRangeGroup = document.getElementById('colorRangeGroup');
+      const selectedColor = settings.color;
+      
+      if (pageRangeSettings) {
+        if (selectedColor === 'Mixed') {
+          // Show both range groups for Mixed (Both)
+          pageRangeSettings.style.display = 'block';
+          if (bwRangeGroup) bwRangeGroup.style.display = 'block';
+          if (colorRangeGroup) colorRangeGroup.style.display = 'block';
+        } else {
+          // Hide range settings for Black and White or Color (all pages)
+          pageRangeSettings.style.display = 'none';
+          if (bwRangeGroup) bwRangeGroup.style.display = 'none';
+          if (colorRangeGroup) colorRangeGroup.style.display = 'none';
+        }
+      }
 
       orientationOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.orientation === settings.orientation);
@@ -21376,11 +21879,84 @@
         option.classList.toggle('selected', option.dataset.size === settings.pageSize);
       });
 
-      const pageRangeRadio = document.querySelector(`input[value="${settings.pageRange}"]`);
-      if (pageRangeRadio) pageRangeRadio.checked = true;
-      if (pageRangeInput) {
-        pageRangeInput.disabled = settings.pageRange !== 'specific';
-        pageRangeInput.value = settings.specificPages || '';
+      // Update BW range settings (only for Mixed)
+      const bwPageRangeInput = document.getElementById('bwPageRangeInput');
+      if (bwPageRangeInput) {
+        if (selectedColor === 'Mixed') {
+          bwPageRangeInput.value = settings.bwPageRangeValue || '';
+          bwPageRangeInput.disabled = false;
+          bwPageRangeInput.readOnly = false;
+          bwPageRangeInput.removeAttribute('readonly');
+          bwPageRangeInput.removeAttribute('disabled');
+          bwPageRangeInput.removeAttribute('pattern');
+          bwPageRangeInput.setAttribute('type', 'text');
+          bwPageRangeInput.setAttribute('inputmode', 'text');
+          bwPageRangeInput.style.pointerEvents = 'auto';
+          bwPageRangeInput.style.opacity = '1';
+          bwPageRangeInput.style.cursor = 'text';
+          bwPageRangeInput.style.backgroundColor = '';
+          bwPageRangeInput.style.userSelect = 'auto';
+          bwPageRangeInput.style.webkitUserSelect = 'auto';
+          // Ensure input handlers are attached
+          if (!bwPageRangeInput._bwRangeHandler) {
+            attachColorOptionListeners();
+          }
+          
+          // Force enable input and ensure it accepts text
+          bwPageRangeInput.removeAttribute('disabled');
+          bwPageRangeInput.removeAttribute('readonly');
+          bwPageRangeInput.disabled = false;
+          bwPageRangeInput.readOnly = false;
+          bwPageRangeInput.style.pointerEvents = 'auto';
+          bwPageRangeInput.style.opacity = '1';
+          bwPageRangeInput.style.cursor = 'text';
+          bwPageRangeInput.style.userSelect = 'auto';
+          bwPageRangeInput.style.webkitUserSelect = 'auto';
+        } else {
+          bwPageRangeInput.disabled = true;
+          bwPageRangeInput.style.pointerEvents = 'none';
+          bwPageRangeInput.style.opacity = '0.5';
+        }
+      }
+      
+      // Update Color range settings (only for Mixed)
+      const colorPageRangeInput = document.getElementById('colorPageRangeInput');
+      if (colorPageRangeInput) {
+        if (selectedColor === 'Mixed') {
+          colorPageRangeInput.value = settings.colorPageRangeValue || '';
+          colorPageRangeInput.disabled = false;
+          colorPageRangeInput.readOnly = false;
+          colorPageRangeInput.removeAttribute('readonly');
+          colorPageRangeInput.removeAttribute('disabled');
+          colorPageRangeInput.removeAttribute('pattern');
+          colorPageRangeInput.setAttribute('type', 'text');
+          colorPageRangeInput.setAttribute('inputmode', 'text');
+          colorPageRangeInput.style.pointerEvents = 'auto';
+          colorPageRangeInput.style.opacity = '1';
+          colorPageRangeInput.style.cursor = 'text';
+          colorPageRangeInput.style.backgroundColor = '';
+          colorPageRangeInput.style.userSelect = 'auto';
+          colorPageRangeInput.style.webkitUserSelect = 'auto';
+          // Ensure input handlers are attached
+          if (!colorPageRangeInput._colorRangeHandler) {
+            attachColorOptionListeners();
+          }
+          
+          // Force enable input and ensure it accepts text
+          colorPageRangeInput.removeAttribute('disabled');
+          colorPageRangeInput.removeAttribute('readonly');
+          colorPageRangeInput.disabled = false;
+          colorPageRangeInput.readOnly = false;
+          colorPageRangeInput.style.pointerEvents = 'auto';
+          colorPageRangeInput.style.opacity = '1';
+          colorPageRangeInput.style.cursor = 'text';
+          colorPageRangeInput.style.userSelect = 'auto';
+          colorPageRangeInput.style.webkitUserSelect = 'auto';
+        } else {
+          colorPageRangeInput.disabled = true;
+          colorPageRangeInput.style.pointerEvents = 'none';
+          colorPageRangeInput.style.opacity = '0.5';
+        }
       }
 
       if (spiralBindingCheckbox) spiralBindingCheckbox.checked = settings.spiralBinding;
@@ -21393,7 +21969,7 @@
         updateImagePreview(selectedFile, settings);
       } else {
         // non-image (e.g., PDF): render via pdf.js
-        updateDocumentPreview();
+        debouncedUpdateDocumentPreview();
       }
       // ensure footer preview is visible for both types
       if (previewEl) previewEl.classList.add('active');
@@ -21427,28 +22003,237 @@
     }
 
     function calculatePages(fileObj, settings) {
-      if (settings.pageRange === 'all') {
-        return Math.max(1, fileObj.pages || 0);
-      }
-
-      const pageRanges = settings.specificPages.split(',').map(s => s.trim()).filter(s => s);
-      let pageCount = 0;
-
-      pageRanges.forEach(range => {
-        if (range.includes('-')) {
-          const [start, end] = range.split('-').map(n => parseInt(n.trim()));
-          if (!isNaN(start) && !isNaN(end) && start <= end) {
-            pageCount += Math.max(0, Math.min(end, fileObj.pages) - Math.max(1, start) + 1);
-          }
-        } else {
-          const pageNum = parseInt(range);
-          if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= fileObj.pages) {
-            pageCount++;
+      const totalPages = Math.max(1, fileObj.pages || 0);
+      const color = settings.color || 'Black and White';
+      
+      // Calculate pages for black and white
+      let bwPages = 0;
+      if (color === 'Black and White') {
+        const bwRange = settings.bwPageRange || 'all';
+        if (bwRange === 'all') {
+          bwPages = totalPages;
+        } else if (bwRange === 'range') {
+          const bwRangeValue = (settings.bwPageRangeValue || '').trim().toLowerCase();
+          if (bwRangeValue === 'odd') {
+            bwPages = Math.ceil(totalPages / 2);
+          } else if (bwRangeValue === 'even') {
+            bwPages = Math.floor(totalPages / 2);
+          } else if (bwRangeValue) {
+            // Parse specific pages (e.g., "1-5, 8, 10-12")
+            const pageRanges = bwRangeValue.split(',').map(s => s.trim()).filter(s => s);
+            pageRanges.forEach(range => {
+              if (range.includes('-')) {
+                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                  bwPages += Math.max(0, Math.min(end, totalPages) - Math.max(1, start) + 1);
+                }
+              } else {
+                const pageNum = parseInt(range);
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                  bwPages++;
+                }
+              }
+            });
+          } else {
+            bwPages = totalPages;
           }
         }
-      });
-
-      return pageCount;
+      }
+      
+      // Calculate pages for color
+      let colorPages = 0;
+      if (color === 'color') {
+        const colorRange = settings.colorPageRange || 'all';
+        if (colorRange === 'all') {
+          colorPages = totalPages;
+        } else if (colorRange === 'range') {
+          const colorRangeValue = (settings.colorPageRangeValue || '').trim().toLowerCase();
+          if (colorRangeValue === 'odd') {
+            colorPages = Math.ceil(totalPages / 2);
+          } else if (colorRangeValue === 'even') {
+            colorPages = Math.floor(totalPages / 2);
+          } else if (colorRangeValue) {
+            // Parse specific pages (e.g., "1-5, 8, 10-12")
+            const pageRanges = colorRangeValue.split(',').map(s => s.trim()).filter(s => s);
+            pageRanges.forEach(range => {
+              if (range.includes('-')) {
+                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                  colorPages += Math.max(0, Math.min(end, totalPages) - Math.max(1, start) + 1);
+                }
+              } else {
+                const pageNum = parseInt(range);
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                  colorPages++;
+                }
+              }
+            });
+          } else {
+            colorPages = totalPages;
+          }
+        }
+      }
+      
+      // Return total pages (bwPages + colorPages)
+      return Math.max(1, bwPages + colorPages);
+    }
+    
+    // Helper function to get page breakdown for pricing
+    function getPageBreakdown(fileObj, settings) {
+      const totalPages = Math.max(1, fileObj.pages || 0);
+      const color = settings.color || 'Black and White';
+      
+      let bwPages = 0;
+      let colorPages = 0;
+      let bwRangeText = '';
+      let colorRangeText = '';
+      
+      if (color === 'Black and White') {
+        const bwRange = settings.bwPageRange || 'all';
+        if (bwRange === 'all') {
+          bwPages = totalPages;
+          bwRangeText = 'All pages';
+        } else if (bwRange === 'range') {
+          const bwRangeValue = (settings.bwPageRangeValue || '').trim().toLowerCase();
+          if (bwRangeValue === 'odd') {
+            bwPages = Math.ceil(totalPages / 2);
+            bwRangeText = 'Odd pages';
+          } else if (bwRangeValue === 'even') {
+            bwPages = Math.floor(totalPages / 2);
+            bwRangeText = 'Even pages';
+          } else if (bwRangeValue) {
+            bwRangeText = settings.bwPageRangeValue || bwRangeValue; // Use original case
+            const pageRanges = bwRangeValue.split(',').map(s => s.trim()).filter(s => s);
+            pageRanges.forEach(range => {
+              if (range.includes('-')) {
+                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                  bwPages += Math.max(0, Math.min(end, totalPages) - Math.max(1, start) + 1);
+                }
+              } else {
+                const pageNum = parseInt(range);
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                  bwPages++;
+                }
+              }
+            });
+          } else {
+            bwPages = totalPages;
+            bwRangeText = 'All pages';
+          }
+        }
+      } else if (color === 'color') {
+        const colorRange = settings.colorPageRange || 'all';
+        if (colorRange === 'all') {
+          colorPages = totalPages;
+          colorRangeText = 'All pages';
+        } else if (colorRange === 'range') {
+          const colorRangeValue = (settings.colorPageRangeValue || '').trim().toLowerCase();
+          if (colorRangeValue === 'odd') {
+            colorPages = Math.ceil(totalPages / 2);
+            colorRangeText = 'Odd pages';
+          } else if (colorRangeValue === 'even') {
+            colorPages = Math.floor(totalPages / 2);
+            colorRangeText = 'Even pages';
+          } else if (colorRangeValue) {
+            colorRangeText = settings.colorPageRangeValue || colorRangeValue; // Use original case
+            const pageRanges = colorRangeValue.split(',').map(s => s.trim()).filter(s => s);
+            pageRanges.forEach(range => {
+              if (range.includes('-')) {
+                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                  colorPages += Math.max(0, Math.min(end, totalPages) - Math.max(1, start) + 1);
+                }
+              } else {
+                const pageNum = parseInt(range);
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                  colorPages++;
+                }
+              }
+            });
+          } else {
+            colorPages = totalPages;
+            colorRangeText = 'All pages';
+          }
+        }
+      } else if (color === 'Mixed') {
+        // Handle Mixed color - both BW and Color pages
+        const bwRange = settings.bwPageRange || 'all';
+        if (bwRange === 'all') {
+          bwPages = totalPages;
+          bwRangeText = 'All pages';
+        } else if (bwRange === 'range') {
+          const bwRangeValue = (settings.bwPageRangeValue || '').trim().toLowerCase();
+          if (bwRangeValue === 'odd') {
+            bwPages = Math.ceil(totalPages / 2);
+            bwRangeText = 'Odd pages';
+          } else if (bwRangeValue === 'even') {
+            bwPages = Math.floor(totalPages / 2);
+            bwRangeText = 'Even pages';
+          } else if (bwRangeValue) {
+            bwRangeText = settings.bwPageRangeValue || bwRangeValue; // Use original case
+            const pageRanges = bwRangeValue.split(',').map(s => s.trim()).filter(s => s);
+            pageRanges.forEach(range => {
+              if (range.includes('-')) {
+                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                  bwPages += Math.max(0, Math.min(end, totalPages) - Math.max(1, start) + 1);
+                }
+              } else {
+                const pageNum = parseInt(range);
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                  bwPages++;
+                }
+              }
+            });
+          } else {
+            bwPages = 0;
+            bwRangeText = '';
+          }
+        }
+        
+        const colorRange = settings.colorPageRange || 'all';
+        if (colorRange === 'all') {
+          colorPages = totalPages;
+          colorRangeText = 'All pages';
+        } else if (colorRange === 'range') {
+          const colorRangeValue = (settings.colorPageRangeValue || '').trim().toLowerCase();
+          if (colorRangeValue === 'odd') {
+            colorPages = Math.ceil(totalPages / 2);
+            colorRangeText = 'Odd pages';
+          } else if (colorRangeValue === 'even') {
+            colorPages = Math.floor(totalPages / 2);
+            colorRangeText = 'Even pages';
+          } else if (colorRangeValue) {
+            colorRangeText = settings.colorPageRangeValue || colorRangeValue; // Use original case
+            const pageRanges = colorRangeValue.split(',').map(s => s.trim()).filter(s => s);
+            pageRanges.forEach(range => {
+              if (range.includes('-')) {
+                const [start, end] = range.split('-').map(n => parseInt(n.trim()));
+                if (!isNaN(start) && !isNaN(end) && start <= end) {
+                  colorPages += Math.max(0, Math.min(end, totalPages) - Math.max(1, start) + 1);
+                }
+              } else {
+                const pageNum = parseInt(range);
+                if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+                  colorPages++;
+                }
+              }
+            });
+          } else {
+            colorPages = 0;
+            colorRangeText = '';
+          }
+        }
+      }
+      
+      return {
+        totalPages,
+        bwPages,
+        colorPages,
+        bwRangeText,
+        colorRangeText
+      };
     }
 
     function updateCurrentFileSettings(key, value) {
@@ -22097,17 +22882,250 @@
       }
     });
 
-    colorOptions.forEach(option => {
-      option.addEventListener('click', () => {
-        if (selectedFileIndex === -1) return;
 
-        colorOptions.forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-        updateCurrentFileSettings('color', option.dataset.color);
-        removeErrorHighlighting('color');
-        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
+    // Function to attach color option event listeners (can be called after reset)
+    function attachColorOptionListeners() {
+      // Re-query color options to get fresh references (in case DOM was reset)
+      const currentColorOptions = document.querySelectorAll('.color-option');
+      
+      // Attach event listeners to current elements
+      currentColorOptions.forEach(option => {
+        // Remove any existing listeners by cloning (if needed) or just attach new one
+        // Using a named function so we can remove it if needed
+        const handleColorClick = function() {
+          if (selectedFileIndex === -1) return;
+
+          // Re-query to get all current options
+          const allColorOptions = document.querySelectorAll('.color-option');
+          allColorOptions.forEach(opt => opt.classList.remove('selected'));
+          option.classList.add('selected');
+          const selectedColor = option.dataset.color;
+          updateCurrentFileSettings('color', selectedColor);
+          removeErrorHighlighting('color');
+          
+          // Show/hide range groups based on color selection
+          const pageRangeSettings = document.getElementById('pageRangeSettings');
+          const bwRangeGroup = document.getElementById('bwRangeGroup');
+          const colorRangeGroup = document.getElementById('colorRangeGroup');
+          
+          if (pageRangeSettings) {
+            if (selectedColor === 'Mixed') {
+              // Show both range groups for Mixed (Both) color
+              pageRangeSettings.style.display = 'block';
+              if (bwRangeGroup) bwRangeGroup.style.display = 'block';
+              if (colorRangeGroup) colorRangeGroup.style.display = 'block';
+              // Enable range inputs for mixed - ensure they are fully enabled
+              const bwPageRangeInput = document.getElementById('bwPageRangeInput');
+              const colorPageRangeInput = document.getElementById('colorPageRangeInput');
+              if (bwPageRangeInput) {
+                bwPageRangeInput.disabled = false;
+                bwPageRangeInput.readOnly = false;
+                bwPageRangeInput.removeAttribute('readonly');
+                bwPageRangeInput.removeAttribute('disabled');
+                bwPageRangeInput.removeAttribute('pattern');
+                bwPageRangeInput.setAttribute('type', 'text');
+                bwPageRangeInput.setAttribute('inputmode', 'text');
+                bwPageRangeInput.style.pointerEvents = 'auto';
+                bwPageRangeInput.style.opacity = '1';
+                bwPageRangeInput.style.cursor = 'text';
+                bwPageRangeInput.style.backgroundColor = '';
+                bwPageRangeInput.style.userSelect = 'auto';
+                bwPageRangeInput.style.webkitUserSelect = 'auto';
+                bwPageRangeInput.style.tabIndex = '0';
+                bwPageRangeInput.focus(); // Allow focus
+                // Ensure input handlers are attached
+                if (!bwPageRangeInput._bwRangeHandler) {
+                  attachColorOptionListeners();
+                }
+                // Initialize if not set
+                if (!fileSettings[uploadedFiles[selectedFileIndex].id].bwPageRange) {
+                  updateCurrentFileSettings('bwPageRange', 'all');
+                }
+              }
+              if (colorPageRangeInput) {
+                colorPageRangeInput.disabled = false;
+                colorPageRangeInput.readOnly = false;
+                colorPageRangeInput.removeAttribute('readonly');
+                colorPageRangeInput.removeAttribute('disabled');
+                colorPageRangeInput.removeAttribute('pattern');
+                colorPageRangeInput.setAttribute('type', 'text');
+                colorPageRangeInput.setAttribute('inputmode', 'text');
+                colorPageRangeInput.style.pointerEvents = 'auto';
+                colorPageRangeInput.style.opacity = '1';
+                colorPageRangeInput.style.cursor = 'text';
+                colorPageRangeInput.style.backgroundColor = '';
+                colorPageRangeInput.style.userSelect = 'auto';
+                colorPageRangeInput.style.webkitUserSelect = 'auto';
+                colorPageRangeInput.style.tabIndex = '0';
+                colorPageRangeInput.focus(); // Allow focus
+                // Ensure input handlers are attached
+                if (!colorPageRangeInput._colorRangeHandler) {
+                  attachColorOptionListeners();
+                }
+                // Initialize if not set
+                if (!fileSettings[uploadedFiles[selectedFileIndex].id].colorPageRange) {
+                  updateCurrentFileSettings('colorPageRange', 'all');
+                }
+              }
+            } else {
+              // Hide range settings for Black and White or Color (all pages)
+              pageRangeSettings.style.display = 'none';
+              if (bwRangeGroup) bwRangeGroup.style.display = 'none';
+              if (colorRangeGroup) colorRangeGroup.style.display = 'none';
+              // Disable and clear range inputs
+              const bwPageRangeInput = document.getElementById('bwPageRangeInput');
+              const colorPageRangeInput = document.getElementById('colorPageRangeInput');
+              if (bwPageRangeInput) {
+                bwPageRangeInput.disabled = true;
+                bwPageRangeInput.value = '';
+              }
+              if (colorPageRangeInput) {
+                colorPageRangeInput.disabled = true;
+                colorPageRangeInput.value = '';
+              }
+              // Set to all pages
+              updateCurrentFileSettings('bwPageRange', 'all');
+              updateCurrentFileSettings('colorPageRange', 'all');
+              updateCurrentFileSettings('bwPageRangeValue', '');
+              updateCurrentFileSettings('colorPageRangeValue', '');
+            }
+          }
+          
+          // Update preview and settings display
+          updateSettingsDisplay();
+          if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
+        };
+        
+        // Remove old listener if exists, then add new one
+        option.removeEventListener('click', option._colorClickHandler);
+        option._colorClickHandler = handleColorClick;
+        option.addEventListener('click', handleColorClick);
       });
-    });
+      
+      // Also re-attach range input handlers with debouncing
+      const bwPageRangeInput = document.getElementById('bwPageRangeInput');
+      if (bwPageRangeInput) {
+        // Clear any existing timeout
+        if (bwPageRangeInput._debounceTimeout) {
+          clearTimeout(bwPageRangeInput._debounceTimeout);
+        }
+        
+        const handleBwRangeInput = function(e) {
+          if (selectedFileIndex === -1) return;
+          
+          // Don't prevent default - allow normal input behavior
+          if (e) {
+            e.stopPropagation(); // Only stop propagation, not default
+          }
+          
+          // Clear previous timeout
+          if (bwPageRangeInput._debounceTimeout) {
+            clearTimeout(bwPageRangeInput._debounceTimeout);
+          }
+          
+          // Update settings immediately with current input value
+          const currentValue = bwPageRangeInput.value;
+          updateCurrentFileSettings('bwPageRange', 'range');
+          updateCurrentFileSettings('bwPageRangeValue', currentValue);
+          
+          // Debounce preview update to avoid multiple renders
+          bwPageRangeInput._debounceTimeout = setTimeout(() => {
+            debouncedUpdateDocumentPreview();
+            if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
+          }, 300);
+        };
+        
+        bwPageRangeInput.removeEventListener('input', bwPageRangeInput._bwRangeHandler);
+        bwPageRangeInput.removeEventListener('keyup', bwPageRangeInput._bwRangeHandler);
+        bwPageRangeInput.removeEventListener('change', bwPageRangeInput._bwRangeHandler);
+        bwPageRangeInput._bwRangeHandler = handleBwRangeInput;
+        bwPageRangeInput.addEventListener('input', handleBwRangeInput);
+        bwPageRangeInput.addEventListener('keyup', handleBwRangeInput);
+        bwPageRangeInput.addEventListener('change', handleBwRangeInput);
+        
+        // Ensure input is not disabled and accepts text - only if Mixed is selected
+        const currentSettings = fileSettings[uploadedFiles[selectedFileIndex]?.id];
+        if (currentSettings && currentSettings.color === 'Mixed') {
+          bwPageRangeInput.disabled = false;
+          bwPageRangeInput.readOnly = false;
+          bwPageRangeInput.removeAttribute('readonly');
+          bwPageRangeInput.removeAttribute('disabled');
+          bwPageRangeInput.removeAttribute('pattern');
+          bwPageRangeInput.setAttribute('type', 'text');
+          bwPageRangeInput.setAttribute('inputmode', 'text');
+          bwPageRangeInput.style.pointerEvents = 'auto';
+          bwPageRangeInput.style.opacity = '1';
+          bwPageRangeInput.style.cursor = 'text';
+          bwPageRangeInput.style.backgroundColor = '';
+          bwPageRangeInput.style.userSelect = 'auto';
+          bwPageRangeInput.style.webkitUserSelect = 'auto';
+          bwPageRangeInput.style.tabIndex = '0';
+        }
+      }
+      
+      const colorPageRangeInput = document.getElementById('colorPageRangeInput');
+      if (colorPageRangeInput) {
+        // Clear any existing timeout
+        if (colorPageRangeInput._debounceTimeout) {
+          clearTimeout(colorPageRangeInput._debounceTimeout);
+        }
+        
+        const handleColorRangeInput = function(e) {
+          if (selectedFileIndex === -1) return;
+          
+          // Don't prevent default - allow normal input behavior
+          if (e) {
+            e.stopPropagation(); // Only stop propagation, not default
+          }
+          
+          // Clear previous timeout
+          if (colorPageRangeInput._debounceTimeout) {
+            clearTimeout(colorPageRangeInput._debounceTimeout);
+          }
+          
+          // Update settings immediately with current input value
+          const currentValue = colorPageRangeInput.value;
+          updateCurrentFileSettings('colorPageRange', 'range');
+          updateCurrentFileSettings('colorPageRangeValue', currentValue);
+          
+          // Debounce preview update to avoid multiple renders
+          colorPageRangeInput._debounceTimeout = setTimeout(() => {
+            debouncedUpdateDocumentPreview();
+            if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
+          }, 300);
+        };
+        
+        colorPageRangeInput.removeEventListener('input', colorPageRangeInput._colorRangeHandler);
+        colorPageRangeInput.removeEventListener('keyup', colorPageRangeInput._colorRangeHandler);
+        colorPageRangeInput.removeEventListener('change', colorPageRangeInput._colorRangeHandler);
+        colorPageRangeInput._colorRangeHandler = handleColorRangeInput;
+        colorPageRangeInput.addEventListener('input', handleColorRangeInput);
+        colorPageRangeInput.addEventListener('keyup', handleColorRangeInput);
+        colorPageRangeInput.addEventListener('change', handleColorRangeInput);
+        
+        // Ensure input is not disabled and accepts text - only if Mixed is selected
+        const currentSettings = fileSettings[uploadedFiles[selectedFileIndex]?.id];
+        if (currentSettings && currentSettings.color === 'Mixed') {
+          colorPageRangeInput.disabled = false;
+          colorPageRangeInput.readOnly = false;
+          colorPageRangeInput.removeAttribute('readonly');
+          colorPageRangeInput.removeAttribute('disabled');
+          colorPageRangeInput.removeAttribute('pattern');
+          colorPageRangeInput.setAttribute('type', 'text');
+          colorPageRangeInput.setAttribute('inputmode', 'text');
+          colorPageRangeInput.style.pointerEvents = 'auto';
+          colorPageRangeInput.style.opacity = '1';
+          colorPageRangeInput.style.cursor = 'text';
+          colorPageRangeInput.style.backgroundColor = '';
+          colorPageRangeInput.style.userSelect = 'auto';
+          colorPageRangeInput.style.webkitUserSelect = 'auto';
+          colorPageRangeInput.style.tabIndex = '0';
+        }
+      }
+    }
+
+    // Initial attachment of color option listeners
+    attachColorOptionListeners();
 
     orientationOptions.forEach(option => {
       option.addEventListener('click', () => {
@@ -22121,30 +23139,8 @@
       });
     });
 
-    pageRangeRadios.forEach(radio => {
-      radio.addEventListener('change', () => {
-        if (selectedFileIndex === -1) return;
-
-        pageRangeInput.disabled = radio.value !== 'specific';
-        updateCurrentFileSettings('pageRange', radio.value);
-
-        if (radio.value === 'all') {
-          updateCurrentFileSettings('specificPages', '');
-          pageRangeInput.value = '';
-        }
-
-        // reflect immediately in preview
-        updateDocumentPreview();
-        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
-      });
-    });
-
-    pageRangeInput.addEventListener('input', () => {
-      if (selectedFileIndex === -1) return;
-      updateCurrentFileSettings('specificPages', pageRangeInput.value);
-      updateDocumentPreview();
-      if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
-    });
+    // Range input handlers are now managed by attachColorOptionListeners() function
+    // This ensures they are properly re-attached after modal reset
     pageSizeOptions.forEach(option => {
       option.addEventListener('click', () => {
         if (selectedFileIndex === -1) return;
@@ -22233,10 +23229,13 @@
         return; 
       }
 
-      // Calculate total pages and copies
+      // Calculate total pages and copies, and separate bw/color pages
+      // Note: bwPages and colorPages should be per-copy counts (not multiplied by copies)
+      // The backend will multiply by copies in the formula: Copies × [(B&W Pages × B&W Rate) + ...]
       let totalPages = 0;
       let totalCopies = 0;
-      let totalQuantity = 0; // Total pages × copies
+      let bwPages = 0;  // B&W pages per copy (sum across all files)
+      let colorPages = 0;  // Color pages per copy (sum across all files)
       let colorType = 'Black and White'; // Default
       
       for (const fileObj of uploadedFiles) {
@@ -22244,20 +23243,41 @@
         const pages = fileObj.pages;
         const copies = settings.copies;
         
-        totalPages += pages;
+        // Get page breakdown for this file - get per-copy counts
+        if (typeof getPageBreakdown === 'function') {
+          const breakdown = getPageBreakdown(fileObj, settings);
+          // Add page counts per copy (not multiplied by copies - backend will multiply)
+          bwPages += breakdown.bwPages;
+          colorPages += breakdown.colorPages;
+        } else {
+          // Fallback to old calculation
+          totalPages += pages;
+          // If no breakdown function, assume all pages are based on color setting
+          if (settings.color === 'color') {
+            colorPages += pages;
+          } else {
+            bwPages += pages;
+          }
+        }
+        
         totalCopies += copies;
-        totalQuantity += (pages * copies); // Total pages × copies for accurate pricing
         
         // If any file has color, mark as color
         if (settings.color === 'color') {
           colorType = 'Color';
         }
       }
-
-      // Determine print type based on color
+      
+      // Calculate total pages from bw and color (per copy)
+      totalPages = bwPages + colorPages;
+      
+      // Determine print type - if we have both bw and color, we'll calculate separately
       let printType = 'single_bw'; // Default
-      if (colorType === 'Color') {
+      if (colorPages > 0 && bwPages === 0) {
         printType = 'single_color';
+        colorType = 'Color';
+      } else if (colorPages > 0 && bwPages > 0) {
+        colorType = 'Mixed';
       }
       
       // For A4 print, we use single-sided printing by default
@@ -22272,13 +23292,15 @@
       const tapeBinding = document.getElementById('tapeBinding').checked;
       
       // Collect form data for A4 print
-      // Pricing structure supports: a4_print_single_bw, a4_print_single_color, a4_print_double_bw, a4_print_double_color
+      // Backend expects: bw_pages and color_pages as per-copy counts (not multiplied by copies)
+      // Backend formula: Copies × [(B&W Pages × B&W Rate) + (Color Pages × Color Rate) + ...]
       const formData = {
         vendor_email: selectedVendorData.vendor_email,
         print_type: printType,
-        total_pages: totalPages,
+        total_pages: totalPages,  // Total pages per copy
         total_copies: totalCopies,
-        total_quantity: totalQuantity, // Total pages × copies for accurate pricing
+        bw_pages: bwPages,  // B&W pages per copy
+        color_pages: colorPages,  // Color pages per copy
         spiral_binding: spiralBinding,
         lamination: lamination,
         tape_binding: tapeBinding
@@ -22308,68 +23330,49 @@
         const result = await safeParseJson(response);
 
         if (result.success) {
-          // Pricing calculation successful - calculate commission and update display
+          // Pricing calculation successful - backend already calculated everything including 20% commission
           const breakdown = result.pricing_breakdown;
-          let vendorPrice = breakdown.total_price;
           
-          // Calculate platform commission for A4 print
-          const serviceKey = printType === 'single_color' ? 'a4_print_color' : 'a4_print_bw';
-          const commission = calculatePlatformCommission(serviceKey, vendorPrice);
+          // Backend returns:
+          // - total_bill_amount: before commission
+          // - final_amount: after 20% commission (this is what customer pays)
+          // - commission_amount: the 20% commission
+          const totalBillAmount = breakdown.total_bill_amount || 0;  // Before commission
+          const finalAmount = breakdown.final_amount || result.total_price || 0;  // After commission (customer pays this)
+          const commissionAmount = breakdown.commission_amount || (finalAmount - totalBillAmount);
+          const commissionPercent = breakdown.commission_percentage || 20;
           
-          // Add binding services commission if selected
-          if (spiralBinding) {
-            const spiralPrice = 20 * totalCopies;
-            const bindingCommission = calculatePlatformCommission('spiral_binding', spiralPrice);
-            commission.amount += bindingCommission.amount;
-            commission.total += bindingCommission.total;
-          }
-          if (lamination) {
-            const laminationPrice = totalPages * totalCopies * 15;
-            const laminationCommission = calculatePlatformCommission('lamination_a4', laminationPrice);
-            commission.amount += laminationCommission.amount;
-            commission.total += laminationCommission.total;
-          }
-          if (tapeBinding) {
-            const tapePrice = 25 * totalCopies;
-            const tapeCommission = calculatePlatformCommission('tape_binding', tapePrice);
-            commission.amount += tapeCommission.amount;
-            commission.total += tapeCommission.total;
-          }
-          
-          // Calculate total including additional options
-          let totalSubtotal = vendorPrice;
+          // Build additional options array from breakdown
           const additionalOptions = [];
-          
-          if (spiralBinding) {
-            const spiralPrice = 20 * totalCopies;
-            totalSubtotal += spiralPrice;
-            additionalOptions.push({ name: 'Spiral Binding', price: spiralPrice });
+          if (breakdown.lamination_cost && breakdown.lamination_cost > 0) {
+            additionalOptions.push({ name: 'Lamination', price: breakdown.lamination_cost });
           }
-          if (lamination) {
-            const laminationPrice = totalPages * totalCopies * 15;
-            totalSubtotal += laminationPrice;
-            additionalOptions.push({ name: 'Lamination', price: laminationPrice });
+          if (breakdown.spiral_binding_cost && breakdown.spiral_binding_cost > 0) {
+            additionalOptions.push({ name: 'Spiral Binding', price: breakdown.spiral_binding_cost });
           }
-          if (tapeBinding) {
-            const tapePrice = 25 * totalCopies;
-            totalSubtotal += tapePrice;
-            additionalOptions.push({ name: 'Tape Binding', price: tapePrice });
+          if (breakdown.tape_binding_cost && breakdown.tape_binding_cost > 0) {
+            additionalOptions.push({ name: 'Tape Binding', price: breakdown.tape_binding_cost });
           }
           
-          // Add additional options to pricing breakdown
+          // Complete breakdown with all details
           const completeBreakdown = {
             ...breakdown,
-            total_price: commission.total,
-            vendor_price: vendorPrice,
-            commission_amount: commission.amount,
-            commission_percentage: commission.percentage,
+            total_price: finalAmount,  // Final amount customer pays (includes 20% commission)
+            vendor_price: totalBillAmount,  // Total bill amount before commission
+            commission_amount: commissionAmount,
+            commission_percentage: commissionPercent,
             additional_options: additionalOptions,
-            subtotal: totalSubtotal
+            subtotal: totalBillAmount  // Subtotal before commission
           };
           
-          // Store the calculated price in modal metadata
-          document.getElementById('printModal').dataset.calculatedPrice = commission.total;
-          document.getElementById('printModal').dataset.pricingBreakdown = JSON.stringify(completeBreakdown);
+          // Store the calculated price in modal metadata (final amount with 20% commission already applied)
+          const printModalEl = document.getElementById('printModal');
+          printModalEl.dataset.calculatedPrice = finalAmount.toString();
+          printModalEl.dataset.pricingBreakdown = JSON.stringify(completeBreakdown);
+          // Store vendor email for later retrieval in order summary
+          if (selectedVendorData && selectedVendorData.vendor_email) {
+            printModalEl.dataset.vendorEmail = selectedVendorData.vendor_email;
+          }
           
           // REMOVED: Order summary elements no longer exist in print modal
           // Order summary is now shown in separate orderSummaryModal when user clicks Print button
@@ -22537,16 +23540,190 @@
         return;
       }
       
-      // Check if pricing has been calculated
+      // Validate color option is selected for all files
+      if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        const filesWithoutColor = [];
+        uploadedFiles.forEach((fileObj, index) => {
+          const settings = fileSettings[fileObj.id];
+          if (!settings || !settings.color) {
+            filesWithoutColor.push({ name: fileObj.name, index: index });
+          }
+        });
+        
+        if (filesWithoutColor.length > 0) {
+          // Highlight color option group instead of showing alert
+          const colorOptionsGroup = document.querySelector('.color-options')?.closest('.settings-group');
+          if (colorOptionsGroup) {
+            colorOptionsGroup.classList.add('error');
+            colorOptionsGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+              colorOptionsGroup.classList.remove('error');
+            }, 5000);
+          }
+          
+          // Also highlight the file items that need color selection
+          filesWithoutColor.forEach(fileInfo => {
+            const fileItem = document.querySelector(`.file-item[data-index="${fileInfo.index}"]`);
+            if (fileItem) {
+              fileItem.classList.add('error');
+              fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          });
+          return;
+        }
+        
+        // Validate page range inputs when "Both" (Mixed) is selected
+        for (let index = 0; index < uploadedFiles.length; index++) {
+          const fileObj = uploadedFiles[index];
+          const settings = fileSettings[fileObj.id];
+          if (settings && settings.color === 'Mixed') {
+            // Select the file first to ensure inputs are visible
+            if (selectedFileIndex !== index) {
+              selectFile(index);
+              // Wait a bit for UI to update
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            const bwPageRangeInput = document.getElementById('bwPageRangeInput');
+            const colorPageRangeInput = document.getElementById('colorPageRangeInput');
+            
+            // Get values from inputs or settings
+            const bwValue = bwPageRangeInput ? bwPageRangeInput.value.trim() : (settings.bwPageRangeValue || '').trim();
+            const colorValue = colorPageRangeInput ? colorPageRangeInput.value.trim() : (settings.colorPageRangeValue || '').trim();
+            
+            // Check if both values are empty - highlight instead of alert
+            if (!bwValue && !colorValue) {
+              // Highlight the page range settings
+              const pageRangeSettings = document.getElementById('pageRangeSettings');
+              if (pageRangeSettings) {
+                pageRangeSettings.style.border = '2px solid #ef4444';
+                pageRangeSettings.style.borderRadius = '8px';
+                pageRangeSettings.style.padding = '0.5rem';
+                pageRangeSettings.style.backgroundColor = '#fef2f2';
+                pageRangeSettings.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Highlight the inputs
+                if (bwPageRangeInput) {
+                  bwPageRangeInput.style.border = '2px solid #ef4444';
+                  bwPageRangeInput.style.backgroundColor = '#fef2f2';
+                }
+                if (colorPageRangeInput) {
+                  colorPageRangeInput.style.border = '2px solid #ef4444';
+                  colorPageRangeInput.style.backgroundColor = '#fef2f2';
+                }
+                
+                setTimeout(() => {
+                  if (pageRangeSettings) {
+                    pageRangeSettings.style.border = '';
+                    pageRangeSettings.style.borderRadius = '';
+                    pageRangeSettings.style.padding = '';
+                    pageRangeSettings.style.backgroundColor = '';
+                  }
+                  if (bwPageRangeInput) {
+                    bwPageRangeInput.style.border = '';
+                    bwPageRangeInput.style.backgroundColor = '';
+                  }
+                  if (colorPageRangeInput) {
+                    colorPageRangeInput.style.border = '';
+                    colorPageRangeInput.style.backgroundColor = '';
+                  }
+                }, 5000);
+              }
+              
+              // Also highlight the file item
+              const fileItem = document.querySelector(`.file-item[data-index="${index}"]`);
+              if (fileItem) {
+                fileItem.classList.add('error');
+              }
+              
+              return;
+            }
+            
+            // Check if only one value is empty - highlight the empty input
+            if (!bwValue && colorValue) {
+              if (bwPageRangeInput) {
+                bwPageRangeInput.style.border = '2px solid #ef4444';
+                bwPageRangeInput.style.backgroundColor = '#fef2f2';
+                bwPageRangeInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                  bwPageRangeInput.style.border = '';
+                  bwPageRangeInput.style.backgroundColor = '';
+                }, 5000);
+              }
+              return;
+            }
+            
+            if (bwValue && !colorValue) {
+              if (colorPageRangeInput) {
+                colorPageRangeInput.style.border = '2px solid #ef4444';
+                colorPageRangeInput.style.backgroundColor = '#fef2f2';
+                colorPageRangeInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                  colorPageRangeInput.style.border = '';
+                  colorPageRangeInput.style.backgroundColor = '';
+                }, 5000);
+              }
+              return;
+            }
+          }
+        }
+      }
+      
+      // Check if pricing has been calculated - highlight instead of alert
       const hasCalculatedPrice = document.getElementById('printModal').dataset.calculatedPrice;
       if (!hasCalculatedPrice) {
-        alert('Please calculate the price before submitting the print job.');
+        // Highlight the calculate button area or pricing section
+        const calculateBtn = document.getElementById('calculatePriceBtn');
+        const printSettings = document.getElementById('printSettings');
+        if (calculateBtn) {
+          calculateBtn.style.border = '2px solid #ef4444';
+          calculateBtn.style.backgroundColor = '#fef2f2';
+          calculateBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            calculateBtn.style.border = '';
+            calculateBtn.style.backgroundColor = '';
+          }, 5000);
+        } else if (printSettings) {
+          printSettings.style.border = '2px solid #ef4444';
+          printSettings.style.borderRadius = '8px';
+          printSettings.style.padding = '0.5rem';
+          printSettings.style.backgroundColor = '#fef2f2';
+          printSettings.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            printSettings.style.border = '';
+            printSettings.style.borderRadius = '';
+            printSettings.style.padding = '';
+            printSettings.style.backgroundColor = '';
+          }, 5000);
+        }
         return;
       }
 
-      // Check if a shop is selected
+      // Check if a shop is selected - highlight instead of alert
       if (!selectedVendor || selectedVendor === '') {
-        alert('Please select a print shop before proceeding.');
+        const shopSelectionButton = document.getElementById('print-shop-selection-button');
+        const vendorSelection = document.getElementById('vendorSelection');
+        if (shopSelectionButton) {
+          shopSelectionButton.style.border = '2px solid #ef4444';
+          shopSelectionButton.style.backgroundColor = '#fef2f2';
+          shopSelectionButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            shopSelectionButton.style.border = '';
+            shopSelectionButton.style.backgroundColor = '';
+          }, 5000);
+        } else if (vendorSelection) {
+          vendorSelection.style.border = '2px solid #ef4444';
+          vendorSelection.style.borderRadius = '8px';
+          vendorSelection.style.padding = '0.5rem';
+          vendorSelection.style.backgroundColor = '#fef2f2';
+          vendorSelection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            vendorSelection.style.border = '';
+            vendorSelection.style.borderRadius = '';
+            vendorSelection.style.padding = '';
+            vendorSelection.style.backgroundColor = '';
+          }, 5000);
+        }
         return;
       }
 
@@ -22623,8 +23800,40 @@
       const calculatedPrice = parseFloat(printModal.dataset.calculatedPrice || '0');
       const pricingBreakdown = printModal.dataset.pricingBreakdown;
       
-      // Get shop name
-      const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+      // Parse pricing breakdown first to get vendor email
+      let breakdownObj = {};
+      if (pricingBreakdown) {
+        try {
+          breakdownObj = JSON.parse(pricingBreakdown);
+        } catch (e) {
+          console.error('Error parsing pricing breakdown:', e);
+        }
+      }
+      
+      // Get shop name and data - ensure we have the correct shop data
+      // Try to get from selectedVendor variable first, then from breakdown
+      let selectedVendorData = null;
+      if (typeof selectedVendor !== 'undefined' && selectedVendor) {
+        selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+      }
+      
+      // If not found, try to get from breakdown vendor_email
+      if (!selectedVendorData && breakdownObj && breakdownObj.vendor_email) {
+        selectedVendorData = availableShops.find(shop => shop.vendor_email === breakdownObj.vendor_email);
+      }
+      
+      // If still not found, try to get from printModal dataset
+      if (!selectedVendorData && printModal) {
+        const vendorEmailFromModal = printModal.dataset.vendorEmail;
+        if (vendorEmailFromModal) {
+          selectedVendorData = availableShops.find(shop => shop.vendor_email === vendorEmailFromModal);
+        }
+      }
+      
+      if (!selectedVendorData) {
+        console.error('Selected vendor data not found. selectedVendor:', typeof selectedVendor !== 'undefined' ? selectedVendor : 'undefined', 'availableShops:', availableShops.length, 'breakdownObj:', breakdownObj);
+      }
+      
       const shopName = selectedVendorData ? (selectedVendorData.shop_name || selectedVendorData.vendor_name || selectedVendorData.vendor_email || '-') : '-';
       
       // Calculate totals from uploaded files - check if variables exist
@@ -22661,28 +23870,18 @@
         }
       }
       
-      // Parse pricing breakdown to get commission details first
-      let breakdownObj = {};
-      let additionalOptions = [];
+      // breakdownObj already parsed above, now get additional details
+      let additionalOptions = breakdownObj.additional_options || [];
       let commissionPercent = 0;
       let commissionAmount = 0;
       let basePrice = 0;
       let vendorPrice = 0;
       
-      if (pricingBreakdown) {
-        try {
-          breakdownObj = JSON.parse(pricingBreakdown);
-          additionalOptions = breakdownObj.additional_options || [];
-          
-          // Get commission details
-          commissionPercent = breakdownObj.commission_percentage || 0;
-          commissionAmount = breakdownObj.commission_amount || breakdownObj.platform_profit || 0;
-          basePrice = breakdownObj.base_price || breakdownObj.price_per_page || 0;
-          vendorPrice = breakdownObj.vendor_price || breakdownObj.total_price || 0;
-        } catch (e) {
-          console.error('Error parsing pricing breakdown:', e);
-        }
-      }
+      // Get commission details from breakdown
+      commissionPercent = breakdownObj.commission_percentage || 0;
+      commissionAmount = breakdownObj.commission_amount || breakdownObj.platform_profit || 0;
+      basePrice = breakdownObj.base_price || breakdownObj.price_per_page || 0;
+      vendorPrice = breakdownObj.vendor_price || breakdownObj.total_price || 0;
       
       // Determine service name - get from breakdown if colorTypes is empty
       let colorType = 'Mixed';
@@ -22731,39 +23930,36 @@
         commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 20;
       }
       
-      // Get base total price (before commission) from breakdown - same method as jumbo print
-      // The breakdown from frontend has: subtotal (base + options), vendor_price, and total_price (with commission)
+      // Get pricing from breakdown - backend now returns final_amount (with 20% commission already applied)
+      // Backend returns: total_bill_amount (before commission), final_amount (after 20% commission), commission_amount
       let baseTotalPrice = 0;
+      let grandTotal = 0;
       
-      // Priority: subtotal > vendor_price > calculatedPrice > base_price
-      if (breakdownObj.subtotal && breakdownObj.subtotal > 0) {
-        // subtotal is base price + additional options (before commission)
+      // Priority: final_amount from breakdown > total_bill_amount > calculatedPrice
+      if (breakdownObj.final_amount && breakdownObj.final_amount > 0) {
+        // Backend already calculated final_amount with 20% commission
+        grandTotal = parseFloat(breakdownObj.final_amount);
+        baseTotalPrice = parseFloat(breakdownObj.total_bill_amount || 0);
+      } else if (breakdownObj.total_bill_amount && breakdownObj.total_bill_amount > 0) {
+        // If we have total_bill_amount but no final_amount, calculate it
+        baseTotalPrice = parseFloat(breakdownObj.total_bill_amount);
+        grandTotal = baseTotalPrice * 1.20;  // Apply 20% commission
+      } else if (breakdownObj.subtotal && breakdownObj.subtotal > 0) {
+        // Fallback to subtotal (legacy support)
         baseTotalPrice = parseFloat(breakdownObj.subtotal);
+        grandTotal = baseTotalPrice * 1.20;  // Apply 20% commission
       } else if (breakdownObj.vendor_price && breakdownObj.vendor_price > 0) {
-        // vendor_price is the vendor price before commission
+        // Fallback to vendor_price (legacy support)
         baseTotalPrice = parseFloat(breakdownObj.vendor_price);
+        grandTotal = baseTotalPrice * 1.20;  // Apply 20% commission
       } else if (calculatedPrice > 0) {
-        // If we have calculatedPrice, we need to reverse-calculate base price
-        // calculatedPrice = baseTotalPrice * (1 + commissionPercent/100)
-        // baseTotalPrice = calculatedPrice / (1 + commissionPercent/100)
-        baseTotalPrice = calculatedPrice / (1 + commissionPercent / 100);
-      } else if (breakdownObj.base_price && breakdownObj.base_price > 0) {
-        // Fallback to base_price (per page) - multiply by pages and copies
-        const pages = breakdownObj.total_pages || breakdownObj.page_count || 1;
-        const copies = breakdownObj.total_copies || breakdownObj.num_copies || 1;
-        baseTotalPrice = parseFloat(breakdownObj.base_price) * pages * copies;
-      }
-      
-      // Calculate grand total: baseTotalPrice × (1 + commissionPercent/100) - same as jumbo print
-      let grandTotal = baseTotalPrice * (1 + commissionPercent / 100);
-      
-      // If breakdown.total_price exists and commission is already applied, use it directly
-      // (This is the case when using completeBreakdown from frontend)
-      if (breakdownObj.total_price && breakdownObj.commission_amount && breakdownObj.commission_amount > 0) {
-        grandTotal = parseFloat(breakdownObj.total_price);
-      } else if (calculatedPrice > 0 && calculatedPrice >= baseTotalPrice) {
-        // If calculatedPrice is available and seems valid, use it (it already includes commission)
+        // Last resort: use calculatedPrice (should already include commission from new backend)
         grandTotal = calculatedPrice;
+        baseTotalPrice = grandTotal / 1.20;  // Reverse calculate base
+      } else {
+        // Default fallback
+        grandTotal = 0;
+        baseTotalPrice = 0;
       }
       
       // Get final amount (with points if applied) - same method as jumbo print
@@ -22901,30 +24097,41 @@
           // Use colorDisplayText which already handles exact color type (not Mixed)
           const displayColor = colorDisplayText;
           
-          // Get page range information if available
-          let pageRangeDisplay = '';
-          if (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined') {
-            const firstFile = uploadedFiles[0];
-            const firstFileSettings = fileSettings[firstFile.id];
-            if (firstFileSettings && firstFileSettings.pageRange) {
-              const pageRange = firstFileSettings.pageRange;
-              if (pageRange === 'odd') {
-                pageRangeDisplay = ' (Odd pages)';
-              } else if (pageRange === 'even') {
-                pageRangeDisplay = ' (Even pages)';
-              } else if (pageRange === 'specific' && firstFileSettings.specificPages) {
-                pageRangeDisplay = ` (Pages: ${firstFileSettings.specificPages})`;
+          // Get B&W and Color pages from backend breakdown (preferred) or calculate from files
+          let bwPagesCount = 0;
+          let colorPagesCount = 0;
+          let bwRangeDisplay = '';
+          let colorRangeDisplay = '';
+          
+          // Priority: Use backend breakdown data (most accurate)
+          if (breakdownObj.bw_pages !== undefined && breakdownObj.color_pages !== undefined) {
+            bwPagesCount = parseInt(breakdownObj.bw_pages) || 0;
+            colorPagesCount = parseInt(breakdownObj.color_pages) || 0;
+          } else if (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined') {
+            // Fallback: Calculate from uploaded files
+            uploadedFiles.forEach(fileObj => {
+              const settings = fileSettings[fileObj.id];
+              if (settings && typeof getPageBreakdown === 'function') {
+                const breakdown = getPageBreakdown(fileObj, settings);
+                bwPagesCount += breakdown.bwPages;
+                colorPagesCount += breakdown.colorPages;
+                // Collect range text from all files (use first non-empty value or combine)
+                if (breakdown.bwRangeText && breakdown.bwRangeText !== 'All pages' && breakdown.bwRangeText !== '') {
+                  if (bwRangeDisplay) {
+                    bwRangeDisplay += ', ' + breakdown.bwRangeText;
+                  } else {
+                    bwRangeDisplay = breakdown.bwRangeText;
+                  }
+                }
+                if (breakdown.colorRangeText && breakdown.colorRangeText !== 'All pages' && breakdown.colorRangeText !== '') {
+                  if (colorRangeDisplay) {
+                    colorRangeDisplay += ', ' + breakdown.colorRangeText;
+                  } else {
+                    colorRangeDisplay = breakdown.colorRangeText;
+                  }
+                }
               }
-            }
-          } else if (breakdownObj && breakdownObj.pageRange) {
-            const pageRange = breakdownObj.pageRange;
-            if (pageRange === 'odd') {
-              pageRangeDisplay = ' (Odd pages)';
-            } else if (pageRange === 'even') {
-              pageRangeDisplay = ' (Even pages)';
-            } else if (pageRange === 'specific' && breakdownObj.specificPages) {
-              pageRangeDisplay = ` (Pages: ${breakdownObj.specificPages})`;
-            }
+            });
           }
           
           invoiceHtml += `
@@ -22932,13 +24139,41 @@
               <span class="invoice-item-label">Print Name</span>
               <span class="invoice-item-value">${serviceName}</span>
             </div>
+          `;
+          
+          // Always show B&W and Color pages if we have the data (from backend breakdown)
+          // Show B&W pages if count > 0 or if breakdown has the data
+          if (bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && breakdownObj.bw_pages > 0)) {
+            const bwRangeText = bwRangeDisplay ? ` (${bwRangeDisplay})` : '';
+            const displayBwPages = bwPagesCount > 0 ? bwPagesCount : (parseInt(breakdownObj.bw_pages) || 0);
+            if (displayBwPages > 0) {
+              invoiceHtml += `
+                <div class="invoice-item">
+                  <span class="invoice-item-label">Black & White Pages</span>
+                  <span class="invoice-item-value">${displayBwPages}${bwRangeText}</span>
+                </div>
+              `;
+            }
+          }
+          
+          // Show color pages if count > 0 or if breakdown has the data
+          if (colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && breakdownObj.color_pages > 0)) {
+            const colorRangeText = colorRangeDisplay ? ` (${colorRangeDisplay})` : '';
+            const displayColorPages = colorPagesCount > 0 ? colorPagesCount : (parseInt(breakdownObj.color_pages) || 0);
+            if (displayColorPages > 0) {
+              invoiceHtml += `
+                <div class="invoice-item">
+                  <span class="invoice-item-label">Color Pages</span>
+                  <span class="invoice-item-value">${displayColorPages}${colorRangeText}</span>
+                </div>
+              `;
+            }
+          }
+          
+          invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Pages</span>
-              <span class="invoice-item-value">${displayPages}${pageRangeDisplay}</span>
-            </div>
-            <div class="invoice-item">
-              <span class="invoice-item-label">Color</span>
-              <span class="invoice-item-value">${displayColor}</span>
+              <span class="invoice-item-label">Total Pages</span>
+              <span class="invoice-item-value">${displayPages}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">Copies</span>
@@ -22949,7 +24184,27 @@
           documentPricesSum = parseFloat(calculatedPrice || '0');
         }
         
-        // Additional options
+        // Additional options - get from breakdown (backend calculated costs)
+        // Build additional options from breakdown if not already in additionalOptions array
+        if (additionalOptions.length === 0 && breakdownObj) {
+          // Add lamination if selected (show even if cost is 0, as it's a selected service)
+          if (breakdownObj.lamination === true || breakdownObj.lamination === 'true') {
+            const laminationCost = parseFloat(breakdownObj.lamination_cost || 0);
+            additionalOptions.push({ name: 'Lamination', price: laminationCost });
+          }
+          // Add spiral binding if selected (show even if cost is 0, as it's a selected service)
+          if (breakdownObj.spiral_binding === true || breakdownObj.spiral_binding === 'true') {
+            const spiralCost = parseFloat(breakdownObj.spiral_binding_cost || 0);
+            additionalOptions.push({ name: 'Spiral Binding', price: spiralCost });
+          }
+          // Add tape binding if selected (show even if cost is 0, as it's a selected service)
+          if (breakdownObj.tape_binding === true || breakdownObj.tape_binding === 'true') {
+            const tapeCost = parseFloat(breakdownObj.tape_binding_cost || 0);
+            additionalOptions.push({ name: 'Tape Binding', price: tapeCost });
+          }
+        }
+        
+        // Display additional options
         if (additionalOptions.length > 0) {
           additionalOptions.forEach(option => {
             invoiceHtml += `
@@ -23480,8 +24735,14 @@
         if (isPrintModal) {
           // Handle print modal
         const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
-        const vendorId = selectedVendorData ? selectedVendorData.vendor_id : 'vendor1';
-        const vendorEmail = selectedVendorData ? (selectedVendorData.vendor_email || '') : '';
+        if (!selectedVendorData || !selectedVendorData.vendor_id) {
+          alert('Please select a valid shop before submitting.');
+          throw new Error('Invalid vendor selection');
+        }
+        const vendorId = selectedVendorData.vendor_id;
+        const vendorEmail = selectedVendorData.vendor_email || '';
+        const shopName = selectedVendorData.shop_name || selectedVendorData.vendor_name || '';
+        const shopAddress = selectedVendorData.shop_address || selectedVendorData.address || '';
         const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
 
         // Prepare form data (files + settings) but DO NOT upload yet
@@ -23520,6 +24781,10 @@
             orientation: settings.orientation,
             pageRange: settings.pageRange,
             specificPages: settings.specificPages,
+            bwPageRange: settings.bwPageRange || 'all',
+            bwPageRangeValue: settings.bwPageRangeValue || '',
+            colorPageRange: settings.colorPageRange || 'all',
+            colorPageRangeValue: settings.colorPageRangeValue || '',
             pageSize: settings.pageSize,
             page_count: fileObj.pages,
             pages: fileObj.pages,
@@ -23547,6 +24812,8 @@
         formData.append('selected_vendor', selectedVendor);
         formData.append('vendor_id', vendorId);
         formData.append('vendor_email', vendorEmail);
+        formData.append('shop_name', shopName);
+        formData.append('shop_address', shopAddress);
         if (userEmail) {
           formData.append('user_email', userEmail);
         }
@@ -23686,8 +24953,14 @@
           const shopSelect = modal.querySelector(`#${serviceType}-shop-select`);
           selectedShopValue = shopSelect ? shopSelect.value : '';
           const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
-          const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
-          const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
+          if (!selectedShopData || !selectedShopData.vendor_id) {
+            alert('Please select a valid shop before submitting.');
+            throw new Error('Invalid vendor selection');
+          }
+          const vendorId = selectedShopData.vendor_id;
+          const vendorEmail = selectedShopData.vendor_email || '';
+          const shopName = selectedShopData.shop_name || selectedShopData.vendor_name || '';
+          const shopAddress = selectedShopData.shop_address || selectedShopData.address || '';
           const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
           
           // Get service template
@@ -23768,6 +25041,8 @@
           formData.append('selected_vendor', selectedShopValue);
           formData.append('vendor_id', vendorId);
           formData.append('vendor_email', vendorEmail);
+          formData.append('shop_name', shopName);
+          formData.append('shop_address', shopAddress);
           if (userEmail) {
             formData.append('user_email', userEmail);
           }
@@ -23863,7 +25138,8 @@
               document_count: files.length,
               vendor_email: vendorEmail || '',
               user_email: userEmail || '',
-              shop_address: selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : ''
+              shop_name: shopName || '',
+              shop_address: shopAddress || ''
             };
             formData.append(`settings_${i}`, JSON.stringify(settingsJson));
           }
@@ -23984,12 +25260,12 @@
                     throw new Error(verifyData.error || 'Payment verification failed');
                   }
 
-                  // Check for failed uploads and show refund message
+                  // Check for failed uploads and show refund message in modal
                   if (verifyData.files_failed > 0) {
                     const failedFiles = verifyData.failed_files || [];
                     const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                     const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
-                    alert(`⚠️ Document Upload Issue\n\n${verifyData.files_failed} file(s) failed to upload: ${failedFileNames}\n\n${refundMessage}\n\nPlease check your payment method for the refund.`);
+                    showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
                   }
 
                   // Finalize Google Drive files if needed
@@ -24023,13 +25299,23 @@
                 }
               })();
 
-              // Reset UI for print modal
+              // Reset UI for print modal - properly reset everything
               if (isPrintModal) {
-                uploadedFiles = [];
-                selectedFileIndex = -1;
-                fileSettings = {};
-                if (typeof updateFileList === 'function') updateFileList();
-                if (typeof updateUI === 'function') updateUI();
+                // Call the proper reset function to ensure all UI elements are reset
+                if (typeof resetDocumentPrintModal === 'function') {
+                  resetDocumentPrintModal();
+                } else {
+                  // Fallback: reset arrays and update UI
+                  uploadedFiles = [];
+                  selectedFileIndex = -1;
+                  fileSettings = {};
+                  if (typeof updateFileList === 'function') updateFileList();
+                  if (typeof updateUI === 'function') updateUI();
+                }
+                // Re-attach color option event listeners after reset
+                setTimeout(() => {
+                  attachColorOptionListeners();
+                }, 100);
               }
               
               // Reset button state
@@ -25374,6 +26660,23 @@
     </div>
   </div>
 
+  <!-- Failed Upload Modal - Small & Clean -->
+  <div id="failedUploadModal" class="failed-upload-modal-overlay">
+    <div class="failed-upload-modal">
+      <div class="failed-upload-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <h3 class="failed-upload-title">Document Upload Issue</h3>
+      <div class="failed-upload-content">
+        <p id="failedUploadCount" class="failed-upload-count"></p>
+        <p id="failedUploadFiles" class="failed-upload-files"></p>
+        <p id="failedUploadMessage" class="failed-upload-message"></p>
+        <p class="failed-upload-note">Please check your payment method for the refund.</p>
+      </div>
+      <button class="failed-upload-ok-btn" onclick="hideFailedUploadModal()">OK</button>
+    </div>
+  </div>
+
   <!-- Service Prices Modal -->
   <div id="servicePricesModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
@@ -25763,6 +27066,127 @@
       transform: scale(1) translateY(0);
     }
 
+    /* Failed Upload Modal Styles - Small & Clean */
+    .failed-upload-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(4px);
+    }
+
+    .failed-upload-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .failed-upload-modal {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      width: 90%;
+      max-width: 400px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transform: scale(0.85) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .failed-upload-modal::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .failed-upload-modal-overlay.active .failed-upload-modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .failed-upload-icon {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fef2f2;
+      border-radius: 50%;
+      color: #ef4444;
+      font-size: 2rem;
+    }
+
+    .failed-upload-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 1rem 0;
+    }
+
+    .failed-upload-content {
+      margin: 1rem 0;
+      text-align: left;
+    }
+
+    .failed-upload-count {
+      font-weight: 600;
+      color: #374151;
+      margin: 0.5rem 0;
+    }
+
+    .failed-upload-files {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin: 0.5rem 0;
+      word-break: break-word;
+    }
+
+    .failed-upload-message {
+      color: #374151;
+      margin: 1rem 0;
+      line-height: 1.5;
+    }
+
+    .failed-upload-note {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin: 0.5rem 0;
+      font-style: italic;
+    }
+
+    .failed-upload-ok-btn {
+      margin-top: 1.5rem;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .failed-upload-ok-btn:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+    }
+
     .success-lottie-container {
       width: 200px;
       height: 200px;
@@ -26030,6 +27454,32 @@
         modal.classList.remove('active');
       }
     }
+
+    // Failed Upload Modal Functions
+    function showFailedUploadModal(filesFailed, failedFileNames, refundMessage) {
+      const modal = document.getElementById('failedUploadModal');
+      if (modal) {
+        document.getElementById('failedUploadCount').textContent = `${filesFailed} file(s) failed to upload:`;
+        document.getElementById('failedUploadFiles').textContent = failedFileNames;
+        document.getElementById('failedUploadMessage').textContent = refundMessage;
+        modal.classList.add('active');
+      }
+    }
+
+    function hideFailedUploadModal() {
+      const modal = document.getElementById('failedUploadModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Close failed upload modal on overlay click
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('failedUploadModal');
+      if (modal && e.target === modal) {
+        hideFailedUploadModal();
+      }
+    });
 
     // Initialize Lottie animation when modal is shown
     function initializeLottieAnimation() {

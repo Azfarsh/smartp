@@ -4794,9 +4794,31 @@ def verify_razorpay_payment(request):
 
                 # Store every paid job inside vendor_print_jobs
                 service_type = (print_settings.get('service_type') or '').strip()
+                
+                # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
+                # Document print model, passport photo model, digital, golden, gloss, jumbo print model
+                document_print_services = ['regular_print', 'regular print', 'document_print']
+                passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
+                digital_services = ['digital_print']
+                golden_services = ['golden_embossing', 'golden_emboss']
+                gloss_services = ['gloss_printing', 'gloss_print']
+                jumbo_services = ['jumbo_printing', 'jumbo_print']
+                
+                # All these service types use vendor_print_jobs storage with pattern: {storage_folder}/{vendor_id}/{filename}
+                all_special_services = (document_print_services + passport_photo_services + 
+                                       digital_services + golden_services + gloss_services + jumbo_services)
+                
+                # Ensure consistent storage folder and R2 path for all service types
                 storage_folder = 'vendor_print_jobs'
+                
+                # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename}
+                # This ensures consistent storage in R2 per vendor_id
                 vendor_file_key = f'{storage_folder}/{vendor_id}/{fobj.name}'
                 user_file_key = f'users/{user_email}/{fobj.name}'
+                
+                # Log service type for debugging
+                if service_type in all_special_services:
+                    print(f"📦 Storing {service_type} service with consistent R2 path: {vendor_file_key}")
 
                 # Assign token from vendor pool if available
                 if not token_value:  # Only generate once per request
@@ -4828,12 +4850,32 @@ def verify_razorpay_payment(request):
                 
                 # Build metadata (extend base with payment details)
                 # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
+                # Handle Mixed color with page ranges
+                color_value = print_settings.get('color', 'Black and White')
+                page_range_value = str(print_settings.get('pageRange', ''))
+                specific_pages_value = str(print_settings.get('specificPages', ''))
+                
+                # For Mixed color, combine bw and color page ranges into pageRange field
+                if color_value == 'Mixed':
+                    bw_range = print_settings.get('bwPageRange', 'all')
+                    bw_range_value = print_settings.get('bwPageRangeValue', '')
+                    color_range = print_settings.get('colorPageRange', 'all')
+                    color_range_value = print_settings.get('colorPageRangeValue', '')
+                    
+                    # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
+                    if bw_range == 'all' and color_range == 'all':
+                        page_range_value = 'BW: all | Color: all'
+                    else:
+                        bw_str = f"BW: {bw_range_value if bw_range == 'range' else 'all'}"
+                        color_str = f"Color: {color_range_value if color_range == 'range' else 'all'}"
+                        page_range_value = f"{bw_str} | {color_str}"
+                
                 metadata = {
                     'copies': str(print_settings.get('copies', '1')),
-                    'color': print_settings.get('color', 'Black and White'),
+                    'color': color_value,
                     'orientation': print_settings.get('orientation', 'portrait'),
-                    'pageRange': str(print_settings.get('pageRange', '')),
-                    'specificPages': str(print_settings.get('specificPages', '')),
+                    'pageRange': page_range_value,
+                    'specificPages': specific_pages_value,
                     'pageSize': str(print_settings.get('pageSize', 'A4')),
                     'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
                     'lamination': str(print_settings.get('lamination', 'No')),
@@ -4854,10 +4896,34 @@ def verify_razorpay_payment(request):
                                   'payment_id': payment_id,
                                   'order_id': order_id
                 }
+                
+                # Store Mixed color page ranges separately for reference
+                if color_value == 'Mixed':
+                    metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
+                    metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
+                    metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
+                    metadata['colorPageRangeValue'] = str(print_settings.get('colorPageRangeValue', ''))
 
                 # Ensure default rendered_status
                 if 'rendered_status' not in metadata:
                     metadata['rendered_status'] = 'NO'
+
+                # Add shop_address and shop_name to metadata (for database storage)
+                shop_address = print_settings.get('shop_address', '')
+                shop_name = print_settings.get('shop_name', '')
+                if (not shop_address or not shop_name) and vendor_email:
+                    try:
+                        vendor_data = get_vendor_coordinates_from_email(vendor_email)
+                        if vendor_data:
+                            if not shop_address:
+                                shop_address = vendor_data.get('shop_address', '')
+                            if not shop_name:
+                                shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
+                    except Exception as e:
+                        print(f"⚠️ Could not get shop address/name from vendor email: {str(e)}")
+                
+                metadata['shop_address'] = shop_address
+                metadata['shop_name'] = shop_name
 
                 # Resolve vendor email for printer assignment and assign by lowest count
                 assigned_printer_name = ''
@@ -5049,6 +5115,27 @@ def verify_razorpay_payment(request):
         except Exception as e:
             print(f"⚠️ Error deducting points after payment: {str(e)}")
 
+        # Allot points instantly after successful payment (only if files were processed successfully)
+        if files_processed > 0:
+            try:
+                # Calculate points based on final amount (1 rupee = 1 point)
+                final_amount = request.POST.get('final_amount', '0')
+                try:
+                    final_amount_float = float(final_amount)
+                    if final_amount_float > 0:
+                        # Allot points based on final amount paid
+                        points_to_allot = final_amount_float
+                        success = add_user_points(user_email, points_to_allot, f'Points earned from payment {payment_id}')
+                        if success:
+                            print(f"💰 Allotted {points_to_allot} points to {user_email} for payment {payment_id}")
+                            response_data['points_allotted'] = points_to_allot
+                        else:
+                            print(f"❌ Failed to allot {points_to_allot} points to {user_email}")
+                except (ValueError, TypeError):
+                    print(f"⚠️ Invalid final_amount for points allocation: {final_amount}")
+            except Exception as e:
+                print(f"⚠️ Error allotting points after payment: {str(e)}")
+
         # REFUND LOGIC: If files failed to upload, refund the payment amount
         if files_failed > 0 and total_payment_amount > 0:
             try:
@@ -5104,7 +5191,8 @@ def verify_razorpay_payment(request):
             'files_failed': files_failed,
             'failed_files': failed_files,
             'token': token_value,
-            'printer_name': metadata.get('printer_name', '') if files_processed else ''
+            'printer_name': metadata.get('printer_name', '') if files_processed else '',
+            'points_allotted': 0  # Will be set if points are allotted
         }
         
         # Add refund information if files failed
@@ -7991,7 +8079,13 @@ def calculate_passport_photo_pricing(request):
 
 @csrf_exempt
 def calculate_a4_print_pricing(request):
-    """Calculate pricing for A4 print service based on vendor pricing.json"""
+    """Calculate pricing for A4 print service based on vendor pricing.json
+    Formula: Copies × [(B&W Pages × B&W Rate) + (Color Pages × Color Rate) + 
+             (IF Lamination Selected → Lamination Rate) + 
+             (IF Spiral Binding Selected → Spiral Binding Rate for page based of document ELSE → 0) + 
+             (IF Tape Binding Selected → Tape Binding Rate as per page of document ELSE → 0)]
+    Final Amount Customer Pays = Total Bill Amount × 1.20
+    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -7999,28 +8093,46 @@ def calculate_a4_print_pricing(request):
             print_type = data.get('print_type', 'single_bw')
             total_pages = data.get('total_pages', 1)
             total_copies = data.get('total_copies', 1)
-            total_quantity = data.get('total_quantity')  # Total pages × copies
+            bw_pages = data.get('bw_pages', 0)  # Black and white pages
+            color_pages = data.get('color_pages', 0)  # Color pages
+            lamination = data.get('lamination', False)  # Lamination option
+            spiral_binding = data.get('spiral_binding', False)  # Spiral binding option
+            tape_binding = data.get('tape_binding', False)  # Tape binding option
             
-            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, total_quantity={total_quantity}")
+            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, bw_pages={bw_pages}, color_pages={color_pages}, lamination={lamination}, spiral_binding={spiral_binding}, tape_binding={tape_binding}")
             
-            # Convert values to int
+            # Convert values to int/float
             try:
                 total_pages = int(total_pages)
                 total_copies = int(total_copies)
-                if total_quantity is not None:
-                    total_quantity = int(total_quantity)
+                bw_pages = int(bw_pages) if bw_pages else 0
+                color_pages = int(color_pages) if color_pages else 0
+                lamination = bool(lamination) if lamination is not None else False
+                spiral_binding = bool(spiral_binding) if spiral_binding is not None else False
+                tape_binding = bool(tape_binding) if tape_binding is not None else False
             except (ValueError, TypeError):
                 total_pages = 1
                 total_copies = 1
-                total_quantity = None
+                bw_pages = 0
+                color_pages = 0
+                lamination = False
+                spiral_binding = False
+                tape_binding = False
             
-            # Ensure values are at least 1
+            # Ensure values are at least 0/1
             if total_pages < 1: total_pages = 1
             if total_copies < 1: total_copies = 1
-            if total_quantity is not None and total_quantity < 1:
-                total_quantity = total_pages * total_copies
+            if bw_pages < 0: bw_pages = 0
+            if color_pages < 0: color_pages = 0
             
-            # Get vendor pricing from d1 database
+            # If bw_pages and color_pages are not provided, calculate from print_type
+            if bw_pages == 0 and color_pages == 0:
+                if print_type == 'single_color':
+                    color_pages = total_pages
+                else:
+                    bw_pages = total_pages
+            
+            # Get vendor pricing from d1 database - STRICTLY use vendor pricing only
             print(f"🔍 A4 print - Vendor email: {vendor_email}")
             pricing_data = get_vendor_pricing_from_d1(vendor_email)
             
@@ -8031,108 +8143,187 @@ def calculate_a4_print_pricing(request):
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
                 })
             
-            # For A4 print (document printing), the pricing is nested under "categorized_pricing.a4_print" object
-            # Access the nested a4_print pricing data
+            # Access categorized pricing
             categorized_pricing = pricing_data.get('categorized_pricing', {})
             print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
             
             a4_pricing = categorized_pricing.get('a4_print', {})
+            lamination_pricing = categorized_pricing.get('lamination', {})
+            binding_pricing = categorized_pricing.get('binding', {})
+            
             print(f"📊 A4 print pricing keys: {list(a4_pricing.keys())}")
+            print(f"📊 Lamination pricing keys: {list(lamination_pricing.keys())}")
+            print(f"📊 Binding pricing keys: {list(binding_pricing.keys())}")
             
-            # Map print_type to the correct pricing key format
-            # The frontend sends: single_bw, single_color
-            # The pricing.json has: regular_print_a4_bw, regular_print_a4_color
-            # These are the ONLY keys we use for document/regular printing
-            pricing_key_map = {
-                'single_bw': 'regular_print_a4_bw',
-                'single_color': 'regular_print_a4_color',
-                'double_bw': 'regular_print_a4_bw',  # Fallback to single bw
-                'double_color': 'regular_print_a4_color'  # Fallback to single color
-            }
+            # Get B&W and Color rates - STRICTLY from vendor pricing, no defaults
+            bw_rate_key = 'regular_print_a4_bw'
+            color_rate_key = 'regular_print_a4_color'
             
-            pricing_key_name = pricing_key_map.get(print_type, 'regular_print_a4_bw')
-            print(f"🔍 Looking for pricing key: {pricing_key_name}")
+            bw_rate = a4_pricing.get(bw_rate_key)
+            color_rate = a4_pricing.get(color_rate_key)
             
-            # If the key doesn't exist, try without 'regular_' prefix as fallback
-            if pricing_key_name not in a4_pricing:
-                print(f"⚠️ Key '{pricing_key_name}' not found. Trying fallback keys...")
-                # Try alternative key formats
-                if print_type == 'single_bw':
-                    fallback_key = 'a4_print_single_bw'
-                elif print_type == 'single_color':
-                    fallback_key = 'a4_print_single_color'
-                else:
-                    fallback_key = 'regular_print_a4_bw'
-                
-                if fallback_key in a4_pricing:
-                    print(f"✅ Found fallback key: {fallback_key}")
-                    pricing_key_name = fallback_key
-            
-            # Get base price from the nested a4_print object
-            base_price = a4_pricing.get(pricing_key_name)
-            
-            # Check if pricing is available
-            if base_price is None:
-                print(f"❌ Pricing not found for key: {pricing_key_name}")
+            # Check if pricing is available - STRICTLY require vendor pricing
+            if bw_rate is None and bw_pages > 0:
+                print(f"❌ B&W pricing not found for key: {bw_rate_key}")
                 print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
                 return JsonResponse({
                     'success': False,
-                    'error': f'Pricing not available for {print_type}. Please contact the vendor.'
+                    'error': f'Pricing not available for Black & White printing. Please contact the vendor.'
                 })
             
-            # Calculate price per page
-            price_per_page = base_price
+            if color_rate is None and color_pages > 0:
+                print(f"❌ Color pricing not found for key: {color_rate_key}")
+                print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Pricing not available for Color printing. Please contact the vendor.'
+                })
             
-            # Get page range to calculate actual pages to print
-            page_range = data.get('page_range', data.get('pageRange', 'all'))
-            actual_pages = total_pages
+            # Convert rates to float, default to 0 if None
+            bw_rate = safe_price(bw_rate, default=0.0)
+            color_rate = safe_price(color_rate, default=0.0)
             
-            # Calculate actual pages based on page range
-            if page_range == 'odd':
-                actual_pages = (total_pages + 1) // 2  # Ceiling division for odd pages
-            elif page_range == 'even':
-                actual_pages = total_pages // 2  # Floor division for even pages
-            elif page_range == 'specific':
-                specific_pages = data.get('specific_pages', data.get('specificPages', ''))
-                if specific_pages:
-                    # Parse specific pages (e.g., "1-5, 8, 10-12")
-                    try:
-                        page_numbers = _parse_page_range(specific_pages)
-                        actual_pages = len(page_numbers)
-                    except:
-                        actual_pages = total_pages
+            # Calculate base print cost: (B&W Pages × B&W Rate) + (Color Pages × Color Rate)
+            base_print_cost = (bw_pages * bw_rate) + (color_pages * color_rate)
+            
+            # Calculate lamination cost (per page)
+            lamination_cost = 0.0
+            if lamination:
+                # Try to get A4 lamination rate (standard or glossy)
+                lamination_key = 'lamination_a4_standard'  # Default to standard
+                lamination_rate = lamination_pricing.get(lamination_key)
+                if lamination_rate is None:
+                    # Try glossy
+                    lamination_key = 'lamination_a4_glossy'
+                    lamination_rate = lamination_pricing.get(lamination_key)
+                
+                if lamination_rate is None:
+                    print(f"⚠️ Lamination pricing not found. Available keys: {list(lamination_pricing.keys())}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Lamination pricing not available. Please contact the vendor.'
+                    })
+                
+                lamination_rate = safe_price(lamination_rate, default=0.0)
+                # Lamination is per page
+                lamination_cost = lamination_rate * total_pages
+            
+            # Calculate spiral binding cost (per document, based on page count)
+            spiral_binding_cost = 0.0
+            if spiral_binding:
+                # Determine binding key based on page count
+                # Spiral binding: a4_100 (up to 100 pages) or a4_200 (101-200 pages, or >200 pages)
+                if total_pages <= 100:
+                    spiral_key = 'spiral_binding_a4_100'
                 else:
-                    actual_pages = total_pages
+                    spiral_key = 'spiral_binding_a4_200'
+                
+                print(f"🔍 Spiral binding: total_pages={total_pages}, selected_key={spiral_key}")
+                spiral_rate = binding_pricing.get(spiral_key)
+                print(f"🔍 Spiral binding rate retrieved: {spiral_rate} (type: {type(spiral_rate)})")
+                
+                if spiral_rate is None or spiral_rate == '':
+                    print(f"⚠️ Spiral binding pricing not found for key: {spiral_key}")
+                    print(f"Available binding keys: {list(binding_pricing.keys())}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Spiral binding pricing not available. Please contact the vendor.'
+                    })
+                
+                spiral_rate = safe_price(spiral_rate, default=0.0)
+                if spiral_rate <= 0:
+                    print(f"⚠️ Spiral binding rate is invalid (0 or negative): {spiral_rate} for key: {spiral_key}")
+                    print(f"Available binding keys with values: {[(k, v) for k, v in binding_pricing.items()]}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Spiral binding pricing is not configured properly. Please contact the vendor.'
+                    })
+                
+                print(f"✅ Spiral binding rate: {spiral_rate} for {total_pages} pages (key: {spiral_key})")
+                # Spiral binding is per copy (document)
+                spiral_binding_cost = spiral_rate * total_copies
+                print(f"💰 Spiral binding cost: {spiral_rate} × {total_copies} = {spiral_binding_cost}")
             
-            # Calculate total price using actual pages to print
-            if total_quantity is not None:
-                # If total_quantity is provided, recalculate based on actual pages
-                actual_quantity = actual_pages * total_copies
-                total_price = price_per_page * actual_quantity
-                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, page_range={page_range}, actual_pages={actual_pages}, total_pages={total_pages}, total_copies={total_copies}, actual_quantity={actual_quantity}, total_price={total_price}")
-            else:
-                # Fallback to multiply actual pages × copies
-                total_price = price_per_page * actual_pages * total_copies
-                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, page_range={page_range}, actual_pages={actual_pages}, total_pages={total_pages}, total_copies={total_copies}, total_price={total_price}")
+            # Calculate tape binding cost (per document, based on page count)
+            tape_binding_cost = 0.0
+            if tape_binding:
+                # Determine binding key based on page count
+                # Tape binding: a4_100 (up to 100 pages) or a4_200 (101-200 pages, or >200 pages)
+                if total_pages <= 100:
+                    tape_key = 'tape_binding_a4_100'
+                else:
+                    tape_key = 'tape_binding_a4_200'
+                
+                print(f"🔍 Tape binding: total_pages={total_pages}, selected_key={tape_key}")
+                tape_rate = binding_pricing.get(tape_key)
+                print(f"🔍 Tape binding rate retrieved: {tape_rate} (type: {type(tape_rate)})")
+                
+                if tape_rate is None or tape_rate == '':
+                    print(f"⚠️ Tape binding pricing not found for key: {tape_key}")
+                    print(f"Available binding keys: {list(binding_pricing.keys())}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Tape binding pricing not available. Please contact the vendor.'
+                    })
+                
+                tape_rate = safe_price(tape_rate, default=0.0)
+                if tape_rate <= 0:
+                    print(f"⚠️ Tape binding rate is invalid (0 or negative): {tape_rate} for key: {tape_key}")
+                    print(f"Available binding keys with values: {[(k, v) for k, v in binding_pricing.items()]}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Tape binding pricing is not configured properly. Please contact the vendor.'
+                    })
+                
+                print(f"✅ Tape binding rate: {tape_rate} for {total_pages} pages (key: {tape_key})")
+                # Tape binding is per copy (document)
+                tape_binding_cost = tape_rate * total_copies
+                print(f"💰 Tape binding cost: {tape_rate} × {total_copies} = {tape_binding_cost}")
+            
+            # Calculate total bill amount (before commission) per copy
+            # Formula: (B&W Pages × B&W Rate) + (Color Pages × Color Rate) + 
+            #          (IF Lamination Selected → Lamination Rate) + 
+            #          (IF Spiral Binding Selected → Spiral Binding Rate) + 
+            #          (IF Tape Binding Selected → Tape Binding Rate)
+            cost_per_copy = base_print_cost + lamination_cost + spiral_binding_cost + tape_binding_cost
+            
+            # Total bill amount (before commission) = cost_per_copy × copies
+            total_bill_amount = cost_per_copy * total_copies
+            
+            # Final Amount Customer Pays = Total Bill Amount × 1.20 (20% commission)
+            final_amount = total_bill_amount * 1.20
+            
+            print(f"💰 Calculation: bw_pages={bw_pages}, color_pages={color_pages}, bw_rate={bw_rate}, color_rate={color_rate}")
+            print(f"💰 Base print cost={base_print_cost}, lamination_cost={lamination_cost}, spiral_binding_cost={spiral_binding_cost}, tape_binding_cost={tape_binding_cost}")
+            print(f"💰 Cost per copy={cost_per_copy}, total_copies={total_copies}, total_bill_amount={total_bill_amount}, final_amount={final_amount}")
             
             # Prepare pricing breakdown
             pricing_breakdown = {
-                'base_price': base_price,
-                'price_per_page': price_per_page,
+                'vendor_email': vendor_email,  # Include vendor email for shop lookup
+                'bw_pages': bw_pages,
+                'color_pages': color_pages,
+                'bw_rate': bw_rate,
+                'color_rate': color_rate,
+                'base_print_cost': base_print_cost,
+                'lamination_cost': lamination_cost,
+                'spiral_binding_cost': spiral_binding_cost,
+                'tape_binding_cost': tape_binding_cost,
+                'cost_per_copy': cost_per_copy,
                 'total_pages': total_pages,
-                'actual_pages': actual_pages,
                 'total_copies': total_copies,
-                'total_price': total_price,
-                'pricing_key_used': pricing_key_name,
-                'page_count': actual_pages,  # Use actual pages for page_count
-                'num_copies': total_copies,  # Add num_copies for consistency with other services
-                'page_range': page_range  # Include page range in breakdown
+                'total_bill_amount': total_bill_amount,  # Before commission
+                'final_amount': final_amount,  # After 20% commission
+                'commission_percentage': 20,
+                'commission_amount': final_amount - total_bill_amount,
+                'lamination': lamination,
+                'spiral_binding': spiral_binding,
+                'tape_binding': tape_binding
             }
             
             return JsonResponse({
                 'success': True,
                 'pricing_breakdown': pricing_breakdown,
-                'total_price': total_price
+                'total_price': final_amount  # Return final amount with commission
             })
             
         except Exception as e:
