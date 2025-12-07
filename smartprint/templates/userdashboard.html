@@ -16678,6 +16678,7 @@
         const color = formData['Print Color'] || 'Black and White';
         const orientation = formData['Print Orientation'] || 'portrait';
         const numCopies = formData['Number of Copies'] || 1;
+        const pageRange = formData['Page Range'] || formData['pageRange'] || 'all';
 
         // Determine print type based on color and orientation
         let printType = 'single_bw'; // Default to single-sided black & white
@@ -16695,16 +16696,66 @@
         // Get the base price for this print type
         let basePrice = a4PrintPricing[pricingKey] || 2; // Default to ₹2 if not found
         
-        // Calculate total price
-        let subtotal = basePrice * pages * copies;
+        // Calculate actual pages to print based on page range
+        let actualPages = pages;
+        let pageRangeLabel = '';
+        if (pageRange === 'odd') {
+          actualPages = Math.ceil(pages / 2);
+          pageRangeLabel = ' (Odd pages)';
+        } else if (pageRange === 'even') {
+          actualPages = Math.floor(pages / 2);
+          pageRangeLabel = ' (Even pages)';
+        } else if (pageRange === 'specific') {
+          const specificPages = formData['Specific Pages'] || formData['specificPages'] || '';
+          if (specificPages) {
+            // Parse specific pages (e.g., "1-5, 8, 10-12")
+            try {
+              const pageNumbers = parsePageRange(specificPages);
+              actualPages = pageNumbers.length;
+              pageRangeLabel = ` (Pages: ${specificPages})`;
+            } catch (e) {
+              console.error('Error parsing specific pages:', e);
+              actualPages = pages;
+            }
+          }
+        }
+        
+        // Calculate total price based on actual pages to print
+        let subtotal = basePrice * actualPages * copies;
         breakdown.push({ 
-          label: `A4 ${color} Print (${pages} pages × ${copies} copies)`, 
+          label: `A4 ${color} Print (${actualPages}${pageRangeLabel} pages × ${copies} copies)`, 
           value: `₹${subtotal}` 
         });
+        
+        // Store page range info in breakdown for display
+        breakdown.pageRange = pageRange;
+        breakdown.actualPages = actualPages;
+        breakdown.totalPages = pages;
         
         total += subtotal;
 
         return total;
+      }
+      
+      // Helper function to parse page range string (e.g., "1-5, 8, 10-12")
+      function parsePageRange(rangeStr) {
+        const pages = new Set();
+        const parts = rangeStr.split(',');
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (trimmed.includes('-')) {
+            const [start, end] = trimmed.split('-').map(s => parseInt(s.trim()));
+            for (let i = start; i <= end; i++) {
+              pages.add(i);
+            }
+          } else {
+            const pageNum = parseInt(trimmed);
+            if (!isNaN(pageNum)) {
+              pages.add(pageNum);
+            }
+          }
+        }
+        return Array.from(pages).sort((a, b) => a - b);
       }
 
       // Helper function to calculate platform commission based on base price
@@ -23485,7 +23536,8 @@
             pricing_details: null,
             vendor_email: vendorEmail || '',
             user_email: userEmail || '',
-            shop_address: selectedVendorData ? (selectedVendorData.shop_address || selectedVendorData.address || '') : ''
+            shop_address: selectedVendorData ? (selectedVendorData.shop_address || selectedVendorData.address || '') : '',
+            shop_name: selectedVendorData ? (selectedVendorData.shop_name || selectedVendorData.vendor_name || '') : ''
           };
 
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));

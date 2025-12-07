@@ -3638,6 +3638,22 @@ def upload_to_r2(request):
                     file_metadata['storage_folder'] = storage_folder
                     print(f"📁 Storing {service_type or 'regular print'} job in {storage_folder} folder")
 
+                    # Add shop_address and shop_name from print_settings or vendor data
+                    shop_address = print_settings.get('shop_address', '')
+                    shop_name = print_settings.get('shop_name', '')
+                    if (not shop_address or not shop_name) and vendor_email:
+                        try:
+                            vendor_data = get_vendor_coordinates_from_email(vendor_email)
+                            if vendor_data:
+                                if not shop_address:
+                                    shop_address = vendor_data.get('shop_address', '')
+                                if not shop_name:
+                                    shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
+                        except:
+                            pass
+                    file_metadata['shop_address'] = shop_address
+                    file_metadata['shop_name'] = shop_name
+                    
                     # Ensure a default render flag so dashboard can avoid double-rendering
                     if 'rendered_status' not in file_metadata:
                         file_metadata['rendered_status'] = 'NO'
@@ -5578,6 +5594,29 @@ def _is_allowed_file(file_obj):
     except Exception:
         return False, 'File validation error'
 
+
+def _parse_page_range(range_str):
+    """Parse page range string (e.g., '1-5, 8, 10-12') into list of page numbers"""
+    pages = set()
+    parts = range_str.split(',')
+    for part in parts:
+        trimmed = part.strip()
+        if '-' in trimmed:
+            start_end = trimmed.split('-')
+            if len(start_end) == 2:
+                try:
+                    start = int(start_end[0].strip())
+                    end = int(start_end[1].strip())
+                    pages.update(range(start, end + 1))
+                except (ValueError, TypeError):
+                    pass
+        else:
+            try:
+                page_num = int(trimmed)
+                pages.add(page_num)
+            except (ValueError, TypeError):
+                pass
+    return sorted(list(pages))
 
 def _generate_unique_filename(base_label, original_name):
     """Generate a unique filename using label + timestamp + short uuid + original extension."""
@@ -8044,25 +8083,50 @@ def calculate_a4_print_pricing(request):
             # Calculate price per page
             price_per_page = base_price
             
-            # Calculate total price using total_quantity if available (more accurate)
+            # Get page range to calculate actual pages to print
+            page_range = data.get('page_range', data.get('pageRange', 'all'))
+            actual_pages = total_pages
+            
+            # Calculate actual pages based on page range
+            if page_range == 'odd':
+                actual_pages = (total_pages + 1) // 2  # Ceiling division for odd pages
+            elif page_range == 'even':
+                actual_pages = total_pages // 2  # Floor division for even pages
+            elif page_range == 'specific':
+                specific_pages = data.get('specific_pages', data.get('specificPages', ''))
+                if specific_pages:
+                    # Parse specific pages (e.g., "1-5, 8, 10-12")
+                    try:
+                        page_numbers = _parse_page_range(specific_pages)
+                        actual_pages = len(page_numbers)
+                    except:
+                        actual_pages = total_pages
+                else:
+                    actual_pages = total_pages
+            
+            # Calculate total price using actual pages to print
             if total_quantity is not None:
-                total_price = price_per_page * total_quantity
-                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, total_quantity={total_quantity}, total_price={total_price}")
+                # If total_quantity is provided, recalculate based on actual pages
+                actual_quantity = actual_pages * total_copies
+                total_price = price_per_page * actual_quantity
+                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, page_range={page_range}, actual_pages={actual_pages}, total_pages={total_pages}, total_copies={total_copies}, actual_quantity={actual_quantity}, total_price={total_price}")
             else:
-                # Fallback to multiply pages × copies
-                total_price = price_per_page * total_pages * total_copies
-                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, total_pages={total_pages}, total_copies={total_copies}, total_price={total_price}")
+                # Fallback to multiply actual pages × copies
+                total_price = price_per_page * actual_pages * total_copies
+                print(f"Calculation: base_price={base_price}, price_per_page={price_per_page}, page_range={page_range}, actual_pages={actual_pages}, total_pages={total_pages}, total_copies={total_copies}, total_price={total_price}")
             
             # Prepare pricing breakdown
             pricing_breakdown = {
                 'base_price': base_price,
                 'price_per_page': price_per_page,
                 'total_pages': total_pages,
+                'actual_pages': actual_pages,
                 'total_copies': total_copies,
                 'total_price': total_price,
                 'pricing_key_used': pricing_key_name,
-                'page_count': total_pages,  # Add page_count for consistency with other services
-                'num_copies': total_copies  # Add num_copies for consistency with other services
+                'page_count': actual_pages,  # Use actual pages for page_count
+                'num_copies': total_copies,  # Add num_copies for consistency with other services
+                'page_range': page_range  # Include page range in breakdown
             }
             
             return JsonResponse({
@@ -12214,13 +12278,17 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
                     # If parsing fails, assume it's already just a base_price value
                     pricing_details_str = pricing_details
         
-        # Get shop address from metadata or vendor data
+        # Get shop address and shop name from metadata or vendor data
         shop_address = metadata.get('shop_address', '')
-        if not shop_address and vendor_email:
+        shop_name = metadata.get('shop_name', '')
+        if (not shop_address or not shop_name) and vendor_email:
             try:
                 vendor_data = get_vendor_coordinates_from_email(vendor_email)
                 if vendor_data:
-                    shop_address = vendor_data.get('shop_address', '')
+                    if not shop_address:
+                        shop_address = vendor_data.get('shop_address', '')
+                    if not shop_name:
+                        shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
             except:
                 pass
         
@@ -12268,7 +12336,8 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'color_mode': metadata.get('color_mode', metadata.get('color', '')),
             'layout_type': metadata.get('layout_type', ''),
             'pricing_details': pricing_details_str,
-            'shop_address': shop_address
+            'shop_address': shop_address,
+            'shop_name': shop_name
         }
         
         # Convert final_amount to float if present
@@ -12422,13 +12491,17 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
                     # If parsing fails, assume it's already just a base_price value
                     pricing_details_str = pricing_details
 
-        # Get shop address from metadata or vendor data
+        # Get shop address and shop name from metadata or vendor data
         shop_address = metadata.get('shop_address', '')
-        if not shop_address and vendor_email:
+        shop_name = metadata.get('shop_name', '')
+        if (not shop_address or not shop_name) and vendor_email:
             try:
                 vendor_data = get_vendor_coordinates_from_email(vendor_email)
                 if vendor_data:
-                    shop_address = vendor_data.get('shop_address', '')
+                    if not shop_address:
+                        shop_address = vendor_data.get('shop_address', '')
+                    if not shop_name:
+                        shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
             except:
                 pass
         
@@ -12476,7 +12549,8 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'color_mode': metadata.get('color_mode', metadata.get('color', '')),
             'layout_type': metadata.get('layout_type', ''),
             'pricing_details': pricing_details_str,
-            'shop_address': shop_address
+            'shop_address': shop_address,
+            'shop_name': shop_name
         }
 
         if payload['final_amount']:
