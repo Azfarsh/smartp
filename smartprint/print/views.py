@@ -5004,6 +5004,20 @@ def verify_razorpay_payment(request):
                     # Calculate payment amount for this failed file
                     if pricing_details:
                         total_payment_amount += pricing_details.get('total_price', 0)
+                    else:
+                        # If no pricing_details, try to get from metadata
+                        file_price = metadata.get('total_price') or metadata.get('final_amount')
+                        if file_price:
+                            try:
+                                total_payment_amount += float(file_price)
+                            except:
+                                pass
+
+        # CRITICAL: If any files failed (including database storage failures), calculate total refund
+        # This includes files that failed R2 upload OR database storage
+        if files_failed > 0:
+            print(f"⚠️ {files_failed} file(s) failed to store. Total refund amount: ₹{total_payment_amount}")
+            print(f"⚠️ Failed files: {[f['filename'] for f in failed_files]}")
 
         # Deduct points immediately after successful payment verification
         try:
@@ -12264,6 +12278,9 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             except:
                 payload['final_amount'] = None
         
+        print(f"🔍 Attempting to store vendor print job: {filename} at endpoint: {worker_endpoint}")
+        print(f"🔍 Payload keys: {list(payload.keys())}")
+        
         resp = requests.post(
             worker_endpoint,
             json=payload,
@@ -12274,15 +12291,33 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             timeout=10
         )
         
+        print(f"🔍 Response status: {resp.status_code}")
+        print(f"🔍 Response text: {resp.text[:500]}")
+        
         if resp.status_code == 200:
-            print(f"✅ Stored print job in database: {filename} in {storage_folder}")
-            return True
+            try:
+                response_data = resp.json()
+                if response_data.get('success'):
+                    print(f"✅ Stored vendor print job in database: {filename} in {storage_folder}")
+                    return True
+                else:
+                    error_msg = response_data.get('error', 'Unknown error')
+                    print(f"⚠️ Worker API returned success=false: {error_msg}")
+                    return False
+            except json.JSONDecodeError:
+                print(f"⚠️ Invalid JSON response from worker: {resp.text[:200]}")
+                return False
         else:
-            print(f"⚠️ Failed to store print job in database: {resp.status_code} - {resp.text[:200]}")
+            print(f"⚠️ Failed to store vendor print job in database: {resp.status_code} - {resp.text[:200]}")
             return False
             
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network error storing vendor print job in database: {e}")
+        return False
     except Exception as e:
-        print(f"❌ Error storing print job in database: {e}")
+        print(f"❌ Error storing vendor print job in database: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, storage_folder, r2_path, metadata, pricing_details=None, user_id=None, shop_id=None):
@@ -12447,6 +12482,9 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         if payload['final_amount']:
             payload['final_amount'] = to_float(payload['final_amount'])
 
+        print(f"🔍 Attempting to store user print job: {filename} at endpoint: {worker_endpoint}")
+        print(f"🔍 Payload keys: {list(payload.keys())}")
+        
         resp = requests.post(
             worker_endpoint,
             json=payload,
@@ -12456,16 +12494,34 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             },
             timeout=10
         )
-
+        
+        print(f"🔍 Response status: {resp.status_code}")
+        print(f"🔍 Response text: {resp.text[:500]}")
+        
         if resp.status_code == 200:
-            print(f"✅ Stored user print job in database: {filename}")
-            return True
+            try:
+                response_data = resp.json()
+                if response_data.get('success'):
+                    print(f"✅ Stored user print job in database: {filename}")
+                    return True
+                else:
+                    error_msg = response_data.get('error', 'Unknown error')
+                    print(f"⚠️ Worker API returned success=false: {error_msg}")
+                    return False
+            except json.JSONDecodeError:
+                print(f"⚠️ Invalid JSON response from worker: {resp.text[:200]}")
+                return False
         else:
             print(f"⚠️ Failed to store user print job in database: {resp.status_code} - {resp.text[:200]}")
             return False
 
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network error storing user print job in database: {e}")
+        return False
     except Exception as e:
         print(f"❌ Error storing user print job in database: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def store_user_notification_in_db(notification_data):
