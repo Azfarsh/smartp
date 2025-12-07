@@ -2909,12 +2909,29 @@ async function handlePrint() {
             pricing_details: pricingDetails
         };
         
+        // Add shop name and address to metadata before stringifying
+        const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
+        if (selectedShopData) {
+            const shopName = selectedShopData.shop_name || selectedShopData.vendor_name || '';
+            const shopAddress = selectedShopData.shop_address || selectedShopData.address || '';
+            metadata.shop_name = shopName;
+            metadata.shop_address = shopAddress;
+        }
+        
         const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
         formData.append('file_0', pdfFile);
         formData.append('file_count', '1');
         formData.append('settings_0', JSON.stringify(metadata));
         formData.append('selected_vendor', selectedShop);
         formData.append('vendor_id', vendorId);
+        
+        // Also add shop name and address to formData for backend processing
+        if (selectedShopData) {
+            const shopName = selectedShopData.shop_name || selectedShopData.vendor_name || '';
+            const shopAddress = selectedShopData.shop_address || selectedShopData.address || '';
+            formData.append('shop_name', shopName);
+            formData.append('shop_address', shopAddress);
+        }
         
         // Add points information if points were applied
         const modal = document.querySelector('.card-modal');
