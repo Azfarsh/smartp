@@ -23769,6 +23769,8 @@
         if (pricingBreakdown) {
           orderSummaryModal.dataset.pricingBreakdown = pricingBreakdown;
         }
+        // Store selected shop value for payment processing (critical for vendor selection)
+        orderSummaryModal.dataset.selectedShop = typeof selectedVendor !== 'undefined' ? selectedVendor : '';
         
         // Update order summary modal title and icon for document print
         const orderSummaryTitle = orderSummaryModal.querySelector('.modal-title');
@@ -23981,6 +23983,19 @@
           orderSummaryModal.dataset.pointsApplied = 'false';
           orderSummaryModal.dataset.pointsUsed = '0';
         }
+        // Store selected shop value for payment processing (critical for vendor selection)
+        // Ensure we have a valid shop value - try multiple sources
+        let shopValueToStore = '';
+        if (typeof selectedVendor !== 'undefined' && selectedVendor) {
+          shopValueToStore = selectedVendor;
+        } else if (selectedVendorData && selectedVendorData.shop_folder) {
+          shopValueToStore = selectedVendorData.shop_folder;
+        } else if (availableShops && availableShops.length > 0) {
+          shopValueToStore = availableShops[0].shop_folder;
+          console.log('⚠️ No shop selected in print modal, using first available shop:', shopValueToStore);
+        }
+        orderSummaryModal.dataset.selectedShop = shopValueToStore;
+        console.log('📊 Stored shop value in order summary modal (print):', shopValueToStore);
       }
       
       // Set date and time
@@ -24247,9 +24262,23 @@
       
       // Get shop name
       const shopSelect = modal.querySelector(`#${service}-shop-select`);
-      const selectedShopValue = shopSelect ? shopSelect.value : '';
+      let selectedShopValue = shopSelect ? shopSelect.value : '';
+      
+      // Fallback: if no shop selected, use first available shop
+      if (!selectedShopValue && availableShops && availableShops.length > 0) {
+        selectedShopValue = availableShops[0].shop_folder;
+        console.log('⚠️ No shop selected, using first available shop:', selectedShopValue);
+      }
+      
       const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
       const shopName = selectedShopData ? (selectedShopData.shop_name || selectedShopData.vendor_name || selectedShopData.vendor_email || '-') : '-';
+      
+      console.log('🔍 Shop selection in populateOrderSummaryModalForService:', {
+        service: service,
+        shopSelectFound: !!shopSelect,
+        selectedShopValue: selectedShopValue,
+        selectedShopData: selectedShopData ? { vendor_id: selectedShopData.vendor_id, shop_folder: selectedShopData.shop_folder } : null
+      });
       
       // Get service display name
       const serviceNames = {
@@ -24638,10 +24667,13 @@
         } else {
           orderSummaryModal.dataset.pointsApplied = 'false';
         }
+        // Store selected shop value for payment processing (critical for vendor selection)
+        orderSummaryModal.dataset.selectedShop = selectedShopValue || '';
         console.log('📊 Pricing stored in order summary modal:', {
           calculatedPrice: orderSummaryModal.dataset.calculatedPrice,
           finalAmount: orderSummaryModal.dataset.finalAmount,
-          pointsApplied: orderSummaryModal.dataset.pointsApplied
+          pointsApplied: orderSummaryModal.dataset.pointsApplied,
+          selectedShop: orderSummaryModal.dataset.selectedShop
         });
       }
     }
@@ -24711,6 +24743,16 @@
       const orderSummaryPointsUsed = orderSummaryModal?.dataset.pointsUsed || '0';
       const orderSummaryServiceType = orderSummaryModal?.dataset.serviceType || 'print';
       const orderSummarySourceModal = orderSummaryModal?.dataset.sourceModal;
+      const orderSummarySelectedShop = orderSummaryModal?.dataset.selectedShop || '';
+      
+      // Debug logging
+      console.log('🔍 Order Summary Modal Data:', {
+        selectedShop: orderSummarySelectedShop,
+        serviceType: orderSummaryServiceType,
+        sourceModal: orderSummarySourceModal,
+        finalAmount: orderSummaryFinalAmount,
+        availableShops: availableShops?.length || 0
+      });
       
       // Close order summary modal
       closeOrderSummaryModal();
@@ -24734,8 +24776,35 @@
         
         if (isPrintModal) {
           // Handle print modal
-        const selectedVendorData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+        // Ensure availableShops is loaded
+        if (!availableShops || availableShops.length === 0) {
+          console.error('❌ No shops available. Please refresh the page.');
+          alert('No shops available. Please refresh the page and try again.');
+          throw new Error('No shops available');
+        }
+        
+        // Use stored shop value from order summary modal, fallback to global selectedVendor, then first shop
+        let shopValueToUse = orderSummarySelectedShop || (typeof selectedVendor !== 'undefined' ? selectedVendor : '');
+        
+        // If still no shop value, use first available shop
+        if (!shopValueToUse && availableShops.length > 0) {
+          shopValueToUse = availableShops[0].shop_folder;
+          console.log('⚠️ No shop selected, using first available shop:', shopValueToUse);
+        }
+        
+        console.log('🔍 Print Modal - Shop Selection:', {
+          orderSummarySelectedShop: orderSummarySelectedShop,
+          selectedVendor: typeof selectedVendor !== 'undefined' ? selectedVendor : 'undefined',
+          shopValueToUse: shopValueToUse,
+          availableShops: availableShops?.length || 0
+        });
+        const selectedVendorData = availableShops.find(shop => shop.shop_folder === shopValueToUse);
         if (!selectedVendorData || !selectedVendorData.vendor_id) {
+          console.error('❌ Invalid vendor selection:', {
+            shopValueToUse: shopValueToUse,
+            selectedVendorData: selectedVendorData,
+            availableShops: availableShops
+          });
           alert('Please select a valid shop before submitting.');
           throw new Error('Invalid vendor selection');
         }
@@ -24949,11 +25018,44 @@
           
           console.log('✅ Files validated successfully:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
           
-          // Get shop selection
-          const shopSelect = modal.querySelector(`#${serviceType}-shop-select`);
-          selectedShopValue = shopSelect ? shopSelect.value : '';
+          // Ensure availableShops is loaded
+          if (!availableShops || availableShops.length === 0) {
+            console.error('❌ No shops available. Please refresh the page.');
+            alert('No shops available. Please refresh the page and try again.');
+            throw new Error('No shops available');
+          }
+          
+          // Get shop selection - use stored value from order summary modal first, then try modal
+          if (orderSummarySelectedShop) {
+            selectedShopValue = orderSummarySelectedShop;
+            console.log('✅ Using stored shop value from order summary modal:', selectedShopValue);
+          } else {
+            const shopSelect = modal.querySelector(`#${serviceType}-shop-select`);
+            selectedShopValue = shopSelect ? shopSelect.value : '';
+            console.log('✅ Using shop value from modal:', selectedShopValue);
+          }
+          
+          // If still no shop value, use first available shop
+          if (!selectedShopValue && availableShops.length > 0) {
+            selectedShopValue = availableShops[0].shop_folder;
+            console.log('⚠️ No shop selected, using first available shop:', selectedShopValue);
+          }
+          
+          console.log('🔍 Service Modal - Shop Selection:', {
+            orderSummarySelectedShop: orderSummarySelectedShop,
+            selectedShopValue: selectedShopValue,
+            serviceType: serviceType,
+            modal: modal?.id,
+            availableShops: availableShops?.length || 0
+          });
           const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
           if (!selectedShopData || !selectedShopData.vendor_id) {
+            console.error('❌ Invalid vendor selection:', {
+              selectedShopValue: selectedShopValue,
+              selectedShopData: selectedShopData,
+              availableShops: availableShops,
+              orderSummarySelectedShop: orderSummarySelectedShop
+            });
             alert('Please select a valid shop before submitting.');
             throw new Error('Invalid vendor selection');
           }
@@ -26429,7 +26531,7 @@
         @media (min-width: 769px) {
           .selectable-image.original { min-width: 320px; max-width: 420px; }
           .selectable-image.enhanced { min-width: 320px; max-width: 420px; }
-          .selectable-image.original .photo-wrap { min-height: 280px; }
+          .selectable-image.original .photo-wrap { min-height: 200px; max-height: 220px; }
           .selectable-image.enhanced .photo-wrap { min-height: 280px; }
         }
         .selectable-label { font-size: 1.18em; margin-bottom: 0.7em; color: #111; font-weight: 700; text-align: center; }
