@@ -4738,6 +4738,7 @@ def verify_razorpay_payment(request):
         token_value = ''
         failed_files = []
         total_payment_amount = 0
+        compensation_points_awarded = 0
 
         user_email = (request.POST.get('user_email') or '').strip()
         if not user_email and request.user.is_authenticated:
@@ -4791,6 +4792,16 @@ def verify_razorpay_payment(request):
                         print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
                     except Exception as e:
                         print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+
+                # If vendor_id is still missing but vendor_email is available, derive vendor_id for Worker storage
+                if (not vendor_id or vendor_id.strip() == '') and vendor_email:
+                    try:
+                        vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
+                        if vendor_id_lookup:
+                            vendor_id = vendor_id_lookup
+                            print(f"✅ Resolved vendor_id {vendor_id} from vendor_email {vendor_email}")
+                    except Exception as e:
+                        print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
 
                 # Store every paid job inside vendor_print_jobs
                 service_type = (print_settings.get('service_type') or '').strip()
@@ -5171,7 +5182,7 @@ def verify_razorpay_payment(request):
                     refund_success = False
                 
                 # If refund failed, compensate with points
-                if not refund_success:
+                if not refund_success and compensation_points_awarded == 0:
                     user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
                     if user_email_for_refund != 'anonymous':
                         # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
@@ -5194,6 +5205,26 @@ def verify_razorpay_payment(request):
             'printer_name': metadata.get('printer_name', '') if files_processed else '',
             'points_allotted': 0  # Will be set if points are allotted
         }
+
+        # Always store points in user_points when uploads fail so they are instantly available
+        if files_failed > 0 and total_payment_amount > 0 and compensation_points_awarded == 0:
+            try:
+                user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
+                if user_email_for_points:
+                    points_to_assign = float(total_payment_amount)
+                    success = add_user_points(
+                        user_email_for_points,
+                        points_to_assign,
+                        f"Compensation points for {files_failed} failed upload(s) - payment {payment_id}"
+                    )
+                    if success:
+                        compensation_points_awarded = points_to_assign
+                        response_data['points_compensated'] = points_to_assign
+                        print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads")
+                    else:
+                        print(f"❌ Failed to assign compensation points to {user_email_for_points}")
+            except Exception as e:
+                print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
         
         # Add refund information if files failed
         if files_failed > 0 and total_payment_amount > 0:
@@ -8777,6 +8808,35 @@ def get_vendor_email_by_vendor_id(vendor_id):
     except Exception as e:
         print(f"Error finding vendor email for vendor_id {vendor_id}: {str(e)}")
         return 'firozshop@example.com'
+
+def get_vendor_id_by_vendor_email(vendor_email):
+    """Get vendor_id by vendor_email from R2 storage"""
+    try:
+        s3 = boto3.client('s3',
+                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                          endpoint_url=settings.R2_ENDPOINT,
+                          region_name='auto')
+
+        normalized_email = (vendor_email or '').strip().lower()
+        objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix='vendor_register_details/')
+        for obj in objects.get("Contents", []):
+            if obj["Key"].endswith('/registration_details.json'):
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=obj["Key"])
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                    stored_email = (vendor_data.get('vendor_email', '') or '').strip().lower()
+                    if stored_email and stored_email == normalized_email:
+                        return vendor_data.get('vendor_id', '') or 'vendor1'
+                except Exception as e:
+                    print(f"Error reading vendor data from {obj['Key']}: {str(e)}")
+                    continue
+
+        return 'vendor1'
+
+    except Exception as e:
+        print(f"Error finding vendor_id for vendor_email {vendor_email}: {str(e)}")
+        return 'vendor1'
 
 # This code incorporates address fields into the vendor registration API and updates the pricing structure to handle comprehensive xerox shop pricing.
 
