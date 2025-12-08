@@ -4791,7 +4791,7 @@ def verify_razorpay_payment(request):
                 settings_json = request.POST.get(settings_key)
                 print_settings = json.loads(settings_json)
 
-                # Resolve user and vendor context
+                # Resolve user and vendor context (ensure vendor_id is present for Worker validation)
                 vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
 
                 # Get vendor email from settings_json if not already set (fallback)
@@ -4820,6 +4820,7 @@ def verify_razorpay_payment(request):
 
                 # Store every paid job inside vendor_print_jobs
                 service_type = (print_settings.get('service_type') or '').strip()
+                service_type_lc = service_type.lower()
                 
                 # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
                 # Document print model, passport photo model, digital, golden, gloss, jumbo print model
@@ -4843,8 +4844,22 @@ def verify_razorpay_payment(request):
                 user_file_key = f'users/{user_email}/{fobj.name}'
                 
                 # Log service type for debugging
-                if service_type in all_special_services:
+                if service_type_lc in [s.lower() for s in all_special_services]:
                     print(f"📦 Storing {service_type} service with consistent R2 path: {vendor_file_key}")
+
+                # Ensure vendor_id is populated before DB calls (Worker requires it)
+                if (not vendor_id or str(vendor_id).strip() == ''):
+                    if selected_vendor:
+                        vendor_id = selected_vendor
+                        print(f"✅ Fallback vendor_id from selected_vendor: {vendor_id}")
+                    elif vendor_email:
+                        try:
+                            vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
+                            if vendor_id_lookup:
+                                vendor_id = vendor_id_lookup
+                                print(f"✅ Fallback vendor_id from vendor_email lookup: {vendor_id}")
+                        except Exception as e:
+                            print(f"⚠️ Failed vendor_id lookup from vendor_email {vendor_email}: {e}")
 
                 # Assign token from vendor pool if available
                 if not token_value:  # Only generate once per request
@@ -5071,6 +5086,9 @@ def verify_razorpay_payment(request):
                         except Exception as e:
                             print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
                     
+                    # Prefer full pricing details JSON when present for accurate D1 storage
+                    pricing_details_for_db = metadata.get('pricing_details_raw') or pricing_details
+                    
                     vendor_stored = store_vendor_print_job_in_db(
                         vendor_id=vendor_id,
                         vendor_email=vendor_email,
@@ -5079,7 +5097,7 @@ def verify_razorpay_payment(request):
                         storage_folder=storage_folder,
                         r2_path=vendor_file_key,
                         metadata=metadata,
-                        pricing_details=pricing_details,
+                        pricing_details=pricing_details_for_db,
                         user_id=str(request.user.id) if request.user.is_authenticated else None,
                         shop_id=vendor_id
                     )
@@ -5098,7 +5116,7 @@ def verify_razorpay_payment(request):
                         storage_folder='users',
                         r2_path=user_file_key,
                         metadata=user_metadata,
-                        pricing_details=pricing_details,
+                        pricing_details=pricing_details_for_db,
                         user_id=str(request.user.id) if request.user.is_authenticated else None,
                         shop_id=vendor_id
                     )
