@@ -4739,6 +4739,21 @@ def verify_razorpay_payment(request):
         failed_files = []
         total_payment_amount = 0
         compensation_points_awarded = 0
+        response_data = {
+            'success': True,
+            'files_processed': 0,
+            'files_failed': 0,
+            'failed_files': [],
+            'token': '',
+            'printer_name': '',
+            'points_allotted': 0
+        }
+
+        def safe_float(value, default=0.0):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
 
         user_email = (request.POST.get('user_email') or '').strip()
         if not user_email and request.user.is_authenticated:
@@ -4949,7 +4964,13 @@ def verify_razorpay_payment(request):
 
                 # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
                 pricing_details = print_settings.get('pricing_details')
+                pricing_details_serialized = None
                 if pricing_details:
+                    if isinstance(pricing_details, dict):
+                        try:
+                            pricing_details_serialized = json.dumps(pricing_details)
+                        except Exception:
+                            pricing_details_serialized = None
                     try:
                         breakdown = pricing_details.get('pricing_breakdown', {})
                         price_per_page = 0
@@ -4984,6 +5005,12 @@ def verify_razorpay_payment(request):
                     except Exception as e:
                         print(f"⚠️ Error processing pricing details: {e}")
                         pass
+                if pricing_details_serialized and not metadata.get('pricing_details_raw'):
+                    metadata['pricing_details_raw'] = pricing_details_serialized
+                if pricing_details and not metadata.get('final_amount'):
+                    final_amount_value = pricing_details.get('total_price') or pricing_details.get('final_amount')
+                    if final_amount_value is not None:
+                        metadata['final_amount'] = str(final_amount_value)
                 else:
                     # Even without pricing_details, try to extract page_count and num_copies from print_settings
                     page_count = print_settings.get('page_count', print_settings.get('pages', 0))
@@ -4992,6 +5019,18 @@ def verify_razorpay_payment(request):
                         metadata['page_count'] = str(page_count)
                     if num_copies:
                         metadata['num_copies'] = str(num_copies)
+
+                # Persist points usage/allocation and pricing into metadata for D1 storage
+                metadata['points_applied'] = request.POST.get('points_applied', 'false')
+                metadata['points_used'] = request.POST.get('points_used', '0')
+                if not metadata.get('final_amount'):
+                    fallback_final_amount = request.POST.get('final_amount') or print_settings.get('final_amount')
+                    if fallback_final_amount is not None:
+                        metadata['final_amount'] = str(fallback_final_amount)
+                if pricing_details and not metadata.get('platform_profit'):
+                    platform_profit_val = pricing_details.get('platform_profit') or pricing_details.get('platform_commission')
+                    if platform_profit_val is not None:
+                        metadata['platform_profit'] = str(platform_profit_val)
 
                 # ATOMIC STORAGE: Store files in R2 and both database tables - all must succeed
                 vendor_stored = False
@@ -5096,15 +5135,12 @@ def verify_razorpay_payment(request):
                     
                     # Calculate payment amount for this failed file
                     if pricing_details:
-                        total_payment_amount += pricing_details.get('total_price', 0)
+                        total_payment_amount += safe_float(pricing_details.get('total_price', 0))
                     else:
                         # If no pricing_details, try to get from metadata
                         file_price = metadata.get('total_price') or metadata.get('final_amount')
                         if file_price:
-                            try:
-                                total_payment_amount += float(file_price)
-                            except:
-                                pass
+                            total_payment_amount += safe_float(file_price, 0.0)
 
         # CRITICAL: If any files failed (including database storage failures), calculate total refund
         # This includes files that failed R2 upload OR database storage
@@ -5196,15 +5232,13 @@ def verify_razorpay_payment(request):
                 print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
 
         # Prepare response with refund information
-        response_data = {
-            'success': True, 
+        response_data.update({
             'files_processed': files_processed,
             'files_failed': files_failed,
             'failed_files': failed_files,
             'token': token_value,
-            'printer_name': metadata.get('printer_name', '') if files_processed else '',
-            'points_allotted': 0  # Will be set if points are allotted
-        }
+            'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', '')
+        })
 
         # Always store points in user_points when uploads fail so they are instantly available
         if files_failed > 0 and total_payment_amount > 0 and compensation_points_awarded == 0:
