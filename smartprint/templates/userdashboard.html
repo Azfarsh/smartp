@@ -20627,6 +20627,10 @@
         invoiceDate.textContent = formattedDate;
       }
 
+      // Get shop name and address with fallbacks for different field name variations
+      const shopName = job.shop_name || job['shop name'] || job.shopName || job.vendor_name || job.vendor_label || '';
+      const shopAddress = job.shop_address || job['shop address'] || job.shopAddress || '';
+      
       // Build professional bill format matching the modal
       let html = `
         <div class="professional-bill">
@@ -20653,16 +20657,16 @@
                 <span class="service-name">${serviceDisplayName}</span>
                 <span class="service-status">Completed</span>
               </div>
-              ${job.shop_name ? `
+              ${shopName ? `
                 <div class="shop-name-row">
                   <span class="shop-label">Shop:</span>
-                  <span class="shop-value">${job.shop_name || job.vendor_name || job.vendor_label || 'N/A'}</span>
+                  <span class="shop-value">${shopName}</span>
                 </div>
               ` : ''}
-              ${job.shop_address ? `
+              ${shopAddress ? `
                 <div class="shop-name-row">
-                  <span class="shop-label">Address:</span>
-                  <span class="shop-value">${job.shop_address || 'N/A'}</span>
+                  <span class="shop-label">Shop Address:</span>
+                  <span class="shop-value">${shopAddress}</span>
                 </div>
               ` : ''}
             </div>
@@ -26525,7 +26529,7 @@
         .selectable-image img { display: block; margin: 0 auto; max-width: 100%; max-height: 220px; border-radius: 12px; background: #fff; }
         .selectable-image.original .photo-wrap { width: 100%; aspect-ratio: 4 / 5; background: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 220px; border-radius: 12px; overflow: hidden; }
         .dark-mode .selectable-image.original .photo-wrap { background: #111827; }
-        .selectable-image.original .photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .selectable-image.original .photo-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
         
         /* Desktop view: Make original preview same size as enhanced */
         @media (min-width: 769px) {
@@ -26539,7 +26543,31 @@
         .select-radio input[type="radio"] { width: 22px; height: 22px; accent-color: #2563eb; }
         .enhanced-extra { margin-top: 0.7em; color: #10b981; font-size: 1.08em; font-weight: 600; text-align: center; }
         .enhanced-cost { margin-top: 0.3em; color: #888; font-size: 1em; text-align: center; }
-        @media (max-width: 700px) { .passport-preview-flex { flex-direction: column; gap: 2.5rem; } }
+        @media (max-width: 700px) { 
+          .passport-preview-flex { 
+            flex-direction: column; 
+            gap: 2.5rem; 
+            padding: 0 1rem;
+            margin: 1.5rem auto;
+            max-width: 100%;
+            box-sizing: border-box;
+          }
+          /* Mobile view: Make original and enhanced preview same width with equal margins */
+          .selectable-image.original { 
+            width: calc(100% - 2rem);
+            max-width: calc(100% - 2rem);
+            min-width: calc(100% - 2rem);
+            margin: 0 auto;
+            padding: 1rem;
+          }
+          .selectable-image.enhanced { 
+            width: calc(100% - 2rem);
+            max-width: calc(100% - 2rem);
+            min-width: calc(100% - 2rem);
+            margin: 0 auto;
+            padding: 1rem;
+          }
+        }
       </style>
       <div class="passport-preview-flex">
         <div class="selectable-image original selected" tabindex="0">

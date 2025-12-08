@@ -18,6 +18,26 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
     <style>
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background: #e8ecf5;
@@ -66,7 +86,7 @@
         .modal-content {
             flex: 1;
             overflow-y: auto;
-            padding: 24px 10px 24px 10px;
+            padding: 24px 20px 0 20px;
             background: #f8fafc;
             min-height: 400px;
             display: flex;
@@ -291,6 +311,37 @@
             position: relative;
             flex-shrink: 0;
         }
+        /* Desktop: Ensure preview is fully visible above buttons */
+        @media (min-width: 801px) {
+            .card-modal {
+                display: flex;
+                flex-direction: column;
+                max-height: 98vh;
+                overflow: hidden;
+            }
+            .modal-content {
+                padding-bottom: 24px;
+                overflow-y: auto;
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .preview-section {
+                max-height: 420px;
+                flex-shrink: 0;
+            }
+            .footer-controls {
+                position: sticky;
+                bottom: 0;
+                margin-top: auto;
+                flex-shrink: 0;
+                z-index: 10;
+            }
+            .points-section {
+                flex-shrink: 0;
+            }
+        }
         .a4-canvas {
             background: #fff;
             border: 2px solid #000;
@@ -302,6 +353,26 @@
             max-height: 100%;
             display: block;
             margin-top: 8px;
+        }
+        @media (max-width: 768px) {
+            .preview-section {
+                min-height: 240px;
+                max-height: 300px;
+                margin: 0 0 12px 0;
+            }
+            .a4-canvas {
+                width: 240px;
+                height: 320px;
+            }
+            .content-row {
+                flex-direction: column;
+            }
+            .left-panel {
+                order: 1;
+            }
+            .right-panel {
+                order: 2;
+            }
         }
         .add-photo-plus {
             position: absolute;
@@ -343,6 +414,7 @@
             position: sticky;
             bottom: 0;
             z-index: 2;
+            flex-shrink: 0;
         }
         .footer-controls select, .footer-controls input[type=number] {
             padding: 6px 8px;
@@ -405,13 +477,13 @@
         }
 .order-summary {
     width: 100%;
-    display: none;
+    display: none !important;
     padding: 0 32px 18px;
     margin-top: 0;
     box-sizing: border-box;
 }
         .order-summary.show {
-            display: block;
+            display: none !important;
         }
         .pricing-summary-card {
             background: #fff;
@@ -576,13 +648,355 @@
             font-size: 1.2em;
         }
 
+        /* Professional Bill Styles - Matching Jumbo Print modal */
+        .professional-bill {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            border: 1px solid #e5e7eb;
+            width: 100%;
+        }
+
+        .bill-header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 1.75rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: nowrap;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .bill-header {
+                padding: 1.25rem 1.5rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+        }
+
+        .bill-identity {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        @media (max-width: 768px) {
+            .bill-identity {
+                width: 100%;
+                gap: 0.75rem;
+            }
+        }
+
+        .bill-logo {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .bill-logo {
+                width: 44px;
+                height: 44px;
+                font-size: 1.3rem;
+            }
+        }
+
+        .bill-title h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        @media (max-width: 768px) {
+            .bill-title h3 {
+                font-size: 1.35rem;
+            }
+        }
+
+        .bill-subtitle {
+            margin: 0.25rem 0 0 0;
+            opacity: 0.95;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .bill-subtitle {
+                font-size: 0.85rem;
+            }
+        }
+
+        .bill-date {
+            text-align: right;
+            font-size: 0.9rem;
+            opacity: 0.95;
+            font-weight: 500;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .bill-date {
+                text-align: left;
+                font-size: 0.85rem;
+                width: 100%;
+                white-space: normal;
+            }
+        }
+
+        .bill-date p {
+            margin: 0.3rem 0;
+            line-height: 1.5;
+        }
+
+        .bill-content {
+            padding: 1.75rem 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .bill-content {
+                padding: 1.25rem 1.5rem;
+            }
+        }
+
+        .service-info {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .service-info h4 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .service-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .service-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+        }
+
+        .service-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .service-status {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-weight: 600;
+            border-radius: 999px;
+            padding: 0.3rem 0.9rem;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .invoice-items {
+            padding: 0;
+        }
+
+        .invoice-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s ease;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .invoice-item {
+                padding: 14px 20px;
+                flex-direction: row;
+                align-items: center;
+                gap: 0.75rem;
+            }
+        }
+
+        .invoice-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .invoice-item:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-item-label {
+            font-size: 15px;
+            color: #4b5563;
+            font-weight: 500;
+            line-height: 1.5;
+            flex: 1;
+            min-width: 0;
+        }
+
+        @media (max-width: 768px) {
+            .invoice-item-label {
+                font-size: 14px;
+                flex: 1;
+            }
+        }
+
+        .invoice-item-value {
+            font-size: 16px;
+            color: #111827;
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: right;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .invoice-item-value {
+                font-size: 15px;
+                text-align: right;
+            }
+        }
+
+        .invoice-subtotal {
+            background: #f9fafb;
+            border-top: 2px solid #e5e7eb;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .invoice-total {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #fff;
+            font-weight: 700;
+            font-size: 18px;
+            margin-top: 0.75rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .invoice-total {
+                font-size: 17px;
+                margin-top: 0.75rem;
+                border-radius: 10px;
+            }
+        }
+
+        .invoice-total .invoice-item-label {
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .invoice-total .invoice-item-label {
+                font-size: 16px;
+            }
+        }
+
+        .invoice-total .invoice-item-value {
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .invoice-total .invoice-item-value {
+                font-size: 20px;
+            }
+        }
+
+        .invoice-item.points-applied {
+            background: #fef2f2;
+            border-left: 3px solid #ef4444;
+        }
+
+        .invoice-item.points-applied .invoice-item-label {
+            color: #b91c1c;
+            font-weight: 600;
+        }
+
+        .invoice-item.points-applied .invoice-item-value {
+            color: #b91c1c;
+            font-weight: 600;
+        }
+
+        .bill-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #f3f4f6;
+        }
+
+        @media (max-width: 768px) {
+            .bill-footer {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
+        .payment-info p {
+            margin: 0.5rem 0;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .status-pending {
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .contact-info p {
+            margin: 0.5rem 0;
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        .contact-info p:first-child {
+            color: #374151;
+            font-weight: 500;
+        }
+
         .points-section {
             background: linear-gradient(135deg, #f8fafc, #e2e8f0);
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             padding: 1rem;
-            margin-top: 1rem;
+            margin: 0 10px 18px 10px;
             transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            flex-shrink: 0;
         }
 
         .points-header {
@@ -615,18 +1029,38 @@
             justify-content: space-between;
             align-items: center;
             gap: 1rem;
+            flex-wrap: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .points-content {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
         }
 
         .points-info {
             display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
+            flex-direction: row;
+            gap: 1rem;
             flex: 1;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .points-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+                width: 100%;
+            }
         }
 
         .points-available, .points-balance {
             font-size: 0.85rem;
             color: #64748b;
+            white-space: nowrap;
         }
 
         .points-available span, .points-balance span {
@@ -637,6 +1071,40 @@
         .points-actions {
             display: flex;
             gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .points-actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+            .points-actions button {
+                flex: 1;
+                min-width: 0;
+                width: 100%;
+                padding: 12px 16px;
+                font-size: 1rem;
+                font-weight: 600;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+                min-height: 44px;
+            }
+            .btn-apply-points {
+                background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+                color: white !important;
+                border: none !important;
+            }
+            .btn-remove-points {
+                background: #ef4444 !important;
+                color: white !important;
+                border: none !important;
+                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            }
         }
 
         .btn-apply-points, .btn-remove-points {
@@ -949,7 +1417,7 @@
             }
             .modal-content {
                 gap: 0;
-                padding: 18px 10px 0 10px;
+                padding: 18px 16px 0 16px;
             }
             .content-row {
                 flex-direction: column;
@@ -1058,29 +1526,30 @@
                     <input type="number" id="pages" value="1" min="1" max="50" style="width:100%;" readonly>
                 </div>
                 
-                <!-- Points Application Section -->
-                <div class="points-section" id="photoprint-points-section" style="display: none;">
-                    <div class="points-header">
-                        <div class="points-icon">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <div class="points-title">Apply Points</div>
-                    </div>
-                    <div class="points-content">
-                        <div class="points-info">
-                            <span class="points-available">Available Points: <span id="photoprint-available-points">0</span></span>
-                            <span class="points-balance">Balance after payment: <span id="photoprint-points-balance">0</span></span>
-                        </div>
-                        <div class="points-actions">
-                            <button type="button" class="btn-apply-points" id="photoprint-apply-points-btn" onclick="applyPoints('photoprint')">
-                                <i class="fas fa-star"></i> Apply Points
-                            </button>
-                            <button type="button" class="btn-remove-points" id="photoprint-remove-points-btn" onclick="removePoints('photoprint')" style="display: none;">
-                                <i class="fas fa-times"></i> Remove Points
-                            </button>
-                        </div>
-                </div>
             </div>
+            </div>
+            <!-- Points Application Section - Placed below preview and above buttons like Document Print modal -->
+            <div class="points-section" id="photoprint-points-section" style="display: none;">
+                <div class="points-header">
+                    <div class="points-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="points-title">Apply Points</div>
+                </div>
+                <div class="points-content">
+                    <div class="points-info">
+                        <span class="points-available">Available Points: <span id="photoprint-available-points">0</span></span>
+                        <span class="points-balance">Balance after payment: <span id="photoprint-points-balance">0</span></span>
+                    </div>
+                    <div class="points-actions">
+                        <button type="button" class="btn-apply-points" id="photoprint-apply-points-btn" onclick="applyPoints('photoprint')">
+                            <i class="fas fa-star"></i> Apply Points
+                        </button>
+                        <button type="button" class="btn-remove-points" id="photoprint-remove-points-btn" onclick="removePoints('photoprint')" style="display: none;">
+                            <i class="fas fa-times"></i> Remove Points
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="order-summary" id="pricingSummary">
@@ -1239,28 +1708,112 @@ function buildPhotoPricingBreakdown(breakdown, commission) {
     const subtotal = Number(breakdown.total_price || basePrice);
     const totalAmount = Number(commission.total || subtotal);
     const perPhoto = Number(breakdown.price_per_page || 0);
+    const pages = breakdown.photo_count || 1;
+    const copies = breakdown.copies || 1;
+    const color = breakdown.color || 'Color';
 
-    const rows = [
-        { label: serviceName, value: `₹${basePrice.toFixed(2)}` },
-        { label: 'Number of photos', value: breakdown.photo_count ?? '-' },
-        { label: 'Layout slots', value: breakdown.layout_slots ?? '-' },
-        { label: 'Number of copies', value: breakdown.copies ?? '-' },
-        perPhoto ? { label: 'Price per photo', value: `₹${perPhoto.toFixed(2)}` } : null,
-        { label: 'Subtotal', value: `₹${subtotal.toFixed(2)}`, dataRole: 'subtotal' },
-        { label: 'Grand Total', value: `₹${totalAmount.toFixed(2)}`, total: true, dataRole: 'total' }
-    ].filter(Boolean);
+    // Use professional-bill format like Jumbo Print modal
+    let html = `
+        <div class="professional-bill">
+            <div class="bill-header">
+                <div class="bill-identity">
+                    <div class="bill-logo">
+                        <i class="fas fa-print"></i>
+                    </div>
+                    <div class="bill-title">
+                        <h3>PrintMax Invoice</h3>
+                        <p class="bill-subtitle">Professional Printing Services</p>
+                    </div>
+                </div>
+                <div class="bill-date">
+                    <p>Date: ${new Date().toLocaleDateString()}</p>
+                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            </div>
+            
+            <div class="bill-content">
+                <div class="service-info">
+                    <h4>Service Details</h4>
+                    <div class="service-row">
+                        <span class="service-name">Photo Printing</span>
+                        <span class="service-status">Ready to Process</span>
+                    </div>
+                </div>
+                
+                <div class="invoice-items">
+    `;
 
-    return rows.map(row => {
-        const classes = ['breakdown-item'];
-        if (row.total) classes.push('total-item');
-        const dataAttr = row.dataRole ? ` data-role="${row.dataRole}"` : '';
-        return `
-            <div class="${classes.join(' ')}"${dataAttr}>
-                <span class="breakdown-label">${row.label}</span>
-                <span class="breakdown-value">${row.value}</span>
+    // Add service description
+    html += `
+        <div class="invoice-item">
+            <span class="invoice-item-label">${serviceName}</span>
+            <span class="invoice-item-value">₹${basePrice.toFixed(2)}</span>
+        </div>
+    `;
+
+    // Add details
+    html += `
+        <div class="invoice-item">
+            <span class="invoice-item-label">Number of photos</span>
+            <span class="invoice-item-value">${pages}</span>
+        </div>
+        <div class="invoice-item">
+            <span class="invoice-item-label">Layout slots</span>
+            <span class="invoice-item-value">${breakdown.layout_slots ?? '-'}</span>
+        </div>
+        <div class="invoice-item">
+            <span class="invoice-item-label">Color</span>
+            <span class="invoice-item-value">${color}</span>
+        </div>
+        <div class="invoice-item">
+            <span class="invoice-item-label">Copies</span>
+            <span class="invoice-item-value">${copies}</span>
+        </div>
+    `;
+
+    if (perPhoto > 0) {
+        html += `
+            <div class="invoice-item">
+                <span class="invoice-item-label">Price per photo</span>
+                <span class="invoice-item-value">₹${perPhoto.toFixed(2)}</span>
             </div>
         `;
-    }).join('');
+    }
+
+    // Add subtotal
+    html += `
+        <div class="invoice-item invoice-subtotal">
+            <span class="invoice-item-label">Subtotal</span>
+            <span class="invoice-item-value">₹${subtotal.toFixed(2)}</span>
+        </div>
+    `;
+
+    // Add grand total
+    html += `
+        <div class="invoice-item invoice-total" data-role="total">
+            <span class="invoice-item-label">Grand Total</span>
+            <span class="invoice-item-value">₹${totalAmount.toFixed(2)}</span>
+        </div>
+    `;
+
+    html += `
+                </div>
+                
+                <div class="bill-footer">
+                    <div class="payment-info">
+                        <p><strong>Payment Method:</strong> Online Payment</p>
+                        <p><strong>Status:</strong> <span class="status-pending">Pending Payment</span></p>
+                    </div>
+                    <div class="contact-info">
+                        <p>Thank you for choosing PrintMax!</p>
+                        <p>For queries, contact: support@printmax.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    return html;
 }
 // Distance calculation functions (same as dashboard)
 let userLocation = null;
@@ -2010,6 +2563,46 @@ async function calculatePhotoPrintPrice() {
 
             // Show points section if user has points
             showPointsSection('photoprint');
+            
+            // Prompt user to apply points if available
+            if (userPoints > 0) {
+                setTimeout(() => {
+                    const pointsSection = document.getElementById('photoprint-points-section');
+                    if (pointsSection && pointsSection.style.display !== 'none') {
+                        // Show a friendly notification
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            background: linear-gradient(135deg, #f59e0b, #d97706);
+                            color: white;
+                            padding: 16px 20px;
+                            border-radius: 12px;
+                            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+                            z-index: 10000;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            max-width: 400px;
+                            font-size: 0.95rem;
+                            font-weight: 500;
+                            animation: slideIn 0.3s ease-out;
+                        `;
+                        notification.innerHTML = `
+                            <i class="fas fa-star" style="font-size: 1.2em;"></i>
+                            <span>You have ${userPoints} points available! Apply them to save on your order.</span>
+                        `;
+                        document.body.appendChild(notification);
+                        
+                        // Auto-remove after 5 seconds
+                        setTimeout(() => {
+                            notification.style.animation = 'slideOut 0.3s ease-out';
+                            setTimeout(() => notification.remove(), 300);
+                        }, 5000);
+                    }
+                }, 500);
+            }
 
             // Store calculated price + breakdown in page dataset for submit
             const finalBreakdown = { ...breakdown };
@@ -2043,13 +2636,16 @@ async function handlePrint() {
     printBtn.textContent = 'Creating PDF...';
     
     try {
+        // Create PDF in background
         const pdfBlob = await createPDF();
-        const formData = new FormData();
         const jobId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         const token = String(Math.floor(Math.random() * 900) + 100);
         
         const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
         const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+        const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
+        const shopName = selectedShopData ? (selectedShopData.shop_name || selectedShopData.vendor_name || '') : '';
+        const shopAddress = selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : '';
         
         // Use the first image's name for filename reference
         const firstImg = uploadedImages[0];
@@ -2104,49 +2700,413 @@ async function handlePrint() {
             trash: 'NO',
             is_manual_job: 'YES',
             vendor: vendorId,
+            vendor_email: selectedShopData ? selectedShopData.vendor_email : '',
             user: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
+            user_email: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
             pages: String(document.getElementById('pages').value || '1'),
             layout_created: 'YES',
             image_mode: 'individual_placement',
             total_images: String(uploadedImages.length),
             grid_layout: getGridLayoutString(currentLayout, currentOrientation),
             layout_description: `${uploadedImages.length} images in ${currentLayout} slots (${Math.max(0, currentLayout - uploadedImages.length)} empty)`,
+            shop_name: shopName,
+            shop_address: shopAddress,
             // Add pricing details if available
             pricing_details: pricingDetails
         };
         
         const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
-        formData.append('file_0', pdfFile);
-        formData.append('file_count', '1');
-        formData.append('settings_0', JSON.stringify(metadata));
-        formData.append('selected_vendor', selectedShop);
-        formData.append('vendor_id', vendorId);
-        // Store photo print jobs alongside jumbo/digital/etc. in vendor_print_jobs
-        formData.append('storage_folder', 'vendor_print_jobs');
         
-        // Add points information if points were applied
+        // Get points information
         const modal = document.querySelector('.card-modal');
         const pointsApplied = modal.dataset.pointsApplied === 'true';
         const pointsUsed = modal.dataset.pointsUsed || '0';
         const finalAmount = modal.dataset.finalAmount || document.body.dataset.calculatedPrice;
-        
-        formData.append('points_applied', pointsApplied.toString());
-        formData.append('points_used', pointsUsed);
-        formData.append('final_amount', finalAmount);
-        // Payment-first: create Razorpay order using final amount after points applied
         const isPointsApplied = modal.dataset.pointsApplied === 'true';
         const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : (pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0);
         const amountRs = finalAmountAfterPoints;
         if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
+        
+        // Store PDF and metadata for order summary
+        window._photoPrintPendingData = {
+            pdfFile: pdfFile,
+            metadata: metadata,
+            selectedShop: selectedShop,
+            vendorId: vendorId,
+            vendorEmail: vendorEmail,
+            shopName: shopName,
+            shopAddress: shopAddress,
+            pointsApplied: pointsApplied,
+            pointsUsed: pointsUsed,
+            finalAmount: finalAmount,
+            amountRs: amountRs,
+            pricingDetails: pricingDetails
+        };
+        
+        // Show order summary
+        showPhotoPrintOrderSummary();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert(`Error: ${error.message}`);
+        printBtn.disabled = false;
+        printBtn.textContent = 'Print';
+    }
+}
 
+// Function to show order summary for photo print
+function showPhotoPrintOrderSummary() {
+    const data = window._photoPrintPendingData;
+    if (!data) {
+        console.error('No pending photo print data found');
+        return;
+    }
+    
+    // Get or create order summary element
+    let orderSummary = document.getElementById('photoPrintOrderSummary');
+    if (!orderSummary) {
+        orderSummary = document.createElement('div');
+        orderSummary.id = 'photoPrintOrderSummary';
+        orderSummary.className = 'order-summary-modal';
+        orderSummary.innerHTML = `
+            <div class="order-summary-content">
+                <div class="order-summary-header">
+                    <div class="modal-icon">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <div class="modal-title-section">
+                        <h2>Photo Print Service</h2>
+                        <p>Review your order and proceed to payment</p>
+                    </div>
+                    <button class="close-order-summary" onclick="closePhotoPrintOrderSummary()">&times;</button>
+                </div>
+                <div class="order-summary-body">
+                    <div class="order-summary-shop-info">
+                        <div class="order-summary-shop-name">
+                            <span class="order-label">Shop:</span>
+                            <span class="order-value" id="photoOrderShopName">-</span>
+                        </div>
+                        <div class="order-summary-shop-address" style="margin-top: 8px;">
+                            <span class="order-label">Address:</span>
+                            <span class="order-value" id="photoOrderShopAddress">-</span>
+                        </div>
+                    </div>
+                    <div class="invoice-items">
+                        <div class="invoice-item">
+                            <span class="invoice-item-label">Print Name</span>
+                            <span class="invoice-item-value">Photo Print</span>
+                        </div>
+                        <div class="invoice-item">
+                            <span class="invoice-item-label">Layout</span>
+                            <span class="invoice-item-value" id="photoOrderLayout">-</span>
+                        </div>
+                        <div class="invoice-item">
+                            <span class="invoice-item-label">Color</span>
+                            <span class="invoice-item-value" id="photoOrderColor">-</span>
+                        </div>
+                        <div class="invoice-item">
+                            <span class="invoice-item-label">Copies</span>
+                            <span class="invoice-item-value" id="photoOrderCopies">-</span>
+                        </div>
+                        <div class="invoice-item">
+                            <span class="invoice-item-label">Total Images</span>
+                            <span class="invoice-item-value" id="photoOrderImages">-</span>
+                        </div>
+                        ${data.pointsApplied ? `
+                        <div class="invoice-item">
+                            <span class="invoice-item-label">Points Used</span>
+                            <span class="invoice-item-value">${data.pointsUsed}</span>
+                        </div>
+                        ` : ''}
+                        <div class="invoice-item invoice-total">
+                            <span class="invoice-item-label">Grand Total</span>
+                            <span class="invoice-item-value" id="photoOrderTotal">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="order-summary-footer">
+                    <button class="btn-cancel" onclick="closePhotoPrintOrderSummary()">Cancel</button>
+                    <button class="btn-pay" id="photoPrintPayNowBtn" onclick="processPhotoPrintPayment()">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(orderSummary);
+        
+        // Add styles if not already added
+        if (!document.getElementById('photoPrintOrderSummaryStyles')) {
+            const style = document.createElement('style');
+            style.id = 'photoPrintOrderSummaryStyles';
+            style.textContent = `
+                .order-summary-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .order-summary-content {
+                    background: white;
+                    border-radius: 16px;
+                    max-width: 500px;
+                    width: 100%;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                }
+                .order-summary-header {
+                    background: #2563eb;
+                    color: white;
+                    padding: 1.5rem;
+                    border-radius: 16px 16px 0 0;
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+                .order-summary-header .modal-icon {
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(255,255,255,0.2);
+                    border-radius: 8px;
+                    font-size: 1.25rem;
+                }
+                .order-summary-header .modal-title-section {
+                    flex: 1;
+                }
+                .order-summary-header h2 {
+                    margin: 0 0 4px 0;
+                    font-size: 1.125rem;
+                    font-weight: 700;
+                    line-height: 1.4;
+                }
+                .order-summary-header p {
+                    margin: 0;
+                    font-size: 0.875rem;
+                    opacity: 0.9;
+                    line-height: 1.4;
+                }
+                .close-order-summary {
+                    position: absolute;
+                    top: 16px;
+                    right: 16px;
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 28px;
+                    cursor: pointer;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    transition: background 0.2s;
+                }
+                .close-order-summary:hover {
+                    background: rgba(255,255,255,0.2);
+                }
+                .order-summary-body {
+                    padding: 24px;
+                }
+                .order-summary-shop-info {
+                    margin-bottom: 1rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .order-summary-shop-name,
+                .order-summary-shop-address {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-bottom: 0.5rem;
+                }
+                .order-summary-shop-address {
+                    margin-top: 8px;
+                }
+                .order-label {
+                    color: #6b7280;
+                    font-weight: 500;
+                    flex-shrink: 0;
+                }
+                .order-value {
+                    color: #111827;
+                    font-weight: 600;
+                    flex: 1;
+                }
+                @media (max-width: 768px) {
+                    .order-summary-shop-name,
+                    .order-summary-shop-address {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 0.5rem;
+                    }
+                    .order-summary-shop-address .order-value {
+                        word-break: break-word;
+                    }
+                }
+                .invoice-items {
+                    margin-top: 0.75rem;
+                }
+                .invoice-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.75rem 0;
+                    border-bottom: 1px solid #e5e7eb;
+                    font-size: 0.95rem;
+                }
+                .invoice-item:last-of-type {
+                    border-bottom: none;
+                }
+                .invoice-item-label {
+                    color: #6b7280;
+                    font-weight: 500;
+                    flex: 1;
+                }
+                .invoice-item-value {
+                    color: #1f2937;
+                    font-weight: 600;
+                    text-align: right;
+                    white-space: nowrap;
+                }
+                .invoice-item.invoice-total {
+                    margin-top: 0.5rem;
+                    padding: 0.625rem 0.75rem;
+                    border-top: 2px solid #e5e7eb;
+                    border-bottom: none;
+                    background: #2563eb;
+                    border-radius: 8px;
+                    border-top: none;
+                }
+                .invoice-item.invoice-total .invoice-item-label {
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                }
+                .invoice-item.invoice-total .invoice-item-value {
+                    font-size: 1rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                }
+                .order-summary-footer {
+                    padding: 24px;
+                    display: flex;
+                    gap: 12px;
+                    justify-content: space-between;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .btn-cancel, .btn-pay {
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    border: none;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-cancel {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+                .btn-cancel:hover {
+                    background: #e5e7eb;
+                }
+                .btn-pay {
+                    background: #2563eb;
+                    color: white;
+                }
+                .btn-pay:hover {
+                    background: #1d4ed8;
+                }
+                .btn-pay:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    // Populate order summary data
+    const shopNameEl = document.getElementById('photoOrderShopName');
+    if (shopNameEl) shopNameEl.textContent = data.shopName || '-';
+    const shopAddressEl = document.getElementById('photoOrderShopAddress');
+    if (shopAddressEl) shopAddressEl.textContent = data.shopAddress || '-';
+    const layoutEl = document.getElementById('photoOrderLayout');
+    if (layoutEl) layoutEl.textContent = `${data.metadata.layout} photos (${data.metadata.orientation})`;
+    const colorEl = document.getElementById('photoOrderColor');
+    if (colorEl) colorEl.textContent = data.metadata.color || '-';
+    const copiesEl = document.getElementById('photoOrderCopies');
+    if (copiesEl) copiesEl.textContent = data.metadata.copies || '1';
+    const imagesEl = document.getElementById('photoOrderImages');
+    if (imagesEl) imagesEl.textContent = data.metadata.total_images || '0';
+    const totalEl = document.getElementById('photoOrderTotal');
+    if (totalEl) totalEl.textContent = `₹${data.amountRs.toFixed(2)}`;
+    
+    // Show modal
+    orderSummary.style.display = 'flex';
+    printBtn.disabled = false;
+    printBtn.textContent = 'Print';
+}
+
+// Function to close order summary
+function closePhotoPrintOrderSummary() {
+    const orderSummary = document.getElementById('photoPrintOrderSummary');
+    if (orderSummary) {
+        orderSummary.style.display = 'none';
+    }
+}
+
+// Function to process photo print payment
+async function processPhotoPrintPayment() {
+    const data = window._photoPrintPendingData;
+    if (!data) {
+        alert('No pending order data found. Please try again.');
+        return;
+    }
+    
+    const payBtn = document.getElementById('photoPrintPayNowBtn');
+    if (payBtn) {
+        payBtn.disabled = true;
+        payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+    
+    try {
+        // Create form data
+        const formData = new FormData();
+        formData.append('file_0', data.pdfFile);
+        formData.append('file_count', '1');
+        formData.append('settings_0', JSON.stringify(data.metadata));
+        formData.append('selected_vendor', data.selectedShop);
+        formData.append('vendor_id', data.vendorId);
+        formData.append('vendor_email', data.vendorEmail || '');
+        formData.append('shop_name', data.shopName || '');
+        formData.append('shop_address', data.shopAddress || '');
+        formData.append('storage_folder', 'vendor_print_jobs');
+        formData.append('points_applied', data.pointsApplied.toString());
+        formData.append('points_used', data.pointsUsed);
+        formData.append('final_amount', data.finalAmount);
+        
+        // Create Razorpay order
         const orderResp = await fetch('/payments/create-order/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({ amount_paise: Math.round(amountRs * 100), receipt: `photo_${Date.now()}` })
+            body: JSON.stringify({ amount_paise: Math.round(data.amountRs * 100), receipt: `photo_${Date.now()}` })
         });
         const orderData = await parseJsonResponse(orderResp);
         if (!orderResp.ok || !orderData.success) { throw new Error(orderData.error || 'Failed to create Razorpay order'); }
 
+        // Open Razorpay payment window
         await new Promise((resolve) => {
             const rzp = new Razorpay({
                 key: orderData.key_id,
@@ -2163,8 +3123,9 @@ async function handlePrint() {
                         const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
                         const verifyData = await parseJsonResponse(verifyResp);
                         if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
-                        const serverToken = verifyData.token || token;
+                        const serverToken = verifyData.token || data.metadata.token;
                         const successMessage = '✅ Print job sent to print successfully.';
+                        closePhotoPrintOrderSummary();
                         closePhotoPrintModalView();
                         resolve();
                         redirectToDashboardWithSuccess(successMessage, serverToken);
@@ -2187,8 +3148,10 @@ async function handlePrint() {
         console.error('Error:', error);
         alert(`Error: ${error.message}`);
     } finally {
-        printBtn.disabled = false;
-        printBtn.textContent = 'Print';
+        if (payBtn) {
+            payBtn.disabled = false;
+            payBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+        }
     }
 }
 
@@ -2347,31 +3310,63 @@ function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount
     const pricingDetails = document.getElementById('pricingDetails');
     if (!pricingDetails) return;
 
-    // Find the total amount line and update it
-    const totalItem = pricingDetails.querySelector('.breakdown-item[data-role="total"]');
-    if (totalItem) {
-        // Remove any existing points line
-        const existingPointsLine = pricingDetails.querySelector('.breakdown-item.points-applied');
-        if (existingPointsLine) {
-            existingPointsLine.remove();
-        }
+    // Check if using professional-bill format (new format) or old breakdown format
+    const invoiceItems = pricingDetails.querySelector('.invoice-items');
+    if (invoiceItems) {
+        // Professional-bill format (new)
+        const totalItem = invoiceItems.querySelector('.invoice-total[data-role="total"]');
+        if (totalItem) {
+            // Remove any existing points line
+            const existingPointsLine = invoiceItems.querySelector('.invoice-item.points-applied');
+            if (existingPointsLine) {
+                existingPointsLine.remove();
+            }
 
-        // Add points applied line before total
-        if (pointsUsed > 0) {
-            const pointsLine = document.createElement('div');
-            pointsLine.className = 'breakdown-item points-applied';
-            pointsLine.dataset.role = 'points';
-            pointsLine.innerHTML = `
-                <span class="breakdown-label">Points Applied</span>
-                <span class="breakdown-value">-₹${pointsUsed.toFixed(2)}</span>
-            `;
-            totalItem.parentNode.insertBefore(pointsLine, totalItem);
-        }
+            // Add points applied line before total
+            if (pointsUsed > 0) {
+                const pointsLine = document.createElement('div');
+                pointsLine.className = 'invoice-item points-applied';
+                pointsLine.dataset.role = 'points';
+                pointsLine.innerHTML = `
+                    <span class="invoice-item-label">Points Applied</span>
+                    <span class="invoice-item-value">-₹${pointsUsed.toFixed(2)}</span>
+                `;
+                totalItem.parentNode.insertBefore(pointsLine, totalItem);
+            }
 
-        // Update total amount
-        const totalValue = totalItem.querySelector('.breakdown-value');
-        if (totalValue) {
-            totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+            // Update total amount
+            const totalValue = totalItem.querySelector('.invoice-item-value');
+            if (totalValue) {
+                totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+            }
+        }
+    } else {
+        // Old breakdown format (fallback)
+        const totalItem = pricingDetails.querySelector('.breakdown-item[data-role="total"]');
+        if (totalItem) {
+            // Remove any existing points line
+            const existingPointsLine = pricingDetails.querySelector('.breakdown-item.points-applied');
+            if (existingPointsLine) {
+                existingPointsLine.remove();
+            }
+
+            // Add points applied line before total
+            if (pointsUsed > 0) {
+                const pointsLine = document.createElement('div');
+                pointsLine.className = 'breakdown-item points-applied';
+                pointsLine.dataset.role = 'points';
+                pointsLine.innerHTML = `
+                    <span class="breakdown-label">Points Applied</span>
+                    <span class="breakdown-value">-₹${pointsUsed.toFixed(2)}</span>
+                `;
+                totalItem.parentNode.insertBefore(pointsLine, totalItem);
+            }
+
+            // Update total amount
+            const totalValue = totalItem.querySelector('.breakdown-value');
+            if (totalValue) {
+                totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+            }
         }
     }
 }
