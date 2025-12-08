@@ -3629,7 +3629,6 @@ def upload_to_r2(request):
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
-                    is_manual_job = print_settings.get('is_manual_job', 'NO') == 'YES'
                     
                     # Store every user dashboard job under vendor_print_jobs to keep metadata consistent with D1
                     storage_folder = 'vendor_print_jobs'
@@ -3638,40 +3637,15 @@ def upload_to_r2(request):
                     file_metadata['storage_folder'] = storage_folder
                     print(f"📁 Storing {service_type or 'regular print'} job in {storage_folder} folder")
 
-                    # Add shop_address and shop_name from print_settings or vendor data
-                    shop_address = print_settings.get('shop_address', '')
-                    shop_name = print_settings.get('shop_name', '')
-                    if (not shop_address or not shop_name) and vendor_email:
-                        try:
-                            vendor_data = get_vendor_coordinates_from_email(vendor_email)
-                            if vendor_data:
-                                if not shop_address:
-                                    shop_address = vendor_data.get('shop_address', '')
-                                if not shop_name:
-                                    shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
-                        except:
-                            pass
-                    file_metadata['shop_address'] = shop_address
-                    file_metadata['shop_name'] = shop_name
-                    
                     # Ensure a default render flag so dashboard can avoid double-rendering
                     if 'rendered_status' not in file_metadata:
                         file_metadata['rendered_status'] = 'NO'
 
-                    # Determine if we should use minimal metadata (only filename) for R2 storage
-                    # For userdashboard modals (is_manual_job=YES) and photoprint modals, use minimal metadata
-                    # All details will be stored in D1 database
-                    use_minimal_metadata = is_manual_job or service_type in ['photo_print', 'passport_photo']
-                    
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
                         if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
-                            # Use minimal metadata for R2 (only filename), all details go to D1
-                            if use_minimal_metadata:
-                                r2_metadata = get_minimal_r2_metadata(file.name)
-                                print(f"📦 Using minimal R2 metadata (filename only) for {service_type}")
-                            else:
-                                r2_metadata = sanitize_r2_metadata(file_metadata)
+                            # Use the same keys as above
+                            r2_metadata = sanitize_r2_metadata(file_metadata)
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=vendor_file_key,
@@ -3742,12 +3716,8 @@ def upload_to_r2(request):
                                         'original_filename': file.name,
                                         'paper_size': layout_config['paper_size']
                                     })
-                                # Use minimal metadata for R2 (only filename), all details go to D1
-                                if use_minimal_metadata:
-                                    r2_metadata = get_minimal_r2_metadata(file.name)
-                                    print(f"📦 Using minimal R2 metadata (filename only) for {service_type}")
-                                else:
-                                    r2_metadata = sanitize_r2_metadata(file_metadata)
+                                # Use full metadata so storage mirrors legacy behaviour
+                                r2_metadata = sanitize_r2_metadata(file_metadata)
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
                                     Key=vendor_file_key,
@@ -3769,12 +3739,7 @@ def upload_to_r2(request):
                                 return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
                     else:
                         # Regular file upload for non-passport services
-                        # Use minimal metadata for R2 (only filename) if this is a manual job, all details go to D1
-                        if use_minimal_metadata:
-                            r2_metadata = get_minimal_r2_metadata(file.name)
-                            print(f"📦 Using minimal R2 metadata (filename only) for manual job")
-                        else:
-                            r2_metadata = sanitize_r2_metadata(file_metadata)
+                        r2_metadata = sanitize_r2_metadata(file_metadata)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=vendor_file_key,
