@@ -3645,20 +3645,18 @@ def upload_to_r2(request):
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
                         if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
                             # Use the same keys as above
-                            r2_metadata = sanitize_r2_metadata(file_metadata)
+                            # Store only the binary file in R2; keep all metadata in database tables
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=vendor_file_key,
                                 Body=file_content,
-                                ContentType='application/pdf',
-                                Metadata=r2_metadata
+                                ContentType='application/pdf'
                             )
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=user_file_key,
                                 Body=file_content,
-                                ContentType='application/pdf',
-                                Metadata=r2_metadata
+                                ContentType='application/pdf'
                             )
                             print(f"✅ PDF uploaded directly: {file.name}")
                         else:
@@ -3716,21 +3714,18 @@ def upload_to_r2(request):
                                         'original_filename': file.name,
                                         'paper_size': layout_config['paper_size']
                                     })
-                                # Use full metadata so storage mirrors legacy behaviour
-                                r2_metadata = sanitize_r2_metadata(file_metadata)
+                                # Store only the PDF; persist metadata solely in the database
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
                                     Key=vendor_file_key,
                                     Body=pdf_data,
-                                    ContentType='application/pdf',
-                                    Metadata=r2_metadata
+                                    ContentType='application/pdf'
                                 )
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
                                     Key=user_file_key,
                                     Body=pdf_data,
-                                    ContentType='application/pdf',
-                                    Metadata=r2_metadata
+                                    ContentType='application/pdf'
                                 )
                                 print(f"✅ Photo layout saved as PDF: {file.name}")
                                 
@@ -3738,21 +3733,18 @@ def upload_to_r2(request):
                                 print(f"❌ Failed to create {service_type} layout")
                                 return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
                     else:
-                        # Regular file upload for non-passport services
-                        r2_metadata = sanitize_r2_metadata(file_metadata)
+                        # Regular file upload for non-passport services (no metadata stored in R2)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=vendor_file_key,
                             Body=file_content,
-                            ContentType=content_type,
-                            Metadata=r2_metadata
+                            ContentType=content_type
                         )
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=user_file_key,
                             Body=file_content,
-                            ContentType=content_type,
-                            Metadata=r2_metadata
+                            ContentType=content_type
                         )
 
                     # Store print job in D1 database (R2 storage is already done above)
@@ -5021,13 +5013,12 @@ def verify_razorpay_payment(request):
                 
                 try:
                     # Step 1: Store to vendor folder in R2
-                    r2_metadata = sanitize_r2_metadata(metadata)
+                    # Store only the file bytes in R2 (metadata stays in DB tables)
                     s3.put_object(
                         Bucket=settings.R2_BUCKET,
                         Key=vendor_file_key,
                         Body=file_content,
-                        ContentType=fobj.content_type,
-                        Metadata=r2_metadata
+                        ContentType=fobj.content_type
                     )
                     vendor_r2_stored = True
                     print(f"✅ Stored {fobj.name} to vendor R2 folder")
@@ -5037,8 +5028,7 @@ def verify_razorpay_payment(request):
                         Bucket=settings.R2_BUCKET,
                         Key=user_file_key,
                         Body=file_content,
-                        ContentType=fobj.content_type,
-                        Metadata=r2_metadata
+                        ContentType=fobj.content_type
                     )
                     user_r2_stored = True
                     print(f"✅ Stored {fobj.name} to user R2 folder")
@@ -5134,14 +5124,37 @@ def verify_razorpay_payment(request):
         # Deduct points immediately after successful payment verification
         try:
             points_applied = request.POST.get('points_applied', 'false').lower() == 'true'
-            points_used = int(request.POST.get('points_used', '0'))
-            
-            if points_applied and points_used > 0:
-                success = deduct_user_points(user_email, points_used, f'Points used for payment {payment_id}')
-                if success:
-                    print(f"💰 Deducted {points_used} points from {user_email} for payment {payment_id}")
+            points_used = request.POST.get('points_used', '0')
+
+            # Preserve decimals from the client but never allow negatives or overdrafts
+            try:
+                points_used_numeric = float(points_used)
+            except (TypeError, ValueError):
+                points_used_numeric = 0.0
+
+            if points_applied and points_used_numeric > 0 and user_email:
+                # Fetch current balance to ensure we never over-deduct
+                current_balance = get_total_user_points(user_email)
+                safe_balance = max(0.0, float(current_balance or 0))
+                # Deduct only what is available and cap at the invoiced amount
+                points_to_deduct = min(points_used_numeric, safe_balance)
+
+                if points_to_deduct <= 0:
+                    print(f"⚠️ Points deduction skipped for {user_email}: no available balance.")
                 else:
-                    print(f"❌ Failed to deduct {points_used} points from {user_email}")
+                    # Store back to the response for transparency
+                    response_data['points_deducted'] = round(points_to_deduct, 1)
+                    response_data['points_balance_before'] = round(safe_balance, 1)
+
+                    success = deduct_user_points(
+                        user_email,
+                        points_to_deduct,
+                        f'Points used for payment {payment_id}'
+                    )
+                    if success:
+                        print(f"💰 Deducted {points_to_deduct} points from {user_email} for payment {payment_id}")
+                    else:
+                        print(f"❌ Failed to deduct {points_to_deduct} points from {user_email}")
         except Exception as e:
             print(f"⚠️ Error deducting points after payment: {str(e)}")
 
@@ -8684,24 +8697,34 @@ def assign_printer_to_job(request):
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
                 current_metadata = head_response.get('Metadata', {})
                 
-                # Update metadata with printer information (store under multiple keys for compatibility)
-                current_metadata['assigned_printer'] = printer_name
-                current_metadata['printer_name'] = printer_name
-                current_metadata['printer_assigned_at'] = datetime.datetime.now().isoformat()
-                current_metadata['service_type'] = service_type
-                
-                # Copy object with updated metadata
-                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
-                s3.copy_object(
-                    CopySource=copy_source,
-                    Bucket=settings.R2_BUCKET,
-                    Key=path,
-                    Metadata=current_metadata,
-                    MetadataDirective='REPLACE'
-                )
-                
-                updated = True
-                updated_path = path
+                # Do not store metadata on R2 for vendor/user print jobs; rely on DB tables instead
+                if path.startswith('vendor_print_jobs/') or path.startswith('users/'):
+                    print(f"ℹ️ Skipping R2 metadata write for {path}; DB holds metadata.")
+                    updated = True
+                    updated_path = path
+                else:
+                    # Update metadata for non-print-job assets
+                    current_metadata['assigned_printer'] = printer_name
+                    # Avoid R2 metadata writes for print jobs; rely on DB tables instead
+                    if path.startswith('vendor_print_jobs/') or path.startswith('users/'):
+                        print(f"ℹ️ Skipping printer metadata write for {path}; DB holds metadata.")
+                        updated = True
+                        updated_path = path
+                    else:
+                        current_metadata['printer_name'] = printer_name
+                        current_metadata['printer_assigned_at'] = datetime.datetime.now().isoformat()
+                        current_metadata['service_type'] = service_type
+                        
+                        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                        s3.copy_object(
+                            CopySource=copy_source,
+                            Bucket=settings.R2_BUCKET,
+                            Key=path,
+                            Metadata=current_metadata,
+                            MetadataDirective='REPLACE'
+                        )
+                        updated = True
+                        updated_path = path
                 print(f"✅ Updated printer assignment for {filename} at {path}")
                 break
                 
@@ -13701,18 +13724,24 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                     current_metadata['cancelled_time'] = datetime.datetime.now().isoformat()
                     current_metadata['job_failed'] = 'YES'  # Mark as failed for cancelled jobs
                 
-                # Copy object with updated metadata
-                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
-                s3.copy_object(
-                    CopySource=copy_source,
-                    Bucket=settings.R2_BUCKET,
-                    Key=path,
-                    Metadata=current_metadata,
-                    MetadataDirective='REPLACE'
-                )
-                
-                print(f"✅ Updated vendor_status to '{status}' for {filename} at {path}")
-                return True
+                # Avoid storing metadata for vendor/user print jobs; rely on DB tables
+                if path.startswith('vendor_print_jobs/') or path.startswith('users/'):
+                    print(f"ℹ️ Skipping R2 metadata write for {path}; DB holds metadata.")
+                    print(f"✅ Treated vendor_status as '{status}' for {filename} at {path} (DB-driven).")
+                    return True
+                else:
+                    # Copy object with updated metadata for non print-job assets
+                    copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                    s3.copy_object(
+                        CopySource=copy_source,
+                        Bucket=settings.R2_BUCKET,
+                        Key=path,
+                        Metadata=current_metadata,
+                        MetadataDirective='REPLACE'
+                    )
+                    
+                    print(f"✅ Updated vendor_status to '{status}' for {filename} at {path}")
+                    return True
                 
             except Exception as e:
                 print(f"   ⚠️ Not found at {path}: {str(e)}")
