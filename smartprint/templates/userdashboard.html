@@ -12080,6 +12080,8 @@
       function closeServiceModal(service) {
         const modal = document.getElementById(`service-modal-${service}`);
         if (modal) {
+        // If points were applied in this modal session, restore them before closing
+        restorePointsForModal(modal, service);
           modal.classList.remove('active');
           emitHiddenBsModalEvent(modal);
           // Prevent any success messages or animations when closing modal (especially for photo print)
@@ -12108,6 +12110,9 @@
         // Close all service modals
         const serviceModals = document.querySelectorAll('.service-modal-overlay');
         serviceModals.forEach(modal => {
+          // Restore any points that were temporarily deducted in UI
+          const serviceName = modal.id?.replace('service-modal-', '') || '';
+          restorePointsForModal(modal, serviceName);
           modal.classList.remove('active');
           emitHiddenBsModalEvent(modal);
         });
@@ -12148,6 +12153,8 @@
         // Clear points application state
         const pointsSection = modal.querySelector(`#${service}-points-section`);
         if (pointsSection) {
+          // Return any points that were applied in this modal back to the visible balance
+          restorePointsForModal(modal, service);
           const applyPointsBtn = modal.querySelector(`#${service}-apply-points-btn`);
           const removePointsBtn = modal.querySelector(`#${service}-remove-points-btn`);
           const redeemAmount = modal.querySelector(`#${service}-redeem-amount`);
@@ -19726,16 +19733,52 @@
       }
     });
 
-    // Update points display in all modals
+    // Update points display in all modals and the dashboard header
     function updatePointsDisplay() {
+      const safePoints = Math.max(0, Number(userPoints || 0));
+      const formattedPoints = safePoints % 1 === 0 ? safePoints : Number(safePoints.toFixed(1));
+
       const pointsSections = document.querySelectorAll('.points-section');
       pointsSections.forEach(section => {
-        // Update redeem amount text dynamically to user's available points
         const redeemAmountEl = section.querySelector('.redeem-amount');
         if (redeemAmountEl) {
-          redeemAmountEl.textContent = String(userPoints || 0);
+          redeemAmountEl.textContent = String(formattedPoints);
+        }
+
+        const availableSpan = section.querySelector('.points-available span');
+        if (availableSpan) {
+          availableSpan.textContent = String(formattedPoints);
+        }
+
+        const balanceSpan = section.querySelector('.points-balance span');
+        if (balanceSpan) {
+          balanceSpan.textContent = String(formattedPoints);
         }
       });
+
+      // Header / stats tile
+      const totalPointsElement = document.getElementById('totalPointsCount');
+      if (totalPointsElement) {
+        totalPointsElement.textContent = formattedPoints;
+      }
+    }
+
+    // Restore any points that were applied inside a modal without completing payment
+    function restorePointsForModal(modal, service) {
+      if (!modal) return;
+      const wasApplied = modal.dataset.pointsApplied === 'true';
+      const usedPoints = parseFloat(modal.dataset.pointsUsed || '0');
+      if (wasApplied && usedPoints > 0) {
+        userPoints = Math.max(0, Number(userPoints || 0) + usedPoints);
+        updatePointsDisplay();
+      }
+
+      // Clear modal-level state so we don't restore twice
+      modal.dataset.pointsApplied = 'false';
+      modal.dataset.pointsUsed = '0';
+      if (service) {
+        modal.dataset.finalAmount = modal.dataset.calculatedPrice || '';
+      }
     }
 
     // Apply points to a specific service modal
@@ -19750,6 +19793,12 @@
       }
       if (!modal) return;
 
+      // Prevent double-application on the same modal
+      if (modal.dataset.pointsApplied === 'true') {
+        alert('Points are already applied. Remove them first if you want to change.');
+        return;
+      }
+
       const calculatedPrice = parseFloat(modal.dataset.calculatedPrice || document.body.dataset.calculatedPrice);
       if (!calculatedPrice || calculatedPrice <= 0) {
         alert('Please calculate the price first');
@@ -19757,7 +19806,8 @@
       }
 
       // Calculate maximum points that can be used (ensure at least 1 rupee remains)
-      const maxPointsToUse = Math.min(userPoints, Math.floor(calculatedPrice - 1));
+      const currentBalance = Math.max(0, Number(userPoints || 0));
+      const maxPointsToUse = Math.min(currentBalance, Math.floor(calculatedPrice - 1));
       
       if (maxPointsToUse <= 0) {
         alert('Not enough points to apply. You need at least 1 rupee remaining after applying points.');
@@ -19766,10 +19816,10 @@
 
       // Use all available points up to the maximum
       pointsUsed = maxPointsToUse;
-      const finalAmount = calculatedPrice - pointsUsed;
+      const finalAmount = Math.max(1, calculatedPrice - pointsUsed);
 
-      // Update local userPoints variable immediately
-      userPoints = Math.max(0, userPoints - pointsUsed);
+      // Update local userPoints variable immediately and never let it go negative
+      userPoints = Math.max(0, currentBalance - pointsUsed);
 
       // Update the pricing display
       updatePricingWithPoints(service, calculatedPrice, pointsUsed, finalAmount);
@@ -19868,6 +19918,69 @@
 
     // Update pricing display with points applied
     function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount) {
+      // Helper to reflect points usage inside all order/pricing summaries for this modal (including photo/print/order summary modal)
+      function updateOrderSummaryPoints() {
+        let modal = null;
+        if (service === 'printModal') {
+          modal = document.getElementById('printModal');
+        } else if (service === 'photoprint') {
+          modal = document.querySelector('.card-modal');
+        } else {
+          modal = document.getElementById(`service-modal-${service}`);
+        }
+
+        if (!modal) return;
+
+        const summaryContainers = [
+          modal.querySelector('.order-summary'),
+          modal.querySelector('.pricing-summary'),
+          modal.querySelector('.pricing-details'),
+          modal.querySelector(`#${service}-pricing-details`),
+          document.getElementById('orderSummaryDetails') // global order summary modal
+        ].filter(Boolean);
+
+        summaryContainers.forEach(container => {
+          // Remove any existing points rows first to avoid duplicates
+          container.querySelectorAll('.points-applied').forEach(row => row.remove());
+
+          // Locate a total row to place the points line before
+          let totalRow = container.querySelector('.invoice-item.invoice-total, .invoice-item.total, .pricing-item.total, .breakdown-item.total-item, .summary-row.total, .order-summary-row.total, .invoice-total');
+          if (!totalRow) {
+            // Fallback to any subtotal row if total not present yet
+            totalRow = container.querySelector('.invoice-item.invoice-subtotal, .pricing-item.subtotal, .summary-row.subtotal, .order-summary-row.subtotal');
+          }
+
+          if (pointsUsed > 0) {
+            const pointsRow = document.createElement('div');
+            pointsRow.className = 'invoice-item points-applied';
+            pointsRow.innerHTML = `
+              <span class="invoice-item-label">Points Applied</span>
+              <span class="invoice-item-value">-₹${pointsUsed.toFixed(2)}</span>
+            `;
+
+            if (totalRow && totalRow.parentNode) {
+              totalRow.parentNode.insertBefore(pointsRow, totalRow);
+            } else {
+              container.appendChild(pointsRow);
+            }
+          }
+
+          // Keep any visible total in sync with the final amount
+          const totalValueEl = container.querySelector(
+            '.invoice-item.invoice-total .invoice-item-value, .invoice-total .invoice-total-value, .pricing-item.total .pricing-value, .breakdown-item.total-item .breakdown-value, .summary-row.total .value, .order-summary-row.total .value, .invoice-item.total .invoice-item-value'
+          );
+          if (totalValueEl && finalAmount) {
+            totalValueEl.textContent = `₹${finalAmount.toFixed(2)}`;
+          }
+
+          // Update global order summary modal total if present
+          const orderSummaryTotal = document.getElementById('orderSummaryTotalAmount');
+          if (orderSummaryTotal && finalAmount) {
+            orderSummaryTotal.textContent = `₹${finalAmount.toFixed(2)}`;
+          }
+        });
+      }
+
       let pricingDetails;
       if (service === 'printModal') {
         // For regular print modal, update the order summary with discount line
@@ -19900,6 +20013,8 @@
         if (totalAmountElement) {
           totalAmountElement.textContent = `₹${finalAmount.toFixed(2)}`;
         }
+        // Keep order summary (if present) in sync
+        updateOrderSummaryPoints();
         return;
       } else if (service === 'photoprint') {
         // For photoprint modal, update the pricing details
@@ -19911,7 +20026,10 @@
       }
 
       // For service modals, update the professional bill format
-      const totalItem = pricingDetails.querySelector('.invoice-item.invoice-subtotal, .pricing-item.total');
+      let totalItem = pricingDetails.querySelector('.invoice-item.invoice-total, .invoice-total, .pricing-item.total, .breakdown-item.total-item');
+      if (!totalItem) {
+        totalItem = pricingDetails.querySelector('.invoice-item.invoice-subtotal, .pricing-item.subtotal');
+      }
       if (totalItem) {
         // Remove any existing points line
         const existingPointsLine = pricingDetails.querySelector('.invoice-item.points-applied, .pricing-item.points-applied');
@@ -19931,7 +20049,7 @@
         }
 
         // Update total amount
-        const totalValue = totalItem.querySelector('.invoice-item-value, .pricing-value');
+        const totalValue = totalItem.querySelector('.invoice-item-value, .invoice-total-value, .pricing-value, .breakdown-value, .value');
         if (totalValue) {
           totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
         }
@@ -19942,6 +20060,9 @@
       if (grandTotalElement) {
         grandTotalElement.textContent = `₹${finalAmount.toFixed(2)}`;
       }
+
+      // Reflect points usage in any order summary sections tied to this modal
+      updateOrderSummaryPoints();
     }
 
     // Check if all required inputs are provided for a service modal
@@ -25347,78 +25468,89 @@
               formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
               formData.append('razorpay_signature', paymentResponse.razorpay_signature);
 
-              // Show success immediately after payment (before storage)
+              // 3) Verify payment on server and upload files atomically (blocking now to avoid false positives)
+              const verifyResp = await fetch('/payments/verify/', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              });
+
+              const verifyData = await safeParseJson(verifyResp);
+              if (!verifyResp.ok || !verifyData.success) {
+                throw new Error(verifyData.error || 'Payment verification failed');
+              }
+
               hidePaymentProcessingState();
+
+              // Show compensation points message if awarded (parity with Jumbo)
+              if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                showCursorNotification(
+                  'Compensation Added',
+                  'success',
+                  `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
+                  'success',
+                  5000
+                );
+              }
+
+              // Show success animation and toast
               showSuccessModalWithAnimation();
-              
-              // Continue with storage in background (non-blocking)
-              (async () => {
-                try {
-                  // 3) Verify payment on server and upload files atomically
-                  const verifyResp = await fetch('/payments/verify/', {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
-                  });
 
-                  const verifyData = await safeParseJson(verifyResp);
-                  if (!verifyResp.ok || !verifyData.success) {
-                    throw new Error(verifyData.error || 'Payment verification failed');
-                  }
-
-                  // Check for failed uploads and show refund message in modal
-                  if (verifyData.files_failed > 0) {
-                    const failedFiles = verifyData.failed_files || [];
-                    const failedFileNames = failedFiles.map(f => f.filename).join(', ');
-                    const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
-                    showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
-                  }
-
-                  // Finalize Google Drive files if needed
-                  if (typeof driveFiles !== 'undefined' && driveFiles.size > 0) {
-                    try {
-                      await finalizeDriveFiles();
-                    } catch (error) {
-                      console.error('Error finalizing Drive files:', error);
-                    }
-                  }
-
-                  // Update job list dynamically and immediately
-                  if (typeof updateJobListAfterPayment === 'function') {
-                    // Call immediately to show print job block instantly
-                    updateJobListAfterPayment();
-                  } else {
-                    // Fallback: reload page after a short delay if function doesn't exist
-                    setTimeout(() => {
-                      window.location.reload();
-                    }, 1000);
-                  }
-                  
-                  // Clean up stored files from order summary modal after successful payment
-                  const orderSummaryModal = document.getElementById('orderSummaryModal');
-                  if (orderSummaryModal && orderSummaryModal._pendingFiles) {
-                    delete orderSummaryModal._pendingFiles;
-                    console.log('✅ Cleaned up stored files from order summary modal');
-                  }
-                } catch (err) {
-                  console.error('Background storage error:', err);
+              // Update points if allotted or deducted
+              if (typeof userPoints !== 'undefined') {
+                if (verifyData.points_deducted) {
+                  userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
                 }
-              })();
+                if (verifyData.points_allotted && verifyData.points_allotted > 0) {
+                  userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
+                }
+                updatePointsDisplay();
+              }
+
+              // Check for failed uploads and show refund message in modal
+              if (verifyData.files_failed > 0) {
+                const failedFiles = verifyData.failed_files || [];
+                const failedFileNames = failedFiles.map(f => f.filename).join(', ');
+                const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
+                showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
+              }
+
+              // Finalize Google Drive files if needed
+              if (typeof driveFiles !== 'undefined' && driveFiles.size > 0) {
+                try {
+                  await finalizeDriveFiles();
+                } catch (error) {
+                  console.error('Error finalizing Drive files:', error);
+                }
+              }
+
+              // Update job list dynamically and immediately
+              if (typeof updateJobListAfterPayment === 'function') {
+                updateJobListAfterPayment();
+              } else {
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
+              }
+              
+              // Clean up stored files from order summary modal after successful payment
+              const orderSummaryModal = document.getElementById('orderSummaryModal');
+              if (orderSummaryModal && orderSummaryModal._pendingFiles) {
+                delete orderSummaryModal._pendingFiles;
+                console.log('✅ Cleaned up stored files from order summary modal');
+              }
 
               // Reset UI for print modal - properly reset everything
               if (isPrintModal) {
-                // Call the proper reset function to ensure all UI elements are reset
                 if (typeof resetDocumentPrintModal === 'function') {
                   resetDocumentPrintModal();
                 } else {
-                  // Fallback: reset arrays and update UI
                   uploadedFiles = [];
                   selectedFileIndex = -1;
                   fileSettings = {};
                   if (typeof updateFileList === 'function') updateFileList();
                   if (typeof updateUI === 'function') updateUI();
                 }
-                // Re-attach color option event listeners after reset
                 setTimeout(() => {
                   attachColorOptionListeners();
                 }, 100);
