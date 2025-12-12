@@ -307,6 +307,13 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/userdashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
+# ✅ Custom Authentication Backend for D1 Admin Users
+# Use D1AdminUserBackend for admin authentication, fallback to ModelBackend for regular users
+AUTHENTICATION_BACKENDS = [
+    'print.backends.D1AdminUserBackend',  # Custom backend for D1 admin users
+    'django.contrib.auth.backends.ModelBackend',  # Fallback for regular users
+]
+
 # ✅ CSRF Settings for local testing + public tunnels
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
