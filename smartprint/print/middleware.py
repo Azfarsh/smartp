@@ -37,14 +37,51 @@ class SessionValidationMiddleware:
             '/vendor-about/',
             '/static/',
             '/media/',
-            '/admin/',  # Django admin URLs
-            '/admin-dashboard/',  # Custom admin dashboard URLs
+            '/admin/',  # Django admin URLs (handled by Django's admin authentication)
+            # Note: /admin-dashboard/ is NOT exempt - it uses @staff_member_required decorator
         ]
     
     def __call__(self, request):
         # Skip session validation for exempt URLs
         if any(request.path.startswith(url) for url in self.exempt_urls):
             response = self.get_response(request)
+            return response
+        
+        # Special handling for admin-dashboard: enforce strict authentication
+        # Similar to vendor dashboard - check session explicitly
+        if request.path.startswith('/admin-dashboard/'):
+            from django.contrib.auth.models import AnonymousUser
+            from django.contrib.auth import logout as django_logout
+            
+            # Get session user ID
+            session_user_id = request.session.get('_auth_user_id')
+            
+            # Check if user is authenticated (both session and user object must be valid)
+            is_authenticated = getattr(request.user, 'is_authenticated', False)
+            is_staff = getattr(request.user, 'is_staff', False)
+            
+            # If no session user ID OR user is not authenticated, force logout and redirect
+            if not session_user_id or not is_authenticated:
+                # Clear any cached authentication
+                if is_authenticated:
+                    django_logout(request)
+                # Ensure user is AnonymousUser
+                request.user = AnonymousUser()
+                # Redirect to admin login
+                login_url = reverse('admin:login') + '?next=' + request.get_full_path()
+                return redirect(login_url)
+            
+            # If authenticated but not staff, also redirect to admin login
+            if not is_staff:
+                login_url = reverse('admin:login') + '?next=' + request.get_full_path()
+                return redirect(login_url)
+            
+            # User is authenticated and staff - proceed to view
+            # Add cache-control headers to prevent browser caching
+            response = self.get_response(request)
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
             return response
         
         # Check if user is authenticated

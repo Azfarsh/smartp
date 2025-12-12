@@ -123,6 +123,141 @@ def post_to_worker(path, payload=None, timeout=10):
     return endpoint, response
 
 
+def create_or_update_admin_user_in_d1(username, password_hash, email=None, first_name=None, last_name=None, is_superuser=False, is_staff=True, is_active=True, permissions=None):
+    """
+    Create or update an admin user in D1 database
+    """
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            raise RuntimeError("Worker API not configured")
+        
+        # Build endpoint
+        base_url = api_url.rstrip('/')
+        if '/add-contact' in base_url:
+            endpoint = base_url.replace('/add-contact', '/create-admin-user')
+        elif '/add-vendor-register' in base_url:
+            endpoint = base_url.replace('/add-vendor-register', '/create-admin-user')
+        else:
+            endpoint = base_url + '/create-admin-user'
+        
+        payload = {
+            'username': username,
+            'password_hash': password_hash,
+            'email': email,
+            'first_name': first_name,
+            'last_name': last_name,
+            'is_superuser': is_superuser,
+            'is_staff': is_staff,
+            'is_active': is_active,
+            'permissions': permissions
+        }
+        
+        response = requests.post(
+            endpoint,
+            json=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('success', False)
+        else:
+            return False
+            
+    except Exception as e:
+        print(f"Error creating/updating admin user in D1: {e}")
+        return False
+
+
+def get_admin_user_from_d1(username):
+    """
+    Get admin user from D1 database by username
+    """
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            raise RuntimeError("Worker API not configured")
+        
+        # Build endpoint
+        base_url = api_url.rstrip('/')
+        if '/add-contact' in base_url:
+            endpoint = base_url.replace('/add-contact', '/get-admin-user')
+        elif '/add-vendor-register' in base_url:
+            endpoint = base_url.replace('/add-vendor-register', '/get-admin-user')
+        else:
+            endpoint = base_url + '/get-admin-user'
+        
+        response = requests.post(
+            endpoint,
+            json={'username': username},
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                return data.get('user')
+        return None
+        
+    except Exception as e:
+        print(f"Error getting admin user from D1: {e}")
+        return None
+
+
+def get_all_admin_users_from_d1():
+    """
+    Get all admin users from D1 database
+    """
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            raise RuntimeError("Worker API not configured")
+        
+        # Build endpoint
+        base_url = api_url.rstrip('/')
+        if '/add-contact' in base_url:
+            endpoint = base_url.replace('/add-contact', '/get-all-admin-users')
+        elif '/add-vendor-register' in base_url:
+            endpoint = base_url.replace('/add-vendor-register', '/get-all-admin-users')
+        else:
+            endpoint = base_url + '/get-all-admin-users'
+        
+        response = requests.post(
+            endpoint,
+            json={},
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                return data.get('users', [])
+        return []
+        
+    except Exception as e:
+        print(f"Error getting all admin users from D1: {e}")
+        return []
+
+
 def _to_decimal(value, precision=2):
     """
     Safely convert inputs to floats with optional rounding.
@@ -5044,40 +5179,54 @@ def verify_razorpay_payment(request):
                     # Prefer full pricing details JSON when present for accurate D1 storage
                     pricing_details_for_db = metadata.get('pricing_details_raw') or pricing_details
                     
-                    vendor_stored = store_vendor_print_job_in_db(
-                        vendor_id=vendor_id,
-                        vendor_email=vendor_email,
-                        user_email=user_email,
-                        filename=fobj.name,
-                        storage_folder=storage_folder,
-                        r2_path=vendor_file_key,
-                        metadata=metadata,
-                        pricing_details=pricing_details_for_db,
-                        user_id=str(request.user.id) if request.user.is_authenticated else None,
-                        shop_id=vendor_id
-                    )
-                    
-                    if not vendor_stored:
-                        raise Exception("Failed to store in vendor_print_jobs table")
+                    try:
+                        vendor_stored = store_vendor_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=fobj.name,
+                            storage_folder=storage_folder,
+                            r2_path=vendor_file_key,
+                            metadata=metadata,
+                            pricing_details=pricing_details_for_db,
+                            user_id=str(request.user.id) if request.user.is_authenticated else None,
+                            shop_id=vendor_id
+                        )
+                        
+                        if not vendor_stored:
+                            print(f"❌ Failed to store {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                            raise Exception(f"Failed to store in vendor_print_jobs table for {service_type}")
+                        else:
+                            print(f"✅ Successfully stored {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                    except Exception as vendor_db_error:
+                        print(f"❌ Database error storing {fobj.name} in vendor_print_jobs: {str(vendor_db_error)}")
+                        raise Exception(f"Database error: Failed to store in vendor_print_jobs table - {str(vendor_db_error)}")
                     
                     # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
                     user_metadata = dict(metadata)
                     user_metadata['storage_folder'] = 'users'
-                    user_stored = store_user_print_job_in_db(
-                        vendor_id=vendor_id,
-                        vendor_email=vendor_email,
-                        user_email=user_email,
-                        filename=fobj.name,
-                        storage_folder='users',
-                        r2_path=user_file_key,
-                        metadata=user_metadata,
-                        pricing_details=pricing_details_for_db,
-                        user_id=str(request.user.id) if request.user.is_authenticated else None,
-                        shop_id=vendor_id
-                    )
-                    
-                    if not user_stored:
-                        raise Exception("Failed to store in user_print_jobs table")
+                    try:
+                        user_stored = store_user_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=fobj.name,
+                            storage_folder='users',
+                            r2_path=user_file_key,
+                            metadata=user_metadata,
+                            pricing_details=pricing_details_for_db,
+                            user_id=str(request.user.id) if request.user.is_authenticated else None,
+                            shop_id=vendor_id
+                        )
+                        
+                        if not user_stored:
+                            print(f"❌ Failed to store {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                            raise Exception(f"Failed to store in user_print_jobs table for {service_type}")
+                        else:
+                            print(f"✅ Successfully stored {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                    except Exception as user_db_error:
+                        print(f"❌ Database error storing {fobj.name} in user_print_jobs: {str(user_db_error)}")
+                        raise Exception(f"Database error: Failed to store in user_print_jobs table - {str(user_db_error)}")
                     
                     # All steps succeeded - mark as processed
                     files_processed += 1
@@ -5237,24 +5386,31 @@ def verify_razorpay_payment(request):
         })
 
         # Always store points in user_points when uploads fail so they are instantly available
-        if files_failed > 0 and total_payment_amount > 0 and compensation_points_awarded == 0:
-            try:
-                user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
-                if user_email_for_points:
-                    points_to_assign = float(total_payment_amount)
-                    success = add_user_points(
-                        user_email_for_points,
-                        points_to_assign,
-                        f"Compensation points for {files_failed} failed upload(s) - payment {payment_id}"
-                    )
-                    if success:
-                        compensation_points_awarded = points_to_assign
-                        response_data['points_compensated'] = points_to_assign
-                        print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads")
-                    else:
-                        print(f"❌ Failed to assign compensation points to {user_email_for_points}")
-            except Exception as e:
-                print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
+        # This ensures compensation for ALL service types (document print, jumbo print, etc.)
+        if files_failed > 0 and total_payment_amount > 0:
+            # Check if compensation was already awarded in refund logic
+            compensation_already_awarded = compensation_points_awarded > 0
+            
+            if not compensation_already_awarded:
+                try:
+                    user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
+                    if user_email_for_points:
+                        points_to_assign = float(total_payment_amount)
+                        success = add_user_points(
+                            user_email_for_points,
+                            points_to_assign,
+                            f"Compensation points for {files_failed} failed upload(s) - payment {payment_id}"
+                        )
+                        if success:
+                            compensation_points_awarded = points_to_assign
+                            response_data['points_compensated'] = points_to_assign
+                            print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads (compensation)")
+                        else:
+                            print(f"❌ Failed to assign compensation points to {user_email_for_points}")
+                except Exception as e:
+                    print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
+            else:
+                print(f"✅ Compensation points already awarded: {compensation_points_awarded} points")
         
         # Add refund information if files failed
         if files_failed > 0 and total_payment_amount > 0:
@@ -14382,14 +14538,25 @@ def logout(request):
     """
     Logout view that clears session data and redirects to home
     """
-    # Add success message before clearing session
-    messages.success(request, 'You have been successfully logged out!')
+    # Use Django's logout function to properly clear authentication
+    from django.contrib.auth import logout as django_logout
+    django_logout(request)
     
-    # Clear all session data
+    # Add success message (before session is cleared if possible)
+    try:
+        messages.success(request, 'You have been successfully logged out!')
+    except:
+        pass  # Session might already be cleared
+    
+    # Clear any remaining session data
     request.session.flush()
     
-    # Redirect to home page
-    return redirect('home')
+    # Clear authentication cookies
+    response = redirect('home')
+    response.delete_cookie('sessionid')
+    response.delete_cookie('csrftoken')
+    
+    return response
 
 
 # Connection monitoring system for vendor client

@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
@@ -20,11 +20,41 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
 
+def add_no_cache_headers(response):
+    """Helper function to add cache-control headers to prevent browser caching"""
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
+
+
 # Admin Dashboard Views
 @staff_member_required
 def admin_dashboard(request):
     """Main admin dashboard view - requires staff authentication"""
-    return render(request, 'admin_dashboard.html')
+    # Strict authentication check - ensure user is authenticated and staff
+    if not request.user.is_authenticated or not request.user.is_staff:
+        from django.contrib.auth import logout as django_logout
+        from django.contrib.auth.models import AnonymousUser
+        django_logout(request)
+        request.user = AnonymousUser()
+        from django.urls import reverse
+        login_url = reverse('admin:login') + '?next=' + request.get_full_path()
+        return redirect(login_url)
+    
+    # Check session validity
+    if not request.session.get('_auth_user_id'):
+        from django.contrib.auth import logout as django_logout
+        from django.contrib.auth.models import AnonymousUser
+        django_logout(request)
+        request.user = AnonymousUser()
+        from django.urls import reverse
+        login_url = reverse('admin:login') + '?next=' + request.get_full_path()
+        return redirect(login_url)
+    
+    # Add cache-control headers to prevent browser caching
+    response = render(request, 'admin_dashboard.html')
+    return add_no_cache_headers(response)
 
 
 @staff_member_required
