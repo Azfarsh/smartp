@@ -5230,7 +5230,7 @@ def verify_razorpay_payment(request):
                     
                     # All steps succeeded - mark as processed
                     files_processed += 1
-                    print(f"✅ Successfully stored file {fobj.name} in R2 and both database tables")
+                    print(f"✅ Successfully stored file {fobj.name} (service_type: {service_type}) in R2 and both database tables")
                     
                 except Exception as upload_error:
                     upload_error_msg = str(upload_error)
@@ -5370,6 +5370,9 @@ def verify_razorpay_payment(request):
                         points_to_assign = float(total_payment_amount)
                         success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_id}")
                         if success:
+                            compensation_points_awarded = points_to_assign
+                            response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
+                            response_data['points_compensated'] = points_to_assign
                             print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
                         else:
                             print(f"❌ Failed to assign points to {user_email_for_refund} for failed uploads")
@@ -5404,6 +5407,7 @@ def verify_razorpay_payment(request):
                         if success:
                             compensation_points_awarded = points_to_assign
                             response_data['points_compensated'] = points_to_assign
+                            response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
                             print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads (compensation)")
                         else:
                             print(f"❌ Failed to assign compensation points to {user_email_for_points}")
@@ -5411,6 +5415,10 @@ def verify_razorpay_payment(request):
                     print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
             else:
                 print(f"✅ Compensation points already awarded: {compensation_points_awarded} points")
+                # Ensure compensation_points_awarded is in response even if already awarded
+                if compensation_points_awarded > 0:
+                    response_data['compensation_points_awarded'] = compensation_points_awarded
+                    response_data['points_compensated'] = compensation_points_awarded
         
         # Add refund information if files failed
         if files_failed > 0 and total_payment_amount > 0:
