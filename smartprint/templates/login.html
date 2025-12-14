@@ -1880,9 +1880,19 @@
       }, 5000); // Increased timeout
       
       authPromise
-      .then(res => {
+      .then(async res => {
         console.log('Auth response status:', res.status);
-        return res.json();
+        const contentType = res.headers.get('content-type');
+        
+        // Check if response is JSON
+        if (contentType && contentType.includes('application/json')) {
+          return res.json();
+        } else {
+          // If not JSON, try to parse as text and show error
+          const text = await res.text();
+          console.error('Non-JSON response received:', text.substring(0, 200));
+          throw new Error(`Server returned non-JSON response (${res.status}). Please check server logs.`);
+        }
       })
       .then(data => {
         clearTimeout(authTimeout);
@@ -1899,14 +1909,15 @@
           }, 500); // Small delay to ensure session is established
         } else {
           console.error('Auth failed:', data.message);
-          alert('🚫 Access denied: ' + data.message);
+          alert('🚫 Access denied: ' + (data.message || 'Unknown error'));
           document.getElementById('welcomeScreen').style.display = 'none';
         }
       })
       .catch(err => {
         clearTimeout(authTimeout);
         console.error('Auth error:', err);
-        alert('🚫 Connection failed. Please try again.');
+        const errorMessage = err.message || 'Connection failed. Please try again.';
+        alert('🚫 ' + errorMessage);
         document.getElementById('welcomeScreen').style.display = 'none';
       });
     } catch (error) {
