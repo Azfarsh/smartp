@@ -5520,8 +5520,7 @@ def auth_receiver(request):
                         user.save()
                     
                     # ✅ Set up persistent session
-                    # Specify backend since multiple authentication backends are configured
-                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                    login(request, user)
                     
                     # ✅ Store additional user info in session for quick access
                     request.session['user_email'] = email
