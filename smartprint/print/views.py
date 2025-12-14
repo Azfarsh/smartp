@@ -5448,80 +5448,97 @@ from django.contrib.auth import login
 from django.contrib.auth.models import User
 import requests
 def auth_receiver(request):
-    if request.method == 'POST':
-        token = request.POST.get('credential')
-        
-        # ULTRA-FAST: Local JWT decode only (no network calls)
-        try:
-            # Only use local JWT decode for maximum speed
-            payload = jwt.decode(token, options={"verify_signature": False})
-            data = payload
-            print(f"⚡ INSTANT: Local token decode for {payload.get('email', 'unknown')}")
-        except Exception as local_error:
-            print(f"❌ Local decode failed: {str(local_error)}")
-            return JsonResponse({'status': 'error', 'message': 'Invalid token format'}, status=400)
-        
-        if 'sub' in data:  # 'sub' is the unique Google user ID
-            email = data['email']
-            google_user_id = data['sub']
-
-            # ✅ Find or create user with enhanced details (FAST - database only)
-            user, created = User.objects.get_or_create(
-                username=email,
-                defaults={
-                    'email': email,
-                    'first_name': data.get('given_name', ''),
-                    'last_name': data.get('family_name', ''),
-                }
-            )
+    try:
+        if request.method == 'POST':
+            token = request.POST.get('credential')
             
-            # ✅ Update user details if they exist but are incomplete
-            if not created:
-                if not user.first_name and data.get('given_name'):
-                    user.first_name = data.get('given_name')
-                if not user.last_name and data.get('family_name'):
-                    user.last_name = data.get('family_name')
-                user.save()
+            if not token:
+                return JsonResponse({'status': 'error', 'message': 'No credential provided'}, status=400)
             
-            # ✅ Set up persistent session
-            login(request, user)
-            
-            # ✅ Store additional user info in session for quick access
-            request.session['user_email'] = email
-            request.session['user_name'] = data.get('name', '')
-            request.session['user_picture'] = data.get('picture', '')
-            request.session['google_user_id'] = google_user_id
-            
-            print(f"✅ User {email} logged in successfully with persistent session")
-            print(f"🔍 Session after login: {request.session.keys()}")
-            print(f"🔍 User authenticated after login: {request.user.is_authenticated}")
-            
-            # ✅ Store signup details in D1 asynchronously so login flow stays fast
+            # ULTRA-FAST: Local JWT decode only (no network calls)
             try:
-                import threading
-
-                def store_signup_to_d1_async():
-                    signup_payload = {
-                        'email': email,
-                        'google_user_id': google_user_id,
-                        'name': data.get('name', ''),
-                        'given_name': data.get('given_name', ''),
-                        'family_name': data.get('family_name', ''),
-                        'picture': data.get('picture', ''),
-                        'email_verified': bool(data.get('email_verified')),
-                        'signup_timestamp': data.get('signup_timestamp') or timezone.now().isoformat(),
-                        'last_login': timezone.now().isoformat(),
-                        'is_active': True
-                    }
-                    save_user_signup_to_d1(signup_payload)
-
-                threading.Thread(target=store_signup_to_d1_async, daemon=True).start()
-            except Exception as e:
-                print(f"❌ Error starting async D1 signup persistence: {str(e)}")
+                # Only use local JWT decode for maximum speed
+                payload = jwt.decode(token, options={"verify_signature": False})
+                data = payload
+                print(f"⚡ INSTANT: Local token decode for {payload.get('email', 'unknown')}")
+            except Exception as local_error:
+                print(f"❌ Local decode failed: {str(local_error)}")
+                return JsonResponse({'status': 'error', 'message': 'Invalid token format'}, status=400)
             
-            return JsonResponse({'status': 'success', 'email': email, 'redirect': '/userdashboard/'})
-        return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
-    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+            if 'sub' in data:  # 'sub' is the unique Google user ID
+                email = data.get('email')
+                if not email:
+                    return JsonResponse({'status': 'error', 'message': 'Email not found in token'}, status=400)
+                
+                google_user_id = data['sub']
+
+                # ✅ Find or create user with enhanced details (FAST - database only)
+                try:
+                    user, created = User.objects.get_or_create(
+                        username=email,
+                        defaults={
+                            'email': email,
+                            'first_name': data.get('given_name', ''),
+                            'last_name': data.get('family_name', ''),
+                        }
+                    )
+                    
+                    # ✅ Update user details if they exist but are incomplete
+                    if not created:
+                        if not user.first_name and data.get('given_name'):
+                            user.first_name = data.get('given_name')
+                        if not user.last_name and data.get('family_name'):
+                            user.last_name = data.get('family_name')
+                        user.save()
+                    
+                    # ✅ Set up persistent session
+                    # Specify backend since multiple authentication backends are configured
+                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                    
+                    # ✅ Store additional user info in session for quick access
+                    request.session['user_email'] = email
+                    request.session['user_name'] = data.get('name', '')
+                    request.session['user_picture'] = data.get('picture', '')
+                    request.session['google_user_id'] = google_user_id
+                    
+                    print(f"✅ User {email} logged in successfully with persistent session")
+                    print(f"🔍 Session after login: {request.session.keys()}")
+                    print(f"🔍 User authenticated after login: {request.user.is_authenticated}")
+                    
+                    # ✅ Store signup details in D1 asynchronously so login flow stays fast
+                    try:
+                        import threading
+
+                        def store_signup_to_d1_async():
+                            signup_payload = {
+                                'email': email,
+                                'google_user_id': google_user_id,
+                                'name': data.get('name', ''),
+                                'given_name': data.get('given_name', ''),
+                                'family_name': data.get('family_name', ''),
+                                'picture': data.get('picture', ''),
+                                'email_verified': bool(data.get('email_verified')),
+                                'signup_timestamp': data.get('signup_timestamp') or timezone.now().isoformat(),
+                                'last_login': timezone.now().isoformat(),
+                                'is_active': True
+                            }
+                            save_user_signup_to_d1(signup_payload)
+
+                        threading.Thread(target=store_signup_to_d1_async, daemon=True).start()
+                    except Exception as e:
+                        print(f"❌ Error starting async D1 signup persistence: {str(e)}")
+                    
+                    return JsonResponse({'status': 'success', 'email': email, 'redirect': '/userdashboard/'})
+                except Exception as db_error:
+                    print(f"❌ Database error during user creation/login: {str(db_error)}")
+                    traceback.print_exc()
+                    return JsonResponse({'status': 'error', 'message': f'Database error: {str(db_error)}'}, status=500)
+            return JsonResponse({'status': 'error', 'message': 'Invalid token: missing sub field'}, status=400)
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+    except Exception as e:
+        print(f"❌ Unexpected error in auth_receiver: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({'status': 'error', 'message': f'Internal server error: {str(e)}'}, status=500)
 
 
 def get_passport_photo_dimensions(country):
@@ -11570,68 +11587,50 @@ def mark_job_completed(request):
             completion_time = datetime.datetime.now().isoformat()
             success, user_email = update_job_status_comprehensive(filename, 'YES', vendor_id, completion_time)
             
-            # Also update D1 database tables
+            # Also update D1 database tables using UPDATE endpoint (not ADD - prevents creating new rows)
             try:
                 api_url = getattr(settings, 'WORKER_API_URL', '')
                 api_key = getattr(settings, 'WORKER_API_KEY', '')
                 
                 if api_url and api_key:
-                    # Update User_print_jobs table using add endpoint (handles updates on conflict)
-                    # First, we need to get the job details to update it properly
-                    # For now, use a simple update approach - the add endpoint handles updates
-                    worker_endpoint_user = api_url.rstrip('/') + '/add-user-print-job'
-                    # Note: This requires the full job data, but we'll update just the completion status
-                    # The worker endpoint will handle the UPDATE on conflict
-                    worker_payload_user = {
-                        'filename': filename,
-                        'user_email': user_email if user_email else '',
-                        'job_completed': 'YES',
-                        'completion_time': completion_time,
-                        'storage_folder': 'users'  # Default storage folder
-                    }
-                    try:
-                        resp_user = requests.post(
-                            worker_endpoint_user,
-                            json=worker_payload_user,
-                            headers={
-                                'x-api-key': api_key,
-                                'Content-Type': 'application/json'
-                            },
-                            timeout=10
-                        )
-                        if resp_user.status_code == 200:
-                            print(f"✅ Updated User_print_jobs table for {filename}")
-                        else:
-                            print(f"⚠️ Failed to update User_print_jobs: {resp_user.status_code}")
-                    except Exception as e:
-                        print(f"⚠️ Error updating User_print_jobs: {e}")
+                    # Use /update-job-completed endpoint which properly UPDATES existing rows
+                    base_url = api_url.rstrip('/')
+                    if '/add-contact' in base_url:
+                        worker_endpoint = base_url.replace('/add-contact', '/update-job-completed')
+                    elif '/add-vendor-register' in base_url:
+                        worker_endpoint = base_url.replace('/add-vendor-register', '/update-job-completed')
+                    else:
+                        worker_endpoint = base_url + '/update-job-completed'
                     
-                    # Update Vendor_print_jobs table using add endpoint (handles updates on conflict)
-                    worker_endpoint_vendor = api_url.rstrip('/') + '/add-vendor-print-job'
-                    worker_payload_vendor = {
+                    worker_payload = {
                         'filename': filename,
-                        'vendor_id': vendor_id,
-                        'user_email': user_email if user_email else '',
                         'job_completed': 'YES',
                         'completion_time': completion_time,
-                        'storage_folder': 'vendor_print_jobs'  # Default storage folder
+                        'vendor_email': vendor_email,
+                        'vendor_id': vendor_id,
+                        'vendor_name': vendor_name,
+                        'user_email': user_email if user_email else ''
                     }
                     try:
-                        resp_vendor = requests.post(
-                            worker_endpoint_vendor,
-                            json=worker_payload_vendor,
+                        resp = requests.post(
+                            worker_endpoint,
+                            json=worker_payload,
                             headers={
                                 'x-api-key': api_key,
                                 'Content-Type': 'application/json'
                             },
                             timeout=10
                         )
-                        if resp_vendor.status_code == 200:
-                            print(f"✅ Updated Vendor_print_jobs table for {filename}")
+                        if resp.status_code == 200:
+                            resp_data = resp.json()
+                            if resp_data.get('success'):
+                                print(f"✅ Updated User_print_jobs and Vendor_print_jobs tables for {filename}")
+                            else:
+                                print(f"⚠️ Update endpoint returned success=false: {resp_data.get('error')}")
                         else:
-                            print(f"⚠️ Failed to update Vendor_print_jobs: {resp_vendor.status_code}")
+                            print(f"⚠️ Failed to update job status: {resp.status_code} - {resp.text[:200]}")
                     except Exception as e:
-                        print(f"⚠️ Error updating Vendor_print_jobs: {e}")
+                        print(f"⚠️ Error updating job status in D1: {e}")
                 else:
                     print("⚠️ Worker API not configured - skipping D1 database update")
             except Exception as e:
@@ -13160,6 +13159,79 @@ def store_vendor_notification_in_db(notification_data):
         print(f"❌ Error storing vendor notification in database: {e}")
         return False
 
+def get_pricing_from_user_print_jobs(user_email, filename):
+    """Get pricing (total_price and platform_profit) from User_print_jobs table in D1"""
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            return None, None, None
+        
+        # Get from User_print_jobs table
+        base_url = api_url.rstrip('/')
+        if '/add-contact' in base_url:
+            worker_endpoint = base_url.replace('/add-contact', '/get-user-print-jobs')
+        elif '/add-vendor-register' in base_url:
+            worker_endpoint = base_url.replace('/add-vendor-register', '/get-user-print-jobs')
+        else:
+            worker_endpoint = base_url + '/get-user-print-jobs'
+        
+        job_response = requests.post(
+            worker_endpoint,
+            json={'user_email': user_email, 'filename': filename},
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        total_price = None
+        platform_profit = None
+        service_type = None
+        
+        if job_response.status_code == 200:
+            job_data = job_response.json()
+            if job_data.get('success') and job_data.get('data'):
+                jobs = job_data.get('data', [])
+                # Filter by filename to get exact match
+                matching_jobs = [j for j in jobs if j.get('filename') == filename or filename in j.get('filename', '')]
+                if matching_jobs:
+                    job = matching_jobs[0]  # Get first matching job
+                    # Get service_type
+                    service_type = job.get('service_type', 'Print Job')
+                    
+                    # Get total_price
+                    total_price_val = job.get('total_price') or job.get('final_amount')
+                    if total_price_val is not None:
+                        try:
+                            total_price = float(total_price_val)
+                        except (ValueError, TypeError):
+                            total_price = 0.0
+                    else:
+                        total_price = 0.0
+                    
+                    # Get platform_profit - check both platform_profit and platform_pr
+                    platform_profit_val = job.get('platform_profit') or job.get('platform_pr')
+                    if platform_profit_val is not None:
+                        try:
+                            platform_profit = float(platform_profit_val)
+                        except (ValueError, TypeError):
+                            platform_profit = 0.0
+                    else:
+                        platform_profit = 0.0
+                    
+                    if total_price > 0 or platform_profit > 0:
+                        print(f"✅ Retrieved pricing from User_print_jobs: total_price={total_price}, platform_profit={platform_profit}, service_type={service_type}")
+                        return total_price, platform_profit, service_type
+        
+        return None, None, None
+    except Exception as e:
+        print(f"⚠️ Error getting pricing from User_print_jobs: {e}")
+        return None, None, None
+
+
 def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time, token=None):
     """Send job completion notification to user and vendor"""
     try:
@@ -13167,59 +13239,89 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         if not token:
             token = os.path.splitext(filename)[0]
         
-        # Get service type and platform_profit from job metadata if available
+        # FIRST: Try to get pricing from User_print_jobs table (most accurate source)
         service_type = "Print Job"
         platform_profit = 0.0
         total_price = 0.0
-        try:
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Try to get service type and platform_profit from vendor_print_jobs
-            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        
+        if user_email and filename:
+            d1_total_price, d1_platform_profit, d1_service_type = get_pricing_from_user_print_jobs(user_email, filename)
+            if d1_total_price is not None and d1_total_price > 0:
+                total_price = d1_total_price
+                print(f"📊 Using total_price from User_print_jobs: {total_price}")
+            if d1_platform_profit is not None and d1_platform_profit > 0:
+                platform_profit = d1_platform_profit
+                print(f"📊 Using platform_profit from User_print_jobs: {platform_profit}")
+            if d1_service_type:
+                service_type = d1_service_type
+                print(f"📊 Using service_type from User_print_jobs: {service_type}")
+        
+        # FALLBACK: Try to get service type and pricing from R2 metadata if D1 didn't have pricing
+        if total_price == 0.0 or platform_profit == 0.0:
             try:
-                result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                job_data = json.loads(result['Body'].read().decode('utf-8'))
-                service_type = job_data.get('service_type', 'Print Job')
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
                 
-                # Extract platform_profit and total_price from pricing_details if available
-                pricing_details = job_data.get('pricing_details')
-                if pricing_details:
-                    try:
-                        if isinstance(pricing_details, str):
-                            pricing_obj = json.loads(pricing_details)
-                        else:
-                            pricing_obj = pricing_details
-                        
-                        # Try multiple possible keys for platform_profit
-                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                        
-                        # Try multiple possible keys for total_price
-                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
-                        
-                        print(f"📊 Extracted pricing from pricing_details: platform_profit={platform_profit}, total_price={total_price}")
-                    except Exception as e:
-                        print(f"⚠️ Error parsing pricing_details: {e}")
-                        platform_profit = 0.0
-                        total_price = 0.0
-                
-                # If total_price not found in pricing_details, try metadata
-                if total_price == 0.0:
-                    total_price = float(job_data.get('total_price', 0.0))
-                    print(f"📊 Using total_price from metadata: {total_price}")
-                
-                # If platform_profit not found in pricing_details, try metadata
-                if platform_profit == 0.0:
-                    platform_profit = float(job_data.get('platform_profit', 0.0))
-                    print(f"📊 Using platform_profit from metadata: {platform_profit}")
+                # Try to get service type and platform_profit from vendor_print_jobs
+                vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                try:
+                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                    job_data = json.loads(result['Body'].read().decode('utf-8'))
+                    if not service_type or service_type == "Print Job":
+                        service_type = job_data.get('service_type', 'Print Job')
                     
+                    # Only use R2 metadata if D1 didn't provide pricing
+                    if total_price == 0.0:
+                        # Extract platform_profit and total_price from pricing_details if available
+                        pricing_details = job_data.get('pricing_details')
+                        if pricing_details:
+                            try:
+                                if isinstance(pricing_details, str):
+                                    pricing_obj = json.loads(pricing_details)
+                                else:
+                                    pricing_obj = pricing_details
+                                
+                                # Try multiple possible keys for total_price
+                                total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                                
+                                print(f"📊 Extracted total_price from R2 pricing_details: {total_price}")
+                            except Exception as e:
+                                print(f"⚠️ Error parsing pricing_details: {e}")
+                        
+                        # If total_price still not found, try metadata
+                        if total_price == 0.0:
+                            total_price = float(job_data.get('total_price', 0.0))
+                            print(f"📊 Using total_price from R2 metadata: {total_price}")
+                    
+                    # Only use R2 metadata if D1 didn't provide platform_profit
+                    if platform_profit == 0.0:
+                        pricing_details = job_data.get('pricing_details')
+                        if pricing_details:
+                            try:
+                                if isinstance(pricing_details, str):
+                                    pricing_obj = json.loads(pricing_details)
+                                else:
+                                    pricing_obj = pricing_details
+                                
+                                # Try multiple possible keys for platform_profit
+                                platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                                
+                                print(f"📊 Extracted platform_profit from R2 pricing_details: {platform_profit}")
+                            except Exception as e:
+                                print(f"⚠️ Error parsing pricing_details: {e}")
+                        
+                        # If platform_profit still not found, try metadata
+                        if platform_profit == 0.0:
+                            platform_profit = float(job_data.get('platform_profit', 0.0))
+                            print(f"📊 Using platform_profit from R2 metadata: {platform_profit}")
+                            
+                except:
+                    pass
             except:
                 pass
-        except:
-            pass
         
         # Create notification data in format expected by user dashboard
         notification_id = f"{filename}_{int(time.time())}"
@@ -13554,61 +13656,87 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
         # Get the appropriate 2-day date folder
         date_folder = get_vendor_notification_date_folder(completion_date)
         
-        # Get service type and pricing from job metadata
+        # FIRST: Try to get pricing from User_print_jobs table (most accurate source)
         service_type = "Print Job"
         platform_profit = 0.0
         total_price = 0.0
         
-        try:
-            s3 = boto3.client('s3',
-                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                              endpoint_url=settings.R2_ENDPOINT,
-                              region_name='auto')
-            
-            # Try to get service type and platform_profit from vendor_print_jobs metadata
-            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+        if user_email and filename:
+            d1_total_price, d1_platform_profit, d1_service_type = get_pricing_from_user_print_jobs(user_email, filename)
+            if d1_total_price is not None and d1_total_price > 0:
+                total_price = d1_total_price
+                print(f"📊 Using total_price from User_print_jobs for vendor notification: {total_price}")
+            if d1_platform_profit is not None and d1_platform_profit > 0:
+                platform_profit = d1_platform_profit
+                print(f"📊 Using platform_profit from User_print_jobs for vendor notification: {platform_profit}")
+            if d1_service_type:
+                service_type = d1_service_type
+                print(f"📊 Using service_type from User_print_jobs for vendor notification: {service_type}")
+        
+        # FALLBACK: Try to get service type and pricing from R2 metadata if D1 didn't have pricing
+        if total_price == 0.0 or platform_profit == 0.0:
             try:
-                # Get object metadata instead of trying to read JSON from PDF
-                result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                metadata = result.get('Metadata', {})
+                s3 = boto3.client('s3',
+                                  aws_access_key_id=settings.R2_ACCESS_KEY,
+                                  aws_secret_access_key=settings.R2_SECRET_KEY,
+                                  endpoint_url=settings.R2_ENDPOINT,
+                                  region_name='auto')
                 
-                service_type = metadata.get('service_type', 'Print Job')
-                
-                # Extract platform_profit and total_price from pricing_details if available
-                pricing_details_str = metadata.get('pricing_details')
-                if pricing_details_str:
-                    try:
-                        pricing_obj = json.loads(pricing_details_str)
-                        
-                        # Try multiple possible keys for platform_profit
-                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                        
-                        # Try multiple possible keys for total_price
-                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
-                        
-                        print(f"📊 Extracted pricing from pricing_details: platform_profit={platform_profit}, total_price={total_price}")
-                    except Exception as e:
-                        print(f"⚠️ Error parsing pricing_details: {e}")
-                        platform_profit = 0.0
-                        total_price = 0.0
-                
-                # If total_price not found in pricing_details, try metadata
-                if total_price == 0.0:
-                    total_price = float(metadata.get('total_price', 0.0))
-                    print(f"📊 Using total_price from metadata: {total_price}")
-                
-                # If platform_profit not found in pricing_details, try metadata
-                if platform_profit == 0.0:
-                    platform_profit = float(metadata.get('platform_profit', 0.0))
-                    print(f"📊 Using platform_profit from metadata: {platform_profit}")
+                # Try to get service type and platform_profit from vendor_print_jobs metadata
+                vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
+                try:
+                    # Get object metadata instead of trying to read JSON from PDF
+                    result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                    metadata = result.get('Metadata', {})
                     
+                    if not service_type or service_type == "Print Job":
+                        service_type = metadata.get('service_type', 'Print Job')
+                    
+                    # Only use R2 metadata if D1 didn't provide pricing
+                    if total_price == 0.0:
+                        # Extract platform_profit and total_price from pricing_details if available
+                        pricing_details_str = metadata.get('pricing_details')
+                        if pricing_details_str:
+                            try:
+                                pricing_obj = json.loads(pricing_details_str)
+                                
+                                # Try multiple possible keys for total_price
+                                total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                                
+                                print(f"📊 Extracted total_price from R2 pricing_details: {total_price}")
+                            except Exception as e:
+                                print(f"⚠️ Error parsing pricing_details: {e}")
+                        
+                        # If total_price still not found, try metadata
+                        if total_price == 0.0:
+                            total_price = float(metadata.get('total_price', 0.0))
+                            print(f"📊 Using total_price from R2 metadata: {total_price}")
+                    
+                    # Only use R2 metadata if D1 didn't provide platform_profit
+                    if platform_profit == 0.0:
+                        pricing_details_str = metadata.get('pricing_details')
+                        if pricing_details_str:
+                            try:
+                                pricing_obj = json.loads(pricing_details_str)
+                                
+                                # Try multiple possible keys for platform_profit
+                                platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                                
+                                print(f"📊 Extracted platform_profit from R2 pricing_details: {platform_profit}")
+                            except Exception as e:
+                                print(f"⚠️ Error parsing pricing_details: {e}")
+                        
+                        # If platform_profit still not found, try metadata
+                        if platform_profit == 0.0:
+                            platform_profit = float(metadata.get('platform_profit', 0.0))
+                            print(f"📊 Using platform_profit from R2 metadata: {platform_profit}")
+                            
+                except Exception as e:
+                    print(f"⚠️ Error reading metadata for {vendor_key}: {e}")
+                    pass
             except Exception as e:
-                print(f"⚠️ Error reading metadata for {vendor_key}: {e}")
+                print(f"⚠️ Error accessing S3: {e}")
                 pass
-        except Exception as e:
-            print(f"⚠️ Error accessing S3: {e}")
-            pass
         
         # Create notification ID
         notification_id = f"{filename}_{int(time.time())}"
