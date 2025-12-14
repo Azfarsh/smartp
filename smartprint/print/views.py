@@ -4911,8 +4911,26 @@ def verify_razorpay_payment(request):
                         print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
 
                 # Store every paid job inside vendor_print_jobs
-                service_type = (print_settings.get('service_type') or '').strip()
-                service_type_lc = service_type.lower()
+                # Normalize service_type to ensure consistent handling (same logic as jumbo_printing)
+                service_type_raw = (print_settings.get('service_type') or '').strip()
+                service_type_lc = service_type_raw.lower()
+                
+                # Normalize service_type: convert 'regular print' to 'regular_print' for consistency with jumbo_printing
+                # This ensures regular print is handled EXACTLY like jumbo_printing
+                if service_type_lc in ['regular print', 'regular_print', 'document_print']:
+                    service_type = 'regular_print'  # Normalize to match jumbo_printing pattern
+                elif service_type_lc in ['jumbo_printing', 'jumbo_print']:
+                    service_type = 'jumbo_printing'  # Keep jumbo_printing as-is
+                elif service_type_lc in ['passport_photo', 'passport_print', 'photo_print']:
+                    service_type = service_type_raw  # Keep passport services as-is
+                elif service_type_lc in ['digital_print']:
+                    service_type = 'digital_print'
+                elif service_type_lc in ['golden_embossing', 'golden_emboss']:
+                    service_type = 'golden_embossing'
+                elif service_type_lc in ['gloss_printing', 'gloss_print']:
+                    service_type = 'gloss_printing'
+                else:
+                    service_type = service_type_raw or 'regular_print'  # Default to regular_print if not specified
                 
                 # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
                 # Document print model, passport photo model, digital, golden, gloss, jumbo print model
@@ -4927,17 +4945,19 @@ def verify_razorpay_payment(request):
                 all_special_services = (document_print_services + passport_photo_services + 
                                        digital_services + golden_services + gloss_services + jumbo_services)
                 
-                # Ensure consistent storage folder and R2 path for all service types
+                # Ensure consistent storage folder and R2 path for all service types (SAME as jumbo_printing)
                 storage_folder = 'vendor_print_jobs'
                 
-                # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename}
+                # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename} (SAME as jumbo_printing)
                 # This ensures consistent storage in R2 per vendor_id
                 vendor_file_key = f'{storage_folder}/{vendor_id}/{fobj.name}'
                 user_file_key = f'users/{user_email}/{fobj.name}'
                 
-                # Log service type for debugging
-                if service_type_lc in [s.lower() for s in all_special_services]:
-                    print(f"📦 Storing {service_type} service with consistent R2 path: {vendor_file_key}")
+                # Log service type for debugging (ensure regular print is logged same as jumbo_printing)
+                # Always log for regular_print and jumbo_printing to ensure they're processed identically
+                if service_type in ['regular_print', 'jumbo_printing'] or service_type_lc in [s.lower() for s in all_special_services]:
+                    print(f"📦 Storing {service_type} service (normalized from '{service_type_raw}') with consistent R2 path: {vendor_file_key}")
+                    print(f"   ✅ Service type normalized: '{service_type_raw}' -> '{service_type}' (same pattern as jumbo_printing)")
 
                 # Ensure vendor_id is populated before DB calls (Worker requires it)
                 if (not vendor_id or str(vendor_id).strip() == ''):
@@ -5022,7 +5042,7 @@ def verify_razorpay_payment(request):
                     'vendor_id': vendor_id,  # Explicitly include vendor_id
                     'vendor_email': vendor_email or '',  # Explicitly include vendor_email
                     'job_id': job_id,  # Use generated or provided job_id
-                    'service_type': service_type or 'regular print',  # Explicitly include service_type
+                    'service_type': service_type,  # Use normalized service_type (same as jumbo_printing)
                     'service_name': str(print_settings.get('service_name', '')),
                     'token': token_value,  # Explicitly include token
                     'printer_name': '',
