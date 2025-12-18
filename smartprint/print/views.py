@@ -5520,7 +5520,9 @@ def auth_receiver(request):
                         user.save()
                     
                     # ✅ Set up persistent session
-                    login(request, user)
+                    # Explicitly specify backend since multiple authentication backends are configured.
+                    # Google users should always use Django's default ModelBackend.
+                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                     
                     # ✅ Store additional user info in session for quick access
                     request.session['user_email'] = email
