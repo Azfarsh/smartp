@@ -14,6 +14,7 @@ from .views import (
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
     create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations,
     contact_view, save_contact_details,
+    vendor_transactions_history,
 )
 
 urlpatterns = [
@@ -24,6 +25,7 @@ urlpatterns = [
     path('userdashboard/', views.userdashboard, name='userdashboard'),
     path('userdashboard-data/', views.userdashboard_data, name='userdashboard_data'),
     path('vendordashboard/', views.vendordashboard, name='vendordashboard'),
+    path('vendor-transactions/', vendor_transactions_history, name='vendor_transactions_history'),
     path('get-print-requests/',
          views.get_print_requests,
          name='get-print-requests'),
@@ -146,6 +148,7 @@ urlpatterns += [
     path('vendor-reports/', admin_views.get_vendor_reports_for_history, name='get_vendor_reports'),
     path('vendor-reports/download/', admin_views.download_vendor_monthly_report, name='download_vendor_monthly_report'),
     path('admin-dashboard/trigger-reports/', admin_views.trigger_report_generation_view, name='trigger_report_generation'),
+    path('store-vendor-pending-jobs-snapshot/', views.store_vendor_pending_jobs_snapshot_endpoint, name='store_vendor_pending_jobs_snapshot'),
       path('terms/', views.terms, name='terms'),
     path('privacy/', views.privacy, name='privacy'),
     ]

@@ -3668,7 +3668,7 @@
         <!-- Navigation Menu -->
         <nav class="nav-menu">
             <div class="nav-item">
-                <a href="#" class="nav-link dashboard-active" onclick="return false;" style="pointer-events: none; opacity: 0.9;">
+                <a href="#" class="nav-link dashboard-active" onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showDashboard(); return false;">
                     <i class="fas fa-home"></i>
                     <span>Print Shop Dashboard</span>
                 </a>
@@ -3741,6 +3741,13 @@
         {% if vendor_details_error %}
         <div style="background: var(--manual-bg); color: var(--manual-color); border: 2px solid var(--manual-color); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; font-weight: 500; text-align: center;">
             {{ vendor_details_error }}
+        </div>
+        {% endif %}
+        
+        {% if vendor_status_message %}
+        <div style="background: #fff3cd; color: #856404; border: 2px solid #ffc107; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; font-weight: 500; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <i class="fas fa-clock" style="margin-right: 8px; font-size: 1.2em;"></i>
+            {{ vendor_status_message }}
         </div>
         {% endif %}
 
@@ -3939,6 +3946,44 @@
             </div>
         </section>
 
+        <!-- Gloss Paper Printing Section -->
+        <section class="job-section" id="gloss-section">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon requests">
+                        <i class="fas fa-file-image"></i>
+                    </div>
+                    <h2 class="section-title">Gloss Paper Printing</h2>
+                </div>
+                <div class="section-controls">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Search by token, filename, user..."
+                            oninput="searchJobs('gloss', this.value)"
+                            title="Search by token number, PDF filename, user email, or service type"
+                        >
+                    </div>
+                    <div class="job-count" id="glossCount">0</div>
+                </div>
+            </div>
+            <div class="jobs-container section-loaded">
+                <div class="jobs-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading Gloss Printing Jobs...</div>
+                </div>
+                <div id="glossJobs" class="jobs-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-file-image"></i>
+                        <h3>No Gloss Printing Jobs Yet</h3>
+                        <p>You'll see gloss print jobs here the moment customers upload them.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Golden Embossing / Black Book Section -->
         <section class="job-section" id="golden-section">
             <div class="section-header">
@@ -4117,19 +4162,6 @@
             </div>
             
             <div class="print-info-grid">
-                <!-- Document Preview Section -->
-                <div class="print-preview-section">
-                    <div class="print-info-title">
-                        <i class="fas fa-eye"></i>
-                        Document Preview
-                    </div>
-                    <div class="print-preview-container">
-                        <iframe id="printInfoPreviewFrame" class="preview-frame"></iframe>
-                        <canvas id="printInfoPreviewCanvas" class="preview-frame" style="display:none; background:#333;"></canvas>
-                        <img id="printInfoPreviewImage" class="preview-frame" style="display: none; object-fit: contain;" alt="Preview">
-                    </div>
-                </div>
-
                 <!-- Print Settings Section -->
                 <div class="print-info-section">
                     <div class="print-info-title">
@@ -4404,7 +4436,7 @@
 
         // Show loading states for all sections
         function showAllLoadingStates() {
-            const sections = ['docJobs', 'photoJobs', 'passportJobs', 'jumboJobs', 'goldenJobs', 'digitalJobs', 'completedJobs'];
+            const sections = ['docJobs', 'photoJobs', 'passportJobs', 'jumboJobs', 'glossJobs', 'goldenJobs', 'digitalJobs', 'completedJobs'];
             sections.forEach(sectionId => {
                 const container = document.getElementById(sectionId);
                 const jobsContainer = container.closest('.jobs-container');
@@ -4461,6 +4493,8 @@
                     jobType = 'passport';
                 } else if (serviceType === 'jumbo_printing') {
                     jobType = 'jumbo';
+                } else if (serviceType === 'gloss_printing') {
+                    jobType = 'gloss';
                 } else if (['golden_embossing', 'project_binding'].includes(serviceType)) {
                     jobType = 'golden';
                 } else if (serviceType === 'digital_print') {
@@ -4502,6 +4536,7 @@
                 photo: 'photoCount', 
                 passport: 'passportCount',
                 jumbo: 'jumboCount',
+                gloss: 'glossCount',
                 golden: 'goldenCount',
                 digital: 'digitalCount',
                 completed: 'completedCount'
@@ -4544,6 +4579,7 @@
                 photo: 'photoJobs',
                 passport: 'passportJobs',
                 jumbo: 'jumboJobs',
+                gloss: 'glossJobs',
                 golden: 'goldenJobs',
                 digital: 'digitalJobs',
                 completed: 'completedJobs'
@@ -4771,7 +4807,7 @@
 
             // After login/load, ensure loaders stop after 10s if no jobs found
             setTimeout(() => {
-                const sectionIds = ['docJobs','photoJobs','passportJobs','jumboJobs','goldenJobs','digitalJobs','completedJobs'];
+                const sectionIds = ['docJobs','photoJobs','passportJobs','jumboJobs','glossJobs','goldenJobs','digitalJobs','completedJobs'];
                 sectionIds.forEach(id => {
                     const container = document.getElementById(id);
                     if (!container) return;
@@ -4811,8 +4847,8 @@
             if (historyMonthSelect) {
                 historyMonthSelect.addEventListener('change', function() {
                     const selectedMonth = this.value;
-                    if (selectedMonth) {
-                    loadHistoryData(selectedMonth);
+                    if (typeof loadHistoryData === 'function') {
+                        loadHistoryData(selectedMonth || null);
                     }
                 });
             }
@@ -4891,97 +4927,71 @@
             }
         }
 
-        // History Section Functions
-        function showHistory() {
-            // Hide all main content sections
+        // History & Dashboard Section Functions
+        function showDashboard() {
+            // Show all regular job sections and hide history section
             document.querySelectorAll('.job-section').forEach(section => {
+                if (section.id === 'history-section') {
                 section.style.display = 'none';
+                } else {
+                    section.style.display = '';
+                }
             });
-            
-            // Hide the main content wrapper and show only history
-            const mainContent = document.getElementById('mainContent');
-            mainContent.innerHTML = '';
-            
-            // Hide theme toggle while viewing history
+
+            // Show the top summary cards (stats-grid) when viewing dashboard
+            const statsGrid = document.querySelector('.stats-grid');
+            if (statsGrid) {
+                statsGrid.style.display = '';
+            }
+
+            // Ensure theme toggle is visible on dashboard
             const themeBtn = document.getElementById('themeToggle');
-            if (themeBtn) themeBtn.style.display = 'none';
-            
-            // Create history container
-            const historyContainer = document.createElement('div');
-            historyContainer.innerHTML = `
-                <div class="history-header">
-                    <h1><i class="fas fa-history"></i> Transaction History</h1>
-                    <p>View your transaction reports and earnings</p>
-                </div>
-                
-                <div class="history-controls">
-                    <div class="month-selector">
-                        <label for="history-month-select" style="font-weight:600; margin-right:10px; color: var(--on-surface);">Filter by Month:</label>
-                        <select id="history-month-select" class="month-dropdown" onchange="loadHistoryData(this.value)">
-                            <option value="">All Months</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div id="history-loading" class="loading-state" style="display: none;">
-                    <div class="loading-spinner"></div>
-                    <p>Loading transaction history...</p>
-                </div>
-                
-                <div id="history-container" class="history-container">
-                    <!-- History content will be loaded here -->
-                </div>
-            `;
-            
-            mainContent.appendChild(historyContainer);
-            
-            // Load history data
+            if (themeBtn) themeBtn.style.display = '';
+        }
+
+        function showHistory() {
+            // Hide all job sections except the history section
+            document.querySelectorAll('.job-section').forEach(section => {
+                if (section.id === 'history-section') {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+
+            // Hide the top summary cards (stats-grid) when viewing history
+            const statsGrid = document.querySelector('.stats-grid');
+            if (statsGrid) {
+                statsGrid.style.display = 'none';
+            }
+
+            // Keep theme toggle visible
+            const themeBtn = document.getElementById('themeToggle');
+            if (themeBtn) themeBtn.style.display = '';
+
+            // Load history data into the existing history section
+            if (typeof loadHistoryData === 'function') {
             loadHistoryData();
+            }
         }
 
         function loadHistoryData(selectedMonth = null) {
             const loading = document.getElementById('history-loading');
             const container = document.getElementById('history-container');
+            const emptyState = document.getElementById('history-empty');
             
             if (loading) loading.style.display = 'block';
-            if (container) container.innerHTML = '';
-            
-            // Get vendor ID from the page
-            const vendorId = '{{ vendor_details.vendor_id }}';
-            if (!vendorId) {
-                if (loading) loading.style.display = 'none';
-                if (container) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>Print Shop ID Not Found</h3>
-                            <p>Unable to load transaction history. Please contact support.</p>
-                        </div>
-                    `;
-                }
-                return;
+            if (container) {
+                container.style.display = 'none';
+                container.innerHTML = '';
             }
+            if (emptyState) emptyState.style.display = 'none';
             
-            // Get vendor email from vendor details
-            const vendorEmail = '{{ vendor_details.vendor_email }}';
-            if (!vendorEmail) {
-                if (loading) loading.style.display = 'none';
-                if (container) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>Vendor Email Not Found</h3>
-                            <p>Unable to load transaction history. Please contact support.</p>
-                        </div>
-                    `;
-                }
-                return;
-            }
-            
-            // Use D1 database endpoint for vendor transactions
-            let url = `/admin-dashboard/transactions/?vendor_email=${encodeURIComponent(vendorEmail)}`;
+            // Use vendor-facing endpoint for vendor transactions (no admin login required)
+            let url = `/vendor-transactions/`;
             if (selectedMonth) {
-                url += `&month=${selectedMonth}`;
+                const params = new URLSearchParams({ month: selectedMonth });
+                url += `?${params.toString()}`;
             }
             
             fetch(url)
@@ -4989,11 +4999,20 @@
                 .then(data => {
                     if (loading) loading.style.display = 'none';
                     
-                    if (data.success && data.reports && data.reports.length > 0) {
+                    if (data.success && Array.isArray(data.reports) && data.reports.length > 0) {
                         displayHistoryReports(data.reports);
-                        updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                        if (Array.isArray(data.available_months_list)) {
+                            updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                        }
                     } else {
                         if (container) {
+                            container.style.display = 'none';
+                            container.innerHTML = '';
+                        }
+                        if (emptyState) {
+                            emptyState.style.display = 'block';
+                        } else if (container) {
+                            container.style.display = 'block';
                             container.innerHTML = `
                                 <div class="empty-state">
                                     <i class="fas fa-history"></i>
@@ -5002,13 +5021,16 @@
                                 </div>
                             `;
                         }
-                        updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                        if (Array.isArray(data.available_months_list)) {
+                            updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error loading history:', error);
                     if (loading) loading.style.display = 'none';
                     if (container) {
+                        container.style.display = 'block';
                         container.innerHTML = `
                             <div class="error-state">
                                 <i class="fas fa-exclamation-triangle"></i>
@@ -5022,17 +5044,35 @@
 
         function displayHistoryReports(reports) {
             const container = document.getElementById('history-container');
+            const emptyState = document.getElementById('history-empty');
+            const loading = document.getElementById('history-loading');
+            
+            // Hide loading and empty state
+            if (loading) loading.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
             
             if (reports.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-history"></i>
-                        <h3>No Transaction History</h3>
-                        <p>Your transaction reports will appear here once generated.</p>
-                    </div>
-                `;
+                if (container) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+                if (emptyState) {
+                    emptyState.style.display = 'block';
+                } else if (container) {
+                    container.style.display = 'block';
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <h3>No Transaction History</h3>
+                            <p>Your transaction reports will appear here once generated.</p>
+                        </div>
+                    `;
+                }
                 return;
             }
+            
+            // Show container when we have data
+            if (container) container.style.display = 'block';
 
             // Sort reports by date (newest first)
             reports.sort((a, b) => new Date(b.generated_at) - new Date(a.generated_at));
@@ -5053,11 +5093,13 @@
                 reportsByMonth[monthKey].reports.push(report);
             });
 
-            // Calculate summary statistics
+            // Calculate summary statistics for the 4 cards
             const totalReports = reports.length;
             const totalEarnings = reports.reduce((sum, report) => sum + (report.total_amount || report.total_earning || 0), 0);
             const totalDocuments = reports.reduce((sum, report) => sum + (report.total_documents || 0), 0);
+            const activeMonths = Object.keys(reportsByMonth).length;
 
+            // Display the 4 summary cards
             let html = `
                 <div class="history-summary">
                     <div class="summary-stats">
@@ -5074,9 +5116,9 @@
                             <div class="stat-label">Total Documents</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">${Object.keys(reportsByMonth).length}</div>
+                            <div class="stat-value">${activeMonths}</div>
                             <div class="stat-label">Active Months</div>
-                    </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -5824,6 +5866,7 @@
             const photoJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'photo_print');
             const passportJobs = activeJobs.filter(j => j.job_completed === 'NO' && ['passport_print','passport_photo'].includes((j.service_type || '').trim().toLowerCase()));
             const jumboJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'jumbo_printing');
+            const glossJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'gloss_printing');
             const goldenJobs = activeJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase()));
             const digitalJobs = activeJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print');
 
@@ -5836,13 +5879,14 @@
                 return !hiddenCompletedJobs.has(jobKey);
             });
 
-            filteredJobs = { document: documentJobs, photo: photoJobs, passport: passportJobs, jumbo: jumboJobs, golden: goldenJobs, digital: digitalJobs, completed };
+            filteredJobs = { document: documentJobs, photo: photoJobs, passport: passportJobs, jumbo: jumboJobs, gloss: glossJobs, golden: goldenJobs, digital: digitalJobs, completed };
 
             updateCounts({
                 document: documentJobs.length,
                 photo: photoJobs.length,
                 passport: passportJobs.length,
                 jumbo: jumboJobs.length,
+                gloss: glossJobs.length,
                 golden: goldenJobs.length,
                 digital: digitalJobs.length,
                 completed: completed.length
@@ -5852,6 +5896,7 @@
             renderJobs('photo', photoJobs);
             renderJobs('passport', passportJobs);
             renderJobs('jumbo', jumboJobs);
+            renderJobs('gloss', glossJobs);
             renderJobs('golden', goldenJobs);
             renderJobs('digital', digitalJobs);
             
@@ -5860,7 +5905,7 @@
         }
 
         function updateCounts(counts) {
-            const totalPending = counts.document + counts.photo + counts.passport + counts.jumbo + counts.golden + counts.digital;
+            const totalPending = counts.document + counts.photo + counts.passport + counts.jumbo + counts.gloss + counts.golden + counts.digital;
             const totalRequests = totalPending + counts.completed;
             // Overview cards: Total Requests, Pending, Completed, Total Earnings
             document.getElementById('requestsStatCount').textContent = totalRequests;
@@ -5883,6 +5928,7 @@
             if (document.getElementById('photoCount')) document.getElementById('photoCount').textContent = counts.photo;
             if (document.getElementById('passportCount')) document.getElementById('passportCount').textContent = counts.passport;
             if (document.getElementById('jumboCount')) document.getElementById('jumboCount').textContent = counts.jumbo;
+            if (document.getElementById('glossCount')) document.getElementById('glossCount').textContent = counts.gloss;
             if (document.getElementById('goldenCount')) document.getElementById('goldenCount').textContent = counts.golden;
             if (document.getElementById('digitalCount')) document.getElementById('digitalCount').textContent = counts.digital;
             document.getElementById('completedCount').textContent = counts.completed;
@@ -5895,6 +5941,7 @@
                 photo: 'photoJobs',
                 passport: 'passportJobs',
                 jumbo: 'jumboJobs',
+                gloss: 'glossJobs',
                 golden: 'goldenJobs',
                 digital: 'digitalJobs',
                 completed: 'completedJobs'
@@ -5925,9 +5972,9 @@
             }
 
             if (jobs.length === 0) {
-                const iconMap = { document: 'fa-file-alt', photo: 'fa-camera', passport: 'fa-passport', jumbo: 'fa-expand', golden: 'fa-book', digital: 'fa-print', completed: 'fa-check-circle' };
-                const titleMap = { document: 'No Document Printing Jobs', photo: 'No Photo Printing Jobs', passport: 'No Passport Photo Jobs', jumbo: 'No Jumbo Printing Jobs', golden: 'No Golden/Black Book Jobs', digital: 'No Digital Printing Jobs', completed: 'No Completed Jobs' };
-                const descMap = { document: 'Document print jobs will appear here', photo: 'Photo print jobs will appear here', passport: 'Passport photo jobs will appear here', jumbo: 'Jumbo printing jobs will appear here', golden: 'Golden embossing and black book jobs will appear here', digital: 'Digital print jobs will appear here', completed: 'Completed jobs will be shown here' };
+                const iconMap = { document: 'fa-file-alt', photo: 'fa-camera', passport: 'fa-passport', jumbo: 'fa-expand', gloss: 'fa-file-image', golden: 'fa-book', digital: 'fa-print', completed: 'fa-check-circle' };
+                const titleMap = { document: 'No Document Printing Jobs', photo: 'No Photo Printing Jobs', passport: 'No Passport Photo Jobs', jumbo: 'No Jumbo Printing Jobs', gloss: 'No Gloss Printing Jobs', golden: 'No Golden/Black Book Jobs', digital: 'No Digital Printing Jobs', completed: 'No Completed Jobs' };
+                const descMap = { document: 'Document print jobs will appear here', photo: 'Photo print jobs will appear here', passport: 'Passport photo jobs will appear here', jumbo: 'Jumbo printing jobs will appear here', gloss: 'Gloss printing jobs will appear here', golden: 'Golden embossing and black book jobs will appear here', digital: 'Digital print jobs will appear here', completed: 'Completed jobs will be shown here' };
                 const emptyIcon = iconMap[type] || 'fa-file-alt';
                 const emptyTitle = titleMap[type] || 'No Jobs';
                 const emptyDesc = descMap[type] || '';
@@ -5994,7 +6041,7 @@
         function createJobCard(job, type) {
             const manualServiceTypes = ['digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'golden_embossing'];
             const serviceTypeForBadge = (job.service_type || '').trim().toLowerCase();
-            const sectionTypesManualStyle = ['document','photo','passport','jumbo','golden','digital'];
+            const sectionTypesManualStyle = ['document','photo','passport','jumbo','gloss','golden','digital'];
             const isManualStyleRequest = sectionTypesManualStyle.includes(type) || ((type === 'requests') && manualServiceTypes.includes(serviceTypeForBadge));
 
             // Force requests containing manual services to use manual styling classes
@@ -6201,6 +6248,7 @@
                     photo: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'photo_print').length,
                     passport: allJobs.filter(j => j.job_completed === 'NO' && ['passport_print','passport_photo'].includes((j.service_type || '').trim().toLowerCase())).length,
                     jumbo: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'jumbo_printing').length,
+                    gloss: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'gloss_printing').length,
                     golden: allJobs.filter(j => j.job_completed === 'NO' && ['golden_embossing','project_binding'].includes((j.service_type || '').trim().toLowerCase())).length,
                     digital: allJobs.filter(j => j.job_completed === 'NO' && (j.service_type || '').trim().toLowerCase() === 'digital_print').length,
                     completed: allJobs.filter(j => j.job_completed === 'YES' && !hiddenCompletedJobs.has(`${j.filename}_${j.token || 'no_token'}`)).length
@@ -6669,15 +6717,8 @@
             // Show user email
             document.getElementById('printInfoUserEmail').textContent = jobData.user_email || jobData.email || '-';
             
-            // Generate fresh URL to avoid expiration issues
-            const freshPreviewUrl = await generateFreshPreviewUrl(filename, jobData);
-            const isSignedUrl = typeof freshPreviewUrl === 'string' && /X-Amz-Algorithm|X-Amz-Signature/i.test(freshPreviewUrl);
-            const safePreviewUrl = freshPreviewUrl ? (isSignedUrl ? freshPreviewUrl : `${freshPreviewUrl}${freshPreviewUrl.includes('?') ? '&' : '?'}ts=${Date.now()}`) : '';
-            loadPrintInfoPreview(safePreviewUrl, filename);
-            
             // Store job data for print action
             modal.dataset.jobData = JSON.stringify(jobData);
-            modal.dataset.previewUrl = safePreviewUrl;
             
             // Show modal
             console.log('Showing print info modal for:', filename);
@@ -7262,8 +7303,8 @@
         // Search Functionality
         function searchJobs(type, term) {
             const jobs = filteredJobs[type] || [];
-            const sectionIdMap = { document: 'doc-section', photo: 'photo-section', passport: 'passport-section', jumbo: 'jumbo-section', golden: 'golden-section', digital: 'digital-section', completed: 'completed-section' };
-            const containerIdMap = { document: 'docJobs', photo: 'photoJobs', passport: 'passportJobs', jumbo: 'jumboJobs', golden: 'goldenJobs', digital: 'digitalJobs', completed: 'completedJobs' };
+            const sectionIdMap = { document: 'doc-section', photo: 'photo-section', passport: 'passport-section', jumbo: 'jumbo-section', gloss: 'gloss-section', golden: 'golden-section', digital: 'digital-section', completed: 'completed-section' };
+            const containerIdMap = { document: 'docJobs', photo: 'photoJobs', passport: 'passportJobs', jumbo: 'jumboJobs', gloss: 'glossJobs', golden: 'goldenJobs', digital: 'digitalJobs', completed: 'completedJobs' };
             const section = document.getElementById(sectionIdMap[type]);
             const searchInput = section ? section.querySelector('.search-input') : null;
             

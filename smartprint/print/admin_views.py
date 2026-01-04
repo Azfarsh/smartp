@@ -52,8 +52,46 @@ def admin_dashboard(request):
         login_url = reverse('admin:login') + '?next=' + request.get_full_path()
         return redirect(login_url)
     
+    # Determine user role
+    user_role = "Admin" if request.user.is_superuser else "Staff"
+    
+    # Get user permissions from D1 database
+    user_permissions = {}
+    try:
+        from .views import get_admin_user_from_d1
+        d1_user = get_admin_user_from_d1(request.user.username)
+        if d1_user and d1_user.get('permissions'):
+            import json
+            permissions_str = d1_user['permissions']
+            if isinstance(permissions_str, str):
+                user_permissions = json.loads(permissions_str)
+            else:
+                user_permissions = permissions_str
+    except Exception as e:
+        print(f"Error loading permissions from D1: {e}")
+    
+    # Default permissions for superuser (all access)
+    if request.user.is_superuser:
+        user_permissions = {
+            'can_view_users': True,
+            'can_view_vendors': True,
+            'can_view_transactions': True,
+            'can_view_contacts': True,
+            'can_view_activity': True,
+            'can_view_overview_cards': True,
+        }
+    
+    # Import json for template
+    import json
+    
     # Add cache-control headers to prevent browser caching
-    response = render(request, 'admin_dashboard.html')
+    context = {
+        'user_role': user_role,
+        'is_superuser': request.user.is_superuser,
+        'is_staff': request.user.is_staff,
+        'user_permissions_json': json.dumps(user_permissions),
+    }
+    response = render(request, 'admin_dashboard.html', context)
     return add_no_cache_headers(response)
 
 
@@ -3169,19 +3207,113 @@ def admin_installations_data(request):
 
 @staff_member_required
 def admin_activity_data(request):
-    """Get all activity data for admin dashboard"""
+    """Get all activity data for admin dashboard from D1 User_notifications table"""
     try:
-        # This would typically come from activity logs
-        # For now, return placeholder data
-        activity_data = []
+        # Get month filter from request (YYYY-MM format)
+        selected_month = request.GET.get('month', '').strip()
+        
+        # Prepare payload for worker API with month filter if provided
+        payload = {}
+        if selected_month:
+            payload['month'] = selected_month
+        
+        # Fetch notifications from D1 database (filtered by month if provided)
+        all_notifications = fetch_user_jobs_from_worker(payload=payload, timeout=30)
+        
+        if not all_notifications:
+            return JsonResponse({
+                'success': True,
+                'notifications': [],
+                'monthly_revenue': {},
+                'total_revenue': 0.0,
+                'total_payments': 0.0,
+                'total_users': 0,
+                'total_vendors': 0,
+                'total_count': 0
+            })
+        
+        # Calculate statistics from User_notifications
+        monthly_revenue = {}
+        total_revenue = 0.0
+        total_payments = 0.0
+        unique_users = set()
+        unique_vendors = set()
+        
+        for notification in all_notifications:
+            # Get platform_profit (revenue)
+            platform_profit = 0.0
+            platform_profit_val = notification.get('platform_profit')
+            if platform_profit_val is not None:
+                try:
+                    platform_profit = float(platform_profit_val) if platform_profit_val else 0.0
+                except (ValueError, TypeError):
+                    platform_profit = 0.0
+            
+            # Get total_price (user payments)
+            total_price = 0.0
+            total_price_val = notification.get('total_price')
+            if total_price_val is not None:
+                try:
+                    total_price = float(total_price_val) if total_price_val else 0.0
+                except (ValueError, TypeError):
+                    total_price = 0.0
+            
+            # Get month from completion_time or created_at
+            month_key = None
+            completion_time = notification.get('completion_time', '')
+            created_at = notification.get('created_at', '')
+            
+            # Use completion_time if available, otherwise use created_at
+            date_str = completion_time if completion_time else created_at
+            if date_str:
+                try:
+                    # Extract YYYY-MM from date string
+                    if len(date_str) >= 7:
+                        month_key = date_str[:7]  # YYYY-MM format
+                except Exception:
+                    pass
+            
+            # Update monthly revenue
+            if month_key:
+                if month_key not in monthly_revenue:
+                    monthly_revenue[month_key] = 0.0
+                monthly_revenue[month_key] += platform_profit
+            
+            # Update totals
+            total_revenue += platform_profit
+            total_payments += total_price
+            
+            # Track unique users and vendors
+            user_email = notification.get('user_email', '').strip().lower()
+            if user_email:
+                unique_users.add(user_email)
+            
+            vendor_id = notification.get('vendor_id', '').strip()
+            if vendor_id:
+                unique_vendors.add(vendor_id)
+        
+        # Sort monthly revenue by month
+        sorted_monthly_revenue = dict(sorted(monthly_revenue.items()))
+        
+        # Get available months for the selector
+        available_months = fetch_user_job_months_from_worker()
         
         return JsonResponse({
             'success': True,
-            'activities': activity_data,
-            'total_count': len(activity_data)
+            'notifications': all_notifications,
+            'monthly_revenue': sorted_monthly_revenue,
+            'total_revenue': round(total_revenue, 2),
+            'total_payments': round(total_payments, 2),
+            'total_users': len(unique_users),
+            'total_vendors': len(unique_vendors),
+            'total_count': len(all_notifications),
+            'available_months': available_months,
+            'selected_month': selected_month
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'error': str(e)
