@@ -1553,7 +1553,7 @@ export default {
               const query = `
                 SELECT email, vendor_name, vendor_id, vendor_token, phone_number, state, city, locality, shop_address, pincode, latitude, longitude, status
                 FROM ${table}
-                WHERE status = 'approved' OR status = 'active' OR status IS NULL OR status = ''
+                WHERE status = 'verified'
                 ORDER BY vendor_name
               `;
               vendors = await env.DB.prepare(query).all();
@@ -1591,9 +1591,50 @@ export default {
           }
 
           if (vendors && vendors.results && vendors.results.length > 0) {
+            // Fetch pending jobs count for all vendors from vendor_pending_jobs_track
+            const vendorsWithPendingJobs = await Promise.all(
+              vendors.results.map(async (vendor) => {
+                let pendingJobsCount = 0;
+                try {
+                  // Try to get pending jobs count by vendor_id first
+                  if (vendor.vendor_id) {
+                    const pendingJobsResult = await env.DB.prepare(`
+                      SELECT job_count FROM vendor_pending_jobs_track 
+                      WHERE vendor_id = ? 
+                      LIMIT 1
+                    `).bind(vendor.vendor_id).first();
+                    if (pendingJobsResult) {
+                      pendingJobsCount = pendingJobsResult.job_count || 0;
+                    }
+                  }
+                  
+                  // If not found by vendor_id, try by vendor_email
+                  if (pendingJobsCount === 0 && vendor.email) {
+                    const pendingJobsResult = await env.DB.prepare(`
+                      SELECT job_count FROM vendor_pending_jobs_track 
+                      WHERE LOWER(vendor_email) = LOWER(?) 
+                      LIMIT 1
+                    `).bind(vendor.email).first();
+                    if (pendingJobsResult) {
+                      pendingJobsCount = pendingJobsResult.job_count || 0;
+                    }
+                  }
+                } catch (err) {
+                  // If table doesn't exist or query fails, default to 0
+                  console.log(`Could not fetch pending jobs for vendor ${vendor.vendor_id || vendor.email}: ${err}`);
+                  pendingJobsCount = 0;
+                }
+                
+                return {
+                  ...vendor,
+                  pending_jobs_count: pendingJobsCount
+                };
+              })
+            );
+            
             return json({ 
               success: true, 
-              vendors: vendors.results || [] 
+              vendors: vendorsWithPendingJobs || [] 
             }, 200, corsHeaders);
           } else {
             // If all attempts failed, list available tables for debugging
@@ -1643,14 +1684,14 @@ export default {
         try {
           // Try with trailing space first
           let vendor = await env.DB.prepare(`
-            SELECT email, password_hash, vendor_name, vendor_id, vendor_token, phone_number, state, city, locality, shop_address, pincode
+            SELECT email, password_hash, vendor_name, vendor_id, vendor_token, phone_number, state, city, locality, shop_address, pincode, status
             FROM "Vendor_register_details " WHERE email = ? LIMIT 1
           `).bind(email).first();
 
           // If not found, try without space
           if (!vendor) {
             vendor = await env.DB.prepare(`
-              SELECT email, password_hash, vendor_name, vendor_id, vendor_token, phone_number, state, city, locality, shop_address, pincode
+              SELECT email, password_hash, vendor_name, vendor_id, vendor_token, phone_number, state, city, locality, shop_address, pincode, status
               FROM Vendor_register_details WHERE email = ? LIMIT 1
             `).bind(email).first();
           }
@@ -3391,43 +3432,40 @@ export default {
           return json({ success: false, error: "vendor_id, vendor_email, or filename is required" }, 400, corsHeaders);
         }
 
+        // Use the same approach as user dashboard: get ALL jobs first, then filter by job_completed
         const vendorFilters = [];
+        const params = [];
+        
         if (vendor_id) {
-          vendorFilters.push("vendor_id = ?");
+          // Match vendor_id as string (handle both string and numeric IDs)
+          // Also check r2_path in case vendor_id column is not set but r2_path contains it
+          vendorFilters.push("(CAST(vendor_id AS TEXT) = CAST(? AS TEXT) OR r2_path LIKE ?)");
+          params.push(vendor_id, `%/${vendor_id}/%`);
         }
         if (vendor_email) {
-          vendorFilters.push("LOWER(vendor_email) = LOWER(?)");
+          // Match vendor_email directly
+          vendorFilters.push("LOWER(COALESCE(vendor_email, '')) = LOWER(?)");
+          params.push(vendor_email);
         }
         if (filename) {
           vendorFilters.push("filename = ?");
+          params.push(filename);
         }
 
         const whereClause = vendorFilters.length > 1
           ? `(${vendorFilters.join(" OR ")})`
-          : vendorFilters[0];
+          : (vendorFilters[0] || "1=1"); // Default to true if no filters
 
-        const params = [];
-        if (vendor_id) params.push(vendor_id);
-        if (vendor_email) params.push(vendor_email);
-        if (filename) params.push(filename);
-
+        // Get ALL jobs for this vendor (no job_completed filter in SQL - filter in code like user dashboard)
         let query = `
           SELECT *
           FROM Vendor_print_jobs
           WHERE ${whereClause}
         `;
-
-        if (job_completed) {
-          query += `
-            AND UPPER(
-              COALESCE(
-                NULLIF(TRIM(job_completed), ''),
-                'NO'
-              )
-            ) = ?
-          `;
-          params.push(job_completed);
-        }
+        
+        // Debug logging
+        console.log(`🔍 get-vendor-print-jobs: vendor_id=${vendor_id}, vendor_email=${vendor_email}, job_completed=${job_completed}`);
+        console.log(`🔍 get-vendor-print-jobs: whereClause=${whereClause}, params=${JSON.stringify(params)}`);
 
         let orderClause = "ORDER BY rowid DESC";
 
@@ -3463,40 +3501,52 @@ export default {
           const statement = env.DB.prepare(query);
           const { results: allResults } = await statement.bind(...params).all();
           
-          // Filter out orphaned print jobs: jobs with tokens marked as 'free' in Vendor_tokens table
-          // Only filter if job_completed is 'NO' (pending jobs)
-          const filteredResults = [];
-          for (const job of (allResults || [])) {
-            const jobCompleted = (job.job_completed || 'NO').toString().trim().toUpperCase();
-            const token = job.token;
-            const vendorEmail = job.vendor_email;
-            
-            // Only check token status for pending jobs
-            if (jobCompleted === 'NO' && token && vendorEmail) {
-              try {
-                const token_number = parseInt(token, 10);
-                if (token_number && token_number > 0) {
-                  const tokenRecord = await env.DB.prepare(`
-                    SELECT status FROM Vendor_tokens
-                    WHERE LOWER(vendor_email) = LOWER(?) AND token_number = ?
-                    LIMIT 1
-                  `).bind(vendorEmail, token_number).first();
-                  
-                  // If token is marked as 'free', skip this job (it's orphaned)
-                  if (tokenRecord && tokenRecord.status === 'free') {
-                    continue; // Skip this orphaned job
-                  }
-                }
-              } catch (tokenCheckError) {
-                // If token check fails, include the job anyway (don't filter on error)
-                console.error(`Error checking token status: ${tokenCheckError}`);
-              }
-            }
-            
-            // Include the job if it passed the filter
-            filteredResults.push(job);
+          console.log(`🔍 get-vendor-print-jobs: Query returned ${(allResults || []).length} total jobs`);
+          if (allResults && allResults.length > 0) {
+            console.log(`📋 All jobs from query: ${allResults.map(j => `${j.filename || 'N/A'} (vendor_id=${j.vendor_id || 'N/A'}, vendor_email=${j.vendor_email || 'N/A'}, service_type=${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
           }
           
+          // Filter by job_completed status (same approach as user dashboard)
+          // NO R2 logic - only use D1 database job_completed column
+          const filteredResults = (allResults || []).filter(job => {
+            const jobCompleted = (job.job_completed || 'NO').toString().trim().toUpperCase();
+            
+            // Skip CANCELLED jobs
+            if (jobCompleted === 'CANCELLED') {
+              return false;
+            }
+            
+            // If job_completed filter is specified, match it
+            if (job_completed) {
+              const requestedStatus = job_completed.toString().trim().toUpperCase();
+              
+              // Handle 'NO' status - include jobs that are NULL, empty, or 'NO'
+              if (requestedStatus === 'NO') {
+                const matches = jobCompleted === 'NO' || jobCompleted === '' || !job.job_completed || job.job_completed === null;
+                if (!matches) {
+                  console.log(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected NO)`);
+                }
+                return matches;
+              }
+              
+              // For other statuses, do exact match
+              const matches = jobCompleted === requestedStatus;
+              if (!matches) {
+                console.log(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected ${requestedStatus})`);
+              }
+              return matches;
+            }
+            
+            // If no filter specified, return all jobs (except CANCELLED)
+            return true;
+          });
+          
+          console.log(`✅ get-vendor-print-jobs: Returning ${filteredResults.length} jobs after job_completed filter (requested: ${job_completed || 'ALL'}, total from DB: ${(allResults || []).length})`);
+          if (filteredResults.length > 0) {
+            console.log(`📋 Filtered jobs: ${filteredResults.map(j => `${j.filename || 'N/A'} (${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
+          } else if ((allResults || []).length > 0) {
+            console.log(`⚠️ WARNING: ${(allResults || []).length} jobs found in DB but 0 jobs match filter job_completed=${job_completed}`);
+          }
           return json({ success: true, data: filteredResults }, 200, corsHeaders);
         } catch (dbError) {
           return json({ 
@@ -4238,6 +4288,178 @@ export default {
           `).bind(permissions, new Date().toISOString(), username).run();
 
           return json({ success: true, message: "Permissions updated successfully" }, 200, corsHeaders);
+        } catch (dbError) {
+          return json({ 
+            success: false, 
+            error: `Database error: ${String(dbError)}` 
+          }, 500, corsHeaders);
+        }
+      }
+
+      // POST /store-vendor-pending-jobs-snapshot → store vendor pending jobs snapshot
+      if (url.pathname === "/store-vendor-pending-jobs-snapshot" && request.method === "POST") {
+        if (!env.DB) {
+          return json({ success: false, error: "Database not configured" }, 500, corsHeaders);
+        }
+
+        const body = await safeBody(request);
+        const vendor_id = (body.vendor_id || "").trim();
+        const vendor_email = (body.vendor_email || "").trim().toLowerCase();
+        const pending_jobs = body.pending_jobs || [];
+        const snapshot_timestamp = body.snapshot_timestamp || new Date().toISOString();
+
+        if (!vendor_id && !vendor_email) {
+          return json({ success: false, error: "vendor_id or vendor_email is required" }, 400, corsHeaders);
+        }
+
+        try {
+          // Ensure table exists
+          try {
+            await env.DB.prepare(`SELECT 1 FROM vendor_pending_jobs_track LIMIT 1`).first();
+          } catch (tableErr) {
+            // Table doesn't exist, create it
+            await env.DB.prepare(`
+              CREATE TABLE IF NOT EXISTS vendor_pending_jobs_track(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vendor_id TEXT UNIQUE,
+                vendor_email TEXT,
+                snapshot_timestamp TEXT NOT NULL,
+                job_count INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+              )
+            `).run();
+            
+            // Create unique index on vendor_email as well to prevent duplicates
+            try {
+              await env.DB.prepare(`
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_vendor_email_unique 
+                ON vendor_pending_jobs_track(vendor_email) 
+                WHERE vendor_email IS NOT NULL
+              `).run();
+            } catch (indexError) {
+              // Index might already exist or SQLite version doesn't support WHERE clause in unique index
+              // Try without WHERE clause
+              try {
+                await env.DB.prepare(`
+                  CREATE UNIQUE INDEX IF NOT EXISTS idx_vendor_email_unique 
+                  ON vendor_pending_jobs_track(vendor_email)
+                `).run();
+              } catch (e) {
+                // Ignore if index creation fails
+                console.log(`Note: Could not create unique index on vendor_email: ${e}`);
+              }
+            }
+          }
+
+          // Calculate job count
+          const job_count = Array.isArray(pending_jobs) ? pending_jobs.length : 0;
+
+          // Check if vendor already exists (prioritize vendor_id, fallback to vendor_email)
+          let existing = null;
+          if (vendor_id) {
+            existing = await env.DB.prepare(`
+              SELECT id FROM vendor_pending_jobs_track 
+              WHERE vendor_id = ?
+              LIMIT 1
+            `).bind(vendor_id).first();
+          }
+          
+          if (!existing && vendor_email) {
+            existing = await env.DB.prepare(`
+              SELECT id FROM vendor_pending_jobs_track 
+              WHERE vendor_email = ?
+              LIMIT 1
+            `).bind(vendor_email).first();
+          }
+
+          if (existing) {
+            // Update existing row
+            if (vendor_id) {
+              await env.DB.prepare(`
+                UPDATE vendor_pending_jobs_track SET
+                  vendor_email = ?,
+                  snapshot_timestamp = ?,
+                  job_count = ?,
+                  updated_at = datetime('now')
+                WHERE vendor_id = ?
+              `).bind(
+                vendor_email || null,
+                snapshot_timestamp,
+                job_count,
+                vendor_id
+              ).run();
+            } else if (vendor_email) {
+              await env.DB.prepare(`
+                UPDATE vendor_pending_jobs_track SET
+                  vendor_id = ?,
+                  snapshot_timestamp = ?,
+                  job_count = ?,
+                  updated_at = datetime('now')
+                WHERE vendor_email = ?
+              `).bind(
+                vendor_id || null,
+                snapshot_timestamp,
+                job_count,
+                vendor_email
+              ).run();
+            }
+          } else {
+            // Insert new row - ensure we have at least vendor_id or vendor_email
+            try {
+              await env.DB.prepare(`
+                INSERT INTO vendor_pending_jobs_track (
+                  vendor_id, vendor_email, snapshot_timestamp, job_count
+                )
+                VALUES (?, ?, ?, ?)
+              `).bind(
+                vendor_id || null,
+                vendor_email || null,
+                snapshot_timestamp,
+                job_count
+              ).run();
+            } catch (insertError) {
+              // If insert fails due to unique constraint, try update instead
+              if (String(insertError).includes('UNIQUE constraint') || String(insertError).includes('duplicate')) {
+                if (vendor_id) {
+                  await env.DB.prepare(`
+                    UPDATE vendor_pending_jobs_track SET
+                      vendor_email = ?,
+                      snapshot_timestamp = ?,
+                      job_count = ?,
+                      updated_at = datetime('now')
+                    WHERE vendor_id = ?
+                  `).bind(
+                    vendor_email || null,
+                    snapshot_timestamp,
+                    job_count,
+                    vendor_id
+                  ).run();
+                } else if (vendor_email) {
+                  await env.DB.prepare(`
+                    UPDATE vendor_pending_jobs_track SET
+                      vendor_id = ?,
+                      snapshot_timestamp = ?,
+                      job_count = ?,
+                      updated_at = datetime('now')
+                    WHERE vendor_email = ?
+                  `).bind(
+                    vendor_id || null,
+                    snapshot_timestamp,
+                    job_count,
+                    vendor_email
+                  ).run();
+                }
+              } else {
+                throw insertError;
+              }
+            }
+          }
+
+          return json({ 
+            success: true, 
+            message: `Updated ${job_count} pending jobs count for vendor ${vendor_id || vendor_email}` 
+          }, 200, corsHeaders);
         } catch (dbError) {
           return json({ 
             success: false, 

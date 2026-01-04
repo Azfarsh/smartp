@@ -842,11 +842,16 @@
             <div class="top-bar">
                 <h1 id="category-title">User Data</h1>
                 <div class="user-info">
-                    <div class="user-avatar">
+                    <div class="user-avatar" style="background: {% if is_superuser %}#10b981{% else %}#3b82f6{% endif %};">
                         {{ user.username|first|upper }}
                     </div>
-                    <span>{{ user.username }}</span>
-                    <a href="{% url 'admin:logout' %}" class="logout-btn">
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; margin-right: 10px;">
+                        <span style="font-weight: 600;">{{ user.username }}</span>
+                        <span style="font-size: 0.75rem; color: {% if is_superuser %}#10b981{% else %}#3b82f6{% endif %}; font-weight: 500;">
+                            {{ user_role }}
+                        </span>
+                    </div>
+                    <a href="{% url 'admin:logout' %}?next=/admin/login/" class="logout-btn" onclick="clearSessionAndCache(event)">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
                 </div>
@@ -1394,8 +1399,8 @@
                             <div class="data-header">
                                 <i class="fas fa-chart-pie"></i> Revenue Distribution
                             </div>
-                            <div class="data-content" style="padding: 20px;">
-                                <canvas id="activity-pie-chart" style="max-height: 300px;"></canvas>
+                            <div class="data-content" style="padding: 20px; min-height: 350px;">
+                                <canvas id="activity-pie-chart" style="max-height: 350px;"></canvas>
                             </div>
                         </div>
                         
@@ -1404,8 +1409,8 @@
                             <div class="data-header">
                                 <i class="fas fa-chart-bar"></i> Monthly Revenue Trend
                             </div>
-                            <div class="data-content" style="padding: 20px;">
-                                <canvas id="activity-bar-chart" style="max-height: 300px;"></canvas>
+                            <div class="data-content" style="padding: 20px; min-height: 350px;">
+                                <canvas id="activity-bar-chart" style="max-height: 350px;"></canvas>
                             </div>
                         </div>
                     </div>
@@ -1446,12 +1451,37 @@
             return cookieValue;
         }
 
+        // Check if user is superuser (from template context) - global variable
+        const isSuperuser = {% if is_superuser %}true{% else %}false{% endif %};
+        const isStaff = {% if is_staff %}true{% else %}false{% endif %};
+        const userRole = "{{ user_role }}";
+        
+        // User permissions from D1 database
+        const userPermissions = {{ user_permissions_json|safe|default:"{}" }};
+        
+        // Check if user has permission (superusers have all permissions)
+        function hasPermission(permission) {
+            if (isSuperuser) return true;
+            return userPermissions[permission] === true;
+        }
+
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            // Apply permission-based visibility for overview cards only
+            applyOverviewCardPermissions();
+            
             loadUsersData();
             setupEventListeners();
             initAvailabilityUI();
         });
+        
+        function applyOverviewCardPermissions() {
+            // Hide overview cards if no permission (but keep sidebar items visible)
+            if (!hasPermission('can_view_overview_cards')) {
+                const overviewCards = document.querySelectorAll('.overview-cards');
+                overviewCards.forEach(card => card.style.display = 'none');
+            }
+        }
 
         // Setup event listeners
         function setupEventListeners() {
@@ -1540,6 +1570,15 @@
                 } else {
                     loadTransactions();
                 }
+            }
+            
+            // Activity month selector
+            const activityMonthSelect = document.getElementById('activity-month-select');
+            if (activityMonthSelect) {
+                activityMonthSelect.addEventListener('change', function() {
+                    const selectedMonth = this.value || '';
+                    loadActivityData(selectedMonth);
+                });
             }
         }
 
@@ -1676,26 +1715,6 @@
                     availabilityData = { dates: {} };
                     buildCalendar(month);
                     buildSlots();
-                })
-                .finally(() => {
-                    // End-of-month prompt: if today is last two days, prompt to plan next month
-                    try {
-                        const today = new Date();
-                        const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
-                        const day = today.getDate();
-                        if (lastDay - day <= 1) {
-                            const nextMonth = new Date(today.getFullYear(), today.getMonth()+1, 1);
-                            const ym = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth()+1).padStart(2,'0')}`;
-                            if (confirm(`It's the end of the month. Plan support dates for ${formatMonthDisplay(ym)}?`)) {
-                                const monthInput = document.getElementById('availability-month-select');
-                                if (monthInput) {
-                                    monthInput.value = ym;
-                                    availabilityMonth = ym;
-                                    loadAvailabilityMonth(ym);
-                                }
-                            }
-                        }
-                    } catch (e) { /* noop */ }
                 });
         }
 
@@ -2113,17 +2132,37 @@
 
         // Switch between categories
         function switchCategory(category) {
+            // Check permissions
+            const permissionMap = {
+                'users': 'can_view_users',
+                'vendors': 'can_view_vendors',
+                'transactions': 'can_view_transactions',
+                'contacts': 'can_view_contacts',
+                'activity': 'can_view_activity'
+            };
+            
+            const requiredPermission = permissionMap[category];
+            if (requiredPermission && !hasPermission(requiredPermission)) {
+                // Show access denied message
+                showAccessDenied(category);
+                return;
+            }
+            
             // Update active menu item
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.classList.remove('active');
             });
-            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            const menuItem = document.querySelector(`[data-category="${category}"]`);
+            if (menuItem) menuItem.classList.add('active');
 
             // Show/hide category content
             document.querySelectorAll('.category-content').forEach(content => {
                 content.classList.add('hidden');
             });
-            document.getElementById(`${category}-category`).classList.remove('hidden');
+            const categoryContent = document.getElementById(`${category}-category`);
+            if (categoryContent) {
+                categoryContent.classList.remove('hidden');
+            }
 
             // Update title
             const titles = {
@@ -2136,17 +2175,88 @@
             document.getElementById('category-title').textContent = titles[category] || 'Dashboard';
 
             // Load data for active category
-            if (category === 'users') {
+            if (category === 'users' && hasPermission('can_view_users')) {
                 loadUsersData();
-            } else if (category === 'vendors') {
+            } else if (category === 'vendors' && hasPermission('can_view_vendors')) {
                 loadVendorsData();
-            } else if (category === 'transactions') {
+            } else if (category === 'transactions' && hasPermission('can_view_transactions')) {
                 loadTransactions();
-            } else if (category === 'contacts') {
+            } else if (category === 'contacts' && hasPermission('can_view_contacts')) {
                 loadContacts();
-            } else if (category === 'activity') {
+            } else if (category === 'activity' && hasPermission('can_view_activity')) {
                 loadActivityData();
             }
+        }
+        
+        function showAccessDenied(category) {
+            // Hide all category content
+            document.querySelectorAll('.category-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Show access denied message
+            const titles = {
+                'users': 'User Data',
+                'vendors': 'Vendor Data',
+                'transactions': 'Vendor Transactions',
+                'contacts': 'Contact Data',
+                'activity': 'Total Activity'
+            };
+            
+            const mainContent = document.querySelector('.content-area');
+            const deniedDiv = document.createElement('div');
+            deniedDiv.className = 'access-denied';
+            deniedDiv.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-lock" style="font-size: 64px; color: #ef4444; margin-bottom: 20px;"></i>
+                    <h2 style="color: #1e293b; margin-bottom: 10px;">Access Denied</h2>
+                    <p style="color: #64748b; font-size: 1.1rem;">You don't have permission to access ${titles[category] || category}.</p>
+                    <p style="color: #94a3b8; margin-top: 10px;">Please contact an administrator to request access.</p>
+                </div>
+            `;
+            
+            // Remove existing access denied message if any
+            const existing = mainContent.querySelector('.access-denied');
+            if (existing) existing.remove();
+            
+            mainContent.appendChild(deniedDiv);
+            document.getElementById('category-title').textContent = titles[category] || 'Dashboard';
+        }
+        
+        // Function to clear session and cache on logout
+        function clearSessionAndCache(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Clear localStorage
+            try {
+                localStorage.clear();
+            } catch (e) {
+                console.log('Error clearing localStorage:', e);
+            }
+            
+            // Clear sessionStorage
+            try {
+                sessionStorage.clear();
+            } catch (e) {
+                console.log('Error clearing sessionStorage:', e);
+            }
+            
+            // Clear all cookies
+            try {
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+            } catch (e) {
+                console.log('Error clearing cookies:', e);
+            }
+            
+            // Redirect to logout URL
+            const logoutUrl = "{% url 'admin:logout' %}?next=/admin/login/";
+            window.location.href = logoutUrl;
+            
+            return false;
         }
 
         // Load users data from D1
@@ -2967,25 +3077,39 @@
         }
 
         // Load activity data
-        function loadActivityData() {
+        function loadActivityData(selectedMonth = '') {
             const loading = document.getElementById('activity-loading');
-            const selectedMonth = document.getElementById('activity-month-select')?.value || '';
+            const monthSelect = document.getElementById('activity-month-select');
             
             if (loading) loading.style.display = 'block';
             
-            // Fetch user and vendor data
-            Promise.all([
-                fetch(`/admin-dashboard/users/?month=${selectedMonth}`).then(r => r.json()),
-                fetch(`/admin-dashboard/vendors/?month=${selectedMonth}`).then(r => r.json()),
-                fetch(`/admin-dashboard/transactions/?month=${selectedMonth}`).then(r => r.json())
-            ]).then(([usersData, vendorsData, transactionsData]) => {
+            // Build URL with month parameter if provided
+            let url = '/admin-dashboard/activity/';
+            if (selectedMonth) {
+                url += `?month=${selectedMonth}`;
+            }
+            
+            // Fetch activity data from D1 User_notifications table
+            fetch(url)
+                .then(r => r.json())
+                .then(activityData => {
                 if (loading) loading.style.display = 'none';
                 
-                // Calculate totals
-                const totalRevenue = (transactionsData.transactions || []).reduce((sum, t) => sum + (parseFloat(t.platform_profit) || 0), 0);
-                const totalPayments = (usersData.users || []).reduce((sum, u) => sum + (parseFloat(u.total_cost) || 0), 0);
-                const totalUsers = (usersData.users || []).length;
-                const totalVendors = (vendorsData.vendors || []).length;
+                    if (!activityData.success) {
+                        console.error('Error loading activity data:', activityData.error);
+                        return;
+                    }
+                    
+                    // Initialize month selector with available months (only on first load)
+                    if (monthSelect && monthSelect.options.length <= 1 && activityData.available_months) {
+                        initActivityMonthSelector(activityData.available_months);
+                    }
+                    
+                    // Update cards with data from User_notifications
+                    const totalRevenue = parseFloat(activityData.total_revenue || 0);
+                    const totalPayments = parseFloat(activityData.total_payments || 0);
+                    const totalUsers = parseInt(activityData.total_users || 0);
+                    const totalVendors = parseInt(activityData.total_vendors || 0);
                 
                 // Update cards
                 document.getElementById('activity-total-revenue').textContent = `₹${totalRevenue.toFixed(2)}`;
@@ -2993,61 +3117,399 @@
                 document.getElementById('activity-total-users').textContent = totalUsers;
                 document.getElementById('activity-total-vendors').textContent = totalVendors;
                 
-                // Update charts (simplified - would need Chart.js library)
-                updateActivityCharts(usersData, vendorsData, transactionsData);
-            }).catch(error => {
+                    // Update charts with monthly revenue data
+                    updateActivityCharts(activityData, selectedMonth);
+                })
+                .catch(error => {
                 console.error('Error loading activity data:', error);
                 if (loading) loading.style.display = 'none';
             });
         }
 
-        function updateActivityCharts(usersData, vendorsData, transactionsData) {
-            // Pie chart data - revenue distribution
+        function initActivityMonthSelector(availableMonths) {
+            const monthSelect = document.getElementById('activity-month-select');
+            if (!monthSelect || !availableMonths || availableMonths.length === 0) {
+                return;
+            }
+            
+            // Clear existing options except "All Months"
+            monthSelect.innerHTML = '<option value="">All Months</option>';
+            
+            // Add month options
+            availableMonths.forEach(month => {
+                try {
+                    const [year, monthNum] = month.split('-');
+                    const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+                    const monthLabel = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    
+                    const option = document.createElement('option');
+                    option.value = month;
+                    option.textContent = monthLabel;
+                    monthSelect.appendChild(option);
+                } catch (e) {
+                    // If parsing fails, use the month string as-is
+                    const option = document.createElement('option');
+                    option.value = month;
+                    option.textContent = month;
+                    monthSelect.appendChild(option);
+                }
+            });
+        }
+
+        // Helper function to format currency with thousands separators
+        function formatCurrency(amount) {
+            if (amount === 0) return '₹0';
+            const formatted = Math.abs(amount).toFixed(2);
+            const parts = formatted.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return '₹' + parts.join('.');
+        }
+        
+        // Helper function to format large numbers
+        function formatNumber(num) {
+            if (num >= 10000000) {
+                return (num / 10000000).toFixed(2) + 'Cr';
+            } else if (num >= 100000) {
+                return (num / 100000).toFixed(2) + 'L';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(2) + 'K';
+            }
+            return num.toFixed(2);
+        }
+
+        function updateActivityCharts(activityData) {
+            // Destroy existing charts if they exist
+            if (window.activityPieChart) {
+                window.activityPieChart.destroy();
+            }
+            if (window.activityBarChart) {
+                window.activityBarChart.destroy();
+            }
+            
+            // Pie chart data - revenue distribution (using total revenue from User_notifications)
             const pieCtx = document.getElementById('activity-pie-chart');
             if (pieCtx && typeof Chart !== 'undefined') {
-                const userRevenue = (usersData.users || []).reduce((sum, u) => sum + (parseFloat(u.platform_revenue) || 0), 0);
-                const vendorRevenue = (transactionsData.transactions || []).reduce((sum, t) => sum + (parseFloat(t.platform_profit) || 0), 0);
+                const totalRevenue = parseFloat(activityData.total_revenue || 0);
+                const totalPayments = parseFloat(activityData.total_payments || 0);
+                const total = totalRevenue + totalPayments;
                 
-                new Chart(pieCtx, {
+                window.activityPieChart = new Chart(pieCtx, {
                     type: 'pie',
                     data: {
-                        labels: ['User Revenue', 'Vendor Revenue'],
+                        labels: [
+                            `Platform Revenue (${formatCurrency(totalRevenue)})`,
+                            `Total Payments (${formatCurrency(totalPayments)})`
+                        ],
                         datasets: [{
-                            data: [userRevenue, vendorRevenue],
-                            backgroundColor: ['#3b82f6', '#10b981']
+                            data: [totalRevenue, totalPayments],
+                            backgroundColor: ['#3b82f6', '#10b981'],
+                            borderColor: ['#2563eb', '#059669'],
+                            borderWidth: 2,
+                            hoverOffset: 4
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    font: {
+                                        size: 12,
+                                        weight: '500'
+                                    },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    generateLabels: function(chart) {
+                                        const data = chart.data;
+                                        if (data.labels.length && data.datasets.length) {
+                                            return data.labels.map((label, i) => {
+                                                const value = data.datasets[0].data[i];
+                                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                                return {
+                                                    text: label + ' - ' + percentage + '%',
+                                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                                    strokeStyle: data.datasets[0].borderColor[i],
+                                                    lineWidth: 2,
+                                                    hidden: false,
+                                                    index: i
+                                                };
+                                            });
+                                        }
+                                        return [];
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return [
+                                            label.split(' (')[0] + ':',
+                                            formatCurrency(value),
+                                            `(${percentage}%)`
+                                        ];
+                                    }
+                                },
+                                cornerRadius: 6,
+                                displayColors: true
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            animateScale: true,
+                            duration: 1000,
+                            onComplete: function() {
+                                // Add percentage labels on pie slices after animation
+                                if (total > 0 && window.activityPieChart) {
+                                    const chart = window.activityPieChart;
+                                    const ctx = chart.ctx;
+                                    const meta = chart.getDatasetMeta(0);
+                                    
+                                    meta.data.forEach((element, index) => {
+                                        const value = chart.data.datasets[0].data[index];
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        
+                                        // Only show percentage if slice is large enough (> 5%)
+                                        if (percentage > 5) {
+                                            const position = element.tooltipPosition();
+                                            ctx.save();
+                                            ctx.fillStyle = '#ffffff';
+                                            ctx.font = 'bold 13px Arial';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                                            ctx.shadowBlur = 3;
+                                            ctx.fillText(percentage + '%', position.x, position.y);
+                                            ctx.restore();
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
                 });
             }
             
-            // Bar chart data - monthly trend
+            // Bar chart data - monthly revenue trend from User_notifications
             const barCtx = document.getElementById('activity-bar-chart');
             if (barCtx && typeof Chart !== 'undefined') {
-                // Group by month
-                const monthlyData = {};
-                (transactionsData.transactions || []).forEach(t => {
-                    const month = t.period_start ? t.period_start.substring(0, 7) : '';
-                    if (month) {
-                        if (!monthlyData[month]) monthlyData[month] = 0;
-                        monthlyData[month] += parseFloat(t.platform_profit || 0);
-                    }
-                });
+                const selectedMonth = activityData.selected_month || '';
+                let labels = [];
+                let revenues = [];
                 
-                const months = Object.keys(monthlyData).sort();
-                const revenues = months.map(m => monthlyData[m]);
+                if (selectedMonth) {
+                    // If a month is selected, show daily breakdown for that month
+                    const notifications = activityData.notifications || [];
+                    const dailyRevenue = {};
+                    
+                    notifications.forEach(notification => {
+                        const platform_profit = parseFloat(notification.platform_profit || 0);
+                        const completion_time = notification.completion_time || '';
+                        const created_at = notification.created_at || '';
+                        const date_str = completion_time || created_at;
+                        
+                        if (date_str && date_str.length >= 10) {
+                            const day_key = date_str.substring(0, 10); // YYYY-MM-DD
+                            if (day_key.startsWith(selectedMonth)) {
+                                if (!dailyRevenue[day_key]) {
+                                    dailyRevenue[day_key] = 0.0;
+                                }
+                                dailyRevenue[day_key] += platform_profit;
+                            }
+                        }
+                    });
+                    
+                    // Sort by date
+                    const sortedDays = Object.keys(dailyRevenue).sort();
+                    labels = sortedDays.map(day => {
+                        try {
+                            const date = new Date(day);
+                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } catch (e) {
+                            return day.substring(8); // Just the day number
+                        }
+                    });
+                    revenues = sortedDays.map(day => parseFloat(dailyRevenue[day] || 0));
+                } else {
+                    // Show monthly data across all months
+                    const monthlyRevenue = activityData.monthly_revenue || {};
+                    const months = Object.keys(monthlyRevenue).sort();
+                    revenues = months.map(m => parseFloat(monthlyRevenue[m] || 0));
+                    
+                    // Format month labels for better display (e.g., "2024-01" -> "Jan 2024")
+                    labels = months.map(month => {
+                        try {
+                            const [year, monthNum] = month.split('-');
+                            const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+                            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        } catch (e) {
+                            return month;
+                        }
+                    });
+                }
                 
-                new Chart(barCtx, {
+                // Calculate max value for better Y-axis scaling
+                const maxRevenue = revenues.length > 0 ? Math.max(...revenues, 0) : 0;
+                const yAxisMax = maxRevenue > 0 ? Math.ceil(maxRevenue * 1.1) : 1000;
+                
+                window.activityBarChart = new Chart(barCtx, {
                     type: 'bar',
                     data: {
-                        labels: months,
+                        labels: labels,
                         datasets: [{
-                            label: 'Platform Revenue',
+                            label: selectedMonth ? 'Daily Revenue' : 'Monthly Revenue',
                             data: revenues,
-                            backgroundColor: '#3b82f6'
+                            backgroundColor: revenues.map((val, idx) => {
+                                // Gradient color based on value
+                                const maxVal = Math.max(...revenues);
+                                const intensity = maxVal > 0 ? val / maxVal : 0;
+                                if (intensity > 0.7) return '#3b82f6'; // Blue
+                                if (intensity > 0.4) return '#60a5fa'; // Lighter blue
+                                return '#93c5fd'; // Lightest blue
+                            }),
+                            borderColor: '#2563eb',
+                            borderWidth: 2,
+                            borderRadius: 4,
+                            borderSkipped: false
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    padding: 10,
+                                    font: {
+                                        size: 13,
+                                        weight: '600'
+                                    },
+                                    usePointStyle: true
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    title: function(context) {
+                                        return context[0].label;
+                                    },
+                                    label: function(context) {
+                                        const value = context.parsed.y;
+                                        const labelText = selectedMonth ? 'Day' : 'Month';
+                                        return [
+                                            'Revenue: ' + formatCurrency(value),
+                                            labelText + ': ' + context.label
+                                        ];
+                                    }
+                                },
+                                displayColors: true,
+                                cornerRadius: 6
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: yAxisMax,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)',
+                                    lineWidth: 1,
+                                    drawBorder: true
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        if (value >= 10000000) {
+                                            return '₹' + (value / 10000000).toFixed(1) + 'Cr';
+                                        } else if (value >= 100000) {
+                                            return '₹' + (value / 100000).toFixed(1) + 'L';
+                                        } else if (value >= 1000) {
+                                            return '₹' + (value / 1000).toFixed(1) + 'K';
+                                        }
+                                        return formatCurrency(value);
+                                    },
+                                    font: {
+                                        size: 11,
+                                        weight: '500'
+                                    },
+                                    padding: 8,
+                                    color: '#6b7280'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Revenue (₹)',
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    },
+                                    color: '#374151',
+                                    padding: {
+                                        top: 10,
+                                        bottom: 10
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false,
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 11,
+                                        weight: '500'
+                                    },
+                                    color: '#6b7280',
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    padding: 8
+                                },
+                                title: {
+                                    display: true,
+                                    text: selectedMonth ? 'Day' : 'Month',
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    },
+                                    color: '#374151',
+                                    padding: {
+                                        top: 10,
+                                        bottom: 10
+                                    }
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 10,
+                                right: 10,
+                                bottom: 10,
+                                left: 10
+                            }
+                        }
+                    }
                 });
             }
         }

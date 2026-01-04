@@ -1786,8 +1786,8 @@
       border: 1px solid #6b7280; /* gray border for contrast */
       transition: all var(--transition-standard);
       position: relative;
-      min-width: 280px;
-      max-width: 320px;
+      min-width: 240px;
+      max-width: 280px;
       flex-shrink: 0;
       overflow: hidden;
       backdrop-filter: blur(10px);
@@ -7394,8 +7394,8 @@
         }
         .job-card { 
           width: 100%; 
-          min-width: 320px; 
-          max-width: 540px; 
+          min-width: 240px; 
+          max-width: 280px; 
           min-height: 200px; 
           height: auto; 
           display: flex;
@@ -8771,6 +8771,7 @@
       .shop-selection-item-info {
         flex: 1;
         min-width: 0;
+        max-width: calc(100% - 120px);
       }
 
       .shop-selection-item-name {
@@ -8778,18 +8779,20 @@
         color: #111827;
         font-size: 16px;
         margin-bottom: 4px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        white-space: normal;
+        overflow: visible;
+        word-wrap: break-word;
+        line-height: 1.4;
       }
 
       .shop-selection-item-address {
         font-size: 14px;
         color: #6b7280;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        white-space: normal;
+        overflow: visible;
+        word-wrap: break-word;
         margin-bottom: 4px;
+        line-height: 1.4;
       }
 
       .shop-selection-item-meta {
@@ -8872,10 +8875,14 @@
 
         .shop-selection-item-name {
           font-size: 15px;
+          white-space: normal;
+          overflow: visible;
         }
 
         .shop-selection-item-address {
           font-size: 13px;
+          white-space: normal;
+          overflow: visible;
         }
       }
 
@@ -16313,6 +16320,7 @@
               <div class="bill-date">
                 <p>Date: <span id="orderSummaryDate">-</span></p>
                 <p>Time: <span id="orderSummaryTime">-</span></p>
+                <p>Print Duration: <span id="orderSummaryETA">-</span></p>
               </div>
             </div>
             <div class="bill-content">
@@ -18505,6 +18513,22 @@
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
       
+      // Filter shops by service availability for document printing (regular_print)
+      shopsWithDistance = shopsWithDistance.filter(shop => {
+        // If shop has service_availability data, check it
+        if (shop.service_availability && typeof shop.service_availability === 'object') {
+          const serviceData = shop.service_availability.service_data || shop.service_availability;
+          // Check if regular_print is available (default to true if not specified)
+          return serviceData.regular_print !== false && serviceData.regular_print !== 0;
+        }
+        // If shop has direct service availability fields, check them
+        if (shop.regular_print !== undefined) {
+          return shop.regular_print !== false && shop.regular_print !== 0;
+        }
+        // Default to true (show shop) if service availability data is not available
+        return true;
+      });
+      
       // Filter shops based on search text
       const { displayShops, within3km } = getFilteredShops(shopsWithDistance, currentSearchText);
       
@@ -18544,20 +18568,37 @@
       
       // Use displayShops instead of shopsToRender
       const shopsToRender = displayShops;
+      
+      // Helper function to get traffic level and label
+      function getTrafficInfo(pendingJobs) {
+        const count = pendingJobs || 0;
+        if (count < 10) {
+          return { level: 'low', label: 'Low Traffic', color: '#10b981' };
+        } else if (count < 16) {
+          return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
+        } else {
+          return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+        }
+      }
 
       const listHtml = shopsToRender.map((shop) => {
         const distance = shop.formattedDistance || shop.distanceText || 'N/A';
         const address = [shop.shop_address, shop.city, shop.pincode]
           .filter(Boolean)
           .join(', ');
+        const pendingJobs = shop.pending_jobs_count || 0;
+        const trafficInfo = getTrafficInfo(pendingJobs);
         return `
-          <div class="shop-row" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}">
+          <div class="shop-row" data-shop="${shop.shop_folder}" data-lat="${shop.latitude || ''}" data-lng="${shop.longitude || ''}" data-vendor_email="${shop.vendor_email || ''}" data-pending-jobs="${pendingJobs}">
             <div class="row-left">
               <img class="avatar" src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" alt="${shop.shop_name||'Shop'}" />
             </div>
             <div class="row-body">
               <div class="row-title">${shop.shop_name || 'Print Shop'}</div>
               <div class="row-sub">${address}</div>
+              <div class="row-traffic" style="font-size: 11px; color: ${trafficInfo.color}; margin-top: 4px; font-weight: 500;">
+                <i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>${trafficInfo.label}
+              </div>
             </div>
             <div class="row-meta">
               <i class="fas fa-location-arrow"></i>
@@ -19374,6 +19415,36 @@
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
       
+      // Map service names to service availability field names
+      const serviceAvailabilityMap = {
+        'print': 'regular_print',
+        'digital': 'digital_print',
+        'gloss': 'gloss_printing',
+        'jumbo': 'jumbo_printing',
+        'photo': 'photo_print',
+        'passport': 'passport_print',
+        'goldenemboss': 'project_binding' // Assuming golden emboss uses project_binding
+      };
+      
+      // Filter shops by service availability
+      const serviceAvailabilityField = serviceAvailabilityMap[service];
+      if (serviceAvailabilityField) {
+        shopsWithDistance = shopsWithDistance.filter(shop => {
+          // If shop has service_availability data, check it
+          if (shop.service_availability && typeof shop.service_availability === 'object') {
+            const serviceData = shop.service_availability.service_data || shop.service_availability;
+            // Check if service is available (default to true if not specified)
+            return serviceData[serviceAvailabilityField] !== false && serviceData[serviceAvailabilityField] !== 0;
+          }
+          // If shop has direct service availability fields, check them
+          if (shop[serviceAvailabilityField] !== undefined) {
+            return shop[serviceAvailabilityField] !== false && shop[serviceAvailabilityField] !== 0;
+          }
+          // Default to true (show shop) if service availability data is not available
+          return true;
+        });
+      }
+      
       // Get search text from input
       const searchInput = document.getElementById(`${service}-shop-search-input`);
       const searchText = searchInput ? searchInput.value.trim() : '';
@@ -19409,11 +19480,47 @@
       
       const shopsToRender = displayShops;
       
+      // Helper function to get traffic level and label
+      function getTrafficInfo(pendingJobs) {
+        const count = pendingJobs || 0;
+        if (count < 10) {
+          return { level: 'low', label: 'Low Traffic', color: '#10b981' };
+        } else if (count < 16) {
+          return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
+        } else {
+          return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+        }
+      }
+      
       const shopItemsHtml = shopsToRender.map((shop, index) => {
-        const distance = shop.formattedDistance || shop.distanceText || 'N/A';
+        const distance = shop.formattedDistance || shop.distanceText || null;
+        const hasDistance = distance && distance !== 'N/A' && distance !== 'Location unavailable';
+        
+        // Build address from multiple possible fields
         const address = [shop.shop_address, shop.city, shop.pincode]
           .filter(Boolean)
-          .join(', ');
+          .join(', ') || 
+          [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code]
+          .filter(Boolean)
+          .join(', ') ||
+          [shop.area, shop.city]
+          .filter(Boolean)
+          .join(', ') ||
+          'Address not available';
+        
+        const pendingJobs = shop.pending_jobs_count || 0;
+        const trafficInfo = getTrafficInfo(pendingJobs);
+        
+        // Distance display with icon for unavailable location
+        let distanceDisplay = '';
+        if (hasDistance) {
+          distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
+        } else {
+          distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
+            <i class="fas fa-map-marker-alt" style="font-size: 12px; color: #9ca3af;"></i>
+            <span>Location unavailable</span>
+          </span>`;
+        }
         
         return `
           <div class="shop-selection-item" 
@@ -19421,6 +19528,7 @@
                data-lat="${shop.latitude || ''}" 
                data-lng="${shop.longitude || ''}" 
                data-vendor_email="${shop.vendor_email || ''}"
+               data-pending-jobs="${pendingJobs}"
                onclick="selectShopInModal('${service}', '${shop.shop_folder}')">
             <div class="shop-selection-item-content">
               <img class="shop-selection-item-avatar" 
@@ -19429,9 +19537,12 @@
               <div class="shop-selection-item-info">
                 <div class="shop-selection-item-name">${shop.shop_name || 'Print Shop'}</div>
                 <div class="shop-selection-item-address">${address}</div>
+                <div class="shop-selection-item-traffic" style="font-size: 11px; color: ${trafficInfo.color}; margin-top: 4px; font-weight: 500;">
+                  <i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>${trafficInfo.label}
+                </div>
               </div>
               <div class="shop-selection-item-meta">
-                <span class="shop-selection-item-distance">${distance || ''}</span>
+                ${distanceDisplay}
                 <button type="button" class="shop-selection-item-track" title="Track" onclick="event.stopPropagation(); trackShop('${shop.latitude || ''}', '${shop.longitude || ''}')">
                   <i class="fas fa-map-marker-alt"></i>
                 </button>
@@ -21255,6 +21366,11 @@
         updateUI();
         // Restore preview if a file is selected
         if (selectedFileIndex >= 0 && selectedFileIndex < uploadedFiles.length) {
+          // Ensure preview container is visible
+          const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+          if (imagePreviewContainer) {
+            imagePreviewContainer.style.display = 'block';
+          }
           updateSettingsDisplay();
           debouncedUpdateDocumentPreview();
         }
@@ -22090,14 +22206,16 @@
 
       // Show image preview if current file is an image
       const previewEl = document.getElementById('imagePreviewContainer');
+      if (previewEl) {
+        previewEl.style.display = 'block';
+        previewEl.classList.add('active');
+      }
       if (selectedFile.isImage) {
         updateImagePreview(selectedFile, settings);
       } else {
         // non-image (e.g., PDF): render via pdf.js
         debouncedUpdateDocumentPreview();
       }
-      // ensure footer preview is visible for both types
-      if (previewEl) previewEl.classList.add('active');
     }
 
     function updateOrderSummary() {
@@ -24128,6 +24246,29 @@
       document.getElementById('orderSummaryDate').textContent = now.toLocaleDateString();
       document.getElementById('orderSummaryTime').textContent = now.toLocaleTimeString();
       
+      // Calculate and display ETA based on pending jobs
+      function calculateETA(pendingJobs) {
+        const count = pendingJobs || 0;
+        if (count <= 4) {
+          return { min: 7, max: 12, message: 'Ready in 7–12 min' };
+        } else if (count <= 9) {
+          return { min: 15, max: 20, message: 'Ready in 15–20 min' };
+        } else if (count <= 14) {
+          return { min: 25, max: 30, message: 'Ready in 25–30 min' };
+        } else if (count <= 19) {
+          return { min: 40, max: 45, message: 'Ready in 40–45 min' };
+        } else {
+          return { min: 60, max: null, message: 'Ready in 60+ min' };
+        }
+      }
+      
+      const pendingJobs = selectedVendorData ? (selectedVendorData.pending_jobs_count || 0) : 0;
+      const eta = calculateETA(pendingJobs);
+      const etaElement = document.getElementById('orderSummaryETA');
+      if (etaElement) {
+        etaElement.textContent = eta.message;
+      }
+      
       // Populate modal fields
       document.getElementById('orderSummaryShopName').textContent = shopName;
       document.getElementById('orderSummaryServiceName').textContent = serviceName;
@@ -24521,6 +24662,29 @@
       const now = new Date();
       document.getElementById('orderSummaryDate').textContent = now.toLocaleDateString();
       document.getElementById('orderSummaryTime').textContent = now.toLocaleTimeString();
+      
+      // Calculate and display ETA based on pending jobs
+      function calculateETA(pendingJobs) {
+        const count = pendingJobs || 0;
+        if (count <= 4) {
+          return { min: 7, max: 12, message: 'Ready in 7–12 min' };
+        } else if (count <= 9) {
+          return { min: 15, max: 20, message: 'Ready in 15–20 min' };
+        } else if (count <= 14) {
+          return { min: 25, max: 30, message: 'Ready in 25–30 min' };
+        } else if (count <= 19) {
+          return { min: 40, max: 45, message: 'Ready in 40–45 min' };
+        } else {
+          return { min: 60, max: null, message: 'Ready in 60+ min' };
+        }
+      }
+      
+      const pendingJobs = selectedShopData ? (selectedShopData.pending_jobs_count || 0) : 0;
+      const eta = calculateETA(pendingJobs);
+      const etaElement = document.getElementById('orderSummaryETA');
+      if (etaElement) {
+        etaElement.textContent = eta.message;
+      }
       
       // Populate modal fields
       document.getElementById('orderSummaryShopName').textContent = shopName;
@@ -25482,37 +25646,37 @@
 
               hidePaymentProcessingState();
 
-              // Show compensation points message if awarded (parity with Jumbo)
-              if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                showCursorNotification(
-                  'Compensation Added',
-                  'success',
-                  `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
-                  'success',
-                  5000
-                );
-              }
-
-              // Show success animation and toast
-              showSuccessModalWithAnimation();
-
-              // Update points if allotted or deducted
-              if (typeof userPoints !== 'undefined') {
-                if (verifyData.points_deducted) {
-                  userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
-                }
-                if (verifyData.points_allotted && verifyData.points_allotted > 0) {
-                  userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
-                }
-                updatePointsDisplay();
-              }
-
-              // Check for failed uploads and show refund message in modal
+              // Check for failed uploads FIRST and show refund message in modal (same as jumbo print)
               if (verifyData.files_failed > 0) {
                 const failedFiles = verifyData.failed_files || [];
                 const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                 const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
                 showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
+              } else {
+                // Show success message only if no files failed (same as jumbo print)
+                showSuccessModalWithAnimation();
+                
+                // Show compensation points message if awarded (parity with Jumbo)
+                if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                  showCursorNotification(
+                    'Compensation Added',
+                    'success',
+                    `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
+                    'success',
+                    5000
+                  );
+                }
+                
+                // Update points if allotted or deducted
+                if (typeof userPoints !== 'undefined') {
+                  if (verifyData.points_deducted) {
+                    userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
+                  }
+                  if (verifyData.points_allotted && verifyData.points_allotted > 0) {
+                    userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
+                  }
+                  updatePointsDisplay();
+                }
               }
 
               // Finalize Google Drive files if needed
@@ -25781,24 +25945,74 @@
         }
 
         if (desktopMode) {
-          // Always ask for location on desktop devices
-          if (forceRefresh || !stored) {
-            console.log("🔄 Desktop mode: Requesting fresh location via QR flow");
+          // Try browser geolocation first (uses WiFi router location with enableHighAccuracy: false)
+          // Only fall back to QR flow if browser geolocation fails
+          if (!navigator.geolocation) {
+            console.warn("⚠️ Browser geolocation not available, trying QR flow");
             if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
               window.userLocationFlow.promptForService(null);
               return null;
             }
-            console.warn("⚠️ Desktop requires QR-based location. Awaiting phone scan.");
             return null;
           }
-          // If not forcing refresh and stored exists, still prompt for fresh location on desktop
-          console.log("🔄 Desktop mode: Prompting for fresh location (always ask on desktop)");
-          if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-            window.userLocationFlow.promptForService(null);
+
+          // Try browser geolocation with WiFi router location (enableHighAccuracy: false)
+          try {
+            console.log("🔄 Desktop mode: Attempting browser geolocation with WiFi router location");
+            const position = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(
+                resolve,
+                reject,
+                {
+                  enableHighAccuracy: false, // Use WiFi router/cell tower location instead of GPS
+                  timeout: 10000,
+                  maximumAge: 300000 // Accept cached location up to 5 minutes old
+                }
+              );
+            });
+
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            console.log("✅ Desktop WiFi router location obtained:", latitude, longitude);
+
+            const locationData = {
+              latitude,
+              longitude,
+              accuracy: position.coords.accuracy,
+              fromCache: false,
+              fromBrowser: true,
+              source: 'browser-wifi'
+            };
+
+            syncUserLocationState(latitude, longitude, {
+              accuracy: position.coords.accuracy,
+              source: 'browser-wifi',
+              fromBrowser: true
+            });
+
+            try {
+              localStorage.setItem('user_lat', latitude);
+              localStorage.setItem('user_lng', longitude);
+            } catch (storageError) {
+              console.warn('Unable to persist browser coordinates', storageError);
+            }
+
+            console.log("✅ Desktop browser geolocation user location:", locationData);
+            return locationData;
+          } catch (geoError) {
+            console.log("⚠️ Desktop browser geolocation failed, falling back to QR flow:", geoError.message);
+            // Fall back to QR flow if browser geolocation fails
+            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
+              window.userLocationFlow.promptForService(null);
+              return null;
+            }
+            // If stored location exists, use it as fallback
+            if (stored) {
+              console.log("📦 Using stored location as fallback:", stored);
+              return stored;
+            }
             return null;
           }
-          console.warn("⚠️ Desktop requires QR-based location. Awaiting phone scan.");
-          return null;
         }
 
         if (locationLocked) {
@@ -25816,9 +26030,9 @@
             resolve,
             reject,
             {
-              enableHighAccuracy: true,
+              enableHighAccuracy: false, // Use WiFi router/cell tower location for better compatibility
               timeout: 15000,
-              maximumAge: 0
+              maximumAge: 300000 // Accept cached location up to 5 minutes old
             }
           );
         });
@@ -26078,15 +26292,66 @@
           const userLoc = await fetchAccurateUserLocation(forceLocationRefresh);
           
           if (!userLoc) {
-            console.warn('⚠️ Could not get accurate user location, skipping distance filtering.');
-            // If location fails, use all shops without distance info
-            locationBasedShops = availableShops.map(shop => ({
-              ...shop,
-              distanceKm: null,
-              formattedDistance: 'Location unavailable'
-            }));
-            availableShops = locationBasedShops;
-            console.log('📦 Using all shops without distance info:', locationBasedShops.length);
+            console.warn('⚠️ Could not get accurate user location, will retry with browser geolocation...');
+            // Try browser geolocation as fallback (for WiFi router location on laptops)
+            try {
+              if (navigator.geolocation) {
+                console.log('🔄 Attempting browser geolocation fallback...');
+                const position = await new Promise((resolve, reject) => {
+                  navigator.geolocation.getCurrentPosition(
+                    resolve,
+                    reject,
+                    {
+                      enableHighAccuracy: false, // Use WiFi router/cell tower location
+                      timeout: 10000,
+                      maximumAge: 300000 // Accept cached location up to 5 minutes old
+                    }
+                  );
+                });
+                
+                const fallbackLocation = {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy,
+                  fromBrowser: true,
+                  source: 'browser-fallback'
+                };
+                
+                console.log('✅ Browser geolocation fallback successful:', fallbackLocation);
+                userLocation = fallbackLocation;
+                
+                // Calculate distances with fallback location
+                console.log('🔍 Calculating distances using Google Distance Matrix API...');
+                locationBasedShops = await filterShopsByLocation(
+                  availableShops, 
+                  userLocation.latitude, 
+                  userLocation.longitude
+                );
+                
+                // Update availableShops with distance information (sorted)
+                availableShops = locationBasedShops;
+                
+                console.log('🎯 Location-based shops found:', locationBasedShops.length);
+                if (locationBasedShops.length > 0) {
+                  console.log('📊 Closest shops:');
+                  locationBasedShops.slice(0, 3).forEach((shop, index) => {
+                    console.log(`${index + 1}. ${shop.shop_name} - ${shop.formattedDistance}`);
+                  });
+                }
+              } else {
+                throw new Error('Browser geolocation not available');
+              }
+            } catch (fallbackError) {
+              console.warn('⚠️ Browser geolocation fallback also failed:', fallbackError.message);
+              // If all location methods fail, use all shops without distance info
+              locationBasedShops = availableShops.map(shop => ({
+                ...shop,
+                distanceKm: null,
+                formattedDistance: 'Location unavailable'
+              }));
+              availableShops = locationBasedShops;
+              console.log('📦 Using all shops without distance info:', locationBasedShops.length);
+            }
           } else {
             userLocation = userLoc;
             console.log('✅ User location obtained:', userLocation);
@@ -26112,13 +26377,56 @@
           }
         } catch (locationError) {
           console.log('⚠️ Location fetch failed:', locationError.message);
-          // If location fails, use all shops without distance info
-          locationBasedShops = availableShops.map(shop => ({
-            ...shop,
-            distanceKm: null,
-            formattedDistance: 'Location unavailable'
-          }));
-          availableShops = locationBasedShops;
+          // Try browser geolocation as final fallback
+          try {
+            if (navigator.geolocation) {
+              console.log('🔄 Attempting browser geolocation as final fallback...');
+              const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                  resolve,
+                  reject,
+                  {
+                    enableHighAccuracy: false, // Use WiFi router/cell tower location
+                    timeout: 10000,
+                    maximumAge: 300000 // Accept cached location up to 5 minutes old
+                  }
+                );
+              });
+              
+              const fallbackLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                fromBrowser: true,
+                source: 'browser-fallback'
+              };
+              
+              console.log('✅ Browser geolocation fallback successful:', fallbackLocation);
+              userLocation = fallbackLocation;
+              
+              // Calculate distances with fallback location
+              console.log('🔍 Calculating distances using Google Distance Matrix API...');
+              locationBasedShops = await filterShopsByLocation(
+                availableShops, 
+                userLocation.latitude, 
+                userLocation.longitude
+              );
+              
+              // Update availableShops with distance information (sorted)
+              availableShops = locationBasedShops;
+            } else {
+              throw new Error('Browser geolocation not available');
+            }
+          } catch (fallbackError) {
+            console.warn('⚠️ All location methods failed:', fallbackError.message);
+            // If all location methods fail, use all shops without distance info
+            locationBasedShops = availableShops.map(shop => ({
+              ...shop,
+              distanceKm: null,
+              formattedDistance: 'Location unavailable'
+            }));
+            availableShops = locationBasedShops;
+          }
         }
         
         // Update selected vendor to first available location-based shop

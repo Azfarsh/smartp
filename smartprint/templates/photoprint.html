@@ -1349,23 +1349,26 @@
         .shop-selection-item-info {
             flex: 1;
             min-width: 0;
+            max-width: calc(100% - 120px);
         }
         .shop-selection-item-name {
             font-weight: 600;
             color: #111827;
             font-size: 16px;
             margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: normal;
+            overflow: visible;
+            word-wrap: break-word;
+            line-height: 1.4;
         }
         .shop-selection-item-address {
             font-size: 14px;
             color: #6b7280;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: normal;
+            overflow: visible;
+            word-wrap: break-word;
             margin-bottom: 4px;
+            line-height: 1.4;
         }
         .shop-selection-item-meta {
             display: flex;
@@ -2034,20 +2037,37 @@ function loadShopsInPhotoModal() {
         const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : 
                           (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
         let distance = '';
+        let hasDistance = false;
         if (distanceKm !== null && distanceKm !== undefined) {
             distance = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`;
+            hasDistance = true;
         } else if (shop.formattedDistance) {
             distance = shop.formattedDistance;
+            hasDistance = distance !== 'Location unavailable' && distance !== 'Distance not available';
         } else if (shop.distance_km) {
             const dist = Number(shop.distance_km);
             distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+            hasDistance = true;
         } else {
-            distance = 'Distance not available';
+            distance = 'Location unavailable';
+            hasDistance = false;
         }
         
         const address = [shop.shop_address, shop.city, shop.pincode].filter(Boolean).join(', ') || 
                        [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code].filter(Boolean).join(', ') || 
                        [shop.area, shop.city].filter(Boolean).join(', ') || 'Address not available';
+        
+        // Distance display with icon for unavailable location
+        let distanceDisplay = '';
+        if (hasDistance) {
+            distanceDisplay = `<i class="fas fa-location-arrow" style="color: #3b82f6; font-size: 14px; margin-right: 6px;"></i>
+                <span class="shop-selection-item-distance">${distance}</span>`;
+        } else {
+            distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
+                <i class="fas fa-map-marker-alt" style="font-size: 12px; color: #9ca3af;"></i>
+                <span>Location unavailable</span>
+            </span>`;
+        }
         
         return `
           <div class="shop-selection-item" 
@@ -2065,8 +2085,7 @@ function loadShopsInPhotoModal() {
                 <div class="shop-selection-item-address">${address}</div>
               </div>
               <div class="shop-selection-item-meta">
-                <i class="fas fa-location-arrow" style="color: #3b82f6; font-size: 14px; margin-right: 6px;"></i>
-                <span class="shop-selection-item-distance">${distance || ''}</span>
+                ${distanceDisplay}
                 <button type="button" class="shop-selection-item-track" title="Track" onclick="event.stopPropagation(); trackShop('${shop.latitude || ''}', '${shop.longitude || ''}')">
                   <i class="fas fa-map-marker-alt" style="color: #fff; font-size: 14px;"></i>
                 </button>
