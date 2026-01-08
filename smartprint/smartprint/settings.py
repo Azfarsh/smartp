@@ -25,16 +25,17 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 # Default to True for local testing (override via .env DEBUG=False in prod)
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-# Local testing hosts + production domain + tunneling domains
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
     'printmax.onrender.com',
     'printmax.in',
+    'www.printmax.in',   # ✅ REQUIRED
     '.ngrok-free.app',
     '.ngrok-free.dev',
 ]
+
 ALLOWED_HOSTS += _split_env_list(os.getenv('ALLOWED_HOSTS_EXTRA'))
 ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))  # Drop duplicates while preserving order
 
