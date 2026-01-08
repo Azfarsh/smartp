@@ -116,6 +116,24 @@ async function ensureVendorRegisterTable(env) {
   }
 }
 
+// Track vendor password change events for auditing and debugging
+async function ensureVendorPasswordChangeTable(env) {
+  if (!env.DB) {
+    return;
+  }
+
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS Vendor_password_changes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vendor_email TEXT NOT NULL,
+      previous_password_hash TEXT,
+      new_password_hash TEXT NOT NULL,
+      source TEXT,
+      changed_at TEXT DEFAULT (datetime('now'))
+    )
+  `).run();
+}
+
 // --- Vendor service availability helpers ---
 const SERVICE_FLAG_KEYS = [
   "digital_print",
@@ -1705,6 +1723,70 @@ export default {
           return json({ 
             success: false, 
             error: `Database error: ${String(dbError)}` 
+          }, 500, corsHeaders);
+        }
+      }
+
+      // POST /update-vendor-password → update vendor password_hash and log change
+      if (url.pathname === "/update-vendor-password" && request.method === "POST") {
+        if (!env.DB) {
+          return json({ success: false, error: "Database not configured" }, 500, corsHeaders);
+        }
+
+        await ensureVendorRegisterTable(env);
+        await ensureVendorPasswordChangeTable(env);
+
+        const body = await safeBody(request);
+        const email = (body.email || "").trim();
+        const new_password_hash = (body.new_password_hash || "").trim();
+        const source = (body.source || "django_reset_password").trim();
+
+        if (!email || !new_password_hash) {
+          return json({ success: false, error: "email and new_password_hash are required" }, 400, corsHeaders);
+        }
+
+        try {
+          // Fetch existing vendor (try both physical table and view)
+          let vendor = await env.DB.prepare(`
+            SELECT email, password_hash
+            FROM "Vendor_register_details "
+            WHERE email = ?
+            LIMIT 1
+          `).bind(email).first();
+
+          if (!vendor) {
+            vendor = await env.DB.prepare(`
+              SELECT email, password_hash
+              FROM Vendor_register_details
+              WHERE email = ?
+              LIMIT 1
+            `).bind(email).first();
+          }
+
+          if (!vendor) {
+            return json({ success: false, error: "Vendor not found" }, 404, corsHeaders);
+          }
+
+          const previousHash = vendor.password_hash || null;
+
+          // Update password_hash on the physical table (with trailing space)
+          await env.DB.prepare(`
+            UPDATE "Vendor_register_details "
+            SET password_hash = ?
+            WHERE email = ?
+          `).bind(new_password_hash, email).run();
+
+          // Log the change
+          await env.DB.prepare(`
+            INSERT INTO Vendor_password_changes (vendor_email, previous_password_hash, new_password_hash, source)
+            VALUES (?, ?, ?, ?)
+          `).bind(email, previousHash, new_password_hash, source).run();
+
+          return json({ success: true, message: "Password updated successfully" }, 200, corsHeaders);
+        } catch (dbError) {
+          return json({
+            success: false,
+            error: `Database error: ${String(dbError)}`
           }, 500, corsHeaders);
         }
       }
@@ -3428,33 +3510,42 @@ export default {
         const filename = (body.filename || "").trim();
         const job_completed = (body.job_completed || body.job_completed_status || "NO").toString().trim().toUpperCase();
 
-        if (!vendor_id && !vendor_email && !filename) {
-          return json({ success: false, error: "vendor_id, vendor_email, or filename is required" }, 400, corsHeaders);
+        // Security: Require vendor_email for vendor job queries (except when querying by filename only)
+        // This ensures only authenticated vendors can access their own jobs
+        if (!filename && !vendor_email) {
+          return json({ success: false, error: "vendor_email is required for security (or filename for specific job lookup)" }, 400, corsHeaders);
         }
 
         // Use the same approach as user dashboard: get ALL jobs first, then filter by job_completed
+        // STRICT FILTERING: Always require vendor_email match (from authenticated session)
+        // This ensures only the authenticated vendor sees their own jobs
         const vendorFilters = [];
         const params = [];
         
-        if (vendor_id) {
-          // Match vendor_id as string (handle both string and numeric IDs)
-          // Also check r2_path in case vendor_id column is not set but r2_path contains it
-          vendorFilters.push("(CAST(vendor_id AS TEXT) = CAST(? AS TEXT) OR r2_path LIKE ?)");
-          params.push(vendor_id, `%/${vendor_id}/%`);
-        }
+        // vendor_email is REQUIRED for security - it comes from authenticated session
+        // This is the primary security check to prevent cross-vendor data access
         if (vendor_email) {
-          // Match vendor_email directly
           vendorFilters.push("LOWER(COALESCE(vendor_email, '')) = LOWER(?)");
           params.push(vendor_email);
         }
+        
+        if (vendor_id) {
+          // Additional check: match vendor_id if provided
+          // Handle cases where vendor_id might be NULL in database
+          vendorFilters.push("(CAST(vendor_id AS TEXT) = CAST(? AS TEXT) OR r2_path LIKE ? OR vendor_id IS NULL)");
+          params.push(vendor_id, `%/${vendor_id}/%`);
+        }
+        
         if (filename) {
           vendorFilters.push("filename = ?");
           params.push(filename);
         }
 
-        const whereClause = vendorFilters.length > 1
-          ? `(${vendorFilters.join(" OR ")})`
-          : (vendorFilters[0] || "1=1"); // Default to true if no filters
+        // Use AND to ensure all provided filters match
+        // vendor_email is always required from authenticated session, ensuring security
+        const whereClause = vendorFilters.length > 0
+          ? vendorFilters.join(" AND ")
+          : "1=0"; // No filters = return nothing (security: require at least vendor_email)
 
         // Get ALL jobs for this vendor (no job_completed filter in SQL - filter in code like user dashboard)
         let query = `

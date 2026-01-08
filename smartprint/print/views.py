@@ -2111,51 +2111,43 @@ def assign_printer_and_increment_count(vendor_email, service_type):
     except Exception as e:
         print(f"⚠️ assign_printer_and_increment_count error: {str(e)}")
         return ''
-def store_vendor_pending_jobs_snapshot():
+def store_vendor_pending_jobs_snapshot(request=None):
     """
-    Store vendor pending jobs snapshot for all vendors in D1 database.
+    Store vendor pending jobs snapshot for the logged-in vendor only in D1 database.
     This function should be called every 2 minutes via a scheduled task.
+    If request is provided, only processes the logged-in vendor from session.
+    If request is None (scheduled task), skips execution (no session available).
     """
     try:
+        # If called from scheduled task (no request), skip - we need session to identify vendor
+        if request is None:
+            print(f"⚠️ Scheduled snapshot skipped - requires active vendor session")
+            return False
+        
+        # Get logged-in vendor from session
+        vendor_email = request.session.get('vendor_email', '').strip().lower()
+        vendor_id = request.session.get('vendor_id', '').strip()
+        
+        if not vendor_email and not vendor_id:
+            print(f"⚠️ No vendor session found, skipping snapshot")
+            return False
+        
         api_url = getattr(settings, 'WORKER_API_URL', '')
         api_key = getattr(settings, 'WORKER_API_KEY', '')
         
         if not api_url or not api_key:
             print(f"⚠️ Worker API not configured, skipping vendor pending jobs snapshot")
             return False
-
-        # Get all vendors from worker API (GET request)
-        worker_endpoint = build_worker_endpoint('/get-all-vendors')
-        if not worker_endpoint:
-            print(f"⚠️ Could not build worker endpoint for getting vendors")
-            return False
         
-        vendors_resp = requests.get(
-            worker_endpoint,
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
-            },
-            timeout=10
-        )
-        
-        if vendors_resp.status_code != 200:
-            print(f"⚠️ Failed to get vendors list: {vendors_resp.status_code}")
-            return False
-        
-        vendors_data = vendors_resp.json()
-        if not vendors_data.get('success') or not vendors_data.get('vendors'):
-            print(f"⚠️ No vendors found or error in response")
-            return False
-        
-        vendors = vendors_data.get('vendors', [])
-        print(f"📋 Found {len(vendors)} vendors to process for pending jobs snapshot")
+        # Process only the logged-in vendor
+        vendors = [{'vendor_id': vendor_id, 'email': vendor_email}]
+        print(f"📋 Processing snapshot for logged-in vendor: {vendor_email or vendor_id}")
         
         snapshot_timestamp = datetime.datetime.now().isoformat()
         success_count = 0
         error_count = 0
         
-        # Process each vendor
+        # Process the logged-in vendor only
         for vendor in vendors:
             try:
                 vendor_id = vendor.get('vendor_id', '').strip()
@@ -2214,18 +2206,21 @@ def store_vendor_pending_jobs_snapshot():
 @csrf_exempt
 def store_vendor_pending_jobs_snapshot_endpoint(request):
     """
-    Endpoint to trigger vendor pending jobs snapshot storage.
-    This can be called by a cron job or scheduled task every 2 minutes.
+    Endpoint to trigger vendor pending jobs snapshot storage for logged-in vendor only.
+    This can be called when vendor accesses their dashboard.
     """
-    try:
-        result = store_vendor_pending_jobs_snapshot()
-        if result:
-            return JsonResponse({'success': True, 'message': 'Vendor pending jobs snapshot stored successfully'}, status=200)
-        else:
-            return JsonResponse({'success': False, 'error': 'Failed to store vendor pending jobs snapshot'}, status=500)
-    except Exception as e:
-        print(f"❌ Error in store_vendor_pending_jobs_snapshot_endpoint: {str(e)}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    if request.method == 'POST':
+        try:
+            result = store_vendor_pending_jobs_snapshot(request)
+            if result:
+                return JsonResponse({'success': True, 'message': 'Vendor pending jobs snapshot stored successfully'}, status=200)
+            else:
+                return JsonResponse({'success': False, 'error': 'Failed to store vendor pending jobs snapshot'}, status=500)
+        except Exception as e:
+            print(f"❌ Error in store_vendor_pending_jobs_snapshot_endpoint: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    else:
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 
 
 def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
@@ -4171,6 +4166,12 @@ def upload_to_r2(request):
                     files_uploaded += 1
 
             if files_uploaded > 0:
+                # If database storage failed but files uploaded to R2, inform the user explicitly
+                if 'db_storage_failed' in locals() and db_storage_failed:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Your file was uploaded, but we could not store the print job in our database. Please try again or contact support.'
+                    }, status=500)
                 return JsonResponse({
                     'success': True,
                     'message': f'{files_uploaded} file(s) uploaded successfully'
@@ -5415,6 +5416,7 @@ def verify_razorpay_payment(request):
                 vendor_r2_stored = False
                 user_r2_stored = False
                 upload_error_msg = None
+                db_storage_failed = False
                 
                 try:
                     # Step 1: Store to vendor folder in R2
@@ -5465,11 +5467,13 @@ def verify_razorpay_payment(request):
                         
                         if not vendor_stored:
                             print(f"❌ Failed to store {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                            db_storage_failed = True
                             raise Exception(f"Failed to store in vendor_print_jobs table for {service_type}")
                         else:
                             print(f"✅ Successfully stored {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
                     except Exception as vendor_db_error:
                         print(f"❌ Database error storing {fobj.name} in vendor_print_jobs: {str(vendor_db_error)}")
+                        db_storage_failed = True
                         raise Exception(f"Database error: Failed to store in vendor_print_jobs table - {str(vendor_db_error)}")
                     
                     # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
@@ -5491,11 +5495,13 @@ def verify_razorpay_payment(request):
                         
                         if not user_stored:
                             print(f"❌ Failed to store {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                            db_storage_failed = True
                             raise Exception(f"Failed to store in user_print_jobs table for {service_type}")
                         else:
                             print(f"✅ Successfully stored {fobj.name} in user_print_jobs table for service_type: {service_type}")
                     except Exception as user_db_error:
                         print(f"❌ Database error storing {fobj.name} in user_print_jobs: {str(user_db_error)}")
+                        db_storage_failed = True
                         raise Exception(f"Database error: Failed to store in user_print_jobs table - {str(user_db_error)}")
                     
                     # All steps succeeded - mark as processed
@@ -9781,7 +9787,9 @@ def forgot_password_page(request):
 @csrf_exempt
 def forgot_password(request):
     """
-    Send verification code to vendor email for password reset
+    Legacy endpoint kept for compatibility.
+    Now only validates that the vendor exists and returns success;
+    password reset itself is handled directly via reset_password without OTP.
     """
     if request.method == 'POST':
         try:
@@ -9791,55 +9799,45 @@ def forgot_password(request):
             if not email:
                 return JsonResponse({'success': False, 'error': 'Email is required'})
             
-            s3 = boto3.client('s3',
-                aws_access_key_id=settings.R2_ACCESS_KEY,
-                aws_secret_access_key=settings.R2_SECRET_KEY,
-                endpoint_url=settings.R2_ENDPOINT,
-                region_name='auto'
-            )
-            
-            # Check if vendor exists
-            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
-            try:
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
-                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': 'Vendor not found with this email'})
-            
-            # Generate 6-digit verification code
-            verification_code = str(random.randint(100000, 999999))
-            
-            # Store verification code with expiration (15 minutes)
-            reset_data = {
-                'email': email,
-                'code': verification_code,
-                'created_at': datetime.datetime.now().isoformat(),
-                'expires_at': (datetime.datetime.now() + datetime.timedelta(minutes=15)).isoformat(),
-                'used': False
-            }
-            
-            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
-            s3.put_object(
-                Bucket=settings.R2_BUCKET,
-                Key=reset_key,
-                Body=json.dumps(reset_data),
-                ContentType='application/json'
-            )
-            
-            # Send email with verification code
-            vendor_name = vendor_data.get('vendor_name', 'Vendor')
-            email_sent = send_password_reset_email(email, verification_code, vendor_name)
-            
-            if email_sent:
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Verification code sent to your email'
-                })
+            # Use D1 vendor_register_details as the source of truth
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+            if not api_url or not api_key:
+                print("❌ Worker API not configured for forgot_password")
+                return JsonResponse({'success': False, 'error': 'Server configuration error. Please contact support.'}, status=500)
+
+            if '/add-contact' in api_url:
+                worker_endpoint = api_url.replace('/add-contact', '/get-vendor-by-email')
+            elif '/add-vendor-register' in api_url:
+                worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-by-email')
             else:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Failed to send verification email. Please try again.'
-                })
+                worker_endpoint = api_url.rstrip('/') + '/get-vendor-by-email'
+
+            resp = requests.post(
+                worker_endpoint,
+                json={'email': email},
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key
+                },
+                timeout=10
+            )
+
+            if resp.status_code == 404:
+                return JsonResponse({'success': False, 'error': 'Vendor not found with this email'})
+            if resp.status_code != 200:
+                print(f"❌ Worker error in forgot_password: {resp.status_code} {resp.text[:300]}")
+                return JsonResponse({'success': False, 'error': 'Error verifying vendor account'}, status=500)
+
+            payload = resp.json()
+            if not payload.get('success'):
+                return JsonResponse({'success': False, 'error': payload.get('error', 'Vendor not found')}, status=404)
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Vendor verified. You can now reset your password directly.'
+            })
             
         except Exception as e:
             print(f"Error in forgot_password: {str(e)}")
@@ -9850,50 +9848,54 @@ def forgot_password(request):
 @csrf_exempt
 def verify_reset_code(request):
     """
-    Verify the reset code sent to vendor email
+    Legacy endpoint kept for compatibility with older clients.
+    Always returns success once the vendor email is valid.
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             email = data.get('email')
-            code = data.get('code')
             
-            if not email or not code:
-                return JsonResponse({'success': False, 'error': 'Email and code are required'})
-            
-            s3 = boto3.client('s3',
-                aws_access_key_id=settings.R2_ACCESS_KEY,
-                aws_secret_access_key=settings.R2_SECRET_KEY,
-                endpoint_url=settings.R2_ENDPOINT,
-                region_name='auto'
+            if not email:
+                return JsonResponse({'success': False, 'error': 'Email is required'})
+
+            # Simply confirm vendor exists in D1
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+            if not api_url or not api_key:
+                print("❌ Worker API not configured for verify_reset_code")
+                return JsonResponse({'success': False, 'error': 'Server configuration error. Please contact support.'}, status=500)
+
+            if '/add-contact' in api_url:
+                worker_endpoint = api_url.replace('/add-contact', '/get-vendor-by-email')
+            elif '/add-vendor-register' in api_url:
+                worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-by-email')
+            else:
+                worker_endpoint = api_url.rstrip('/') + '/get-vendor-by-email'
+
+            resp = requests.post(
+                worker_endpoint,
+                json={'email': email},
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key
+                },
+                timeout=10
             )
-            
-            # Get reset data
-            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
-            try:
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reset_key)
-                reset_data = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': 'Invalid or expired reset code'})
-            
-            # Check if code is expired
-            expires_at = datetime.datetime.fromisoformat(reset_data['expires_at'])
-            if datetime.datetime.now() > expires_at:
-                return JsonResponse({'success': False, 'error': 'Reset code has expired'})
-            
-            # Check if code matches
-            if reset_data['code'] != code:
-                return JsonResponse({'success': False, 'error': 'Invalid verification code'})
-            
-            # Check if already used
-            if reset_data.get('used', False):
-                return JsonResponse({'success': False, 'error': 'Reset code already used'})
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Code verified successfully'
-            })
-            
+
+            if resp.status_code == 404:
+                return JsonResponse({'success': False, 'error': 'Vendor not found with this email'})
+            if resp.status_code != 200:
+                print(f"❌ Worker error in verify_reset_code: {resp.status_code} {resp.text[:300]}")
+                return JsonResponse({'success': False, 'error': 'Error verifying vendor account'}, status=500)
+
+            payload = resp.json()
+            if not payload.get('success'):
+                return JsonResponse({'success': False, 'error': payload.get('error', 'Vendor not found')}, status=404)
+
+            return JsonResponse({'success': True, 'message': 'Vendor verified successfully'})
+
         except Exception as e:
             print(f"Error in verify_reset_code: {str(e)}")
             return JsonResponse({'success': False, 'error': 'Internal server error'})
@@ -9903,105 +9905,117 @@ def verify_reset_code(request):
 @csrf_exempt
 def reset_password(request):
     """
-    Reset vendor password with verification code
+    Reset vendor password without OTP, updating both D1 vendor_register_details
+    and legacy R2 JSON files for backward compatibility.
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             email = data.get('email')
-            code = data.get('code')
             new_password = data.get('new_password')
             
-            if not all([email, code, new_password]):
-                return JsonResponse({'success': False, 'error': 'All fields are required'})
+            if not all([email, new_password]):
+                return JsonResponse({'success': False, 'error': 'Email and new password are required'})
             
             if len(new_password) < 8:
                 return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters long'})
-            
-            s3 = boto3.client('s3',
-                aws_access_key_id=settings.R2_ACCESS_KEY,
-                aws_secret_access_key=settings.R2_SECRET_KEY,
-                endpoint_url=settings.R2_ENDPOINT,
-                region_name='auto'
-            )
-            
-            # Verify reset code first
-            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
-            try:
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reset_key)
-                reset_data = json.loads(response['Body'].read().decode('utf-8'))
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': 'Invalid or expired reset code'})
-            
-            # Check if code is expired
-            expires_at = datetime.datetime.fromisoformat(reset_data['expires_at'])
-            if datetime.datetime.now() > expires_at:
-                return JsonResponse({'success': False, 'error': 'Reset code has expired'})
-            
-            # Check if code matches
-            if reset_data['code'] != code:
-                return JsonResponse({'success': False, 'error': 'Invalid verification code'})
-            
-            # Check if already used
-            if reset_data.get('used', False):
-                return JsonResponse({'success': False, 'error': 'Reset code already used'})
-            
-            # Hash the new password
+
+            # Hash the new password using the same scheme as vendor_login
             hashed_password = make_password(new_password)
-            
-            # Update vendor registration details
-            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+
+            # First, update D1 vendor_register_details via Worker API
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+            if not api_url or not api_key:
+                print("❌ Worker API not configured for reset_password")
+                return JsonResponse({'success': False, 'error': 'Server configuration error. Please contact support.'}, status=500)
+
+            if '/add-contact' in api_url:
+                worker_endpoint = api_url.replace('/add-contact', '/update-vendor-password')
+            elif '/add-vendor-register' in api_url:
+                worker_endpoint = api_url.replace('/add-vendor-register', '/update-vendor-password')
+            else:
+                worker_endpoint = api_url.rstrip('/') + '/update-vendor-password'
+
             try:
-                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
-                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
-                
-                # Update password
+                resp = requests.post(
+                    worker_endpoint,
+                    json={
+                        'email': email,
+                        'new_password_hash': hashed_password,
+                        'source': 'django_reset_password'
+                    },
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=10
+                )
+
+                if resp.status_code == 404:
+                    return JsonResponse({'success': False, 'error': 'Vendor not found with this email'}, status=404)
+                if resp.status_code != 200:
+                    print(f"❌ Worker error in update-vendor-password: {resp.status_code} {resp.text[:300]}")
+                    return JsonResponse({'success': False, 'error': 'Failed to update password in database'}, status=500)
+
+                payload = resp.json()
+                if not payload.get('success'):
+                    return JsonResponse({'success': False, 'error': payload.get('error', 'Failed to update password')}, status=500)
+            except Exception as worker_exc:
+                print(f"❌ Exception calling update-vendor-password: {worker_exc}")
+                return JsonResponse({'success': False, 'error': 'Failed to update password in database'}, status=500)
+
+            # Best-effort: update legacy R2 JSON so older flows (if any) remain consistent
+            try:
+                s3 = boto3.client('s3',
+                    aws_access_key_id=settings.R2_ACCESS_KEY,
+                    aws_secret_access_key=settings.R2_SECRET_KEY,
+                    endpoint_url=settings.R2_ENDPOINT,
+                    region_name='auto'
+                )
+
+                reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+                try:
+                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                except Exception:
+                    vendor_data = {'email': email}
+
                 vendor_data['hashed_password'] = hashed_password
                 vendor_data['password_updated_at'] = datetime.datetime.now().isoformat()
-                
+
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=reg_key,
                     Body=json.dumps(vendor_data),
                     ContentType='application/json'
                 )
-                
-                # Update login details
+
                 login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
                 try:
                     login_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=login_key)
                     login_data = json.loads(login_response['Body'].read().decode('utf-8'))
-                except:
+                except Exception:
                     login_data = {'email': email}
-                
+
                 login_data['hashed_password'] = hashed_password
                 login_data['last_password_reset'] = datetime.datetime.now().isoformat()
-                
+
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=login_key,
                     Body=json.dumps(login_data),
                     ContentType='application/json'
                 )
-                
-                # Mark reset code as used
-                reset_data['used'] = True
-                reset_data['used_at'] = datetime.datetime.now().isoformat()
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=reset_key,
-                    Body=json.dumps(reset_data),
-                    ContentType='application/json'
-                )
-                
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Password reset successfully'
-                })
-                
-            except Exception as e:
-                print(f"Error updating vendor data: {str(e)}")
-                return JsonResponse({'success': False, 'error': 'Failed to update password'})
+            except Exception as legacy_exc:
+                # Log but don't fail the reset if D1 update already succeeded
+                print(f"⚠️ Legacy R2 password sync failed for {email}: {legacy_exc}")
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Password reset successfully'
+            })
             
         except Exception as e:
             print(f"Error in reset_password: {str(e)}")
@@ -15542,26 +15556,10 @@ def get_vendor_connection_status(request):
 
 def start_vendor_pending_jobs_scheduler():
     """Start automatic vendor pending jobs snapshot scheduler"""
-    def run_scheduler():
-        # Schedule snapshot storage every 2 minutes
-        schedule.every(2).minutes.do(store_vendor_pending_jobs_snapshot)
-        
-        print("✅ Vendor pending jobs snapshot scheduler started!")
-        print("📋 Snapshots will be stored every 2 minutes")
-        
-        # Run the scheduler in a loop
-        while True:
-            try:
-                schedule.run_pending()
-                time.sleep(60)  # Check every minute
-            except Exception as e:
-                print(f"❌ Error in vendor pending jobs scheduler: {str(e)}")
-                time.sleep(120)  # Wait 2 minutes before retrying
-    
-    # Start the background thread
-    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-    scheduler_thread.start()
-    print("✅ Background vendor pending jobs snapshot scheduler initialized!")
+    # Note: Scheduled snapshots are disabled because we need active vendor session
+    # Snapshots will be triggered on-demand when vendors access their dashboard
+    print("✅ Vendor pending jobs snapshot scheduler initialized (on-demand mode)")
+    print("📋 Snapshots will be stored when vendors access their dashboard")
 
 
 # Initialize automatic vendor pending jobs snapshot when the module is imported
