@@ -61,6 +61,14 @@ KNOWN_WORKER_ENDPOINTS = {
 }
 
 
+def get_ist_timestamp() -> str:
+    """
+    Return the current timestamp in ISO format using the project's default
+    timezone (configured as Asia/Kolkata in settings).
+    """
+    return timezone.localtime(timezone.now()).isoformat()
+
+
 def get_worker_base_url():
     """
     Normalize WORKER_API_URL so we can append different endpoints reliably.
@@ -3868,7 +3876,7 @@ def upload_to_r2(request):
                         'layout_type': str(print_settings.get("layout", "single")),
                         'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                         'lamination': str(print_settings.get("lamination", "No")),
-                        'timestamp': datetime.datetime.now().isoformat(),
+                        'timestamp': get_ist_timestamp(),
                         'status': 'pending',
                         'job_completed': 'NO',
                         'vendor_status': 'not sended',
@@ -4732,7 +4740,7 @@ def process_print_request(request):
                                       'pageSize': str(print_settings.get("pageSize", "A4")),
                                       'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                                       'lamination': str(print_settings.get("lamination", "No")),
-                                      'timestamp': datetime.datetime.now().isoformat(),
+                                      'timestamp': get_ist_timestamp(),
                                       'status': 'pending',
                                       'job_completed': 'NO',
                                       'vendor_status': 'not sended',
@@ -5283,7 +5291,7 @@ def verify_razorpay_payment(request):
                     'pageSize': str(print_settings.get('pageSize', 'A4')),
                     'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
                     'lamination': str(print_settings.get('lamination', 'No')),
-                                  'timestamp': datetime.datetime.now().isoformat(),
+                                  'timestamp': get_ist_timestamp(),
                                   'status': 'pending',
                                   'job_completed': 'NO',
                                   'vendor_status': 'not sended',
@@ -12753,10 +12761,11 @@ def update_job_failed_status_in_r2(filename, vendor_id, failed_status):
 def add_user_points(user_email, points, reason):
     """Add points to user account - stores in D1 database (User_points table)"""
     try:
-        # Store points data
-        date_str = datetime.datetime.now().strftime('%Y-%m-%d')
-        time_str = datetime.datetime.now().strftime('%H:%M:%S')
-        timestamp = datetime.datetime.now().isoformat()
+        # Store points data using IST timestamps
+        now_ist = timezone.localtime(timezone.now())
+        date_str = now_ist.strftime('%Y-%m-%d')
+        time_str = now_ist.strftime('%H:%M:%S')
+        timestamp = now_ist.isoformat()
         
         # Store in D1 database via Worker API
         api_url = getattr(settings, 'WORKER_API_URL', '')
@@ -13574,7 +13583,7 @@ def store_user_notification_in_db(notification_data):
             'vendor_id': notification_data.get('vendor_id', ''),
             'status': notification_data.get('status', ''),
             'completion_time': notification_data.get('completion_time', ''),
-            'created_at': notification_data.get('created_at', datetime.datetime.now().isoformat()),
+            'created_at': notification_data.get('created_at', get_ist_timestamp()),
             'read': notification_data.get('read', False),
             'type': notification_data.get('type', ''),
             'token': notification_data.get('token', ''),
@@ -13635,7 +13644,7 @@ def store_vendor_notification_in_db(notification_data):
             'platform_profit': platform_profit,
             'total_price': total_price,
             'completion_time': notification_data.get('completion_time', ''),
-            'timestamp': notification_data.get('timestamp', datetime.datetime.now().isoformat()),
+            'timestamp': notification_data.get('timestamp', get_ist_timestamp()),
             'token': notification_data.get('token', ''),
             'read': notification_data.get('read', False)
         }
@@ -13867,13 +13876,13 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'vendor_id': vendor_id,
             'status': status,
             'completion_time': completion_time,
-            'timestamp': datetime.datetime.now().isoformat(),
-            'created_at': datetime.datetime.now().isoformat(),
+            'timestamp': get_ist_timestamp(),
+            'created_at': get_ist_timestamp(),
             'read': False,
             'type': 'job_completed',
             'title': 'Print Job Completed',
             'message': f'Your document "{display_name}" is ready for pickup. Token: {token_display}',
-            'detailed_message': f'Document: {display_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: {token_display}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
+            'detailed_message': f'Document: {display_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: {token_display}\nCompleted at: {timezone.localtime(timezone.now()).strftime("%B %d, %Y at %I:%M %p")}',
             'token': token,
             'document_name': document_name_base,
             'service_type': formatted_service_type,
@@ -14267,7 +14276,7 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
             'platform_profit': platform_profit,
             'total_price': total_price,
             'completion_time': completion_time,
-            'timestamp': datetime.datetime.now().isoformat(),
+            'timestamp': get_ist_timestamp(),
             'token': token or os.path.splitext(filename)[0],
             'document_name': document_name
         }

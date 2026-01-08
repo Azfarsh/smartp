@@ -1417,6 +1417,7 @@
                 max-width: 99vw;
                 min-width: unset;
                 padding: 0 0 10px 0;
+                margin: 8px auto 20px auto; /* Add bottom margin so footer buttons are fully visible */
             }
             .modal-content {
                 gap: 0;
@@ -1446,7 +1447,7 @@
                 padding: 0.85rem 10px;
             }
             .footer-controls {
-                padding: 16px 10px 16px 10px;
+                padding: 16px 10px 24px 10px; /* Extra bottom padding for safe tap area above screen edge */
             }
         }
         @media (min-width: 801px) {
@@ -3101,21 +3102,21 @@ async function processPhotoPrintPayment() {
     }
     
     try {
-        // Create form data
-        const formData = new FormData();
-        formData.append('file_0', data.pdfFile);
-        formData.append('file_count', '1');
-        formData.append('settings_0', JSON.stringify(data.metadata));
-        formData.append('selected_vendor', data.selectedShop);
-        formData.append('vendor_id', data.vendorId);
-        formData.append('vendor_email', data.vendorEmail || '');
-        formData.append('shop_name', data.shopName || '');
-        formData.append('shop_address', data.shopAddress || '');
-        formData.append('storage_folder', 'vendor_print_jobs');
-        formData.append('points_applied', data.pointsApplied.toString());
-        formData.append('points_used', data.pointsUsed);
-        formData.append('final_amount', data.finalAmount);
-        
+        // Start generating the PDF as soon as user clicks Pay Now.
+        // This runs in parallel while the Razorpay window is open.
+        if (!data.pdfPromise) {
+            data.pdfPromise = (async () => {
+                const pdfBlob = await createPDF();
+                const pdfFileName = data.metadata && data.metadata.filename
+                    ? data.metadata.filename
+                    : `photo_layout_${data.metadata && data.metadata.job_id ? data.metadata.job_id : ('photo_' + Date.now())}.pdf`;
+                const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+                data.pdfFile = pdfFile;
+                return pdfFile;
+            })();
+        }
+        const pdfPromise = data.pdfPromise;
+
         // Create Razorpay order
         const orderResp = await fetch('/payments/create-order/', {
             method: 'POST',
@@ -3136,20 +3137,50 @@ async function processPhotoPrintPayment() {
                 order_id: orderData.order.id,
                 handler: async function (response) {
                     try {
+                        // Ensure PDF is fully generated before uploading to server
+                        const pdfFile = await pdfPromise;
+
+                        // Build form data after PDF is ready
+                        const formData = new FormData();
+                        formData.append('file_0', pdfFile);
+                        formData.append('file_count', '1');
+                        formData.append('settings_0', JSON.stringify(data.metadata));
+                        formData.append('selected_vendor', data.selectedShop);
+                        formData.append('vendor_id', data.vendorId);
+                        formData.append('vendor_email', data.vendorEmail || '');
+                        formData.append('shop_name', data.shopName || '');
+                        formData.append('shop_address', data.shopAddress || '');
+                        formData.append('storage_folder', 'vendor_print_jobs');
+                        formData.append('points_applied', data.pointsApplied.toString());
+                        formData.append('points_used', data.pointsUsed);
+                        formData.append('final_amount', data.finalAmount);
+
                         formData.append('razorpay_payment_id', response.razorpay_payment_id);
                         formData.append('razorpay_order_id', response.razorpay_order_id);
                         formData.append('razorpay_signature', response.razorpay_signature);
+
                         const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
                         const verifyData = await parseJsonResponse(verifyResp);
                         if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
-                        const serverToken = verifyData.token || data.metadata.token;
-                        const successMessage = '✅ Print job sent to print successfully.';
-                        closePhotoPrintOrderSummary();
-                        closePhotoPrintModalView();
+
+                        // If any files failed to store, surface refund information just like dashboard modals
+                        if (verifyData.files_failed && verifyData.files_failed > 0) {
+                            const failedFiles = verifyData.failed_files || [];
+                            const failedNames = failedFiles.map(f => f.filename).join(', ') || 'Unknown files';
+                            const refundMsg = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to upload failure for: ${failedNames}`;
+                            alert(refundMsg);
+                        } else {
+                            const serverToken = verifyData.token || data.metadata.token;
+                            const successMessage = '✅ Print job sent to print successfully.';
+                            closePhotoPrintOrderSummary();
+                            closePhotoPrintModalView();
+                            redirectToDashboardWithSuccess(successMessage, serverToken);
+                        }
+
                         resolve();
-                        redirectToDashboardWithSuccess(successMessage, serverToken);
                         return;
                     } catch (err) {
+                        console.error('Photo print payment handler error:', err);
                         alert(err.message || 'Payment verified but upload failed');
                         resolve();
                     }

@@ -14376,7 +14376,13 @@
           ? pricing.vendorPrice
           : vendorEntry
             ? parseFloat(String(vendorEntry.value).replace(/[^0-9.]/g, '')) || 0
-            : 0;
+            // If no explicit vendor price entry is present, fall back to the
+            // computed total so the service line never shows ₹0.00.
+            : (typeof pricing.total === 'number'
+                ? pricing.total
+                : (pricing.breakdown && typeof pricing.breakdown.total_price === 'number'
+                    ? pricing.breakdown.total_price
+                    : 0));
         const commissionAmount = typeof pricing.commission?.amount === 'number'
           ? pricing.commission.amount
           : commissionEntry
@@ -20940,7 +20946,15 @@
         const copies = breakdown.num_copies || 1;
         const totalQty = qty * copies;
         const rate = Number(breakdown.base_price || 0);
-        const amount = rate * totalQty;
+        // Calculate amount, but prefer job.total_price if available (final amount customer paid)
+        let amount = rate * totalQty;
+        // If calculated amount is 0 or job has a total_price, use that instead
+        if (amount === 0 && Number(job.total_price || 0) > 0) {
+          amount = Number(job.total_price);
+        } else if (Number(job.total_price || 0) > 0 && Number(job.total_price) !== amount) {
+          // If job.total_price exists and differs, use it (it's the final amount with commission)
+          amount = Number(job.total_price);
+        }
         
         html += `
           <div class="invoice-item">
@@ -20951,7 +20965,15 @@
         subtotal += amount;
       } else {
         const serviceDesc = serviceDisplayName;
-        const amount = Number(breakdown.total_price || pricing.total_price || 0);
+        // Use job.total_price as primary source (final amount customer paid), then fallback to breakdown/pricing
+        // This ensures we always show the actual final amount, not 0
+        const amount = Number(job.total_price || 0) > 0 
+          ? Number(job.total_price) 
+          : (Number(breakdown.total_price || 0) > 0 
+            ? Number(breakdown.total_price) 
+            : (Number(pricing.total_price || 0) > 0 
+              ? Number(pricing.total_price) 
+              : (subtotal > 0 ? subtotal : 0)));
         
         html += `
           <div class="invoice-item">
@@ -20959,7 +20981,12 @@
             <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
           </div>
         `;
-        subtotal += amount;
+        // Only add to subtotal if amount is valid and we haven't already calculated it
+        if (amount > 0 && subtotal === 0) {
+          subtotal = amount;
+        } else if (amount > 0) {
+          subtotal += amount;
+        }
       }
 
       // Add pages, color, and copies details
