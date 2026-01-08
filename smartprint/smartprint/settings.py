@@ -320,6 +320,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://0.0.0.0:8000',
     'https://printmax.onrender.com',
+    'www.printmax.in',
     'https://printmax.in',
     'https://*.ngrok-free.app',
     'https://*.ngrok-free.dev',
