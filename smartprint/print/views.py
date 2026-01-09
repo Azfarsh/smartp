@@ -5093,6 +5093,14 @@ def verify_razorpay_payment(request):
 
         # Signature valid → proceed to store files (reuse existing logic from process_print_request)
         file_count = int(request.POST.get('file_count', 0))
+        
+        # Validate file_count - must be greater than 0
+        if file_count <= 0:
+            return JsonResponse({
+                'success': False, 
+                'error': 'No files provided. Please upload at least one file.'
+            }, status=400)
+        
         files_processed = 0
         files_failed = 0
         token_value = ''
@@ -5145,11 +5153,51 @@ def verify_razorpay_payment(request):
         for i in range(file_count):
             file_key = f'file_{i}'
             settings_key = f'settings_{i}'
-            if file_key in request.FILES and settings_key in request.POST:
+            
+            # Validate that both file and settings exist
+            if file_key not in request.FILES:
+                print(f"❌ Missing file at index {i} (file_key: {file_key})")
+                files_failed += 1
+                failed_files.append({
+                    'filename': f'file_{i}',
+                    'error': f'File {i} not found in request'
+                })
+                continue
+                
+            if settings_key not in request.POST:
+                print(f"❌ Missing settings at index {i} (settings_key: {settings_key})")
+                files_failed += 1
+                failed_files.append({
+                    'filename': request.FILES[file_key].name if file_key in request.FILES else f'file_{i}',
+                    'error': f'Settings {i} not found in request'
+                })
+                continue
+            
+            try:
                 fobj = request.FILES[file_key]
                 file_content = fobj.read()
                 settings_json = request.POST.get(settings_key)
+                
+                if not settings_json:
+                    raise ValueError(f"Settings JSON is empty for file {i}")
+                    
                 print_settings = json.loads(settings_json)
+            except json.JSONDecodeError as e:
+                print(f"❌ Invalid JSON in settings for file {i}: {str(e)}")
+                files_failed += 1
+                failed_files.append({
+                    'filename': fobj.name if 'fobj' in locals() else f'file_{i}',
+                    'error': f'Invalid settings JSON: {str(e)}'
+                })
+                continue
+            except Exception as e:
+                print(f"❌ Error processing file {i}: {str(e)}")
+                files_failed += 1
+                failed_files.append({
+                    'filename': fobj.name if 'fobj' in locals() else f'file_{i}',
+                    'error': str(e)
+                })
+                continue
 
                 # Resolve user and vendor context (ensure vendor_id is present for Worker validation)
                 vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
@@ -5232,8 +5280,10 @@ def verify_razorpay_payment(request):
                     print(f"📦 Storing {service_type} service (normalized from '{service_type_raw}') with consistent R2 path: {vendor_file_key}")
                     print(f"   ✅ Service type normalized: '{service_type_raw}' -> '{service_type}' (same pattern as jumbo_printing)")
                     print(f"   🔍 Will store in D1 database after payment verification (same as jumbo_printing)")
+                    print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
                 else:
                     print(f"⚠️ Service type '{service_type}' may not be handled correctly - check storage logic")
+                    print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
 
                 # Ensure vendor_id is populated before DB calls (Worker requires it)
                 if (not vendor_id or str(vendor_id).strip() == ''):
@@ -5691,12 +5741,24 @@ def verify_razorpay_payment(request):
                 print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
 
         # Prepare response with refund information
+        # Include refund details in response for ALL service types (regular_print, jumbo_printing, etc.)
+        refund_message = None
+        refund_amount = 0
+        if files_failed > 0 and total_payment_amount > 0:
+            refund_amount = total_payment_amount
+            if compensation_points_awarded > 0:
+                refund_message = f"Payment of ₹{refund_amount:.2f} has been compensated with {compensation_points_awarded} points due to upload failure."
+            else:
+                refund_message = f"Payment of ₹{refund_amount:.2f} has been refunded due to document upload failure."
+        
         response_data.update({
             'files_processed': files_processed,
             'files_failed': files_failed,
             'failed_files': failed_files,
             'token': token_value,
-            'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', '')
+            'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', ''),
+            'refund_message': refund_message,
+            'refund_amount': refund_amount
         })
 
         # Always store points in user_points when uploads fail so they are instantly available
