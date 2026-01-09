@@ -3767,6 +3767,7 @@ def upload_to_r2(request):
             file_count = int(request.POST.get('file_count', 0))
             selected_vendor = request.POST.get('selected_vendor', 'firozshop')
             vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
+            db_storage_failed = False  # Initialize flag for database storage status
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -3797,6 +3798,9 @@ def upload_to_r2(request):
                     print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
             elif vendor_email:
                 print(f"✅ Got vendor_email from form data: {vendor_email}")
+
+            # Initialize token variable - will be assigned once per request (not per file)
+            token = None
 
             # Process each file with its corresponding settings
             for i in range(file_count):
@@ -3833,18 +3837,23 @@ def upload_to_r2(request):
                             print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
                     
                     # Assign token from vendor pool if vendor email is available
-                    if vendor_email:
-                        token = assign_token_from_vendor_pool(vendor_email)
-                        if token is None:
-                            # Fallback to sequential token if vendor pool is empty
-                            token = get_next_sequential_token()
-                            print(f"⚠️ Vendor token pool empty, using fallback token: {token}")
+                    # IMPORTANT: Only assign token once per request (not per file) to prevent duplicate token assignments
+                    if not token:  # Only assign if token hasn't been assigned yet in this request
+                        if vendor_email:
+                            token = assign_token_from_vendor_pool(vendor_email)
+                            if token is None:
+                                # Fallback to sequential token if vendor pool is empty
+                                token = get_next_sequential_token()
+                                print(f"⚠️ Vendor token pool empty, using fallback token: {token}")
+                            else:
+                                print(f"✅ Assigned token {token} from vendor pool for {vendor_email}")
                         else:
-                            print(f"✅ Assigned token {token} from vendor pool for {vendor_email}")
+                            # Fallback to sequential token if no vendor email
+                            token = get_next_sequential_token()
+                            print(f"⚠️ No vendor email available, using fallback token: {token}")
                     else:
-                        # Fallback to sequential token if no vendor email
-                        token = get_next_sequential_token()
-                        print(f"⚠️ No vendor email available, using fallback token: {token}")
+                        # Reuse the same token for all files in this request
+                        print(f"✅ Reusing token {token} for file {file.name} (same request)")
 
                     # Generate a unique job_id for this file (use original_filename + timestamp for idempotency)
                     job_id = print_settings.get('job_id')
@@ -5176,10 +5185,13 @@ def verify_razorpay_payment(request):
                 
                 # Normalize service_type: convert 'regular print' to 'regular_print' for consistency with jumbo_printing
                 # This ensures regular print is handled EXACTLY like jumbo_printing
-                if service_type_lc in ['regular print', 'regular_print', 'document_print']:
+                # CRITICAL: Document print modal must use 'regular_print' to match jumbo_printing storage pattern
+                if service_type_lc in ['regular print', 'regular_print', 'document_print', 'document print']:
                     service_type = 'regular_print'  # Normalize to match jumbo_printing pattern
+                    print(f"📝 Normalized service_type '{service_type_raw}' -> 'regular_print' (same as jumbo_printing)")
                 elif service_type_lc in ['jumbo_printing', 'jumbo_print']:
                     service_type = 'jumbo_printing'  # Keep jumbo_printing as-is
+                    print(f"📝 Service type '{service_type_raw}' -> 'jumbo_printing'")
                 elif service_type_lc in ['passport_photo', 'passport_print', 'photo_print']:
                     service_type = service_type_raw  # Keep passport services as-is
                 elif service_type_lc in ['digital_print']:
@@ -5190,6 +5202,8 @@ def verify_razorpay_payment(request):
                     service_type = 'gloss_printing'
                 else:
                     service_type = service_type_raw or 'regular_print'  # Default to regular_print if not specified
+                    if not service_type_raw:
+                        print(f"⚠️ No service_type specified, defaulting to 'regular_print'")
                 
                 # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
                 # Document print model, passport photo model, digital, golden, gloss, jumbo print model
@@ -5217,6 +5231,9 @@ def verify_razorpay_payment(request):
                 if service_type in ['regular_print', 'jumbo_printing'] or service_type_lc in [s.lower() for s in all_special_services]:
                     print(f"📦 Storing {service_type} service (normalized from '{service_type_raw}') with consistent R2 path: {vendor_file_key}")
                     print(f"   ✅ Service type normalized: '{service_type_raw}' -> '{service_type}' (same pattern as jumbo_printing)")
+                    print(f"   🔍 Will store in D1 database after payment verification (same as jumbo_printing)")
+                else:
+                    print(f"⚠️ Service type '{service_type}' may not be handled correctly - check storage logic")
 
                 # Ensure vendor_id is populated before DB calls (Worker requires it)
                 if (not vendor_id or str(vendor_id).strip() == ''):
@@ -5233,25 +5250,31 @@ def verify_razorpay_payment(request):
                             print(f"⚠️ Failed vendor_id lookup from vendor_email {vendor_email}: {e}")
 
                 # Assign token from vendor pool if available
+                # CRITICAL: Only assign token once per payment request to prevent duplicate token assignments
+                # All files in the same payment should share the same token
                 if not token_value:  # Only generate once per request
                     try:
                         # Assign token from vendor pool if vendor email is available
+                        # The worker API ensures atomic token assignment (checks for 'free' status and updates to 'busy')
                         if vendor_email:
                             assigned_token = assign_token_from_vendor_pool(vendor_email)
                             if assigned_token is None:
                                 # Fallback to sequential token if vendor pool is empty
                                 token_value = get_next_sequential_token()
-                                print(f"⚠️ Vendor token pool empty, using fallback token: {token_value}")
+                                print(f"⚠️ Vendor token pool empty for {vendor_email}, using fallback token: {token_value}")
                             else:
                                 token_value = str(assigned_token)
-                                print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email}")
+                                print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email} (service: {service_type})")
                         else:
                             # Fallback to sequential token if no vendor email
                             token_value = get_next_sequential_token()
                             print(f"⚠️ No vendor email available, using fallback token: {token_value}")
                     except Exception as e:
                         print(f"❌ Error in token assignment: {str(e)}")
-                        token_value = str(random.randint(100, 200))
+                        token_value = get_next_sequential_token()  # Use proper sequential token instead of random
+                else:
+                    # Reuse the same token for all files in this payment request
+                    print(f"✅ Reusing token {token_value} for file {fobj.name} (same payment request, service: {service_type})")
 
                 # Generate a unique job_id if not provided
                 job_id = print_settings.get('job_id', '').strip()
@@ -5475,10 +5498,12 @@ def verify_razorpay_payment(request):
                         
                         if not vendor_stored:
                             print(f"❌ Failed to store {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                            print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
                             db_storage_failed = True
                             raise Exception(f"Failed to store in vendor_print_jobs table for {service_type}")
                         else:
                             print(f"✅ Successfully stored {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                            print(f"   🔍 Token: {metadata.get('token')}, Job ID: {metadata.get('job_id')}, R2 Path: {vendor_file_key}")
                     except Exception as vendor_db_error:
                         print(f"❌ Database error storing {fobj.name} in vendor_print_jobs: {str(vendor_db_error)}")
                         db_storage_failed = True
@@ -5503,10 +5528,12 @@ def verify_razorpay_payment(request):
                         
                         if not user_stored:
                             print(f"❌ Failed to store {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                            print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
                             db_storage_failed = True
                             raise Exception(f"Failed to store in user_print_jobs table for {service_type}")
                         else:
                             print(f"✅ Successfully stored {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                            print(f"   🔍 Token: {user_metadata.get('token')}, Job ID: {user_metadata.get('job_id')}, R2 Path: {user_file_key}")
                     except Exception as user_db_error:
                         print(f"❌ Database error storing {fobj.name} in user_print_jobs: {str(user_db_error)}")
                         db_storage_failed = True
