@@ -5689,9 +5689,26 @@ def verify_razorpay_payment(request):
             except Exception as e:
                 print(f"⚠️ Error allotting points after payment: {str(e)}")
 
-        # REFUND LOGIC: If files failed to upload, refund the payment amount
+        # REFUND LOGIC: If files failed to upload, refund the payment amount AND return points used
         if files_failed > 0 and total_payment_amount > 0:
             try:
+                # CRITICAL: Return points that were used if files failed to store
+                if points_applied and points_used_numeric > 0 and user_email:
+                    try:
+                        # Return the points that were deducted
+                        points_returned = add_user_points(
+                            user_email,
+                            points_used_numeric,
+                            f'Points returned - {files_failed} file(s) failed to store for payment {payment_id}'
+                        )
+                        if points_returned:
+                            print(f"✅ Returned {points_used_numeric} points to {user_email} due to file storage failure")
+                            response_data['points_returned'] = points_used_numeric
+                        else:
+                            print(f"❌ Failed to return {points_used_numeric} points to {user_email}")
+                    except Exception as points_return_error:
+                        print(f"⚠️ Error returning points after file storage failure: {str(points_return_error)}")
+                
                 # Convert amount to paise (Razorpay uses paise)
                 refund_amount_paise = int(float(total_payment_amount) * 100)
                 

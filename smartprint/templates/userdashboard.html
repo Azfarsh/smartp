@@ -11986,23 +11986,16 @@
         // Check if location is needed for desktop devices
         const desktopMode = isDesktopViewport();
         if (!opts.skipLocationCheck && desktopMode) {
-          // Check if we have stored coordinates
-          const hasStoredLocation = Boolean(readStoredUserCoordinates());
-          if (!hasStoredLocation) {
-            // No stored location on desktop - prompt for QR location
-            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-              window.userLocationFlow.promptForService(service);
-              return;
-            }
-          }
+          // For desktop devices, always show message to enter shop name (laptop location doesn't work properly)
+          // Show message for desktop devices to enter shop name near their location on every service modal click
+          console.log('💻 Desktop device detected - showing shop name entry message');
+          // Show message every time (as requested) - laptop location doesn't work properly
+          setTimeout(() => {
+            alert('📱 Desktop Device Detected\n\nLaptop location may not work properly. Please enter the shop name near your location when selecting a print shop.\n\nYou can search for shops by name in the shop selection menu.');
+          }, 100); // Small delay to ensure modal opens smoothly
+          // Continue to open modal - don't block
         }
-        // Also check the general location gate (for cases where location might be needed)
-        if (!opts.skipLocationCheck &&
-            window.userLocationFlow &&
-            window.userLocationFlow.shouldGateForService()) {
-          window.userLocationFlow.promptForService(service);
-          return;
-        }
+        // Removed QR scan logic for desktop devices - always allow modal to open
         const modalId = `service-modal-${service}`;
         let modal = document.getElementById(modalId);
         if (!modal) {
@@ -24018,6 +24011,23 @@
         };
       }
       
+      // IMPORTANT: Store files in order summary modal before closing print modal
+      // This ensures files persist even if print modal gets reset (same logic as photoprint modal)
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal && typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        // Convert uploadedFiles array to File objects for storage
+        const filesToStore = uploadedFiles.map(fileObj => {
+          // Return the actual File object from fileObj.file
+          return fileObj.file || fileObj;
+        }).filter(file => file instanceof File);
+        
+        if (filesToStore.length > 0) {
+          // Store files as a property on the order summary modal (File objects can't be in dataset)
+          orderSummaryModal._pendingFiles = filesToStore;
+          console.log('📁 Files stored in order summary modal (print modal):', filesToStore.map(f => ({ name: f.name, type: f.type, size: f.size })));
+        }
+      }
+      
       // Close the print modal
       closeModalFunc();
       
@@ -24025,7 +24035,6 @@
       populateOrderSummaryModal();
       
       // Set service type for payment processing and update modal title
-      const orderSummaryModal = document.getElementById('orderSummaryModal');
       if (orderSummaryModal) {
         orderSummaryModal.dataset.serviceType = 'print';
         orderSummaryModal.dataset.sourceModal = 'printModal';
@@ -25099,6 +25108,26 @@
           throw new Error('No shops available');
         }
         
+        // Try multiple sources for files (in order of preference):
+        // 1. Order summary modal's _pendingFiles (stored before closing print modal)
+        // 2. Global uploadedFiles array (fallback)
+        const orderSummaryModal = document.getElementById('orderSummaryModal');
+        let filesFromPrintModal = [];
+        if (orderSummaryModal && orderSummaryModal._pendingFiles && orderSummaryModal._pendingFiles.length > 0) {
+          filesFromPrintModal = orderSummaryModal._pendingFiles;
+          console.log('📁 Files retrieved from order summary modal (print modal):', filesFromPrintModal.map(f => ({ name: f.name, type: f.type, size: f.size })));
+        } else if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+          // Convert uploadedFiles array to File objects
+          filesFromPrintModal = uploadedFiles.map(fileObj => fileObj.file || fileObj).filter(file => file instanceof File);
+          console.log('📁 Files retrieved from global uploadedFiles (print modal):', filesFromPrintModal.map(f => ({ name: f.name, type: f.type, size: f.size })));
+        }
+        
+        // Final validation: ensure we have files
+        if (filesFromPrintModal.length === 0) {
+          console.error('❌ No files found for print modal');
+          throw new Error('No files provided. Please upload at least one file.');
+        }
+        
         // Use stored shop value from order summary modal, fallback to global selectedVendor, then first shop
         let shopValueToUse = orderSummarySelectedShop || (typeof selectedVendor !== 'undefined' ? selectedVendor : '');
         
@@ -25133,46 +25162,70 @@
         // Prepare form data (files + settings) but DO NOT upload yet
           formData = new FormData();
 
-        for (let i = 0; i < uploadedFiles.length; i++) {
-          const fileObj = uploadedFiles[i];
-          const settings = fileSettings[fileObj.id];
+        // Use filesFromPrintModal instead of uploadedFiles
+        for (let i = 0; i < filesFromPrintModal.length; i++) {
+          const fileToUpload = filesFromPrintModal[i];
+          
+          // Find corresponding fileObj from uploadedFiles for settings
+          let fileObj = null;
+          let settings = {};
+          if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles)) {
+            fileObj = uploadedFiles.find(f => (f.file && f.file === fileToUpload) || f === fileToUpload);
+            if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id]) {
+              settings = fileSettings[fileObj.id];
+            }
+          }
+          
+          // If no settings found, use defaults
+          if (!fileObj || !settings || Object.keys(settings).length === 0) {
+            settings = {
+              copies: 1,
+              color: 'Black and White',
+              orientation: 'portrait',
+              pageRange: 'all',
+              specificPages: '',
+              pageSize: 'A4',
+              spiralBinding: false,
+              lamination: false,
+              tapeBinding: false
+            };
+          }
 
-          let fileToUpload = fileObj.file;
-          let finalFilename = fileObj.name;
+          let finalFilename = fileToUpload.name;
+          let processedFile = fileToUpload;
 
-          // Convert images to PDF based on settings
-          if (fileObj.isImage && fileObj.originalImageFile) {
+          // Convert images to PDF based on settings (if fileObj exists and has originalImageFile)
+          if (fileObj && fileObj.isImage && fileObj.originalImageFile) {
             try {
               confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
-              fileToUpload = await convertImageToPDF(fileObj.originalImageFile, settings);
-              finalFilename = fileObj.name.replace(/\.[^/.]+$/, ".pdf");
+              processedFile = await convertImageToPDF(fileObj.originalImageFile, settings);
+              finalFilename = fileToUpload.name.replace(/\.[^/.]+$/, ".pdf");
             } catch (error) {
               console.error('Error converting image to PDF:', error);
-              alert(`Error converting ${fileObj.name} to PDF. Uploading original image instead.`);
-              // Fallback to original image if conversion fails
-              fileToUpload = fileObj.originalImageFile;
+              // Fallback to original file if conversion fails
+              processedFile = fileObj.originalImageFile || fileToUpload;
             }
           }
 
-          formData.append(`file_${i}`, fileToUpload);
+          formData.append(`file_${i}`, processedFile);
 
           const settingsJson = {
             filename: finalFilename,
-            original_filename: fileObj.name, // Keep track of original filename
+            original_filename: fileToUpload.name, // Keep track of original filename
             service_type: 'regular print', // Default service type for regular print modal
             service_name: 'Regular Print', // Default service name for regular print modal
-            copies: settings.copies,
-            color: settings.color,
-            orientation: settings.orientation,
-            pageRange: settings.pageRange,
-            specificPages: settings.specificPages,
+            copies: settings.copies || 1,
+            color: settings.color || 'Black and White',
+            orientation: settings.orientation || 'portrait',
+            pageRange: settings.pageRange || 'all',
+            specificPages: settings.specificPages || '',
             bwPageRange: settings.bwPageRange || 'all',
             bwPageRangeValue: settings.bwPageRangeValue || '',
             colorPageRange: settings.colorPageRange || 'all',
             colorPageRangeValue: settings.colorPageRangeValue || '',
-            pageSize: settings.pageSize,
-            page_count: fileObj.pages,
-            pages: fileObj.pages,
+            pageSize: settings.pageSize || 'A4',
+            page_count: fileObj ? (fileObj.pages || 1) : 1,
+            pages: fileObj ? (fileObj.pages || 1) : 1,
             spiralBinding: settings.spiralBinding ? 'Yes' : 'No',
             lamination: settings.lamination ? 'Yes' : 'No',
             tapeBinding: settings.tapeBinding ? 'Yes' : 'No',
@@ -25181,7 +25234,7 @@
             job_completed: "NO",
             trash: "NO",
             vendor_status: "not sended",
-            was_image: fileObj.isImage || false, // Track if this was originally an image
+            was_image: fileObj ? (fileObj.isImage || false) : false, // Track if this was originally an image
             // Add pricing details if available (will be populated after pricing calculation)
             pricing_details: null,
             vendor_email: vendorEmail || '',
@@ -25193,8 +25246,8 @@
           formData.append(`settings_${i}`, JSON.stringify(settingsJson));
         }
 
-        formData.append('file_count', uploadedFiles.length);
-        formData.append('selected_vendor', selectedVendor);
+        formData.append('file_count', filesFromPrintModal.length);
+        formData.append('selected_vendor', shopValueToUse);
         formData.append('vendor_id', vendorId);
         formData.append('vendor_email', vendorEmail);
         formData.append('shop_name', shopName);
@@ -25234,7 +25287,7 @@
               // Compute platform profit from service percentage (same as photo print)
             try {
               // Get service key for commission calculation
-              const colorType = uploadedFiles.length > 0 && fileSettings[uploadedFiles[0].id] 
+              const colorType = filesFromPrintModal.length > 0 && typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && fileSettings[uploadedFiles[0].id] 
                 ? fileSettings[uploadedFiles[0].id].color 
                 : 'Black and White';
               const serviceKey = colorType === 'color' ? 'a4_print_color' : 'a4_print_bw';
@@ -25253,7 +25306,7 @@
               }
             
             // Update all settingsJson objects to include pricing details
-            for (let i = 0; i < uploadedFiles.length; i++) {
+            for (let i = 0; i < filesFromPrintModal.length; i++) {
               const existingSettings = formData.get(`settings_${i}`);
               if (existingSettings) {
                 const settingsObj = JSON.parse(existingSettings);
