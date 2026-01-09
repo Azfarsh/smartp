@@ -25280,10 +25280,17 @@
 
           formData.append(`file_${i}`, processedFile);
 
+          // Extract page_count and num_copies from pricing breakdown for database storage (same as jumbo print)
+          let pageCountForDb = fileObj ? (fileObj.pages || 1) : 1;
+          let numCopiesForDb = settings.copies || 1;
+          
+          // Get all file names for document_count (same as jumbo print)
+          const allFileNames = filesFromPrintModal.map(f => f.name);
+          
           const settingsJson = {
             filename: finalFilename,
             original_filename: fileToUpload.name, // Keep track of original filename
-            service_type: 'regular_print', // CRITICAL: Use 'regular_print' (normalized) to match passport_photo storage pattern
+            service_type: 'regular_print', // CRITICAL: Use 'regular_print' (normalized) to match jumbo_printing storage pattern
             service_name: 'Regular Print', // Default service name for regular print modal
             copies: settings.copies || 1,
             color: settings.color || 'Black and White',
@@ -25295,8 +25302,9 @@
             colorPageRange: settings.colorPageRange || 'all',
             colorPageRangeValue: settings.colorPageRangeValue || '',
             pageSize: settings.pageSize || 'A4',
-            page_count: fileObj ? (fileObj.pages || 1) : 1,
-            pages: fileObj ? (fileObj.pages || 1) : 1,
+            page_count: pageCountForDb,
+            num_copies: numCopiesForDb,
+            pages: pageCountForDb, // Also include 'pages' for backward compatibility
             spiralBinding: settings.spiralBinding ? 'Yes' : 'No',
             lamination: settings.lamination ? 'Yes' : 'No',
             tapeBinding: settings.tapeBinding ? 'Yes' : 'No',
@@ -25305,7 +25313,10 @@
             job_completed: "NO",
             trash: "NO",
             vendor_status: "not sended",
+            is_manual_job: 'YES', // Same as jumbo print
             was_image: fileObj ? (fileObj.isImage || false) : false, // Track if this was originally an image
+            all_document_names: allFileNames, // Same as jumbo print
+            document_count: filesFromPrintModal.length, // Same as jumbo print
             // Add pricing details if available (will be populated after pricing calculation)
             pricing_details: null,
             vendor_email: vendorEmail || '',
@@ -25742,29 +25753,6 @@
           throw new Error('Invalid amount. Please calculate price again and ensure the order summary shows a valid amount.');
         }
         
-        // CRITICAL: Validate that formData has files before proceeding
-        const fileCountInFormData = formData.get('file_count');
-        const hasFiles = formData.has('file_0');
-        console.log('🔍 FormData validation before payment:', {
-          file_count: fileCountInFormData,
-          has_file_0: hasFiles,
-          has_settings_0: formData.has('settings_0'),
-          vendor_id: formData.get('vendor_id'),
-          user_email: formData.get('user_email'),
-          service_type: formData.get('settings_0') ? JSON.parse(formData.get('settings_0')).service_type : 'unknown'
-        });
-        
-        if (!fileCountInFormData || parseInt(fileCountInFormData) <= 0 || !hasFiles) {
-          console.error('❌ No files in formData! Cannot proceed with payment.');
-          alert('Error: No files found. Please upload files again and try again.');
-          hidePaymentProcessingState();
-          if (confirmPayBtn) {
-            confirmPayBtn.disabled = false;
-            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
-          }
-          throw new Error('No files in formData. Please upload files again.');
-        }
-        
         const amountPaise = Math.round(totalAmountRupees * 100);
 
         // 1) Create Razorpay order from server
@@ -25803,66 +25791,30 @@
           order_id: orderData.order.id,
           handler: async function (paymentResponse) {
             try {
-              console.log('✅ Razorpay payment handler called!', {
-                payment_id: paymentResponse.razorpay_payment_id,
-                order_id: paymentResponse.razorpay_order_id,
-                serviceType: serviceType,
-                isPrintModal: isPrintModal
-              });
-              
               // Append payment details to form data
               formData.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
               formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
               formData.append('razorpay_signature', paymentResponse.razorpay_signature);
 
-              // CRITICAL: Verify formData has files before sending
-              const fileCount = formData.get('file_count');
-              console.log('📦 FormData verification:', {
-                file_count: fileCount,
-                has_file_0: formData.has('file_0'),
-                has_settings_0: formData.has('settings_0'),
-                vendor_id: formData.get('vendor_id'),
-                user_email: formData.get('user_email')
-              });
-
               // 3) Verify payment on server and upload files atomically (blocking now to avoid false positives)
               // CRITICAL: Documents are stored INSTANTLY in R2 and database after payment verification
               console.log('💳 Payment successful, storing documents instantly...');
-              console.log('📤 Sending POST request to /payments/verify/');
-              
               const verifyResp = await fetch('/payments/verify/', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-CSRFToken': getCookie('csrftoken') }
               });
-              
-              console.log('📥 Payment verification response received:', {
-                status: verifyResp.status,
-                statusText: verifyResp.statusText,
-                ok: verifyResp.ok
-              });
 
               const verifyData = await safeParseJson(verifyResp);
-              
-              console.log('📊 Payment verification response data:', {
-                success: verifyData.success,
-                files_processed: verifyData.files_processed,
-                files_failed: verifyData.files_failed,
-                token: verifyData.token,
-                error: verifyData.error
-              });
-              
               if (!verifyResp.ok || !verifyData.success) {
-                console.error('❌ Payment verification failed:', verifyData.error || 'Unknown error');
                 throw new Error(verifyData.error || 'Payment verification failed');
               }
 
               // Documents are now stored in R2 and database (vendor_print_jobs and user_print_jobs tables)
-              console.log('✅ Documents stored instantly in database:', {
+              console.log('✅ Documents stored instantly:', {
                 files_processed: verifyData.files_processed,
                 files_failed: verifyData.files_failed,
-                token: verifyData.token,
-                message: 'Check User_print_jobs table in database to verify storage'
+                token: verifyData.token
               });
 
               hidePaymentProcessingState();
@@ -25873,6 +25825,39 @@
                 const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                 const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
                 showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
+                
+                // CRITICAL: Return points if files failed to store (same as jumbo print)
+                if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
+                  if (typeof userPoints !== 'undefined') {
+                    userPoints = (userPoints || 0) + Number(verifyData.points_returned);
+                    updatePointsDisplay();
+                    const totalPointsElement = document.getElementById('totalPointsCount');
+                    if (totalPointsElement) {
+                      const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                      totalPointsElement.textContent = displayPoints;
+                    }
+                  }
+                }
+                
+                // Show compensation points message if awarded (same as jumbo print)
+                if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                  showCursorNotification(
+                    'Compensation Added',
+                    'success',
+                    `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
+                    'success',
+                    5000
+                  );
+                  if (typeof userPoints !== 'undefined') {
+                    userPoints = (userPoints || 0) + Number(verifyData.compensation_points_awarded);
+                    updatePointsDisplay();
+                    const totalPointsElement = document.getElementById('totalPointsCount');
+                    if (totalPointsElement) {
+                      const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                      totalPointsElement.textContent = displayPoints;
+                    }
+                  }
+                }
               } else {
                 // Show success message only if no files failed (same as jumbo print)
                 showSuccessModalWithAnimation();
@@ -25897,6 +25882,12 @@
                     userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
                   }
                   updatePointsDisplay();
+                  // Update the dashboard points display (same as jumbo print)
+                  const totalPointsElement = document.getElementById('totalPointsCount');
+                  if (totalPointsElement) {
+                    const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                    totalPointsElement.textContent = displayPoints;
+                  }
                 }
               }
 
@@ -25962,15 +25953,6 @@
         if (typeof Razorpay === 'undefined') {
           throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
         }
-        
-        // CRITICAL: Log before opening Razorpay to ensure formData is ready
-        console.log('🚀 Opening Razorpay payment gateway...', {
-          serviceType: serviceType,
-          isPrintModal: isPrintModal,
-          fileCount: formData.get('file_count'),
-          amountPaise: amountPaise,
-          hasFiles: formData.has('file_0')
-        });
         
         const rzp = new Razorpay(options);
         
@@ -26042,11 +26024,9 @@
 
         // Open Razorpay with error handling for storage access issues
         try {
-          console.log('🎯 Opening Razorpay checkout...');
           rzp.open();
-          console.log('✅ Razorpay checkout opened successfully');
         } catch (rzpError) {
-          console.error('❌ Error opening Razorpay:', rzpError);
+          console.error('Error opening Razorpay:', rzpError);
           // If it's a storage access error, provide helpful message
           if (rzpError.message && rzpError.message.includes('storage')) {
             alert('Payment gateway cannot access browser storage. Please check your browser settings and allow cookies/storage for this site, then try again.');
@@ -26060,16 +26040,6 @@
           }
           throw rzpError;
         }
-        
-        // Add handler for payment modal dismissal (user closes without paying)
-        rzp.on('payment.cancel', function() {
-          console.log('⚠️ Payment cancelled by user');
-          hidePaymentProcessingState();
-          if (confirmPayBtn) {
-            confirmPayBtn.disabled = false;
-            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
-          }
-        });
       } catch (error) {
         console.error('Error submitting print job:', error);
         hidePaymentProcessingState();
