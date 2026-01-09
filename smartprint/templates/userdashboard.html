@@ -13810,27 +13810,74 @@
                   // Hide processing state
                   hidePaymentProcessingState();
                   
-                  // Check for failed uploads and show refund message in modal
+                  // Check for failed uploads FIRST and show refund message in modal (same as jumbo print)
                   if (verifyData.files_failed > 0) {
                     const failedFiles = verifyData.failed_files || [];
                     const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                     const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
                     showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
-                  } else {
-                    // Show success message for successful uploads
-                    showSuccessModalWithAnimation();
                     
-                    // Update points if allotted
-                    if (verifyData.points_allotted && verifyData.points_allotted > 0) {
+                    // CRITICAL: Return points if files failed to store (same as jumbo print)
+                    if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
                       if (typeof userPoints !== 'undefined') {
-                        userPoints = (userPoints || 0) + verifyData.points_allotted;
+                        userPoints = (userPoints || 0) + Number(verifyData.points_returned);
                         updatePointsDisplay();
-                        // Update the dashboard points display
                         const totalPointsElement = document.getElementById('totalPointsCount');
                         if (totalPointsElement) {
                           const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
                           totalPointsElement.textContent = displayPoints;
                         }
+                      }
+                    }
+                    
+                    // Show compensation points message if awarded (same as jumbo print)
+                    if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                      showCursorNotification(
+                        'Compensation Added',
+                        'success',
+                        `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
+                        'success',
+                        5000
+                      );
+                      if (typeof userPoints !== 'undefined') {
+                        userPoints = (userPoints || 0) + Number(verifyData.compensation_points_awarded);
+                        updatePointsDisplay();
+                        const totalPointsElement = document.getElementById('totalPointsCount');
+                        if (totalPointsElement) {
+                          const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                          totalPointsElement.textContent = displayPoints;
+                        }
+                      }
+                    }
+                  } else {
+                    // Show success message only if no files failed (same as jumbo print)
+                    showSuccessModalWithAnimation();
+                    
+                    // Show compensation points message if awarded (parity with Jumbo)
+                    if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                      showCursorNotification(
+                        'Compensation Added',
+                        'success',
+                        `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
+                        'success',
+                        5000
+                      );
+                    }
+                    
+                    // Update points if allotted or deducted
+                    if (typeof userPoints !== 'undefined') {
+                      if (verifyData.points_deducted) {
+                        userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
+                      }
+                      if (verifyData.points_allotted && verifyData.points_allotted > 0) {
+                        userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
+                      }
+                      updatePointsDisplay();
+                      // Update the dashboard points display
+                      const totalPointsElement = document.getElementById('totalPointsCount');
+                      if (totalPointsElement) {
+                        const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                        totalPointsElement.textContent = displayPoints;
                       }
                     }
                   }
@@ -23040,6 +23087,15 @@
       // REMOVED: Desktop location gating - desktop location doesn't work properly
       // Users should type shop name instead of relying on location
       const desktopMode = isDesktopViewport();
+      
+      // Show desktop view message for shop name entry (same as service modals)
+      if (desktopMode) {
+        console.log('💻 Desktop device detected - showing shop name entry message for document print modal');
+        setTimeout(() => {
+          alert('📱 Desktop Device Detected\n\nLaptop location may not work properly. Please enter the shop name near your location when selecting a print shop.\n\nYou can search for shops by name in the shop selection menu.');
+        }, 100); // Small delay to ensure modal opens smoothly
+      }
+      
       if (!desktopMode && window.userLocationFlow && window.userLocationFlow.shouldGateForService()) {
         e.preventDefault();
         window.userLocationFlow.promptForService(null, openModal);
