@@ -5070,16 +5070,7 @@ def create_razorpay_order(request):
 # ─────────────────────────────────────────────────────────────
 @csrf_exempt
 def verify_razorpay_payment(request):
-    print("=" * 80)
-    print("🔔 PAYMENT VERIFICATION ENDPOINT CALLED")
-    print("=" * 80)
-    print(f"📥 Request method: {request.method}")
-    print(f"📥 Content-Type: {request.content_type}")
-    print(f"📥 Has files: {bool(request.FILES)}")
-    print(f"📥 POST keys: {list(request.POST.keys())}")
-    
     if request.method != 'POST':
-        print("❌ Invalid method - returning 405")
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     try:
@@ -5087,13 +5078,8 @@ def verify_razorpay_payment(request):
         payment_id = request.POST.get('razorpay_payment_id')
         order_id = request.POST.get('razorpay_order_id')
         signature = request.POST.get('razorpay_signature')
-        
-        print(f"💳 Payment ID: {payment_id}")
-        print(f"💳 Order ID: {order_id}")
-        print(f"💳 Signature present: {bool(signature)}")
 
         if not (payment_id and order_id and signature):
-            print("❌ Missing payment details")
             return JsonResponse({'success': False, 'error': 'Missing payment details'}, status=400)
 
         generated_signature = hmac.new(
@@ -5107,18 +5093,13 @@ def verify_razorpay_payment(request):
 
         # Signature valid → proceed to store files (reuse existing logic from process_print_request)
         file_count = int(request.POST.get('file_count', 0))
-        print(f"📦 File count from request: {file_count}")
-        print(f"📦 Files in request.FILES: {list(request.FILES.keys())}")
         
         # Validate file_count - must be greater than 0
         if file_count <= 0:
-            print("❌ No files provided in request")
             return JsonResponse({
                 'success': False, 
                 'error': 'No files provided. Please upload at least one file.'
             }, status=400)
-        
-        print(f"✅ Starting to process {file_count} file(s) for storage...")
         
         files_processed = 0
         files_failed = 0
@@ -5611,9 +5592,6 @@ def verify_razorpay_payment(request):
                     # All steps succeeded - mark as processed
                     files_processed += 1
                     print(f"✅ Successfully stored file {fobj.name} (service_type: {service_type}) in R2 and both database tables")
-                    print(f"   📍 R2 Vendor Path: {vendor_file_key}")
-                    print(f"   📍 R2 User Path: {user_file_key}")
-                    print(f"   🗄️ Database: vendor_print_jobs ✅ | user_print_jobs ✅")
                     
                 except Exception as upload_error:
                     upload_error_msg = str(upload_error)
@@ -5836,16 +5814,6 @@ def verify_razorpay_payment(request):
         if files_failed > 0 and total_payment_amount > 0:
             response_data['refund_amount'] = total_payment_amount
             response_data['refund_message'] = f"Payment of ₹{total_payment_amount} has been refunded due to document upload failure. Please check your payment method for the refund."
-        
-        print("=" * 80)
-        print("📊 PAYMENT VERIFICATION SUMMARY")
-        print("=" * 80)
-        print(f"✅ Files processed: {files_processed}")
-        print(f"❌ Files failed: {files_failed}")
-        print(f"🎫 Token: {token_value}")
-        print(f"💰 Total payment amount: ₹{total_payment_amount}")
-        print(f"✅ Success: {response_data.get('success')}")
-        print("=" * 80)
         
         return JsonResponse(response_data)
     except Exception as e:
