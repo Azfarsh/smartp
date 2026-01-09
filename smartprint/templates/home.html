@@ -1,2531 +1,2748 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Printmax - Revolutionary automated printing with AI. Upload, print, collect - the future of printing is here.">
-    <meta name="keywords" content="automated printing, AI printing, smart printing, instant printing, digital printing revolution">
-    <meta name="author" content="Printmax">
-    <meta name="robots" content="index, follow">
-    <meta name="theme-color" content="#6366f1">
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2">
-    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
-    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
-    <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
-
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="PrintMax - Printing Made Easy | Upload, Pay, Collect Instantly">
-    <meta property="og:description" content="Experience the future of printing with our AI-powered automated system. Upload, customize, and collect your prints instantly.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://printmax.com">
-    <meta property="og:image" content="https://printmax.com/og-image.jpg">
-    <meta property="og:site_name" content="Printmax">
-
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="PrintMax - Printing Made Easy | Upload, Pay, Collect Instantly">
-    <meta name="twitter:description" content="The future of printing is here. AI-powered, instant, and revolutionary.">
-    <meta name="twitter:image" content="https://printmax.com/twitter-image.jpg">
-
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://printmax.com">
-
-    <title>PrintMax - Printing Made Easy | Upload, Pay, Collect Instantly</title>
-    <!-- Favicons: place files in static/images/ -->
-    <link rel="icon" href="{% static 'images/favicon.ico' %}?v=2" sizes="any">
-    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
-    <!-- Extra sizes to appear a bit larger/clearer in some tabs -->
-    <link rel="icon" type="image/png" sizes="48x48" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
-    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
-    <link rel="apple-touch-icon" href="{% static 'images/apple-touch-icon.png' %}?v=2">
-    <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
-    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
-    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
-
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Add Material Icons to <head> -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
-    <style>
-        :root {
-            /* Revolutionary Color Palette */
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            --neon-gradient: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
-            --cyber-gradient: linear-gradient(135deg, #00d4ff 0%, #090979 50%, #020024 100%);
-            --sunset-gradient: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
-            --ocean-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --fire-gradient: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%);
-            --forest-gradient: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-
-            /* Base Colors */
-            --primary-bg: #ffffff;
-            --secondary-bg: #f8fafc;
-            --text-color: #1e293b;
-            --text-secondary: #64748b;
-            --heading-color: #0f172a;
-            --card-bg: #ffffff;
-            --navbar-bg: rgba(255, 255, 255, 0.95);
-            --navbar-text: #1e293b;
-            --border-color: #e2e8f0;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --shadow-neon: 0 0 20px rgba(102, 126, 234, 0.4);
-
-            /* Glass Effect */
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.18);
-            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-
-            /* Animations */
-            --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            --transition-elastic: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        [data-bs-theme="dark"] {
-            --primary-bg: #0f0f23;
-            --secondary-bg: #1a1a2e;
-            --text-color: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --heading-color: #f1f5f9;
-            --card-bg: rgba(26, 26, 46, 0.8);
-            --navbar-bg: rgba(15, 15, 35, 0.95);
-            --navbar-text: #e2e8f0;
-            --border-color: #334155;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
-            --shadow-neon: 0 0 30px rgba(102, 126, 234, 0.6);
-
-            --glass-bg: rgba(26, 26, 46, 0.35);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--primary-bg);
-            color: var(--text-color);
-            line-height: 1.6;
-            transition: var(--transition-smooth);
-            overflow-x: hidden;
-            /* Reduce offset to match fixed navbar height */
-            padding-top: 16px;
-        }
-
-        /* Animated Background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(249, 147, 251, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 60%, rgba(75, 172, 254, 0.1) 0%, transparent 50%);
-            animation: backgroundFloat 20s ease-in-out infinite;
-            z-index: -2;
-        }
-
-        [data-bs-theme="dark"] body::before {
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(249, 147, 251, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 40% 60%, rgba(75, 172, 254, 0.15) 0%, transparent 50%);
-        }
-
-        @keyframes backgroundFloat {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(1deg); }
-            66% { transform: translateY(10px) rotate(-1deg); }
-        }
-
-        /* Navigation */
-        .navbar {
-            background: var(--navbar-bg) !important;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border-color);
-            position: fixed !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            transition: var(--transition-smooth);
-            padding: 0.5rem 0;
-            box-shadow: var(--shadow);
-        }
-
-        .navbar-brand {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            color: transparent;
-            transition: var(--transition-smooth);
-        }
-
-        /* Swap brand logos based on theme */
-        .navbar-brand .logo-img-light { display: inline-block; }
-        .navbar-brand .logo-img-dark { display: none; }
-        [data-bs-theme="dark"] .navbar-brand .logo-img-light { display: none; }
-        [data-bs-theme="dark"] .navbar-brand .logo-img-dark { display: inline-block; }
-
-        /* PRINTMAX wordmark beside logo */
-        .navbar-brand .brand-wordmark {
-            font-family: 'Poppins', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-            font-weight: 800;
-            font-style: italic;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            font-size: 1.4rem; /* slightly smaller */
-            line-height: 1;
-            display: inline-flex;
-            align-items: center;
-            margin-left: 6px;
-            transform: translateY(2px); /* optical alignment with logo */
-            color: #0f172a; /* dark navy in day mode to match header */
-            -webkit-text-fill-color: currentColor; /* override parent's transparent fill */
-            -webkit-background-clip: initial; /* reset any background clip from parent */
-            background-clip: initial;
-        }
-        [data-bs-theme="dark"] .navbar-brand .brand-wordmark {
-            color: #ffffff; /* solid white in dark mode */
-            -webkit-text-fill-color: currentColor;
-        }
-
-        /* Make brand static - no hover effects */
-        .navbar-brand:hover {
-            transform: none;
-            filter: none;
-        }
-
-        .navbar-brand i {
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-right: 0.5rem;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
-        .nav-link {
-            color: var(--navbar-text) !important;
-            font-weight: 500;
-            padding: 0.75rem 1.25rem !important;
-            border-radius: 12px;
-            transition: var(--transition-smooth);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: var(--primary-gradient);
-            transition: var(--transition-smooth);
-            z-index: -1;
-            opacity: 0.1;
-        }
-
-        .nav-link:hover::before {
-            left: 0;
-        }
-
-        .nav-link:hover {
-            color: var(--heading-color) !important;
-            transform: translateY(-2px);
-        }
-
-        /* Theme Toggle Button */
-        .theme-toggle {
-            position: relative;
-            width: 60px;
-            height: 28px;
-            background: var(--secondary-gradient);
-            border-radius: 25px;
-            border: none;
-            cursor: pointer;
-            transition: var(--transition-smooth);
-            margin-left: 1rem;
-            overflow: hidden;
-            padding: 0;
-        }
-
-        .theme-toggle .toggle-thumb {
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 28px;
-            height: 22px;
-            background: #3a86ff;
-            border-radius: 50%;
-            transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2;
-        }
-
-        .theme-toggle .theme-icon {
-            font-size: 1.2rem;
-            color: #ffb300;
-            transition: color 0.4s;
-        }
-
-        [data-bs-theme="dark"] .theme-toggle .toggle-thumb {
-            left: 29px;
-        }
-
-        [data-bs-theme="dark"] .theme-toggle .theme-icon {
-            color: #6c63ff;
-        }
-
-        .theme-toggle::before {
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 28px;
-            height: 22px;
-            background: white;
-            border-radius: 50%;
-            transition: var(--transition-smooth);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        [data-bs-theme="dark"] .theme-toggle::before {
-            transform: translateX(28px);
-        }
-
-        .theme-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: var(--shadow-neon);
-        }
-
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            /* Reduce top padding to tighten space under navbar */
-            padding: 70px 0 50px;
-        }
-        /* Slightly lift the media on desktop for better alignment */
-        @media (min-width: 992px) {
-            .hero-media { transform: translateY(-60px); }
-        }
-        @media (min-width: 1200px) {
-            .hero-media { transform: translateY(-70px); }
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--cyber-gradient);
-            opacity: 0.05;
-            animation: heroGlow 8s ease-in-out infinite;
-            z-index: -1;
-        }
-
-        @keyframes heroGlow {
-            0%, 100% { opacity: 0.05; transform: scale(1); }
-            50% { opacity: 0.1; transform: scale(1.02); }
-        }
-
-        .hero-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(2.5rem, 6vw, 4.5rem);
-            font-weight: 800;
-            line-height: 1.1;
-            margin-bottom: 2rem;
-        }
-
-        .gradient-text {
-            background: var(--neon-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            color: transparent;
-            animation: gradientShift 3s ease-in-out infinite;
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .hero-subtitle {
-            font-size: clamp(1.1rem, 2.5vw, 1.4rem);
-            color: var(--text-secondary);
-            margin-bottom: 3rem;
-            line-height: 1.6;
-        }
-
-        /* Buttons */
-        .btn-gradient {
-            background: var(--primary-gradient);
-            border: none;
-            color: white;
-            padding: 1rem 2.5rem;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: var(--transition-bounce);
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .btn-gradient::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: var(--transition-smooth);
-        }
-
-        .btn-gradient:hover::before {
-            left: 100%;
-        }
-
-        .btn-gradient:hover {
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: var(--shadow-neon);
-            color: white;
-        }
-
-        .btn-outline-gradient {
-            background: transparent;
-            border: 2px solid;
-            border-image: var(--primary-gradient) 1;
-            color: var(--text-color);
-            padding: 1rem 2.5rem;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: var(--transition-bounce);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-outline-gradient:hover {
-            background: var(--primary-gradient);
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        /* Cards */
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: var(--glass-shadow);
-            transition: var(--transition-smooth);
-            height: 100%;
-        }
-
-        .glass-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: var(--shadow-neon);
-        }
-
-        /* Feature Icons */
-        .feature-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-            position: relative;
-            overflow: hidden;
-            transition: var(--transition-elastic);
-        }
-
-        .feature-icon i {
-            font-size: 2rem;
-            color: white;
-            z-index: 2;
-            position: relative;
-        }
-
-        .feature-icon::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0.9;
-            transition: var(--transition-smooth);
-        }
-
-        .feature-icon:hover {
-            transform: scale(1.15) rotate(10deg);
-        }
-
-        .feature-icon:hover::before {
-            opacity: 1;
-            transform: scale(1.1);
-        }
-
-        /* Service Specific Gradients */
-        .upload-icon::before { background: var(--accent-gradient); }
-        .payment-icon::before { background: var(--success-gradient); }
-        .print-icon::before { background: var(--warning-gradient); }
-        .collect-icon::before { background: var(--secondary-gradient); }
-        .speed-icon::before { background: var(--fire-gradient); }
-        .security-icon::before { background: var(--ocean-gradient); }
-        .price-icon::before { background: var(--forest-gradient); }
-        .available-icon::before { background: var(--sunset-gradient); }
-
-        /* Stats Section */
-        .stats-section {
-            background: var(--dark-gradient);
-            color: white;
-            padding: 4rem 0;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stats-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            opacity: 0.1;
-        }
-
-        .stat-number {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 800;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            color: transparent;
-            line-height: 1;
-            margin-bottom: 0.5rem;
-        }
-
-        /* Pricing Cards */
-        .pricing-card {
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 2.5rem;
-            position: relative;
-            overflow: hidden;
-            transition: var(--transition-smooth);
-            border: 1px solid var(--border-color);
-            height: 100%;
-        }
-
-        .pricing-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            transition: var(--transition-smooth);
-        }
-
-        .pricing-card.basic::before { background: var(--accent-gradient); }
-        .pricing-card.popular::before { background: var(--warning-gradient); }
-        .pricing-card.premium::before { background: var(--secondary-gradient); }
-
-        .pricing-card:hover {
-            transform: translateY(-15px);
-            box-shadow: var(--shadow-neon);
-        }
-
-        .pricing-card.popular {
-            transform: scale(1.05);
-            border: 2px solid;
-            border-image: var(--warning-gradient) 1;
-        }
-
-        .price-badge {
-            position: absolute;
-            top: -15px;
-            right: 20px;
-            background: var(--warning-gradient);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        /* Testimonials */
-        .testimonial-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 2rem;
-            transition: var(--transition-smooth);
-            height: 100%;
-        }
-
-        .testimonial-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .testimonial-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: var(--primary-gradient);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-
-        /* CTA Section */
-        .cta-section {
-            background: var(--cyber-gradient);
-            color: white;
-            padding: 5rem 0;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(
-                45deg,
-                transparent,
-                transparent 50px,
-                rgba(255, 255, 255, 0.03) 50px,
-                rgba(255, 255, 255, 0.03) 100px
-            );
-            animation: ctaPattern 20s linear infinite;
-        }
-
-        @keyframes ctaPattern {
-            0% { transform: translateX(-100px); }
-            100% { transform: translateX(100px); }
-        }
-
-        /* Footer */
-        .footer {
-            background: var(--dark-gradient);
-            color: white;
-            padding: 3rem 0 1rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .footer-link {
-            color: #ffffff;
-            text-decoration: none;
-            transition: var(--transition-smooth);
-        }
-
-        .footer-link:hover {
-            color: #ffffff;
-            transform: translateX(5px);
-        }
-
-        .social-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: var(--primary-gradient);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition-bounce);
-            text-decoration: none;
-        }
-
-        .social-icon:hover {
-            transform: scale(1.2) rotate(10deg);
-            box-shadow: var(--shadow-neon);
-            color: white;
-        }
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            body { padding-top: 48px; }
-            .navbar { padding: 0.5rem 0; }
-            .navbar-brand { font-size: 1.5rem; }
-            .hero { padding: 30px 0 24px; }
-            .hero-title { font-size: 2.5rem; }
-            .btn-gradient, .btn-outline-gradient { 
-                padding: 0.8rem 2rem; 
-                font-size: 1rem; 
-            }
-            .glass-card { padding: 1.5rem; }
-            .feature-icon { width: 60px; height: 60px; }
-            .feature-icon i { font-size: 1.5rem; }
-            .stat-number { font-size: 2.5rem; }
-            .pricing-card { padding: 2rem; }
-            .stats-section { padding: 3rem 0; }
-            .cta-section { padding: 3rem 0; }
-        }
-
-        @media (max-width: 576px) {
-            .container { padding: 0 1rem; }
-            .hero-title { font-size: 2rem; }
-            .hero-subtitle { font-size: 1rem; }
-            .btn-gradient, .btn-outline-gradient { 
-                padding: 0.7rem 1.5rem; 
-                font-size: 0.9rem; 
-                display: block;
-                width: 100%;
-                margin-bottom: 1rem;
-            }
-            .glass-card { padding: 1rem; }
-            .pricing-card { padding: 1.5rem; }
-            .testimonial-card { padding: 1.5rem; }
-        }
-
-        /* Scroll Animations */
-        .fade-in-up {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: var(--transition-smooth);
-        }
-
-        .fade-in-up.animate {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Loading Animation */
-        .loading-dots {
-            display: inline-block;
-        }
-
-        .loading-dots::after {
-            content: '';
-            animation: loadingDots 1.5s infinite;
-        }
-
-        @keyframes loadingDots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-
-        /* Hover Effects */
-        .hover-float:hover {
-            transform: translateY(-5px);
-            transition: var(--transition-smooth);
-        }
-
-        .hover-scale:hover {
-            transform: scale(1.05);
-            transition: var(--transition-smooth);
-        }
-
-        .hover-glow:hover {
-            box-shadow: var(--shadow-neon);
-            transition: var(--transition-smooth);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="PrintMax makes printing simple for students: upload files from your phone, choose a nearby shop, pay online, and collect instantly with a token. No queues, no lost files—just reliable prints when you need them.">
+  <meta name="keywords"
+    content="automated printing, AI printing, smart printing, instant printing, digital printing revolution">
+  <meta name="author" content="Printmax">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#6366f1">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
+  <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Printmax - Printing Made Easy">
+  <meta property="og:description"
+    content="PrintMax makes printing simple for students: upload files from your phone, choose a nearby shop, pay online, and collect instantly with a token.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://printmax.com">
+  <meta property="og:image" content="https://printmax.com/og-image.jpg">
+  <meta property="og:site_name" content="Printmax">
+
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Printmax - Printing Made Easy">
+  <meta name="twitter:description" content="No queues, no lost files—just reliable prints when you need them.">
+  <meta name="twitter:image" content="https://printmax.com/twitter-image.jpg">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://printmax.com">
+
+  <title>Printmax - Printing Made Easy</title>
+  <!-- Favicons: place files in static/images/ -->
+  <link rel="icon" href="{% static 'images/favicon.ico' %}?v=2" sizes="any">
+  <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
+  <!-- Extra sizes to appear a bit larger/clearer in some tabs -->
+  <link rel="icon" type="image/png" sizes="48x48" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="64x64" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
+  <link rel="apple-touch-icon" href="{% static 'images/apple-touch-icon.png' %}?v=2">
+  <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'images/android-chrome-192x192.png' %}?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/android-chrome-512x512.png' %}?v=2">
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <!-- Add Material Icons to <head> -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <style>
+    :root {
+      /* Revolutionary Color Palette */
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+      --neon-gradient: linear-gradient(135deg, #ff006e 0%, #8338ec 50%, #3a86ff 100%);
+      --cyber-gradient: linear-gradient(135deg, #00d4ff 0%, #090979 50%, #020024 100%);
+      --sunset-gradient: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+      --ocean-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --fire-gradient: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%);
+      --forest-gradient: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+
+      /* Base Colors */
+      --primary-bg: #ffffff;
+      --secondary-bg: #f8fafc;
+      --text-color: #1e293b;
+      --text-secondary: #64748b;
+      --heading-color: #0f172a;
+      --card-bg: #ffffff;
+      --navbar-bg: rgba(255, 255, 255, 0.95);
+      --navbar-text: #1e293b;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --shadow-neon: 0 0 20px rgba(102, 126, 234, 0.4);
+
+      /* Glass Effect */
+      --glass-bg: rgba(255, 255, 255, 0.25);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+      /* Animations */
+      --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      --transition-elastic: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    [data-bs-theme="dark"] {
+      --primary-bg: #0f0f23;
+      --secondary-bg: #1a1a2e;
+      --text-color: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --heading-color: #f1f5f9;
+      --card-bg: rgba(26, 26, 46, 0.8);
+      --navbar-bg: rgba(15, 15, 35, 0.95);
+      --navbar-text: #e2e8f0;
+      --border-color: #334155;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+      --shadow-neon: 0 0 30px rgba(102, 126, 234, 0.6);
+
+      --glass-bg: rgba(26, 26, 46, 0.35);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--primary-bg);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: var(--transition-smooth);
+      overflow-x: hidden;
+      /* Reduce offset to match fixed navbar height */
+      padding-top: 16px;
+    }
+
+    /* Animated Background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(249, 147, 251, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(75, 172, 254, 0.1) 0%, transparent 50%);
+      animation: backgroundFloat 20s ease-in-out infinite;
+      z-index: -2;
+    }
+
+    [data-bs-theme="dark"] body::before {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(249, 147, 251, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 60%, rgba(75, 172, 254, 0.15) 0%, transparent 50%);
+    }
+
+    @keyframes backgroundFloat {
+
+      0%,
+      100% {
+        transform: translateY(0px) rotate(0deg);
+      }
+
+      33% {
+        transform: translateY(-20px) rotate(1deg);
+      }
+
+      66% {
+        transform: translateY(10px) rotate(-1deg);
+      }
+    }
+
+    /* Navigation */
+    .navbar {
+      background: var(--navbar-bg) !important;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+      transition: var(--transition-smooth);
+      padding: 0.5rem 0;
+      box-shadow: var(--shadow);
+    }
+
+    .navbar-brand {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
+      transition: var(--transition-smooth);
+    }
+
+    /* Swap brand logos based on theme */
+    .navbar-brand .logo-img-light {
+      display: inline-block;
+    }
+
+    .navbar-brand .logo-img-dark {
+      display: none;
+    }
+
+    [data-bs-theme="dark"] .navbar-brand .logo-img-light {
+      display: none;
+    }
+
+    [data-bs-theme="dark"] .navbar-brand .logo-img-dark {
+      display: inline-block;
+    }
+
+    /* PRINTMAX wordmark beside logo */
+    .navbar-brand .brand-wordmark {
+      font-family: 'Poppins', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-weight: 800;
+      font-style: italic;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 1.4rem;
+      /* slightly smaller */
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      transform: translateY(2px);
+      /* optical alignment with logo */
+      color: #0f172a;
+      /* dark navy in day mode to match header */
+      -webkit-text-fill-color: currentColor;
+      /* override parent's transparent fill */
+      -webkit-background-clip: initial;
+      /* reset any background clip from parent */
+      background-clip: initial;
+    }
+
+    [data-bs-theme="dark"] .navbar-brand .brand-wordmark {
+      color: #ffffff;
+      /* solid white in dark mode */
+      -webkit-text-fill-color: currentColor;
+    }
+
+    /* Make brand static - no hover effects */
+    .navbar-brand:hover {
+      transform: none;
+      filter: none;
+    }
+
+    .navbar-brand i {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-right: 0.5rem;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    .nav-link {
+      color: var(--navbar-text) !important;
+      font-weight: 500;
+      padding: 0.75rem 1.25rem !important;
+      border-radius: 12px;
+      transition: var(--transition-smooth);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .nav-link::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: var(--primary-gradient);
+      transition: var(--transition-smooth);
+      z-index: -1;
+      opacity: 0.1;
+    }
+
+    .nav-link:hover::before {
+      left: 0;
+    }
+
+    .nav-link:hover {
+      color: var(--heading-color) !important;
+      transform: translateY(-2px);
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle {
+      position: relative;
+      width: 60px;
+      height: 28px;
+      background: var(--secondary-gradient);
+      border-radius: 25px;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      margin-left: 1rem;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .theme-toggle .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 28px;
+      height: 22px;
+      background: #3a86ff;
+      border-radius: 50%;
+      transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    .theme-toggle .theme-icon {
+      font-size: 1.2rem;
+      color: #ffb300;
+      transition: color 0.4s;
+    }
+
+    [data-bs-theme="dark"] .theme-toggle .toggle-thumb {
+      left: 29px;
+    }
+
+    [data-bs-theme="dark"] .theme-toggle .theme-icon {
+      color: #6c63ff;
+    }
+
+    .theme-toggle::before {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 28px;
+      height: 22px;
+      background: white;
+      border-radius: 50%;
+      transition: var(--transition-smooth);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-bs-theme="dark"] .theme-toggle::before {
+      transform: translateX(28px);
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: var(--shadow-neon);
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      /* Reduce top padding to tighten space under navbar */
+      padding: 70px 0 50px;
+    }
+
+    /* Slightly lift the media on desktop for better alignment */
+    @media (min-width: 992px) {
+      .hero-media {
+        transform: translateY(-60px);
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .hero-media {
+        transform: translateY(-70px);
+      }
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--cyber-gradient);
+      opacity: 0.05;
+      animation: heroGlow 8s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes heroGlow {
+
+      0%,
+      100% {
+        opacity: 0.05;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.1;
+        transform: scale(1.02);
+      }
+    }
+
+    .hero-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 2rem;
+    }
+
+    .gradient-text {
+      background: var(--neon-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
+      animation: gradientShift 3s ease-in-out infinite;
+    }
+
+    @keyframes gradientShift {
+
+      0%,
+      100% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+      color: var(--text-secondary);
+      margin-bottom: 3rem;
+      line-height: 1.6;
+    }
+
+    /* Buttons */
+    .btn-gradient {
+      background: var(--primary-gradient);
+      border: none;
+      color: white;
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: var(--transition-bounce);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .btn-gradient::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: var(--transition-smooth);
+    }
+
+    .btn-gradient:hover::before {
+      left: 100%;
+    }
+
+    .btn-gradient:hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: var(--shadow-neon);
+      color: white;
+    }
+
+    .btn-outline-gradient {
+      background: transparent;
+      border: 2px solid;
+      border-image: var(--primary-gradient) 1;
+      color: var(--text-color);
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: var(--transition-bounce);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-outline-gradient:hover {
+      background: var(--primary-gradient);
+      color: white;
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* Cards */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--glass-shadow);
+      transition: var(--transition-smooth);
+      height: 100%;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: var(--shadow-neon);
+    }
+
+    /* Feature Icons */
+    .feature-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition-elastic);
+    }
+
+    .feature-icon i {
+      font-size: 2rem;
+      color: white;
+      z-index: 2;
+      position: relative;
+    }
+
+    .feature-icon::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.9;
+      transition: var(--transition-smooth);
+    }
+
+    .feature-icon:hover {
+      transform: scale(1.15) rotate(10deg);
+    }
+
+    .feature-icon:hover::before {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    /* Service Specific Gradients */
+    .upload-icon::before {
+      background: var(--accent-gradient);
+    }
+
+    .payment-icon::before {
+      background: var(--success-gradient);
+    }
+
+    .print-icon::before {
+      background: var(--warning-gradient);
+    }
+
+    .collect-icon::before {
+      background: var(--secondary-gradient);
+    }
+
+    .speed-icon::before {
+      background: var(--fire-gradient);
+    }
+
+    .security-icon::before {
+      background: var(--ocean-gradient);
+    }
+
+    .price-icon::before {
+      background: var(--forest-gradient);
+    }
+
+    .available-icon::before {
+      background: var(--sunset-gradient);
+    }
+
+    /* Stats Section */
+    .stats-section {
+      background: var(--dark-gradient);
+      color: white;
+      padding: 4rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stats-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+      opacity: 0.1;
+    }
+
+    .stat-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.5rem;
+      font-weight: 800;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Pricing Cards */
+    .pricing-card {
+      background: var(--card-bg);
+      border-radius: 24px;
+      padding: 2.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition-smooth);
+      border: 1px solid var(--border-color);
+      height: 100%;
+    }
+
+    .pricing-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      transition: var(--transition-smooth);
+    }
+
+    .pricing-card.basic::before {
+      background: var(--accent-gradient);
+    }
+
+    .pricing-card.popular::before {
+      background: var(--warning-gradient);
+    }
+
+    .pricing-card.premium::before {
+      background: var(--secondary-gradient);
+    }
+
+    .pricing-card:hover {
+      transform: translateY(-15px);
+      box-shadow: var(--shadow-neon);
+    }
+
+    .pricing-card.popular {
+      transform: scale(1.05);
+      border: 2px solid;
+      border-image: var(--warning-gradient) 1;
+    }
+
+    .price-badge {
+      position: absolute;
+      top: -15px;
+      right: 20px;
+      background: var(--warning-gradient);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    /* Testimonials */
+    .testimonial-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      transition: var(--transition-smooth);
+      height: 100%;
+    }
+
+    .testimonial-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .testimonial-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      background: var(--cyber-gradient);
+      color: white;
+      padding: 5rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(45deg,
+          transparent,
+          transparent 50px,
+          rgba(255, 255, 255, 0.03) 50px,
+          rgba(255, 255, 255, 0.03) 100px);
+      animation: ctaPattern 20s linear infinite;
+    }
+
+    @keyframes ctaPattern {
+      0% {
+        transform: translateX(-100px);
+      }
+
+      100% {
+        transform: translateX(100px);
+      }
+    }
+
+    /* Footer */
+    .footer {
+      background: var(--dark-gradient);
+      color: white;
+      padding: 3rem 0 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .footer-link {
+      color: #ffffff;
+      text-decoration: none;
+      transition: var(--transition-smooth);
+    }
+
+    .footer-link:hover {
+      color: #ffffff;
+      transform: translateX(5px);
+    }
+
+    .social-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition-bounce);
+      text-decoration: none;
+    }
+
+    .social-icon:hover {
+      transform: scale(1.2) rotate(10deg);
+      box-shadow: var(--shadow-neon);
+      color: white;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      body {
+        padding-top: 48px;
+      }
+
+      .navbar {
+        padding: 0.5rem 0;
+      }
+
+      .navbar-brand {
+        font-size: 1.5rem;
+      }
+
+      .hero {
+        padding: 30px 0 24px;
+      }
+
+      .hero-title {
+        font-size: 2.5rem;
+      }
+
+      .btn-gradient,
+      .btn-outline-gradient {
+        padding: 0.8rem 2rem;
+        font-size: 1rem;
+      }
+
+      .glass-card {
+        padding: 1.5rem;
+      }
+
+      .feature-icon {
+        width: 60px;
+        height: 60px;
+      }
+
+      .feature-icon i {
+        font-size: 1.5rem;
+      }
+
+      .stat-number {
+        font-size: 2.5rem;
+      }
+
+      .pricing-card {
+        padding: 2rem;
+      }
+
+      .stats-section {
+        padding: 3rem 0;
+      }
+
+      .cta-section {
+        padding: 3rem 0;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .hero-title {
+        font-size: 2rem;
+      }
+
+      .hero-subtitle {
+        font-size: 1rem;
+      }
+
+      .btn-gradient,
+      .btn-outline-gradient {
+        padding: 0.7rem 1.5rem;
+        font-size: 0.9rem;
+        display: block;
+        width: 100%;
+        margin-bottom: 1rem;
+      }
+
+      .glass-card {
+        padding: 1rem;
+      }
+
+      .pricing-card {
+        padding: 1.5rem;
+      }
+
+      .testimonial-card {
+        padding: 1.5rem;
+      }
+    }
+
+    /* Scroll Animations */
+    .fade-in-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: var(--transition-smooth);
+    }
+
+    .fade-in-up.animate {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Loading Animation */
+    .loading-dots {
+      display: inline-block;
+    }
+
+    .loading-dots::after {
+      content: '';
+      animation: loadingDots 1.5s infinite;
+    }
+
+    @keyframes loadingDots {
+
+      0%,
+      20% {
+        content: '';
+      }
+
+      40% {
+        content: '.';
+      }
+
+      60% {
+        content: '..';
+      }
+
+      80%,
+      100% {
+        content: '...';
+      }
+    }
+
+    /* Hover Effects */
+    .hover-float:hover {
+      transform: translateY(-5px);
+      transition: var(--transition-smooth);
+    }
+
+    .hover-scale:hover {
+      transform: scale(1.05);
+      transition: var(--transition-smooth);
+    }
+
+    .hover-glow:hover {
+      box-shadow: var(--shadow-neon);
+      transition: var(--transition-smooth);
+    }
+  </style>
 </head>
 
 <body>
-    <!-- Django Messages -->
-    {% if messages %}
-    <div class="messages-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; max-width: 520px; width: calc(100% - 32px); padding: 0 16px; display: flex; justify-content: center;">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-lg 
+  <!-- Django Messages -->
+  {% if messages %}
+  <div class="messages-container"
+    style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; max-width: 520px; width: calc(100% - 32px); padding: 0 16px; display: flex; justify-content: center;">
+    {% for message in messages %}
+    <div
+      class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-lg 
              {% if 'success' in message.tags %}alert-bg-success-center{% elif 'error' in message.tags or 'danger' in message.tags %}alert-bg-error{% elif 'warning' in message.tags %}alert-bg-warning{% else %}alert-bg-default{% endif %}"
-             role="alert"
-             style="margin: 0 auto 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); font-weight: 600; text-align: center;">
-            <i class="bi bi-{% if 'success' in message.tags %}check-circle-fill{% elif 'error' in message.tags or 'danger' in message.tags %}exclamation-triangle-fill{% elif 'warning' in message.tags %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
+      role="alert"
+      style="margin: 0 auto 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); font-weight: 600; text-align: center;">
+      <i
+        class="bi bi-{% if 'success' in message.tags %}check-circle-fill{% elif 'error' in message.tags or 'danger' in message.tags %}exclamation-triangle-fill{% elif 'warning' in message.tags %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2"></i>
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-    <style>
-      /* Centered, readable success banner for logout */
-      .alert-bg-success-center { background: #d1fae5 !important; color: #111 !important; border-color: #a7f3d0 !important; }
-      .alert-bg-error { background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%) !important; }
-      .alert-bg-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important; }
-      .alert-bg-default { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+    {% endfor %}
+  </div>
+  <style>
+    /* Centered, readable success banner for logout */
+    .alert-bg-success-center {
+      background: #d1fae5 !important;
+      color: #111 !important;
+      border-color: #a7f3d0 !important;
+    }
 
-      /* Dark mode: make close (×) button red for logout/success messages */
-      [data-bs-theme="dark"] .alert-bg-success-center .btn-close,
-      [data-bs-theme="dark"] .alert-bg-default .btn-close,
-      [data-bs-theme="dark"] .alert-bg-error .btn-close,
-      [data-bs-theme="dark"] .alert-bg-warning .btn-close {
-        --bs-btn-close-color: #ef4444;
-        --bs-btn-close-opacity: 1;
-        background: transparent;
-        opacity: 1 !important;
-        filter: none !important;
-        -webkit-mask-image: none;
-        mask-image: none;
-      }
-      [data-bs-theme="dark"] .alert-bg-success-center .btn-close::before,
-      [data-bs-theme="dark"] .alert-bg-default .btn-close::before,
-      [data-bs-theme="dark"] .alert-bg-error .btn-close::before,
-      [data-bs-theme="dark"] .alert-bg-warning .btn-close::before {
-        content: '';
-        display: block;
-        width: 1em; height: 1em;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ef4444'%3e%3cpath d='M4.646 4.646a.5.5 0 1 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
-        background-size: 100% 100%;
-        background-repeat: no-repeat;
-      }
-    </style>
-    <script>
-        // Auto-hide messages after 5 seconds (works even if Bootstrap JS hasn't loaded yet)
-        document.addEventListener('DOMContentLoaded', function() {
-          setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-              try {
-                if (window.bootstrap && bootstrap.Alert) {
-                  const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-                  bsAlert.close();
-                } else {
-                  // Fallback: gracefully hide and remove without Bootstrap
-                  alert.classList.remove('show');
-                  setTimeout(() => alert.remove(), 200);
-                }
-              } catch (e) {
-                alert.classList.remove('show');
-                setTimeout(() => alert.remove(), 200);
-              }
-            });
-          }, 5000);
+    .alert-bg-error {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%) !important;
+    }
+
+    .alert-bg-warning {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important;
+    }
+
+    .alert-bg-default {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    /* Dark mode: make close (×) button red for logout/success messages */
+    [data-bs-theme="dark"] .alert-bg-success-center .btn-close,
+    [data-bs-theme="dark"] .alert-bg-default .btn-close,
+    [data-bs-theme="dark"] .alert-bg-error .btn-close,
+    [data-bs-theme="dark"] .alert-bg-warning .btn-close {
+      --bs-btn-close-color: #ef4444;
+      --bs-btn-close-opacity: 1;
+      background: transparent;
+      opacity: 1 !important;
+      filter: none !important;
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+
+    [data-bs-theme="dark"] .alert-bg-success-center .btn-close::before,
+    [data-bs-theme="dark"] .alert-bg-default .btn-close::before,
+    [data-bs-theme="dark"] .alert-bg-error .btn-close::before,
+    [data-bs-theme="dark"] .alert-bg-warning .btn-close::before {
+      content: '';
+      display: block;
+      width: 1em;
+      height: 1em;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ef4444'%3e%3cpath d='M4.646 4.646a.5.5 0 1 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+    }
+  </style>
+  <script>
+    // Auto-hide messages after 5 seconds (works even if Bootstrap JS hasn't loaded yet)
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function (alert) {
+          try {
+            if (window.bootstrap && bootstrap.Alert) {
+              const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+              bsAlert.close();
+            } else {
+              // Fallback: gracefully hide and remove without Bootstrap
+              alert.classList.remove('show');
+              setTimeout(() => alert.remove(), 200);
+            }
+          } catch (e) {
+            alert.classList.remove('show');
+            setTimeout(() => alert.remove(), 200);
+          }
         });
-    </script>
-    {% endif %}
+      }, 5000);
+    });
+  </script>
+  {% endif %}
 
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg" role="navigation">
-        <div class="container">
-            <a class="navbar-brand" href="#" aria-label="Printmax homepage" style="display: flex; align-items: center; gap: 10px;">
-                <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="PrintMax" style="height: 32px; width: auto; vertical-align: middle; image-rendering: auto;" />
-                <img class="logo-img-dark" src="{% static 'images/printmaxdarklogo.png' %}" alt="PrintMax" style="height: 38px; width: auto; vertical-align: middle; image-rendering: auto;" />
-                <span class="brand-wordmark">PRINTMAX</span>
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg" role="navigation">
+    <div class="container">
+      <a class="navbar-brand" href="#" aria-label="Printmax homepage"
+        style="display: flex; align-items: center; gap: 10px;">
+        <img class="logo-img-light" src="{% static 'images/printmaxdaylogo.png' %}" alt="PrintMax"
+          style="height: 32px; width: auto; vertical-align: middle; image-rendering: auto;" />
+        <img class="logo-img-dark" src="{% static 'images/printmaxdarklogo.png' %}" alt="PrintMax"
+          style="height: 38px; width: auto; vertical-align: middle; image-rendering: auto;" />
+        <span class="brand-wordmark">PRINTMAX</span>
+      </a>
+
+      <div class="d-flex align-items-center">
+        <!-- Removed theme toggle button from here -->
+        <button class="navbar-toggler ms-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <a class="nav-link" href="#how-it-works">
+              <i class="bi bi-gear-fill me-2"></i>How It Works
             </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#services">
+              <i class="bi bi-grid-fill me-2"></i>Services
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#vendorLoginModal"
+              id="vendorLoginNav">
+              <i class="bi bi-shop me-2"></i>Print shop
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/contact/">
+              <i class="bi bi-chat-fill me-2"></i>Contact
+            </a>
+          </li>
+          <li class="nav-item ms-3">
+            <a href="/login" class="btn btn-gradient">
+              <i class="bi bi-rocket-takeoff-fill me-2"></i>Get Started
+            </a>
+          </li>
+          <li class="nav-item ms-3">
+            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+              <span class="toggle-thumb">
+                <i class="theme-icon bi bi-sun-fill"></i>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
-            <div class="d-flex align-items-center">
-                <!-- Removed theme toggle button from here -->
-                <button class="navbar-toggler ms-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+  <!-- Main Content -->
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-lg-6">
+            <h1 class="hero-title">
+              <span class="gradient-text">Printing Made Easy,</span><br>
+              With PrintMax
+            </h1>
+            <p class="hero-subtitle">
+              Tired of long queues at the print shop? Upload your files, select a nearby shop, pay securely, and collect
+              with a unique token. No more waiting or lost prints—get started today and see how simple it can be.
+            </p>
+            <div class="d-flex flex-column flex-md-row gap-3">
+              <a href="/login" class="btn btn-gradient hover-glow">
+                <i class="bi bi-lightning-charge-fill me-2"></i>
+                Start Printing Now
+              </a>
+              <button class="btn btn-outline-gradient hover-float" onclick="scrollToSection('#how-it-works')">
+                <i class="bi bi-play-circle-fill me-2"></i>
+                See How It Works
+              </button>
+            </div>
+            <div class="mt-4">
+              <small class="text-muted">
+                <i class="bi bi-shield-check-fill me-1"></i>
+                🚀 Trusted by students • ⚡ Fast & Secure • 🎯 Easy Pickup
+              </small>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="text-center hero-media">
+              <video class="img-fluid rounded-4 shadow-lg hover-float" autoplay muted loop playsinline
+                style="max-width: 100%; border-radius: 24px;">
+                <source src="{% static 'images/hero-video.mp4' %}" type="video/mp4">
+                <div class="glass-card text-center">
+                  <i class="bi bi-play-circle display-1 text-primary mb-3"></i>
+                  <h5>🎬 Revolutionary Demo</h5>
+                  <p class="text-muted">See the magic happen in real-time</p>
+                </div>
+              </video>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+      <div class="container">
+        <div class="row text-center">
+          <div class="col-md-3 col-6 mb-4 fade-in-up">
+            <div class="stat-number">50K+</div>
+            <div class="stat-label">🔥 Documents Printed</div>
+          </div>
+          <div class="col-md-3 col-6 mb-4 fade-in-up">
+            <div class="stat-number">30s</div>
+            <div class="stat-label">⚡ Average Processing</div>
+          </div>
+          <div class="col-md-3 col-6 mb-4 fade-in-up">
+            <div class="stat-number">99.9%</div>
+            <div class="stat-label">🎯 Success Rate</div>
+          </div>
+          <div class="col-md-3 col-6 mb-4 fade-in-up">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">🚀 AI Available</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Choose PrintMax Section -->
+    <section id="features" class="py-5" style="background: var(--secondary-bg);">
+      <div class="container">
+        <div class="text-center mb-5 fade-in-up">
+          <h2 class="display-4 fw-bold mb-4">
+            <span class="gradient-text">Why Choose PrintMax?</span>
+          </h2>
+        </div>
+        <!-- Updated to use row-cols-lg-5 for a single row on large screens -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 justify-content-center">
+          <div class="col fade-in-up">
+            <div class="glass-card text-center hover-scale h-100">
+              <div class="feature-icon speed-icon mx-auto">
+                <i class="bi bi-clock-history"></i>
+              </div>
+              <h3 class="h5 fw-bold mb-3">Save Time, Skip Lines!</h3>
+              <p class="text-muted">
+                Print from your phone anytime, anywhere—no waiting in queues.
+              </p>
+            </div>
+          </div>
+          <div class="col fade-in-up">
+            <div class="glass-card text-center hover-scale h-100">
+              <div class="feature-icon security-icon mx-auto">
+                <i class="bi bi-cloud-arrow-up-fill"></i>
+              </div>
+              <h3 class="h5 fw-bold mb-3">Easy Document Uploads!</h3>
+              <p class="text-muted">
+                Send files in seconds for quick processing.
+              </p>
+            </div>
+          </div>
+          <div class="col fade-in-up">
+            <div class="glass-card text-center hover-scale h-100">
+              <div class="feature-icon available-icon mx-auto">
+                <i class="bi bi-geo-alt-fill"></i>
+              </div>
+              <h3 class="h5 fw-bold mb-3">Select Nearest Shop!</h3>
+              <p class="text-muted">
+                Get fast, reliable prints from shops close to you.
+              </p>
+            </div>
+          </div>
+          <div class="col fade-in-up">
+            <div class="glass-card text-center hover-scale h-100">
+              <div class="feature-icon security-icon mx-auto">
+                <i class="bi bi-shield-lock-fill"></i>
+              </div>
+              <h3 class="h5 fw-bold mb-3">Safe & Secure!</h3>
+              <p class="text-muted">
+                Your files are protected with strong encryption and deleted after printing.
+              </p>
+            </div>
+          </div>
+          <div class="col fade-in-up">
+            <div class="glass-card text-center hover-scale h-100">
+              <div class="feature-icon price-icon mx-auto">
+                <i class="bi bi-cash-coin"></i>
+              </div>
+              <h3 class="h5 fw-bold mb-3">Guaranteed Refunds!</h3>
+              <p class="text-muted">
+                Instant refunds if your print job fails to print.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="py-5">
+      <div class="container">
+        <div class="text-center mb-5 fade-in-up">
+          <h2 class="display-4 fw-bold mb-4">
+            <span class="gradient-text">Our Services</span>
+          </h2>
+        </div>
+        <div class="row g-4 justify-content-center">
+          <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="glass-card text-center hover-glow">
+              <i class="bi bi-file-earmark-text-fill display-4 mb-3"
+                style="background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+              <h5 class="fw-bold mb-3">Digital Paper Printing</h5>
+              <p class="text-muted">High-quality prints for documents in A4 or larger sizes.</p>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="glass-card text-center hover-glow">
+              <i class="bi bi-images display-4 mb-3"
+                style="background: var(--success-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+              <h5 class="fw-bold mb-3">Photo Printing</h5>
+              <p class="text-muted">Clear and vibrant photos in 4x6 or A4 formats.</p>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="glass-card text-center hover-glow">
+              <i class="bi bi-stars display-4 mb-3"
+                style="background: var(--warning-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+              <h5 class="fw-bold mb-3">Gloss Paper Printing</h5>
+              <p class="text-muted">Shiny finishes for posters and special materials.</p>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="glass-card text-center hover-glow">
+              <i class="bi bi-person-bounding-box display-4 mb-3"
+                style="background: var(--secondary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+              <h5 class="fw-bold mb-3">Passport Photo Printing</h5>
+              <p class="text-muted">Compliant photos in 8, 16, or 30 per sheet.</p>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="glass-card text-center hover-glow">
+              <i class="bi bi-arrows-fullscreen display-4 mb-3"
+                style="background: var(--fire-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+              <h5 class="fw-bold mb-3">Jumbo Paper Printing</h5>
+              <p class="text-muted">Large formats like A0 to A3 for banners or designs.</p>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="glass-card text-center hover-glow">
+              <i class="bi bi-journal-album display-4 mb-3"
+                style="background: var(--forest-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
+              <h5 class="fw-bold mb-3">Golden Embossing</h5>
+              <p class="text-muted">Handcrafted books with elegant gold details.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trust & Security Section -->
+    <section class="py-5" style="background: var(--primary-bg);">
+      <div class="container text-center">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 fade-in-up">
+            <h2 class="display-5 fw-bold mb-4">
+              <span class="gradient-text">Your Prints, Your Peace of Mind</span>
+            </h2>
+            <p class="lead text-muted mb-4">
+              Wondering about lost files or long waits? PrintMax ensures every file is deleted after printing, and you
+              only collect with your unique token. Curious how it works? Try it and see the difference.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-5" style="background: var(--secondary-bg);">
+      <div class="container">
+        <div class="text-center mb-5 fade-in-up">
+          <h2 class="display-4 fw-bold mb-4">
+            <span class="gradient-text">Users Love Us</span>
+          </h2>
+          <p class="lead">
+            💝 <strong>Real Stories</strong> from Happy Customers
+          </p>
+        </div>
+        <div class="row g-4">
+          <div class="col-lg-4 fade-in-up">
+            <div class="testimonial-card">
+              <p class="mb-4">
+                "🤯 <strong>Mind-blowing!</strong> Uploaded my thesis at midnight,
+                collected perfect prints in the morning. This is the future!"
+              </p>
+              <div class="d-flex align-items-center">
+                <div class="testimonial-avatar me-3">AK</div>
+                <div>
+                  <h6 class="mb-0 fw-bold">Arjun Kumar</h6>
+                  <small class="text-muted">PhD Student</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 fade-in-up">
+            <div class="testimonial-card">
+              <p class="mb-4">
+                "⚡ <strong>Lightning fast!</strong> Needed urgent job documents.
+                Printmax delivered in 2 minutes. Literally saved my career!"
+              </p>
+              <div class="d-flex align-items-center">
+                <div class="testimonial-avatar me-3">RP</div>
+                <div>
+                  <h6 class="mb-0 fw-bold">Riya Patel</h6>
+                  <small class="text-muted">Software Engineer</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 fade-in-up">
+            <div class="testimonial-card">
+              <p class="mb-4">
+                "🚀 <strong>Game changer!</strong> Print reports from office,
+                collect on my way home. The AI quality is insane!"
+              </p>
+              <div class="d-flex align-items-center">
+                <div class="testimonial-avatar me-3">MS</div>
+                <div>
+                  <h6 class="mb-0 fw-bold">Mohit Sharma</h6>
+                  <small class="text-muted">Marketing Director</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <div class="container text-center">
+        <div class="row">
+          <div class="col-lg-8 mx-auto fade-in-up">
+            <h2 class="display-5 fw-bold mb-4">
+              🚀 Ready to Print Smarter?
+            </h2>
+            <p class="lead mb-5">
+              Join students skipping the hassle. Upload your first file today—it's simple and secure. Get started now.
+            </p>
+            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+              <a href="/login" class="btn btn-gradient btn-lg hover-glow">
+                <i class="bi bi-rocket-takeoff-fill me-2"></i>
+                Get Started Now
+              </a>
+            </div>
+            <div class="mt-4">
+              <small class="text-white-50">
+                <i class="bi bi-shield-check me-1"></i>
+                🔒 Secure • ⚡ Instant • 🎯 Easy Pickup
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" id="contact">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <h5 class="fw-bold mb-3" style="color:#ffffff;">
+            Printmax
+          </h5>
+          <p class="mb-4" style="color:#ffffff;">
+            “PRINT ANYTIME, ANYWHERE WITH PRINTMAX!”
+          </p>
+          <div class="d-flex gap-3">
+            <a href="#" class="social-icon">
+              <i class="bi bi-twitter"></i>
+            </a>
+            <a href="#" class="social-icon">
+              <i class="bi bi-linkedin"></i>
+            </a>
+            <a href="#" class="social-icon">
+              <i class="bi bi-instagram"></i>
+            </a>
+            <a href="#" class="social-icon">
+              <i class="bi bi-github"></i>
+            </a>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <h6 class="fw-bold mb-3">Platform</h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a href="#" class="footer-link">Upload Files</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">AI Optimization</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Smart Printing</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Token System</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <h6 class="fw-bold mb-3">Support</h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a href="#" class="footer-link">Help Center</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">AI Chat</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Track Order</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Status</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <h6 class="fw-bold mb-3">Company</h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a href="#" class="footer-link">About Us</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Careers</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Press</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Blog</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <h6 class="fw-bold mb-3">Legal</h6>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a href="#" class="footer-link">Privacy</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Terms</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Security</a></li>
+            <li class="mb-2"><a href="#" class="footer-link">Compliance</a></li>
+          </ul>
+        </div>
+      </div>
+      <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <p class="mb-0 text-white-50">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="mb-0 text-white-50">
+            <i class="bi bi-envelope-fill me-2"></i>
+            <a href="mailto:hello@printmax.com" class="footer-link">hello@printmax.com</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Full Screen Welcome Animation (outside modal) -->
+  <div id="welcomeScreen" style="display:none;">
+    <div class="logo-container">
+      <div class="logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path
+            d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
+        </svg>
+      </div>
+    </div>
+    <div class="welcome-content">
+      <h1 id="welcomeMessage">Welcome to Print Shop Dashboard</h1>
+      <p id="welcomeStatusText">Preparing your workspace...</p>
+      <div class="loading-container">
+        <div class="loading-dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor Login Modal (redesigned to match test.html) -->
+  <div class="modal fade" id="vendorLoginModal" tabindex="-1" aria-labelledby="vendorLoginModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content vendor-modal-content">
+        <div class="row g-0">
+          <!-- Left: Image Section -->
+          <div class="col-md-6 vendor-modal-left">
+            <div class="vendor-image-wrapper">
+              <img src="{% static 'images/vendor-login.png' %}" alt="Vendor Login Illustration" class="vendor-image">
+            </div>
+          </div>
+          <!-- Right: Vendor login form -->
+          <div class="col-md-6 vendor-modal-right">
+            <button type="button" class="vendor-modal-close" data-bs-dismiss="modal" aria-label="Close">×</button>
+            <!-- Vendor Login Form -->
+            <div id="vendor-form-modal" style="width: 100%; max-width: 380px; margin: 0 auto;">
+              <div class="login-header">
+                <h2>Print Shop Login</h2>
+                <p>Access your print shop dashboard</p>
+              </div>
+              <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
+                {% csrf_token %}
+                <div class="form-group">
+                  <label for="vendorEmail" class="form-label">Email</label>
+                  <div class="input-container">
+                    <input type="email" class="form-control" id="vendorEmail" placeholder="example@domain.com" required
+                      autocomplete="username" />
+                    <span class="material-icons">email</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="vendorPassword" class="form-label">Password</label>
+                  <div class="input-container">
+                    <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your secret code"
+                      required autocomplete="current-password" />
+                    <span class="material-icons lock-icon">lock</span>
+                    <span class="material-icons eye-icon" id="togglePassword" onclick="togglePasswordVisibility()"
+                      style="cursor: pointer; right: 1rem; left: auto;">visibility</span>
+                  </div>
+                </div>
+                <button type="submit" class="btn-primary" id="vendorSignInBtn">
+                  <span class="material-icons" id="vendorBtnIcon">print</span>
+                  <span id="vendorBtnText">Print shop login</span>
                 </button>
-            </div>
-
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#how-it-works">
-                            <i class="bi bi-gear-fill me-2"></i>How It Works
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#services">
-                            <i class="bi bi-grid-fill me-2"></i>Services
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#vendorLoginModal" id="vendorLoginNav">
-                            <i class="bi bi-shop me-2"></i>Print shop
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/contact/">
-                            <i class="bi bi-chat-fill me-2"></i>Contact
-                        </a>
-                    </li>
-                    <li class="nav-item ms-3">
-                        <a href="/login" class="btn btn-gradient">
-                            <i class="bi bi-rocket-takeoff-fill me-2"></i>Get Started
-                        </a>
-                    </li>
-                    <li class="nav-item ms-3">
-                        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                            <span class="toggle-thumb">
-                                <i class="theme-icon bi bi-sun-fill"></i>
-                            </span>
-                        </button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main>
-        <!-- Hero Section -->
-        <section class="hero">
-            <div class="container">
-                <div class="row align-items-center">
-                    <div class="col-lg-6">
-                        <h1 class="hero-title">
-                            <span class="gradient-text">Revolutionary</span><br>
-                            AI-Powered Printing
-                        </h1>
-                        <p class="hero-subtitle">
-                            🚀 Experience the future of printing with our cutting-edge AI technology. 
-                            Upload, customize, and collect - all powered by intelligent automation that's 
-                            <strong>10x faster</strong> than traditional printing services.
-                        </p>
-                        <div class="d-flex flex-column flex-md-row gap-3">
-                            <a href="/login" class="btn btn-gradient hover-glow">
-                                <i class="bi bi-lightning-charge-fill me-2"></i>
-                                Start Printing Now
-                            </a>
-                            <button class="btn btn-outline-gradient hover-float" onclick="scrollToSection('#how-it-works')">
-                                <i class="bi bi-play-circle-fill me-2"></i>
-                                See How It Works
-                            </button>
-                        </div>
-                        <div class="mt-4">
-                            <small class="text-muted">
-                                <i class="bi bi-shield-check-fill me-1"></i>
-                                🚀 Trusted by 10K+ users • ⚡ 99.9% uptime • 🎯 AI-optimized quality
-                            </small>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="text-center hero-media">
-                            <video 
-                                class="img-fluid rounded-4 shadow-lg hover-float" 
-                                autoplay 
-                                muted 
-                                loop 
-                                playsinline
-                                style="max-width: 100%; border-radius: 24px;"
-                            >
-                                <source src="{% static 'images/hero-video.mp4' %}" type="video/mp4">
-                                <div class="glass-card text-center">
-                                    <i class="bi bi-play-circle display-1 text-primary mb-3"></i>
-                                    <h5>🎬 Revolutionary Demo</h5>
-                                    <p class="text-muted">See the magic happen in real-time</p>
-                                </div>
-                            </video>
-                        </div>
-                    </div>
+                <div class="forgot-password">
+                  <a href="#" onclick="resetVendorPassword()">
+                    <span class="material-icons">lock_reset</span>
+                    <span>Forgot your password?</span>
+                  </a>
                 </div>
-            </div>
-        </section>
-
-        <!-- Stats Section -->
-        <section class="stats-section">
-            <div class="container">
-                <div class="row text-center">
-                    <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">50K+</div>
-                        <div class="stat-label">🔥 Documents Printed</div>
-                    </div>
-                    <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">30s</div>
-                        <div class="stat-label">⚡ Average Processing</div>
-                    </div>
-                    <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">99.9%</div>
-                        <div class="stat-label">🎯 Success Rate</div>
-                    </div>
-                    <div class="col-md-3 col-6 mb-4 fade-in-up">
-                        <div class="stat-number">24/7</div>
-                        <div class="stat-label">🚀 AI Available</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- How It Works Section -->
-        <section id="how-it-works" class="py-5">
-            <div class="container">
-                <div class="text-center mb-5 fade-in-up">
-                    <h2 class="display-4 fw-bold mb-4">
-                        <span class="gradient-text">How It Works</span>
-                    </h2>
-                    <p class="lead">
-                        🎯 <strong>4 Simple Steps</strong> to Revolutionary Printing Experience
-                    </p>
-                </div>
-                <div class="row g-4">
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-float">
-                            <div class="feature-icon upload-icon mx-auto">
-                                <i class="bi bi-cloud-upload-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">📤 Smart Upload</h3>
-                            <p class="text-muted">
-                                <strong>Drag, drop, done!</strong> Our AI instantly optimizes your files 
-                                for perfect printing quality.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-float">
-                            <div class="feature-icon payment-icon mx-auto">
-                                <i class="bi bi-credit-card-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">💳 Instant Payment</h3>
-                            <p class="text-muted">
-                                <strong>Secure & Fast!</strong> Multiple payment options with 
-                                military-grade encryption.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-float">
-                            <div class="feature-icon print-icon mx-auto">
-                                <i class="bi bi-printer-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">🤖 AI Printing</h3>
-                            <p class="text-muted">
-                                <strong>Hands-free magic!</strong> Our robots handle everything 
-                                with precision and speed.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-float">
-                            <div class="feature-icon collect-icon mx-auto">
-                                <i class="bi bi-gift-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">🎁 Smart Collection</h3>
-                            <p class="text-muted">
-                                <strong>Token-based pickup!</strong> Get notified and collect 
-                                your prints hassle-free.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Features Section -->
-        <section id="features" class="py-5" style="background: var(--secondary-bg);">
-            <div class="container">
-                <div class="text-center mb-5 fade-in-up">
-                    <h2 class="display-4 fw-bold mb-4">
-                        <span class="gradient-text">Why Choose Printmax?</span>
-                    </h2>
-                    <p class="lead">
-                        🚀 <strong>Next-Gen Features</strong> That Make Us The Future of Printing
-                    </p>
-                </div>
-                <div class="row g-4">
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-scale">
-                            <div class="feature-icon speed-icon mx-auto">
-                                <i class="bi bi-lightning-charge-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">⚡ Lightning Fast</h3>
-                            <p class="text-muted">
-                                <strong>30-second processing!</strong> Our AI works at warp speed 
-                                to get your prints ready instantly.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-scale">
-                            <div class="feature-icon security-icon mx-auto">
-                                <i class="bi bi-shield-lock-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">🔒 Fort Knox Security</h3>
-                            <p class="text-muted">
-                                <strong>Bank-level protection!</strong> Files auto-delete after printing. 
-                                Your privacy is our obsession.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-scale">
-                            <div class="feature-icon price-icon mx-auto">
-                                <i class="bi bi-currency-dollar"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">💰 Smart Pricing</h3>
-                            <p class="text-muted">
-                                <strong>AI-optimized costs!</strong> Pay only for what you need. 
-                                No hidden fees, no surprises.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-scale">
-                            <div class="feature-icon available-icon mx-auto">
-                                <i class="bi bi-clock-fill"></i>
-                            </div>
-                            <h3 class="h5 fw-bold mb-3">🌙 Always On</h3>
-                            <p class="text-muted">
-                                <strong>24/7 AI service!</strong> Print at 3AM? No problem. 
-                                Our robots never sleep.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Services Section -->
-        <section id="services" class="py-5">
-            <div class="container">
-                <div class="text-center mb-5 fade-in-up">
-                    <h2 class="display-4 fw-bold mb-4">
-                        <span class="gradient-text">What Can You Print?</span>
-                    </h2>
-                    <p class="lead">
-                        🎨 <strong>Unlimited Possibilities</strong> with Our AI-Powered Platform
-                    </p>
-                </div>
-                <div class="row g-4">
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-file-text-fill display-4 mb-3" style="background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">📄 Smart Documents</h5>
-                            <p class="text-muted">Reports, assignments, contracts - AI-enhanced for perfect clarity</p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-image-fill display-4 mb-3" style="background: var(--success-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">🖼️ Photo Magic</h5>
-                            <p class="text-muted">Professional photos, posters - AI color correction included</p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-easel-fill display-4 mb-3" style="background: var(--warning-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">🎨 Creative Designs</h5>
-                            <p class="text-muted">Presentations, flyers, art - optimized for stunning results</p>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 fade-in-up">
-                        <div class="glass-card text-center hover-glow">
-                            <i class="bi bi-receipt-fill display-4 mb-3" style="background: var(--secondary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;"></i>
-                            <h5 class="fw-bold mb-3">📋 Official Forms</h5>
-                            <p class="text-muted">Government forms, certificates - precision guaranteed</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Testimonials Section -->
-        <section class="py-5" style="background: var(--secondary-bg);">
-            <div class="container">
-                <div class="text-center mb-5 fade-in-up">
-                    <h2 class="display-4 fw-bold mb-4">
-                        <span class="gradient-text">Users Love Us</span>
-                    </h2>
-                    <p class="lead">
-                        💝 <strong>Real Stories</strong> from Happy Customers
-                    </p>
-                </div>
-                <div class="row g-4">
-                    <div class="col-lg-4 fade-in-up">
-                        <div class="testimonial-card">
-                            <p class="mb-4">
-                                "🤯 <strong>Mind-blowing!</strong> Uploaded my thesis at midnight, 
-                                collected perfect prints in the morning. This is the future!"
-                            </p>
-                            <div class="d-flex align-items-center">
-                                <div class="testimonial-avatar me-3">AK</div>
-                                <div>
-                                    <h6 class="mb-0 fw-bold">Arjun Kumar</h6>
-                                    <small class="text-muted">PhD Student</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4 fade-in-up">
-                        <div class="testimonial-card">
-                            <p class="mb-4">
-                                "⚡ <strong>Lightning fast!</strong> Needed urgent job documents. 
-                                Printmax delivered in 2 minutes. Literally saved my career!"
-                            </p>
-                            <div class="d-flex align-items-center">
-                                <div class="testimonial-avatar me-3">RP</div>
-                                <div>
-                                    <h6 class="mb-0 fw-bold">Riya Patel</h6>
-                                    <small class="text-muted">Software Engineer</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4 fade-in-up">
-                        <div class="testimonial-card">
-                            <p class="mb-4">
-                                "🚀 <strong>Game changer!</strong> Print reports from office, 
-                                collect on my way home. The AI quality is insane!"
-                            </p>
-                            <div class="d-flex align-items-center">
-                                <div class="testimonial-avatar me-3">MS</div>
-                                <div>
-                                    <h6 class="mb-0 fw-bold">Mohit Sharma</h6>
-                                    <small class="text-muted">Marketing Director</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- CTA Section -->
-        <section class="cta-section">
-            <div class="container text-center">
-                <div class="row">
-                    <div class="col-lg-8 mx-auto fade-in-up">
-                        <h2 class="display-5 fw-bold mb-4">
-                            🚀 Ready to Experience the Future?
-                        </h2>
-                        <p class="lead mb-5">
-                            Join <strong>50,000+ users</strong> who've already upgraded to AI-powered printing. 
-                            Your documents deserve the best!
-                        </p>
-                        <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
-                            <a href="/login" class="btn btn-gradient btn-lg hover-glow">
-                                <i class="bi bi-rocket-takeoff-fill me-2"></i>
-                                Start Your Journey
-                            </a>
-                        </div>
-                        <div class="mt-4">
-                            <small class="text-white-50">
-                                <i class="bi bi-shield-check me-1"></i>
-                                🔒 Secure • ⚡ Instant • 🎯 AI-Optimized • 💎 Premium Quality
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer" id="contact">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-4 mb-4">
-                    <h5 class="fw-bold mb-3" style="color:#ffffff;">
-                        Printmax
-                    </h5>
-                    <p class="mb-4" style="color:#ffffff;">
-                        Revolutionary AI-powered printing that's changing the world, 
-                        one document at a time. The future is here, and it's automated.
-                    </p>
-                    <div class="d-flex gap-3">
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-twitter"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-linkedin"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-instagram"></i>
-                        </a>
-                        <a href="#" class="social-icon">
-                            <i class="bi bi-github"></i>
-                        </a>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3">Platform</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#" class="footer-link">Upload Files</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">AI Optimization</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Smart Printing</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Token System</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3">Support</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#" class="footer-link">Help Center</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">AI Chat</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Track Order</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Status</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3">Company</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#" class="footer-link">About Us</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Careers</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Press</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Blog</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-2 col-md-6 mb-4">
-                    <h6 class="fw-bold mb-3">Legal</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#" class="footer-link">Privacy</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Terms</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Security</a></li>
-                        <li class="mb-2"><a href="#" class="footer-link">Compliance</a></li>
-                    </ul>
-                </div>
-            </div>
-            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <p class="mb-0 text-white-50">&copy; 2025 Printmax Technologies. Revolutionizing printing.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0 text-white-50">
-                        <i class="bi bi-envelope-fill me-2"></i>
-                        <a href="mailto:hello@printmax.com" class="footer-link">hello@printmax.com</a>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Full Screen Welcome Animation (outside modal) -->
-    <div id="welcomeScreen" style="display:none;">
-      <div class="logo-container">
-        <div class="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
-          </svg>
-        </div>
-      </div>
-      <div class="welcome-content">
-        <h1 id="welcomeMessage">Welcome to Print Shop Dashboard</h1>
-        <p id="welcomeStatusText">Preparing your workspace...</p>
-        <div class="loading-container">
-          <div class="loading-dots">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Vendor Login Modal (redesigned to match test.html) -->
-    <div class="modal fade" id="vendorLoginModal" tabindex="-1" aria-labelledby="vendorLoginModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content vendor-modal-content">
-          <div class="row g-0">
-            <!-- Left: Image Section -->
-            <div class="col-md-6 vendor-modal-left">
-              <div class="vendor-image-wrapper">
-                <img src="{% static 'images/vendor-login.png' %}" alt="Vendor Login Illustration" class="vendor-image">
-              </div>
-              </div>
-            <!-- Right: Vendor login form -->
-            <div class="col-md-6 vendor-modal-right">
-              <button type="button" class="vendor-modal-close" data-bs-dismiss="modal" aria-label="Close">×</button>
-              <!-- Vendor Login Form -->
-              <div id="vendor-form-modal" style="width: 100%; max-width: 380px; margin: 0 auto;">
-                <div class="login-header">
-                  <h2>Print Shop Login</h2>
-                  <p>Access your print shop dashboard</p>
-                </div>
-                <form method="POST" action="/vendor-login/" onsubmit="vendorLogin(event)">
-                  {% csrf_token %}
-                  <div class="form-group">
-                    <label for="vendorEmail" class="form-label">Email</label>
-                    <div class="input-container">
-                      <input type="email" class="form-control" id="vendorEmail" placeholder="example@domain.com" required autocomplete="username" />
-                      <span class="material-icons">email</span>
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label for="vendorPassword" class="form-label">Password</label>
-                    <div class="input-container">
-                      <input type="password" class="form-control" id="vendorPassword" placeholder="Enter your secret code" required autocomplete="current-password" />
-                      <span class="material-icons lock-icon">lock</span>
-                      <span class="material-icons eye-icon" id="togglePassword" onclick="togglePasswordVisibility()" style="cursor: pointer; right: 1rem; left: auto;">visibility</span>
-                    </div>
-                  </div>
-                  <button type="submit" class="btn-primary" id="vendorSignInBtn">
-                    <span class="material-icons" id="vendorBtnIcon">print</span>
-                    <span id="vendorBtnText">Print shop login</span>
-                  </button>
-                  <div class="forgot-password">
-                    <a href="#" onclick="resetVendorPassword()">
-                      <span class="material-icons">lock_reset</span>
-                      <span>Forgot your password?</span>
-                    </a>
-                  </div>
-                </form>
-                <div class="text-center">
-                  <p class="text-muted">Ready to build your print empire?</p>
-                  <button type="button" class="btn-outline-primary btn-register-vendor" onclick="window.location.href='/vendor-about/'">
-                    <span class="material-icons">business</span>
-                    <span>Register your shop</span>
-                  </button>
-                </div>
+              </form>
+              <div class="text-center">
+                <p class="text-muted">Ready to build your print empire?</p>
+                <button type="button" class="btn-outline-primary btn-register-vendor"
+                  onclick="window.location.href='/vendor-about/'">
+                  <span class="material-icons">business</span>
+                  <span>Register your shop</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <script>
-      // Dynamic vendor taglines for modal
-      const vendorModalTaglines = [
-        "🚀 Where Innovation Meets Print Perfection",
-        "⚡ Your Documents, Supercharged by AI",
-        "🎯 Precision Printing, Lightning Speed",
-        "🌟 The Future of Printing is Here",
-        "👑 Reign Over the Print Kingdom",
-        "🚀 Scale Your Print Operations"
-      ];
-      let vendorModalTaglineIndex = 0;
-      function rotateVendorModalTagline() {
-        const taglineElement = document.getElementById('vendor-modal-tagline');
-        taglineElement.style.opacity = '0';
-        setTimeout(() => {
-          vendorModalTaglineIndex = (vendorModalTaglineIndex + 1) % vendorModalTaglines.length;
-          taglineElement.textContent = vendorModalTaglines[vendorModalTaglineIndex];
-          taglineElement.style.opacity = '1';
-        }, 300);
+  </div>
+  <script>
+    // Dynamic vendor taglines for modal
+    const vendorModalTaglines = [
+      "🚀 Where Innovation Meets Print Perfection",
+      "⚡ Your Documents, Supercharged by AI",
+      "🎯 Precision Printing, Lightning Speed",
+      "🌟 The Future of Printing is Here",
+      "👑 Reign Over the Print Kingdom",
+      "🚀 Scale Your Print Operations"
+    ];
+    let vendorModalTaglineIndex = 0;
+    function rotateVendorModalTagline() {
+      const taglineElement = document.getElementById('vendor-modal-tagline');
+      taglineElement.style.opacity = '0';
+      setTimeout(() => {
+        vendorModalTaglineIndex = (vendorModalTaglineIndex + 1) % vendorModalTaglines.length;
+        taglineElement.textContent = vendorModalTaglines[vendorModalTaglineIndex];
+        taglineElement.style.opacity = '1';
+      }, 300);
+    }
+    let vendorModalTaglineInterval;
+    document.addEventListener('DOMContentLoaded', function () {
+      // Start tagline rotation when modal is shown
+      const vendorModal = document.getElementById('vendorLoginModal');
+      if (vendorModal) {
+        vendorModal.addEventListener('shown.bs.modal', function () {
+          vendorModalTaglineInterval = setInterval(rotateVendorModalTagline, 4000);
+        });
+        vendorModal.addEventListener('hidden.bs.modal', function () {
+          clearInterval(vendorModalTaglineInterval);
+          vendorModalTaglineIndex = 0;
+          document.getElementById('vendor-modal-tagline').textContent = vendorModalTaglines[0];
+        });
       }
-      let vendorModalTaglineInterval;
-      document.addEventListener('DOMContentLoaded', function() {
-        // Start tagline rotation when modal is shown
-        const vendorModal = document.getElementById('vendorLoginModal');
-        if (vendorModal) {
-          vendorModal.addEventListener('shown.bs.modal', function () {
-            vendorModalTaglineInterval = setInterval(rotateVendorModalTagline, 4000);
-          });
-          vendorModal.addEventListener('hidden.bs.modal', function () {
-            clearInterval(vendorModalTaglineInterval);
-            vendorModalTaglineIndex = 0;
-            document.getElementById('vendor-modal-tagline').textContent = vendorModalTaglines[0];
-          });
-        }
-      });
-    </script>
-    <style>
-      /* Vendor login modal redesigned to match test.html - Force light mode */
+    });
+  </script>
+  <style>
+    /* Vendor login modal redesigned to match test.html - Force light mode */
+    #vendorLoginModal .vendor-modal-content {
+      background: #ffffff !important;
+      border: 1px solid #e5e7eb !important;
+      border-radius: 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 0;
+      overflow: hidden;
+      min-height: 95vh;
+      max-width: 98vw;
+      width: 98vw;
+      height: 95vh;
+    }
+
+    /* Force light mode for all vendor modal elements */
+    #vendorLoginModal * {
+      color: inherit !important;
+    }
+
+    /* Override dark mode for vendor modal */
+    [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-content,
+    [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-left,
+    [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-right {
+      background: #ffffff !important;
+      color: #111827 !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .login-header h2,
+    [data-bs-theme="dark"] #vendorLoginModal .login-header p,
+    [data-bs-theme="dark"] #vendorLoginModal .form-label,
+    [data-bs-theme="dark"] #vendorLoginModal .text-muted {
+      color: #111827 !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .form-control {
+      background: #ffffff !important;
+      border-color: #e5e7eb !important;
+      color: #000000 !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .form-control:focus {
+      background: #ffffff !important;
+      border-color: #3B82F6 !important;
+      color: #000000 !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .btn-primary {
+      background: #3B82F6 !important;
+      border-color: #3B82F6 !important;
+      color: #ffffff !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .btn-outline-primary {
+      background: transparent !important;
+      border-color: #3B82F6 !important;
+      color: #3B82F6 !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .forgot-password a {
+      color: #6b7280 !important;
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .input-container .material-icons {
+      color: #000000 !important;
+    }
+
+    #vendorLoginModal .row {
+      margin: 0;
+    }
+
+    /* Image Section */
+    #vendorLoginModal .vendor-modal-left {
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      min-height: 95vh;
+      height: 95vh;
+      position: relative;
+      overflow: hidden;
+      border-radius: 32px 0 0 32px;
+    }
+
+    #vendorLoginModal .vendor-image-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0;
+    }
+
+    #vendorLoginModal .vendor-image {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      object-position: center;
+      border-radius: 0;
+      transition: transform 0.3s ease;
+      background: transparent;
+      box-shadow: none;
+      display: block;
+    }
+
+    #vendorLoginModal .vendor-image:hover {
+      transform: scale(1.02);
+    }
+
+    /* Form Section */
+    #vendorLoginModal .vendor-modal-right {
+      background: #ffffff;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 95vh;
+      min-height: 95vh;
+      position: relative;
+      border-radius: 0 32px 32px 0;
+    }
+
+    #vendorLoginModal .vendor-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      background: #ef4444;
+      border: 2px solid #dc2626;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.9;
+      transition: all 0.3s ease;
+      color: #ffffff !important;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-close {
+      background: #ef4444 !important;
+      border-color: #dc2626 !important;
+      color: #ffffff !important;
+    }
+
+    #vendorLoginModal .vendor-modal-close:hover {
+      opacity: 1;
+      background: #dc2626;
+      border-color: #b91c1c;
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    #vendorLoginModal .vendor-modal-close:active {
+      transform: scale(0.95);
+    }
+
+    #vendorLoginModal .login-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      width: 100%;
+      max-width: 380px;
+      padding: 0.5rem 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    #vendorLoginModal .login-header h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+    }
+
+    #vendorLoginModal .login-header p {
+      color: #000000;
+      font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.5;
+      margin-bottom: 0;
+      opacity: 1;
+      visibility: visible;
+      display: block;
+      min-height: 1.5rem;
+      white-space: nowrap;
+      overflow: visible;
+    }
+
+    #vendorLoginModal .form-group {
+      margin-bottom: 1rem;
+      width: 100%;
+      max-width: 380px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    #vendorLoginModal .form-label {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 0.5rem;
+      display: block;
+      font-size: 0.9rem;
+      letter-spacing: 0.025em;
+      line-height: 1.4;
+    }
+
+    #vendorLoginModal .input-container {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    #vendorLoginModal .form-control {
+      width: 100%;
+      padding: 0.875rem 1rem 0.875rem 2.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: #f9fafb;
+      min-height: 48px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      line-height: 1.4;
+    }
+
+    #vendorLoginModal .form-control:hover {
+      border-color: #3B82F6;
+      background: #ffffff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #vendorLoginModal .form-control:focus {
+      outline: none;
+      border-color: #3B82F6;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+
+    #vendorLoginModal .form-control:focus+.material-icons {
+      color: #6b7280;
+    }
+
+    #vendorLoginModal .input-container .material-icons {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      font-size: 1.1rem;
+      transition: color 0.3s ease;
+      z-index: 1;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #vendorLoginModal .input-container .eye-icon {
+      pointer-events: auto !important;
+      color: #6b7280 !important;
+      transition: color 0.3s ease;
+    }
+
+    #vendorLoginModal .input-container .eye-icon:hover {
+      color: #374151 !important;
+    }
+
+    #vendorLoginModal .btn-primary {
+      width: 100%;
+      max-width: 380px;
+      padding: 0.75rem 1.5rem;
+      background: #3B82F6;
+      border: 2px solid #3B82F6;
+      border-radius: 20px;
+      color: #ffffff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      min-height: 48px;
+      letter-spacing: 0.025em;
+      line-height: 1.4;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #vendorLoginModal .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      background: #3B82F6;
+      border-color: #3B82F6;
+    }
+
+    #vendorLoginModal .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    #vendorLoginModal .btn-primary:focus {
+      outline: 2px solid #6b7280;
+      outline-offset: 2px;
+    }
+
+    #vendorLoginModal .forgot-password {
+      text-align: center;
+      margin-top: 0.75rem;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      justify-content: center;
+    }
+
+    #vendorLoginModal .forgot-password a {
+      color: #6b7280;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 52px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    #vendorLoginModal .forgot-password a:hover {
+      color: #3B82F6;
+      background: #eef2ff;
+    }
+
+    #vendorLoginModal .forgot-password a:focus {
+      outline: 2px solid #6b7280;
+      outline-offset: 2px;
+    }
+
+    #vendorLoginModal .text-center {
+      margin-top: 1.25rem;
+      text-align: center;
+      width: 100%;
+      max-width: 380px;
+      margin-left: auto;
+      margin-right: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    #vendorLoginModal .text-muted {
+      color: #000000;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      text-align: center;
+      width: 100%;
+    }
+
+    #vendorLoginModal .btn-outline-primary {
+      width: 100%;
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: 2px solid #3B82F6;
+      border-radius: 20px;
+      color: #3B82F6;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      min-height: 48px;
+      letter-spacing: 0.025em;
+      line-height: 1.4;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    #vendorLoginModal .btn-outline-primary:hover {
+      background: #3B82F6;
+      color: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    #vendorLoginModal .btn-outline-primary:active {
+      transform: translateY(0);
+    }
+
+    #vendorLoginModal .btn-outline-primary:focus {
+      outline: 2px solid #6b7280;
+      outline-offset: 2px;
+    }
+
+    /* Responsive Design for Vendor Modal */
+    @media (max-width: 1024px) {
       #vendorLoginModal .vendor-modal-content {
-        background: #ffffff !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 32px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 0;
-        overflow: hidden;
-        min-height: 95vh;
-        max-width: 98vw;
-        width: 98vw;
-        height: 95vh;
-      }
-      
-      /* Force light mode for all vendor modal elements */
-      #vendorLoginModal * {
-        color: inherit !important;
-      }
-      
-      /* Override dark mode for vendor modal */
-      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-content,
-      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-left,
-      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-right {
-        background: #ffffff !important;
-        color: #111827 !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .login-header h2,
-      [data-bs-theme="dark"] #vendorLoginModal .login-header p,
-      [data-bs-theme="dark"] #vendorLoginModal .form-label,
-      [data-bs-theme="dark"] #vendorLoginModal .text-muted {
-        color: #111827 !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .form-control {
-        background: #ffffff !important;
-        border-color: #e5e7eb !important;
-        color: #000000 !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .form-control:focus {
-        background: #ffffff !important;
-        border-color: #3B82F6 !important;
-        color: #000000 !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .btn-primary {
-        background: #3B82F6 !important;
-        border-color: #3B82F6 !important;
-        color: #ffffff !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .btn-outline-primary {
-        background: transparent !important;
-        border-color: #3B82F6 !important;
-        color: #3B82F6 !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .forgot-password a {
-        color: #6b7280 !important;
-      }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .input-container .material-icons {
-        color: #000000 !important;
-      }
-      #vendorLoginModal .row { margin: 0; }
-      
-      /* Image Section */
-      #vendorLoginModal .vendor-modal-left {
-        background: #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        min-height: 95vh;
-        height: 95vh;
-        position: relative;
-        overflow: hidden;
-        border-radius: 32px 0 0 32px;
-      }
-      
-      #vendorLoginModal .vendor-image-wrapper {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        padding: 0;
-      }
-      
-      #vendorLoginModal .vendor-image {
-        width: 100%;
-        height: 100%;
         max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-        object-position: center;
-        border-radius: 0;
-        transition: transform 0.3s ease;
-        background: transparent;
-        box-shadow: none;
-        display: block;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 28px;
       }
-      
-      #vendorLoginModal .vendor-image:hover {
-        transform: scale(1.02);
-      }
-      
-      /* Form Section */
+
+      #vendorLoginModal .vendor-modal-left,
       #vendorLoginModal .vendor-modal-right {
-        background: #ffffff;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        height: 95vh;
-        min-height: 95vh;
-        position: relative;
-        border-radius: 0 32px 32px 0;
+        min-height: 50%;
+        height: 50vh;
       }
-      
-      #vendorLoginModal .vendor-modal-close {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        z-index: 1000;
-        background: #ef4444;
-        border: 2px solid #dc2626;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.9;
-        transition: all 0.3s ease;
-        color: #ffffff !important;
-        font-size: 18px;
-        font-weight: bold;
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+
+      #vendorLoginModal .vendor-modal-left {
+        border-radius: 28px 28px 0 0;
       }
-      
-      [data-bs-theme="dark"] #vendorLoginModal .vendor-modal-close {
-        background: #ef4444 !important;
-        border-color: #dc2626 !important;
-        color: #ffffff !important;
+
+      #vendorLoginModal .vendor-modal-right {
+        border-radius: 0 0 28px 28px;
       }
-      
-      #vendorLoginModal .vendor-modal-close:hover {
-        opacity: 1;
-        background: #dc2626;
-        border-color: #b91c1c;
-        transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    @media (max-width: 768px) {
+      #vendorLoginModal .vendor-modal-content {
+        border-radius: 24px;
+        width: 100vw;
+        height: 100vh;
+        min-height: 100vh;
       }
-      
-      #vendorLoginModal .vendor-modal-close:active {
-        transform: scale(0.95);
+
+      #vendorLoginModal .vendor-modal-right {
+        padding: 1rem;
       }
-      
-      #vendorLoginModal .login-header {
-        text-align: center;
-        margin-bottom: 1.5rem;
-        width: 100%;
-        max-width: 380px;
-        padding: 0.5rem 0;
-        position: relative;
-        z-index: 10;
+
+      #vendorLoginModal .vendor-modal-left {
+        min-height: 200px;
+        height: 200px;
+        border-radius: 24px 24px 0 0;
       }
-      
+
+      #vendorLoginModal .vendor-modal-right {
+        min-height: calc(100vh - 200px);
+        height: calc(100vh - 200px);
+        border-radius: 0 0 24px 24px;
+      }
+
       #vendorLoginModal .login-header h2 {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #111827;
-        margin-bottom: 0.75rem;
-        letter-spacing: -0.025em;
-        line-height: 1.2;
-      }
-      
-      #vendorLoginModal .login-header p {
-        color: #000000;
-        font-size: 1rem;
-        font-weight: 500;
-        line-height: 1.5;
-        margin-bottom: 0;
-        opacity: 1;
-        visibility: visible;
-        display: block;
-        min-height: 1.5rem;
-        white-space: nowrap;
-        overflow: visible;
-      }
-      
-      #vendorLoginModal .form-group {
-        margin-bottom: 1rem;
-        width: 100%;
-        max-width: 380px;
-        text-align: left;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-      }
-      
-      #vendorLoginModal .form-label {
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 0.5rem;
-        display: block;
-        font-size: 0.9rem;
-        letter-spacing: 0.025em;
-        line-height: 1.4;
-      }
-      
-      #vendorLoginModal .input-container {
-        position: relative;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-      }
-      
-      #vendorLoginModal .form-control {
-        width: 100%;
-        padding: 0.875rem 1rem 0.875rem 2.75rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        background: #f9fafb;
-        min-height: 48px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        font-weight: 400;
-        letter-spacing: 0.025em;
-        line-height: 1.4;
-      }
-      
-      #vendorLoginModal .form-control:hover {
-        border-color: #3B82F6;
-        background: #ffffff;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
-      
-      #vendorLoginModal .form-control:focus {
-        outline: none;
-        border-color: #3B82F6;
-        background: #ffffff;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05);
-        transform: translateY(-1px);
-      }
-      
-      #vendorLoginModal .form-control:focus + .material-icons {
-        color: #6b7280;
-      }
-      
-      #vendorLoginModal .input-container .material-icons {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #9ca3af;
-        font-size: 1.1rem;
-        transition: color 0.3s ease;
-        z-index: 1;
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      #vendorLoginModal .input-container .eye-icon {
-        pointer-events: auto !important;
-        color: #6b7280 !important;
-        transition: color 0.3s ease;
-      }
-      
-      #vendorLoginModal .input-container .eye-icon:hover {
-        color: #374151 !important;
-      }
-      
-      #vendorLoginModal .btn-primary {
-        width: 100%;
-        max-width: 380px;
-        padding: 0.75rem 1.5rem;
-        background: #3B82F6;
-        border: 2px solid #3B82F6;
-        border-radius: 20px;
-        color: #ffffff;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-        min-height: 48px;
-        letter-spacing: 0.025em;
-        line-height: 1.4;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-      
-      #vendorLoginModal .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-        background: #3B82F6;
-        border-color: #3B82F6;
-      }
-      
-      #vendorLoginModal .btn-primary:active {
-        transform: translateY(0);
-      }
-      
-      #vendorLoginModal .btn-primary:focus {
-        outline: 2px solid #6b7280;
-        outline-offset: 2px;
-      }
-      
-      #vendorLoginModal .forgot-password {
-        text-align: center;
-        margin-top: 0.75rem;
-        width: 100%;
-        max-width: 380px;
-        display: flex;
-        justify-content: center;
-      }
-      
-      #vendorLoginModal .forgot-password a {
-        color: #6b7280;
-        text-decoration: none;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        padding: 0.75rem 1.5rem;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        min-height: 52px;
-        font-size: 0.95rem;
-        line-height: 1.4;
-        width: 100%;
-        box-sizing: border-box;
-      }
-      
-      #vendorLoginModal .forgot-password a:hover {
-        color: #3B82F6;
-        background: #eef2ff;
-      }
-      
-      #vendorLoginModal .forgot-password a:focus {
-        outline: 2px solid #6b7280;
-        outline-offset: 2px;
-      }
-      
-      #vendorLoginModal .text-center {
-        margin-top: 1.25rem;
-        text-align: center;
-        width: 100%;
-        max-width: 380px;
-        margin-left: auto;
-        margin-right: auto;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-      }
-      
-      #vendorLoginModal .text-muted {
-        color: #000000;
-        margin-bottom: 1rem;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        text-align: center;
-        width: 100%;
-      }
-      
-      #vendorLoginModal .btn-outline-primary {
-        width: 100%;
-        padding: 0.75rem 1.5rem;
-        background: transparent;
-        border: 2px solid #3B82F6;
-        border-radius: 20px;
-        color: #3B82F6;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        text-decoration: none;
-        min-height: 48px;
-        letter-spacing: 0.025em;
-        line-height: 1.4;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-      }
-      
-      #vendorLoginModal .btn-outline-primary:hover {
-        background: #3B82F6;
-        color: #ffffff;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-      }
-      
-      #vendorLoginModal .btn-outline-primary:active {
-        transform: translateY(0);
-      }
-      
-      #vendorLoginModal .btn-outline-primary:focus {
-        outline: 2px solid #6b7280;
-        outline-offset: 2px;
-      }
-      
-      /* Responsive Design for Vendor Modal */
-      @media (max-width: 1024px) {
-        #vendorLoginModal .vendor-modal-content {
-          max-width: 100%;
-          width: 100vw;
-          height: 100vh;
-          border-radius: 28px;
-        }
-        #vendorLoginModal .vendor-modal-left,
-        #vendorLoginModal .vendor-modal-right {
-          min-height: 50%;
-          height: 50vh;
-        }
-        #vendorLoginModal .vendor-modal-left {
-          border-radius: 28px 28px 0 0;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          border-radius: 0 0 28px 28px;
-        }
-      }
-      
-      @media (max-width: 768px) {
-        #vendorLoginModal .vendor-modal-content {
-          border-radius: 24px;
-          width: 100vw;
-          height: 100vh;
-          min-height: 100vh;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          padding: 1rem;
-        }
-        #vendorLoginModal .vendor-modal-left {
-          min-height: 200px;
-          height: 200px;
-          border-radius: 24px 24px 0 0;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          min-height: calc(100vh - 200px);
-          height: calc(100vh - 200px);
-          border-radius: 0 0 24px 24px;
-        }
-        #vendorLoginModal .login-header h2 {
         font-size: 1.5rem;
-        }
-        #vendorLoginModal .form-control {
-          padding: 1rem 1.25rem 1rem 3rem;
-          font-size: 1rem;
-          min-height: 52px;
-        }
-        #vendorLoginModal #vendor-form-modal {
-          max-width: 380px;
-        }
-        #vendorLoginModal .btn-primary,
-        #vendorLoginModal .btn-outline-primary {
-          padding: 1rem 1.5rem;
-          font-size: 1rem;
-          min-height: 56px;
       }
+
+      #vendorLoginModal .form-control {
+        padding: 1rem 1.25rem 1rem 3rem;
+        font-size: 1rem;
+        min-height: 52px;
+      }
+
+      #vendorLoginModal #vendor-form-modal {
+        max-width: 380px;
+      }
+
+      #vendorLoginModal .btn-primary,
+      #vendorLoginModal .btn-outline-primary {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+        min-height: 56px;
+      }
+
       #vendorLoginModal .forgot-password a {
-          padding: 0.9rem 1.25rem;
-          font-size: 0.95rem;
-          min-height: 52px;
-        }
-      }
-      
-      @media (max-width: 480px) {
-        #vendorLoginModal .vendor-modal-content {
-          border-radius: 20px;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          padding: 1.5rem 1rem;
-        }
-        #vendorLoginModal .vendor-modal-left {
-          min-height: 180px;
-          border-radius: 20px 20px 0 0;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          min-height: calc(100vh - 260px);
-          border-radius: 0 0 20px 20px;
-        }
-        #vendorLoginModal .login-header h2 {
-          font-size: 1.25rem;
-        }
-        #vendorLoginModal .form-control {
-          padding: 0.875rem 1rem 0.875rem 2.75rem;
+        padding: 0.9rem 1.25rem;
         font-size: 0.95rem;
-          min-height: 52px;
-        }
-        #vendorLoginModal #vendor-form-modal {
-          max-width: 380px;
-        }
-        #vendorLoginModal .btn-primary,
-        #vendorLoginModal .btn-outline-primary {
-          padding: 0.875rem 1.25rem;
-          font-size: 0.95rem;
-          min-height: 52px;
-        }
-        #vendorLoginModal .forgot-password a {
-          padding: 0.875rem 1.25rem;
-          font-size: 0.95rem;
-          min-height: 52px;
-        }
-        /* Ensure close button is always at corner for mobile */
-        #vendorLoginModal .vendor-modal-close {
-          top: 0.75rem !important;
-          right: 0.75rem !important;
-          width: 32px !important;
-          height: 32px !important;
-          font-size: 16px !important;
-        }
+        min-height: 52px;
       }
-      
-      @media (max-width: 360px) {
-        #vendorLoginModal .vendor-modal-content {
-          border-radius: 16px;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          padding: 1.5rem 0.75rem;
-        }
-        #vendorLoginModal .vendor-modal-left {
-          min-height: 160px;
-          border-radius: 16px 16px 0 0;
-        }
-        #vendorLoginModal .vendor-modal-right {
-          min-height: calc(100vh - 240px);
-          border-radius: 0 0 16px 16px;
-        }
-        #vendorLoginModal .login-header h2 {
-          font-size: 1.1rem;
-        }
-        #vendorLoginModal .form-control {
-          padding: 0.75rem 0.875rem 0.75rem 2.5rem;
-          font-size: 0.9rem;
-          min-height: 48px;
-        }
-        #vendorLoginModal #vendor-form-modal {
-          max-width: 380px;
-        }
-        #vendorLoginModal .btn-primary,
-        #vendorLoginModal .btn-outline-primary {
-          padding: 0.75rem 1rem;
-          font-size: 0.9rem;
-          min-height: 48px;
-        }
-        #vendorLoginModal .forgot-password a {
-          padding: 0.75rem 1rem;
-          font-size: 0.9rem;
-          min-height: 48px;
-        }
-        /* Ensure close button is always at corner for mobile */
-        #vendorLoginModal .vendor-modal-close {
-          top: 0.5rem !important;
-          right: 0.5rem !important;
-          width: 30px !important;
-          height: 30px !important;
-          font-size: 14px !important;
-        }
-      }
-      
-      /* Full Screen Welcome Animation - Matching test.html */
-      #welcomeScreen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: none;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 99999;
-        transition: opacity 0.5s ease, visibility 0.5s ease;
-      }
+    }
 
-      #welcomeScreen.show {
-        display: flex !important;
-          opacity: 1;
-        visibility: visible;
-      }
-
-      /* Prevent body scroll when animation is showing */
-      body.animation-active {
-        overflow: hidden;
-        position: fixed;
-        width: 100%;
-      }
-
-      #welcomeScreen.hidden {
-        opacity: 0;
-        visibility: hidden;
-      }
-
-      #welcomeScreen .logo-container {
-        margin-bottom: 40px;
-        animation: fadeInDown 0.8s ease;
-      }
-
-      #welcomeScreen .logo {
-        width: 80px;
-        height: 80px;
-        background: white;
+    @media (max-width: 480px) {
+      #vendorLoginModal .vendor-modal-content {
         border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
       }
 
-      #welcomeScreen .logo svg {
-        width: 50px;
-        height: 50px;
-        fill: #667eea;
+      #vendorLoginModal .vendor-modal-right {
+        padding: 1.5rem 1rem;
       }
 
-      #welcomeScreen .welcome-content {
-        text-align: center;
-        color: white;
-        animation: fadeInUp 0.8s ease;
+      #vendorLoginModal .vendor-modal-left {
+        min-height: 180px;
+        border-radius: 20px 20px 0 0;
       }
 
+      #vendorLoginModal .vendor-modal-right {
+        min-height: calc(100vh - 260px);
+        border-radius: 0 0 20px 20px;
+      }
+
+      #vendorLoginModal .login-header h2 {
+        font-size: 1.25rem;
+      }
+
+      #vendorLoginModal .form-control {
+        padding: 0.875rem 1rem 0.875rem 2.75rem;
+        font-size: 0.95rem;
+        min-height: 52px;
+      }
+
+      #vendorLoginModal #vendor-form-modal {
+        max-width: 380px;
+      }
+
+      #vendorLoginModal .btn-primary,
+      #vendorLoginModal .btn-outline-primary {
+        padding: 0.875rem 1.25rem;
+        font-size: 0.95rem;
+        min-height: 52px;
+      }
+
+      #vendorLoginModal .forgot-password a {
+        padding: 0.875rem 1.25rem;
+        font-size: 0.95rem;
+        min-height: 52px;
+      }
+
+      /* Ensure close button is always at corner for mobile */
+      #vendorLoginModal .vendor-modal-close {
+        top: 0.75rem !important;
+        right: 0.75rem !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 16px !important;
+      }
+    }
+
+    @media (max-width: 360px) {
+      #vendorLoginModal .vendor-modal-content {
+        border-radius: 16px;
+      }
+
+      #vendorLoginModal .vendor-modal-right {
+        padding: 1.5rem 0.75rem;
+      }
+
+      #vendorLoginModal .vendor-modal-left {
+        min-height: 160px;
+        border-radius: 16px 16px 0 0;
+      }
+
+      #vendorLoginModal .vendor-modal-right {
+        min-height: calc(100vh - 240px);
+        border-radius: 0 0 16px 16px;
+      }
+
+      #vendorLoginModal .login-header h2 {
+        font-size: 1.1rem;
+      }
+
+      #vendorLoginModal .form-control {
+        padding: 0.75rem 0.875rem 0.75rem 2.5rem;
+        font-size: 0.9rem;
+        min-height: 48px;
+      }
+
+      #vendorLoginModal #vendor-form-modal {
+        max-width: 380px;
+      }
+
+      #vendorLoginModal .btn-primary,
+      #vendorLoginModal .btn-outline-primary {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        min-height: 48px;
+      }
+
+      #vendorLoginModal .forgot-password a {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        min-height: 48px;
+      }
+
+      /* Ensure close button is always at corner for mobile */
+      #vendorLoginModal .vendor-modal-close {
+        top: 0.5rem !important;
+        right: 0.5rem !important;
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 14px !important;
+      }
+    }
+
+    /* Full Screen Welcome Animation - Matching test.html */
+    #welcomeScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 99999;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    #welcomeScreen.show {
+      display: flex !important;
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Prevent body scroll when animation is showing */
+    body.animation-active {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+    }
+
+    #welcomeScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #welcomeScreen .logo-container {
+      margin-bottom: 40px;
+      animation: fadeInDown 0.8s ease;
+    }
+
+    #welcomeScreen .logo {
+      width: 80px;
+      height: 80px;
+      background: white;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    #welcomeScreen .logo svg {
+      width: 50px;
+      height: 50px;
+      fill: #667eea;
+    }
+
+    #welcomeScreen .welcome-content {
+      text-align: center;
+      color: white;
+      animation: fadeInUp 0.8s ease;
+    }
+
+    #welcomeScreen .welcome-content h1 {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 15px;
+    }
+
+    #welcomeScreen .welcome-content p {
+      font-size: 18px;
+      opacity: 0.9;
+      margin-bottom: 40px;
+    }
+
+    /* Loading Animation */
+    #welcomeScreen .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #welcomeScreen .loading-dots {
+      display: flex;
+      gap: 10px;
+    }
+
+    #welcomeScreen .dot {
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    #welcomeScreen .dot:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    #welcomeScreen .dot:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    /* Progress Bar */
+    #welcomeScreen .progress-bar {
+      width: 250px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #welcomeScreen .progress-fill {
+      height: 100%;
+      background: white;
+      border-radius: 10px;
+      animation: progress 2s ease-in-out;
+    }
+
+    /* Animations */
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0);
+        opacity: 0.5;
+      }
+
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes progress {
+      0% {
+        width: 0%;
+      }
+
+      100% {
+        width: 100%;
+      }
+    }
+
+    /* Responsive Design for Welcome Screen */
+    @media (max-width: 768px) {
       #welcomeScreen .welcome-content h1 {
-        font-size: 32px;
-        font-weight: 600;
-        margin-bottom: 15px;
+        font-size: 24px;
       }
 
       #welcomeScreen .welcome-content p {
-        font-size: 18px;
-        opacity: 0.9;
-        margin-bottom: 40px;
+        font-size: 16px;
       }
 
-      /* Loading Animation */
-      #welcomeScreen .loading-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
+      #welcomeScreen .logo {
+        width: 60px;
+        height: 60px;
       }
 
-      #welcomeScreen .loading-dots {
-        display: flex;
-        gap: 10px;
+      #welcomeScreen .logo svg {
+        width: 35px;
+        height: 35px;
+      }
+    }
+
+    /* Fallback: show emoji if Material Icons font fails */
+    #vendorLoginModal .brand-logo .material-icons.logo-bolt:empty+.icon-fallback {
+      display: inline;
+    }
+  </style>
+  <script>
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('vendorPassword');
+      const eyeIcon = document.getElementById('togglePassword');
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.textContent = 'visibility_off';
+      } else {
+        passwordInput.type = 'password';
+        eyeIcon.textContent = 'visibility';
+      }
+    }
+
+    function showWelcome(name, isVendor = false) {
+      const welcomeMessage = document.getElementById('welcomeMessage');
+      const welcomeStatusText = document.getElementById('welcomeStatusText');
+      const welcomeScreen = document.getElementById('welcomeScreen');
+
+      if (isVendor) {
+        welcomeMessage.innerHTML = `Welcome to Print Shop Dashboard`;
+        welcomeStatusText.innerHTML = 'Preparing your workspace...';
+      } else {
+        welcomeMessage.innerHTML = `Welcome to Print Shop Dashboard`;
+        welcomeStatusText.innerHTML = 'Preparing your workspace...';
       }
 
-      #welcomeScreen .dot {
-        width: 12px;
-        height: 12px;
-        background: white;
-        border-radius: 50%;
-        animation: bounce 1.4s infinite ease-in-out;
-      }
+      // Prevent body scroll and show animation
+      document.body.classList.add('animation-active');
+      welcomeScreen.style.display = 'flex';
+      welcomeScreen.classList.add('show');
+      welcomeScreen.classList.remove('hidden');
+    }
 
-      #welcomeScreen .dot:nth-child(1) {
-        animation-delay: -0.32s;
-      }
+    function hideWelcomeScreen() {
+      const welcomeScreen = document.getElementById('welcomeScreen');
+      document.body.classList.remove('animation-active');
+      welcomeScreen.classList.add('hidden');
+      setTimeout(() => {
+        welcomeScreen.style.display = 'none';
+      }, 500);
+    }
+    async function vendorLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('vendorEmail').value;
+      const password = document.getElementById('vendorPassword').value;
+      const submitBtn = document.getElementById('vendorSignInBtn');
+      const btnIcon = document.getElementById('vendorBtnIcon');
+      const btnText = document.getElementById('vendorBtnText');
+      submitBtn.disabled = true;
+      btnIcon.textContent = 'hourglass_empty';
+      btnIcon.style.animation = 'spin 1s linear infinite';
+      btnText.innerHTML = '🚀 logging in successfully...';
 
-      #welcomeScreen .dot:nth-child(2) {
-        animation-delay: -0.16s;
-      }
+      try {
+        const response = await fetch('/vendor-login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ email: email, password: password })
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Show welcome screen immediately (full-screen overlay)
+          showWelcome(email || 'Vendor', true);
 
-      /* Progress Bar */
-      #welcomeScreen .progress-bar {
-        width: 250px;
-        height: 4px;
-        background: rgba(255, 255, 255, 0.3);
-        border-radius: 10px;
-        overflow: hidden;
-      }
-
-      #welcomeScreen .progress-fill {
-        height: 100%;
-        background: white;
-        border-radius: 10px;
-        animation: progress 2s ease-in-out;
-      }
-
-      /* Animations */
-      @keyframes fadeInDown {
-        from {
-          opacity: 0;
-          transform: translateY(-30px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(30px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @keyframes bounce {
-        0%, 80%, 100% {
-          transform: scale(0);
-          opacity: 0.5;
-        }
-        40% {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      @keyframes progress {
-        0% {
-          width: 0%;
-        }
-        100% {
-          width: 100%;
-        }
-      }
-
-      /* Responsive Design for Welcome Screen */
-      @media (max-width: 768px) {
-        #welcomeScreen .welcome-content h1 {
-          font-size: 24px;
-        }
-        #welcomeScreen .welcome-content p {
-          font-size: 16px;
-        }
-        #welcomeScreen .logo {
-          width: 60px;
-          height: 60px;
-        }
-        #welcomeScreen .logo svg {
-          width: 35px;
-          height: 35px;
-        }
-      }
-
-      /* Fallback: show emoji if Material Icons font fails */
-      #vendorLoginModal .brand-logo .material-icons.logo-bolt:empty + .icon-fallback {
-        display: inline;
-      }
-    </style>
-    <script>
-      function togglePasswordVisibility() {
-        const passwordInput = document.getElementById('vendorPassword');
-        const eyeIcon = document.getElementById('togglePassword');
-        
-        if (passwordInput.type === 'password') {
-          passwordInput.type = 'text';
-          eyeIcon.textContent = 'visibility_off';
-        } else {
-          passwordInput.type = 'password';
-          eyeIcon.textContent = 'visibility';
-        }
-      }
-
-      function showWelcome(name, isVendor = false) {
-        const welcomeMessage = document.getElementById('welcomeMessage');
-        const welcomeStatusText = document.getElementById('welcomeStatusText');
-        const welcomeScreen = document.getElementById('welcomeScreen');
-        
-        if (isVendor) {
-          welcomeMessage.innerHTML = `Welcome to Print Shop Dashboard`;
-          welcomeStatusText.innerHTML = 'Preparing your workspace...';
-        } else {
-          welcomeMessage.innerHTML = `Welcome to Print Shop Dashboard`;
-          welcomeStatusText.innerHTML = 'Preparing your workspace...';
-        }
-        
-        // Prevent body scroll and show animation
-        document.body.classList.add('animation-active');
-        welcomeScreen.style.display = 'flex';
-        welcomeScreen.classList.add('show');
-        welcomeScreen.classList.remove('hidden');
-      }
-
-      function hideWelcomeScreen() {
-        const welcomeScreen = document.getElementById('welcomeScreen');
-        document.body.classList.remove('animation-active');
-        welcomeScreen.classList.add('hidden');
-        setTimeout(() => {
-          welcomeScreen.style.display = 'none';
-        }, 500);
-      }
-      async function vendorLogin(event) {
-        event.preventDefault();
-        const email = document.getElementById('vendorEmail').value;
-        const password = document.getElementById('vendorPassword').value;
-        const submitBtn = document.getElementById('vendorSignInBtn');
-        const btnIcon = document.getElementById('vendorBtnIcon');
-        const btnText = document.getElementById('vendorBtnText');
-        submitBtn.disabled = true;
-        btnIcon.textContent = 'hourglass_empty';
-        btnIcon.style.animation = 'spin 1s linear infinite';
-            btnText.innerHTML = '🚀 logging in successfully...';
-        
-        try {
-          const response = await fetch('/vendor-login/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ email: email, password: password })
-          });
-          const data = await response.json();
-          if (data.success) {
-            // Show welcome screen immediately (full-screen overlay)
-            showWelcome(email || 'Vendor', true);
-            
-            // Hide the modal after showing animation
-            const modal = bootstrap.Modal.getInstance(document.getElementById('vendorLoginModal'));
-            if (modal) {
-              modal.hide();
-            }
-            
-            // Show animation for max 4 seconds then redirect directly
-            setTimeout(() => {
-              // Clean up and redirect
-              document.body.classList.remove('animation-active');
-              window.location.href = '/vendordashboard/';
-            }, 4000); // Max 4 seconds as requested
-          } else {
-            // Clean up on login failure
-            document.body.classList.remove('animation-active');
-            hideWelcomeScreen();
-            submitBtn.disabled = false;
-            btnIcon.textContent = 'print';
-            btnIcon.style.animation = 'none';
-            btnText.innerHTML = 'Print shop login';
-            alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
+          // Hide the modal after showing animation
+          const modal = bootstrap.Modal.getInstance(document.getElementById('vendorLoginModal'));
+          if (modal) {
+            modal.hide();
           }
-        } catch (err) {
-          console.error(err);
-          // Clean up on error
+
+          // Show animation for max 4 seconds then redirect directly
+          setTimeout(() => {
+            // Clean up and redirect
+            document.body.classList.remove('animation-active');
+            window.location.href = '/vendordashboard/';
+          }, 4000); // Max 4 seconds as requested
+        } else {
+          // Clean up on login failure
           document.body.classList.remove('animation-active');
           hideWelcomeScreen();
           submitBtn.disabled = false;
           btnIcon.textContent = 'print';
           btnIcon.style.animation = 'none';
           btnText.innerHTML = 'Print shop login';
-          alert('🚫 Connection failed. Please try again.');
+          alert('🚫 Access denied: ' + (data.message || 'Invalid credentials'));
         }
+      } catch (err) {
+        console.error(err);
+        // Clean up on error
+        document.body.classList.remove('animation-active');
+        hideWelcomeScreen();
+        submitBtn.disabled = false;
+        btnIcon.textContent = 'print';
+        btnIcon.style.animation = 'none';
+        btnText.innerHTML = 'Print shop login';
+        alert('🚫 Connection failed. Please try again.');
       }
-    function resetVendorPassword() {
-      // Navigate to forgot password page instead of showing dialog
-      window.location.href = '/forgot-password/';
     }
-      function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-          const cookies = document.cookie.split(';');
-          for (let cookie of cookies) {
-            cookie = cookie.trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-              break;
-            }
+    function resetVendorPassword() {
+      const email = prompt('🔐 Enter your registered email for password reset:');
+      if (email) {
+        alert('📧 Reset instructions sent to your email!');
+      }
+    }
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+          cookie = cookie.trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
           }
         }
-        return cookieValue;
       }
-      // Reset modal on close
-      document.addEventListener('DOMContentLoaded', function() {
-        var vendorModal = document.getElementById('vendorLoginModal');
-        if (vendorModal) {
-          vendorModal.addEventListener('hidden.bs.modal', function () {
-            document.getElementById('vendor-form-modal').style.display = '';
-            document.getElementById('vendorSignInBtn').disabled = false;
-            document.getElementById('vendorBtnIcon').textContent = 'print';
-            document.getElementById('vendorBtnIcon').style.animation = 'none';
-            document.getElementById('vendorBtnText').innerHTML = 'Print shop login';
-            document.getElementById('vendorEmail').value = '';
-            document.getElementById('vendorPassword').value = '';
+      return cookieValue;
+    }
+    // Reset modal on close
+    document.addEventListener('DOMContentLoaded', function () {
+      var vendorModal = document.getElementById('vendorLoginModal');
+      if (vendorModal) {
+        vendorModal.addEventListener('hidden.bs.modal', function () {
+          document.getElementById('vendor-form-modal').style.display = '';
+          document.getElementById('vendorSignInBtn').disabled = false;
+          document.getElementById('vendorBtnIcon').textContent = 'print';
+          document.getElementById('vendorBtnIcon').style.animation = 'none';
+          document.getElementById('vendorBtnText').innerHTML = 'Print shop login';
+          document.getElementById('vendorEmail').value = '';
+          document.getElementById('vendorPassword').value = '';
+        });
+      }
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+    crossorigin="anonymous"></script>
+
+  <script>
+    // Theme Toggle Functionality
+    function toggleTheme() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-bs-theme') || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+      html.setAttribute('data-bs-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+
+      // Update theme icon
+      const themeIcon = document.querySelector('.theme-icon');
+      if (themeIcon) {
+        themeIcon.className = newTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+      }
+    }
+
+    // Initialize theme
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-bs-theme', savedTheme);
+
+      const themeIcon = document.querySelector('.theme-icon');
+      themeIcon.className = savedTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+    }
+
+    // Smooth scrolling
+    function scrollToSection(target) {
+      document.querySelector(target).scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    // Scroll animations
+    function initializeScrollAnimations() {
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate');
+          }
+        });
+      }, observerOptions);
+
+      document.querySelectorAll('.fade-in-up').forEach(el => {
+        observer.observe(el);
+      });
+    }
+
+    // Smooth navbar behavior
+    function initializeNavbar() {
+      let lastScrollTop = 0;
+      const navbar = document.querySelector('.navbar');
+
+      window.addEventListener('scroll', () => {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+        if (scrollTop > 100) {
+          navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+          if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
+            navbar.style.background = 'rgba(15, 15, 35, 0.98)';
+          }
+        } else {
+          navbar.style.background = 'var(--navbar-bg)';
+        }
+
+        lastScrollTop = scrollTop;
+      });
+    }
+
+    // Navigation link clicks
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
           });
         }
       });
-    </script>
+    });
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    // Initialize everything when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function () {
+      initializeTheme();
+      initializeScrollAnimations();
+      initializeNavbar();
 
-    <script>
-        // Theme Toggle Functionality
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-bs-theme') || 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-            html.setAttribute('data-bs-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-
-            // Update theme icon
-            const themeIcon = document.querySelector('.theme-icon');
-            if (themeIcon) {
-              themeIcon.className = newTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-            }
-        }
-
-        // Initialize theme
-        function initializeTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-bs-theme', savedTheme);
-
-            const themeIcon = document.querySelector('.theme-icon');
-            themeIcon.className = savedTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-        }
-
-        // Smooth scrolling
-        function scrollToSection(target) {
-            document.querySelector(target).scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-
-        // Scroll animations
-        function initializeScrollAnimations() {
-            const observerOptions = {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
-            };
-
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('animate');
-                    }
-                });
-            }, observerOptions);
-
-            document.querySelectorAll('.fade-in-up').forEach(el => {
-                observer.observe(el);
-            });
-        }
-
-        // Smooth navbar behavior
-        function initializeNavbar() {
-            let lastScrollTop = 0;
-            const navbar = document.querySelector('.navbar');
-
-            window.addEventListener('scroll', () => {
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-
-                if (scrollTop > 100) {
-                    navbar.style.background = 'rgba(255, 255, 255, 0.98)';
-                    if (document.documentElement.getAttribute('data-bs-theme') === 'dark') {
-                        navbar.style.background = 'rgba(15, 15, 35, 0.98)';
-                    }
-                } else {
-                    navbar.style.background = 'var(--navbar-bg)';
-                }
-
-                lastScrollTop = scrollTop;
-            });
-        }
-
-        // Navigation link clicks
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
+      // Close mobile menu when clicking on a link
+      document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          const navbarCollapse = document.querySelector('.navbar-collapse');
+          if (navbarCollapse.classList.contains('show')) {
+            bootstrap.Collapse.getInstance(navbarCollapse).hide();
+          }
         });
+      });
 
-        // Initialize everything when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeTheme();
-            initializeScrollAnimations();
-            initializeNavbar();
+      // Add loading animation to buttons
+      document.querySelectorAll('.btn-gradient').forEach(btn => {
+        btn.addEventListener('click', function () {
+          const originalText = this.innerHTML;
+          this.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>Loading<span class="loading-dots"></span>';
 
-            // Close mobile menu when clicking on a link
-            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
-                link.addEventListener('click', () => {
-                    const navbarCollapse = document.querySelector('.navbar-collapse');
-                    if (navbarCollapse.classList.contains('show')) {
-                        bootstrap.Collapse.getInstance(navbarCollapse).hide();
-                    }
-                });
-            });
-
-            // Add loading animation to buttons
-            document.querySelectorAll('.btn-gradient').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>Loading<span class="loading-dots"></span>';
-
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                    }, 2000);
-                });
-            });
+          setTimeout(() => {
+            this.innerHTML = originalText;
+          }, 2000);
         });
+      });
+    });
 
-        // Performance optimization: Reduce motion for users who prefer it
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            document.documentElement.style.setProperty('--transition-smooth', 'all 0.1s ease');
-            document.documentElement.style.setProperty('--transition-bounce', 'all 0.1s ease');
-            document.documentElement.style.setProperty('--transition-elastic', 'all 0.1s ease');
+    // Performance optimization: Reduce motion for users who prefer it
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.documentElement.style.setProperty('--transition-smooth', 'all 0.1s ease');
+      document.documentElement.style.setProperty('--transition-bounce', 'all 0.1s ease');
+      document.documentElement.style.setProperty('--transition-elastic', 'all 0.1s ease');
+    }
+
+    // Add keyboard navigation support
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        const navbarCollapse = document.querySelector('.navbar-collapse');
+        if (navbarCollapse.classList.contains('show')) {
+          bootstrap.Collapse.getInstance(navbarCollapse).hide();
         }
+      }
+    });
 
-        // Add keyboard navigation support
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const navbarCollapse = document.querySelector('.navbar-collapse');
-                if (navbarCollapse.classList.contains('show')) {
-                    bootstrap.Collapse.getInstance(navbarCollapse).hide();
-                }
-            }
-        });
+    // Add focus indicators for accessibility
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        document.body.classList.add('keyboard-navigation');
+      }
+    });
 
-        // Add focus indicators for accessibility
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Tab') {
-                document.body.classList.add('keyboard-navigation');
-            }
-        });
+    document.addEventListener('mousedown', function () {
+      document.body.classList.remove('keyboard-navigation');
+    });
+  </script>
 
-        document.addEventListener('mousedown', function() {
-            document.body.classList.remove('keyboard-navigation');
-        });
-    </script>
-
-    <style>
-        /* Keyboard navigation focus styles */
-        .keyboard-navigation *:focus {
-            outline: 3px solid var(--primary-gradient) !important;
-            outline-offset: 2px !important;
-        }
-    </style>
+  <style>
+    /* Keyboard navigation focus styles */
+    .keyboard-navigation *:focus {
+      outline: 3px solid var(--primary-gradient) !important;
+      outline-offset: 2px !important;
+    }
+  </style>
 </body>
+
 </html>
