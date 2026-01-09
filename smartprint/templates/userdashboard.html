@@ -11996,9 +11996,9 @@
           // For desktop devices, always show message to enter shop name (laptop location doesn't work properly)
           // Show message for desktop devices to enter shop name near their location on every service modal click
           console.log('💻 Desktop device detected - showing shop name entry message');
-          // Show message every time (as requested) - laptop location doesn't work properly
+          // Show custom modal instead of alert (as requested)
           setTimeout(() => {
-            alert('📱 Desktop Device Detected\n\nLaptop location may not work properly. Please enter the shop name near your location when selecting a print shop.\n\nYou can search for shops by name in the shop selection menu.');
+            showDesktopDeviceModal();
           }, 100); // Small delay to ensure modal opens smoothly
           // Continue to open modal - don't block
         }
@@ -23092,7 +23092,7 @@
       if (desktopMode) {
         console.log('💻 Desktop device detected - showing shop name entry message for document print modal');
         setTimeout(() => {
-          alert('📱 Desktop Device Detected\n\nLaptop location may not work properly. Please enter the shop name near your location when selecting a print shop.\n\nYou can search for shops by name in the shop selection menu.');
+          showDesktopDeviceModal();
         }, 100); // Small delay to ensure modal opens smoothly
       }
       
@@ -25742,6 +25742,29 @@
           throw new Error('Invalid amount. Please calculate price again and ensure the order summary shows a valid amount.');
         }
         
+        // CRITICAL: Validate that formData has files before proceeding
+        const fileCountInFormData = formData.get('file_count');
+        const hasFiles = formData.has('file_0');
+        console.log('🔍 FormData validation before payment:', {
+          file_count: fileCountInFormData,
+          has_file_0: hasFiles,
+          has_settings_0: formData.has('settings_0'),
+          vendor_id: formData.get('vendor_id'),
+          user_email: formData.get('user_email'),
+          service_type: formData.get('settings_0') ? JSON.parse(formData.get('settings_0')).service_type : 'unknown'
+        });
+        
+        if (!fileCountInFormData || parseInt(fileCountInFormData) <= 0 || !hasFiles) {
+          console.error('❌ No files in formData! Cannot proceed with payment.');
+          alert('Error: No files found. Please upload files again and try again.');
+          hidePaymentProcessingState();
+          if (confirmPayBtn) {
+            confirmPayBtn.disabled = false;
+            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+          }
+          throw new Error('No files in formData. Please upload files again.');
+        }
+        
         const amountPaise = Math.round(totalAmountRupees * 100);
 
         // 1) Create Razorpay order from server
@@ -25780,22 +25803,67 @@
           order_id: orderData.order.id,
           handler: async function (paymentResponse) {
             try {
+              console.log('✅ Razorpay payment handler called!', {
+                payment_id: paymentResponse.razorpay_payment_id,
+                order_id: paymentResponse.razorpay_order_id,
+                serviceType: serviceType,
+                isPrintModal: isPrintModal
+              });
+              
               // Append payment details to form data
               formData.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
               formData.append('razorpay_order_id', paymentResponse.razorpay_order_id);
               formData.append('razorpay_signature', paymentResponse.razorpay_signature);
 
+              // CRITICAL: Verify formData has files before sending
+              const fileCount = formData.get('file_count');
+              console.log('📦 FormData verification:', {
+                file_count: fileCount,
+                has_file_0: formData.has('file_0'),
+                has_settings_0: formData.has('settings_0'),
+                vendor_id: formData.get('vendor_id'),
+                user_email: formData.get('user_email')
+              });
+
               // 3) Verify payment on server and upload files atomically (blocking now to avoid false positives)
+              // CRITICAL: Documents are stored INSTANTLY in R2 and database after payment verification
+              console.log('💳 Payment successful, storing documents instantly...');
+              console.log('📤 Sending POST request to /payments/verify/');
+              
               const verifyResp = await fetch('/payments/verify/', {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-CSRFToken': getCookie('csrftoken') }
               });
+              
+              console.log('📥 Payment verification response received:', {
+                status: verifyResp.status,
+                statusText: verifyResp.statusText,
+                ok: verifyResp.ok
+              });
 
               const verifyData = await safeParseJson(verifyResp);
+              
+              console.log('📊 Payment verification response data:', {
+                success: verifyData.success,
+                files_processed: verifyData.files_processed,
+                files_failed: verifyData.files_failed,
+                token: verifyData.token,
+                error: verifyData.error
+              });
+              
               if (!verifyResp.ok || !verifyData.success) {
+                console.error('❌ Payment verification failed:', verifyData.error || 'Unknown error');
                 throw new Error(verifyData.error || 'Payment verification failed');
               }
+
+              // Documents are now stored in R2 and database (vendor_print_jobs and user_print_jobs tables)
+              console.log('✅ Documents stored instantly in database:', {
+                files_processed: verifyData.files_processed,
+                files_failed: verifyData.files_failed,
+                token: verifyData.token,
+                message: 'Check User_print_jobs table in database to verify storage'
+              });
 
               hidePaymentProcessingState();
 
@@ -25895,6 +25963,15 @@
           throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
         }
         
+        // CRITICAL: Log before opening Razorpay to ensure formData is ready
+        console.log('🚀 Opening Razorpay payment gateway...', {
+          serviceType: serviceType,
+          isPrintModal: isPrintModal,
+          fileCount: formData.get('file_count'),
+          amountPaise: amountPaise,
+          hasFiles: formData.has('file_0')
+        });
+        
         const rzp = new Razorpay(options);
         
         // Handle payment failure
@@ -25965,9 +26042,11 @@
 
         // Open Razorpay with error handling for storage access issues
         try {
+          console.log('🎯 Opening Razorpay checkout...');
           rzp.open();
+          console.log('✅ Razorpay checkout opened successfully');
         } catch (rzpError) {
-          console.error('Error opening Razorpay:', rzpError);
+          console.error('❌ Error opening Razorpay:', rzpError);
           // If it's a storage access error, provide helpful message
           if (rzpError.message && rzpError.message.includes('storage')) {
             alert('Payment gateway cannot access browser storage. Please check your browser settings and allow cookies/storage for this site, then try again.');
@@ -25981,6 +26060,16 @@
           }
           throw rzpError;
         }
+        
+        // Add handler for payment modal dismissal (user closes without paying)
+        rzp.on('payment.cancel', function() {
+          console.log('⚠️ Payment cancelled by user');
+          hidePaymentProcessingState();
+          if (confirmPayBtn) {
+            confirmPayBtn.disabled = false;
+            confirmPayBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+          }
+        });
       } catch (error) {
         console.error('Error submitting print job:', error);
         hidePaymentProcessingState();
@@ -27296,6 +27385,21 @@
     </div>
   </div>
 
+  <!-- Desktop Device Modal - Small & Professional -->
+  <div id="desktopDeviceModal" class="desktop-device-modal-overlay">
+    <div class="desktop-device-modal">
+      <div class="desktop-device-icon">
+        <i class="fas fa-laptop"></i>
+      </div>
+      <h3 class="desktop-device-title">Desktop Device Detected</h3>
+      <div class="desktop-device-content">
+        <p class="desktop-device-message">Laptop location may not work properly. Please enter the shop name near your location when selecting a print shop.</p>
+        <p class="desktop-device-note">You can search for shops by name in the shop selection menu.</p>
+      </div>
+      <button class="desktop-device-ok-btn" onclick="hideDesktopDeviceModal()">Got it</button>
+    </div>
+  </div>
+
   <!-- Service Prices Modal -->
   <div id="servicePricesModal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
@@ -27806,6 +27910,120 @@
       box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
     }
 
+    /* Desktop Device Modal Styles - Small & Professional */
+    .desktop-device-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(4px);
+    }
+
+    .desktop-device-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .desktop-device-modal {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      width: 90%;
+      max-width: 380px;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+      transform: scale(0.9) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .desktop-device-modal::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+    }
+
+    .desktop-device-modal-overlay.active .desktop-device-modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .desktop-device-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eff6ff;
+      border-radius: 50%;
+      color: #3b82f6;
+      font-size: 1.75rem;
+    }
+
+    .desktop-device-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 1rem 0;
+    }
+
+    .desktop-device-content {
+      margin: 1rem 0;
+      text-align: left;
+    }
+
+    .desktop-device-message {
+      color: #374151;
+      margin: 0.75rem 0;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .desktop-device-note {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin: 0.75rem 0;
+      line-height: 1.5;
+    }
+
+    .desktop-device-ok-btn {
+      margin-top: 1.25rem;
+      padding: 0.7rem 1.75rem;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+      font-size: 0.95rem;
+      width: 100%;
+    }
+
+    .desktop-device-ok-btn:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+    }
+
+    .desktop-device-ok-btn:active {
+      transform: scale(0.98);
+    }
+
     .success-lottie-container {
       width: 120px;
       height: 120px;
@@ -28097,6 +28315,29 @@
       const modal = document.getElementById('failedUploadModal');
       if (modal && e.target === modal) {
         hideFailedUploadModal();
+      }
+    });
+
+    // Desktop Device Modal Functions
+    function showDesktopDeviceModal() {
+      const modal = document.getElementById('desktopDeviceModal');
+      if (modal) {
+        modal.classList.add('active');
+      }
+    }
+
+    function hideDesktopDeviceModal() {
+      const modal = document.getElementById('desktopDeviceModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // Close desktop device modal on overlay click
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('desktopDeviceModal');
+      if (modal && e.target === modal) {
+        hideDesktopDeviceModal();
       }
     });
 
