@@ -11526,7 +11526,14 @@
         }
 
         function needsAccurateLocation() {
-          return isDesktopViewport() && !hasStoredCoords();
+          // REMOVED: Desktop location gating - desktop location doesn't work properly
+          // Users should type shop name instead of relying on location
+          // Always return false for desktop, only gate on mobile if needed
+          if (isDesktopViewport()) {
+            return false; // Don't gate desktop users - they should type shop name
+          }
+          // For mobile, keep existing logic (but typically mobile location works)
+          return false; // Mobile location typically works, so don't gate
         }
 
         function resolveCsrf() {
@@ -15370,8 +15377,16 @@
       today.setHours(0, 0, 0, 0);
       
       // Separate pending and completed jobs
+      // CRITICAL: Only render jobs that exist in D1 User_print_jobs table (must have r2_path or service_type)
       const pendingJobs = (jobs || []).filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        
+        // CRITICAL: Filter out phantom jobs not stored in D1 - must have r2_path or service_type from database
+        if (!job.r2_path && !job.service_type && !job.filename) {
+          console.warn('⚠️ Filtering out phantom job (missing r2_path/service_type/filename):', job);
+          return false;
+        }
+        
         return jobCompleted !== 'YES';
       });
       
@@ -15473,21 +15488,11 @@
     
     // INSTANT JOBS RENDERING - Use preloaded data, else fetch async
     document.addEventListener('DOMContentLoaded', function() {
-      // Force location request for desktop devices on page load
+      // REMOVED: Desktop location request loop - desktop location doesn't work properly
+      // Users should type shop name instead of relying on location
       const desktopMode = isDesktopViewport();
       if (desktopMode) {
-        console.log('🔄 Desktop mode detected: Requesting location on page load');
-        // Small delay to ensure page is fully loaded
-        setTimeout(() => {
-          if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-            window.userLocationFlow.promptForService(null);
-          } else {
-            // Fallback: use fetchAccurateUserLocation
-            fetchAccurateUserLocation(true).catch(err => {
-              console.warn('Location request failed on page load:', err);
-            });
-          }
-        }, 500);
+        console.log('💻 Desktop mode detected: Location requests disabled - users should type shop name');
       }
       
       const container = document.getElementById('jobsContainer');
@@ -20391,8 +20396,15 @@
       today.setHours(0, 0, 0, 0);
       
       // Filter jobs efficiently - STRICT FILTER: Only pending jobs (case-insensitive), exclude cancelled jobs older than a day
+      // CRITICAL: Only render jobs that exist in D1 User_print_jobs table (must have r2_path or service_type)
       const pendingJobs = userJobs.filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
+        
+        // CRITICAL: Filter out phantom jobs not stored in D1 - must have r2_path or service_type from database
+        if (!job.r2_path && !job.service_type && !job.filename) {
+          console.warn('⚠️ Filtering out phantom job (missing r2_path/service_type/filename):', job);
+          return false;
+        }
         
         // Filter out cancelled jobs that are older than a day
         if (jobCompleted === 'CANCELLED') {
@@ -23025,7 +23037,10 @@
 
     // Event listeners (Complete R2 Integration)
     printBtn.addEventListener('click', function(e) {
-      if (window.userLocationFlow && window.userLocationFlow.shouldGateForService()) {
+      // REMOVED: Desktop location gating - desktop location doesn't work properly
+      // Users should type shop name instead of relying on location
+      const desktopMode = isDesktopViewport();
+      if (!desktopMode && window.userLocationFlow && window.userLocationFlow.shouldGateForService()) {
         e.preventDefault();
         window.userLocationFlow.promptForService(null, openModal);
         return;
@@ -25212,7 +25227,7 @@
           const settingsJson = {
             filename: finalFilename,
             original_filename: fileToUpload.name, // Keep track of original filename
-            service_type: 'regular print', // Default service type for regular print modal
+            service_type: 'regular_print', // CRITICAL: Use 'regular_print' (normalized) to match passport_photo storage pattern
             service_name: 'Regular Print', // Default service name for regular print modal
             copies: settings.copies || 1,
             color: settings.color || 'Black and White',
@@ -25252,6 +25267,8 @@
         formData.append('vendor_email', vendorEmail);
         formData.append('shop_name', shopName);
         formData.append('shop_address', shopAddress);
+        // CRITICAL: Set storage_folder to 'vendor_print_jobs' (same as passport photo) to ensure consistent storage
+        formData.append('storage_folder', 'vendor_print_jobs');
         if (userEmail) {
           formData.append('user_email', userEmail);
         }
@@ -25999,12 +26016,21 @@
     async function fetchAccurateUserLocation(forceRefresh = false) {
       const desktopMode = isDesktopViewport();
       try {
+        // REMOVED: Desktop location request loops - desktop location doesn't work properly
+        // Users should type shop name instead of relying on location
+        if (desktopMode) {
+          console.log("💻 Desktop mode: Location requests disabled - users should type shop name");
+          // Return stored location if available, otherwise null (don't prompt)
+          const stored = readStoredUserCoordinates();
+          if (stored) {
+            console.log("📦 Using stored location for desktop:", stored);
+            return stored;
+          }
+          return null;
+        }
+
         if (forceRefresh) {
           clearStoredUserCoordinates();
-          if (desktopMode && window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-            window.userLocationFlow.promptForService(null);
-            return null;
-          }
         }
 
         let locationLocked = isLocationLocked();
@@ -26022,77 +26048,6 @@
           console.warn("⚠️ Location lock present without coordinates. Unlocking to allow refresh.");
           unlockLocationUpdates();
           locationLocked = false;
-        }
-
-        if (desktopMode) {
-          // Try browser geolocation first (uses WiFi router location with enableHighAccuracy: false)
-          // Only fall back to QR flow if browser geolocation fails
-          if (!navigator.geolocation) {
-            console.warn("⚠️ Browser geolocation not available, trying QR flow");
-            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-              window.userLocationFlow.promptForService(null);
-              return null;
-            }
-            return null;
-          }
-
-          // Try browser geolocation with WiFi router location (enableHighAccuracy: false)
-          try {
-            console.log("🔄 Desktop mode: Attempting browser geolocation with WiFi router location");
-            const position = await new Promise((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(
-                resolve,
-                reject,
-                {
-                  enableHighAccuracy: false, // Use WiFi router/cell tower location instead of GPS
-                  timeout: 10000,
-                  maximumAge: 300000 // Accept cached location up to 5 minutes old
-                }
-              );
-            });
-
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-            console.log("✅ Desktop WiFi router location obtained:", latitude, longitude);
-
-            const locationData = {
-              latitude,
-              longitude,
-              accuracy: position.coords.accuracy,
-              fromCache: false,
-              fromBrowser: true,
-              source: 'browser-wifi'
-            };
-
-            syncUserLocationState(latitude, longitude, {
-              accuracy: position.coords.accuracy,
-              source: 'browser-wifi',
-              fromBrowser: true
-            });
-
-            try {
-              localStorage.setItem('user_lat', latitude);
-              localStorage.setItem('user_lng', longitude);
-            } catch (storageError) {
-              console.warn('Unable to persist browser coordinates', storageError);
-            }
-
-            console.log("✅ Desktop browser geolocation user location:", locationData);
-            return locationData;
-          } catch (geoError) {
-            console.log("⚠️ Desktop browser geolocation failed, falling back to QR flow:", geoError.message);
-            // Fall back to QR flow if browser geolocation fails
-            if (window.userLocationFlow && typeof window.userLocationFlow.promptForService === 'function') {
-              window.userLocationFlow.promptForService(null);
-              return null;
-            }
-            // If stored location exists, use it as fallback
-            if (stored) {
-              console.log("📦 Using stored location as fallback:", stored);
-              return stored;
-            }
-            return null;
-          }
         }
 
         if (locationLocked) {
@@ -26366,72 +26321,30 @@
         await loadAvailableShops(forceLocationRefresh);
         console.log('📦 Available shops loaded:', availableShops.length);
         
+        // Check if desktop mode (for location handling)
+        const desktopMode = isDesktopViewport();
+        
         // Try to get user location using QR flow (desktop) or browser GPS (mobile)
         try {
           console.log('📍 Getting user location via PrintMax location flow...');
           const userLoc = await fetchAccurateUserLocation(forceLocationRefresh);
           
           if (!userLoc) {
-            console.warn('⚠️ Could not get accurate user location, will retry with browser geolocation...');
-            // Try browser geolocation as fallback (for WiFi router location on laptops)
-            try {
-              if (navigator.geolocation) {
-                console.log('🔄 Attempting browser geolocation fallback...');
-                const position = await new Promise((resolve, reject) => {
-                  navigator.geolocation.getCurrentPosition(
-                    resolve,
-                    reject,
-                    {
-                      enableHighAccuracy: false, // Use WiFi router/cell tower location
-                      timeout: 10000,
-                      maximumAge: 300000 // Accept cached location up to 5 minutes old
-                    }
-                  );
-                });
-                
-                const fallbackLocation = {
-                  latitude: position.coords.latitude,
-                  longitude: position.coords.longitude,
-                  accuracy: position.coords.accuracy,
-                  fromBrowser: true,
-                  source: 'browser-fallback'
-                };
-                
-                console.log('✅ Browser geolocation fallback successful:', fallbackLocation);
-                userLocation = fallbackLocation;
-                
-                // Calculate distances with fallback location
-                console.log('🔍 Calculating distances using Google Distance Matrix API...');
-                locationBasedShops = await filterShopsByLocation(
-                  availableShops, 
-                  userLocation.latitude, 
-                  userLocation.longitude
-                );
-                
-                // Update availableShops with distance information (sorted)
-                availableShops = locationBasedShops;
-                
-                console.log('🎯 Location-based shops found:', locationBasedShops.length);
-                if (locationBasedShops.length > 0) {
-                  console.log('📊 Closest shops:');
-                  locationBasedShops.slice(0, 3).forEach((shop, index) => {
-                    console.log(`${index + 1}. ${shop.shop_name} - ${shop.formattedDistance}`);
-                  });
-                }
-              } else {
-                throw new Error('Browser geolocation not available');
-              }
-            } catch (fallbackError) {
-              console.warn('⚠️ Browser geolocation fallback also failed:', fallbackError.message);
-              // If all location methods fail, use all shops without distance info
-              locationBasedShops = availableShops.map(shop => ({
-                ...shop,
-                distanceKm: null,
-                formattedDistance: 'Location unavailable'
-              }));
-              availableShops = locationBasedShops;
-              console.log('📦 Using all shops without distance info:', locationBasedShops.length);
+            // REMOVED: Desktop location fallback - desktop location doesn't work properly
+            // Users should type shop name instead
+            if (desktopMode) {
+              console.log('💻 Desktop mode: Location unavailable - users should type shop name');
+            } else {
+              console.warn('⚠️ Could not get accurate user location on mobile device');
             }
+            // If all location methods fail, use all shops without distance info
+            locationBasedShops = availableShops.map(shop => ({
+              ...shop,
+              distanceKm: null,
+              formattedDistance: 'Location unavailable'
+            }));
+            availableShops = locationBasedShops;
+            console.log('📦 Using all shops without distance info:', locationBasedShops.length);
           } else {
             userLocation = userLoc;
             console.log('✅ User location obtained:', userLocation);
