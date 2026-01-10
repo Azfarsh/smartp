@@ -5114,7 +5114,9 @@ def verify_razorpay_payment(request):
             'failed_files': [],
             'token': '',
             'printer_name': '',
-            'points_allotted': 0
+            'points_allotted': 0,
+            'refund_message': None,
+            'refund_amount': 0
         }
 
         def safe_float(value, default=0.0):
@@ -5768,15 +5770,24 @@ def verify_razorpay_payment(request):
             else:
                 refund_message = f"Payment of ₹{refund_amount:.2f} has been refunded due to document upload failure."
         
+        # CRITICAL: Always update response with accurate file counts and refund information
+        # Ensure files_failed is always included, even if 0
         response_data.update({
+            'success': True if files_processed > 0 and files_failed == 0 else (True if files_failed > 0 else False),  # Success only if files processed OR if refund is being handled
             'files_processed': files_processed,
             'files_failed': files_failed,
             'failed_files': failed_files,
-            'token': token_value,
+            'token': token_value if files_processed > 0 else '',
             'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', ''),
             'refund_message': refund_message,
             'refund_amount': refund_amount
         })
+        
+        # CRITICAL: If all files failed, ensure success is False to trigger error handling
+        if files_processed == 0 and files_failed > 0:
+            print(f"⚠️ ALL files failed to upload. Setting success=False in response")
+            response_data['success'] = False
+            response_data['error'] = f'All {files_failed} file(s) failed to upload. Refund has been processed.'
 
         # Always store points in user_points when uploads fail so they are instantly available
         # This ensures compensation for ALL service types (document print, jumbo print, etc.)
