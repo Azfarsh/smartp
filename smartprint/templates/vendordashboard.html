@@ -6976,15 +6976,6 @@
                 delete modal.dataset.jobPrice;
                 delete modal.dataset.token;
                 delete modal.dataset.action;
-                
-                // Reset compensation div visibility (show it again for other uses like canceling pending jobs)
-                const pointsEl = document.getElementById('cancelJobPoints');
-                if (pointsEl) {
-                    const compensationDiv = pointsEl.closest('div[style*="padding-top"]');
-                    if (compensationDiv) {
-                        compensationDiv.style.display = '';
-                    }
-                }
             }
         }
 
@@ -7397,12 +7388,16 @@
                 // Format price to show 2 decimal places if needed, otherwise show as integer
                 const formattedPrice = price % 1 === 0 ? price.toFixed(0) : price.toFixed(2);
 
+                // Display points and price accurately
+                pointsEl.textContent = `${points} points (₹${formattedPrice})`;
+                if (priceEl) {
+                    priceEl.textContent = `₹${formattedPrice}`;
+                }
+
                 // Update modal title and message for clearing completed job
                 const modalTitle = modal.querySelector('h3');
                 const modalMessage = modal.querySelector('p');
                 const infoText = document.getElementById('cancelJobInfoText');
-                const compensationDiv = pointsEl.closest('div[style*="padding-top"]'); // Find parent div with compensation message
-                
                 if (modalTitle) {
                     modalTitle.textContent = 'Clear Completed Job?';
                 }
@@ -7411,11 +7406,6 @@
                 }
                 if (infoText) {
                     infoText.textContent = 'This will remove the job from your completed section.';
-                }
-                
-                // Hide compensation message when clearing completed jobs
-                if (compensationDiv) {
-                    compensationDiv.style.display = 'none';
                 }
 
                 // Store job details for confirmation
@@ -7429,7 +7419,7 @@
 
         // Clear completed job function - updates vendor status to 'clear'
         async function clearCompletedJob(filename, token) {
-            // INSTANTLY remove the job from completed section BEFORE API call (no animation delay)
+            // INSTANTLY remove the job from completed section BEFORE API call
             const jobIndex = allJobs.findIndex(job => job.filename === filename);
             if (jobIndex !== -1) {
                 // Update vendor status to 'clear' instead of hiding
@@ -7448,12 +7438,19 @@
                     // Update cache immediately
                     localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
 
-                    // Remove from DOM INSTANTLY (no animation delay)
+                    // Remove from DOM immediately with animation
                     const container = document.getElementById('completedJobs');
                     const jobCard = container.querySelector(`[data-filename="${filename}"]`);
                     if (jobCard) {
-                        // Remove immediately without animation
-                        jobCard.remove();
+                        // Add fade out animation
+                        jobCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                        jobCard.style.opacity = '0';
+                        jobCard.style.transform = 'translateX(-20px)';
+
+                        // Remove after animation
+                        setTimeout(() => {
+                            jobCard.remove();
+                        }, 300);
                     }
                 }
             }

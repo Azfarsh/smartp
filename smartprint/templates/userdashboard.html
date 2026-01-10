@@ -25796,47 +25796,25 @@
               });
 
               const verifyData = await safeParseJson(verifyResp);
-              
-              // Log response for debugging
-              console.log('💳 Payment verification response:', {
-                success: verifyData.success,
-                files_processed: verifyData.files_processed || 0,
-                files_failed: verifyData.files_failed || 0,
-                token: verifyData.token,
-                refund_message: verifyData.refund_message,
-                refund_amount: verifyData.refund_amount
-              });
-              
-              // CRITICAL: Check if payment verification failed OR if all files failed to upload
-              // Allow success=true even if files failed, as long as refund is being processed
-              if (!verifyResp.ok || (!verifyData.success && (verifyData.files_processed || 0) === 0 && (verifyData.files_failed || 0) === 0)) {
-                const errorMsg = verifyData.error || verifyData.refund_message || 'Payment verification failed';
-                throw new Error(errorMsg);
+              if (!verifyResp.ok || !verifyData.success) {
+                throw new Error(verifyData.error || 'Payment verification failed');
               }
+
+              // Documents are now stored in R2 and database (vendor_print_jobs and user_print_jobs tables)
+              console.log('✅ Documents stored instantly:', {
+                files_processed: verifyData.files_processed,
+                files_failed: verifyData.files_failed,
+                token: verifyData.token
+              });
 
               hidePaymentProcessingState();
 
-              // CRITICAL: Check for failed uploads FIRST - if ANY files failed, show refund message (same as jumbo print)
-              // Ensure files_failed is properly checked (default to 0 if not present)
-              const filesFailed = verifyData.files_failed || 0;
-              const filesProcessed = verifyData.files_processed || 0;
-              
-              // If no files were processed successfully OR if any files failed, show refund message
-              if (filesFailed > 0 || filesProcessed === 0) {
+              // Check for failed uploads FIRST and show refund message in modal (same as jumbo print)
+              if (verifyData.files_failed > 0) {
                 const failedFiles = verifyData.failed_files || [];
-                const failedFileNames = failedFiles.length > 0 
-                  ? failedFiles.map(f => f.filename || f).join(', ')
-                  : 'One or more files';
+                const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                 const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
-                
-                console.log('❌ Files failed to upload:', {
-                  filesFailed,
-                  filesProcessed,
-                  failedFiles,
-                  refundMessage
-                });
-                
-                showFailedUploadModal(filesFailed || 1, failedFileNames, refundMessage);
+                showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
                 
                 // CRITICAL: Return points if files failed to store (same as jumbo print)
                 if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
@@ -25870,13 +25848,8 @@
                     }
                   }
                 }
-              } else if (filesProcessed > 0 && filesFailed === 0) {
-                // Show success message ONLY if files were processed successfully AND no files failed (same as jumbo print)
-                console.log('✅ All files uploaded successfully:', {
-                  filesProcessed,
-                  filesFailed,
-                  token: verifyData.token
-                });
+              } else {
+                // Show success message only if no files failed (same as jumbo print)
                 showSuccessModalWithAnimation();
                 
                 // Show compensation points message if awarded (parity with Jumbo)
