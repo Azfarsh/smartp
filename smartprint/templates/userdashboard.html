@@ -22854,29 +22854,19 @@
         }
       });
 
-      // Handle Document Print modal actions - only show when files uploaded and scrolled to bottom
+      // Handle Document Print modal actions - show buttons when files are uploaded (no scroll requirement)
       const printModal = document.getElementById('printModal');
       if (printModal && printModal.classList.contains('active')) {
         const body = printModal.querySelector('.modal-body');
         const actionButtons = document.getElementById('actionButtons');
         
         if (body && actionButtons) {
-          // Only show buttons if files are uploaded
+          // Only show buttons if files are uploaded (removed scroll-to-bottom requirement)
           const hasFiles = window.uploadedFiles && window.uploadedFiles.length > 0;
           
           if (hasFiles) {
-            // Check if scrolled to bottom (within 50px threshold)
-            const scrollTop = body.scrollTop;
-            const scrollHeight = body.scrollHeight;
-            const clientHeight = body.clientHeight;
-            const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
-            
-            // Show/hide buttons based on scroll position
-            if (isAtBottom) {
-              actionButtons.classList.add('show');
-            } else {
-              actionButtons.classList.remove('show');
-            }
+            // Always show buttons if files are uploaded (no scroll validation needed)
+            actionButtons.classList.add('show');
           } else {
             // Hide buttons if no files uploaded
             actionButtons.classList.remove('show');
@@ -25916,8 +25906,14 @@
                 console.log('✅ Cleaned up stored files from order summary modal');
               }
 
-              // Reset UI for print modal - properly reset everything
+              // Reset UI for print modal - properly reset everything to allow multiple submissions
               if (isPrintModal) {
+                // Reset file input to allow new uploads
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput) {
+                  fileInput.value = '';
+                }
+                
                 if (typeof resetDocumentPrintModal === 'function') {
                   resetDocumentPrintModal();
                 } else {
@@ -25927,6 +25923,16 @@
                   if (typeof updateFileList === 'function') updateFileList();
                   if (typeof updateUI === 'function') updateUI();
                 }
+                
+                // Ensure modal can be used again for multiple submissions
+                const printModalEl = document.getElementById('printModal');
+                if (printModalEl) {
+                  // Clear any blocking states
+                  delete printModalEl.dataset.calculatedPrice;
+                  delete printModalEl.dataset.pricingBreakdown;
+                  delete printModalEl.dataset.finalAmount;
+                }
+                
                 setTimeout(() => {
                   attachColorOptionListeners();
                 }, 100);
