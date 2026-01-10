@@ -1817,12 +1817,12 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             /* 4 jobs per row for compact layout */
-            gap: 12px;
-            /* Consistent spacing between blocks */
+            gap: 16px;
+            /* Increased spacing between blocks */
             align-items: start;
             justify-items: stretch;
             /* Stretch items to fill grid cells */
-            row-gap: 12px;
+            row-gap: 16px;
             /* Ensure consistent vertical spacing */
         }
 
@@ -1858,7 +1858,7 @@
         /* Compact variant for better presentation */
         .job-card.compact {
             padding: 8px 10px;
-            /* Compact padding with consistent top/bottom */
+            /* Reduced padding for smaller blocks */
             border-radius: 8px;
             min-height: auto;
             /* Let height adjust to content */
@@ -1895,7 +1895,7 @@
         }
 
         .job-card.compact .job-filename {
-            font-size: 11px;
+            font-size: 10px;
             line-height: 1.3;
             margin: 2px 0 4px 0;
             white-space: normal;
@@ -1919,15 +1919,15 @@
             justify-content: space-between;
             color: #000;
             /* more visible */
-            font-size: 11px;
-            /* Compact font size */
+            font-size: 10px;
+            /* Smaller font size */
             font-weight: 600;
         }
 
         .job-card.compact .job-meta-item {
-            gap: 4px;
-            font-size: 10px;
-            padding: 4px 6px;
+            gap: 3px;
+            font-size: 9px;
+            padding: 3px 5px;
             flex: 1;
             min-width: 0;
             text-align: center;
@@ -1939,13 +1939,19 @@
         }
 
         .job-card.compact .job-actions {
-            gap: 4px;
+            gap: 0;
             margin-top: auto;
             /* Push to bottom */
             padding-top: 6px;
             /* Reduced space above button */
             flex-shrink: 0;
             /* Prevent shrinking */
+            width: 100%;
+            /* Full width within card */
+            padding-left: 0;
+            padding-right: 0;
+            /* No horizontal padding */
+            box-sizing: border-box;
         }
 
         /* Remove empty space for pending jobs - reduce gap between filename and actions */
@@ -1973,8 +1979,13 @@
             /* No padding below buttons */
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-            /* Consistent gap between buttons */
+            gap: 4px;
+            /* Reduced gap between buttons */
+            width: 100%;
+            /* Full width within card padding */
+            padding: 0;
+            /* No padding */
+            box-sizing: border-box;
         }
 
         /* Ensure no blank space below buttons in job cards */
@@ -1993,12 +2004,17 @@
         .job-card.compact:not(.completed) {
             padding-bottom: 8px !important;
             /* Consistent bottom padding */
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            /* Reduced padding to allow buttons to reach closer to edges */
         }
 
         /* Ensure no extra spacing in job header */
         .job-card.compact .job-header.compact {
             margin-bottom: 4px;
             padding-bottom: 0;
+            gap: 4px;
+            /* Reduced gap between token and service badge */
         }
 
         /* Remove empty space for completed jobs - reduce gap between content and actions */
@@ -2024,11 +2040,11 @@
         }
 
         .job-card.compact .btn-small {
-            padding: 6px 10px;
-            font-size: 10px;
+            padding: 5px 8px;
+            font-size: 9px;
             border-radius: 5px;
-            min-height: 32px;
-            /* Reduced height for compact layout */
+            min-height: 28px;
+            /* Further reduced height for smaller blocks */
             width: 100%;
             /* Full width button */
             display: flex;
@@ -2197,35 +2213,35 @@
         @media (max-width: 1600px) {
             .jobs-grid {
                 grid-template-columns: repeat(4, 1fr);
-                gap: 10px;
+                gap: 14px;
             }
         }
 
         @media (max-width: 1400px) {
             .jobs-grid {
                 grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
+                gap: 14px;
             }
         }
 
         @media (max-width: 1200px) {
             .jobs-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
+                gap: 14px;
             }
         }
 
         @media (max-width: 768px) {
             .jobs-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
+                gap: 12px;
             }
         }
 
         @media (max-width: 640px) {
             .jobs-grid {
                 grid-template-columns: 1fr;
-                gap: 8px;
+                gap: 12px;
             }
         }
 
@@ -2709,8 +2725,10 @@
 
         /* Adjust job-header for compact cards to accommodate service badge */
         .job-card.compact .job-header {
-            padding-right: 80px;
-            /* Add padding to prevent overlap with service badge */
+            padding-right: 0;
+            gap: 4px;
+            /* Reduced gap between token and service badge */
+            flex-wrap: nowrap;
         }
 
         .job-token {
@@ -2868,7 +2886,10 @@
         .manual-job-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 4px;
+            width: 100%;
+            padding: 0;
+            margin: 0;
             /* Reduced spacing between the 4 buttons */
             margin-top: 0;
             /* Remove auto margin to eliminate empty space */
@@ -2941,11 +2962,9 @@
         }
 
         .service-type-badge {
-            position: absolute;
-            top: 8px;
-            /* Reduced from 12px */
-            right: 4px;
-            /* Reduced from 8px to bring closer to token */
+            position: relative;
+            top: 0;
+            right: 0;
             font-size: 9px;
             /* Reduced from 10px */
             font-weight: 600;
@@ -2958,14 +2977,13 @@
             /* Reduced from 0.5px */
             z-index: 1;
             /* Ensure it's above other elements */
+            flex-shrink: 0;
         }
 
         /* Bring service badge closer to token for compact cards */
         .job-card.compact .service-type-badge {
-            right: 2px;
-            /* Even closer for compact cards */
-            top: 6px;
-            /* Slightly adjust vertical position */
+            font-size: 8px;
+            padding: 2px 5px;
         }
 
         /* Position service badge near token - adjust based on token position */
@@ -6634,10 +6652,10 @@
             const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}">
-                    ${serviceTypeBadge}
                     ${vendorStatusBadge}
                     <div class="job-header compact">
                         <div class="job-token" title="Job Token">${tokenNumber}</div>
+                        ${serviceTypeBadge}
                         ${statusText ? `<div class="job-status ${statusClass}">${statusText}</div>` : ''}
                         ${feedbackHtml}
                     </div>
