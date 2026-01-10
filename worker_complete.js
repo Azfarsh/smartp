@@ -3286,6 +3286,10 @@ export default {
               newStatus = job_completed === 'YES' ? 'completed' : 'pending';
             }
 
+            // Get rendered_status from request body (if provided, otherwise keep existing value)
+            const rendered_status = (body.rendered_status || '').trim().toUpperCase();
+            const final_rendered_status = rendered_status === 'YES' ? 'YES' : (vendorJob?.rendered_status || 'NO');
+            
             // Always update Vendor_print_jobs table (similar to User_print_jobs update)
             // Try multiple approaches to ensure we find and update the correct row
             let updateSuccess = false;
@@ -3298,9 +3302,9 @@ export default {
               
               const updateResult1 = await env.DB.prepare(`
                 UPDATE Vendor_print_jobs
-                SET job_completed = ?, completion_time = ?, status = ?
+                SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
                 WHERE vendor_id = ? AND filename = ? AND storage_folder = ?
-              `).bind(finalJobCompleted, completion_time, newStatus, final_vendor_id, filename, storage_folder).run();
+              `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, final_vendor_id, filename, storage_folder).run();
               
               updateAttempts.push(`vendor_id=${final_vendor_id}, filename=${filename}, storage_folder=${storage_folder}: ${updateResult1.meta.changes} rows`);
               
@@ -3310,9 +3314,9 @@ export default {
                 // Approach 2: Try without storage_folder constraint
                 const updateResult2 = await env.DB.prepare(`
                   UPDATE Vendor_print_jobs
-                  SET job_completed = ?, completion_time = ?, status = ?
+                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
                   WHERE vendor_id = ? AND filename = ?
-                `).bind(finalJobCompleted, completion_time, newStatus, final_vendor_id, filename).run();
+                `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, final_vendor_id, filename).run();
                 
                 updateAttempts.push(`vendor_id=${final_vendor_id}, filename=${filename} (no storage_folder): ${updateResult2.meta.changes} rows`);
                 
@@ -3323,9 +3327,9 @@ export default {
                   const final_vendor_email = vendorJob.vendor_email || vendor_email;
                   const updateResult3 = await env.DB.prepare(`
                     UPDATE Vendor_print_jobs
-                    SET job_completed = ?, completion_time = ?, status = ?
+                    SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
                     WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
-                  `).bind(finalJobCompleted, completion_time, newStatus, filename, final_vendor_email).run();
+                  `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, filename, final_vendor_email).run();
                   
                   updateAttempts.push(`filename=${filename}, vendor_email=${final_vendor_email}: ${updateResult3.meta.changes} rows`);
                   
@@ -3343,9 +3347,9 @@ export default {
                 // Try with vendor_id and filename
                 const updateResult = await env.DB.prepare(`
                   UPDATE Vendor_print_jobs
-                  SET job_completed = ?, completion_time = ?, status = ?
+                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
                   WHERE vendor_id = ? AND filename = ?
-                `).bind(finalJobCompleted, completion_time, newStatus, final_vendor_id, filename).run();
+                `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, final_vendor_id, filename).run();
                 
                 updateAttempts.push(`vendor_id=${final_vendor_id}, filename=${filename}: ${updateResult.meta.changes} rows`);
                 
@@ -3358,9 +3362,9 @@ export default {
                 // Try with vendor_email
                 const updateResult = await env.DB.prepare(`
                   UPDATE Vendor_print_jobs
-                  SET job_completed = ?, completion_time = ?, status = ?
+                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
                   WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
-                `).bind(finalJobCompleted, completion_time, newStatus, filename, final_vendor_email).run();
+                `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, filename, final_vendor_email).run();
                 
                 updateAttempts.push(`filename=${filename}, vendor_email=${final_vendor_email}: ${updateResult.meta.changes} rows`);
                 
@@ -3477,11 +3481,12 @@ export default {
             } else {
               newStatus = job_completed === 'YES' ? 'completed' : 'pending';
             }
+            // Also update rendered_status for User_print_jobs
             await env.DB.prepare(`
               UPDATE User_print_jobs
-              SET job_completed = ?, completion_time = ?, status = ?
+              SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
               WHERE filename = ? AND user_email = ?
-            `).bind(finalJobCompleted, completion_time, newStatus, filename, user_email).run();
+            `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, filename, user_email).run();
           }
 
           return json({ 

@@ -5199,34 +5199,34 @@ def verify_razorpay_payment(request):
                 })
                 continue
 
-                # Resolve user and vendor context (ensure vendor_id is present for Worker validation)
-                vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
+            # Resolve user and vendor context (ensure vendor_id is present for Worker validation)
+            vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
 
-                # Get vendor email from settings_json if not already set (fallback)
-                if not vendor_email:
-                    vendor_email = print_settings.get('vendor_email', '').strip()
-                    if vendor_email:
-                        print(f"✅ Got vendor_email from settings_json: {vendor_email}")
-                
-                # Final fallback: Get vendor email from shop folder if still not set
-                if not vendor_email and selected_vendor:
-                    try:
-                        vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
-                        print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
-                    except Exception as e:
-                        print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+            # Get vendor email from settings_json if not already set (fallback)
+            if not vendor_email:
+                vendor_email = print_settings.get('vendor_email', '').strip()
+                if vendor_email:
+                    print(f"✅ Got vendor_email from settings_json: {vendor_email}")
+            
+            # Final fallback: Get vendor email from shop folder if still not set
+            if not vendor_email and selected_vendor:
+                try:
+                    vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                    print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
+                except Exception as e:
+                    print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
 
-                # If vendor_id is still missing but vendor_email is available, derive vendor_id for Worker storage
-                if (not vendor_id or vendor_id.strip() == '') and vendor_email:
-                    try:
-                        vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
-                        if vendor_id_lookup:
-                            vendor_id = vendor_id_lookup
-                            print(f"✅ Resolved vendor_id {vendor_id} from vendor_email {vendor_email}")
-                    except Exception as e:
-                        print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
+            # If vendor_id is still missing but vendor_email is available, derive vendor_id for Worker storage
+            if (not vendor_id or vendor_id.strip() == '') and vendor_email:
+                try:
+                    vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
+                    if vendor_id_lookup:
+                        vendor_id = vendor_id_lookup
+                        print(f"✅ Resolved vendor_id {vendor_id} from vendor_email {vendor_email}")
+                except Exception as e:
+                    print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
 
-                # Store every paid job inside vendor_print_jobs
+            # Store every paid job inside vendor_print_jobs
                 # Normalize service_type to ensure consistent handling (same logic as jumbo_printing)
                 service_type_raw = (print_settings.get('service_type') or '').strip()
                 service_type_lc = service_type_raw.lower()
@@ -15041,6 +15041,88 @@ def hide_completed_job(request):
                 # Update vendor status to 'clear' instead of hiding
                 success = update_job_vendor_status_in_r2(filename, 'clear', vendor_id)
                 message = f'Job "{filename}" cleared from completed section'
+                
+                # CRITICAL: Also update database to set rendered_status='YES' and job_completed='YES' so job disappears from completed section
+                try:
+                    # Update D1 database via Worker API
+                    api_url = getattr(settings, 'WORKER_API_URL', '')
+                    api_key = getattr(settings, 'WORKER_API_KEY', '')
+                    
+                    if api_url and api_key:
+                        # Get user_email from the job metadata
+                        user_email = None
+                        try:
+                            s3 = boto3.client('s3',
+                                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                                              endpoint_url=settings.R2_ENDPOINT,
+                                              region_name='auto')
+                            
+                            # Try to get user_email from R2 metadata
+                            possible_paths = [
+                                f'vendor_print_jobs/{vendor_id}/{filename}',
+                                f'vendor_manual_print_jobs/{vendor_id}/{filename}',
+                            ]
+                            
+                            for path in possible_paths:
+                                try:
+                                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
+                                    metadata = head_response.get('Metadata', {})
+                                    user_email = metadata.get('user_email', '')
+                                    if user_email:
+                                        break
+                                except:
+                                    continue
+                        except Exception as e:
+                            print(f"⚠️ Error getting user_email from R2: {e}")
+                        
+                        if user_email:
+                            # Construct worker endpoint
+                            if '/add-contact' in api_url:
+                                worker_endpoint = api_url.replace('/add-contact', '/update-job-completed')
+                            elif '/add-vendor-register' in api_url:
+                                worker_endpoint = api_url.replace('/add-vendor-register', '/update-job-completed')
+                            else:
+                                worker_endpoint = api_url.rstrip('/') + '/update-job-completed'
+                            
+                            # Update both Vendor_print_jobs and User_print_jobs to set rendered_status='YES' and job_completed='YES'
+                            worker_payload = {
+                                'filename': filename,
+                                'vendor_id': vendor_id,
+                                'vendor_email': vendor_email,
+                                'user_email': user_email,
+                                'job_completed': 'YES',
+                                'rendered_status': 'YES',
+                                'completion_time': datetime.datetime.now().isoformat()
+                            }
+                            
+                            try:
+                                resp = requests.post(
+                                    worker_endpoint,
+                                    json=worker_payload,
+                                    headers={
+                                        'x-api-key': api_key,
+                                        'Content-Type': 'application/json'
+                                    },
+                                    timeout=10
+                                )
+                                if resp.status_code == 200:
+                                    resp_data = resp.json()
+                                    if resp_data.get('success'):
+                                        print(f"✅ Updated database: rendered_status='YES' and job_completed='YES' for {filename}")
+                                    else:
+                                        print(f"⚠️ Database update returned success=false: {resp_data.get('error')}")
+                                else:
+                                    print(f"⚠️ Failed to update database: {resp.status_code} - {resp.text[:200]}")
+                            except Exception as e:
+                                print(f"⚠️ Error updating database via Worker API: {e}")
+                        else:
+                            print(f"⚠️ Could not find user_email for {filename}, skipping database update")
+                    else:
+                        print("⚠️ Worker API not configured - skipping database update")
+                except Exception as db_error:
+                    print(f"⚠️ Error updating database for clear completed job: {db_error}")
+                    # Don't fail the request if database update fails
             else:
                 # Legacy behavior - update is_hidden status
                 success = update_job_hidden_status_in_r2(filename, 'true', vendor_id)
