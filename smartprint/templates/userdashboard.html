@@ -25789,6 +25789,14 @@
               // 3) Verify payment on server and upload files atomically (blocking now to avoid false positives)
               // CRITICAL: Documents are stored INSTANTLY in R2 and database after payment verification
               console.log('💳 Payment successful, storing documents instantly...');
+              console.log('📋 FormData details:', {
+                serviceType: serviceType,
+                fileCount: formData.get('file_count'),
+                serviceTypeInSettings: formData.get('settings_0') ? JSON.parse(formData.get('settings_0')).service_type : 'N/A',
+                vendorId: formData.get('vendor_id'),
+                vendorEmail: formData.get('vendor_email'),
+                userEmail: formData.get('user_email')
+              });
               const verifyResp = await fetch('/payments/verify/', {
                 method: 'POST',
                 body: formData,
