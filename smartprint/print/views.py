@@ -5078,7 +5078,8 @@ def verify_razorpay_payment(request):
         payment_id = request.POST.get('razorpay_payment_id')
         order_id = request.POST.get('razorpay_order_id')
         signature = request.POST.get('razorpay_signature')
-
+        
+        # Normal payment verification flow - all services require payment
         if not (payment_id and order_id and signature):
             return JsonResponse({'success': False, 'error': 'Missing payment details'}, status=400)
 
@@ -5100,6 +5101,11 @@ def verify_razorpay_payment(request):
                 'success': False, 
                 'error': 'No files provided. Please upload at least one file.'
             }, status=400)
+        
+        # Debug: Log file count and available files
+        print(f"📦 Processing {file_count} file(s)")
+        print(f"📋 Available files in request.FILES: {list(request.FILES.keys())}")
+        print(f"📋 Available POST keys: {list(request.POST.keys())[:10]}...")  # First 10 keys
         
         files_processed = 0
         files_failed = 0
@@ -5154,13 +5160,18 @@ def verify_razorpay_payment(request):
             file_key = f'file_{i}'
             settings_key = f'settings_{i}'
             
+            print(f"🔍 Processing file {i}: file_key={file_key}, settings_key={settings_key}")
+            print(f"   Available FILES keys: {list(request.FILES.keys())}")
+            print(f"   Available POST keys (first 20): {list(request.POST.keys())[:20]}")
+            
             # Validate that both file and settings exist
             if file_key not in request.FILES:
                 print(f"❌ Missing file at index {i} (file_key: {file_key})")
+                print(f"   Available FILES: {list(request.FILES.keys())}")
                 files_failed += 1
                 failed_files.append({
                     'filename': f'file_{i}',
-                    'error': f'File {i} not found in request'
+                    'error': f'File {i} not found in request.FILES. Available keys: {list(request.FILES.keys())}'
                 })
                 continue
                 
@@ -5227,403 +5238,403 @@ def verify_razorpay_payment(request):
                     print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
 
             # Store every paid job inside vendor_print_jobs
-                # Normalize service_type to ensure consistent handling (same logic as jumbo_printing)
-                service_type_raw = (print_settings.get('service_type') or '').strip()
-                service_type_lc = service_type_raw.lower()
+            # Normalize service_type to ensure consistent handling (same logic as jumbo_printing)
+            service_type_raw = (print_settings.get('service_type') or '').strip()
+            service_type_lc = service_type_raw.lower()
                 
                 # Normalize service_type: convert 'regular print' to 'regular_print' for consistency with jumbo_printing
-                # This ensures regular print is handled EXACTLY like jumbo_printing
-                # CRITICAL: Document print modal must use 'regular_print' to match jumbo_printing storage pattern
-                if service_type_lc in ['regular print', 'regular_print', 'document_print', 'document print']:
-                    service_type = 'regular_print'  # Normalize to match jumbo_printing pattern
-                    print(f"📝 Normalized service_type '{service_type_raw}' -> 'regular_print' (same as jumbo_printing)")
-                elif service_type_lc in ['jumbo_printing', 'jumbo_print']:
-                    service_type = 'jumbo_printing'  # Keep jumbo_printing as-is
-                    print(f"📝 Service type '{service_type_raw}' -> 'jumbo_printing'")
-                elif service_type_lc in ['passport_photo', 'passport_print', 'photo_print']:
-                    service_type = service_type_raw  # Keep passport services as-is
-                elif service_type_lc in ['digital_print']:
-                    service_type = 'digital_print'
-                elif service_type_lc in ['golden_embossing', 'golden_emboss']:
-                    service_type = 'golden_embossing'
-                elif service_type_lc in ['gloss_printing', 'gloss_print']:
-                    service_type = 'gloss_printing'
-                else:
-                    service_type = service_type_raw or 'regular_print'  # Default to regular_print if not specified
-                    if not service_type_raw:
-                        print(f"⚠️ No service_type specified, defaulting to 'regular_print'")
-                
-                # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
-                # Document print model, passport photo model, digital, golden, gloss, jumbo print model
-                document_print_services = ['regular_print', 'regular print', 'document_print']
-                passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
-                digital_services = ['digital_print']
-                golden_services = ['golden_embossing', 'golden_emboss']
-                gloss_services = ['gloss_printing', 'gloss_print']
-                jumbo_services = ['jumbo_printing', 'jumbo_print']
-                
-                # All these service types use vendor_print_jobs storage with pattern: {storage_folder}/{vendor_id}/{filename}
-                all_special_services = (document_print_services + passport_photo_services + 
-                                       digital_services + golden_services + gloss_services + jumbo_services)
-                
-                # Ensure consistent storage folder and R2 path for all service types (SAME as jumbo_printing)
-                storage_folder = 'vendor_print_jobs'
-                
-                # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename} (SAME as jumbo_printing)
-                # This ensures consistent storage in R2 per vendor_id
-                vendor_file_key = f'{storage_folder}/{vendor_id}/{fobj.name}'
-                user_file_key = f'users/{user_email}/{fobj.name}'
-                
-                # Log service type for debugging (ensure regular print is logged same as jumbo_printing)
-                # Always log for regular_print and jumbo_printing to ensure they're processed identically
-                if service_type in ['regular_print', 'jumbo_printing'] or service_type_lc in [s.lower() for s in all_special_services]:
-                    print(f"📦 Storing {service_type} service (normalized from '{service_type_raw}') with consistent R2 path: {vendor_file_key}")
-                    print(f"   ✅ Service type normalized: '{service_type_raw}' -> '{service_type}' (same pattern as jumbo_printing)")
-                    print(f"   🔍 Will store in D1 database after payment verification (same as jumbo_printing)")
-                    print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
-                else:
-                    print(f"⚠️ Service type '{service_type}' may not be handled correctly - check storage logic")
-                    print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
+            # This ensures regular print is handled EXACTLY like jumbo_printing
+            # CRITICAL: Document print modal must use 'regular_print' to match jumbo_printing storage pattern
+            if service_type_lc in ['regular print', 'regular_print', 'document_print', 'document print']:
+                service_type = 'regular_print'  # Normalize to match jumbo_printing pattern
+                print(f"📝 Normalized service_type '{service_type_raw}' -> 'regular_print' (same as jumbo_printing)")
+            elif service_type_lc in ['jumbo_printing', 'jumbo_print']:
+                service_type = 'jumbo_printing'  # Keep jumbo_printing as-is
+                print(f"📝 Service type '{service_type_raw}' -> 'jumbo_printing'")
+            elif service_type_lc in ['passport_photo', 'passport_print', 'photo_print']:
+                service_type = service_type_raw  # Keep passport services as-is
+            elif service_type_lc in ['digital_print']:
+                service_type = 'digital_print'
+            elif service_type_lc in ['golden_embossing', 'golden_emboss']:
+                service_type = 'golden_embossing'
+            elif service_type_lc in ['gloss_printing', 'gloss_print']:
+                service_type = 'gloss_printing'
+            else:
+                service_type = service_type_raw or 'regular_print'  # Default to regular_print if not specified
+                if not service_type_raw:
+                    print(f"⚠️ No service_type specified, defaulting to 'regular_print'")
+            
+            # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
+            # Document print model, passport photo model, digital, golden, gloss, jumbo print model
+            document_print_services = ['regular_print', 'regular print', 'document_print']
+            passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
+            digital_services = ['digital_print']
+            golden_services = ['golden_embossing', 'golden_emboss']
+            gloss_services = ['gloss_printing', 'gloss_print']
+            jumbo_services = ['jumbo_printing', 'jumbo_print']
+            
+            # All these service types use vendor_print_jobs storage with pattern: {storage_folder}/{vendor_id}/{filename}
+            all_special_services = (document_print_services + passport_photo_services + 
+                                   digital_services + golden_services + gloss_services + jumbo_services)
+            
+            # Ensure consistent storage folder and R2 path for all service types (SAME as jumbo_printing)
+            storage_folder = 'vendor_print_jobs'
+            
+            # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename} (SAME as jumbo_printing)
+            # This ensures consistent storage in R2 per vendor_id
+            vendor_file_key = f'{storage_folder}/{vendor_id}/{fobj.name}'
+            user_file_key = f'users/{user_email}/{fobj.name}'
+            
+            # Log service type for debugging (ensure regular print is logged same as jumbo_printing)
+            # Always log for regular_print and jumbo_printing to ensure they're processed identically
+            if service_type in ['regular_print', 'jumbo_printing'] or service_type_lc in [s.lower() for s in all_special_services]:
+                print(f"📦 Storing {service_type} service (normalized from '{service_type_raw}') with consistent R2 path: {vendor_file_key}")
+                print(f"   ✅ Service type normalized: '{service_type_raw}' -> '{service_type}' (same pattern as jumbo_printing)")
+                print(f"   🔍 Will store in D1 database after payment verification (same as jumbo_printing)")
+                print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
+            else:
+                print(f"⚠️ Service type '{service_type}' may not be handled correctly - check storage logic")
+                print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
 
-                # Ensure vendor_id is populated before DB calls (Worker requires it)
-                if (not vendor_id or str(vendor_id).strip() == ''):
-                    if selected_vendor:
-                        vendor_id = selected_vendor
-                        print(f"✅ Fallback vendor_id from selected_vendor: {vendor_id}")
-                    elif vendor_email:
-                        try:
-                            vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
-                            if vendor_id_lookup:
-                                vendor_id = vendor_id_lookup
-                                print(f"✅ Fallback vendor_id from vendor_email lookup: {vendor_id}")
-                        except Exception as e:
-                            print(f"⚠️ Failed vendor_id lookup from vendor_email {vendor_email}: {e}")
-
-                # Assign token from vendor pool if available
-                # CRITICAL: Only assign token once per payment request to prevent duplicate token assignments
-                # All files in the same payment should share the same token
-                if not token_value:  # Only generate once per request
+            # Ensure vendor_id is populated before DB calls (Worker requires it)
+            if (not vendor_id or str(vendor_id).strip() == ''):
+                if selected_vendor:
+                    vendor_id = selected_vendor
+                    print(f"✅ Fallback vendor_id from selected_vendor: {vendor_id}")
+                elif vendor_email:
                     try:
-                        # Assign token from vendor pool if vendor email is available
-                        # The worker API ensures atomic token assignment (checks for 'free' status and updates to 'busy')
-                        if vendor_email:
-                            assigned_token = assign_token_from_vendor_pool(vendor_email)
-                            if assigned_token is None:
-                                # Fallback to sequential token if vendor pool is empty
-                                token_value = get_next_sequential_token()
-                                print(f"⚠️ Vendor token pool empty for {vendor_email}, using fallback token: {token_value}")
-                            else:
-                                token_value = str(assigned_token)
-                                print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email} (service: {service_type})")
-                        else:
-                            # Fallback to sequential token if no vendor email
-                            token_value = get_next_sequential_token()
-                            print(f"⚠️ No vendor email available, using fallback token: {token_value}")
+                        vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
+                        if vendor_id_lookup:
+                            vendor_id = vendor_id_lookup
+                            print(f"✅ Fallback vendor_id from vendor_email lookup: {vendor_id}")
                     except Exception as e:
-                        print(f"❌ Error in token assignment: {str(e)}")
-                        token_value = get_next_sequential_token()  # Use proper sequential token instead of random
-                else:
-                    # Reuse the same token for all files in this payment request
-                    print(f"✅ Reusing token {token_value} for file {fobj.name} (same payment request, service: {service_type})")
+                        print(f"⚠️ Failed vendor_id lookup from vendor_email {vendor_email}: {e}")
 
-                # Generate a unique job_id if not provided
-                job_id = print_settings.get('job_id', '').strip()
-                if not job_id:
-                    import uuid
-                    job_id = str(uuid.uuid4())
-                    print(f"✅ Generated job_id: {job_id} for file {fobj.name}")
-                
-                # Build metadata (extend base with payment details)
-                # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
-                # Handle Mixed color with page ranges
-                color_value = print_settings.get('color', 'Black and White')
-                page_range_value = str(print_settings.get('pageRange', ''))
-                specific_pages_value = str(print_settings.get('specificPages', ''))
-                
-                # For Mixed color, combine bw and color page ranges into pageRange field
-                if color_value == 'Mixed':
-                    bw_range = print_settings.get('bwPageRange', 'all')
-                    bw_range_value = print_settings.get('bwPageRangeValue', '')
-                    color_range = print_settings.get('colorPageRange', 'all')
-                    color_range_value = print_settings.get('colorPageRangeValue', '')
-                    
-                    # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
-                    if bw_range == 'all' and color_range == 'all':
-                        page_range_value = 'BW: all | Color: all'
-                    else:
-                        bw_str = f"BW: {bw_range_value if bw_range == 'range' else 'all'}"
-                        color_str = f"Color: {color_range_value if color_range == 'range' else 'all'}"
-                        page_range_value = f"{bw_str} | {color_str}"
-                
-                metadata = {
-                    'copies': str(print_settings.get('copies', '1')),
-                    'color': color_value,
-                    'orientation': print_settings.get('orientation', 'portrait'),
-                    'pageRange': page_range_value,
-                    'specificPages': specific_pages_value,
-                    'pageSize': str(print_settings.get('pageSize', 'A4')),
-                    'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
-                    'lamination': str(print_settings.get('lamination', 'No')),
-                                  'timestamp': get_ist_timestamp(),
-                                  'status': 'pending',
-                                  'job_completed': 'NO',
-                                  'vendor_status': 'not sended',
-                                  'trash': 'NO',
-                    'user': user_email,
-                    'vendor': vendor_id,
-                    'vendor_id': vendor_id,  # Explicitly include vendor_id
-                    'vendor_email': vendor_email or '',  # Explicitly include vendor_email
-                    'job_id': job_id,  # Use generated or provided job_id
-                    'service_type': service_type,  # Use normalized service_type (same as jumbo_printing)
-                    'service_name': str(print_settings.get('service_name', '')),
-                    'token': token_value,  # Explicitly include token
-                    'printer_name': '',
-                                  'payment_id': payment_id,
-                                  'order_id': order_id
-                }
-                
-                # Store Mixed color page ranges separately for reference
-                if color_value == 'Mixed':
-                    metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
-                    metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
-                    metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
-                    metadata['colorPageRangeValue'] = str(print_settings.get('colorPageRangeValue', ''))
-
-                # Ensure default rendered_status
-                if 'rendered_status' not in metadata:
-                    metadata['rendered_status'] = 'NO'
-
-                # Add shop_address and shop_name to metadata (for database storage)
-                shop_address = print_settings.get('shop_address', '')
-                shop_name = print_settings.get('shop_name', '')
-                if (not shop_address or not shop_name) and vendor_email:
-                    try:
-                        vendor_data = get_vendor_coordinates_from_email(vendor_email)
-                        if vendor_data:
-                            if not shop_address:
-                                shop_address = vendor_data.get('shop_address', '')
-                            if not shop_name:
-                                shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
-                    except Exception as e:
-                        print(f"⚠️ Could not get shop address/name from vendor email: {str(e)}")
-                
-                metadata['shop_address'] = shop_address
-                metadata['shop_name'] = shop_name
-
-                # Resolve vendor email for printer assignment and assign by lowest count
-                assigned_printer_name = ''
+            # Assign token from vendor pool if available
+            # CRITICAL: Only assign token once per payment request to prevent duplicate token assignments
+            # All files in the same payment should share the same token
+            if not token_value:  # Only generate once per request
                 try:
-                    # Use already-extracted vendor_email for printer assignment
+                    # Assign token from vendor pool if vendor email is available
+                    # The worker API ensures atomic token assignment (checks for 'free' status and updates to 'busy')
                     if vendor_email:
-                        assigned_printer_name = assign_printer_and_increment_count(vendor_email, service_type)
-                        if assigned_printer_name:
-                            metadata['printer_name'] = assigned_printer_name
+                        assigned_token = assign_token_from_vendor_pool(vendor_email)
+                        if assigned_token is None:
+                            # Fallback to sequential token if vendor pool is empty
+                            token_value = get_next_sequential_token()
+                            print(f"⚠️ Vendor token pool empty for {vendor_email}, using fallback token: {token_value}")
+                        else:
+                            token_value = str(assigned_token)
+                            print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email} (service: {service_type})")
+                    else:
+                        # Fallback to sequential token if no vendor email
+                        token_value = get_next_sequential_token()
+                        print(f"⚠️ No vendor email available, using fallback token: {token_value}")
                 except Exception as e:
-                    print(f"⚠️ Printer assignment failed: {str(e)}")
+                    print(f"❌ Error in token assignment: {str(e)}")
+                    token_value = get_next_sequential_token()  # Use proper sequential token instead of random
+            else:
+                # Reuse the same token for all files in this payment request
+                print(f"✅ Reusing token {token_value} for file {fobj.name} (same payment request, service: {service_type})")
 
-                # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
-                pricing_details = print_settings.get('pricing_details')
-                pricing_details_serialized = None
-                if pricing_details:
-                    if isinstance(pricing_details, dict):
-                        try:
-                            pricing_details_serialized = json.dumps(pricing_details)
-                        except Exception:
-                            pricing_details_serialized = None
-                    try:
-                        breakdown = pricing_details.get('pricing_breakdown', {})
-                        price_per_page = 0
-                        page_count = 0
-                        num_copies = 0
-                        pricing_key = ''
-                        if isinstance(breakdown, dict):
-                            price_per_page = breakdown.get('price_per_page', 0)
-                            page_count = breakdown.get('page_count', 0)
-                            num_copies = breakdown.get('num_copies', 0)
-                            pricing_key = breakdown.get('pricing_key_used', '')
-                        # Also try to get from print_settings directly if not in breakdown
-                        if page_count == 0:
-                            page_count = print_settings.get('page_count', print_settings.get('pages', 0))
-                        if num_copies == 0:
-                            num_copies = print_settings.get('copies', 1)
-                        
-                        # Store only base_price in pricing_details (not full JSON)
-                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
-                        if base_price == 0:
-                            base_price = pricing_details.get('base_price', 0)
-                        
-                        # Store only base_price value, not full JSON
-                        metadata['pricing_details'] = str(base_price) if base_price else None
-                        metadata['total_price'] = str(pricing_details.get('total_price', 0))
-                        # Explicitly store page_count and num_copies in metadata for database storage
-                        metadata['page_count'] = str(page_count)
-                        metadata['num_copies'] = str(num_copies)
-                        metadata['price_per_page'] = str(price_per_page)
-                        if 'platform_profit' in pricing_details:
-                            metadata['platform_profit'] = str(pricing_details['platform_profit'])
-                    except Exception as e:
-                        print(f"⚠️ Error processing pricing details: {e}")
-                        pass
-                if pricing_details_serialized and not metadata.get('pricing_details_raw'):
-                    metadata['pricing_details_raw'] = pricing_details_serialized
-                if pricing_details and not metadata.get('final_amount'):
-                    final_amount_value = pricing_details.get('total_price') or pricing_details.get('final_amount')
-                    if final_amount_value is not None:
-                        metadata['final_amount'] = str(final_amount_value)
+            # Generate a unique job_id if not provided
+            job_id = print_settings.get('job_id', '').strip()
+            if not job_id:
+                import uuid
+                job_id = str(uuid.uuid4())
+                print(f"✅ Generated job_id: {job_id} for file {fobj.name}")
+            
+            # Build metadata (extend base with payment details)
+            # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
+            # Handle Mixed color with page ranges
+            color_value = print_settings.get('color', 'Black and White')
+            page_range_value = str(print_settings.get('pageRange', ''))
+            specific_pages_value = str(print_settings.get('specificPages', ''))
+            
+            # For Mixed color, combine bw and color page ranges into pageRange field
+            if color_value == 'Mixed':
+                bw_range = print_settings.get('bwPageRange', 'all')
+                bw_range_value = print_settings.get('bwPageRangeValue', '')
+                color_range = print_settings.get('colorPageRange', 'all')
+                color_range_value = print_settings.get('colorPageRangeValue', '')
+                
+                # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
+                if bw_range == 'all' and color_range == 'all':
+                    page_range_value = 'BW: all | Color: all'
                 else:
-                    # Even without pricing_details, try to extract page_count and num_copies from print_settings
-                    page_count = print_settings.get('page_count', print_settings.get('pages', 0))
-                    num_copies = print_settings.get('copies', 1)
-                    if page_count:
-                        metadata['page_count'] = str(page_count)
-                    if num_copies:
-                        metadata['num_copies'] = str(num_copies)
+                    bw_str = f"BW: {bw_range_value if bw_range == 'range' else 'all'}"
+                    color_str = f"Color: {color_range_value if color_range == 'range' else 'all'}"
+                    page_range_value = f"{bw_str} | {color_str}"
+            
+            metadata = {
+                'copies': str(print_settings.get('copies', '1')),
+                'color': color_value,
+                'orientation': print_settings.get('orientation', 'portrait'),
+                'pageRange': page_range_value,
+                'specificPages': specific_pages_value,
+                'pageSize': str(print_settings.get('pageSize', 'A4')),
+                'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
+                'lamination': str(print_settings.get('lamination', 'No')),
+                'timestamp': get_ist_timestamp(),
+                'status': 'pending',
+                'job_completed': 'NO',
+                'vendor_status': 'not sended',
+                'trash': 'NO',
+                'user': user_email,
+                'vendor': vendor_id,
+                'vendor_id': vendor_id,  # Explicitly include vendor_id
+                'vendor_email': vendor_email or '',  # Explicitly include vendor_email
+                'job_id': job_id,  # Use generated or provided job_id
+                'service_type': service_type,  # Use normalized service_type (same as jumbo_printing)
+                'service_name': str(print_settings.get('service_name', '')),
+                'token': token_value,  # Explicitly include token
+                'printer_name': '',
+                'payment_id': payment_id,
+                'order_id': order_id
+            }
+            
+            # Store Mixed color page ranges separately for reference
+            if color_value == 'Mixed':
+                metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
+                metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
+                metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
+                metadata['colorPageRangeValue'] = str(print_settings.get('colorPageRangeValue', ''))
+            
+            # Ensure default rendered_status
+            if 'rendered_status' not in metadata:
+                metadata['rendered_status'] = 'NO'
 
-                # Persist points usage/allocation and pricing into metadata for D1 storage
-                metadata['points_applied'] = request.POST.get('points_applied', 'false')
-                metadata['points_used'] = request.POST.get('points_used', '0')
-                if not metadata.get('final_amount'):
-                    fallback_final_amount = request.POST.get('final_amount') or print_settings.get('final_amount')
-                    if fallback_final_amount is not None:
-                        metadata['final_amount'] = str(fallback_final_amount)
-                if pricing_details and not metadata.get('platform_profit'):
-                    platform_profit_val = pricing_details.get('platform_profit') or pricing_details.get('platform_commission')
-                    if platform_profit_val is not None:
-                        metadata['platform_profit'] = str(platform_profit_val)
+            # Add shop_address and shop_name to metadata (for database storage)
+            shop_address = print_settings.get('shop_address', '')
+            shop_name = print_settings.get('shop_name', '')
+            if (not shop_address or not shop_name) and vendor_email:
+                try:
+                    vendor_data = get_vendor_coordinates_from_email(vendor_email)
+                    if vendor_data:
+                        if not shop_address:
+                            shop_address = vendor_data.get('shop_address', '')
+                        if not shop_name:
+                            shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
+                except Exception as e:
+                    print(f"⚠️ Could not get shop address/name from vendor email: {str(e)}")
+            
+            metadata['shop_address'] = shop_address
+            metadata['shop_name'] = shop_name
 
-                # ATOMIC STORAGE: Store files in R2 and both database tables - all must succeed
-                vendor_stored = False
-                user_stored = False
-                vendor_r2_stored = False
-                user_r2_stored = False
-                upload_error_msg = None
-                db_storage_failed = False
+            # Resolve vendor email for printer assignment and assign by lowest count
+            assigned_printer_name = ''
+            try:
+                # Use already-extracted vendor_email for printer assignment
+                if vendor_email:
+                    assigned_printer_name = assign_printer_and_increment_count(vendor_email, service_type)
+                    if assigned_printer_name:
+                        metadata['printer_name'] = assigned_printer_name
+            except Exception as e:
+                print(f"⚠️ Printer assignment failed: {str(e)}")
+
+            # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
+            pricing_details = print_settings.get('pricing_details')
+            pricing_details_serialized = None
+            if pricing_details:
+                if isinstance(pricing_details, dict):
+                    try:
+                        pricing_details_serialized = json.dumps(pricing_details)
+                    except Exception:
+                        pricing_details_serialized = None
+                try:
+                    breakdown = pricing_details.get('pricing_breakdown', {})
+                    price_per_page = 0
+                    page_count = 0
+                    num_copies = 0
+                    pricing_key = ''
+                    if isinstance(breakdown, dict):
+                        price_per_page = breakdown.get('price_per_page', 0)
+                        page_count = breakdown.get('page_count', 0)
+                        num_copies = breakdown.get('num_copies', 0)
+                        pricing_key = breakdown.get('pricing_key_used', '')
+                    # Also try to get from print_settings directly if not in breakdown
+                    if page_count == 0:
+                        page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                    if num_copies == 0:
+                        num_copies = print_settings.get('copies', 1)
+                    
+                    # Store only base_price in pricing_details (not full JSON)
+                    base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                    if base_price == 0:
+                        base_price = pricing_details.get('base_price', 0)
+                    
+                    # Store only base_price value, not full JSON
+                    metadata['pricing_details'] = str(base_price) if base_price else None
+                    metadata['total_price'] = str(pricing_details.get('total_price', 0))
+                    # Explicitly store page_count and num_copies in metadata for database storage
+                    metadata['page_count'] = str(page_count)
+                    metadata['num_copies'] = str(num_copies)
+                    metadata['price_per_page'] = str(price_per_page)
+                    if 'platform_profit' in pricing_details:
+                        metadata['platform_profit'] = str(pricing_details['platform_profit'])
+                except Exception as e:
+                    print(f"⚠️ Error processing pricing details: {e}")
+                    pass
+            if pricing_details_serialized and not metadata.get('pricing_details_raw'):
+                metadata['pricing_details_raw'] = pricing_details_serialized
+            if pricing_details and not metadata.get('final_amount'):
+                final_amount_value = pricing_details.get('total_price') or pricing_details.get('final_amount')
+                if final_amount_value is not None:
+                    metadata['final_amount'] = str(final_amount_value)
+            else:
+                # Even without pricing_details, try to extract page_count and num_copies from print_settings
+                page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                num_copies = print_settings.get('copies', 1)
+                if page_count:
+                    metadata['page_count'] = str(page_count)
+                if num_copies:
+                    metadata['num_copies'] = str(num_copies)
+
+            # Persist points usage/allocation and pricing into metadata for D1 storage
+            metadata['points_applied'] = request.POST.get('points_applied', 'false')
+            metadata['points_used'] = request.POST.get('points_used', '0')
+            if not metadata.get('final_amount'):
+                fallback_final_amount = request.POST.get('final_amount') or print_settings.get('final_amount')
+                if fallback_final_amount is not None:
+                    metadata['final_amount'] = str(fallback_final_amount)
+            if pricing_details and not metadata.get('platform_profit'):
+                platform_profit_val = pricing_details.get('platform_profit') or pricing_details.get('platform_commission')
+                if platform_profit_val is not None:
+                    metadata['platform_profit'] = str(platform_profit_val)
+
+            # ATOMIC STORAGE: Store files in R2 and both database tables - all must succeed
+            vendor_stored = False
+            user_stored = False
+            vendor_r2_stored = False
+            user_r2_stored = False
+            upload_error_msg = None
+            db_storage_failed = False
+            
+            try:
+                # Step 1: Store to vendor folder in R2
+                # Store only the file bytes in R2 (metadata stays in DB tables)
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=vendor_file_key,
+                    Body=file_content,
+                    ContentType=fobj.content_type
+                )
+                vendor_r2_stored = True
+                print(f"✅ Stored {fobj.name} to vendor R2 folder")
+
+                # Step 2: Store a copy under the user's folder in R2
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=user_file_key,
+                    Body=file_content,
+                    ContentType=fobj.content_type
+                )
+                user_r2_stored = True
+                print(f"✅ Stored {fobj.name} to user R2 folder")
+                
+                # Step 3: Store in vendor_print_jobs table (CRITICAL - must succeed)
+                if not vendor_email and vendor_id:
+                    try:
+                        vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                        print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
+                    except Exception as e:
+                        print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
+                
+                # Prefer full pricing details JSON when present for accurate D1 storage
+                pricing_details_for_db = metadata.get('pricing_details_raw') or pricing_details
                 
                 try:
-                    # Step 1: Store to vendor folder in R2
-                    # Store only the file bytes in R2 (metadata stays in DB tables)
-                    s3.put_object(
-                        Bucket=settings.R2_BUCKET,
-                        Key=vendor_file_key,
-                        Body=file_content,
-                        ContentType=fobj.content_type
+                    vendor_stored = store_vendor_print_job_in_db(
+                        vendor_id=vendor_id,
+                        vendor_email=vendor_email,
+                        user_email=user_email,
+                        filename=fobj.name,
+                        storage_folder=storage_folder,
+                        r2_path=vendor_file_key,
+                        metadata=metadata,
+                        pricing_details=pricing_details_for_db,
+                        user_id=str(request.user.id) if request.user.is_authenticated else None,
+                        shop_id=vendor_id
                     )
-                    vendor_r2_stored = True
-                    print(f"✅ Stored {fobj.name} to vendor R2 folder")
-
-                    # Step 2: Store a copy under the user's folder in R2
-                    s3.put_object(
-                        Bucket=settings.R2_BUCKET,
-                        Key=user_file_key,
-                        Body=file_content,
-                        ContentType=fobj.content_type
-                    )
-                    user_r2_stored = True
-                    print(f"✅ Stored {fobj.name} to user R2 folder")
                     
-                    # Step 3: Store in vendor_print_jobs table (CRITICAL - must succeed)
-                    if not vendor_email and vendor_id:
-                        try:
-                            vendor_email = get_vendor_email_by_vendor_id(vendor_id)
-                            print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
-                        except Exception as e:
-                            print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
-                    
-                    # Prefer full pricing details JSON when present for accurate D1 storage
-                    pricing_details_for_db = metadata.get('pricing_details_raw') or pricing_details
-                    
-                    try:
-                        vendor_stored = store_vendor_print_job_in_db(
-                            vendor_id=vendor_id,
-                            vendor_email=vendor_email,
-                            user_email=user_email,
-                            filename=fobj.name,
-                            storage_folder=storage_folder,
-                            r2_path=vendor_file_key,
-                            metadata=metadata,
-                            pricing_details=pricing_details_for_db,
-                            user_id=str(request.user.id) if request.user.is_authenticated else None,
-                            shop_id=vendor_id
-                        )
-                        
-                        if not vendor_stored:
-                            print(f"❌ Failed to store {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
-                            print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
-                            db_storage_failed = True
-                            raise Exception(f"Failed to store in vendor_print_jobs table for {service_type}")
-                        else:
-                            print(f"✅ Successfully stored {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
-                            print(f"   🔍 Token: {metadata.get('token')}, Job ID: {metadata.get('job_id')}, R2 Path: {vendor_file_key}")
-                    except Exception as vendor_db_error:
-                        print(f"❌ Database error storing {fobj.name} in vendor_print_jobs: {str(vendor_db_error)}")
+                    if not vendor_stored:
+                        print(f"❌ Failed to store {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                        print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
                         db_storage_failed = True
-                        raise Exception(f"Database error: Failed to store in vendor_print_jobs table - {str(vendor_db_error)}")
-                    
-                    # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
-                    user_metadata = dict(metadata)
-                    user_metadata['storage_folder'] = 'users'
-                    try:
-                        user_stored = store_user_print_job_in_db(
-                            vendor_id=vendor_id,
-                            vendor_email=vendor_email,
-                            user_email=user_email,
-                            filename=fobj.name,
-                            storage_folder='users',
-                            r2_path=user_file_key,
-                            metadata=user_metadata,
-                            pricing_details=pricing_details_for_db,
-                            user_id=str(request.user.id) if request.user.is_authenticated else None,
-                            shop_id=vendor_id
-                        )
-                        
-                        if not user_stored:
-                            print(f"❌ Failed to store {fobj.name} in user_print_jobs table for service_type: {service_type}")
-                            print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
-                            db_storage_failed = True
-                            raise Exception(f"Failed to store in user_print_jobs table for {service_type}")
-                        else:
-                            print(f"✅ Successfully stored {fobj.name} in user_print_jobs table for service_type: {service_type}")
-                            print(f"   🔍 Token: {user_metadata.get('token')}, Job ID: {user_metadata.get('job_id')}, R2 Path: {user_file_key}")
-                    except Exception as user_db_error:
-                        print(f"❌ Database error storing {fobj.name} in user_print_jobs: {str(user_db_error)}")
-                        db_storage_failed = True
-                        raise Exception(f"Database error: Failed to store in user_print_jobs table - {str(user_db_error)}")
-                    
-                    # All steps succeeded - mark as processed
-                    files_processed += 1
-                    print(f"✅ Successfully stored file {fobj.name} (service_type: {service_type}) in R2 and both database tables")
-                    
-                except Exception as upload_error:
-                    upload_error_msg = str(upload_error)
-                    print(f"❌ Failed to store file {fobj.name}: {upload_error_msg}")
-                    
-                    # ROLLBACK: Delete R2 files if they were stored but database failed
-                    try:
-                        if vendor_r2_stored:
-                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=vendor_file_key)
-                            print(f"🔄 Rolled back vendor R2 file: {fobj.name}")
-                        if user_r2_stored:
-                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=user_file_key)
-                            print(f"🔄 Rolled back user R2 file: {fobj.name}")
-                    except Exception as rollback_err:
-                        print(f"⚠️ Error during rollback: {rollback_err}")
-                    
-                    # Track failed file and calculate refund amount
-                    files_failed += 1
-                    failed_files.append({
-                        'filename': fobj.name,
-                        'error': upload_error_msg,
-                        'pricing_details': pricing_details
-                    })
-                    
-                    # Calculate payment amount for this failed file
-                    if pricing_details:
-                        total_payment_amount += safe_float(pricing_details.get('total_price', 0))
+                        raise Exception(f"Failed to store in vendor_print_jobs table for {service_type}")
                     else:
-                        # If no pricing_details, try to get from metadata
-                        file_price = metadata.get('total_price') or metadata.get('final_amount')
-                        if file_price:
-                            total_payment_amount += safe_float(file_price, 0.0)
+                        print(f"✅ Successfully stored {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
+                        print(f"   🔍 Token: {metadata.get('token')}, Job ID: {metadata.get('job_id')}, R2 Path: {vendor_file_key}")
+                except Exception as vendor_db_error:
+                    print(f"❌ Database error storing {fobj.name} in vendor_print_jobs: {str(vendor_db_error)}")
+                    db_storage_failed = True
+                    raise Exception(f"Database error: Failed to store in vendor_print_jobs table - {str(vendor_db_error)}")
+                
+                # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
+                user_metadata = dict(metadata)
+                user_metadata['storage_folder'] = 'users'
+                try:
+                    user_stored = store_user_print_job_in_db(
+                        vendor_id=vendor_id,
+                        vendor_email=vendor_email,
+                        user_email=user_email,
+                        filename=fobj.name,
+                        storage_folder='users',
+                        r2_path=user_file_key,
+                        metadata=user_metadata,
+                        pricing_details=pricing_details_for_db,
+                        user_id=str(request.user.id) if request.user.is_authenticated else None,
+                        shop_id=vendor_id
+                    )
+                    
+                    if not user_stored:
+                        print(f"❌ Failed to store {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                        print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
+                        db_storage_failed = True
+                        raise Exception(f"Failed to store in user_print_jobs table for {service_type}")
+                    else:
+                        print(f"✅ Successfully stored {fobj.name} in user_print_jobs table for service_type: {service_type}")
+                        print(f"   🔍 Token: {user_metadata.get('token')}, Job ID: {user_metadata.get('job_id')}, R2 Path: {user_file_key}")
+                except Exception as user_db_error:
+                    print(f"❌ Database error storing {fobj.name} in user_print_jobs: {str(user_db_error)}")
+                    db_storage_failed = True
+                    raise Exception(f"Database error: Failed to store in user_print_jobs table - {str(user_db_error)}")
+                
+                # All steps succeeded - mark as processed
+                files_processed += 1
+                print(f"✅ Successfully stored file {fobj.name} (service_type: {service_type}) in R2 and both database tables")
+                
+            except Exception as upload_error:
+                upload_error_msg = str(upload_error)
+                print(f"❌ Failed to store file {fobj.name}: {upload_error_msg}")
+                
+                # ROLLBACK: Delete R2 files if they were stored but database failed
+                try:
+                    if vendor_r2_stored:
+                        s3.delete_object(Bucket=settings.R2_BUCKET, Key=vendor_file_key)
+                        print(f"🔄 Rolled back vendor R2 file: {fobj.name}")
+                    if user_r2_stored:
+                        s3.delete_object(Bucket=settings.R2_BUCKET, Key=user_file_key)
+                        print(f"🔄 Rolled back user R2 file: {fobj.name}")
+                except Exception as rollback_err:
+                    print(f"⚠️ Error during rollback: {rollback_err}")
+                
+                # Track failed file and calculate refund amount
+                files_failed += 1
+                failed_files.append({
+                    'filename': fobj.name,
+                    'error': upload_error_msg,
+                    'pricing_details': pricing_details
+                })
+                
+                # Calculate payment amount for this failed file
+                if pricing_details:
+                    total_payment_amount += safe_float(pricing_details.get('total_price', 0))
+                else:
+                    # If no pricing_details, try to get from metadata
+                    file_price = metadata.get('total_price') or metadata.get('final_amount')
+                    if file_price:
+                        total_payment_amount += safe_float(file_price, 0.0)
 
         # CRITICAL: If any files failed (including database storage failures), calculate total refund
         # This includes files that failed R2 upload OR database storage
@@ -5699,7 +5710,7 @@ def verify_razorpay_payment(request):
                         points_returned = add_user_points(
                             user_email,
                             points_used_numeric,
-                            f'Points returned - {files_failed} file(s) failed to store for payment {payment_id}'
+                            f'Points returned - {files_failed} file(s) failed to store for payment {payment_id if payment_id else "no_payment"}'
                         )
                         if points_returned:
                             print(f"✅ Returned {points_used_numeric} points to {user_email} due to file storage failure")
@@ -5712,32 +5723,36 @@ def verify_razorpay_payment(request):
                 # Convert amount to paise (Razorpay uses paise)
                 refund_amount_paise = int(float(total_payment_amount) * 100)
                 
-                # Attempt Razorpay refund
+                # Attempt Razorpay refund (only if payment_id exists - skip for document print without payment)
                 refund_success = False
                 refund_id = None
-                try:
-                    if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
-                        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-                        refund_data = {
-                            'amount': refund_amount_paise,
-                            'notes': {
-                                'reason': 'Document upload failed',
-                                'failed_files': ', '.join([f['filename'] for f in failed_files]),
-                                'payment_id': payment_id
+                if payment_id:  # Only attempt refund if payment was made
+                    try:
+                        if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+                            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                            refund_data = {
+                                'amount': refund_amount_paise,
+                                'notes': {
+                                    'reason': 'Document upload failed',
+                                    'failed_files': ', '.join([f['filename'] for f in failed_files]),
+                                    'payment_id': payment_id
+                                }
                             }
-                        }
-                        refund_response = client.payment.refund(payment_id, refund_data)
-                        if refund_response and refund_response.get('id'):
-                            refund_id = refund_response.get('id')
-                            refund_success = True
-                            print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
+                            refund_response = client.payment.refund(payment_id, refund_data)
+                            if refund_response and refund_response.get('id'):
+                                refund_id = refund_response.get('id')
+                                refund_success = True
+                                print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
+                            else:
+                                print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
                         else:
-                            print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
-                    else:
-                        print(f"⚠️ Razorpay keys not configured, cannot process refund")
-                except Exception as refund_err:
-                    print(f"❌ Razorpay refund failed: {str(refund_err)}")
-                    # Fallback to points if refund fails
+                            print(f"⚠️ Razorpay keys not configured, cannot process refund")
+                    except Exception as refund_err:
+                        print(f"❌ Razorpay refund failed: {str(refund_err)}")
+                        # Fallback to points if refund fails
+                        refund_success = False
+                else:
+                    print(f"⚠️ Skipping Razorpay refund - no payment_id (document print without payment)")
                     refund_success = False
                 
                 # If refund failed, compensate with points
@@ -5746,7 +5761,8 @@ def verify_razorpay_payment(request):
                     if user_email_for_refund != 'anonymous':
                         # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
                         points_to_assign = float(total_payment_amount)
-                        success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_id}")
+                        payment_ref = payment_id if payment_id else 'no_payment'
+                        success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_ref}")
                         if success:
                             compensation_points_awarded = points_to_assign
                             response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
@@ -5789,10 +5805,11 @@ def verify_razorpay_payment(request):
                     user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
                     if user_email_for_points:
                         points_to_assign = float(total_payment_amount)
+                        payment_ref = payment_id if payment_id else 'no_payment'
                         success = add_user_points(
                             user_email_for_points,
                             points_to_assign,
-                            f"Compensation points for {files_failed} failed upload(s) - payment {payment_id}"
+                            f"Compensation points for {files_failed} failed upload(s) - payment {payment_ref}"
                         )
                         if success:
                             compensation_points_awarded = points_to_assign
@@ -5815,8 +5832,22 @@ def verify_razorpay_payment(request):
             response_data['refund_amount'] = total_payment_amount
             response_data['refund_message'] = f"Payment of ₹{total_payment_amount} has been refunded due to document upload failure. Please check your payment method for the refund."
         
+        # Final validation: Ensure response includes all required fields
+        if 'files_processed' not in response_data:
+            response_data['files_processed'] = files_processed
+        if 'files_failed' not in response_data:
+            response_data['files_failed'] = files_failed
+        if 'failed_files' not in response_data:
+            response_data['failed_files'] = failed_files
+        
+        print(f"📊 Final response: files_processed={files_processed}, files_failed={files_failed}, token={token_value}")
         return JsonResponse(response_data)
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Exception in verify_razorpay_payment: {str(e)}")
+        print(f"📋 Traceback:\n{error_trace}")
+        
         # If payment verification fails but payment was attempted, return points if they were deducted
         try:
             points_applied = request.POST.get('points_applied', 'false').lower() == 'true'
