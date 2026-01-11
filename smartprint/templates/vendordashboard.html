@@ -4861,8 +4861,42 @@
 
         // Process new jobs instantly as they are rendered
         async function processNewJobsProgressively(newJobs, showAnimation = false) {
+            // Filter out old completed jobs (only show today's completed jobs)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const filteredNewJobs = newJobs.filter(job => {
+                // Keep all pending jobs
+                if (job.job_completed !== 'YES') return true;
+                
+                // For completed jobs, only keep today's jobs
+                const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
+                if (!completionTime) return false; // No completion time, don't show
+                
+                try {
+                    let completionDate;
+                    if (typeof completionTime === 'string') {
+                        if (completionTime.includes('T') || completionTime.includes(' ')) {
+                            completionDate = new Date(completionTime.replace('Z', '+00:00'));
+                        } else {
+                            completionDate = new Date(parseFloat(completionTime) * 1000);
+                        }
+                    } else {
+                        completionDate = new Date(parseFloat(completionTime) * 1000);
+                    }
+                    
+                    if (isNaN(completionDate.getTime())) return false;
+                    
+                    completionDate.setHours(0, 0, 0, 0);
+                    return completionDate.getTime() === today.getTime();
+                } catch (e) {
+                    console.warn('Error parsing completion time for new job:', job.filename, e);
+                    return false;
+                }
+            });
+            
             // Process each new job instantly
-            for (const job of newJobs) {
+            for (const job of filteredNewJobs) {
                 // Add job to allJobs
                 allJobs.push(job);
 
@@ -5084,8 +5118,8 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-danger" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); confirmClearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
-                            <i class="fas fa-times"></i> Cancel
+                        <button class="btn-small btn-danger" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Close and clear from completed">
+                            <i class="fas fa-times"></i> Close
                         </button>
                     </div>
                 </div>
@@ -5094,6 +5128,10 @@
 
         // Render all completed jobs quickly in the same location
         function renderAllCompletedJobs() {
+            // Filter completed jobs to only show today's jobs
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
             const completedJobs = allJobs.filter(job => {
                 // Filter out cancelled jobs
                 const jobCompleted = (job.job_completed || '').toString().trim().toUpperCase();
@@ -5103,7 +5141,35 @@
                 // Show all completed jobs except those explicitly cleared by vendor (persist until Cancel pressed)
                 if (vendorStatus === 'clear') return false;
                 const jobKey = `${job.filename}_${job.token || 'no_token'}`;
-                return !hiddenCompletedJobs.has(jobKey);
+                if (hiddenCompletedJobs.has(jobKey)) return false;
+                
+                // Filter to only show jobs completed today
+                const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
+                if (!completionTime) return false; // No completion time, don't show
+                
+                try {
+                    let completionDate;
+                    if (typeof completionTime === 'string') {
+                        // Try parsing as ISO string
+                        if (completionTime.includes('T') || completionTime.includes(' ')) {
+                            completionDate = new Date(completionTime.replace('Z', '+00:00'));
+                        } else {
+                            // Try parsing as timestamp
+                            completionDate = new Date(parseFloat(completionTime) * 1000);
+                        }
+                    } else {
+                        // Assume it's a timestamp number
+                        completionDate = new Date(parseFloat(completionTime) * 1000);
+                    }
+                    
+                    if (isNaN(completionDate.getTime())) return false; // Invalid date
+                    
+                    completionDate.setHours(0, 0, 0, 0);
+                    return completionDate.getTime() === today.getTime();
+                } catch (e) {
+                    console.warn('Error parsing completion time for job:', job.filename, e);
+                    return false; // If we can't parse the date, don't show it
+                }
             });
 
             const container = document.getElementById('completedJobs');
@@ -5214,9 +5280,42 @@
                 if (initialJobsScript) {
                     const initialJobsData = JSON.parse(initialJobsScript.textContent);
                     if (Array.isArray(initialJobsData) && initialJobsData.length > 0) {
-                        allJobs = initialJobsData;
+                        // Filter completed jobs to only show today's jobs
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        allJobs = initialJobsData.filter(job => {
+                            // Keep all pending jobs
+                            if (job.job_completed !== 'YES') return true;
+                            
+                            // For completed jobs, only keep today's jobs
+                            const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
+                            if (!completionTime) return false; // No completion time, don't show
+                            
+                            try {
+                                let completionDate;
+                                if (typeof completionTime === 'string') {
+                                    if (completionTime.includes('T') || completionTime.includes(' ')) {
+                                        completionDate = new Date(completionTime.replace('Z', '+00:00'));
+                                    } else {
+                                        completionDate = new Date(parseFloat(completionTime) * 1000);
+                                    }
+                                } else {
+                                    completionDate = new Date(parseFloat(completionTime) * 1000);
+                                }
+                                
+                                if (isNaN(completionDate.getTime())) return false;
+                                
+                                completionDate.setHours(0, 0, 0, 0);
+                                return completionDate.getTime() === today.getTime();
+                            } catch (e) {
+                                console.warn('Error parsing completion time for initial job:', job.filename, e);
+                                return false;
+                            }
+                        });
+                        
                         categorizeJobs();
-                        // Cache initial jobs
+                        // Cache initial jobs (already filtered)
                         localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
                     }
                 }
@@ -6247,6 +6346,22 @@
                         }
                     } else {
                         // No new jobs, merge with existing jobs to preserve local changes
+                        // CRITICAL: Remove old completed jobs that aren't in today's list
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const serverJobKeys = new Set(unique.map(j => `${j.filename}_${j.token || 'no_token'}`));
+                        
+                        // Filter out old completed jobs that aren't in today's server response
+                        allJobs = allJobs.filter(job => {
+                            const jobKey = `${job.filename}_${job.token || 'no_token'}`;
+                            // Keep pending jobs
+                            if (job.job_completed !== 'YES') return true;
+                            // Keep completed jobs that are in server response (today's jobs)
+                            if (serverJobKeys.has(jobKey)) return true;
+                            // Remove old completed jobs not in today's list
+                            return false;
+                        });
+                        
                         const existingJobMap = new Map();
                         allJobs.forEach(job => {
                             const key = `${job.filename}_${job.token || 'no_token'}`;
@@ -6306,13 +6421,44 @@
             // Combine ALL pending jobs into a single array (all service types together)
             const pendingJobs = activeJobs.filter(j => j.job_completed === 'NO');
 
-            // FIXED: Completed jobs should remain visible until vendor explicitly clears them
+            // FIXED: Completed jobs should only show today's jobs
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
             const completed = activeJobs.filter(job => {
                 if (job.job_completed !== 'YES') return false;
                 const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
                 if (vendorStatus === 'clear') return false; // hide only when cleared
                 const jobKey = `${job.filename}_${job.token || 'no_token'}`;
-                return !hiddenCompletedJobs.has(jobKey);
+                if (hiddenCompletedJobs.has(jobKey)) return false;
+                
+                // Filter to only show jobs completed today
+                const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
+                if (!completionTime) return false; // No completion time, don't show
+                
+                try {
+                    let completionDate;
+                    if (typeof completionTime === 'string') {
+                        // Try parsing as ISO string
+                        if (completionTime.includes('T') || completionTime.includes(' ')) {
+                            completionDate = new Date(completionTime.replace('Z', '+00:00'));
+                        } else {
+                            // Try parsing as timestamp
+                            completionDate = new Date(parseFloat(completionTime) * 1000);
+                        }
+                    } else {
+                        // Assume it's a timestamp number
+                        completionDate = new Date(parseFloat(completionTime) * 1000);
+                    }
+                    
+                    if (isNaN(completionDate.getTime())) return false; // Invalid date
+                    
+                    completionDate.setHours(0, 0, 0, 0);
+                    return completionDate.getTime() === today.getTime();
+                } catch (e) {
+                    console.warn('Error parsing completion time for job:', job.filename, e);
+                    return false; // If we can't parse the date, don't show it
+                }
             });
 
             filteredJobs = { pending: pendingJobs, completed };
@@ -6626,8 +6772,8 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmClearCompletedJob('${job.filename}', '${job.token || ''}')" title="Cancel and clear from completed">
-                            <i class="fas fa-times"></i> Cancel
+                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Close and clear from completed">
+                            <i class="fas fa-times"></i> Close
                         </button>
                     </div>
                 `;
