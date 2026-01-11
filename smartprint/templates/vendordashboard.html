@@ -5375,6 +5375,18 @@
 
             initResponsiveLayout();
             initializeNotifications();
+            
+            // Track job count for notifications
+            const updateJobCount = () => {
+                const pendingCount = allJobs.filter(j => (j.job_completed || '').toString().trim().toUpperCase() !== 'CANCELLED' && j.job_completed === 'NO').length;
+                if (pendingCount > lastJobCount && lastJobCount > 0) {
+                    // Jobs increased - this will be handled in loadJobs when new jobs are detected
+                }
+                lastJobCount = pendingCount;
+            };
+            
+            // Update job count after initial load
+            setTimeout(updateJobCount, 2000);
 
             // Initialize connection monitoring
             // initConnectionMonitoring disabled
@@ -5771,10 +5783,74 @@
         // Notification System
         let notifications = [];
         let unreadCount = 0;
+        let notificationPermission = 'default';
+        let lastJobCount = 0;
 
         async function initializeNotifications() {
             await loadNotifications();
             setupNotificationListeners();
+            requestNotificationPermission();
+        }
+        
+        // Request browser notification permission
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log('Browser does not support notifications');
+                return;
+            }
+            
+            if (Notification.permission === 'granted') {
+                notificationPermission = 'granted';
+                console.log('Notification permission already granted');
+                return;
+            }
+            
+            if (Notification.permission !== 'denied') {
+                try {
+                    const permission = await Notification.requestPermission();
+                    notificationPermission = permission;
+                    if (permission === 'granted') {
+                        console.log('Notification permission granted');
+                        // Show a test notification to confirm it works
+                        showBrowserNotification('Notifications Enabled', 'You will be notified when new jobs arrive', 'info');
+                    }
+                } catch (error) {
+                    console.error('Error requesting notification permission:', error);
+                }
+            }
+        }
+        
+        // Show browser notification (works even when tab is inactive)
+        function showBrowserNotification(title, message, type = 'info') {
+            if (!('Notification' in window)) {
+                return;
+            }
+            
+            if (Notification.permission !== 'granted') {
+                return;
+            }
+            
+            const icon = type === 'job' ? '/static/images/print-icon.png' : '/static/images/notification-icon.png';
+            
+            const notification = new Notification(title, {
+                body: message,
+                icon: icon || undefined,
+                badge: icon || undefined,
+                tag: 'vendor-job-notification',
+                requireInteraction: false,
+                silent: false
+            });
+            
+            // Close notification after 5 seconds
+            setTimeout(() => {
+                notification.close();
+            }, 5000);
+            
+            // Handle click on notification
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+            };
         }
 
         async function loadNotifications() {
@@ -6343,6 +6419,32 @@
 
                         if (newJobs.length > 0) {
                             showToast(`${newJobs.length} new jobs loaded successfully`);
+                            
+                            // Show browser notification for new jobs (works even when tab is inactive)
+                            if (!isInitialLoad && notificationPermission === 'granted') {
+                                const pendingNewJobs = newJobs.filter(j => j.job_completed === 'NO');
+                                if (pendingNewJobs.length > 0) {
+                                    const jobCount = pendingNewJobs.length;
+                                    const jobText = jobCount === 1 ? 'job' : 'jobs';
+                                    const firstJob = pendingNewJobs[0];
+                                    const serviceType = firstJob.service_type || 'print';
+                                    const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+                                    
+                                    if (jobCount === 1) {
+                                        showBrowserNotification(
+                                            'New Print Job Arrived',
+                                            `${serviceName} job: ${firstJob.filename || 'New job'} (Token: ${firstJob.token || 'N/A'})`,
+                                            'job'
+                                        );
+                                    } else {
+                                        showBrowserNotification(
+                                            'New Print Jobs Arrived',
+                                            `${jobCount} new ${jobText} have arrived. Check your dashboard.`,
+                                            'job'
+                                        );
+                                    }
+                                }
+                            }
                         }
                     } else {
                         // No new jobs, merge with existing jobs to preserve local changes
