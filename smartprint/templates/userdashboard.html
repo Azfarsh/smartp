@@ -4036,55 +4036,57 @@
       @media (min-width: 769px) {
         #orderSummaryModal .shop-name-row {
           display: flex;
-          flex-direction: row;
-          align-items: center;
-          gap: 1rem 1.5rem;
-          padding: 1.25rem 1.75rem;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+          padding: 1rem 1.5rem;
           background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
           border: 1px solid #e5e7eb;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-          flex-wrap: nowrap;
+          margin-bottom: 0.5rem;
         }
         
         #orderSummaryModal .shop-name-row .shop-label {
-          font-weight: 700;
+          font-weight: 600;
           color: #374151;
-          font-size: 0.95rem;
-          min-width: 70px;
-          flex-shrink: 0;
+          font-size: 0.9rem;
+          margin-bottom: 0;
         }
         
         #orderSummaryModal .shop-name-row .shop-value {
-          font-size: 1rem;
+          font-size: 1.1rem;
           color: #1f2937;
-          line-height: 1.4;
-          font-weight: 600;
-          flex: 0 1 auto;
-          max-width: 180px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        
-        #orderSummaryModal .shop-name-row .shop-address-label {
+          line-height: 1.5;
           font-weight: 700;
-          color: #374151;
-          font-size: 0.95rem;
-          min-width: 80px;
-          flex-shrink: 0;
-          margin-left: 0.25rem;
+          width: 100%;
+          white-space: normal;
+          word-wrap: break-word;
         }
         
-        #orderSummaryModal .shop-name-row .shop-address-value {
+        #orderSummaryModal .shop-address-row {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+          padding: 0 1.5rem 1rem 1.5rem;
+          margin-top: 0;
+        }
+        
+        #orderSummaryModal .shop-address-row .shop-label {
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.9rem;
+          margin-bottom: 0;
+        }
+        
+        #orderSummaryModal .shop-address-row .shop-value {
           font-size: 0.95rem;
           color: #1f2937;
-          line-height: 1.4;
+          line-height: 1.6;
           font-weight: 500;
-          flex: 1;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          min-width: 0;
+          width: 100%;
+          white-space: normal;
+          word-wrap: break-word;
         }
       }
       
@@ -4556,7 +4558,7 @@
       box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
     }
     
-    /* Show buttons only when files are uploaded and scrolled to bottom */
+    /* Show buttons when files are uploaded (no scroll requirement) */
     #printModal .modal-footer.fixed-bottom-buttons.show {
       display: flex !important;
     }
@@ -5809,14 +5811,21 @@
     .bill-logo {
       width: 48px;
       height: 48px;
-      background: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.3);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      font-size: 1.75rem;
+      overflow: visible;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      color: rgba(255, 255, 255, 0.95);
+      flex-shrink: 0;
+    }
+    
+    .bill-logo i {
+      color: rgba(255, 255, 255, 0.95);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
     
     @media (max-width: 768px) {
@@ -6220,8 +6229,8 @@
       flex-direction: row;
       align-items: flex-start;
       gap: 0.75rem;
-      margin-top: 0.5rem;
-      padding: 0.5rem 0;
+      margin-top: 0.25rem;
+      padding: 0.25rem 0;
       border-top: none;
       font-size: 0.85rem;
     }
@@ -6265,8 +6274,8 @@
       flex-direction: row;
       align-items: flex-start;
       gap: 0.75rem;
-      margin-bottom: 0.75rem;
-      padding: 0.75rem 0;
+      margin-bottom: 0.25rem;
+      padding: 0.75rem 0 0.25rem 0;
       border-bottom: 1px solid #e5e7eb;
     }
     .shop-name-row:last-of-type {
@@ -6300,12 +6309,14 @@
         font-size: 0.85rem;
         margin-top: 0.5rem;
         padding-top: 0.5rem;
+        margin-bottom: 0.25rem;
+        padding-bottom: 0.25rem;
       }
       
       .shop-address-row {
         font-size: 0.85rem;
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
+        margin-top: 0.25rem;
+        padding-top: 0.25rem;
       }
     }
     
@@ -14773,7 +14784,7 @@
             <div class="bill-header">
               <div class="bill-identity">
                 <div class="bill-logo">
-                  <i class="fas fa-print"></i>
+                  <i class="fas fa-print" style="color: rgba(255, 255, 255, 0.95); font-size: 1.75rem;"></i>
                 </div>
                 <div class="bill-title">
                   <h3>PrintMax Invoice</h3>
@@ -15863,7 +15874,10 @@
       // If preloaded (server provided) jobs exist, render immediately
       if (window.preloadedJobs && window.preloadedPendingJobs) {
         userJobs = window.preloadedJobs;
-        cacheVendorCoordinatesFromJobs(userJobs);
+        // Check if function is available before calling
+        if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+          cacheVendorCoordinatesFromJobs(userJobs);
+        }
         renderJobsWithAnimation(window.preloadedPendingJobs);
         updateLayoutBasedOnJobs();
       } else {
@@ -15880,7 +15894,9 @@
           window.preloadedJobs = data.user_jobs || [];
           window.preloadedPendingJobs = (data.user_jobs || []).filter(j => j.job_completed === 'NO');
           userJobs = window.preloadedJobs;
-          cacheVendorCoordinatesFromJobs(userJobs);
+          if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+            cacheVendorCoordinatesFromJobs(userJobs);
+          }
           // Update KPI counters fast
           const updates = [
             ['totalJobsCount', data.total_jobs],
@@ -16140,11 +16156,9 @@
               <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
                 <i class="fas fa-eye"></i><span class="job-action-label">View</span>
               </button>
-              ${job.pricing_details ? `
-                <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
-                  <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
-                </button>
-              ` : ''}
+              <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
+                <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
+              </button>
               <button class="job-action-btn track-btn" 
                       data-job-filename="${job.filename}"
                       data-lat="${job.vendor_lat || ''}" 
@@ -16674,7 +16688,7 @@
             <div class="bill-header">
               <div class="bill-identity">
                 <div class="bill-logo">
-                  <i class="fas fa-print"></i>
+                  <i class="fas fa-print" style="color: rgba(255, 255, 255, 0.95); font-size: 1.75rem;"></i>
                 </div>
                 <div class="bill-title">
                   <h3>PrintMax Invoice</h3>
@@ -16699,7 +16713,7 @@
                   <span class="shop-value" id="orderSummaryShopName">-</span>
                 </div>
                 <div class="shop-address-row" id="orderSummaryShopAddressRow" style="display: none;">
-                  <span class="shop-label">Address:</span>
+                  <span class="shop-label">Shop Address:</span>
                   <span class="shop-value" id="orderSummaryShopAddress">-</span>
                 </div>
               </div>
@@ -16937,11 +16951,9 @@
               <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
                 <i class="fas fa-eye"></i><span class="job-action-label">View</span>
               </button>
-              ${job.pricing_details ? `
-                <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
-                  <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
-                </button>
-              ` : ''}
+              <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
+                <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
+              </button>
               <button class="job-action-btn track-btn" 
                       data-job-filename="${job.filename}"
                       data-lat="${job.vendor_lat || ''}" 
@@ -17092,6 +17104,8 @@
       if (!Array.isArray(jobList)) return;
       jobList.forEach((job) => vendorCoordinateRegistry.rememberJob(job));
     }
+    // Make function available globally
+    window.cacheVendorCoordinatesFromJobs = cacheVendorCoordinatesFromJobs;
 
     const parseCoordinateValue = (value) => {
       if (value === null || value === undefined || value === '') return null;
@@ -17198,6 +17212,8 @@
         console.warn('Error loading Google Drive Picker:', error);
       }
     }
+    // Make function available globally
+    window.initializeDrivePicker = initializeDrivePicker;
 
     // Load Google Drive Picker with error handling
     function onPickerApiLoad() {
@@ -17759,7 +17775,9 @@
       const userJobsElement = document.getElementById('userJobsData');
       if (userJobsElement) {
         userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
-        cacheVendorCoordinatesFromJobs(userJobs);
+        if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+          cacheVendorCoordinatesFromJobs(userJobs);
+        }
         // Pre-render jobs immediately if data is available
         if (userJobs && userJobs.length > 0) {
           // Jobs will be rendered instantly when DOM is ready
@@ -18960,8 +18978,8 @@
             <div class="row-body">
               <div class="row-title">${shop.shop_name || 'Print Shop'}</div>
               <div class="row-sub">${address}</div>
-              <div class="row-traffic" style="font-size: 11px; color: ${trafficInfo.color}; margin-top: 4px; font-weight: 500;">
-                <i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>${trafficInfo.label}
+              <div class="row-traffic" style="font-size: 13px; color: ${trafficInfo.color}; margin-top: 6px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-circle" style="font-size: 8px;"></i><span>${trafficInfo.label}</span>
               </div>
             </div>
             <div class="row-meta">
@@ -19901,8 +19919,8 @@
               <div class="shop-selection-item-info">
                 <div class="shop-selection-item-name">${shop.shop_name || 'Print Shop'}</div>
                 <div class="shop-selection-item-address">${address}</div>
-                <div class="shop-selection-item-traffic" style="font-size: 11px; color: ${trafficInfo.color}; margin-top: 4px; font-weight: 500;">
-                  <i class="fas fa-circle" style="font-size: 6px; margin-right: 4px;"></i>${trafficInfo.label}
+                <div class="shop-selection-item-traffic" style="font-size: 13px; color: ${trafficInfo.color}; margin-top: 6px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                  <i class="fas fa-circle" style="font-size: 8px;"></i><span>${trafficInfo.label}</span>
                 </div>
               </div>
               <div class="shop-selection-item-meta">
@@ -19929,6 +19947,17 @@
       
       // Add selected class to clicked item
       const selectedItem = modal.querySelector(`[data-shop="${shopFolder}"]`);
+      if (!selectedItem) {
+        // Try finding by shop_folder in data attributes
+        const allItems = modal.querySelectorAll('.shop-selection-item');
+        for (let item of allItems) {
+          if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(`'${shopFolder}'`)) {
+            selectedItem = item;
+            break;
+          }
+        }
+      }
+      
       if (selectedItem) {
         selectedItem.classList.add('selected');
         
@@ -19939,6 +19968,15 @@
         const hiddenSelect = document.getElementById(`${service}-shop-select`);
         if (hiddenSelect) {
           hiddenSelect.value = shopFolder;
+        }
+        
+        // Store shop selection in button dataset for persistence
+        const shopSelectionButton = document.getElementById(`${service}-shop-selection-button`);
+        if (shopSelectionButton) {
+          shopSelectionButton.dataset.selectedShop = shopFolder;
+          // Remove any error styling
+          shopSelectionButton.style.border = '';
+          shopSelectionButton.style.backgroundColor = '';
         }
         
         // Close modal
@@ -19982,6 +20020,11 @@
           } else if (service === 'print') {
             // For document print modal, update selectedVendor and trigger pricing if files are uploaded
             selectedVendor = shopFolder;
+            // Also store in order summary modal if it exists (for multiple uploads)
+            const orderSummaryModal = document.getElementById('orderSummaryModal');
+            if (orderSummaryModal) {
+              orderSummaryModal.dataset.selectedShop = shopFolder;
+            }
             if (selectedVendor && uploadedFiles && uploadedFiles.length > 0) {
               calculateA4PrintPrice();
             }
@@ -20023,6 +20066,22 @@
       const address = selectedItem.querySelector('.shop-selection-item-address')?.textContent || '';
       const distance = selectedItem.querySelector('.shop-selection-item-distance')?.textContent || '';
       
+      // Get shop folder from selectedItem's onclick or data attributes
+      let shopFolder = '';
+      const onclickAttr = selectedItem.getAttribute('onclick');
+      if (onclickAttr) {
+        const match = onclickAttr.match(/selectShopInModal\(['"]\w+['"],\s*['"]([^'"]+)['"]/);
+        if (match) shopFolder = match[1];
+      }
+      if (!shopFolder) {
+        shopFolder = selectedItem.dataset.shop || selectedItem.dataset.shopFolder || '';
+      }
+      
+      // Store shop folder in button dataset for persistence
+      if (shopFolder) {
+        button.dataset.selectedShop = shopFolder;
+      }
+      
       const titleEl = button.querySelector('.shop-selection-title');
       const subtitleEl = button.querySelector('.shop-selection-subtitle') || document.getElementById(`${service}-shop-subtitle`);
       
@@ -20031,6 +20090,10 @@
       if (subtitleEl) {
         subtitleEl.textContent = address || 'Choose a nearby print shop';
       }
+      
+      // Remove any error styling when shop is selected
+      button.style.border = '';
+      button.style.backgroundColor = '';
     }
 
     // Function to reset shop selection button to default state
@@ -20646,7 +20709,9 @@
         if (cachedJobs && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
           // Use cached data
           userJobs = JSON.parse(cachedJobs);
-          cacheVendorCoordinatesFromJobs(userJobs);
+          if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+            cacheVendorCoordinatesFromJobs(userJobs);
+          }
           const pendingJobs = userJobs.filter(job => {
             const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
             return jobCompleted !== 'YES';
@@ -20660,7 +20725,9 @@
         const userJobsElement = document.getElementById('userJobsData');
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
-          cacheVendorCoordinatesFromJobs(userJobs);
+          if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+            cacheVendorCoordinatesFromJobs(userJobs);
+          }
           
           // Cache the data
           try {
@@ -20726,7 +20793,9 @@
         const userJobsElement = doc.querySelector('#userJobsData');
         if (userJobsElement) {
           userJobs = JSON.parse(userJobsElement.dataset.jobs || '[]');
-          cacheVendorCoordinatesFromJobs(userJobs);
+          if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+            cacheVendorCoordinatesFromJobs(userJobs);
+          }
           renderUserJobs(); // Render immediately
           console.log(`⚡ INSTANT REFRESH: ${userJobs.length} jobs refreshed immediately`);
         }
@@ -21175,13 +21244,30 @@
     // Function to view pricing details
     function viewPricingDetails(filename) {
       const job = userJobs.find(j => j.filename === filename);
-      if (!job || !job.pricing_details) {
-        alert('Pricing details not available for this job.');
+      if (!job) {
+        alert('Job not found.');
         return;
       }
-
-      const pricing = job.pricing_details;
-      const breakdown = pricing.pricing_breakdown || {};
+      
+      // Use pricing_details if available, otherwise create breakdown from job data
+      let pricing = job.pricing_details || {};
+      let breakdown = {};
+      
+      if (pricing && pricing.pricing_breakdown) {
+        breakdown = pricing.pricing_breakdown;
+      } else {
+        // Create breakdown from job data if pricing_details doesn't exist
+        breakdown = {
+          page_count: job.page_count || job.pages || 1,
+          num_copies: job.num_copies || job.copies || 1,
+          print_color: job.color || 'Black and White',
+          total_price: job.total_price || job.final_amount || 0
+        };
+        pricing = {
+          total_price: job.total_price || job.final_amount || 0,
+          pricing_breakdown: breakdown
+        };
+      }
 
       // Use the existing pricing summary modal
       const modal = document.getElementById('pricingSummaryModal');
@@ -21240,7 +21326,7 @@
           <div class="bill-header">
             <div class="bill-identity">
               <div class="bill-logo">
-                <i class="fas fa-print"></i>
+                <i class="fas fa-print" style="color: rgba(255, 255, 255, 0.95); font-size: 1.75rem;"></i>
               </div>
               <div class="bill-title">
                 <h3>PrintMax Invoice</h3>
@@ -21641,7 +21727,8 @@
       pdfLoadedForFileId = null;
       filteredPageNumbers = [];
       currentPreviewPageIdx = 0;
-      selectedVendor = '';
+      // Don't reset selectedVendor - preserve it to allow multiple document uploads
+      // selectedVendor = '';
 
       // Reset vendor UI
       const vendorSelection = document.getElementById('vendorSelection');
@@ -21767,6 +21854,24 @@
           debouncedUpdateDocumentPreview();
         }
       }
+      
+      // Restore shop selection if it exists (preserve for multiple uploads)
+      const shopSelectionButton = document.getElementById('print-shop-selection-button');
+      if (shopSelectionButton && selectedVendor) {
+        // Restore the shop selection button display
+        const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedVendor);
+        if (selectedShopData) {
+          const titleEl = shopSelectionButton.querySelector('.shop-selection-title');
+          const subtitleEl = shopSelectionButton.querySelector('.shop-selection-subtitle');
+          if (titleEl) titleEl.textContent = selectedShopData.shop_name || 'Print Shop';
+          if (subtitleEl) subtitleEl.textContent = selectedShopData.shop_address || 'Address not available';
+          shopSelectionButton.dataset.selectedShop = selectedVendor;
+          // Remove any error styling
+          shopSelectionButton.style.border = '';
+          shopSelectionButton.style.backgroundColor = '';
+        }
+      }
+      
       // Reset actions visibility on open
       ensureModalButtonsVisible();
       const body = printModal.querySelector('.modal-body');
@@ -24337,9 +24442,22 @@
       }
 
       // Check if a shop is selected - highlight instead of alert
-      if (!selectedVendor || selectedVendor === '') {
-        const shopSelectionButton = document.getElementById('print-shop-selection-button');
-        const vendorSelection = document.getElementById('vendorSelection');
+      // First check if shop is selected from shop selection button
+      const shopSelectionButton = document.getElementById('print-shop-selection-button');
+      let currentSelectedVendor = selectedVendor;
+      
+      // If shopSelectionButton exists and has a selected shop, use that instead
+      if (shopSelectionButton && shopSelectionButton.dataset.selectedShop) {
+        currentSelectedVendor = shopSelectionButton.dataset.selectedShop;
+      }
+      
+      // Also check if there's a shop selected in the order summary modal (for multiple uploads)
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal && orderSummaryModal.dataset.selectedShop) {
+        currentSelectedVendor = orderSummaryModal.dataset.selectedShop;
+      }
+      
+      if (!currentSelectedVendor || currentSelectedVendor === '') {
         if (shopSelectionButton) {
           shopSelectionButton.style.border = '2px solid #ef4444';
           shopSelectionButton.style.backgroundColor = '#fef2f2';
@@ -24348,20 +24466,28 @@
             shopSelectionButton.style.border = '';
             shopSelectionButton.style.backgroundColor = '';
           }, 5000);
-        } else if (vendorSelection) {
-          vendorSelection.style.border = '2px solid #ef4444';
-          vendorSelection.style.borderRadius = '8px';
-          vendorSelection.style.padding = '0.5rem';
-          vendorSelection.style.backgroundColor = '#fef2f2';
-          vendorSelection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setTimeout(() => {
-            vendorSelection.style.border = '';
-            vendorSelection.style.borderRadius = '';
-            vendorSelection.style.padding = '';
-            vendorSelection.style.backgroundColor = '';
-          }, 5000);
+        } else {
+          const vendorSelection = document.getElementById('vendorSelection');
+          if (vendorSelection) {
+            vendorSelection.style.border = '2px solid #ef4444';
+            vendorSelection.style.borderRadius = '8px';
+            vendorSelection.style.padding = '0.5rem';
+            vendorSelection.style.backgroundColor = '#fef2f2';
+            vendorSelection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+              vendorSelection.style.border = '';
+              vendorSelection.style.borderRadius = '';
+              vendorSelection.style.padding = '';
+              vendorSelection.style.backgroundColor = '';
+            }, 5000);
+          }
         }
         return;
+      }
+      
+      // Update selectedVendor if we found a valid selection
+      if (currentSelectedVendor && currentSelectedVendor !== selectedVendor) {
+        selectedVendor = currentSelectedVendor;
       }
 
       // Capture printModal dimensions and position before closing
@@ -24387,7 +24513,7 @@
       
       // IMPORTANT: Store files in order summary modal before closing print modal
       // This ensures files persist even if print modal gets reset (same logic as photoprint modal)
-      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      // Reuse orderSummaryModal variable declared earlier in this function
       if (orderSummaryModal && typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
         // Convert uploadedFiles array to File objects for storage
         const filesToStore = uploadedFiles.map(fileObj => {
@@ -26315,20 +26441,20 @@
                   );
                 }
                 
-                // Update points if allotted or deducted
+                // Update points only if deducted (points used for payment)
+                // DO NOT allot points if payment was successful and job was stored
                 if (typeof userPoints !== 'undefined') {
                   if (verifyData.points_deducted) {
                     userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
                   }
-                  if (verifyData.points_allotted && verifyData.points_allotted > 0) {
-                    userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
-                  }
-                  updatePointsDisplay();
-                  // Update the dashboard points display (same as jumbo print)
-                  const totalPointsElement = document.getElementById('totalPointsCount');
-                  if (totalPointsElement) {
-                    const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
-                    totalPointsElement.textContent = displayPoints;
+                  // Only update display if points were deducted
+                  if (verifyData.points_deducted) {
+                    updatePointsDisplay();
+                    const totalPointsElement = document.getElementById('totalPointsCount');
+                    if (totalPointsElement) {
+                      const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                      totalPointsElement.textContent = displayPoints;
+                    }
                   }
                 }
               }
@@ -27412,8 +27538,12 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Initialize Google Drive Picker
-      initializeDrivePicker();
+      // Initialize Google Drive Picker - check if function is available
+      if (typeof initializeDrivePicker === 'function') {
+        initializeDrivePicker();
+      } else {
+        console.warn('initializeDrivePicker function not available yet');
+      }
       
       var passportBtn = document.getElementById('passportPhotoBtn');
       if (passportBtn) {
@@ -27831,13 +27961,16 @@
   }
   </script>
 
-  <!-- Success Modal - Compact & Impressive -->
+  <!-- Success Modal - Enhanced Design with Lottie -->
   <div id="successModal" class="success-modal-overlay">
     <div class="success-modal">
-      <div class="success-lottie-container" style="width: 120px; height: 120px; margin: 0 auto;">
-        <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" style="width:120px; height:120px; margin:0 auto;"></dotlottie-player>
+      <div class="success-lottie-container">
+        <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false" class="success-lottie-player"></dotlottie-player>
       </div>
-      <p class="success-subtitle" style="margin-top: 0.75rem; font-size: 0.95rem; line-height: 1.4;">✅ Print job sent successfully</p>
+      <div class="success-content">
+        <h3 class="success-title">Success!</h3>
+        <p class="success-subtitle">Print job sent successfully</p>
+      </div>
     </div>
   </div>
 
@@ -28236,16 +28369,50 @@
 
     .success-modal {
       background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-      border-radius: 20px;
+      border-radius: 24px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
       width: 90%;
-      max-width: 280px;
-      padding: 1.5rem 1.25rem;
+      max-width: 400px;
+      padding: 2rem 1.5rem;
       text-align: center;
       transform: scale(0.85) translateY(20px);
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       position: relative;
       overflow: hidden;
+    }
+    
+    .success-lottie-container {
+      width: 200px;
+      height: 200px;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .success-lottie-player {
+      width: 200px !important;
+      height: 200px !important;
+    }
+    
+    .success-content {
+      margin-top: 0.5rem;
+    }
+    
+    .success-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #10b981;
+      margin: 0 0 0.5rem 0;
+      line-height: 1.2;
+    }
+    
+    .success-subtitle {
+      font-size: 1rem;
+      color: #374151;
+      margin: 0;
+      line-height: 1.5;
+      font-weight: 500;
     }
 
     .success-modal::before {
@@ -28585,19 +28752,19 @@
 
     @media (max-width: 768px) {
       .success-modal {
-        max-width: 260px;
-        padding: 1.25rem 1rem;
+        max-width: 320px;
+        padding: 1.5rem 1.25rem;
       }
       
-      .success-check-circle {
-        width: 70px;
-        height: 70px;
-        margin-bottom: 1.25rem;
+      .success-lottie-container {
+        width: 160px;
+        height: 160px;
+        margin-bottom: 1rem;
       }
       
-      .success-checkmark {
-        width: 70px;
-        height: 70px;
+      .success-lottie-player {
+        width: 160px !important;
+        height: 160px !important;
       }
       
       .success-title {
@@ -28605,28 +28772,53 @@
       }
       
       .success-subtitle {
-        font-size: 1rem;
-        font-weight: 600;
+        font-size: 0.95rem;
       }
     }
     
     @media (min-width: 769px) {
+      .success-lottie-container {
+        width: 220px;
+        height: 220px;
+      }
+      
+      .success-lottie-player {
+        width: 220px !important;
+        height: 220px !important;
+      }
+      
+      .success-title {
+        font-size: 1.75rem;
+      }
+      
       .success-subtitle {
-        font-size: 1.2rem;
-        font-weight: 600;
+        font-size: 1.1rem;
       }
     }
 
     @media (max-width: 480px) {
       .success-modal {
-        max-width: 260px;
-        padding: 1.75rem 1.25rem;
+        max-width: 300px;
+        padding: 1.25rem 1rem;
       }
       
-      .success-check-circle {
-        width: 65px;
-        height: 65px;
-        margin-bottom: 1rem;
+      .success-lottie-container {
+        width: 140px;
+        height: 140px;
+        margin-bottom: 0.75rem;
+      }
+      
+      .success-lottie-player {
+        width: 140px !important;
+        height: 140px !important;
+      }
+      
+      .success-title {
+        font-size: 1.25rem;
+      }
+      
+      .success-subtitle {
+        font-size: 0.9rem;
       }
       
       .success-checkmark {
@@ -28893,7 +29085,9 @@
           if (data.success && data.user_jobs) {
             // Update global userJobs variable
             userJobs = data.user_jobs;
-            cacheVendorCoordinatesFromJobs(userJobs);
+            if (typeof cacheVendorCoordinatesFromJobs === 'function') {
+              cacheVendorCoordinatesFromJobs(userJobs);
+            }
             
             // Cache the updated data
             localStorage.setItem('userJobsCache', JSON.stringify(userJobs));
