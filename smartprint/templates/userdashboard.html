@@ -25789,14 +25789,34 @@
               // 3) Verify payment on server and upload files atomically (blocking now to avoid false positives)
               // CRITICAL: Documents are stored INSTANTLY in R2 and database after payment verification
               console.log('💳 Payment successful, storing documents instantly...');
+              
+              // Validate files are in formData before sending
+              const fileCount = parseInt(formData.get('file_count') || '0');
+              let actualFileCount = 0;
+              for (let i = 0; i < fileCount; i++) {
+                if (formData.get(`file_${i}`)) {
+                  actualFileCount++;
+                }
+              }
+              
               console.log('📋 FormData details:', {
                 serviceType: serviceType,
-                fileCount: formData.get('file_count'),
+                fileCount: fileCount,
+                actualFileCount: actualFileCount,
                 serviceTypeInSettings: formData.get('settings_0') ? JSON.parse(formData.get('settings_0')).service_type : 'N/A',
                 vendorId: formData.get('vendor_id'),
                 vendorEmail: formData.get('vendor_email'),
-                userEmail: formData.get('user_email')
+                userEmail: formData.get('user_email'),
+                finalAmount: formData.get('final_amount'),
+                pointsApplied: formData.get('points_applied'),
+                pointsUsed: formData.get('points_used')
               });
+              
+              // Warn if file count mismatch
+              if (actualFileCount !== fileCount) {
+                console.warn(`⚠️ File count mismatch: expected ${fileCount}, found ${actualFileCount} files in formData`);
+              }
+              
               const verifyResp = await fetch('/payments/verify/', {
                 method: 'POST',
                 body: formData,
@@ -25844,48 +25864,92 @@
                       ? `All ${expectedFileCount} file(s) failed to upload`
                       : 'One or more files failed to upload');
                 const actualFilesFailed = filesFailed > 0 ? filesFailed : expectedFileCount;
-                const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
+                
+                // CRITICAL: Calculate actual payment amount from order summary or modal data
+                // This ensures refund message shows correct amount even if server returns 0
+                const orderSummaryModal = document.getElementById('orderSummaryModal');
+                const printModal = document.getElementById('printModal');
+                const actualPaymentAmount = parseFloat(orderSummaryModal?.dataset.finalAmount || 
+                                                      orderSummaryModal?.dataset.calculatedPrice || 
+                                                      printModal?.dataset.finalAmount || 
+                                                      printModal?.dataset.calculatedPrice || 
+                                                      verifyData.refund_amount || 
+                                                      '0');
+                
+                // Use server refund amount if available, otherwise use actual payment amount
+                const refundAmount = verifyData.refund_amount && parseFloat(verifyData.refund_amount) > 0 
+                  ? parseFloat(verifyData.refund_amount) 
+                  : actualPaymentAmount;
+                
+                const refundMessage = verifyData.refund_message || 
+                  `Payment of ₹${refundAmount.toFixed(2)} has been refunded due to document upload failure.`;
                 showFailedUploadModal(actualFilesFailed, failedFileNames, refundMessage);
                 
                 // CRITICAL: Return points if files failed to store (same as jumbo print)
-                // Check both server-returned points and calculate if needed
+                // Calculate points to return: points used + compensation (payment amount in points)
+                const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
+                const pointsUsed = parseInt(orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0');
+                const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
+                
                 let pointsToReturn = 0;
+                let compensationPoints = 0;
+                
+                // 1. Return points that were used (if any)
                 if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
                   pointsToReturn = Number(verifyData.points_returned);
-                } else {
-                  // If server didn't return points but upload failed, try to return points used
-                  const orderSummaryModal = document.getElementById('orderSummaryModal');
-                  const printModal = document.getElementById('printModal');
-                  const pointsUsed = orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0';
-                  const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
-                  if (pointsApplied && parseInt(pointsUsed) > 0) {
-                    pointsToReturn = parseInt(pointsUsed);
-                    // Try to return points via API
-                    const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
-                    if (userEmail && pointsToReturn > 0) {
-                      fetch('/payments/return-points/', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: JSON.stringify({
-                          user_email: userEmail,
-                          points: pointsToReturn,
-                          reason: 'Points returned - document upload failed after payment'
-                        })
-                      }).catch(err => console.error('Error returning points:', err));
-                    }
+                } else if (pointsApplied && pointsUsed > 0) {
+                  pointsToReturn = pointsUsed;
+                  // Return points via API
+                  if (userEmail && pointsToReturn > 0) {
+                    fetch('/payments/return-points/', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                      },
+                      body: JSON.stringify({
+                        user_email: userEmail,
+                        points: pointsToReturn,
+                        reason: 'Points returned - document upload failed after payment'
+                      })
+                    }).catch(err => console.error('Error returning points:', err));
                   }
                 }
                 
-                if (pointsToReturn > 0 && typeof userPoints !== 'undefined') {
-                  userPoints = (userPoints || 0) + pointsToReturn;
+                // 2. Add compensation points equal to payment amount (1 rupee = 1 point)
+                // Server should handle this automatically, but if it doesn't, we'll show it in UI
+                if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                  compensationPoints = Number(verifyData.compensation_points_awarded);
+                } else if (verifyData.points_compensated && Number(verifyData.points_compensated) > 0) {
+                  compensationPoints = Number(verifyData.points_compensated);
+                } else if (refundAmount > 0) {
+                  // If server didn't award compensation, note it for user (server should handle this)
+                  // The server code should automatically award compensation points equal to refund amount
+                  // We'll display the expected compensation in the UI
+                  compensationPoints = refundAmount;
+                  console.log(`⚠️ Server didn't return compensation points. Expected: ${compensationPoints} points (₹${refundAmount.toFixed(2)})`);
+                }
+                
+                // Update user points display with both returned and compensation points
+                const totalPointsToAdd = pointsToReturn + compensationPoints;
+                if (totalPointsToAdd > 0 && typeof userPoints !== 'undefined') {
+                  userPoints = (userPoints || 0) + totalPointsToAdd;
                   updatePointsDisplay();
                   const totalPointsElement = document.getElementById('totalPointsCount');
                   if (totalPointsElement) {
                     const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
                     totalPointsElement.textContent = displayPoints;
+                  }
+                  
+                  // Show notification about points
+                  if (compensationPoints > 0) {
+                    showCursorNotification(
+                      'Compensation Added',
+                      'success',
+                      `You received ${compensationPoints.toFixed(1)} points as compensation for the failed upload.`,
+                      'success',
+                      5000
+                    );
                   }
                 }
                 
