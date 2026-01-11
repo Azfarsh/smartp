@@ -3910,33 +3910,61 @@
       }
 
       #orderSummaryModal .service-row {
-        padding: 0.5rem 0.75rem;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.375rem;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        gap: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
       }
 
       #orderSummaryModal .service-name {
-        font-size: 0.8rem;
-        width: 100%;
+        font-size: 0.9rem;
+        flex: 1;
+        min-width: 0;
       }
 
       #orderSummaryModal .service-status {
-        font-size: 0.65rem;
-        padding: 0.25rem 0.625rem;
-        align-self: flex-end;
+        font-size: 0.8rem;
+        padding: 0.4rem 1rem;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
 
       #orderSummaryModal .shop-name-row {
-        margin-top: 0.375rem;
-        padding-top: 0.375rem;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+        padding: 0.75rem 0;
         border-top: 1px solid #e5e7eb;
-        font-size: 0.75rem;
+        font-size: 0.85rem;
+      }
+      
+      #orderSummaryModal .shop-name-row .shop-label {
+        min-width: 70px;
+        flex-shrink: 0;
+        font-size: 0.85rem;
+      }
+      
+      #orderSummaryModal .shop-name-row .shop-value {
+        flex: 1;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
       }
       
       #orderSummaryModal #orderSummaryShopAddressRow {
-        position: sticky;
-        top: 0;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.75rem;
+        position: relative;
         background: var(--surface);
         z-index: 10;
         padding: 0.75rem 0;
@@ -6001,21 +6029,24 @@
       word-break: break-word;
     }
     #orderSummaryShopAddress {
-      white-space: pre-line;
+      white-space: normal;
       word-wrap: break-word;
       word-break: break-word;
+      overflow-wrap: break-word;
       max-width: 100%;
       display: block;
       line-height: 1.5;
       color: #374151;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       margin-top: 0.25rem;
+      padding: 0;
     }
     .shop-name-row {
-      flex-direction: column;
+      display: flex;
+      flex-direction: row;
       align-items: flex-start;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
       padding: 0.75rem 0;
       border-bottom: 1px solid #e5e7eb;
     }
@@ -6024,20 +6055,25 @@
     }
     .shop-name-row .shop-label {
       display: block;
-      width: 100%;
+      min-width: 80px;
+      flex-shrink: 0;
       font-weight: 600;
       color: #4b5563;
       font-size: 0.9rem;
-      margin-bottom: 0.25rem;
+      margin: 0;
+      padding: 0;
     }
     .shop-name-row .shop-value {
       display: block;
-      width: 100%;
+      flex: 1;
       word-wrap: break-word;
-      white-space: pre-wrap;
+      white-space: normal;
+      overflow-wrap: break-word;
       color: #1f2937;
-      font-size: 0.95rem;
-      line-height: 1.6;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
     }
     
     @media (max-width: 768px) {
@@ -25230,7 +25266,11 @@
         const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
 
         // Prepare form data (files + settings) but DO NOT upload yet
-          formData = new FormData();
+        // CRITICAL: Create new FormData to ensure clean state
+        formData = new FormData();
+        
+        // Log files being added to formData for debugging
+        console.log('📦 Building formData with files:', filesFromPrintModal.length, 'files');
 
         // CRITICAL: Validate files are proper File objects before processing
         for (let i = 0; i < filesFromPrintModal.length; i++) {
@@ -25822,19 +25862,39 @@
               // CRITICAL: Documents are stored INSTANTLY in R2 and database after payment verification
               console.log('💳 Payment successful, storing documents instantly...');
               
-              // Validate files are in formData before sending
+              // Validate file_count is set (files are validated by server)
               const fileCount = parseInt(formData.get('file_count') || '0');
-              let actualFileCount = 0;
+              
+              // CRITICAL: Validate file_count is greater than 0
+              if (fileCount === 0) {
+                const errorMsg = `File upload error: No files found in form data. Please try uploading again.`;
+                console.error('❌', errorMsg);
+                hidePaymentProcessingState();
+                throw new Error(errorMsg);
+              }
+              
+              // Validate settings exist for each file (this confirms files were added)
+              let settingsCount = 0;
               for (let i = 0; i < fileCount; i++) {
-                if (formData.get(`file_${i}`)) {
-                  actualFileCount++;
+                const settingsKey = `settings_${i}`;
+                const settingsValue = formData.get(settingsKey);
+                if (settingsValue) {
+                  settingsCount++;
                 }
+              }
+              
+              // If settings count doesn't match file count, there's a mismatch
+              if (settingsCount !== fileCount) {
+                const errorMsg = `File upload error: Settings mismatch. Expected ${fileCount} settings but found ${settingsCount}. Please try uploading again.`;
+                console.error('❌', errorMsg);
+                hidePaymentProcessingState();
+                throw new Error(errorMsg);
               }
               
               console.log('📋 FormData details:', {
                 serviceType: serviceType,
                 fileCount: fileCount,
-                actualFileCount: actualFileCount,
+                settingsCount: settingsCount,
                 serviceTypeInSettings: formData.get('settings_0') ? JSON.parse(formData.get('settings_0')).service_type : 'N/A',
                 vendorId: formData.get('vendor_id'),
                 vendorEmail: formData.get('vendor_email'),
@@ -25843,14 +25903,6 @@
                 pointsApplied: formData.get('points_applied'),
                 pointsUsed: formData.get('points_used')
               });
-              
-              // CRITICAL: Validate files exist before sending - throw error if files are missing
-              if (actualFileCount === 0 || actualFileCount !== fileCount) {
-                const errorMsg = `File upload error: Expected ${fileCount} file(s) but found ${actualFileCount}. Please try uploading again.`;
-                console.error('❌', errorMsg);
-                hidePaymentProcessingState();
-                throw new Error(errorMsg);
-              }
               
               const verifyResp = await fetch('/payments/verify/', {
                 method: 'POST',
