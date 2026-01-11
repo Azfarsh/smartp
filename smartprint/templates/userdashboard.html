@@ -25817,23 +25817,75 @@
 
               hidePaymentProcessingState();
 
+              // CRITICAL: Robust failure detection - check multiple conditions for upload failure
+              // Get expected file count from formData
+              const expectedFileCount = parseInt(formData.get('file_count') || '0');
+              const filesProcessed = parseInt(verifyData.files_processed || '0');
+              const filesFailed = parseInt(verifyData.files_failed || '0');
+              
+              // Debug logging for upload status
+              console.log('📊 Document Print Upload Status:', {
+                expectedFileCount,
+                filesProcessed,
+                filesFailed,
+                hasR2Path: verifyData.r2_paths && verifyData.r2_paths.length > 0,
+                r2PathsCount: verifyData.r2_paths ? verifyData.r2_paths.length : 0
+              });
+              
+              // Check for failed uploads: either explicit failure count OR no files processed when files were expected
+              const hasUploadFailure = (filesFailed > 0) || (expectedFileCount > 0 && filesProcessed === 0);
+              
               // Check for failed uploads FIRST and show refund message in modal (same as jumbo print)
-              if (verifyData.files_failed > 0) {
+              if (hasUploadFailure) {
                 const failedFiles = verifyData.failed_files || [];
-                const failedFileNames = failedFiles.map(f => f.filename).join(', ');
+                const failedFileNames = failedFiles.length > 0 
+                  ? failedFiles.map(f => f.filename).join(', ')
+                  : (expectedFileCount > 0 && filesProcessed === 0 
+                      ? `All ${expectedFileCount} file(s) failed to upload`
+                      : 'One or more files failed to upload');
+                const actualFilesFailed = filesFailed > 0 ? filesFailed : expectedFileCount;
                 const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
-                showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
+                showFailedUploadModal(actualFilesFailed, failedFileNames, refundMessage);
                 
                 // CRITICAL: Return points if files failed to store (same as jumbo print)
+                // Check both server-returned points and calculate if needed
+                let pointsToReturn = 0;
                 if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
-                  if (typeof userPoints !== 'undefined') {
-                    userPoints = (userPoints || 0) + Number(verifyData.points_returned);
-                    updatePointsDisplay();
-                    const totalPointsElement = document.getElementById('totalPointsCount');
-                    if (totalPointsElement) {
-                      const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
-                      totalPointsElement.textContent = displayPoints;
+                  pointsToReturn = Number(verifyData.points_returned);
+                } else {
+                  // If server didn't return points but upload failed, try to return points used
+                  const orderSummaryModal = document.getElementById('orderSummaryModal');
+                  const printModal = document.getElementById('printModal');
+                  const pointsUsed = orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0';
+                  const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
+                  if (pointsApplied && parseInt(pointsUsed) > 0) {
+                    pointsToReturn = parseInt(pointsUsed);
+                    // Try to return points via API
+                    const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
+                    if (userEmail && pointsToReturn > 0) {
+                      fetch('/payments/return-points/', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                          user_email: userEmail,
+                          points: pointsToReturn,
+                          reason: 'Points returned - document upload failed after payment'
+                        })
+                      }).catch(err => console.error('Error returning points:', err));
                     }
+                  }
+                }
+                
+                if (pointsToReturn > 0 && typeof userPoints !== 'undefined') {
+                  userPoints = (userPoints || 0) + pointsToReturn;
+                  updatePointsDisplay();
+                  const totalPointsElement = document.getElementById('totalPointsCount');
+                  if (totalPointsElement) {
+                    const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                    totalPointsElement.textContent = displayPoints;
                   }
                 }
                 
@@ -25954,6 +26006,51 @@
             } catch (err) {
               console.error('Payment handler error:', err);
               hidePaymentProcessingState();
+              
+              // Return points if payment verification failed (same as other modals)
+              const isLocalhost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+              const orderSummaryModal = document.getElementById('orderSummaryModal');
+              const printModal = document.getElementById('printModal');
+              const sourceModal = isPrintModal ? printModal : (orderSummaryModal ? null : null);
+              const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
+              const pointsUsed = parseInt(orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0');
+              
+              // Return points if verification failed on localhost or if points were applied
+              if ((isLocalhost || pointsApplied) && pointsUsed > 0) {
+                try {
+                  const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
+                  if (userEmail) {
+                    const returnResp = await fetch('/payments/return-points/', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                      },
+                      body: JSON.stringify({
+                        user_email: userEmail,
+                        points: pointsUsed,
+                        reason: isLocalhost 
+                          ? 'Points returned - payment verification failed on localhost (document print)'
+                          : 'Points returned - payment verification failed (document print)'
+                      })
+                    });
+                    
+                    const returnData = await returnResp.json();
+                    if (returnData.success && typeof userPoints !== 'undefined') {
+                      userPoints = (userPoints || 0) + pointsUsed;
+                      updatePointsDisplay();
+                      const totalPointsElement = document.getElementById('totalPointsCount');
+                      if (totalPointsElement) {
+                        const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                        totalPointsElement.textContent = displayPoints;
+                      }
+                    }
+                  }
+                } catch (pointsErr) {
+                  console.error('Error returning points after payment failure:', pointsErr);
+                }
+              }
+              
               alert(err.message || 'Payment processing failed. Please try again.');
               if (confirmPayBtn) {
                 confirmPayBtn.disabled = false;
