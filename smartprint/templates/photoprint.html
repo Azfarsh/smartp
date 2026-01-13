@@ -745,12 +745,17 @@
         }
 
         .bill-date {
-            text-align: right;
+            text-align: left;
             font-size: 0.9rem;
             opacity: 0.95;
             font-weight: 500;
             white-space: nowrap;
             flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 0.25rem;
         }
 
         @media (max-width: 768px) {
@@ -759,12 +764,16 @@
                 font-size: 0.85rem;
                 width: 100%;
                 white-space: normal;
+                align-items: flex-start;
             }
         }
 
         .bill-date p {
-            margin: 0.3rem 0;
+            margin: 0;
             line-height: 1.5;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .bill-content {
@@ -1352,6 +1361,7 @@
             max-width: calc(100% - 120px);
         }
         .shop-selection-item-name {
+            color: #111827;
             font-weight: 600;
             color: #111827;
             font-size: 16px;
@@ -1362,11 +1372,12 @@
             line-height: 1.4;
         }
         .shop-selection-item-address {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
             font-size: 14px;
-            color: #6b7280;
-            white-space: normal;
-            overflow: visible;
-            word-wrap: break-word;
+            color: #111827;
             margin-bottom: 4px;
             line-height: 1.4;
         }
@@ -2033,7 +2044,30 @@ function loadShopsInPhotoModal() {
         return;
     }
 
-    const shopItemsHtml = availableShops.map((shop) => {
+    // Filter shops to only show those within 3km radius (like jumbo print modal)
+    let shopsToRender = availableShops;
+    if (typeof locationBasedShops !== 'undefined' && locationBasedShops.length > 0) {
+        shopsToRender = locationBasedShops;
+    }
+    
+    // Filter to only show shops within 3km
+    const shopsWithin3km = shopsToRender.filter(shop => {
+        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : 
+                          (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
+        return distanceKm !== null && distanceKm !== undefined && distanceKm <= 3;
+    });
+    
+    // Use shops within 3km if available, otherwise use all shops
+    const finalShops = shopsWithin3km.length > 0 ? shopsWithin3km : shopsToRender;
+    
+    // Sort by distance
+    const sortedShops = [...finalShops].sort((a, b) => {
+        const aDist = (typeof a.distanceKm === 'number') ? a.distanceKm : (a.distance !== null && a.distance !== undefined) ? a.distance : Infinity;
+        const bDist = (typeof b.distanceKm === 'number') ? b.distanceKm : (b.distance !== null && b.distance !== undefined) ? b.distance : Infinity;
+        return aDist - bDist;
+    });
+
+    const shopItemsHtml = sortedShops.map((shop) => {
         // Calculate distance if available
         const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : 
                           (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
@@ -2058,11 +2092,24 @@ function loadShopsInPhotoModal() {
                        [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code].filter(Boolean).join(', ') || 
                        [shop.area, shop.city].filter(Boolean).join(', ') || 'Address not available';
         
+        // Get traffic status like jumbo print modal
+        const pendingJobs = shop.pending_jobs_count || 0;
+        function getTrafficInfo(pendingJobs) {
+            const count = pendingJobs || 0;
+            if (count < 10) {
+                return { level: 'low', label: 'Low Traffic', color: '#10b981' };
+            } else if (count < 16) {
+                return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
+            } else {
+                return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+            }
+        }
+        const trafficInfo = getTrafficInfo(pendingJobs);
+        
         // Distance display with icon for unavailable location
         let distanceDisplay = '';
         if (hasDistance) {
-            distanceDisplay = `<i class="fas fa-location-arrow" style="color: #3b82f6; font-size: 14px; margin-right: 6px;"></i>
-                <span class="shop-selection-item-distance">${distance}</span>`;
+            distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
         } else {
             distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
                 <i class="fas fa-map-marker-alt" style="font-size: 12px; color: #9ca3af;"></i>
@@ -2076,6 +2123,7 @@ function loadShopsInPhotoModal() {
                data-lat="${shop.latitude || ''}" 
                data-lng="${shop.longitude || ''}" 
                data-vendor_email="${shop.vendor_email || ''}"
+               data-pending-jobs="${pendingJobs}"
                onclick="selectShopInPhotoModal('${shop.shop_folder}')">
             <div class="shop-selection-item-content">
               <img class="shop-selection-item-avatar" 
@@ -2084,6 +2132,9 @@ function loadShopsInPhotoModal() {
               <div class="shop-selection-item-info">
                 <div class="shop-selection-item-name">${shop.shop_name || 'Print Shop'}</div>
                 <div class="shop-selection-item-address">${address}</div>
+                <div class="shop-selection-item-traffic" style="font-size: 13px; color: ${trafficInfo.color}; margin-top: 6px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                  <i class="fas fa-circle" style="font-size: 8px;"></i><span>${trafficInfo.label}</span>
+                </div>
               </div>
               <div class="shop-selection-item-meta">
                 ${distanceDisplay}
@@ -2168,12 +2219,50 @@ function trackShop(lat, lng) {
 }
 
 function handleFileUpload(e) {
-    const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
-    if (files.length === 0) return;
+    const allFiles = Array.from(e.target.files);
+    if (allFiles.length === 0) return;
+    
+    // Validate file types - only allow PDF and images
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    
+    // Check for invalid files
+    const invalidFiles = [];
+    const validFiles = [];
+    
+    for (const file of allFiles) {
+        const fileName = file.name.toLowerCase();
+        const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+        const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
+        
+        if (!hasValidExtension && !hasValidType) {
+            invalidFiles.push(file);
+        } else {
+            validFiles.push(file);
+        }
+    }
+    
+    // Show modal if invalid files found
+    if (invalidFiles.length > 0) {
+        showInvalidFileTypeModal(invalidFiles[0].name);
+        e.target.value = ''; // Clear the input
+        return; // Stop processing
+    }
+    
+    // Filter to only images (for photo print, we only accept images, not PDFs)
+    const imageFiles = validFiles.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+        // If only PDFs were selected, show modal (photo print only accepts images)
+        if (validFiles.length > 0) {
+            showInvalidFileTypeModal(validFiles[0].name);
+        }
+        e.target.value = '';
+        return;
+    }
     
     // Don't clear existing images - append new ones
     let loadedCount = 0;
-    files.forEach((file, index) => {
+    imageFiles.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = (event) => {
             uploadedImages.push({
@@ -2183,7 +2272,7 @@ function handleFileUpload(e) {
                 name: file.name
             });
             loadedCount++;
-            if (loadedCount === files.length) {
+            if (loadedCount === imageFiles.length) {
                 autoSelectLayout();
                 updateUI();
             }
@@ -2795,52 +2884,73 @@ function showPhotoPrintOrderSummary() {
                         <i class="fas fa-camera"></i>
                     </div>
                     <div class="modal-title-section">
-                        <h2>Photo Print Service</h2>
+                        <h2>Photo Printing</h2>
                         <p>Review your order and proceed to payment</p>
                     </div>
                     <button class="close-order-summary" onclick="closePhotoPrintOrderSummary()">&times;</button>
                 </div>
                 <div class="order-summary-body">
-                    <div class="order-summary-shop-info">
-                        <div class="order-summary-shop-name">
-                            <span class="order-label">Shop:</span>
-                            <span class="order-value" id="photoOrderShopName">-</span>
+                    <div class="professional-bill">
+                        <div class="bill-header">
+                            <div class="bill-identity">
+                                <div class="bill-logo">
+                                    <i class="fas fa-print" style="color: rgba(255, 255, 255, 0.95); font-size: 1.75rem;"></i>
+                                </div>
+                                <div class="bill-title">
+                                    <h3>PrintMax Invoice</h3>
+                                    <p class="bill-subtitle">Professional Printing Services</p>
+                                </div>
+                            </div>
+                            <div class="bill-date">
+                                <p>Date: <span id="photoOrderDate">-</span></p>
+                                <p>Time: <span id="photoOrderTime">-</span></p>
+                                <p>Print Duration: <span id="photoOrderETA">-</span></p>
+                            </div>
                         </div>
-                        <div class="order-summary-shop-address" style="margin-top: 8px;">
-                            <span class="order-label">Address:</span>
-                            <span class="order-value" id="photoOrderShopAddress">-</span>
-                        </div>
-                    </div>
-                    <div class="invoice-items">
-                        <div class="invoice-item">
-                            <span class="invoice-item-label">Print Name</span>
-                            <span class="invoice-item-value">Photo Print</span>
-                        </div>
-                        <div class="invoice-item">
-                            <span class="invoice-item-label">Layout</span>
-                            <span class="invoice-item-value" id="photoOrderLayout">-</span>
-                        </div>
-                        <div class="invoice-item">
-                            <span class="invoice-item-label">Color</span>
-                            <span class="invoice-item-value" id="photoOrderColor">-</span>
-                        </div>
-                        <div class="invoice-item">
-                            <span class="invoice-item-label">Copies</span>
-                            <span class="invoice-item-value" id="photoOrderCopies">-</span>
-                        </div>
-                        <div class="invoice-item">
-                            <span class="invoice-item-label">Total Images</span>
-                            <span class="invoice-item-value" id="photoOrderImages">-</span>
-                        </div>
-                        ${data.pointsApplied ? `
-                        <div class="invoice-item">
-                            <span class="invoice-item-label">Points Used</span>
-                            <span class="invoice-item-value">${data.pointsUsed}</span>
-                        </div>
-                        ` : ''}
-                        <div class="invoice-item invoice-total">
-                            <span class="invoice-item-label">Grand Total</span>
-                            <span class="invoice-item-value" id="photoOrderTotal">₹0.00</span>
+                        <div class="bill-content">
+                            <div class="service-info">
+                                <h4>Service Details</h4>
+                                <div class="service-row">
+                                    <span class="service-name">Photo Printing</span>
+                                    <span class="service-status">Ready to Process</span>
+                                </div>
+                                <div class="shop-name-row">
+                                    <span class="shop-label">Shop:</span>
+                                    <span class="shop-value" id="photoOrderShopName">-</span>
+                                </div>
+                                <div class="shop-address-row" id="photoOrderShopAddressRow" style="display: none;">
+                                    <span class="shop-label">Shop Address:</span>
+                                    <span class="shop-value" id="photoOrderShopAddress">-</span>
+                                </div>
+                            </div>
+                            <div class="invoice-items">
+                                <div class="invoice-item">
+                                    <span class="invoice-item-label">Print Name</span>
+                                    <span class="invoice-item-value">Photo Print</span>
+                                </div>
+                                <div class="invoice-item">
+                                    <span class="invoice-item-label">Pages</span>
+                                    <span class="invoice-item-value">1</span>
+                                </div>
+                                <div class="invoice-item">
+                                    <span class="invoice-item-label">Color</span>
+                                    <span class="invoice-item-value" id="photoOrderColor">-</span>
+                                </div>
+                                <div class="invoice-item">
+                                    <span class="invoice-item-label">Total Photos</span>
+                                    <span class="invoice-item-value" id="photoOrderImages">-</span>
+                                </div>
+                                ${data.pointsApplied ? `
+                                <div class="invoice-item">
+                                    <span class="invoice-item-label">Points Used</span>
+                                    <span class="invoice-item-value">${data.pointsUsed}</span>
+                                </div>
+                                ` : ''}
+                                <div class="invoice-item invoice-total">
+                                    <span class="invoice-item-label">Grand Total</span>
+                                    <span class="invoice-item-value" id="photoOrderTotal">₹0.00</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2972,7 +3082,9 @@ function showPhotoPrintOrderSummary() {
                         gap: 0.5rem;
                     }
                     .order-summary-shop-address .order-value {
-                        word-break: break-word;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
                     }
                 }
                 .invoice-items {
@@ -3052,22 +3164,268 @@ function showPhotoPrintOrderSummary() {
                     opacity: 0.6;
                     cursor: not-allowed;
                 }
+                .professional-bill {
+                    background: white;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                .bill-header {
+                    background: #2563eb;
+                    color: white;
+                    padding: 1.5rem;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    flex-wrap: wrap;
+                    gap: 1rem;
+                }
+                .bill-identity {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    flex: 1;
+                    min-width: 200px;
+                }
+                .bill-logo {
+                    width: 48px;
+                    height: 48px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .bill-title h3 {
+                    margin: 0;
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: white;
+                }
+                .bill-subtitle {
+                    margin: 0.25rem 0 0 0;
+                    font-size: 0.875rem;
+                    opacity: 0.9;
+                    color: white;
+                }
+                .bill-date {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25rem;
+                    text-align: right;
+                }
+                .bill-date p {
+                    margin: 0;
+                    font-size: 0.875rem;
+                    color: white;
+                }
+                .bill-content {
+                    padding: 1.5rem;
+                }
+                .service-info {
+                    margin-bottom: 1rem;
+                }
+                .service-info h4 {
+                    margin: 0 0 0.75rem 0;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    color: #111827;
+                }
+                .service-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.5rem 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .service-name {
+                    font-weight: 600;
+                    color: #111827;
+                    font-size: 0.95rem;
+                }
+                .service-status {
+                    background: #10b981;
+                    color: white;
+                    padding: 0.375rem 0.75rem;
+                    border-radius: 6px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                }
+                .shop-name-row {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-start;
+                    gap: 0;
+                    margin-top: 0.75rem;
+                    padding: 0.5rem 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .shop-name-row .shop-label {
+                    display: inline-block;
+                    font-weight: 600;
+                    color: #4b5563;
+                    font-size: 0.9rem;
+                    white-space: nowrap;
+                    margin: 0;
+                    padding: 0;
+                }
+                .shop-name-row .shop-value {
+                    display: inline-block;
+                    color: #111827;
+                    font-size: 0.9rem;
+                    white-space: normal;
+                    overflow: visible;
+                    text-overflow: clip;
+                    margin: 0;
+                    padding: 0;
+                    margin-left: 0.25rem;
+                    word-wrap: break-word;
+                }
+                .shop-address-row {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-start;
+                    gap: 0;
+                    margin-top: 0.5rem;
+                    padding: 0.5rem 0;
+                    font-size: 0.85rem;
+                }
+                .shop-address-row .shop-label {
+                    display: inline-block;
+                    font-weight: 600;
+                    color: #4b5563;
+                    font-size: 0.85rem;
+                    white-space: nowrap;
+                    margin: 0;
+                    padding: 0;
+                }
+                .shop-address-row .shop-value {
+                    display: inline-block;
+                    color: #111827;
+                    font-size: 0.85rem;
+                    white-space: normal;
+                    overflow: visible;
+                    text-overflow: clip;
+                    margin: 0;
+                    padding: 0;
+                    margin-left: 0.25rem;
+                    word-wrap: break-word;
+                }
+                .invoice-items {
+                    margin-top: 1rem;
+                }
+                .invoice-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 0.75rem 0;
+                    border-bottom: 1px solid #e5e7eb;
+                    font-size: 0.95rem;
+                }
+                .invoice-item:last-of-type {
+                    border-bottom: none;
+                }
+                .invoice-item-label {
+                    color: #6b7280;
+                    font-weight: 500;
+                    flex: 1;
+                }
+                .invoice-item-value {
+                    color: #1f2937;
+                    font-weight: 600;
+                    text-align: right;
+                    white-space: nowrap;
+                }
+                .invoice-item.invoice-total {
+                    margin-top: 0.5rem;
+                    padding: 0.625rem 0.75rem;
+                    border-top: 2px solid #e5e7eb;
+                    border-bottom: none;
+                    background: #2563eb;
+                    border-radius: 8px;
+                }
+                .invoice-item.invoice-total .invoice-item-label {
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                }
+                .invoice-item.invoice-total .invoice-item-value {
+                    font-size: 1rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                }
+                @media (max-width: 768px) {
+                    .bill-header {
+                        flex-direction: column;
+                    }
+                    .bill-date {
+                        text-align: left;
+                    }
+                    .shop-name-row,
+                    .shop-address-row {
+                        flex-direction: row;
+                        align-items: flex-start;
+                        gap: 0;
+                    }
+                    .shop-name-row .shop-value,
+                    .shop-address-row .shop-value {
+                        white-space: normal;
+                        word-break: break-word;
+                        margin-left: 0.25rem;
+                    }
+                }
             `;
             document.head.appendChild(style);
         }
     }
     
     // Populate order summary data
+    // Set date and time
+    const now = new Date();
+    const dateEl = document.getElementById('photoOrderDate');
+    if (dateEl) dateEl.textContent = now.toLocaleDateString();
+    const timeEl = document.getElementById('photoOrderTime');
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString();
+    
+    // Calculate and display ETA based on pending jobs
+    function calculateETA(pendingJobs) {
+        const count = pendingJobs || 0;
+        if (count <= 4) {
+            return { min: 7, max: 12, message: 'Ready in 7–12 min' };
+        } else if (count <= 9) {
+            return { min: 15, max: 20, message: 'Ready in 15–20 min' };
+        } else if (count <= 14) {
+            return { min: 25, max: 30, message: 'Ready in 25–30 min' };
+        } else if (count <= 19) {
+            return { min: 40, max: 45, message: 'Ready in 40–45 min' };
+        } else {
+            return { min: 60, max: null, message: 'Ready in 60+ min' };
+        }
+    }
+    
+    // Get pending jobs from shop data
+    const selectedShopData = availableShops.find(shop => shop.shop_folder === data.selectedShop);
+    const pendingJobs = selectedShopData ? (selectedShopData.pending_jobs_count || 0) : 0;
+    const eta = calculateETA(pendingJobs);
+    const etaEl = document.getElementById('photoOrderETA');
+    if (etaEl) etaEl.textContent = eta.message;
+    
     const shopNameEl = document.getElementById('photoOrderShopName');
     if (shopNameEl) shopNameEl.textContent = data.shopName || '-';
     const shopAddressEl = document.getElementById('photoOrderShopAddress');
-    if (shopAddressEl) shopAddressEl.textContent = data.shopAddress || '-';
-    const layoutEl = document.getElementById('photoOrderLayout');
-    if (layoutEl) layoutEl.textContent = `${data.metadata.layout} photos (${data.metadata.orientation})`;
+    const shopAddressRow = document.getElementById('photoOrderShopAddressRow');
+    if (data.shopAddress && shopAddressEl && shopAddressRow) {
+        // Show full address without truncation
+        shopAddressEl.textContent = data.shopAddress.trim();
+        shopAddressEl.style.whiteSpace = 'normal';
+        shopAddressEl.style.overflow = 'visible';
+        shopAddressEl.style.textOverflow = 'clip';
+        shopAddressRow.style.display = 'flex';
+    } else if (shopAddressRow) {
+        shopAddressRow.style.display = 'none';
+    }
     const colorEl = document.getElementById('photoOrderColor');
-    if (colorEl) colorEl.textContent = data.metadata.color || '-';
-    const copiesEl = document.getElementById('photoOrderCopies');
-    if (copiesEl) copiesEl.textContent = data.metadata.copies || '1';
+    if (colorEl) colorEl.textContent = data.metadata.color || 'Color';
     const imagesEl = document.getElementById('photoOrderImages');
     if (imagesEl) imagesEl.textContent = data.metadata.total_images || '0';
     const totalEl = document.getElementById('photoOrderTotal');
@@ -3459,6 +3817,56 @@ if (addMorePhotosBtn) {
         fileInput.click();
     });
 }
+
+// Invalid File Type Modal Functions
+function showInvalidFileTypeModal(fileName) {
+    const modal = document.getElementById('invalidFileTypeModal');
+    if (modal) {
+        const messageEl = document.getElementById('invalidFileTypeMessage');
+        if (messageEl && fileName) {
+            messageEl.textContent = `"${fileName}" is not allowed for printing.`;
+        }
+        modal.style.display = 'flex';
+    }
+}
+
+function hideInvalidFileTypeModal() {
+    const modal = document.getElementById('invalidFileTypeModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
 </script>
+
+<!-- Invalid File Type Modal -->
+<div id="invalidFileTypeModal" class="modal-bg" style="display: none; z-index: 10000;">
+    <div class="card-modal" style="max-width: 400px; min-width: 300px; min-height: auto;">
+        <div class="modal-header" style="background: #ef4444;">
+            <h1 style="margin: 0;">File Type Not Allowed</h1>
+        </div>
+        <div class="modal-content" style="text-align: center; padding: 32px 24px;">
+            <div style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;">
+                <i class="fas fa-file-excel"></i>
+            </div>
+            <p id="invalidFileTypeMessage" style="font-size: 1rem; color: #374151; margin-bottom: 8px;">
+                This file type is not allowed for printing.
+            </p>
+            <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 24px;">
+                Please upload only image files (JPG, PNG) for photo printing.
+            </p>
+            <button onclick="hideInvalidFileTypeModal()" style="
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 12px 32px;
+                border-radius: 8px;
+                font-size: 1rem;
+                cursor: pointer;
+                font-weight: 600;
+                width: 100%;
+            ">OK</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

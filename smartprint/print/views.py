@@ -12228,13 +12228,66 @@ def mark_job_completed(request):
             if job_token:
                 print(f"🔍 Found token {job_token} for job {filename}")
             else:
-                print(f"⚠️ No token found for job {filename}")
+                # Try to get token from Vendor_print_jobs table if not found in metadata
+                job_token = get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email)
+                if job_token:
+                    print(f"🔍 Retrieved token {job_token} from Vendor_print_jobs for job {filename}")
+                else:
+                    print(f"⚠️ No token found for job {filename}")
             
-            # Update job_completed in R2 metadata for both vendor and user folders
+            # Get user_email from D1 Vendor_print_jobs table FIRST (before updating)
             completion_time = datetime.datetime.now().isoformat()
-            success, user_email = update_job_status_comprehensive(filename, 'YES', vendor_id, completion_time)
+            user_email = None
             
-            # Also update D1 database tables using UPDATE endpoint (not ADD - prevents creating new rows)
+            # Fetch user_email from D1 Vendor_print_jobs table
+            try:
+                api_url_lookup = getattr(settings, 'WORKER_API_URL', '')
+                api_key_lookup = getattr(settings, 'WORKER_API_KEY', '')
+                if api_url_lookup and api_key_lookup:
+                    base_url_lookup = api_url_lookup.rstrip('/')
+                    if '/add-contact' in base_url_lookup:
+                        lookup_endpoint = base_url_lookup.replace('/add-contact', '/get-vendor-print-jobs')
+                    elif '/add-vendor-register' in base_url_lookup:
+                        lookup_endpoint = base_url_lookup.replace('/add-vendor-register', '/get-vendor-print-jobs')
+                    else:
+                        lookup_endpoint = base_url_lookup + '/get-vendor-print-jobs'
+
+                    lookup_payload = {
+                        'filename': filename,
+                        'vendor_id': vendor_id,
+                        'vendor_email': vendor_email,
+                    }
+
+                    lookup_resp = requests.post(
+                        lookup_endpoint,
+                        json=lookup_payload,
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-api-key': api_key_lookup,
+                        },
+                        timeout=10,
+                    )
+
+                    if lookup_resp.status_code == 200:
+                        lookup_data = lookup_resp.json()
+                        if lookup_data.get('success') and lookup_data.get('data'):
+                            jobs = lookup_data.get('data', [])
+                            if jobs:
+                                inferred_email = jobs[0].get('user_email') or ''
+                                if inferred_email:
+                                    user_email = inferred_email
+                                    print(f"📧 Retrieved user email from D1 Vendor_print_jobs for completion: {user_email}")
+                                else:
+                                    print(f"⚠️ Job found in Vendor_print_jobs but user_email is empty for {filename}")
+                    else:
+                        print(f"⚠️ Failed to lookup user_email from Vendor_print_jobs: {lookup_resp.status_code}")
+                else:
+                    print("⚠️ Worker API not configured for user_email lookup")
+            except Exception as e:
+                print(f"⚠️ Error getting user email from D1 Vendor_print_jobs for completion: {e}")
+            
+            # Update D1 database tables synchronously (User_print_jobs and Vendor_print_jobs)
+            db_update_success = False
             try:
                 api_url = getattr(settings, 'WORKER_API_URL', '')
                 api_key = getattr(settings, 'WORKER_API_KEY', '')
@@ -12252,12 +12305,14 @@ def mark_job_completed(request):
                     worker_payload = {
                         'filename': filename,
                         'job_completed': 'YES',
+                        'rendered_status': 'YES',
                         'completion_time': completion_time,
                         'vendor_email': vendor_email,
                         'vendor_id': vendor_id,
                         'vendor_name': vendor_name,
                         'user_email': user_email if user_email else ''
                     }
+                    print(f"🔄 Updating D1 tables synchronously for {filename} with user_email: {user_email if user_email else 'NOT PROVIDED'}")
                     try:
                         resp = requests.post(
                             worker_endpoint,
@@ -12271,19 +12326,43 @@ def mark_job_completed(request):
                         if resp.status_code == 200:
                             resp_data = resp.json()
                             if resp_data.get('success'):
-                                print(f"✅ Updated User_print_jobs and Vendor_print_jobs tables for {filename}")
+                                db_update_success = True
+                                print(f"✅ Successfully updated User_print_jobs and Vendor_print_jobs tables synchronously for {filename} (user_email: {user_email if user_email else 'not provided'})")
                             else:
-                                print(f"⚠️ Update endpoint returned success=false: {resp_data.get('error')}")
+                                error_msg = resp_data.get('error', 'Unknown error')
+                                print(f"❌ Update endpoint returned success=false: {error_msg}")
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': f'Failed to update database tables: {error_msg}'
+                                }, status=500)
                         else:
-                            print(f"⚠️ Failed to update job status: {resp.status_code} - {resp.text[:200]}")
+                            error_text = resp.text[:200] if resp.text else 'No response text'
+                            print(f"❌ Failed to update job status: {resp.status_code} - {error_text}")
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'Failed to update database tables: HTTP {resp.status_code}'
+                            }, status=500)
                     except Exception as e:
-                        print(f"⚠️ Error updating job status in D1: {e}")
+                        print(f"❌ Error updating job status in D1: {e}")
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Database update error: {str(e)}'
+                        }, status=500)
                 else:
-                    print("⚠️ Worker API not configured - skipping D1 database update")
+                    print("❌ Worker API not configured - cannot update database")
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Worker API not configured'
+                    }, status=500)
             except Exception as e:
-                print(f"⚠️ Error updating D1 database: {e}")
+                print(f"❌ Error updating D1 database: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Database update error: {str(e)}'
+                }, status=500)
             
-            if success:
+            # Only proceed with other operations if database update was successful
+            if db_update_success:
                 # Get pricing details from job metadata for transaction report
                 total_price = 0.0
                 platform_profit = 0.0
@@ -12409,8 +12488,6 @@ def mark_job_completed(request):
                     'token_freed': token_freed,
                     'token_number': job_token if token_freed else None
                 })
-            else:
-                return JsonResponse({'success': False, 'error': 'Failed to update job status in both vendor and user folders'})
                 
         except Exception as e:
             print(f"Error in mark_job_completed: {str(e)}")
@@ -13807,6 +13884,57 @@ def store_vendor_notification_in_db(notification_data):
         print(f"❌ Error storing vendor notification in database: {e}")
         return False
 
+def get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email):
+    """Get token number from Vendor_print_jobs table in D1"""
+    try:
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+        
+        if not api_url or not api_key:
+            return None
+        
+        # Get from Vendor_print_jobs table
+        base_url = api_url.rstrip('/')
+        if '/add-contact' in base_url:
+            worker_endpoint = base_url.replace('/add-contact', '/get-vendor-print-jobs')
+        elif '/add-vendor-register' in base_url:
+            worker_endpoint = base_url.replace('/add-vendor-register', '/get-vendor-print-jobs')
+        else:
+            worker_endpoint = base_url + '/get-vendor-print-jobs'
+        
+        job_response = requests.post(
+            worker_endpoint,
+            json={
+                'filename': filename,
+                'vendor_id': vendor_id,
+                'vendor_email': vendor_email
+            },
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': api_key
+            },
+            timeout=10
+        )
+        
+        if job_response.status_code == 200:
+            job_data = job_response.json()
+            if job_data.get('success') and job_data.get('data'):
+                jobs = job_data.get('data', [])
+                # Filter by filename to get exact match
+                matching_jobs = [j for j in jobs if j.get('filename') == filename or filename in j.get('filename', '')]
+                if matching_jobs:
+                    job = matching_jobs[0]  # Get first matching job
+                    token = job.get('token')
+                    if token:
+                        print(f"✅ Retrieved token from Vendor_print_jobs: {token} for {filename}")
+                        return str(token).strip()
+        
+        return None
+    except Exception as e:
+        print(f"⚠️ Error getting token from Vendor_print_jobs: {e}")
+        return None
+
+
 def get_pricing_from_user_print_jobs(user_email, filename):
     """Get pricing (total_price and platform_profit) from User_print_jobs table in D1"""
     try:
@@ -13883,9 +14011,18 @@ def get_pricing_from_user_print_jobs(user_email, filename):
 def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time, token=None):
     """Send job completion notification to user and vendor"""
     try:
-        # Use provided token or extract from filename as fallback
+        # Get token from Vendor_print_jobs table if not provided
         if not token:
-            token = os.path.splitext(filename)[0]
+            # Try to get vendor_email from vendor_id
+            vendor_email = get_vendor_email_by_id(vendor_id) if vendor_id else None
+            
+            if vendor_id and vendor_email:
+                token = get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email)
+            
+            # Fallback to filename if token still not found
+            if not token:
+                token = os.path.splitext(filename)[0]
+                print(f"⚠️ Using filename as token fallback for {filename}")
         
         # FIRST: Try to get pricing from User_print_jobs table (most accurate source)
         service_type = "Print Job"
@@ -14298,6 +14435,13 @@ def send_fcm_notification(user_email, notification_data):
 def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, token=None):
     """Store vendor notification directly using vendor email from session"""
     try:
+        # Get token from Vendor_print_jobs table if not provided
+        if not token:
+            token = get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email)
+            if not token:
+                token = os.path.splitext(filename)[0]
+                print(f"⚠️ Using filename as token fallback for {filename}")
+        
         # Parse completion time to get date
         completion_date = datetime.datetime.fromisoformat(completion_time.replace('Z', '+00:00')).date()
         
@@ -14414,7 +14558,7 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
             'total_price': total_price,
             'completion_time': completion_time,
             'timestamp': get_ist_timestamp(),
-            'token': token or os.path.splitext(filename)[0],
+            'token': token,
             'document_name': document_name
         }
         

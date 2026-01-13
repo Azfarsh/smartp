@@ -5094,14 +5094,20 @@
             const resolvedPages = pagesFromMetadata || job.pages || 1;
             const resolvedCopies = copiesFromMetadata || job.copies || 1;
             const serviceTypeDisplay = {
+                'regular_print': 'DOCUMENT PRINT',
+                'regular print': 'DOCUMENT PRINT',
+                'document_print': 'DOCUMENT PRINT',
+                'photo_print': 'PHOTO PRINT',
+                'passport_print': 'PASSPORT PHOTO',
+                'passport_photo': 'PASSPORT PHOTO',
                 'digital_print': 'DIGITAL PRINT',
                 'project_binding': 'PROJECT BINDING',
                 'gloss_printing': 'GLOSS PRINTING',
                 'jumbo_printing': 'JUMBO PRINTING',
-                'regular_print': 'REGULAR PRINT',
-                'photo_print': 'PHOTO PRINT',
-                'passport_print': 'PASSPORT PRINT'
-            }[(job.service_type || '').trim().toLowerCase()] || 'REGULAR PRINT';
+                'jumbo_print': 'JUMBO PRINTING',
+                'golden_embossing': 'GOLDEN EMBOSSING',
+                'golden_emboss': 'GOLDEN EMBOSSING'
+            }[(job.service_type || '').trim().toLowerCase()] || (job.service_type ? job.service_type.replace('_', ' ').toUpperCase() : 'DOCUMENT PRINT');
 
             return `
                 <div class="job-card completed compact" data-filename="${job.filename}" style="padding:10px 10px 8px; border-radius:10px; min-height:160px;">
@@ -5129,9 +5135,6 @@
                     <div class="job-actions" style="display:flex; gap:8px; align-items:center; margin-top:4px; padding-top:4px;">
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
-                        </button>
-                        <button class="btn-small btn-danger" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Close and clear from completed">
-                            <i class="fas fa-times"></i> Close
                         </button>
                     </div>
                 </div>
@@ -6885,9 +6888,6 @@
                     <div class="job-actions">
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
-                        </button>
-                        <button class="btn-small btn-danger" onclick="event.stopPropagation(); clearCompletedJob('${job.filename}', '${job.token || ''}')" title="Close and clear from completed">
-                            <i class="fas fa-times"></i> Close
                         </button>
                     </div>
                 `;
