@@ -5679,26 +5679,8 @@ def verify_razorpay_payment(request):
         except Exception as e:
             print(f"⚠️ Error deducting points after payment: {str(e)}")
 
-        # Allot points instantly after successful payment (only if files were processed successfully)
-        if files_processed > 0:
-            try:
-                # Calculate points based on final amount (1 rupee = 1 point)
-                final_amount = request.POST.get('final_amount', '0')
-                try:
-                    final_amount_float = float(final_amount)
-                    if final_amount_float > 0:
-                        # Allot points based on final amount paid
-                        points_to_allot = final_amount_float
-                        success = add_user_points(user_email, points_to_allot, f'Points earned from payment {payment_id}')
-                        if success:
-                            print(f"💰 Allotted {points_to_allot} points to {user_email} for payment {payment_id}")
-                            response_data['points_allotted'] = points_to_allot
-                        else:
-                            print(f"❌ Failed to allot {points_to_allot} points to {user_email}")
-                except (ValueError, TypeError):
-                    print(f"⚠️ Invalid final_amount for points allocation: {final_amount}")
-            except Exception as e:
-                print(f"⚠️ Error allotting points after payment: {str(e)}")
+        # NOTE: Points are NOT automatically earned after successful payments
+        # Points are only refunded when payment fails (see refund logic below)
 
         # REFUND LOGIC: If files failed to upload, refund the payment amount AND return points used
         if files_failed > 0 and total_payment_amount > 0:
@@ -8328,7 +8310,14 @@ def calculate_photo_print_pricing(request):
             # Calculate total price (price per layout * number of copies)
             total_price = price_per_layout * copies
             
-            print(f"Calculation: base_price={base_price}, price_per_layout={price_per_layout}, copies={copies}, total_price={total_price}")
+            # Calculate platform profit (20% commission for photo print, same as A4 print)
+            platform_commission_percent = 20  # 20% commission for photo print
+            platform_profit = (total_price * platform_commission_percent) / 100
+            
+            # Calculate final amount (total_price + platform_profit)
+            final_amount = total_price + platform_profit
+            
+            print(f"Calculation: base_price={base_price}, price_per_layout={price_per_layout}, copies={copies}, total_price={total_price}, platform_profit={platform_profit}, final_amount={final_amount}")
             
             # Prepare pricing breakdown
             pricing_breakdown = {
@@ -8338,6 +8327,10 @@ def calculate_photo_print_pricing(request):
                 'layout_slots': layout_slots,
                 'copies': copies,
                 'total_price': total_price,
+                'total_bill_amount': total_price,  # Same as total_price before commission
+                'platform_profit': round(platform_profit, 2),
+                'platform_commission': platform_commission_percent,
+                'final_amount': round(final_amount, 2),
                 'pricing_key_used': pricing_key_name,
                 'total_pages': copies  # For photo print, total pages = number of copies (layouts)
             }

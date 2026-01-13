@@ -2660,8 +2660,19 @@ async function calculatePhotoPrintPrice() {
             // Apply platform commission silently (same approach as dashboard)
             const breakdown = result.pricing_breakdown;
             const vendorPrice = Number(breakdown.total_price || 0);
+            // Use platform_profit from backend if available, otherwise calculate
+            const platformProfit = breakdown.platform_profit || breakdown.platform_commission || 0;
             // Use A4 color pricing key for photo prints commission model
             const commission = calculatePlatformCommission('a4_print_color', vendorPrice);
+
+            // Store pricing breakdown with platform profit in body dataset for later use
+            document.body.dataset.calculatedPrice = breakdown.final_amount || commission.total || vendorPrice;
+            document.body.dataset.pricingBreakdown = JSON.stringify({
+                ...breakdown,
+                platform_profit: platformProfit || commission.commission || 0,
+                platform_commission: breakdown.platform_commission || 20,
+                final_amount: breakdown.final_amount || commission.total || vendorPrice
+            });
 
             if (summaryServiceName) summaryServiceName.textContent = 'Photo Printing';
 
@@ -2764,9 +2775,13 @@ async function handlePrint() {
         let pricingDetails = null;
         if (document.body.dataset.calculatedPrice && document.body.dataset.pricingBreakdown) {
             try {
+                const breakdown = JSON.parse(document.body.dataset.pricingBreakdown);
                 pricingDetails = {
-                    total_price: parseFloat(document.body.dataset.calculatedPrice),
-                    pricing_breakdown: JSON.parse(document.body.dataset.pricingBreakdown),
+                    total_price: breakdown.total_price || parseFloat(document.body.dataset.calculatedPrice),
+                    final_amount: breakdown.final_amount || parseFloat(document.body.dataset.calculatedPrice),
+                    platform_profit: breakdown.platform_profit || 0,
+                    platform_commission: breakdown.platform_commission || 20,
+                    pricing_breakdown: breakdown,
                     calculation_timestamp: new Date().toISOString(),
                     vendor_email: selectedShopData ? selectedShopData.vendor_email : null
                 };
