@@ -1099,12 +1099,41 @@ def vendordashboard(request):
                 'manual_print_count': 0,
                 'print_requests_count': 0,
                 'completed_jobs_count': 0,
+                'daily_earnings': 0,
             })
 
         # Fetch vendor-specific jobs strictly from D1 database (pending + completed for KPIs)
         pending_jobs = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
         completed_jobs_raw = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='YES') or []
         files = pending_jobs + completed_jobs_raw
+        
+        # Calculate Daily Earnings (Total Price - Platform Profit) for today's completed jobs
+        daily_earnings = 0
+        try:
+            today_iso = datetime.date.today().isoformat()
+            # If using local time, ensure alignment with completion_time format (typically ISO with maybe Z or offset)
+            # completion_time example: "2023-10-27T10:00:00"
+            
+            for job in completed_jobs_raw:
+                c_time = job.get('completion_time')
+                if c_time:
+                    # simplistic check: does it start with YYYY-MM-DD?
+                    if c_time.startswith(today_iso):
+                        total = float(job.get('total_price', 0) or 0)
+                        platform = float(job.get('platform_profit', 0) or 0)
+                        
+                        # Fallback for platform_profit if not top-level, check pricing_details
+                        if platform == 0:
+                             pd = job.get('pricing_details')
+                             if pd and isinstance(pd, dict):
+                                 platform = float(pd.get('platform_profit', 0) or 0)
+
+                        daily_earnings += (total - platform)
+                        
+        except Exception as e:
+            print(f"⚠️ Error calculating daily earnings: {e}")
+            daily_earnings = 0
+
         if not files:
             print(f"ℹ️ No jobs returned from D1 for vendor {vendor_id}")
         
@@ -1178,6 +1207,7 @@ def vendordashboard(request):
             'completed_jobs_count': len(completed_jobs),
             # Provide a flat list for initial render JS to consume without extra fetch
             'initial_jobs': manual_print_jobs + print_requests + completed_jobs,
+             'daily_earnings': daily_earnings,
         }
         
         # Cache the context for faster subsequent loads
@@ -2395,6 +2425,7 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
                 'thickness': job.get('thickness', '') or '',
                 'service_name': job.get('service_name', '') or '',
                 'completion_time': job.get('completion_time', '') or '',
+                'platform_profit': job.get('platform_profit', 0) or 0,
             }
             
             # Add pricing details from D1 if available
@@ -12279,6 +12310,16 @@ def mark_job_completed(request):
             except Exception as e:
                 print(f"⚠️ Error getting user email from D1 Vendor_print_jobs for completion: {e}")
             
+            # Fallback: If user_email is not found in D1, try R2 metadata
+            if not user_email:
+                try:
+                    print(f"🔍 user_email not found in D1, trying R2 metadata for {filename}")
+                    user_email = get_user_email_from_file_metadata(filename, vendor_id)
+                    if user_email:
+                         print(f"📧 Retrieved user email from R2 metadata: {user_email}")
+                except Exception as e:
+                    print(f"⚠️ Error getting user email from R2 metadata: {e}")
+            
             # Update D1 database tables synchronously (User_print_jobs and Vendor_print_jobs)
             db_update_success = False
             try:
@@ -14372,21 +14413,36 @@ def send_fcm_notification(user_email, notification_data):
             else:
                 fcm_link = f'{site_domain}/userdashboard/'
         
+        # Ensure absolute URLs for icons (required for stable delivery on some devices)
+        if site_domain and not site_domain.startswith('http'):
+            # Basic protocol addition if missing (assumes https for prod)
+            full_domain = f"https://{site_domain}" if 'localhost' not in site_domain else f"http://{site_domain}"
+        else:
+             full_domain = site_domain or 'https://printmax.onrender.com'
+             
+        # Normalize domain to not have trailing slash
+        full_domain = full_domain.rstrip('/')
+        
+        # User requested specific logo: android-chrome-192x192.png (colored logo)
+        icon_url = f"{full_domain}/static/images/android-chrome-192x192.png"
+        badge_url = f"{full_domain}/static/images/android-chrome-192x192.png"
+
         # Create FCM message
         # Build webpush config conditionally to avoid link issues
         webpush_notification = messaging.WebpushNotification(
             title=title,
             body=message,
-            icon='/static/images/android-chrome-192x192.png',
-            badge='/static/images/android-chrome-192x192.png',
+            icon=icon_url,
+            badge=badge_url,
             require_interaction=True
         )
         
         # Always use HTTPS link for FCM (required by FCM)
         # Ensure fcm_link is HTTPS
-        if not fcm_link.startswith('https://'):
+        if not fcm_link.startswith('https://') and 'localhost' not in fcm_link and '127.0.0.1' not in fcm_link:
             fcm_link = 'https://printmax.onrender.com/userdashboard/'
         
+        # Create FCM message configuration (reusuable parts)
         # Create webpush config with FCM options (always HTTPS)
         webpush_config = messaging.WebpushConfig(
             notification=webpush_notification,
@@ -14394,29 +14450,53 @@ def send_fcm_notification(user_email, notification_data):
                 link=fcm_link
             )
         )
+
+        sent_count = 0
+        failed_count = 0
         
-        fcm_message = messaging.Message(
-            notification=messaging.Notification(
-                title=title,
-                body=message,
-                image=notification_data.get('icon', None)
-            ),
-            data={
-                'notification_id': notification_data.get('notification_id', ''),
-                'type': notification_data.get('type', 'job_completed'),
-                'filename': notification_data.get('filename', ''),
-                'token': notification_data.get('token', ''),
-                'status': notification_data.get('status', 'completed'),
-                'click_action': fcm_link
-            },
-            webpush=webpush_config,
-            token=tokens[0]  # Send to first token (you can extend this to send to all tokens)
-        )
+        # Send to tokens one by one, STOPPING after the first success to avoid duplicates
+        # We reverse the list to try the most recent tokens first (assuming they are appended)
+        print(f"📡 Attempting to send FCM notification to user {user_email} (has {len(tokens)} tokens)")
         
-        # Send message
-        response = messaging.send(fcm_message)
-        print(f"✅ FCM notification sent successfully: {response}")
-        return True
+        for token in reversed(tokens):
+            try:
+                fcm_message = messaging.Message(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=message,
+                        image=notification_data.get('icon', None)
+                    ),
+                    data={
+                        'notification_id': notification_data.get('notification_id', ''),
+                        'type': notification_data.get('type', 'job_completed'),
+                        'filename': notification_data.get('filename', ''),
+                        'token': notification_data.get('token', ''),
+                        'status': notification_data.get('status', 'completed'),
+                        'click_action': fcm_link
+                    },
+                    webpush=webpush_config,
+                    token=token
+                )
+                
+                # Send message
+                response = messaging.send(fcm_message)
+                print(f"✅ FCM notification sent to token {token[:10]}...: {response}")
+                sent_count += 1
+                
+                # Allow up to 3 successful deliveries to cover multiple active devices (e.g. Mobile + Desktop)
+                # But stop there to avoid excessive duplicates if they have many old active tokens
+                if sent_count >= 3:
+                     print("🛑 Reached 3 successful notifications, stopping to prevent spam.")
+                     break
+                
+            except Exception as e:
+                print(f"⚠️ Failed to send to token {token[:10]}...: {e}")
+                failed_count += 1
+        
+        if sent_count == 0:
+            print(f"❌ Failed to send notification to any of {len(tokens)} tokens")
+            
+        return sent_count > 0
         
     except Exception as e:
         print(f"❌ Error sending FCM notification: {e}")
