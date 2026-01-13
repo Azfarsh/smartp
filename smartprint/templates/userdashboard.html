@@ -9342,8 +9342,9 @@
 
         .shop-selection-item-address {
           font-size: 13px;
-          white-space: normal;
-          overflow: visible;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
       }
 
@@ -13057,22 +13058,7 @@
                 ${feedbackHtml}
                 
                 <!-- Points Application Section (Redeem card) -->
-                <div class="points-section" id="${service}-points-section" style="display: none;">
-                  <h4 class="points-heading"><i class="fas fa-party-horn"></i> Apply points to avail discount </h4>
-                  <div class="redeem-card">
-                    <div class="redeem-left">
-                      <div class="coin-icon">⭐</div>
-                      <div class="redeem-text"><span class="redeem-amount" id="${service}-redeem-amount">10</span> Off</div>
-                    </div>
-                    <div class="redeem-actions">
-                      <button type="button" class="redeem-btn" id="${service}-apply-points-btn" onclick="applyPoints('${service}')">Redeem</button>
-                      <button type="button" class="redeem-remove-btn" id="${service}-remove-points-btn" onclick="removePoints('${service}')" style="display: none;">Remove</button>
-                    </div>
-                  </div>
-                  <div class="redeem-terms">
-                    if you spend 110+ coins <span class="redeem-details">Details</span>
-                  </div>
-                </div>
+                <!-- Points section removed - points are now only applied in order summary modal -->
                 
                 <!-- Order Summary -->
                 <div class="pricing-summary" id="${service}-pricing-summary">
@@ -16267,6 +16253,7 @@
       // Map a job to a service color/icon tint and readable service name
       const getServiceInfo = (job) => {
         const type = (job.service_type || job.service || '').toString().toLowerCase();
+        if (type.includes('passport')) return { cls: 'service-color-photo icon-tint-photo', name: 'Passport Photo' };
         if (type.includes('photo')) return { cls: 'service-color-photo icon-tint-photo', name: 'Photo Print' };
         if (type.includes('digital')) return { cls: 'service-color-digital icon-tint-digital', name: 'Digital Print' };
         if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
@@ -16972,6 +16959,30 @@
           </div>
         </div>
 
+        <!-- Points Application Section - Like photprint modal -->
+        <div class="points-section" id="orderSummary-points-section" style="display: none;">
+          <div class="points-header">
+            <div class="points-icon">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="points-title">Apply Points</div>
+          </div>
+          <div class="points-content">
+            <div class="points-info">
+              <span class="points-available">Available Points: <span id="orderSummary-available-points">0</span></span>
+              <span class="points-balance">Balance after payment: <span id="orderSummary-points-balance">0</span></span>
+            </div>
+            <div class="points-actions">
+              <button type="button" class="btn-apply-points" id="orderSummary-apply-points-btn" onclick="applyPoints('orderSummary')">
+                <i class="fas fa-star"></i> Apply Points
+              </button>
+              <button type="button" class="btn-remove-points" id="orderSummary-remove-points-btn" onclick="removePoints('orderSummary')" style="display: none;">
+                <i class="fas fa-times"></i> Remove Points
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="modal-footer fixed-bottom-buttons" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
           <button type="button" class="btn-cancel" id="orderSummaryCancelBtn">
@@ -17070,6 +17081,7 @@
       // Map a job to a service color/icon tint and readable service name
       const getServiceInfo = (job) => {
         const type = (job.service_type || job.service || '').toString().toLowerCase();
+        if (type.includes('passport')) return { cls: 'service-color-photo icon-tint-photo', name: 'Passport Photo' };
         if (type.includes('photo')) return { cls: 'service-color-photo icon-tint-photo', name: 'Photo Print' };
         if (type.includes('digital')) return { cls: 'service-color-digital icon-tint-digital', name: 'Digital Print' };
         if (type.includes('emboss')) return { cls: 'service-color-emboss icon-tint-emboss', name: 'Golden Embossing' };
@@ -20614,6 +20626,8 @@
         modal = document.getElementById('printModal');
       } else if (service === 'photoprint') {
         modal = document.querySelector('.card-modal');
+      } else if (service === 'orderSummary') {
+        modal = document.getElementById('orderSummaryModal');
       } else {
         modal = document.getElementById(`service-modal-${service}`);
       }
@@ -20701,6 +20715,8 @@
         modal = document.getElementById('printModal');
       } else if (service === 'photoprint') {
         modal = document.querySelector('.card-modal');
+      } else if (service === 'orderSummary') {
+        modal = document.getElementById('orderSummaryModal');
       } else {
         modal = document.getElementById(`service-modal-${service}`);
       }
@@ -20875,6 +20891,10 @@
       } else if (service === 'photoprint') {
         // For photoprint modal, update the pricing details
         pricingDetails = document.getElementById('pricingDetails');
+        if (!pricingDetails) return;
+      } else if (service === 'orderSummary') {
+        // For order summary modal, update the invoice items
+        pricingDetails = document.getElementById('orderSummaryDetails');
         if (!pricingDetails) return;
       } else {
         pricingDetails = document.querySelector(`#${service}-pricing-details`);
@@ -25088,6 +25108,38 @@
         console.log('📊 Stored shop value in order summary modal (print):', shopValueToStore);
       }
       
+      // Show/hide points section and update points display for document print
+      const pointsSection = document.getElementById('orderSummary-points-section');
+      if (pointsSection && typeof userPoints !== 'undefined') {
+        // Show points section if user has points and price is calculated
+        if (userPoints > 0 && finalAmount > 0) {
+          pointsSection.style.display = 'block';
+          // Update points display
+          const availablePointsEl = document.getElementById('orderSummary-available-points');
+          const balancePointsEl = document.getElementById('orderSummary-points-balance');
+          if (availablePointsEl) {
+            availablePointsEl.textContent = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+          }
+          if (balancePointsEl) {
+            const pointsUsed = pointsApplied ? parseFloat(printModal.dataset.pointsUsed || '0') : 0;
+            const remainingPoints = Math.max(0, userPoints - pointsUsed);
+            balancePointsEl.textContent = remainingPoints % 1 === 0 ? remainingPoints : remainingPoints.toFixed(1);
+          }
+          // Show/hide apply/remove buttons based on points applied
+          const applyBtn = document.getElementById('orderSummary-apply-points-btn');
+          const removeBtn = document.getElementById('orderSummary-remove-points-btn');
+          if (pointsApplied) {
+            if (applyBtn) applyBtn.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'flex';
+          } else {
+            if (applyBtn) applyBtn.style.display = 'flex';
+            if (removeBtn) removeBtn.style.display = 'none';
+          }
+        } else {
+          pointsSection.style.display = 'none';
+        }
+      }
+      
       // Set date and time
       const now = new Date();
       document.getElementById('orderSummaryDate').textContent = now.toLocaleDateString();
@@ -25745,6 +25797,38 @@
       
       // Update grand total
       document.getElementById('orderSummaryTotalAmount').textContent = `₹${finalAmount.toFixed(2)}`;
+      
+      // Show/hide points section and update points display
+      const pointsSection = document.getElementById('orderSummary-points-section');
+      if (pointsSection && typeof userPoints !== 'undefined') {
+        // Show points section if user has points and price is calculated
+        if (userPoints > 0 && finalAmount > 0) {
+          pointsSection.style.display = 'block';
+          // Update points display
+          const availablePointsEl = document.getElementById('orderSummary-available-points');
+          const balancePointsEl = document.getElementById('orderSummary-points-balance');
+          if (availablePointsEl) {
+            availablePointsEl.textContent = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+          }
+          if (balancePointsEl) {
+            const pointsUsed = pointsApplied ? parseFloat(modal.dataset.pointsUsed || '0') : 0;
+            const remainingPoints = Math.max(0, userPoints - pointsUsed);
+            balancePointsEl.textContent = remainingPoints % 1 === 0 ? remainingPoints : remainingPoints.toFixed(1);
+          }
+          // Show/hide apply/remove buttons based on points applied
+          const applyBtn = document.getElementById('orderSummary-apply-points-btn');
+          const removeBtn = document.getElementById('orderSummary-remove-points-btn');
+          if (pointsApplied) {
+            if (applyBtn) applyBtn.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'flex';
+          } else {
+            if (applyBtn) applyBtn.style.display = 'flex';
+            if (removeBtn) removeBtn.style.display = 'none';
+          }
+        } else {
+          pointsSection.style.display = 'none';
+        }
+      }
       
       // Clear additional options container as it's now merged into service-specific details
       const additionalOptionsContainer = document.getElementById('orderSummaryAdditionalOptions');
