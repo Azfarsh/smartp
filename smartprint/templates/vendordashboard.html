@@ -4430,7 +4430,7 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                 </div>
-                <div class="stat-number" id="totalStatCount">₹0</div>
+                <div class="stat-number" id="totalStatCount">₹{{ daily_earnings|floatformat:2 }}</div>
                 <div class="stat-label">Total Earnings</div>
             </div>
         </div>
@@ -4620,6 +4620,13 @@
                     <div class="print-info-item" id="printInfoFeedbackItem" style="display: none;">
                         <span class="print-info-label">Feedback:</span>
                         <span class="print-info-value" id="printInfoFeedback">-</span>
+                    </div>
+                    <div class="print-info-item" id="printInfoPaymentItem">
+                        <span class="print-info-label">Payment Received:</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <span class="print-info-value highlight" id="printInfoPaymentValue">₹0.00</span>
+                            <span style="display:none;" id="printInfoPaymentDetails"></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -4868,15 +4875,15 @@
             // Filter out old completed jobs (only show today's completed jobs)
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             const filteredNewJobs = newJobs.filter(job => {
                 // Keep all pending jobs
                 if (job.job_completed !== 'YES') return true;
-                
+
                 // For completed jobs, only keep today's jobs
                 const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
                 if (!completionTime) return false; // No completion time, don't show
-                
+
                 try {
                     let completionDate;
                     if (typeof completionTime === 'string') {
@@ -4888,9 +4895,9 @@
                     } else {
                         completionDate = new Date(parseFloat(completionTime) * 1000);
                     }
-                    
+
                     if (isNaN(completionDate.getTime())) return false;
-                    
+
                     completionDate.setHours(0, 0, 0, 0);
                     return completionDate.getTime() === today.getTime();
                 } catch (e) {
@@ -4898,7 +4905,7 @@
                     return false;
                 }
             });
-            
+
             // Process each new job instantly
             for (const job of filteredNewJobs) {
                 // Add job to allJobs
@@ -5041,7 +5048,7 @@
                     return; // Don't render cleared jobs
                 }
             }
-            
+
             const containerIdMap = {
                 document: 'docJobs',
                 photo: 'photoJobs',
@@ -5146,7 +5153,7 @@
             // Filter completed jobs to only show today's jobs
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             const completedJobs = allJobs.filter(job => {
                 // Filter out cancelled jobs
                 const jobCompleted = (job.job_completed || '').toString().trim().toUpperCase();
@@ -5157,11 +5164,11 @@
                 if (vendorStatus === 'clear') return false;
                 const jobKey = `${job.filename}_${job.token || 'no_token'}`;
                 if (hiddenCompletedJobs.has(jobKey)) return false;
-                
+
                 // Filter to only show jobs completed today
                 const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
                 if (!completionTime) return false; // No completion time, don't show
-                
+
                 try {
                     let completionDate;
                     if (typeof completionTime === 'string') {
@@ -5176,9 +5183,9 @@
                         // Assume it's a timestamp number
                         completionDate = new Date(parseFloat(completionTime) * 1000);
                     }
-                    
+
                     if (isNaN(completionDate.getTime())) return false; // Invalid date
-                    
+
                     completionDate.setHours(0, 0, 0, 0);
                     return completionDate.getTime() === today.getTime();
                 } catch (e) {
@@ -5298,15 +5305,15 @@
                         // Filter completed jobs to only show today's jobs
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-                        
+
                         allJobs = initialJobsData.filter(job => {
                             // Keep all pending jobs
                             if (job.job_completed !== 'YES') return true;
-                            
+
                             // For completed jobs, only keep today's jobs
                             const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
                             if (!completionTime) return false; // No completion time, don't show
-                            
+
                             try {
                                 let completionDate;
                                 if (typeof completionTime === 'string') {
@@ -5318,9 +5325,9 @@
                                 } else {
                                     completionDate = new Date(parseFloat(completionTime) * 1000);
                                 }
-                                
+
                                 if (isNaN(completionDate.getTime())) return false;
-                                
+
                                 completionDate.setHours(0, 0, 0, 0);
                                 return completionDate.getTime() === today.getTime();
                             } catch (e) {
@@ -5328,7 +5335,7 @@
                                 return false;
                             }
                         });
-                        
+
                         categorizeJobs();
                         // Cache initial jobs (already filtered)
                         localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
@@ -5390,7 +5397,7 @@
 
             initResponsiveLayout();
             initializeNotifications();
-            
+
             // Track job count for notifications
             const updateJobCount = () => {
                 const pendingCount = allJobs.filter(j => (j.job_completed || '').toString().trim().toUpperCase() !== 'CANCELLED' && j.job_completed === 'NO').length;
@@ -5399,7 +5406,7 @@
                 }
                 lastJobCount = pendingCount;
             };
-            
+
             // Update job count after initial load
             setTimeout(updateJobCount, 2000);
 
@@ -5806,20 +5813,20 @@
             setupNotificationListeners();
             requestNotificationPermission();
         }
-        
+
         // Request browser notification permission
         async function requestNotificationPermission() {
             if (!('Notification' in window)) {
                 console.log('Browser does not support notifications');
                 return;
             }
-            
+
             if (Notification.permission === 'granted') {
                 notificationPermission = 'granted';
                 console.log('Notification permission already granted');
                 return;
             }
-            
+
             if (Notification.permission !== 'denied') {
                 try {
                     const permission = await Notification.requestPermission();
@@ -5834,19 +5841,19 @@
                 }
             }
         }
-        
+
         // Show browser notification (works even when tab is inactive)
         function showBrowserNotification(title, message, type = 'info') {
             if (!('Notification' in window)) {
                 return;
             }
-            
+
             if (Notification.permission !== 'granted') {
                 return;
             }
-            
+
             const icon = type === 'job' ? '/static/images/print-icon.png' : '/static/images/notification-icon.png';
-            
+
             const notification = new Notification(title, {
                 body: message,
                 icon: icon || undefined,
@@ -5855,14 +5862,14 @@
                 requireInteraction: false,
                 silent: false
             });
-            
+
             // Close notification after 5 seconds
             setTimeout(() => {
                 notification.close();
             }, 5000);
-            
+
             // Handle click on notification
-            notification.onclick = function() {
+            notification.onclick = function () {
                 window.focus();
                 notification.close();
             };
@@ -6434,7 +6441,7 @@
 
                         if (newJobs.length > 0) {
                             showToast(`${newJobs.length} new jobs loaded successfully`);
-                            
+
                             // Show browser notification for new jobs (works even when tab is inactive)
                             if (!isInitialLoad && notificationPermission === 'granted') {
                                 const pendingNewJobs = newJobs.filter(j => j.job_completed === 'NO');
@@ -6444,7 +6451,7 @@
                                     const firstJob = pendingNewJobs[0];
                                     const serviceType = firstJob.service_type || 'print';
                                     const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
-                                    
+
                                     if (jobCount === 1) {
                                         showBrowserNotification(
                                             'New Print Job Arrived',
@@ -6467,7 +6474,7 @@
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const serverJobKeys = new Set(unique.map(j => `${j.filename}_${j.token || 'no_token'}`));
-                        
+
                         // Filter out old completed jobs that aren't in today's server response
                         allJobs = allJobs.filter(job => {
                             const jobKey = `${job.filename}_${job.token || 'no_token'}`;
@@ -6478,7 +6485,7 @@
                             // Remove old completed jobs not in today's list
                             return false;
                         });
-                        
+
                         const existingJobMap = new Map();
                         allJobs.forEach(job => {
                             const key = `${job.filename}_${job.token || 'no_token'}`;
@@ -6541,18 +6548,18 @@
             // FIXED: Completed jobs should only show today's jobs
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             const completed = activeJobs.filter(job => {
                 if (job.job_completed !== 'YES') return false;
                 const vendorStatus = (job.vendor_status || 'not sended').toLowerCase();
                 if (vendorStatus === 'clear') return false; // hide only when cleared
                 const jobKey = `${job.filename}_${job.token || 'no_token'}`;
                 if (hiddenCompletedJobs.has(jobKey)) return false;
-                
+
                 // Filter to only show jobs completed today
                 const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
                 if (!completionTime) return false; // No completion time, don't show
-                
+
                 try {
                     let completionDate;
                     if (typeof completionTime === 'string') {
@@ -6567,9 +6574,9 @@
                         // Assume it's a timestamp number
                         completionDate = new Date(parseFloat(completionTime) * 1000);
                     }
-                    
+
                     if (isNaN(completionDate.getTime())) return false; // Invalid date
-                    
+
                     completionDate.setHours(0, 0, 0, 0);
                     return completionDate.getTime() === today.getTime();
                 } catch (e) {
@@ -7442,6 +7449,40 @@
 
             // Show user email
             document.getElementById('printInfoUserEmail').textContent = jobData.user_email || jobData.email || '-';
+
+            // Show Payment Information (Vendor Profit)
+            const paymentItem = document.getElementById('printInfoPaymentItem');
+            if (paymentItem) {
+                let totalPrice = 0;
+                let platformProfit = 0;
+
+                // Extract price info
+                try {
+                    // Try top level first
+                    if (jobData.total_price) totalPrice = parseFloat(jobData.total_price);
+                    if (jobData.platform_profit) platformProfit = parseFloat(jobData.platform_profit);
+
+                    // Try pricing_details fallback
+                    if (jobData.pricing_details) {
+                        const pricingDetails = typeof jobData.pricing_details === 'string'
+                            ? JSON.parse(jobData.pricing_details)
+                            : jobData.pricing_details;
+
+                        if (!totalPrice && pricingDetails.total) totalPrice = parseFloat(pricingDetails.total);
+                        if (!totalPrice && pricingDetails.total_price) totalPrice = parseFloat(pricingDetails.total_price);
+                        if (!platformProfit && pricingDetails.platform_profit) platformProfit = parseFloat(pricingDetails.platform_profit);
+                    }
+                } catch (e) {
+                    console.warn('Error parsing pricing for payment info:', e);
+                }
+
+                // Calculate vendor payment (Total - Platform)
+                const vendorPayment = Math.max(0, totalPrice - platformProfit);
+
+                document.getElementById('printInfoPaymentValue').textContent = `₹${vendorPayment.toFixed(2)}`;
+                // Add details tooltip or small text if needed
+                document.getElementById('printInfoPaymentDetails').textContent = `(Total: ₹${totalPrice.toFixed(2)} - Plat: ₹${platformProfit.toFixed(2)})`;
+            }
 
             // Store job data for print action
             modal.dataset.jobData = JSON.stringify(jobData);
