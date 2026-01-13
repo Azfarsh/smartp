@@ -3254,6 +3254,11 @@ export default {
           let token_number = null;
           let jobData = null;
 
+          // Get rendered_status from request body (if provided, otherwise default to 'NO')
+          // Define this BEFORE the conditional blocks so it's available for User_print_jobs update
+          const rendered_status = (body.rendered_status || '').trim().toUpperCase();
+          let final_rendered_status = rendered_status === 'YES' ? 'YES' : 'NO';
+
           // Update Vendor_print_jobs if vendor_email or vendor_id is provided
           if (vendor_email || vendor_id) {
             // Get the full job data including pricing and storage_folder before updating
@@ -3261,7 +3266,7 @@ export default {
             if (vendor_email) {
               vendorJob = await env.DB.prepare(`
                 SELECT token, vendor_email, vendor_id, total_price, platform_profit, final_amount, 
-                       page_count, num_copies, service_type, pricing_details, storage_folder
+                       page_count, num_copies, service_type, pricing_details, storage_folder, rendered_status
                 FROM Vendor_print_jobs
                 WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
                 LIMIT 1
@@ -3269,11 +3274,16 @@ export default {
             } else if (vendor_id) {
               vendorJob = await env.DB.prepare(`
                 SELECT token, vendor_email, vendor_id, total_price, platform_profit, final_amount, 
-                       page_count, num_copies, service_type, pricing_details, storage_folder
+                       page_count, num_copies, service_type, pricing_details, storage_folder, rendered_status
                 FROM Vendor_print_jobs
                 WHERE filename = ? AND vendor_id = ?
                 LIMIT 1
               `).bind(filename, vendor_id).first();
+            }
+
+            // Update final_rendered_status based on vendorJob if available
+            if (vendorJob && rendered_status !== 'YES') {
+              final_rendered_status = vendorJob.rendered_status || 'NO';
             }
 
             // Prepare status values for update
@@ -3285,10 +3295,6 @@ export default {
             } else {
               newStatus = job_completed === 'YES' ? 'completed' : 'pending';
             }
-
-            // Get rendered_status from request body (if provided, otherwise keep existing value)
-            const rendered_status = (body.rendered_status || '').trim().toUpperCase();
-            const final_rendered_status = rendered_status === 'YES' ? 'YES' : (vendorJob?.rendered_status || 'NO');
             
             // Always update Vendor_print_jobs table (similar to User_print_jobs update)
             // Try multiple approaches to ensure we find and update the correct row
