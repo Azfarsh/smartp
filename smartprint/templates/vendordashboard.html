@@ -9268,6 +9268,77 @@
     {% if initial_jobs %}
     {{ initial_jobs|json_script:"initial-jobs-data" }}
     {% endif %}
+    <script>
+        // Vendor Settings Reminder - Ask Once
+        document.addEventListener('DOMContentLoaded', function () {
+            const hasAskedSettings = localStorage.getItem('serviceSettingsUpdated');
+            if (!hasAskedSettings) {
+                // Create a non-intrusive toast notification
+                const toast = document.createElement('div');
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: var(--surface);
+                    border: 1px solid var(--primary);
+                    padding: 16px;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                    z-index: 10000;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    max-width: 320px;
+                    animation: slideInRight 0.5s ease-out;
+                `;
+                toast.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <i class="fas fa-cog" style="color:var(--primary);font-size:20px;"></i>
+                        <span style="font-weight:600;color:var(--on-surface);">Update Service Settings</span>
+                    </div>
+                    <p style="font-size:12px;color:var(--on-surface-variant);margin:0;">Please ensure your service prices and availability settings are up to date.</p>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;">
+                        <button id="dismissSettings" style="padding:6px 12px;border:none;background:transparent;color:var(--on-surface-variant);cursor:pointer;font-size:12px;">Later</button>
+                        <button id="updateSettings" style="padding:6px 12px;border:none;background:var(--primary);color:var(--on-primary);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Update Now</button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+
+                document.getElementById('dismissSettings').onclick = function () {
+                    toast.remove();
+                    localStorage.setItem('serviceSettingsUpdated', 'true');
+                };
+
+                document.getElementById('updateSettings').onclick = function () {
+                    toast.remove();
+                    localStorage.setItem('serviceSettingsUpdated', 'true');
+                    // Check if there is a settings link
+                    const settingsLink = document.querySelector('a[href*="vendor-pricing"]');
+                    if (settingsLink) settingsLink.click();
+                    else window.location.href = '/vendor-pricing/';
+                };
+            }
+
+            // Auto-refresh Pending Jobs (every 1 minute)
+            setInterval(function () {
+                // Reload the page to refresh print jobs as requested
+                // "pending sections is triggered after a minute continously to render the print jobs"
+                // Using location.reload() is the most robust way to ensure everything re-renders if no specific fetch function is exposed.
+                // But we can try to be smarter. 
+                // However, since we don't have the fetch function clearly exposed in global scope (it's inside closures likely), we will reload.
+                // Wait, refreshing the whole page every minute is bad. 
+                // Let's check if 'fetchVendorJobs' or similar exists from previous steps. 
+                // I searched for 'fetch' and found 'loadVendorServicePrices' and 'autoLoginVendor'. 
+                // I didn't see a job fetcher. 
+                // Let's assume a page reload is acceptable functionality for now to ensure "render the print jobs".
+                // But to be "continuous" and likely "compact", maybe the user wants AJAX.
+                // Given constraints, I will use location.reload() but check if the user is interacting to avoid disruption?
+                // No, simple interval is requested.
+                console.log("Auto-refreshing pending jobs...");
+                window.location.reload();
+            }, 60000);
+        });
+    </script>
 </body>
 
 </html>
