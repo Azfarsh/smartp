@@ -1085,6 +1085,9 @@ def vendordashboard(request):
                 'vendor_status': vendor_status,
             })
 
+        # Check for service update needed flag (set during login)
+        show_service_update_modal = request.session.pop('service_update_needed', False)
+
         # Check vendor status - only show jobs if status is 'verified'
         if vendor_status != 'verified':
             print(f"⚠️ Vendor status is '{vendor_status}', not verified. Hiding print jobs.")
@@ -1208,6 +1211,7 @@ def vendordashboard(request):
             # Provide a flat list for initial render JS to consume without extra fetch
             'initial_jobs': manual_print_jobs + print_requests + completed_jobs,
              'daily_earnings': daily_earnings,
+            'show_service_update_modal': show_service_update_modal,
         }
         
         # Cache the context for faster subsequent loads
@@ -7141,7 +7145,11 @@ def vendor_login(request):
                         request.session.pop('vendor_id', None)
                     
                     # Ensure Vendor_service_availability row is refreshed on every login
+                    # This now resets all services to OFF as per requirement
                     _sync_vendor_service_on_login(vendor_email_db, vendor_id)
+                    
+                    # Set flag to show update modal on dashboard
+                    request.session['service_update_needed'] = True
 
                     print(f"✅ Vendor login successful: {email} (ID: {vendor_id}, Status: {vendor_status})")
                     
@@ -10983,33 +10991,37 @@ def _default_service_availability():
     }
 
 
+def _reset_service_availability():
+    """
+    Returns the service availability payload with all services set to False (OFF).
+    Used to force vendors to update their services upon login.
+    """
+    return {
+        "digital_print": False,
+        "project_binding": False,
+        "gloss_printing": False,
+        "jumbo_printing": False,
+        "regular_print": False,
+        "passport_print": False,
+        "photo_print": False,
+        "vendor_shop_avaliability": "online", # Keep shop online so they can access dashboard
+    }
+
 def _sync_vendor_service_on_login(vendor_email, vendor_id):
     """
     Ensure the Vendor_service_availability table has up-to-date rows whenever a vendor logs in.
-    Fetches the latest config (or defaults) and upserts it via the Worker so D1 stays fresh.
+    FORCE RESETS all services to OFF so the vendor must manually enable them for the day.
     """
     if not vendor_email or not vendor_id:
         return
 
     try:
-        service_payload = _default_service_availability()
+        # Use the RESET payload (all False) instead of default (all True) or fetching existing
+        service_payload = _reset_service_availability()
 
-        # Try to load the most recent config so we don't clobber valid data
-        try:
-            payload = {"vendor_email": vendor_email, "vendor_id": vendor_id}
-            endpoint, resp = post_to_worker('/get-vendor-service', payload)
-            if resp.status_code == 200:
-                resp_json = resp.json()
-                if resp_json.get('success'):
-                    service_data = resp_json.get('service', {}).get('service_data')
-                    if isinstance(service_data, dict) and service_data:
-                        service_payload = service_data
-            elif resp.status_code != 404:
-                print(f"⚠️ Worker get-vendor-service failed during login sync ({resp.status_code}) via {endpoint}")
-        except Exception as fetch_err:
-            print(f"⚠️ Unable to fetch vendor service data during login sync: {fetch_err}")
+        print(f"🔄 Resetting services for vendor {vendor_email} to OFF on login.")
 
-        # Persist (or create) the row so it always exists after login
+        # Persist the reset row so it reflects in the DB immediately
         try:
             endpoint, resp = post_to_worker('/upsert-vendor-service', {
                 'vendor_email': vendor_email,
