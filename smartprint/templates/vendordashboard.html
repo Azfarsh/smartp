@@ -4340,7 +4340,7 @@
                 <a href="#settings" class="nav-link"
                     onclick="if(typeof setActiveNav === 'function') setActiveNav(this); openSettingsModal(); return false;">
                     <i class="fas fa-cog"></i>
-                    <span>Settings</span>
+                    <span>Print Services</span>
                 </a>
             </div>
             <div class="nav-item">
@@ -9339,6 +9339,59 @@
             }, 60000);
         });
     </script>
+    <!-- Service Update Modal -->
+    <div id="serviceUpdateModal"
+        style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10001; align-items: center; justify-content: center;">
+        <div
+            style="background: var(--surface); padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 10px 25px var(--shadow); border: 1px solid var(--outline);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div
+                    style="width: 50px; height: 50px; background: rgba(21, 101, 192, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <i class="fas fa-sync-alt" style="font-size: 24px; color: var(--primary);"></i>
+                </div>
+                <h3 style="margin: 0; color: var(--on-surface); font-size: 1.25rem;">Daily Service Update</h3>
+                <p style="margin: 8px 0 0; color: var(--on-surface-variant); font-size: 0.9rem;">
+                    Good morning! To ensure accurate availability for customers, all print services have been reset to
+                    <strong>OFF</strong>. Please enable the services you are offering today.
+                </p>
+            </div>
+            <button id="btnUpdateServices"
+                style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                Update Services Now
+            </button>
+        </div>
+    </div>
+
+    {% if show_service_update_modal %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('serviceUpdateModal');
+            if (modal) {
+                // Show modal
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden'; // Prevent scrolling
+
+                // Handle update button click
+                document.getElementById('btnUpdateServices').addEventListener('click', function () {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+
+                    // Open the Settings Modal (Service Availability)
+                    if (typeof openSettingsModal === 'function') {
+                        openSettingsModal();
+                    } else {
+                        // Fallback if function not found
+                        const settingsModal = document.getElementById('settingsModal');
+                        if (settingsModal) {
+                            settingsModal.style.display = 'flex';
+                            settingsModal.classList.add('active'); // Just in case CSS uses class
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+    {% endif %}
 </body>
 
 </html>
