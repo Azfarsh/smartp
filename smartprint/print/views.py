@@ -14435,9 +14435,9 @@ def send_fcm_notification(user_email, notification_data):
         # Normalize domain to not have trailing slash
         full_domain = full_domain.rstrip('/')
         
-        # User requested specific logo: printmaxdaylogo.png (day logo)
-        icon_url = f"{full_domain}/static/images/printmaxdaylogo.png"
-        badge_url = f"{full_domain}/static/images/printmaxdaylogo.png"
+        # Use notification-icon.png as requested by user
+        icon_url = f"{full_domain}/static/images/notification-icon.png"
+        badge_url = f"{full_domain}/static/images/notification-icon.png"
 
         # Create FCM message
         # Build webpush config conditionally to avoid link issues
