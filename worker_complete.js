@@ -3265,17 +3265,13 @@ export default {
             let vendorJob;
             if (vendor_email) {
               vendorJob = await env.DB.prepare(`
-                SELECT token, vendor_email, vendor_id, total_price, platform_profit, final_amount, 
-                       page_count, num_copies, service_type, pricing_details, storage_folder, rendered_status
-                FROM Vendor_print_jobs
+                SELECT * FROM Vendor_print_jobs
                 WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
                 LIMIT 1
               `).bind(filename, vendor_email).first();
             } else if (vendor_id) {
               vendorJob = await env.DB.prepare(`
-                SELECT token, vendor_email, vendor_id, total_price, platform_profit, final_amount, 
-                       page_count, num_copies, service_type, pricing_details, storage_folder, rendered_status
-                FROM Vendor_print_jobs
+                SELECT * FROM Vendor_print_jobs
                 WHERE filename = ? AND vendor_id = ?
                 LIMIT 1
               `).bind(filename, vendor_id).first();
@@ -3306,11 +3302,26 @@ export default {
               const storage_folder = vendorJob.storage_folder || 'vendor_print_jobs';
               const final_vendor_id = vendorJob.vendor_id || vendor_id;
               
+              // Preserve all existing data fields while updating status
               const updateResult1 = await env.DB.prepare(`
                 UPDATE Vendor_print_jobs
-                SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
+                SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?,
+                    color = COALESCE(?, color),
+                    orientation = COALESCE(?, orientation),
+                    pageSize = COALESCE(?, pageSize),
+                    pageRange = COALESCE(?, pageRange),
+                    specificPages = COALESCE(?, specificPages),
+                    copies = COALESCE(?, copies),
+                    spiralBinding = COALESCE(?, spiralBinding),
+                    lamination = COALESCE(?, lamination)
                 WHERE vendor_id = ? AND filename = ? AND storage_folder = ?
-              `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, final_vendor_id, filename, storage_folder).run();
+              `).bind(
+                finalJobCompleted, completion_time, newStatus, final_rendered_status,
+                vendorJob?.color || null, vendorJob?.orientation || null, vendorJob?.pageSize || null,
+                vendorJob?.pageRange || null, vendorJob?.specificPages || null, vendorJob?.copies || null,
+                vendorJob?.spiralBinding || null, vendorJob?.lamination || null,
+                final_vendor_id, filename, storage_folder
+              ).run();
               
               updateAttempts.push(`vendor_id=${final_vendor_id}, filename=${filename}, storage_folder=${storage_folder}: ${updateResult1.meta.changes} rows`);
               
@@ -3320,9 +3331,23 @@ export default {
                 // Approach 2: Try without storage_folder constraint
                 const updateResult2 = await env.DB.prepare(`
                   UPDATE Vendor_print_jobs
-                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
+                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?,
+                      color = COALESCE(?, color),
+                      orientation = COALESCE(?, orientation),
+                      pageSize = COALESCE(?, pageSize),
+                      pageRange = COALESCE(?, pageRange),
+                      specificPages = COALESCE(?, specificPages),
+                      copies = COALESCE(?, copies),
+                      spiralBinding = COALESCE(?, spiralBinding),
+                      lamination = COALESCE(?, lamination)
                   WHERE vendor_id = ? AND filename = ?
-                `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, final_vendor_id, filename).run();
+                `).bind(
+                  finalJobCompleted, completion_time, newStatus, final_rendered_status,
+                  vendorJob?.color || null, vendorJob?.orientation || null, vendorJob?.pageSize || null,
+                  vendorJob?.pageRange || null, vendorJob?.specificPages || null, vendorJob?.copies || null,
+                  vendorJob?.spiralBinding || null, vendorJob?.lamination || null,
+                  final_vendor_id, filename
+                ).run();
                 
                 updateAttempts.push(`vendor_id=${final_vendor_id}, filename=${filename} (no storage_folder): ${updateResult2.meta.changes} rows`);
                 
@@ -3333,9 +3358,23 @@ export default {
                   const final_vendor_email = vendorJob.vendor_email || vendor_email;
                   const updateResult3 = await env.DB.prepare(`
                     UPDATE Vendor_print_jobs
-                    SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
+                    SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?,
+                        color = COALESCE(?, color),
+                        orientation = COALESCE(?, orientation),
+                        pageSize = COALESCE(?, pageSize),
+                        pageRange = COALESCE(?, pageRange),
+                        specificPages = COALESCE(?, specificPages),
+                        copies = COALESCE(?, copies),
+                        spiralBinding = COALESCE(?, spiralBinding),
+                        lamination = COALESCE(?, lamination)
                     WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
-                  `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, filename, final_vendor_email).run();
+                  `).bind(
+                    finalJobCompleted, completion_time, newStatus, final_rendered_status,
+                    vendorJob?.color || null, vendorJob?.orientation || null, vendorJob?.pageSize || null,
+                    vendorJob?.pageRange || null, vendorJob?.specificPages || null, vendorJob?.copies || null,
+                    vendorJob?.spiralBinding || null, vendorJob?.lamination || null,
+                    filename, final_vendor_email
+                  ).run();
                   
                   updateAttempts.push(`filename=${filename}, vendor_email=${final_vendor_email}: ${updateResult3.meta.changes} rows`);
                   
@@ -3351,11 +3390,32 @@ export default {
               
               if (final_vendor_id) {
                 // Try with vendor_id and filename
+                // Try to get existing job data first
+                const existingJob = await env.DB.prepare(`
+                  SELECT * FROM Vendor_print_jobs
+                  WHERE vendor_id = ? AND filename = ?
+                  LIMIT 1
+                `).bind(final_vendor_id, filename).first();
+                
                 const updateResult = await env.DB.prepare(`
                   UPDATE Vendor_print_jobs
-                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
+                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?,
+                      color = COALESCE(?, color),
+                      orientation = COALESCE(?, orientation),
+                      pageSize = COALESCE(?, pageSize),
+                      pageRange = COALESCE(?, pageRange),
+                      specificPages = COALESCE(?, specificPages),
+                      copies = COALESCE(?, copies),
+                      spiralBinding = COALESCE(?, spiralBinding),
+                      lamination = COALESCE(?, lamination)
                   WHERE vendor_id = ? AND filename = ?
-                `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, final_vendor_id, filename).run();
+                `).bind(
+                  finalJobCompleted, completion_time, newStatus, final_rendered_status,
+                  existingJob?.color || null, existingJob?.orientation || null, existingJob?.pageSize || null,
+                  existingJob?.pageRange || null, existingJob?.specificPages || null, existingJob?.copies || null,
+                  existingJob?.spiralBinding || null, existingJob?.lamination || null,
+                  final_vendor_id, filename
+                ).run();
                 
                 updateAttempts.push(`vendor_id=${final_vendor_id}, filename=${filename}: ${updateResult.meta.changes} rows`);
                 
@@ -3366,11 +3426,32 @@ export default {
               
               if (!updateSuccess && final_vendor_email) {
                 // Try with vendor_email
+                // Try to get existing job data first
+                const existingJob = await env.DB.prepare(`
+                  SELECT * FROM Vendor_print_jobs
+                  WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
+                  LIMIT 1
+                `).bind(filename, final_vendor_email).first();
+                
                 const updateResult = await env.DB.prepare(`
                   UPDATE Vendor_print_jobs
-                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
+                  SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?,
+                      color = COALESCE(?, color),
+                      orientation = COALESCE(?, orientation),
+                      pageSize = COALESCE(?, pageSize),
+                      pageRange = COALESCE(?, pageRange),
+                      specificPages = COALESCE(?, specificPages),
+                      copies = COALESCE(?, copies),
+                      spiralBinding = COALESCE(?, spiralBinding),
+                      lamination = COALESCE(?, lamination)
                   WHERE filename = ? AND LOWER(vendor_email) = LOWER(?)
-                `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, filename, final_vendor_email).run();
+                `).bind(
+                  finalJobCompleted, completion_time, newStatus, final_rendered_status,
+                  existingJob?.color || null, existingJob?.orientation || null, existingJob?.pageSize || null,
+                  existingJob?.pageRange || null, existingJob?.specificPages || null, existingJob?.copies || null,
+                  existingJob?.spiralBinding || null, existingJob?.lamination || null,
+                  filename, final_vendor_email
+                ).run();
                 
                 updateAttempts.push(`filename=${filename}, vendor_email=${final_vendor_email}: ${updateResult.meta.changes} rows`);
                 
@@ -3478,6 +3559,13 @@ export default {
 
           // Update User_print_jobs if user_email is provided
           if (user_email) {
+            // Get existing job data to preserve all fields
+            const existingUserJob = await env.DB.prepare(`
+              SELECT * FROM User_print_jobs
+              WHERE filename = ? AND user_email = ?
+              LIMIT 1
+            `).bind(filename, user_email).first();
+            
             // Handle status field - same logic as Vendor_print_jobs
             let newStatus;
             let finalJobCompleted = job_completed;
@@ -3487,12 +3575,32 @@ export default {
             } else {
               newStatus = job_completed === 'YES' ? 'completed' : 'pending';
             }
-            // Also update rendered_status for User_print_jobs
+            
+            // Update User_print_jobs - preserve all existing data fields
             await env.DB.prepare(`
               UPDATE User_print_jobs
-              SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?
+              SET job_completed = ?, completion_time = ?, status = ?, rendered_status = ?,
+                  color = COALESCE(?, color),
+                  orientation = COALESCE(?, orientation),
+                  pageSize = COALESCE(?, pageSize),
+                  pageRange = COALESCE(?, pageRange),
+                  specificPages = COALESCE(?, specificPages),
+                  copies = COALESCE(?, copies),
+                  spiralBinding = COALESCE(?, spiralBinding),
+                  lamination = COALESCE(?, lamination)
               WHERE filename = ? AND user_email = ?
-            `).bind(finalJobCompleted, completion_time, newStatus, final_rendered_status, filename, user_email).run();
+            `).bind(
+              finalJobCompleted, completion_time, newStatus, final_rendered_status,
+              existingUserJob?.color || vendorJob?.color || null,
+              existingUserJob?.orientation || vendorJob?.orientation || null,
+              existingUserJob?.pageSize || vendorJob?.pageSize || null,
+              existingUserJob?.pageRange || vendorJob?.pageRange || null,
+              existingUserJob?.specificPages || vendorJob?.specificPages || null,
+              existingUserJob?.copies || vendorJob?.copies || null,
+              existingUserJob?.spiralBinding || vendorJob?.spiralBinding || null,
+              existingUserJob?.lamination || vendorJob?.lamination || null,
+              filename, user_email
+            ).run();
           }
 
           return json({ 
