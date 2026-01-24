@@ -32,15 +32,11 @@ from PIL import Image, ImageDraw
 import io
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 import threading
-import schedule
 from urllib.parse import urlparse, urlunparse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import VendorLocationSession
 
-# Lock dictionary to handle concurrent job completions
-_job_completion_locks = {}
-_job_completion_lock = threading.Lock()  # Lock for the locks dictionary itself
 
 KNOWN_WORKER_ENDPOINTS = {
     'add-contact',
@@ -62,14 +58,6 @@ KNOWN_WORKER_ENDPOINTS = {
     'add-user-signup',
     'get-user-signup',
 }
-
-
-def get_ist_timestamp() -> str:
-    """
-    Return the current timestamp in ISO format using the project's default
-    timezone (configured as Asia/Kolkata in settings).
-    """
-    return timezone.localtime(timezone.now()).isoformat()
 
 
 def get_worker_base_url():
@@ -133,141 +121,6 @@ def post_to_worker(path, payload=None, timeout=10):
     )
 
     return endpoint, response
-
-
-def create_or_update_admin_user_in_d1(username, password_hash, email=None, first_name=None, last_name=None, is_superuser=False, is_staff=True, is_active=True, permissions=None):
-    """
-    Create or update an admin user in D1 database
-    """
-    try:
-        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            raise RuntimeError("Worker API not configured")
-        
-        # Build endpoint
-        base_url = api_url.rstrip('/')
-        if '/add-contact' in base_url:
-            endpoint = base_url.replace('/add-contact', '/create-admin-user')
-        elif '/add-vendor-register' in base_url:
-            endpoint = base_url.replace('/add-vendor-register', '/create-admin-user')
-        else:
-            endpoint = base_url + '/create-admin-user'
-        
-        payload = {
-            'username': username,
-            'password_hash': password_hash,
-            'email': email,
-            'first_name': first_name,
-            'last_name': last_name,
-            'is_superuser': is_superuser,
-            'is_staff': is_staff,
-            'is_active': is_active,
-            'permissions': permissions
-        }
-        
-        response = requests.post(
-            endpoint,
-            json=payload,
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
-            },
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return data.get('success', False)
-        else:
-            return False
-            
-    except Exception as e:
-        print(f"Error creating/updating admin user in D1: {e}")
-        return False
-
-
-def get_admin_user_from_d1(username):
-    """
-    Get admin user from D1 database by username
-    """
-    try:
-        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            raise RuntimeError("Worker API not configured")
-        
-        # Build endpoint
-        base_url = api_url.rstrip('/')
-        if '/add-contact' in base_url:
-            endpoint = base_url.replace('/add-contact', '/get-admin-user')
-        elif '/add-vendor-register' in base_url:
-            endpoint = base_url.replace('/add-vendor-register', '/get-admin-user')
-        else:
-            endpoint = base_url + '/get-admin-user'
-        
-        response = requests.post(
-            endpoint,
-            json={'username': username},
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
-            },
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                return data.get('user')
-        return None
-        
-    except Exception as e:
-        print(f"Error getting admin user from D1: {e}")
-        return None
-
-
-def get_all_admin_users_from_d1():
-    """
-    Get all admin users from D1 database
-    """
-    try:
-        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            raise RuntimeError("Worker API not configured")
-        
-        # Build endpoint
-        base_url = api_url.rstrip('/')
-        if '/add-contact' in base_url:
-            endpoint = base_url.replace('/add-contact', '/get-all-admin-users')
-        elif '/add-vendor-register' in base_url:
-            endpoint = base_url.replace('/add-vendor-register', '/get-all-admin-users')
-        else:
-            endpoint = base_url + '/get-all-admin-users'
-        
-        response = requests.post(
-            endpoint,
-            json={},
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
-            },
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                return data.get('users', [])
-        return []
-        
-    except Exception as e:
-        print(f"Error getting all admin users from D1: {e}")
-        return []
 
 
 def _to_decimal(value, precision=2):
@@ -700,27 +553,9 @@ def assign_token_from_vendor_pool(vendor_email):
 
 
 def home(request):
-    # ✅ Auto-redirect authenticated users to dashboard ONLY if they have valid Google session
+    # ✅ Auto-redirect authenticated users to dashboard
     if request.user.is_authenticated:
-        # Check if user has valid Google session (google_user_id in session)
-        google_user_id = request.session.get('google_user_id')
-        user_email = request.session.get('user_email') or (request.user.email if request.user.is_authenticated else None)
-        
-        if google_user_id and user_email:
-            # Verify user exists in D1 User_signup_details
-            user_details = get_user_details_from_d1(user_email)
-            if user_details:
-                print(f"✅ Valid Google session found for {user_email}, redirecting to dashboard")
-                return redirect('userdashboard')
-            else:
-                print(f"⚠️ User {user_email} authenticated but not found in D1, clearing session")
-                from django.contrib.auth import logout
-                logout(request)
-        else:
-            print(f"⚠️ User authenticated but no valid Google session found, clearing session")
-            from django.contrib.auth import logout
-            logout(request)
-    
+        return redirect('userdashboard')
     return render(request, 'home.html')
 
 
@@ -1044,9 +879,8 @@ def vendordashboard(request):
         vendor_details = None
         vendor_email = request.session.get('vendor_email')
         vendor_id = request.session.get('vendor_id')  # Get vendor_id directly from session
-        vendor_status = request.session.get('vendor_status', 'pending').strip().lower()
         
-        print(f"🔍 Session data - Email: {vendor_email}, Vendor ID: {vendor_id}, Status: {vendor_status}")
+        print(f"🔍 Session data - Email: {vendor_email}, Vendor ID: {vendor_id}")
         
         if vendor_email and vendor_id:
             vendor_details = get_vendor_details_by_email(vendor_email)
@@ -1085,67 +919,18 @@ def vendordashboard(request):
                 'manual_print_count': 0,
                 'print_requests_count': 0,
                 'completed_jobs_count': 0,
-                'vendor_status': vendor_status,
-            })
-
-        # Check for service update needed flag (set during login)
-        show_service_update_modal = request.session.pop('service_update_needed', False)
-
-        # Check vendor status - only show jobs if status is 'verified'
-        if vendor_status != 'verified':
-            print(f"⚠️ Vendor status is '{vendor_status}', not verified. Hiding print jobs.")
-            return render(request, 'vendordashboard.html', {
-                'manual_print_jobs': [],
-                'print_requests': [],
-                'completed_jobs': [],
-                'vendor_details': vendor_details,
-                'vendor_status': vendor_status,
-                'vendor_status_message': 'Your verification is in process. Once verified within 24hrs, you can start receiving jobs too.',
-                'total_jobs': 0,
-                'manual_print_count': 0,
-                'print_requests_count': 0,
-                'completed_jobs_count': 0,
-                'daily_earnings': 0,
             })
 
         # Fetch vendor-specific jobs strictly from D1 database (pending + completed for KPIs)
         pending_jobs = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
         completed_jobs_raw = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='YES') or []
         files = pending_jobs + completed_jobs_raw
-        
-        # Calculate Daily Earnings (Total Price - Platform Profit) for today's completed jobs
-        daily_earnings = 0
-        try:
-            today_iso = datetime.date.today().isoformat()
-            # If using local time, ensure alignment with completion_time format (typically ISO with maybe Z or offset)
-            # completion_time example: "2023-10-27T10:00:00"
-            
-            for job in completed_jobs_raw:
-                c_time = job.get('completion_time')
-                if c_time:
-                    # simplistic check: does it start with YYYY-MM-DD?
-                    if c_time.startswith(today_iso):
-                        total = float(job.get('total_price', 0) or 0)
-                        platform = float(job.get('platform_profit', 0) or 0)
-                        
-                        # Fallback for platform_profit if not top-level, check pricing_details
-                        if platform == 0:
-                             pd = job.get('pricing_details')
-                             if pd and isinstance(pd, dict):
-                                 platform = float(pd.get('platform_profit', 0) or 0)
-
-                        daily_earnings += (total - platform)
-                        
-        except Exception as e:
-            print(f"⚠️ Error calculating daily earnings: {e}")
-            daily_earnings = 0
-
         if not files:
             print(f"ℹ️ No jobs returned from D1 for vendor {vendor_id}")
         
         # Define service types for categorization
         manual_services = [
-            'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'golden_embossing'
+            'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
         ]
         regular_services = [
             'regular_print', 'passport_print', 'photo_print', 'regular print', 'passport_photo'
@@ -1166,16 +951,9 @@ def vendordashboard(request):
                 job_completed_raw = 'NO'
             job_completed = str(job_completed_raw).strip().upper()
             
-            # Normalize job_completed in the job object to ensure frontend receives consistent format
-            job['job_completed'] = job_completed
-            
             service_type = (job.get('service_type') or '').strip().lower()
             vendor_status = job.get('vendor_status', 'not sended').lower()
             is_hidden = job.get('is_hidden', 'false').lower() == 'true'
-            
-            # Ensure service_type is preserved in job object for frontend categorization
-            # Frontend needs the original service_type to categorize into passport, golden, etc. sections
-            job['service_type'] = job.get('service_type', '').strip() or service_type
             
             print(f"🔍 Job: {job.get('filename', 'unknown')} - job_completed: {job_completed}, service_type: {service_type}, vendor_status: {vendor_status}")
             
@@ -1206,15 +984,12 @@ def vendordashboard(request):
             'print_requests': print_requests,
             'completed_jobs': completed_jobs,
             'vendor_details': vendor_details,
-            'vendor_status': vendor_status,
             'total_jobs': len(manual_print_jobs) + len(print_requests) + len(completed_jobs),
             'manual_print_count': len(manual_print_jobs),
             'print_requests_count': len(print_requests),
             'completed_jobs_count': len(completed_jobs),
             # Provide a flat list for initial render JS to consume without extra fetch
             'initial_jobs': manual_print_jobs + print_requests + completed_jobs,
-             'daily_earnings': daily_earnings,
-            'show_service_update_modal': show_service_update_modal,
         }
         
         # Cache the context for faster subsequent loads
@@ -1226,14 +1001,12 @@ def vendordashboard(request):
         
     except Exception as e:
         print(f"Error loading vendor dashboard data: {str(e)}")
-        vendor_status = request.session.get('vendor_status', 'pending').strip().lower()
         return render(request, 'vendordashboard.html', {
             'manual_print_jobs': [],
             'print_requests': [],
             'completed_jobs': [],
             'vendor_details': None,
             'vendor_details_error': 'Dashboard error. Please try again later.',
-            'vendor_status': vendor_status,
             'total_jobs': 0,
             'manual_print_count': 0,
             'print_requests_count': 0,
@@ -1511,26 +1284,6 @@ def userdashboard(request):
     if not request.user.is_authenticated:
         print("❌ User not authenticated, redirecting to login")
         return redirect('/login/')
-    
-    # ✅ STRICT: Verify user has valid Google session
-    google_user_id = request.session.get('google_user_id')
-    user_email = request.session.get('user_email') or request.user.email
-    
-    if not google_user_id:
-        print(f"❌ No Google session found for user {user_email}, redirecting to login")
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect('/login/')
-    
-    # ✅ STRICT: Verify user exists in D1 User_signup_details (must have signed up via Google)
-    user_details = get_user_details_from_d1(user_email)
-    if not user_details:
-        print(f"❌ User {user_email} not found in D1 User_signup_details, redirecting to login")
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect('/login/')
-    
-    print(f"✅ Valid Google session and D1 record confirmed for {user_email}")
 
     try:
         # ULTRA-FAST: Avoid synchronous job loading; fetch details only
@@ -2156,118 +1909,6 @@ def assign_printer_and_increment_count(vendor_email, service_type):
     except Exception as e:
         print(f"⚠️ assign_printer_and_increment_count error: {str(e)}")
         return ''
-def store_vendor_pending_jobs_snapshot(request=None):
-    """
-    Store vendor pending jobs snapshot for the logged-in vendor only in D1 database.
-    This function should be called every 2 minutes via a scheduled task.
-    If request is provided, only processes the logged-in vendor from session.
-    If request is None (scheduled task), skips execution (no session available).
-    """
-    try:
-        # If called from scheduled task (no request), skip - we need session to identify vendor
-        if request is None:
-            print(f"⚠️ Scheduled snapshot skipped - requires active vendor session")
-            return False
-        
-        # Get logged-in vendor from session
-        vendor_email = request.session.get('vendor_email', '').strip().lower()
-        vendor_id = request.session.get('vendor_id', '').strip()
-        
-        if not vendor_email and not vendor_id:
-            print(f"⚠️ No vendor session found, skipping snapshot")
-            return False
-        
-        api_url = getattr(settings, 'WORKER_API_URL', '')
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            print(f"⚠️ Worker API not configured, skipping vendor pending jobs snapshot")
-            return False
-        
-        # Process only the logged-in vendor
-        vendors = [{'vendor_id': vendor_id, 'email': vendor_email}]
-        print(f"📋 Processing snapshot for logged-in vendor: {vendor_email or vendor_id}")
-        
-        snapshot_timestamp = datetime.datetime.now().isoformat()
-        success_count = 0
-        error_count = 0
-        
-        # Process the logged-in vendor only
-        for vendor in vendors:
-            try:
-                vendor_id = vendor.get('vendor_id', '').strip()
-                vendor_email = vendor.get('email', '').strip().lower()
-                
-                if not vendor_id and not vendor_email:
-                    continue
-                
-                # Get pending jobs for this vendor
-                pending_jobs = get_vendor_jobs_from_d1(vendor_id=vendor_id, vendor_email=vendor_email, job_status='NO') or []
-                
-                # Store snapshot via worker API
-                worker_endpoint = build_worker_endpoint('/store-vendor-pending-jobs-snapshot')
-                if not worker_endpoint:
-                    print(f"⚠️ Could not build worker endpoint")
-                    continue
-                
-                payload = {
-                    'vendor_id': vendor_id or '',
-                    'vendor_email': vendor_email or '',
-                    'pending_jobs': pending_jobs,
-                    'snapshot_timestamp': snapshot_timestamp
-                }
-                
-                snapshot_resp = requests.post(
-                    worker_endpoint,
-                    json=payload,
-                    headers={
-                        'Content-Type': 'application/json',
-                        'x-api-key': api_key
-                    },
-                    timeout=10
-                )
-                
-                if snapshot_resp.status_code == 200:
-                    success_count += 1
-                    print(f"✅ Stored {len(pending_jobs)} pending jobs snapshot for vendor {vendor_id or vendor_email}")
-                else:
-                    error_count += 1
-                    error_text = snapshot_resp.text[:200] if snapshot_resp.text else 'Unknown error'
-                    print(f"⚠️ Failed to store snapshot for vendor {vendor_id or vendor_email}: {snapshot_resp.status_code} - {error_text}")
-                    
-            except Exception as vendor_error:
-                error_count += 1
-                print(f"❌ Error processing vendor {vendor.get('vendor_id', 'unknown')}: {str(vendor_error)}")
-                continue
-        
-        print(f"✅ Vendor pending jobs snapshot completed: {success_count} successful, {error_count} errors")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error storing vendor pending jobs snapshot: {str(e)}")
-        return False
-
-
-@csrf_exempt
-def store_vendor_pending_jobs_snapshot_endpoint(request):
-    """
-    Endpoint to trigger vendor pending jobs snapshot storage for logged-in vendor only.
-    This can be called when vendor accesses their dashboard.
-    """
-    if request.method == 'POST':
-        try:
-            result = store_vendor_pending_jobs_snapshot(request)
-            if result:
-                return JsonResponse({'success': True, 'message': 'Vendor pending jobs snapshot stored successfully'}, status=200)
-            else:
-                return JsonResponse({'success': False, 'error': 'Failed to store vendor pending jobs snapshot'}, status=500)
-        except Exception as e:
-            print(f"❌ Error in store_vendor_pending_jobs_snapshot_endpoint: {str(e)}")
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    else:
-        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
-
-
 def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
     """
     Fetch vendor print jobs from the Vendor_print_jobs D1 table via Worker API.
@@ -2305,9 +1946,6 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
             return []
 
         jobs = data.get('data') or []
-        print(f"🔍 get_vendor_jobs_from_d1 - Worker returned {len(jobs)} jobs for vendor_id={vendor_id}, vendor_email={vendor_email}, job_status={status_filter}")
-        if jobs:
-            print(f"📋 Sample job service_types: {[j.get('service_type', 'N/A') for j in jobs[:5]]}")
         if not jobs:
             return []
 
@@ -2359,7 +1997,6 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
             
             # Map ALL metadata from D1 database (not from R2)
             # All fields come from D1, only file URL comes from R2
-            # This ensures we're using D1 as the single source of truth for all metadata
             job_completed_source = job.get('job_completed')
             if not job_completed_source:
                 job_completed_source = job.get('job_completed_status')
@@ -2367,32 +2004,23 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
                 job_completed_source = 'NO'
             job_completed_value = str(job_completed_source).strip().upper()
             job['job_completed'] = job_completed_value
-            
-            # All metadata fields explicitly from D1 database
-            job['service_type'] = job.get('service_type', '') or ''
-            job['pages'] = str(job.get('page_count', job.get('pages', '0')) or '0')
-            job['rendered_status'] = job.get('rendered_status', 'NO') or 'NO'
-            job['vendor_status'] = job.get('vendor_status', 'not sended') or 'not sended'
-            job['token'] = job.get('token', '') or ''
-            job['job_id'] = job.get('job_id', '') or ''
+            job.setdefault('service_type', job.get('service_type', ''))
+            job.setdefault('pages', str(job.get('page_count', job.get('pages', '0'))))
+            job.setdefault('rendered_status', job.get('rendered_status', 'NO'))
+            job.setdefault('vendor_status', job.get('vendor_status', 'not sended'))
+            job.setdefault('token', job.get('token', ''))
+            job.setdefault('job_id', job.get('job_id', ''))
             copies_value = job.get('copies', job.get('num_copies'))
             job['copies'] = str(copies_value) if copies_value not in [None, ''] else '1'
-            job['color'] = job.get('color', '') or ''
-            job['orientation'] = job.get('orientation', '') or ''
-            job['pageSize'] = job.get('pageSize', '') or ''
-            job['timestamp'] = job.get('timestamp', '') or ''
-            job['uploaded_at'] = job.get('timestamp', '') or ''  # Alias for compatibility
-            job['completion_time'] = job.get('completion_time', '') or ''
-            job['total_price'] = job.get('total_price', 0) or 0
-            job['final_amount'] = job.get('final_amount', 0) or 0
-            job['user_email'] = job.get('user_email', '') or ''
-            job['vendor_email'] = job.get('vendor_email', '') or ''
-            job['status'] = job.get('status', 'pending') or 'pending'
-            job['feedback'] = job.get('feedback', '') or ''
-            job['quality'] = job.get('quality', '') or ''
-            job['thickness'] = job.get('thickness', '') or ''
-            job['service_name'] = job.get('service_name', '') or ''
-            job['filename'] = job.get('filename', '') or ''  # Ensure filename is from D1
+            job.setdefault('color', job.get('color', ''))
+            job.setdefault('orientation', job.get('orientation', ''))
+            job.setdefault('pageSize', job.get('pageSize', ''))
+            job.setdefault('timestamp', job.get('timestamp', ''))
+            job.setdefault('completion_time', job.get('completion_time', ''))
+            job.setdefault('total_price', job.get('total_price', 0))
+            job.setdefault('final_amount', job.get('final_amount', 0))
+            job.setdefault('user_email', job.get('user_email', ''))
+            job.setdefault('vendor_email', job.get('vendor_email', ''))
 
             pricing_details_raw = job.get('pricing_details')
             parsed_pricing = None
@@ -2406,54 +2034,36 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
             if parsed_pricing is not None:
                 job['pricing_details'] = parsed_pricing
 
-            # Create metadata structure from D1 fields ONLY (not from R2)
-            # All metadata comes from D1 database, R2 is ONLY used for file URL generation
+            # Create metadata structure from D1 fields (not R2)
             job['metadata'] = {
-                'status': job.get('status', 'pending') or 'pending',
+                'status': job.get('status', 'pending'),
                 'job_completed': job_completed_value,
-                'copies': job.get('copies', '1') or '1',
-                'color': job.get('color', '') or '',
-                'orientation': job.get('orientation', '') or '',
-                'page_size': job.get('pageSize', '') or '',
-                'pages': str(job.get('page_count', job.get('pages', '0')) or '0'),
-                'timestamp': job.get('timestamp', '') or '',
-                'vendor': job.get('vendor', vendor_id) or vendor_id,
-                'user': job.get('user_email', '') or '',
-                'service_type': job.get('service_type', '') or '',
-                'job_id': job.get('job_id', '') or '',
-                'token': job.get('token', '') or '',
-                'vendor_id': job.get('vendor_id', vendor_id) or vendor_id,
-                'rendered_status': job.get('rendered_status', 'NO') or 'NO',
-                'vendor_status': job.get('vendor_status', 'not sended') or 'not sended',
-                'total_price': job.get('total_price', 0) or 0,
-                'final_amount': job.get('final_amount', 0) or 0,
-                'feedback': job.get('feedback', '') or '',
-                'quality': job.get('quality', '') or '',
-                'thickness': job.get('thickness', '') or '',
-                'service_name': job.get('service_name', '') or '',
-                'completion_time': job.get('completion_time', '') or '',
-                'platform_profit': job.get('platform_profit', 0) or 0,
+                'copies': job.get('copies', '1'),
+                'color': job.get('color', ''),
+                'orientation': job.get('orientation', ''),
+                'page_size': job.get('pageSize', ''),
+                'pages': str(job.get('page_count', job.get('pages', '0'))),
+                'timestamp': job.get('timestamp', ''),
+                'vendor': job.get('vendor', vendor_id),
+                'user': job.get('user_email', ''),
+                'service_type': job.get('service_type', ''),
+                'job_id': job.get('job_id', ''),
+                'token': job.get('token', ''),
+                'vendor_id': job.get('vendor_id', vendor_id),
+                'rendered_status': job.get('rendered_status', 'NO'),
+                'vendor_status': job.get('vendor_status', 'not sended'),
+                'total_price': job.get('total_price', 0),
+                'final_amount': job.get('final_amount', 0),
             }
             
-            # Add pricing details from D1 if available
             job['metadata']['pricing_details'] = parsed_pricing
             
             # Enforce local status filtering as a safety net
-            # Only filter if status is explicitly different (not just missing/empty)
             normalized_status_raw = job.get('job_completed') or job.get('job_completed_status') or 'NO'
             normalized_status = str(normalized_status_raw).strip().upper()
-            
-            # If status is empty or None, default to 'NO' and include it if we're looking for 'NO'
-            if not normalized_status_raw or normalized_status_raw == '':
-                normalized_status = 'NO'
-            
-            # Include job if status matches, or if status is empty/None and we're looking for 'NO'
-            if normalized_status == status_filter or (not normalized_status_raw and status_filter == 'NO'):
+            if normalized_status == status_filter:
                 filtered_jobs.append(job)
-            else:
-                print(f"⚠️ Job filtered out: {job.get('filename', 'unknown')} (token: {job.get('token', 'N/A')}) - normalized_status={normalized_status}, expected={status_filter}, service_type={job.get('service_type', 'N/A')}")
 
-        print(f"✅ get_vendor_jobs_from_d1 - Returning {len(filtered_jobs)} filtered jobs")
         return filtered_jobs
             
     except Exception as e:
@@ -2466,9 +2076,8 @@ def get_print_requests(request):
         # Get vendor details from session to filter jobs
         vendor_email = request.session.get('vendor_email')
         vendor_id = request.session.get('vendor_id')  # Get vendor_id directly from session
-        vendor_status = request.session.get('vendor_status', 'pending').strip().lower()
         
-        print(f"🔍 get_print_requests - Session data - Email: {vendor_email}, Vendor ID: {vendor_id}, Status: {vendor_status}")
+        print(f"🔍 get_print_requests - Session data - Email: {vendor_email}, Vendor ID: {vendor_id}")
         
         if not vendor_id and vendor_email:
             # Try to get vendor_id from vendor details
@@ -2483,11 +2092,6 @@ def get_print_requests(request):
         
         if not vendor_id:
             print("❌ No vendor ID found in session - returning empty job list")
-            return JsonResponse({"print_requests": []}, status=200)
-        
-        # Check vendor status - only return jobs if status is 'verified'
-        if vendor_status != 'verified':
-            print(f"⚠️ Vendor status is '{vendor_status}', not verified. Returning empty job list.")
             return JsonResponse({"print_requests": []}, status=200)
         
         # Fetch pending jobs from D1 database using vendor email fallback
@@ -2536,7 +2140,7 @@ def get_print_requests(request):
         
         # Define service types for categorization (same as vendordashboard)
         manual_services = [
-            'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing', 'golden_embossing'
+            'digital_print', 'project_binding', 'gloss_printing', 'jumbo_printing'
         ]
         regular_services = [
             'regular_print', 'passport_print', 'photo_print', 'regular print', 'passport_photo'
@@ -2558,14 +2162,7 @@ def get_print_requests(request):
                 job_completed_source = 'NO'
             job_completed = str(job_completed_source).strip().upper()
             
-            # Normalize job_completed in the job object to ensure frontend receives consistent format
-            job['job_completed'] = job_completed
-            
-            # Ensure service_type is preserved in job object for frontend categorization
-            # Frontend needs the original service_type to categorize into passport, golden, etc. sections
-            original_service_type = job.get('service_type', '').strip()
-            service_type = (original_service_type or '').strip().lower()
-            job['service_type'] = original_service_type or service_type  # Preserve original for frontend
+            service_type = (job.get('service_type') or '').strip().lower()
             vendor_status = job.get('vendor_status', 'not sended').lower()
             
             # Skip cancelled jobs - they should not be displayed
@@ -3805,7 +3402,6 @@ def upload_to_r2(request):
             file_count = int(request.POST.get('file_count', 0))
             selected_vendor = request.POST.get('selected_vendor', 'firozshop')
             vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
-            db_storage_failed = False  # Initialize flag for database storage status
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -3836,9 +3432,6 @@ def upload_to_r2(request):
                     print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
             elif vendor_email:
                 print(f"✅ Got vendor_email from form data: {vendor_email}")
-
-            # Initialize token variable - will be assigned once per request (not per file)
-            token = None
 
             # Process each file with its corresponding settings
             for i in range(file_count):
@@ -3875,23 +3468,18 @@ def upload_to_r2(request):
                             print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
                     
                     # Assign token from vendor pool if vendor email is available
-                    # IMPORTANT: Only assign token once per request (not per file) to prevent duplicate token assignments
-                    if not token:  # Only assign if token hasn't been assigned yet in this request
-                        if vendor_email:
-                            token = assign_token_from_vendor_pool(vendor_email)
-                            if token is None:
-                                # Fallback to sequential token if vendor pool is empty
-                                token = get_next_sequential_token()
-                                print(f"⚠️ Vendor token pool empty, using fallback token: {token}")
-                            else:
-                                print(f"✅ Assigned token {token} from vendor pool for {vendor_email}")
-                        else:
-                            # Fallback to sequential token if no vendor email
+                    if vendor_email:
+                        token = assign_token_from_vendor_pool(vendor_email)
+                        if token is None:
+                            # Fallback to sequential token if vendor pool is empty
                             token = get_next_sequential_token()
-                            print(f"⚠️ No vendor email available, using fallback token: {token}")
+                            print(f"⚠️ Vendor token pool empty, using fallback token: {token}")
+                        else:
+                            print(f"✅ Assigned token {token} from vendor pool for {vendor_email}")
                     else:
-                        # Reuse the same token for all files in this request
-                        print(f"✅ Reusing token {token} for file {file.name} (same request)")
+                        # Fallback to sequential token if no vendor email
+                        token = get_next_sequential_token()
+                        print(f"⚠️ No vendor email available, using fallback token: {token}")
 
                     # Generate a unique job_id for this file (use original_filename + timestamp for idempotency)
                     job_id = print_settings.get('job_id')
@@ -3923,7 +3511,7 @@ def upload_to_r2(request):
                         'layout_type': str(print_settings.get("layout", "single")),
                         'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                         'lamination': str(print_settings.get("lamination", "No")),
-                        'timestamp': get_ist_timestamp(),
+                        'timestamp': datetime.datetime.now().isoformat(),
                         'status': 'pending',
                         'job_completed': 'NO',
                         'vendor_status': 'not sended',
@@ -4041,7 +3629,6 @@ def upload_to_r2(request):
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
-                    service_type_lc = service_type.lower() if service_type else ''
                     
                     # Store every user dashboard job under vendor_print_jobs to keep metadata consistent with D1
                     storage_folder = 'vendor_print_jobs'
@@ -4054,37 +3641,24 @@ def upload_to_r2(request):
                     if 'rendered_status' not in file_metadata:
                         file_metadata['rendered_status'] = 'NO'
 
-                    # ALL userdashboard modals should NOT store in database here - they will be stored AFTER successful payment
-                    # in verify_razorpay_payment (same pattern as jumbo_printing)
-                    # This ensures data is only stored after payment is verified, preventing orphaned records
-                    document_print_services = ['regular_print', 'regular print', 'document_print']
-                    passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
-                    digital_services = ['digital_print']
-                    golden_services = ['golden_embossing', 'golden_emboss']
-                    gloss_services = ['gloss_printing', 'gloss_print']
-                    jumbo_services = ['jumbo_printing', 'jumbo_print']
-                    
-                    # All userdashboard modal services - skip database storage before payment
-                    all_payment_required_services = (document_print_services + passport_photo_services + 
-                                                      digital_services + golden_services + gloss_services + jumbo_services)
-                    is_payment_required_service = service_type_lc in [s.lower() for s in all_payment_required_services]
-
                     if service_type in ['photo_print', 'passport_photo']:
                         # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
                         if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
                             # Use the same keys as above
-                            # Store only the binary file in R2; keep all metadata in database tables
+                            r2_metadata = sanitize_r2_metadata(file_metadata)
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=vendor_file_key,
                                 Body=file_content,
-                                ContentType='application/pdf'
+                                ContentType='application/pdf',
+                                Metadata=r2_metadata
                             )
                             s3.put_object(
                                 Bucket=settings.R2_BUCKET,
                                 Key=user_file_key,
                                 Body=file_content,
-                                ContentType='application/pdf'
+                                ContentType='application/pdf',
+                                Metadata=r2_metadata
                             )
                             print(f"✅ PDF uploaded directly: {file.name}")
                         else:
@@ -4142,18 +3716,21 @@ def upload_to_r2(request):
                                         'original_filename': file.name,
                                         'paper_size': layout_config['paper_size']
                                     })
-                                # Store only the PDF; persist metadata solely in the database
+                                # Use full metadata so storage mirrors legacy behaviour
+                                r2_metadata = sanitize_r2_metadata(file_metadata)
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
                                     Key=vendor_file_key,
                                     Body=pdf_data,
-                                    ContentType='application/pdf'
+                                    ContentType='application/pdf',
+                                    Metadata=r2_metadata
                                 )
                                 s3.put_object(
                                     Bucket=settings.R2_BUCKET,
                                     Key=user_file_key,
                                     Body=pdf_data,
-                                    ContentType='application/pdf'
+                                    ContentType='application/pdf',
+                                    Metadata=r2_metadata
                                 )
                                 print(f"✅ Photo layout saved as PDF: {file.name}")
                                 
@@ -4161,72 +3738,62 @@ def upload_to_r2(request):
                                 print(f"❌ Failed to create {service_type} layout")
                                 return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
                     else:
-                        # Regular file upload for non-passport services (no metadata stored in R2)
+                        # Regular file upload for non-passport services
+                        r2_metadata = sanitize_r2_metadata(file_metadata)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=vendor_file_key,
                             Body=file_content,
-                            ContentType=content_type
+                            ContentType=content_type,
+                            Metadata=r2_metadata
                         )
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=user_file_key,
                             Body=file_content,
-                            ContentType=content_type
+                            ContentType=content_type,
+                            Metadata=r2_metadata
                         )
 
                     # Store print job in D1 database (R2 storage is already done above)
-                    # SKIP database storage for ALL userdashboard modal services - they will be stored AFTER successful payment
-                    # in verify_razorpay_payment (same pattern as jumbo_printing)
-                    # This ensures data is only stored after payment verification, preventing orphaned records
-                    if not is_payment_required_service:
-                        try:
-                            store_vendor_print_job_in_db(
-                                vendor_id=vendor_id,
-                                vendor_email=vendor_email,
-                                user_email=user_email,
-                                filename=file.name,
-                                storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
-                                r2_path=vendor_file_key,
-                                metadata=file_metadata,
-                                pricing_details=pricing_details,
-                                user_id=user_id,
-                                shop_id=vendor_id
-                            )
-                        except Exception as db_err:
-                            print(f"⚠️ Error storing print job in database: {db_err}")
-                            # Don't fail the upload if database storage fails
+                    try:
+                        store_vendor_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=file.name,
+                            storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
+                            r2_path=vendor_file_key,
+                            metadata=file_metadata,
+                            pricing_details=pricing_details,
+                            user_id=user_id,
+                            shop_id=vendor_id
+                        )
+                    except Exception as db_err:
+                        print(f"⚠️ Error storing print job in database: {db_err}")
+                        # Don't fail the upload if database storage fails
 
-                        try:
-                            user_metadata = dict(file_metadata)
-                            user_metadata['storage_folder'] = 'users'
-                            store_user_print_job_in_db(
-                                vendor_id=vendor_id,
-                                vendor_email=vendor_email,
-                                user_email=user_email,
-                                filename=file.name,
-                                storage_folder='users',
-                                r2_path=user_file_key,
-                                metadata=user_metadata,
-                                pricing_details=pricing_details,
-                                user_id=user_id,
-                                shop_id=vendor_id
-                            )
-                        except Exception as user_db_err:
-                            print(f"⚠️ Error storing user print job in database: {user_db_err}")
-                    else:
-                        print(f"⏭️ Skipping database storage for {service_type} - will be stored after successful payment (same as jumbo_printing)")
-                        print(f"   ✅ All userdashboard modals now follow the same pattern: store only after payment verification")
+                    try:
+                        user_metadata = dict(file_metadata)
+                        user_metadata['storage_folder'] = 'users'
+                        store_user_print_job_in_db(
+                            vendor_id=vendor_id,
+                            vendor_email=vendor_email,
+                            user_email=user_email,
+                            filename=file.name,
+                            storage_folder='users',
+                            r2_path=user_file_key,
+                            metadata=user_metadata,
+                            pricing_details=pricing_details,
+                            user_id=user_id,
+                            shop_id=vendor_id
+                        )
+                    except Exception as user_db_err:
+                        print(f"⚠️ Error storing user print job in database: {user_db_err}")
 
                     files_uploaded += 1
 
             if files_uploaded > 0:
-                # If database storage failed but files uploaded to R2, inform the user explicitly
-                if 'db_storage_failed' in locals() and db_storage_failed:
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'Your file was uploaded, but we could not store the print job in our database. Please try again or contact support.'
-                    }, status=500)
                 return JsonResponse({
                     'success': True,
                     'message': f'{files_uploaded} file(s) uploaded successfully'
@@ -4787,7 +4354,7 @@ def process_print_request(request):
                                       'pageSize': str(print_settings.get("pageSize", "A4")),
                                       'spiralBinding': str(print_settings.get("spiralBinding", "No")),
                                       'lamination': str(print_settings.get("lamination", "No")),
-                                      'timestamp': get_ist_timestamp(),
+                                      'timestamp': datetime.datetime.now().isoformat(),
                                       'status': 'pending',
                                       'job_completed': 'NO',
                                       'vendor_status': 'not sended',
@@ -5116,8 +4683,7 @@ def verify_razorpay_payment(request):
         payment_id = request.POST.get('razorpay_payment_id')
         order_id = request.POST.get('razorpay_order_id')
         signature = request.POST.get('razorpay_signature')
-        
-        # Normal payment verification flow - all services require payment
+
         if not (payment_id and order_id and signature):
             return JsonResponse({'success': False, 'error': 'Missing payment details'}, status=400)
 
@@ -5132,19 +4698,6 @@ def verify_razorpay_payment(request):
 
         # Signature valid → proceed to store files (reuse existing logic from process_print_request)
         file_count = int(request.POST.get('file_count', 0))
-        
-        # Validate file_count - must be greater than 0
-        if file_count <= 0:
-            return JsonResponse({
-                'success': False, 
-                'error': 'No files provided. Please upload at least one file.'
-            }, status=400)
-        
-        # Debug: Log file count and available files
-        print(f"📦 Processing {file_count} file(s)")
-        print(f"📋 Available files in request.FILES: {list(request.FILES.keys())}")
-        print(f"📋 Available POST keys: {list(request.POST.keys())[:10]}...")  # First 10 keys
-        
         files_processed = 0
         files_failed = 0
         token_value = ''
@@ -5197,408 +4750,310 @@ def verify_razorpay_payment(request):
         for i in range(file_count):
             file_key = f'file_{i}'
             settings_key = f'settings_{i}'
-            
-            print(f"🔍 Processing file {i}: file_key={file_key}, settings_key={settings_key}")
-            print(f"   Available FILES keys: {list(request.FILES.keys())}")
-            print(f"   Available POST keys (first 20): {list(request.POST.keys())[:20]}")
-            
-            # Validate that both file and settings exist
-            if file_key not in request.FILES:
-                print(f"❌ Missing file at index {i} (file_key: {file_key})")
-                print(f"   Available FILES: {list(request.FILES.keys())}")
-                files_failed += 1
-                failed_files.append({
-                    'filename': f'file_{i}',
-                    'error': f'File {i} not found in request.FILES. Available keys: {list(request.FILES.keys())}'
-                })
-                continue
-                
-            if settings_key not in request.POST:
-                print(f"❌ Missing settings at index {i} (settings_key: {settings_key})")
-                files_failed += 1
-                failed_files.append({
-                    'filename': request.FILES[file_key].name if file_key in request.FILES else f'file_{i}',
-                    'error': f'Settings {i} not found in request'
-                })
-                continue
-            
-            try:
+            if file_key in request.FILES and settings_key in request.POST:
                 fobj = request.FILES[file_key]
                 file_content = fobj.read()
                 settings_json = request.POST.get(settings_key)
-                
-                if not settings_json:
-                    raise ValueError(f"Settings JSON is empty for file {i}")
-                    
                 print_settings = json.loads(settings_json)
-            except json.JSONDecodeError as e:
-                print(f"❌ Invalid JSON in settings for file {i}: {str(e)}")
-                files_failed += 1
-                failed_files.append({
-                    'filename': fobj.name if 'fobj' in locals() else f'file_{i}',
-                    'error': f'Invalid settings JSON: {str(e)}'
-                })
-                continue
-            except Exception as e:
-                print(f"❌ Error processing file {i}: {str(e)}")
-                files_failed += 1
-                failed_files.append({
-                    'filename': fobj.name if 'fobj' in locals() else f'file_{i}',
-                    'error': str(e)
-                })
-                continue
 
-            # Resolve user and vendor context (ensure vendor_id is present for Worker validation)
-            vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
+                # Resolve user and vendor context (ensure vendor_id is present for Worker validation)
+                vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
 
-            # Get vendor email from settings_json if not already set (fallback)
-            if not vendor_email:
-                vendor_email = print_settings.get('vendor_email', '').strip()
-                if vendor_email:
-                    print(f"✅ Got vendor_email from settings_json: {vendor_email}")
-            
-            # Final fallback: Get vendor email from shop folder if still not set
-            if not vendor_email and selected_vendor:
-                try:
-                    vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
-                    print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
-                except Exception as e:
-                    print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
+                # Get vendor email from settings_json if not already set (fallback)
+                if not vendor_email:
+                    vendor_email = print_settings.get('vendor_email', '').strip()
+                    if vendor_email:
+                        print(f"✅ Got vendor_email from settings_json: {vendor_email}")
+                
+                # Final fallback: Get vendor email from shop folder if still not set
+                if not vendor_email and selected_vendor:
+                    try:
+                        vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
+                        print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
+                    except Exception as e:
+                        print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
 
-            # If vendor_id is still missing but vendor_email is available, derive vendor_id for Worker storage
-            if (not vendor_id or vendor_id.strip() == '') and vendor_email:
-                try:
-                    vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
-                    if vendor_id_lookup:
-                        vendor_id = vendor_id_lookup
-                        print(f"✅ Resolved vendor_id {vendor_id} from vendor_email {vendor_email}")
-                except Exception as e:
-                    print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
-
-            # Store every paid job inside vendor_print_jobs
-            # Normalize service_type to ensure consistent handling (same logic as jumbo_printing)
-            service_type_raw = (print_settings.get('service_type') or '').strip()
-            service_type_lc = service_type_raw.lower()
-            
-            # Normalize service_type: convert 'regular print' to 'regular_print' for consistency with jumbo_printing
-            # This ensures regular print is handled EXACTLY like jumbo_printing
-            # CRITICAL: Document print modal must use 'regular_print' to match jumbo_printing storage pattern
-            if service_type_lc in ['regular print', 'regular_print', 'document_print', 'document print']:
-                service_type = 'regular_print'  # Normalize to match jumbo_printing pattern
-                print(f"📝 Normalized service_type '{service_type_raw}' -> 'regular_print' (same as jumbo_printing)")
-            elif service_type_lc in ['jumbo_printing', 'jumbo_print']:
-                service_type = 'jumbo_printing'  # Keep jumbo_printing as-is
-                print(f"📝 Service type '{service_type_raw}' -> 'jumbo_printing'")
-            elif service_type_lc in ['passport_photo', 'passport_print', 'photo_print', 'passport photo', 'passport print']:
-                service_type = 'passport_photo'  # Normalize all passport photo variants to 'passport_photo'
-                print(f"📝 Normalized service_type '{service_type_raw}' -> 'passport_photo'")
-            elif service_type_lc in ['digital_print']:
-                service_type = 'digital_print'
-            elif service_type_lc in ['golden_embossing', 'golden_emboss']:
-                service_type = 'golden_embossing'
-            elif service_type_lc in ['gloss_printing', 'gloss_print']:
-                service_type = 'gloss_printing'
-            else:
-                service_type = service_type_raw or 'regular_print'  # Default to regular_print if not specified
-                if not service_type_raw:
-                    print(f"⚠️ No service_type specified, defaulting to 'regular_print'")
-            
-            # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
-            # Document print model, passport photo model, digital, golden, gloss, jumbo print model
-            document_print_services = ['regular_print', 'regular print', 'document_print']
-            passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
-            digital_services = ['digital_print']
-            golden_services = ['golden_embossing', 'golden_emboss']
-            gloss_services = ['gloss_printing', 'gloss_print']
-            jumbo_services = ['jumbo_printing', 'jumbo_print']
-            
-            # All these service types use vendor_print_jobs storage with pattern: {storage_folder}/{vendor_id}/{filename}
-            all_special_services = (document_print_services + passport_photo_services + 
-                                   digital_services + golden_services + gloss_services + jumbo_services)
-            
-            # Ensure consistent storage folder and R2 path for all service types (SAME as jumbo_printing)
-            storage_folder = 'vendor_print_jobs'
-            
-            # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename} (SAME as jumbo_printing)
-            # This ensures consistent storage in R2 per vendor_id
-            vendor_file_key = f'{storage_folder}/{vendor_id}/{fobj.name}'
-            user_file_key = f'users/{user_email}/{fobj.name}'
-            
-            # Log service type for debugging (ensure regular print is logged same as jumbo_printing)
-            # Always log for regular_print and jumbo_printing to ensure they're processed identically
-            if service_type in ['regular_print', 'jumbo_printing'] or service_type_lc in [s.lower() for s in all_special_services]:
-                print(f"📦 Storing {service_type} service (normalized from '{service_type_raw}') with consistent R2 path: {vendor_file_key}")
-                print(f"   ✅ Service type normalized: '{service_type_raw}' -> '{service_type}' (same pattern as jumbo_printing)")
-                print(f"   🔍 Will store in D1 database after payment verification (same as jumbo_printing)")
-                print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
-            else:
-                print(f"⚠️ Service type '{service_type}' may not be handled correctly - check storage logic")
-                print(f"   📋 File: {fobj.name}, Vendor: {vendor_email}, User: {user_email}")
-
-            # Ensure vendor_id is populated before DB calls (Worker requires it)
-            if (not vendor_id or str(vendor_id).strip() == ''):
-                if selected_vendor:
-                    vendor_id = selected_vendor
-                    print(f"✅ Fallback vendor_id from selected_vendor: {vendor_id}")
-                elif vendor_email:
+                # If vendor_id is still missing but vendor_email is available, derive vendor_id for Worker storage
+                if (not vendor_id or vendor_id.strip() == '') and vendor_email:
                     try:
                         vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
                         if vendor_id_lookup:
                             vendor_id = vendor_id_lookup
-                            print(f"✅ Fallback vendor_id from vendor_email lookup: {vendor_id}")
+                            print(f"✅ Resolved vendor_id {vendor_id} from vendor_email {vendor_email}")
                     except Exception as e:
-                        print(f"⚠️ Failed vendor_id lookup from vendor_email {vendor_email}: {e}")
+                        print(f"⚠️ Could not resolve vendor_id from vendor_email {vendor_email}: {str(e)}")
 
-            # Assign token from vendor pool if available
-            # CRITICAL: Only assign token once per payment request to prevent duplicate token assignments
-            # All files in the same payment should share the same token
-            if not token_value:  # Only generate once per request
-                try:
-                    # Assign token from vendor pool if vendor email is available
-                    # The worker API ensures atomic token assignment (checks for 'free' status and updates to 'busy')
-                    if vendor_email:
-                        assigned_token = assign_token_from_vendor_pool(vendor_email)
-                        if assigned_token is None:
-                            # Fallback to sequential token if vendor pool is empty
-                            token_value = get_next_sequential_token()
-                            print(f"⚠️ Vendor token pool empty for {vendor_email}, using fallback token: {token_value}")
-                        else:
-                            token_value = str(assigned_token)
-                            print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email} (service: {service_type})")
-                    else:
-                        # Fallback to sequential token if no vendor email
-                        token_value = get_next_sequential_token()
-                        print(f"⚠️ No vendor email available, using fallback token: {token_value}")
-                except Exception as e:
-                    print(f"❌ Error in token assignment: {str(e)}")
-                    token_value = get_next_sequential_token()  # Use proper sequential token instead of random
-            else:
-                # Reuse the same token for all files in this payment request
-                print(f"✅ Reusing token {token_value} for file {fobj.name} (same payment request, service: {service_type})")
-
-            # Generate a unique job_id if not provided
-            job_id = print_settings.get('job_id', '').strip()
-            if not job_id:
-                import uuid
-                job_id = str(uuid.uuid4())
-                print(f"✅ Generated job_id: {job_id} for file {fobj.name}")
-            
-            # Build metadata (extend base with payment details)
-            # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
-            # Handle Mixed color with page ranges
-            color_value = print_settings.get('color', 'Black and White')
-            page_range_value = str(print_settings.get('pageRange', ''))
-            specific_pages_value = str(print_settings.get('specificPages', ''))
-            
-            # For Mixed color, combine bw and color page ranges into pageRange field
-            if color_value == 'Mixed':
-                bw_range = print_settings.get('bwPageRange', 'all')
-                bw_range_value = print_settings.get('bwPageRangeValue', '')
-                color_range = print_settings.get('colorPageRange', 'all')
-                color_range_value = print_settings.get('colorPageRangeValue', '')
+                # Store every paid job inside vendor_print_jobs
+                service_type = (print_settings.get('service_type') or '').strip()
+                service_type_lc = service_type.lower()
                 
-                # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
-                if bw_range == 'all' and color_range == 'all':
-                    page_range_value = 'BW: all | Color: all'
-                else:
-                    bw_str = f"BW: {bw_range_value if bw_range == 'range' else 'all'}"
-                    color_str = f"Color: {color_range_value if color_range == 'range' else 'all'}"
-                    page_range_value = f"{bw_str} | {color_str}"
-            
-            metadata = {
-                'copies': str(print_settings.get('copies', '1')),
-                'color': color_value,
-                'orientation': print_settings.get('orientation', 'portrait'),
-                'pageRange': page_range_value,
-                'specificPages': specific_pages_value,
-                'pageSize': str(print_settings.get('pageSize', 'A4')),
-                'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
-                'lamination': str(print_settings.get('lamination', 'No')),
-                'timestamp': get_ist_timestamp(),
-                'status': 'pending',
-                'job_completed': 'NO',
-                'vendor_status': 'not sended',
-                'trash': 'NO',
-                'user': user_email,
-                'vendor': vendor_id,
-                'vendor_id': vendor_id,  # Explicitly include vendor_id
-                'vendor_email': vendor_email or '',  # Explicitly include vendor_email
-                'job_id': job_id,  # Use generated or provided job_id
-                'service_type': service_type,  # Use normalized service_type (same as jumbo_printing)
-                'service_name': str(print_settings.get('service_name', '')),
-                'token': token_value,  # Explicitly include token
-                'printer_name': '',
-                'payment_id': payment_id,
-                'order_id': order_id
-            }
-            
-            # Store Mixed color page ranges separately for reference
-            if color_value == 'Mixed':
-                metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
-                metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
-                metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
-                metadata['colorPageRangeValue'] = str(print_settings.get('colorPageRangeValue', ''))
-            
-            # Ensure default rendered_status
-            if 'rendered_status' not in metadata:
-                metadata['rendered_status'] = 'NO'
-
-            # Add shop_address and shop_name to metadata (for database storage)
-            shop_address = print_settings.get('shop_address', '')
-            shop_name = print_settings.get('shop_name', '')
-            if (not shop_address or not shop_name) and vendor_email:
-                try:
-                    vendor_data = get_vendor_coordinates_from_email(vendor_email)
-                    if vendor_data:
-                        if not shop_address:
-                            shop_address = vendor_data.get('shop_address', '')
-                        if not shop_name:
-                            shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
-                except Exception as e:
-                    print(f"⚠️ Could not get shop address/name from vendor email: {str(e)}")
-            
-            metadata['shop_address'] = shop_address
-            metadata['shop_name'] = shop_name
-
-            # Resolve vendor email for printer assignment and assign by lowest count
-            assigned_printer_name = ''
-            try:
-                # Use already-extracted vendor_email for printer assignment
-                if vendor_email:
-                    assigned_printer_name = assign_printer_and_increment_count(vendor_email, service_type)
-                    if assigned_printer_name:
-                        metadata['printer_name'] = assigned_printer_name
-            except Exception as e:
-                print(f"⚠️ Printer assignment failed: {str(e)}")
-
-            # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
-            pricing_details = print_settings.get('pricing_details')
-            pricing_details_serialized = None
-            if pricing_details:
-                if isinstance(pricing_details, dict):
-                    try:
-                        pricing_details_serialized = json.dumps(pricing_details)
-                    except Exception:
-                        pricing_details_serialized = None
+                # Define service types that should be stored in vendor_print_jobs with consistent R2 path pattern
+                # Document print model, passport photo model, digital, golden, gloss, jumbo print model
+                document_print_services = ['regular_print', 'regular print', 'document_print']
+                passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
+                digital_services = ['digital_print']
+                golden_services = ['golden_embossing', 'golden_emboss']
+                gloss_services = ['gloss_printing', 'gloss_print']
+                jumbo_services = ['jumbo_printing', 'jumbo_print']
                 
-                try:
-                    # Robust parsing for pricing details (handle both dict and string)
-                    if isinstance(pricing_details, str):
+                # All these service types use vendor_print_jobs storage with pattern: {storage_folder}/{vendor_id}/{filename}
+                all_special_services = (document_print_services + passport_photo_services + 
+                                       digital_services + golden_services + gloss_services + jumbo_services)
+                
+                # Ensure consistent storage folder and R2 path for all service types
+                storage_folder = 'vendor_print_jobs'
+                
+                # Always construct R2 path as: {storage_folder}/{vendor_id}/{filename}
+                # This ensures consistent storage in R2 per vendor_id
+                vendor_file_key = f'{storage_folder}/{vendor_id}/{fobj.name}'
+                user_file_key = f'users/{user_email}/{fobj.name}'
+                
+                # Log service type for debugging
+                if service_type_lc in [s.lower() for s in all_special_services]:
+                    print(f"📦 Storing {service_type} service with consistent R2 path: {vendor_file_key}")
+
+                # Ensure vendor_id is populated before DB calls (Worker requires it)
+                if (not vendor_id or str(vendor_id).strip() == ''):
+                    if selected_vendor:
+                        vendor_id = selected_vendor
+                        print(f"✅ Fallback vendor_id from selected_vendor: {vendor_id}")
+                    elif vendor_email:
                         try:
-                            pricing_data = json.loads(pricing_details)
-                            pricing_details = pricing_data # Update local var to be dict
-                        except:
-                            pricing_data = {}
-                    else:
-                        pricing_data = pricing_details if isinstance(pricing_details, dict) else {}
+                            vendor_id_lookup = get_vendor_id_by_vendor_email(vendor_email)
+                            if vendor_id_lookup:
+                                vendor_id = vendor_id_lookup
+                                print(f"✅ Fallback vendor_id from vendor_email lookup: {vendor_id}")
+                        except Exception as e:
+                            print(f"⚠️ Failed vendor_id lookup from vendor_email {vendor_email}: {e}")
 
-                    breakdown = pricing_data.get('pricing_breakdown', {})
-                    price_per_page = 0
-                    page_count = 0
-                    num_copies = 0
-                    pricing_key = ''
-                    
-                    if isinstance(breakdown, dict):
-                        price_per_page = breakdown.get('price_per_page', 0)
-                        page_count = breakdown.get('page_count', 0)
-                        num_copies = breakdown.get('num_copies', 0)
-                        pricing_key = breakdown.get('pricing_key_used', '')
-                    
-                    # Also try to get from print_settings directly if not in breakdown
-                    if page_count == 0:
-                        page_count = pricing_data.get('page_count', pricing_data.get('pages', print_settings.get('page_count', print_settings.get('pages', 0))))
-                    if num_copies == 0:
-                        num_copies = pricing_data.get('num_copies', pricing_data.get('copies', print_settings.get('copies', 1)))
-                    
-                    # Store only base_price in pricing_details (not full JSON)
-                    base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
-                    if base_price == 0:
-                        base_price = pricing_data.get('base_price', 0)
-                    
-                    # Store only base_price value, not full JSON
-                    metadata['pricing_details'] = str(base_price) if base_price else None
-                    metadata['total_price'] = str(pricing_data.get('total_price', pricing_data.get('total', 0)))
-                    # Explicitly store page_count and num_copies in metadata for database storage
-                    metadata['page_count'] = str(page_count)
-                    metadata['num_copies'] = str(num_copies)
-                    metadata['price_per_page'] = str(price_per_page)
-                    
-                    # Handle platform profit
-                    platform_profit = pricing_data.get('platform_profit', pricing_data.get('platform_commission'))
-                    if platform_profit is not None:
-                        metadata['platform_profit'] = str(platform_profit)
-                except Exception as e:
-                    print(f"⚠️ Error processing pricing details: {e}")
-                    pass
-            if pricing_details_serialized and not metadata.get('pricing_details_raw'):
-                metadata['pricing_details_raw'] = pricing_details_serialized
-            if pricing_details and not metadata.get('final_amount'):
-                final_amount_value = pricing_details.get('total_price') or pricing_details.get('final_amount')
-                if final_amount_value is not None:
-                    metadata['final_amount'] = str(final_amount_value)
-            else:
-                # Even without pricing_details, try to extract page_count and num_copies from print_settings
-                page_count = print_settings.get('page_count', print_settings.get('pages', 0))
-                num_copies = print_settings.get('copies', 1)
-                if page_count:
-                    metadata['page_count'] = str(page_count)
-                if num_copies:
-                    metadata['num_copies'] = str(num_copies)
-
-            # Persist points usage/allocation and pricing into metadata for D1 storage
-            metadata['points_applied'] = request.POST.get('points_applied', 'false')
-            metadata['points_used'] = request.POST.get('points_used', '0')
-            if not metadata.get('final_amount'):
-                fallback_final_amount = request.POST.get('final_amount') or print_settings.get('final_amount')
-                if fallback_final_amount is not None:
-                    metadata['final_amount'] = str(fallback_final_amount)
-            if pricing_details and not metadata.get('platform_profit'):
-                platform_profit_val = pricing_details.get('platform_profit') or pricing_details.get('platform_commission')
-                if platform_profit_val is not None:
-                    metadata['platform_profit'] = str(platform_profit_val)
-
-            # ATOMIC STORAGE: Store files in R2 and both database tables - all must succeed
-            vendor_stored = False
-            user_stored = False
-            vendor_r2_stored = False
-            user_r2_stored = False
-            upload_error_msg = None
-            db_storage_failed = False
-            
-            try:
-                # Step 1: Store to vendor folder in R2
-                # Store only the file bytes in R2 (metadata stays in DB tables)
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=vendor_file_key,
-                    Body=file_content,
-                    ContentType=fobj.content_type
-                )
-                vendor_r2_stored = True
-                print(f"✅ Stored {fobj.name} to vendor R2 folder")
-
-                # Step 2: Store a copy under the user's folder in R2
-                s3.put_object(
-                    Bucket=settings.R2_BUCKET,
-                    Key=user_file_key,
-                    Body=file_content,
-                    ContentType=fobj.content_type
-                )
-                user_r2_stored = True
-                print(f"✅ Stored {fobj.name} to user R2 folder")
-                
-                # Step 3: Store in vendor_print_jobs table (CRITICAL - must succeed)
-                if not vendor_email and vendor_id:
+                # Assign token from vendor pool if available
+                if not token_value:  # Only generate once per request
                     try:
-                        vendor_email = get_vendor_email_by_vendor_id(vendor_id)
-                        print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
+                        # Assign token from vendor pool if vendor email is available
+                        if vendor_email:
+                            assigned_token = assign_token_from_vendor_pool(vendor_email)
+                            if assigned_token is None:
+                                # Fallback to sequential token if vendor pool is empty
+                                token_value = get_next_sequential_token()
+                                print(f"⚠️ Vendor token pool empty, using fallback token: {token_value}")
+                            else:
+                                token_value = str(assigned_token)
+                                print(f"✅ Assigned token {token_value} from vendor pool for {vendor_email}")
+                        else:
+                            # Fallback to sequential token if no vendor email
+                            token_value = get_next_sequential_token()
+                            print(f"⚠️ No vendor email available, using fallback token: {token_value}")
                     except Exception as e:
-                        print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
+                        print(f"❌ Error in token assignment: {str(e)}")
+                        token_value = str(random.randint(100, 200))
+
+                # Generate a unique job_id if not provided
+                job_id = print_settings.get('job_id', '').strip()
+                if not job_id:
+                    import uuid
+                    job_id = str(uuid.uuid4())
+                    print(f"✅ Generated job_id: {job_id} for file {fobj.name}")
                 
-                # Prefer full pricing details JSON when present for accurate D1 storage
-                pricing_details_for_db = metadata.get('pricing_details_raw') or pricing_details
+                # Build metadata (extend base with payment details)
+                # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
+                # Handle Mixed color with page ranges
+                color_value = print_settings.get('color', 'Black and White')
+                page_range_value = str(print_settings.get('pageRange', ''))
+                specific_pages_value = str(print_settings.get('specificPages', ''))
+                
+                # For Mixed color, combine bw and color page ranges into pageRange field
+                if color_value == 'Mixed':
+                    bw_range = print_settings.get('bwPageRange', 'all')
+                    bw_range_value = print_settings.get('bwPageRangeValue', '')
+                    color_range = print_settings.get('colorPageRange', 'all')
+                    color_range_value = print_settings.get('colorPageRangeValue', '')
+                    
+                    # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
+                    if bw_range == 'all' and color_range == 'all':
+                        page_range_value = 'BW: all | Color: all'
+                    else:
+                        bw_str = f"BW: {bw_range_value if bw_range == 'range' else 'all'}"
+                        color_str = f"Color: {color_range_value if color_range == 'range' else 'all'}"
+                        page_range_value = f"{bw_str} | {color_str}"
+                
+                metadata = {
+                    'copies': str(print_settings.get('copies', '1')),
+                    'color': color_value,
+                    'orientation': print_settings.get('orientation', 'portrait'),
+                    'pageRange': page_range_value,
+                    'specificPages': specific_pages_value,
+                    'pageSize': str(print_settings.get('pageSize', 'A4')),
+                    'spiralBinding': str(print_settings.get('spiralBinding', 'No')),
+                    'lamination': str(print_settings.get('lamination', 'No')),
+                                  'timestamp': datetime.datetime.now().isoformat(),
+                                  'status': 'pending',
+                                  'job_completed': 'NO',
+                                  'vendor_status': 'not sended',
+                                  'trash': 'NO',
+                    'user': user_email,
+                    'vendor': vendor_id,
+                    'vendor_id': vendor_id,  # Explicitly include vendor_id
+                    'vendor_email': vendor_email or '',  # Explicitly include vendor_email
+                    'job_id': job_id,  # Use generated or provided job_id
+                    'service_type': service_type or 'regular print',  # Explicitly include service_type
+                    'service_name': str(print_settings.get('service_name', '')),
+                    'token': token_value,  # Explicitly include token
+                    'printer_name': '',
+                                  'payment_id': payment_id,
+                                  'order_id': order_id
+                }
+                
+                # Store Mixed color page ranges separately for reference
+                if color_value == 'Mixed':
+                    metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
+                    metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
+                    metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
+                    metadata['colorPageRangeValue'] = str(print_settings.get('colorPageRangeValue', ''))
+
+                # Ensure default rendered_status
+                if 'rendered_status' not in metadata:
+                    metadata['rendered_status'] = 'NO'
+
+                # Add shop_address and shop_name to metadata (for database storage)
+                shop_address = print_settings.get('shop_address', '')
+                shop_name = print_settings.get('shop_name', '')
+                if (not shop_address or not shop_name) and vendor_email:
+                    try:
+                        vendor_data = get_vendor_coordinates_from_email(vendor_email)
+                        if vendor_data:
+                            if not shop_address:
+                                shop_address = vendor_data.get('shop_address', '')
+                            if not shop_name:
+                                shop_name = vendor_data.get('vendor_name', vendor_data.get('shop_name', ''))
+                    except Exception as e:
+                        print(f"⚠️ Could not get shop address/name from vendor email: {str(e)}")
+                
+                metadata['shop_address'] = shop_address
+                metadata['shop_name'] = shop_name
+
+                # Resolve vendor email for printer assignment and assign by lowest count
+                assigned_printer_name = ''
+                try:
+                    # Use already-extracted vendor_email for printer assignment
+                    if vendor_email:
+                        assigned_printer_name = assign_printer_and_increment_count(vendor_email, service_type)
+                        if assigned_printer_name:
+                            metadata['printer_name'] = assigned_printer_name
+                except Exception as e:
+                    print(f"⚠️ Printer assignment failed: {str(e)}")
+
+                # Include pricing details compactly if present (reuse logic from upload_to_r2 when possible)
+                pricing_details = print_settings.get('pricing_details')
+                pricing_details_serialized = None
+                if pricing_details:
+                    if isinstance(pricing_details, dict):
+                        try:
+                            pricing_details_serialized = json.dumps(pricing_details)
+                        except Exception:
+                            pricing_details_serialized = None
+                    try:
+                        breakdown = pricing_details.get('pricing_breakdown', {})
+                        price_per_page = 0
+                        page_count = 0
+                        num_copies = 0
+                        pricing_key = ''
+                        if isinstance(breakdown, dict):
+                            price_per_page = breakdown.get('price_per_page', 0)
+                            page_count = breakdown.get('page_count', 0)
+                            num_copies = breakdown.get('num_copies', 0)
+                            pricing_key = breakdown.get('pricing_key_used', '')
+                        # Also try to get from print_settings directly if not in breakdown
+                        if page_count == 0:
+                            page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                        if num_copies == 0:
+                            num_copies = print_settings.get('copies', 1)
+                        
+                        # Store only base_price in pricing_details (not full JSON)
+                        base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
+                        if base_price == 0:
+                            base_price = pricing_details.get('base_price', 0)
+                        
+                        # Store only base_price value, not full JSON
+                        metadata['pricing_details'] = str(base_price) if base_price else None
+                        metadata['total_price'] = str(pricing_details.get('total_price', 0))
+                        # Explicitly store page_count and num_copies in metadata for database storage
+                        metadata['page_count'] = str(page_count)
+                        metadata['num_copies'] = str(num_copies)
+                        metadata['price_per_page'] = str(price_per_page)
+                        if 'platform_profit' in pricing_details:
+                            metadata['platform_profit'] = str(pricing_details['platform_profit'])
+                    except Exception as e:
+                        print(f"⚠️ Error processing pricing details: {e}")
+                        pass
+                if pricing_details_serialized and not metadata.get('pricing_details_raw'):
+                    metadata['pricing_details_raw'] = pricing_details_serialized
+                if pricing_details and not metadata.get('final_amount'):
+                    final_amount_value = pricing_details.get('total_price') or pricing_details.get('final_amount')
+                    if final_amount_value is not None:
+                        metadata['final_amount'] = str(final_amount_value)
+                else:
+                    # Even without pricing_details, try to extract page_count and num_copies from print_settings
+                    page_count = print_settings.get('page_count', print_settings.get('pages', 0))
+                    num_copies = print_settings.get('copies', 1)
+                    if page_count:
+                        metadata['page_count'] = str(page_count)
+                    if num_copies:
+                        metadata['num_copies'] = str(num_copies)
+
+                # Persist points usage/allocation and pricing into metadata for D1 storage
+                metadata['points_applied'] = request.POST.get('points_applied', 'false')
+                metadata['points_used'] = request.POST.get('points_used', '0')
+                if not metadata.get('final_amount'):
+                    fallback_final_amount = request.POST.get('final_amount') or print_settings.get('final_amount')
+                    if fallback_final_amount is not None:
+                        metadata['final_amount'] = str(fallback_final_amount)
+                if pricing_details and not metadata.get('platform_profit'):
+                    platform_profit_val = pricing_details.get('platform_profit') or pricing_details.get('platform_commission')
+                    if platform_profit_val is not None:
+                        metadata['platform_profit'] = str(platform_profit_val)
+
+                # ATOMIC STORAGE: Store files in R2 and both database tables - all must succeed
+                vendor_stored = False
+                user_stored = False
+                vendor_r2_stored = False
+                user_r2_stored = False
+                upload_error_msg = None
                 
                 try:
+                    # Step 1: Store to vendor folder in R2
+                    r2_metadata = sanitize_r2_metadata(metadata)
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=vendor_file_key,
+                        Body=file_content,
+                        ContentType=fobj.content_type,
+                        Metadata=r2_metadata
+                    )
+                    vendor_r2_stored = True
+                    print(f"✅ Stored {fobj.name} to vendor R2 folder")
+
+                    # Step 2: Store a copy under the user's folder in R2
+                    s3.put_object(
+                        Bucket=settings.R2_BUCKET,
+                        Key=user_file_key,
+                        Body=file_content,
+                        ContentType=fobj.content_type,
+                        Metadata=r2_metadata
+                    )
+                    user_r2_stored = True
+                    print(f"✅ Stored {fobj.name} to user R2 folder")
+                    
+                    # Step 3: Store in vendor_print_jobs table (CRITICAL - must succeed)
+                    if not vendor_email and vendor_id:
+                        try:
+                            vendor_email = get_vendor_email_by_vendor_id(vendor_id)
+                            print(f"✅ Got vendor_email from vendor_id: {vendor_email}")
+                        except Exception as e:
+                            print(f"⚠️ Could not get vendor email from vendor_id {vendor_id}: {str(e)}")
+                    
+                    # Prefer full pricing details JSON when present for accurate D1 storage
+                    pricing_details_for_db = metadata.get('pricing_details_raw') or pricing_details
+                    
                     vendor_stored = store_vendor_print_job_in_db(
                         vendor_id=vendor_id,
                         vendor_email=vendor_email,
@@ -5613,22 +5068,11 @@ def verify_razorpay_payment(request):
                     )
                     
                     if not vendor_stored:
-                        print(f"❌ Failed to store {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
-                        print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
-                        db_storage_failed = True
-                        raise Exception(f"Failed to store in vendor_print_jobs table for {service_type}")
-                    else:
-                        print(f"✅ Successfully stored {fobj.name} in vendor_print_jobs table for service_type: {service_type}")
-                        print(f"   🔍 Token: {metadata.get('token')}, Job ID: {metadata.get('job_id')}, R2 Path: {vendor_file_key}")
-                except Exception as vendor_db_error:
-                    print(f"❌ Database error storing {fobj.name} in vendor_print_jobs: {str(vendor_db_error)}")
-                    db_storage_failed = True
-                    raise Exception(f"Database error: Failed to store in vendor_print_jobs table - {str(vendor_db_error)}")
-                
-                # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
-                user_metadata = dict(metadata)
-                user_metadata['storage_folder'] = 'users'
-                try:
+                        raise Exception("Failed to store in vendor_print_jobs table")
+                    
+                    # Step 4: Store in user_print_jobs table (CRITICAL - must succeed)
+                    user_metadata = dict(metadata)
+                    user_metadata['storage_folder'] = 'users'
                     user_stored = store_user_print_job_in_db(
                         vendor_id=vendor_id,
                         vendor_email=vendor_email,
@@ -5643,60 +5087,43 @@ def verify_razorpay_payment(request):
                     )
                     
                     if not user_stored:
-                        print(f"❌ Failed to store {fobj.name} in user_print_jobs table for service_type: {service_type}")
-                        print(f"   🔍 Debug: vendor_id={vendor_id}, vendor_email={vendor_email}, user_email={user_email}")
-                        db_storage_failed = True
-                        raise Exception(f"Failed to store in user_print_jobs table for {service_type}")
+                        raise Exception("Failed to store in user_print_jobs table")
+                    
+                    # All steps succeeded - mark as processed
+                    files_processed += 1
+                    print(f"✅ Successfully stored file {fobj.name} in R2 and both database tables")
+                    
+                except Exception as upload_error:
+                    upload_error_msg = str(upload_error)
+                    print(f"❌ Failed to store file {fobj.name}: {upload_error_msg}")
+                    
+                    # ROLLBACK: Delete R2 files if they were stored but database failed
+                    try:
+                        if vendor_r2_stored:
+                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=vendor_file_key)
+                            print(f"🔄 Rolled back vendor R2 file: {fobj.name}")
+                        if user_r2_stored:
+                            s3.delete_object(Bucket=settings.R2_BUCKET, Key=user_file_key)
+                            print(f"🔄 Rolled back user R2 file: {fobj.name}")
+                    except Exception as rollback_err:
+                        print(f"⚠️ Error during rollback: {rollback_err}")
+                    
+                    # Track failed file and calculate refund amount
+                    files_failed += 1
+                    failed_files.append({
+                        'filename': fobj.name,
+                        'error': upload_error_msg,
+                        'pricing_details': pricing_details
+                    })
+                    
+                    # Calculate payment amount for this failed file
+                    if pricing_details:
+                        total_payment_amount += safe_float(pricing_details.get('total_price', 0))
                     else:
-                        print(f"✅ Successfully stored {fobj.name} in user_print_jobs table for service_type: {service_type}")
-                        print(f"   🔍 Token: {user_metadata.get('token')}, Job ID: {user_metadata.get('job_id')}, R2 Path: {user_file_key}")
-                except Exception as user_db_error:
-                    print(f"❌ Database error storing {fobj.name} in user_print_jobs: {str(user_db_error)}")
-                    db_storage_failed = True
-                    raise Exception(f"Database error: Failed to store in user_print_jobs table - {str(user_db_error)}")
-                
-                # All steps succeeded - mark as processed
-                files_processed += 1
-                print(f"✅ Successfully stored file {fobj.name} (service_type: {service_type}) in R2 and both database tables")
-                
-            except Exception as upload_error:
-                upload_error_msg = str(upload_error)
-                print(f"❌ Failed to store file {fobj.name}: {upload_error_msg}")
-                
-                # ROLLBACK: Delete R2 files if they were stored but database failed
-                try:
-                    if vendor_r2_stored:
-                        s3.delete_object(Bucket=settings.R2_BUCKET, Key=vendor_file_key)
-                        print(f"🔄 Rolled back vendor R2 file: {fobj.name}")
-                    if user_r2_stored:
-                        s3.delete_object(Bucket=settings.R2_BUCKET, Key=user_file_key)
-                        print(f"🔄 Rolled back user R2 file: {fobj.name}")
-                except Exception as rollback_err:
-                    print(f"⚠️ Error during rollback: {rollback_err}")
-                
-                # Track failed file and calculate refund amount
-                files_failed += 1
-                failed_files.append({
-                    'filename': fobj.name,
-                    'error': upload_error_msg,
-                    'pricing_details': pricing_details,
-                    'service_type': service_type  # Include service_type for debugging
-                })
-                
-                # Calculate payment amount for this failed file
-                if pricing_details:
-                    file_price = safe_float(pricing_details.get('total_price', 0))
-                    total_payment_amount += file_price
-                    print(f"💰 Added ₹{file_price} to refund amount for failed {service_type} file: {fobj.name}")
-                else:
-                    # If no pricing_details, try to get from metadata
-                    file_price = metadata.get('total_price') or metadata.get('final_amount')
-                    if file_price:
-                        file_price_float = safe_float(file_price, 0.0)
-                        total_payment_amount += file_price_float
-                        print(f"💰 Added ₹{file_price_float} to refund amount for failed {service_type} file: {fobj.name} (from metadata)")
-                    else:
-                        print(f"⚠️ No pricing found for failed {service_type} file: {fobj.name}")
+                        # If no pricing_details, try to get from metadata
+                        file_price = metadata.get('total_price') or metadata.get('final_amount')
+                        if file_price:
+                            total_payment_amount += safe_float(file_price, 0.0)
 
         # CRITICAL: If any files failed (including database storage failures), calculate total refund
         # This includes files that failed R2 upload OR database storage
@@ -5707,213 +5134,141 @@ def verify_razorpay_payment(request):
         # Deduct points immediately after successful payment verification
         try:
             points_applied = request.POST.get('points_applied', 'false').lower() == 'true'
-            points_used = request.POST.get('points_used', '0')
-
-            # Preserve decimals from the client but never allow negatives or overdrafts
-            try:
-                points_used_numeric = float(points_used)
-            except (TypeError, ValueError):
-                points_used_numeric = 0.0
-
-            if points_applied and points_used_numeric > 0 and user_email:
-                # Fetch current balance to ensure we never over-deduct
-                current_balance = get_total_user_points(user_email)
-                safe_balance = max(0.0, float(current_balance or 0))
-                # Deduct only what is available and cap at the invoiced amount
-                points_to_deduct = min(points_used_numeric, safe_balance)
-
-                if points_to_deduct <= 0:
-                    print(f"⚠️ Points deduction skipped for {user_email}: no available balance.")
+            points_used = int(request.POST.get('points_used', '0'))
+            
+            if points_applied and points_used > 0:
+                success = deduct_user_points(user_email, points_used, f'Points used for payment {payment_id}')
+                if success:
+                    print(f"💰 Deducted {points_used} points from {user_email} for payment {payment_id}")
                 else:
-                    # Store back to the response for transparency
-                    response_data['points_deducted'] = round(points_to_deduct, 1)
-                    response_data['points_balance_before'] = round(safe_balance, 1)
-
-                    success = deduct_user_points(
-                        user_email,
-                        points_to_deduct,
-                        f'Points used for payment {payment_id}'
-                    )
-                    if success:
-                        print(f"💰 Deducted {points_to_deduct} points from {user_email} for payment {payment_id}")
-                    else:
-                        print(f"❌ Failed to deduct {points_to_deduct} points from {user_email}")
+                    print(f"❌ Failed to deduct {points_used} points from {user_email}")
         except Exception as e:
             print(f"⚠️ Error deducting points after payment: {str(e)}")
 
-        # NOTE: Points are NOT automatically earned after successful payments
-        # Points are only refunded when payment fails (see refund logic below)
-
-        # REFUND LOGIC: If files failed to upload, refund the payment amount AND return points used
-        if files_failed > 0:
-            # 1. Return Points Checks (Decoupled from money refund)
+        # Allot points instantly after successful payment (only if files were processed successfully)
+        if files_processed > 0:
             try:
-                # CRITICAL: Return points that were used if files failed to store
-                if points_applied and points_used_numeric > 0 and user_email:
-                    try:
-                        # Return the points that were deducted
-                        points_returned = add_user_points(
-                            user_email,
-                            points_used_numeric,
-                            f'Points returned - {files_failed} file(s) failed to store for payment {payment_id if payment_id else "no_payment"}'
-                        )
-                        if points_returned:
-                            print(f"✅ Returned {points_used_numeric} points to {user_email} due to file storage failure")
-                            response_data['points_returned'] = points_used_numeric
-                        else:
-                            print(f"❌ Failed to return {points_used_numeric} points to {user_email}")
-                    except Exception as points_return_error:
-                        print(f"⚠️ Error returning points after file storage failure: {str(points_return_error)}")
-            except Exception as e:
-                print(f"⚠️ Outer error returning points: {e}")
-
-            # 2. Return Money / Refund / Compensation logic
-            if total_payment_amount > 0:
+                # Calculate points based on final amount (1 rupee = 1 point)
+                final_amount = request.POST.get('final_amount', '0')
                 try:
-                    # Convert amount to paise (Razorpay uses paise)
-                    refund_amount_paise = int(float(total_payment_amount) * 100)
-                    
-                    # Attempt Razorpay refund (only if payment_id exists - skip for document print without payment)
-                    refund_success = False
-                    refund_id = None
-                    if payment_id:  # Only attempt refund if payment was made
-                        try:
-                            if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
-                                client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-                                refund_data = {
-                                    'amount': refund_amount_paise,
-                                    'notes': {
-                                        'reason': 'Document upload failed',
-                                        'failed_files': ', '.join([f['filename'] for f in failed_files]),
-                                        'payment_id': payment_id
-                                    }
-                                }
-                                refund_response = client.payment.refund(payment_id, refund_data)
-                                if refund_response and refund_response.get('id'):
-                                    refund_id = refund_response.get('id')
-                                    refund_success = True
-                                    print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
-                                else:
-                                    print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
-                            else:
-                                print(f"⚠️ Razorpay keys not configured, cannot process refund")
-                        except Exception as refund_err:
-                            print(f"❌ Razorpay refund failed: {str(refund_err)}")
-                            # Fallback to points if refund fails
-                            refund_success = False
+                    final_amount_float = float(final_amount)
+                    if final_amount_float > 0:
+                        # Allot points based on final amount paid
+                        points_to_allot = final_amount_float
+                        success = add_user_points(user_email, points_to_allot, f'Points earned from payment {payment_id}')
+                        if success:
+                            print(f"💰 Allotted {points_to_allot} points to {user_email} for payment {payment_id}")
+                            response_data['points_allotted'] = points_to_allot
+                        else:
+                            print(f"❌ Failed to allot {points_to_allot} points to {user_email}")
+                except (ValueError, TypeError):
+                    print(f"⚠️ Invalid final_amount for points allocation: {final_amount}")
+            except Exception as e:
+                print(f"⚠️ Error allotting points after payment: {str(e)}")
+
+        # REFUND LOGIC: If files failed to upload, refund the payment amount
+        if files_failed > 0 and total_payment_amount > 0:
+            try:
+                # Convert amount to paise (Razorpay uses paise)
+                refund_amount_paise = int(float(total_payment_amount) * 100)
+                
+                # Attempt Razorpay refund
+                refund_success = False
+                refund_id = None
+                try:
+                    if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+                        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                        refund_data = {
+                            'amount': refund_amount_paise,
+                            'notes': {
+                                'reason': 'Document upload failed',
+                                'failed_files': ', '.join([f['filename'] for f in failed_files]),
+                                'payment_id': payment_id
+                            }
+                        }
+                        refund_response = client.payment.refund(payment_id, refund_data)
+                        if refund_response and refund_response.get('id'):
+                            refund_id = refund_response.get('id')
+                            refund_success = True
+                            print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
+                        else:
+                            print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
                     else:
-                        print(f"⚠️ Skipping Razorpay refund - no payment_id (document print without payment)")
-                        refund_success = False
-                    
-                    # If refund failed, compensate with points
-                    if not refund_success and compensation_points_awarded == 0:
-                        user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
-                        if user_email_for_refund != 'anonymous':
-                            # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
-                            points_to_assign = float(total_payment_amount)
-                            payment_ref = payment_id if payment_id else 'no_payment'
-                            success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_ref}")
-                            if success:
-                                compensation_points_awarded = points_to_assign
-                                response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
-                                response_data['points_compensated'] = points_to_assign
-                                print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
-                            else:
-                                print(f"❌ Failed to assign points to {user_email_for_refund} for failed uploads")
-                except Exception as e:
-                    print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
+                        print(f"⚠️ Razorpay keys not configured, cannot process refund")
+                except Exception as refund_err:
+                    print(f"❌ Razorpay refund failed: {str(refund_err)}")
+                    # Fallback to points if refund fails
+                    refund_success = False
+                
+                # If refund failed, compensate with points
+                if not refund_success and compensation_points_awarded == 0:
+                    user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
+                    if user_email_for_refund != 'anonymous':
+                        # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
+                        points_to_assign = float(total_payment_amount)
+                        success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_id}")
+                        if success:
+                            print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
+                        else:
+                            print(f"❌ Failed to assign points to {user_email_for_refund} for failed uploads")
+            except Exception as e:
+                print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
 
         # Prepare response with refund information
-        # Include refund details in response for ALL service types (regular_print, jumbo_printing, etc.)
-        refund_message = None
-        refund_amount = 0
-        if files_failed > 0 and total_payment_amount > 0:
-            refund_amount = total_payment_amount
-            if compensation_points_awarded > 0:
-                refund_message = f"Payment of ₹{refund_amount:.2f} has been compensated with {compensation_points_awarded} points due to upload failure."
-            else:
-                refund_message = f"Payment of ₹{refund_amount:.2f} has been refunded due to document upload failure."
-        
         response_data.update({
             'files_processed': files_processed,
             'files_failed': files_failed,
             'failed_files': failed_files,
             'token': token_value,
-            'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', ''),
-            'refund_message': refund_message,
-            'refund_amount': refund_amount
+            'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', '')
         })
 
         # Always store points in user_points when uploads fail so they are instantly available
-        # This ensures compensation for ALL service types (document print, passport photo, jumbo print, etc.)
-        if files_failed > 0 and total_payment_amount > 0:
-            # Check if compensation was already awarded in refund logic
-            compensation_already_awarded = compensation_points_awarded > 0
-            
-            if not compensation_already_awarded:
-                try:
-                    user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
-                    if user_email_for_points:
-                        points_to_assign = float(total_payment_amount)
-                        payment_ref = payment_id if payment_id else 'no_payment'
-                        # Get service types of failed files for better logging
-                        failed_service_types = [f.get('service_type', 'unknown') for f in failed_files]
-                        service_types_str = ', '.join(set(failed_service_types))
-                        success = add_user_points(
-                            user_email_for_points,
-                            points_to_assign,
-                            f"Compensation points for {files_failed} failed upload(s) ({service_types_str}) - payment {payment_ref}"
-                        )
-                        if success:
-                            compensation_points_awarded = points_to_assign
-                            response_data['points_compensated'] = points_to_assign
-                            response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
-                            print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads (compensation) - Service types: {service_types_str}")
-                        else:
-                            print(f"❌ Failed to assign compensation points to {user_email_for_points}")
-                except Exception as e:
-                    print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                print(f"✅ Compensation points already awarded: {compensation_points_awarded} points")
-                # Ensure compensation_points_awarded is in response even if already awarded
-                if compensation_points_awarded > 0:
-                    response_data['compensation_points_awarded'] = compensation_points_awarded
-                    response_data['points_compensated'] = compensation_points_awarded
+        if files_failed > 0 and total_payment_amount > 0 and compensation_points_awarded == 0:
+            try:
+                user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
+                if user_email_for_points:
+                    points_to_assign = float(total_payment_amount)
+                    success = add_user_points(
+                        user_email_for_points,
+                        points_to_assign,
+                        f"Compensation points for {files_failed} failed upload(s) - payment {payment_id}"
+                    )
+                    if success:
+                        compensation_points_awarded = points_to_assign
+                        response_data['points_compensated'] = points_to_assign
+                        print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads")
+                    else:
+                        print(f"❌ Failed to assign compensation points to {user_email_for_points}")
+            except Exception as e:
+                print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
         
         # Add refund information if files failed
         if files_failed > 0 and total_payment_amount > 0:
             response_data['refund_amount'] = total_payment_amount
             response_data['refund_message'] = f"Payment of ₹{total_payment_amount} has been refunded due to document upload failure. Please check your payment method for the refund."
         
-        # Final validation: Ensure response includes all required fields
-        if 'files_processed' not in response_data:
-            response_data['files_processed'] = files_processed
-        if 'files_failed' not in response_data:
-            response_data['files_failed'] = files_failed
-        if 'failed_files' not in response_data:
-            response_data['failed_files'] = failed_files
-        
-        print(f"📊 Final response: files_processed={files_processed}, files_failed={files_failed}, token={token_value}")
         return JsonResponse(response_data)
     except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        print(f"❌ Exception in verify_razorpay_payment: {str(e)}")
-        print(f"📋 Traceback:\n{error_trace}")
-        
         # If payment verification fails but payment was attempted, return points if they were deducted
         try:
             points_applied = request.POST.get('points_applied', 'false').lower() == 'true'
             points_used = int(request.POST.get('points_used', '0'))
             user_email = request.user.email if request.user.is_authenticated else None
             
-            # Always return points if payment fails/errors (STRICT REFUND POLICY)
+            # Check if we're on localhost
+            is_localhost = request.get_host() in ['127.0.0.1:8000', 'localhost:8000', '127.0.0.1', 'localhost']
+            
+            # Return points if payment verification failed and points were used
             if points_applied and points_used > 0 and user_email:
-                success = add_user_points(user_email, points_used, f'Points returned - payment verification/processing failed: {str(e)}')
-                if success:
-                    print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure")
+                # Check if points were already deducted (they shouldn't be, but check anyway)
+                # Actually, points are only deducted after successful verification, so this is a safety check
+                # But if verification fails, we should return points if they were somehow deducted
+                if is_localhost:
+                    # Always return points on localhost if payment fails
+                    success = add_user_points(user_email, points_used, f'Points returned - payment verification failed on localhost: {str(e)}')
+                    if success:
+                        print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure on localhost")
         except Exception as return_error:
             print(f"⚠️ Error returning points after verification failure: {str(return_error)}")
         
@@ -5924,39 +5279,59 @@ from django.contrib.auth import login
 from django.contrib.auth.models import User
 import requests
 def auth_receiver(request):
-    try:
-        if request.method == 'POST':
-            token = request.POST.get('credential')
-            
-            if not token:
-                return JsonResponse({'status': 'error', 'message': 'No credential provided'}, status=400)
-            
-            # ULTRA-FAST: Local JWT decode only (no network calls)
-            try:
-                # Only use local JWT decode for maximum speed
-                payload = jwt.decode(token, options={"verify_signature": False})
-                data = payload
-                print(f"⚡ INSTANT: Local token decode for {payload.get('email', 'unknown')}")
-            except Exception as local_error:
-                print(f"❌ Local decode failed: {str(local_error)}")
-                return JsonResponse({'status': 'error', 'message': 'Invalid token format'}, status=400)
-            
-            if 'sub' in data:  # 'sub' is the unique Google user ID
-                email = data.get('email')
-                if not email:
-                    return JsonResponse({'status': 'error', 'message': 'Email not found in token'}, status=400)
-                
-                google_user_id = data['sub']
-                
-                # ✅ STRICT: Verify email is verified by Google
-                email_verified = data.get('email_verified', False)
-                if not email_verified:
-                    print(f"❌ Email {email} not verified by Google")
-                    return JsonResponse({'status': 'error', 'message': 'Email not verified by Google'}, status=403)
+    if request.method == 'POST':
+        token = request.POST.get('credential')
+        
+        # ULTRA-FAST: Local JWT decode only (no network calls)
+        try:
+            # Only use local JWT decode for maximum speed
+            payload = jwt.decode(token, options={"verify_signature": False})
+            data = payload
+            print(f"⚡ INSTANT: Local token decode for {payload.get('email', 'unknown')}")
+        except Exception as local_error:
+            print(f"❌ Local decode failed: {str(local_error)}")
+            return JsonResponse({'status': 'error', 'message': 'Invalid token format'}, status=400)
+        
+        if 'sub' in data:  # 'sub' is the unique Google user ID
+            email = data['email']
+            google_user_id = data['sub']
 
-                # ✅ STRICT: Store signup details in D1 FIRST (synchronously) before allowing login
-                # This ensures user exists in D1 before they can access dashboard
-                try:
+            # ✅ Find or create user with enhanced details (FAST - database only)
+            user, created = User.objects.get_or_create(
+                username=email,
+                defaults={
+                    'email': email,
+                    'first_name': data.get('given_name', ''),
+                    'last_name': data.get('family_name', ''),
+                }
+            )
+            
+            # ✅ Update user details if they exist but are incomplete
+            if not created:
+                if not user.first_name and data.get('given_name'):
+                    user.first_name = data.get('given_name')
+                if not user.last_name and data.get('family_name'):
+                    user.last_name = data.get('family_name')
+                user.save()
+            
+            # ✅ Set up persistent session
+            login(request, user)
+            
+            # ✅ Store additional user info in session for quick access
+            request.session['user_email'] = email
+            request.session['user_name'] = data.get('name', '')
+            request.session['user_picture'] = data.get('picture', '')
+            request.session['google_user_id'] = google_user_id
+            
+            print(f"✅ User {email} logged in successfully with persistent session")
+            print(f"🔍 Session after login: {request.session.keys()}")
+            print(f"🔍 User authenticated after login: {request.user.is_authenticated}")
+            
+            # ✅ Store signup details in D1 asynchronously so login flow stays fast
+            try:
+                import threading
+
+                def store_signup_to_d1_async():
                     signup_payload = {
                         'email': email,
                         'google_user_id': google_user_id,
@@ -5964,74 +5339,20 @@ def auth_receiver(request):
                         'given_name': data.get('given_name', ''),
                         'family_name': data.get('family_name', ''),
                         'picture': data.get('picture', ''),
-                        'email_verified': bool(email_verified),
+                        'email_verified': bool(data.get('email_verified')),
                         'signup_timestamp': data.get('signup_timestamp') or timezone.now().isoformat(),
                         'last_login': timezone.now().isoformat(),
                         'is_active': True
                     }
-                    
-                    # Store signup to D1 synchronously to ensure it exists
-                    endpoint, resp = post_to_worker('/add-user-signup', signup_payload)
-                    if resp.status_code != 200:
-                        print(f"⚠️ Failed to store signup in D1 ({resp.status_code}): {resp.text[:300]}")
-                        # Still allow login but log warning
-                    else:
-                        response_json = resp.json()
-                        if response_json.get('success'):
-                            print(f"✅ User signup stored in D1 for {email}")
-                        else:
-                            print(f"⚠️ D1 signup response indicates failure: {response_json}")
-                except Exception as d1_error:
-                    print(f"❌ Error storing signup to D1: {str(d1_error)}")
-                    # Don't block login if D1 storage fails, but log it
+                    save_user_signup_to_d1(signup_payload)
 
-                # ✅ Find or create user with enhanced details (FAST - database only)
-                try:
-                    user, created = User.objects.get_or_create(
-                        username=email,
-                        defaults={
-                            'email': email,
-                            'first_name': data.get('given_name', ''),
-                            'last_name': data.get('family_name', ''),
-                        }
-                    )
-                    
-                    # ✅ Update user details if they exist but are incomplete
-                    if not created:
-                        if not user.first_name and data.get('given_name'):
-                            user.first_name = data.get('given_name')
-                        if not user.last_name and data.get('family_name'):
-                            user.last_name = data.get('family_name')
-                        user.save()
-                    
-                    # ✅ Set up persistent session
-                    # Explicitly specify backend since multiple authentication backends are configured.
-                    # Google users should always use Django's default ModelBackend.
-                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-                    
-                    # ✅ Store additional user info in session for quick access
-                    request.session['user_email'] = email
-                    request.session['user_name'] = data.get('name', '')
-                    request.session['user_picture'] = data.get('picture', '')
-                    request.session['google_user_id'] = google_user_id
-                    request.session['auth_method'] = 'google'  # Mark authentication method
-                    
-                    print(f"✅ User {email} logged in successfully with persistent session")
-                    print(f"🔍 Session after login: {request.session.keys()}")
-                    print(f"🔍 User authenticated after login: {request.user.is_authenticated}")
-                    print(f"🔍 Google User ID: {google_user_id}")
-                    
-                    return JsonResponse({'status': 'success', 'email': email, 'redirect': '/userdashboard/'})
-                except Exception as db_error:
-                    print(f"❌ Database error during user creation/login: {str(db_error)}")
-                    traceback.print_exc()
-                    return JsonResponse({'status': 'error', 'message': f'Database error: {str(db_error)}'}, status=500)
-            return JsonResponse({'status': 'error', 'message': 'Invalid token: missing sub field'}, status=400)
-        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
-    except Exception as e:
-        print(f"❌ Unexpected error in auth_receiver: {str(e)}")
-        traceback.print_exc()
-        return JsonResponse({'status': 'error', 'message': f'Internal server error: {str(e)}'}, status=500)
+                threading.Thread(target=store_signup_to_d1_async, daemon=True).start()
+            except Exception as e:
+                print(f"❌ Error starting async D1 signup persistence: {str(e)}")
+            
+            return JsonResponse({'status': 'success', 'email': email, 'redirect': '/userdashboard/'})
+        return JsonResponse({'status': 'error', 'message': 'Invalid token'}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 
 def get_passport_photo_dimensions(country):
@@ -7163,25 +6484,19 @@ def vendor_login(request):
                     vendor_id = str(vendor_data.get('vendor_id') or '').strip()
                     vendor_name = vendor_data.get('vendor_name', '')
                     vendor_email_db = (vendor_data.get('email') or vendor_data.get('vendor_email') or email or '').strip()
-                    vendor_status = (vendor_data.get('status') or 'pending').strip().lower()
                     
                     # Persist canonical vendor identifiers in the session
                     request.session['vendor_email'] = vendor_email_db
                     request.session['vendor_name'] = vendor_name
-                    request.session['vendor_status'] = vendor_status
                     if vendor_id:
                         request.session['vendor_id'] = vendor_id
                     else:
                         request.session.pop('vendor_id', None)
                     
                     # Ensure Vendor_service_availability row is refreshed on every login
-                    # This now resets all services to OFF as per requirement
                     _sync_vendor_service_on_login(vendor_email_db, vendor_id)
-                    
-                    # Set flag to show update modal on dashboard
-                    request.session['service_update_needed'] = True
 
-                    print(f"✅ Vendor login successful: {email} (ID: {vendor_id}, Status: {vendor_status})")
+                    print(f"✅ Vendor login successful: {email} (ID: {vendor_id})")
                     
                     return JsonResponse({
                         'success': True,
@@ -7189,8 +6504,7 @@ def vendor_login(request):
                         'vendor': {
                             'vendor_id': vendor_id,
                             'vendor_name': vendor_name,
-                            'email': vendor_email_db,
-                            'status': vendor_status
+                            'email': vendor_email_db
                         }
                     })
                 else:
@@ -8379,14 +7693,7 @@ def calculate_photo_print_pricing(request):
             # Calculate total price (price per layout * number of copies)
             total_price = price_per_layout * copies
             
-            # Calculate platform profit (20% commission for photo print, same as A4 print)
-            platform_commission_percent = 20  # 20% commission for photo print
-            platform_profit = (total_price * platform_commission_percent) / 100
-            
-            # Calculate final amount (total_price + platform_profit)
-            final_amount = total_price + platform_profit
-            
-            print(f"Calculation: base_price={base_price}, price_per_layout={price_per_layout}, copies={copies}, total_price={total_price}, platform_profit={platform_profit}, final_amount={final_amount}")
+            print(f"Calculation: base_price={base_price}, price_per_layout={price_per_layout}, copies={copies}, total_price={total_price}")
             
             # Prepare pricing breakdown
             pricing_breakdown = {
@@ -8396,10 +7703,6 @@ def calculate_photo_print_pricing(request):
                 'layout_slots': layout_slots,
                 'copies': copies,
                 'total_price': total_price,
-                'total_bill_amount': total_price,  # Same as total_price before commission
-                'platform_profit': round(platform_profit, 2),
-                'platform_commission': platform_commission_percent,
-                'final_amount': round(final_amount, 2),
                 'pricing_key_used': pricing_key_name,
                 'total_pages': copies  # For photo print, total pages = number of copies (layouts)
             }
@@ -9155,8 +8458,7 @@ def get_available_shops(request):
                                     'longitude': vendor.get('longitude', ''),
                                     'status': vendor.get('status', 'Available'),
                                     'vendor_id': vendor.get('vendor_id', ''),
-                                    'vendor_token': vendor.get('vendor_token', ''),
-                                    'pending_jobs_count': vendor.get('pending_jobs_count', 0)
+                                    'vendor_token': vendor.get('vendor_token', '')
                                 }
                                 if not any(s['shop_folder'] == shop_folder for s in shops):
                                     shops.append(shop_info)
@@ -9382,34 +8684,24 @@ def assign_printer_to_job(request):
                 head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
                 current_metadata = head_response.get('Metadata', {})
                 
-                # Do not store metadata on R2 for vendor/user print jobs; rely on DB tables instead
-                if path.startswith('vendor_print_jobs/') or path.startswith('users/'):
-                    print(f"ℹ️ Skipping R2 metadata write for {path}; DB holds metadata.")
-                    updated = True
-                    updated_path = path
-                else:
-                    # Update metadata for non-print-job assets
-                    current_metadata['assigned_printer'] = printer_name
-                    # Avoid R2 metadata writes for print jobs; rely on DB tables instead
-                    if path.startswith('vendor_print_jobs/') or path.startswith('users/'):
-                        print(f"ℹ️ Skipping printer metadata write for {path}; DB holds metadata.")
-                        updated = True
-                        updated_path = path
-                    else:
-                        current_metadata['printer_name'] = printer_name
-                        current_metadata['printer_assigned_at'] = datetime.datetime.now().isoformat()
-                        current_metadata['service_type'] = service_type
-                        
-                        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
-                        s3.copy_object(
-                            CopySource=copy_source,
-                            Bucket=settings.R2_BUCKET,
-                            Key=path,
-                            Metadata=current_metadata,
-                            MetadataDirective='REPLACE'
-                        )
-                        updated = True
-                        updated_path = path
+                # Update metadata with printer information (store under multiple keys for compatibility)
+                current_metadata['assigned_printer'] = printer_name
+                current_metadata['printer_name'] = printer_name
+                current_metadata['printer_assigned_at'] = datetime.datetime.now().isoformat()
+                current_metadata['service_type'] = service_type
+                
+                # Copy object with updated metadata
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=path,
+                    Metadata=current_metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                updated = True
+                updated_path = path
                 print(f"✅ Updated printer assignment for {filename} at {path}")
                 break
                 
@@ -9994,9 +9286,7 @@ def forgot_password_page(request):
 @csrf_exempt
 def forgot_password(request):
     """
-    Legacy endpoint kept for compatibility.
-    Now only validates that the vendor exists and returns success;
-    password reset itself is handled directly via reset_password without OTP.
+    Send verification code to vendor email for password reset
     """
     if request.method == 'POST':
         try:
@@ -10006,45 +9296,55 @@ def forgot_password(request):
             if not email:
                 return JsonResponse({'success': False, 'error': 'Email is required'})
             
-            # Use D1 vendor_register_details as the source of truth
-            api_url = getattr(settings, 'WORKER_API_URL', '')
-            api_key = getattr(settings, 'WORKER_API_KEY', '')
-
-            if not api_url or not api_key:
-                print("❌ Worker API not configured for forgot_password")
-                return JsonResponse({'success': False, 'error': 'Server configuration error. Please contact support.'}, status=500)
-
-            if '/add-contact' in api_url:
-                worker_endpoint = api_url.replace('/add-contact', '/get-vendor-by-email')
-            elif '/add-vendor-register' in api_url:
-                worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-by-email')
-            else:
-                worker_endpoint = api_url.rstrip('/') + '/get-vendor-by-email'
-
-            resp = requests.post(
-                worker_endpoint,
-                json={'email': email},
-                headers={
-                    'Content-Type': 'application/json',
-                    'x-api-key': api_key
-                },
-                timeout=10
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
             )
-
-            if resp.status_code == 404:
+            
+            # Check if vendor exists
+            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
                 return JsonResponse({'success': False, 'error': 'Vendor not found with this email'})
-            if resp.status_code != 200:
-                print(f"❌ Worker error in forgot_password: {resp.status_code} {resp.text[:300]}")
-                return JsonResponse({'success': False, 'error': 'Error verifying vendor account'}, status=500)
-
-            payload = resp.json()
-            if not payload.get('success'):
-                return JsonResponse({'success': False, 'error': payload.get('error', 'Vendor not found')}, status=404)
-
-            return JsonResponse({
-                'success': True,
-                'message': 'Vendor verified. You can now reset your password directly.'
-            })
+            
+            # Generate 6-digit verification code
+            verification_code = str(random.randint(100000, 999999))
+            
+            # Store verification code with expiration (15 minutes)
+            reset_data = {
+                'email': email,
+                'code': verification_code,
+                'created_at': datetime.datetime.now().isoformat(),
+                'expires_at': (datetime.datetime.now() + datetime.timedelta(minutes=15)).isoformat(),
+                'used': False
+            }
+            
+            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
+            s3.put_object(
+                Bucket=settings.R2_BUCKET,
+                Key=reset_key,
+                Body=json.dumps(reset_data),
+                ContentType='application/json'
+            )
+            
+            # Send email with verification code
+            vendor_name = vendor_data.get('vendor_name', 'Vendor')
+            email_sent = send_password_reset_email(email, verification_code, vendor_name)
+            
+            if email_sent:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Verification code sent to your email'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Failed to send verification email. Please try again.'
+                })
             
         except Exception as e:
             print(f"Error in forgot_password: {str(e)}")
@@ -10055,54 +9355,50 @@ def forgot_password(request):
 @csrf_exempt
 def verify_reset_code(request):
     """
-    Legacy endpoint kept for compatibility with older clients.
-    Always returns success once the vendor email is valid.
+    Verify the reset code sent to vendor email
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             email = data.get('email')
+            code = data.get('code')
             
-            if not email:
-                return JsonResponse({'success': False, 'error': 'Email is required'})
-
-            # Simply confirm vendor exists in D1
-            api_url = getattr(settings, 'WORKER_API_URL', '')
-            api_key = getattr(settings, 'WORKER_API_KEY', '')
-
-            if not api_url or not api_key:
-                print("❌ Worker API not configured for verify_reset_code")
-                return JsonResponse({'success': False, 'error': 'Server configuration error. Please contact support.'}, status=500)
-
-            if '/add-contact' in api_url:
-                worker_endpoint = api_url.replace('/add-contact', '/get-vendor-by-email')
-            elif '/add-vendor-register' in api_url:
-                worker_endpoint = api_url.replace('/add-vendor-register', '/get-vendor-by-email')
-            else:
-                worker_endpoint = api_url.rstrip('/') + '/get-vendor-by-email'
-
-            resp = requests.post(
-                worker_endpoint,
-                json={'email': email},
-                headers={
-                    'Content-Type': 'application/json',
-                    'x-api-key': api_key
-                },
-                timeout=10
+            if not email or not code:
+                return JsonResponse({'success': False, 'error': 'Email and code are required'})
+            
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
             )
-
-            if resp.status_code == 404:
-                return JsonResponse({'success': False, 'error': 'Vendor not found with this email'})
-            if resp.status_code != 200:
-                print(f"❌ Worker error in verify_reset_code: {resp.status_code} {resp.text[:300]}")
-                return JsonResponse({'success': False, 'error': 'Error verifying vendor account'}, status=500)
-
-            payload = resp.json()
-            if not payload.get('success'):
-                return JsonResponse({'success': False, 'error': payload.get('error', 'Vendor not found')}, status=404)
-
-            return JsonResponse({'success': True, 'message': 'Vendor verified successfully'})
-
+            
+            # Get reset data
+            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reset_key)
+                reset_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': 'Invalid or expired reset code'})
+            
+            # Check if code is expired
+            expires_at = datetime.datetime.fromisoformat(reset_data['expires_at'])
+            if datetime.datetime.now() > expires_at:
+                return JsonResponse({'success': False, 'error': 'Reset code has expired'})
+            
+            # Check if code matches
+            if reset_data['code'] != code:
+                return JsonResponse({'success': False, 'error': 'Invalid verification code'})
+            
+            # Check if already used
+            if reset_data.get('used', False):
+                return JsonResponse({'success': False, 'error': 'Reset code already used'})
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Code verified successfully'
+            })
+            
         except Exception as e:
             print(f"Error in verify_reset_code: {str(e)}")
             return JsonResponse({'success': False, 'error': 'Internal server error'})
@@ -10112,117 +9408,105 @@ def verify_reset_code(request):
 @csrf_exempt
 def reset_password(request):
     """
-    Reset vendor password without OTP, updating both D1 vendor_register_details
-    and legacy R2 JSON files for backward compatibility.
+    Reset vendor password with verification code
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             email = data.get('email')
+            code = data.get('code')
             new_password = data.get('new_password')
             
-            if not all([email, new_password]):
-                return JsonResponse({'success': False, 'error': 'Email and new password are required'})
+            if not all([email, code, new_password]):
+                return JsonResponse({'success': False, 'error': 'All fields are required'})
             
             if len(new_password) < 8:
                 return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters long'})
-
-            # Hash the new password using the same scheme as vendor_login
+            
+            s3 = boto3.client('s3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+            
+            # Verify reset code first
+            reset_key = f'password_reset/{sanitize_email(email)}/reset_data.json'
+            try:
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reset_key)
+                reset_data = json.loads(response['Body'].read().decode('utf-8'))
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': 'Invalid or expired reset code'})
+            
+            # Check if code is expired
+            expires_at = datetime.datetime.fromisoformat(reset_data['expires_at'])
+            if datetime.datetime.now() > expires_at:
+                return JsonResponse({'success': False, 'error': 'Reset code has expired'})
+            
+            # Check if code matches
+            if reset_data['code'] != code:
+                return JsonResponse({'success': False, 'error': 'Invalid verification code'})
+            
+            # Check if already used
+            if reset_data.get('used', False):
+                return JsonResponse({'success': False, 'error': 'Reset code already used'})
+            
+            # Hash the new password
             hashed_password = make_password(new_password)
-
-            # First, update D1 vendor_register_details via Worker API
-            api_url = getattr(settings, 'WORKER_API_URL', '')
-            api_key = getattr(settings, 'WORKER_API_KEY', '')
-
-            if not api_url or not api_key:
-                print("❌ Worker API not configured for reset_password")
-                return JsonResponse({'success': False, 'error': 'Server configuration error. Please contact support.'}, status=500)
-
-            if '/add-contact' in api_url:
-                worker_endpoint = api_url.replace('/add-contact', '/update-vendor-password')
-            elif '/add-vendor-register' in api_url:
-                worker_endpoint = api_url.replace('/add-vendor-register', '/update-vendor-password')
-            else:
-                worker_endpoint = api_url.rstrip('/') + '/update-vendor-password'
-
+            
+            # Update vendor registration details
+            reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
             try:
-                resp = requests.post(
-                    worker_endpoint,
-                    json={
-                        'email': email,
-                        'new_password_hash': hashed_password,
-                        'source': 'django_reset_password'
-                    },
-                    headers={
-                        'Content-Type': 'application/json',
-                        'x-api-key': api_key
-                    },
-                    timeout=10
-                )
-
-                if resp.status_code == 404:
-                    return JsonResponse({'success': False, 'error': 'Vendor not found with this email'}, status=404)
-                if resp.status_code != 200:
-                    print(f"❌ Worker error in update-vendor-password: {resp.status_code} {resp.text[:300]}")
-                    return JsonResponse({'success': False, 'error': 'Failed to update password in database'}, status=500)
-
-                payload = resp.json()
-                if not payload.get('success'):
-                    return JsonResponse({'success': False, 'error': payload.get('error', 'Failed to update password')}, status=500)
-            except Exception as worker_exc:
-                print(f"❌ Exception calling update-vendor-password: {worker_exc}")
-                return JsonResponse({'success': False, 'error': 'Failed to update password in database'}, status=500)
-
-            # Best-effort: update legacy R2 JSON so older flows (if any) remain consistent
-            try:
-                s3 = boto3.client('s3',
-                    aws_access_key_id=settings.R2_ACCESS_KEY,
-                    aws_secret_access_key=settings.R2_SECRET_KEY,
-                    endpoint_url=settings.R2_ENDPOINT,
-                    region_name='auto'
-                )
-
-                reg_key = f'vendor_register_details/{sanitize_email(email)}/registration_details.json'
-                try:
-                    response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
-                    vendor_data = json.loads(response['Body'].read().decode('utf-8'))
-                except Exception:
-                    vendor_data = {'email': email}
-
+                response = s3.get_object(Bucket=settings.R2_BUCKET, Key=reg_key)
+                vendor_data = json.loads(response['Body'].read().decode('utf-8'))
+                
+                # Update password
                 vendor_data['hashed_password'] = hashed_password
                 vendor_data['password_updated_at'] = datetime.datetime.now().isoformat()
-
+                
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=reg_key,
                     Body=json.dumps(vendor_data),
                     ContentType='application/json'
                 )
-
+                
+                # Update login details
                 login_key = f'vendor_register_details/{sanitize_email(email)}/login_details.json'
                 try:
                     login_response = s3.get_object(Bucket=settings.R2_BUCKET, Key=login_key)
                     login_data = json.loads(login_response['Body'].read().decode('utf-8'))
-                except Exception:
+                except:
                     login_data = {'email': email}
-
+                
                 login_data['hashed_password'] = hashed_password
                 login_data['last_password_reset'] = datetime.datetime.now().isoformat()
-
+                
                 s3.put_object(
                     Bucket=settings.R2_BUCKET,
                     Key=login_key,
                     Body=json.dumps(login_data),
                     ContentType='application/json'
                 )
-            except Exception as legacy_exc:
-                # Log but don't fail the reset if D1 update already succeeded
-                print(f"⚠️ Legacy R2 password sync failed for {email}: {legacy_exc}")
-
-            return JsonResponse({
-                'success': True,
-                'message': 'Password reset successfully'
-            })
+                
+                # Mark reset code as used
+                reset_data['used'] = True
+                reset_data['used_at'] = datetime.datetime.now().isoformat()
+                s3.put_object(
+                    Bucket=settings.R2_BUCKET,
+                    Key=reset_key,
+                    Body=json.dumps(reset_data),
+                    ContentType='application/json'
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Password reset successfully'
+                })
+                
+            except Exception as e:
+                print(f"Error updating vendor data: {str(e)}")
+                return JsonResponse({'success': False, 'error': 'Failed to update password'})
             
         except Exception as e:
             print(f"Error in reset_password: {str(e)}")
@@ -11021,37 +10305,33 @@ def _default_service_availability():
     }
 
 
-def _reset_service_availability():
-    """
-    Returns the service availability payload with all services set to False (OFF).
-    Used to force vendors to update their services upon login.
-    """
-    return {
-        "digital_print": False,
-        "project_binding": False,
-        "gloss_printing": False,
-        "jumbo_printing": False,
-        "regular_print": False,
-        "passport_print": False,
-        "photo_print": False,
-        "vendor_shop_avaliability": "online", # Keep shop online so they can access dashboard
-    }
-
 def _sync_vendor_service_on_login(vendor_email, vendor_id):
     """
     Ensure the Vendor_service_availability table has up-to-date rows whenever a vendor logs in.
-    FORCE RESETS all services to OFF so the vendor must manually enable them for the day.
+    Fetches the latest config (or defaults) and upserts it via the Worker so D1 stays fresh.
     """
     if not vendor_email or not vendor_id:
         return
 
     try:
-        # Use the RESET payload (all False) instead of default (all True) or fetching existing
-        service_payload = _reset_service_availability()
+        service_payload = _default_service_availability()
 
-        print(f"🔄 Resetting services for vendor {vendor_email} to OFF on login.")
+        # Try to load the most recent config so we don't clobber valid data
+        try:
+            payload = {"vendor_email": vendor_email, "vendor_id": vendor_id}
+            endpoint, resp = post_to_worker('/get-vendor-service', payload)
+            if resp.status_code == 200:
+                resp_json = resp.json()
+                if resp_json.get('success'):
+                    service_data = resp_json.get('service', {}).get('service_data')
+                    if isinstance(service_data, dict) and service_data:
+                        service_payload = service_data
+            elif resp.status_code != 404:
+                print(f"⚠️ Worker get-vendor-service failed during login sync ({resp.status_code}) via {endpoint}")
+        except Exception as fetch_err:
+            print(f"⚠️ Unable to fetch vendor service data during login sync: {fetch_err}")
 
-        # Persist the reset row so it reflects in the DB immediately
+        # Persist (or create) the row so it always exists after login
         try:
             endpoint, resp = post_to_worker('/upsert-vendor-service', {
                 'vendor_email': vendor_email,
@@ -12076,195 +11356,6 @@ def create_or_update_vendor_transaction(vendor_email, vendor_id, vendor_name, co
         traceback.print_exc()
         return False
 
-
-def vendor_transactions_history(request):
-    """
-    Vendor-facing endpoint to fetch transaction reports from the D1 vendor_transaction table.
-    Returns 2-day period reports for the authenticated vendor, without requiring admin access.
-    """
-    try:
-        # Prefer vendor email from session to ensure correct vendor is used
-        session_vendor_email = (request.session.get('vendor_email') or '').strip().lower()
-        requested_vendor_email = (request.GET.get('vendor_email') or '').strip().lower()
-
-        vendor_email = session_vendor_email or requested_vendor_email
-        if not vendor_email:
-            return JsonResponse({
-                'success': False,
-                'error': 'Vendor email not found in session'
-            }, status=401)
-
-        selected_month = request.GET.get('month')  # format YYYY-MM
-
-        api_url = getattr(settings, 'WORKER_API_URL', '')
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-
-        if not api_url or not api_key:
-            return JsonResponse({
-                'success': False,
-                'error': 'Worker API not configured'
-            }, status=500)
-
-        worker_endpoint = api_url.rstrip('/') + '/get-vendor-transactions'
-
-        # Ask the Worker API to filter by this vendor if it supports it
-        payload = {
-            'vendor_email': vendor_email,
-        }
-        if selected_month:
-            payload['month'] = selected_month
-
-        try:
-            resp = requests.post(
-                worker_endpoint,
-                json=payload,
-                headers={
-                    'x-api-key': api_key,
-                    'Content-Type': 'application/json'
-                },
-                timeout=20
-            )
-
-            if resp.status_code != 200:
-                error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
-                print(f"⚠️ Failed to get vendor transactions from D1: {resp.status_code} - {error_text}")
-                return JsonResponse({
-                    'success': False,
-                    'error': f'Failed to fetch transactions: {resp.status_code}'
-                }, status=500)
-
-            data = resp.json()
-            if not data.get('success'):
-                error_msg = data.get('error', 'Unknown error')
-                print(f"⚠️ Worker API returned error for vendor transactions: {error_msg}")
-                return JsonResponse({
-                    'success': False,
-                    'error': error_msg
-                }, status=500)
-
-            transactions = data.get('transactions', []) or []
-
-            print(f"🔍 vendor_transactions_history - raw transactions from worker: {len(transactions)} for vendor_email filter {vendor_email}")
-
-            # Extra safety: only keep rows for this vendor
-            vendor_email_lower = vendor_email.lower()
-            transactions = [
-                t for t in transactions
-                if (t.get('vendor_email') or '').strip().lower() == vendor_email_lower
-            ]
-
-            reports = []
-            available_months = set()
-
-            for trans in transactions:
-                period_start = (trans.get('period_start') or '').strip()
-                period_end = (trans.get('period_end') or '').strip()
-
-                # Derive display string if not provided
-                period_display = trans.get('period_display') or ''
-                if not period_display and period_start and period_end:
-                    try:
-                        period_display = f"{period_start} to {period_end}"
-                    except Exception:
-                        period_display = ''
-
-                # Extract month for filter dropdown
-                if period_start:
-                    try:
-                        report_month = period_start[:7]  # YYYY-MM
-                        available_months.add(report_month)
-                    except Exception:
-                        pass
-
-                # Normalize numeric fields
-                total_documents = (
-                    trans.get('total_documents')
-                    if trans.get('total_documents') is not None
-                    else trans.get('total_docum', 0)
-                ) or 0
-
-                try:
-                    total_price = float(trans.get('total_price', 0.0) or 0.0)
-                except Exception:
-                    total_price = 0.0
-
-                try:
-                    platform_profit = float(trans.get('platform_profit', 0.0) or 0.0)
-                except Exception:
-                    platform_profit = 0.0
-
-                # Prefer total_earning if provided, otherwise derive it
-                try:
-                    total_earning = float(trans.get('total_earning', 0.0) or 0.0)
-                except Exception:
-                    total_earning = 0.0
-                if total_earning == 0.0 and (total_price or platform_profit):
-                    total_earning = total_price - platform_profit
-
-                # Choose a reasonable "generated_at" timestamp for sorting & display
-                generated_at = (
-                    trans.get('updated_at')
-                    or trans.get('created_at')
-                    or period_end
-                    or period_start
-                )
-
-                report_data = {
-                    'id': trans.get('id'),
-                    'transaction_id': trans.get('id'),
-                    'vendor_email': vendor_email,
-                    'vendor_id': trans.get('vendor_id', ''),
-                    'vendor_name': trans.get('vendor_name', 'Unknown Vendor'),
-                    'total_documents': total_documents,
-                    'total_earning': total_earning,
-                    'total_amount': total_earning,  # alias for front-end
-                    'total_price': total_price,
-                    'platform_profit': platform_profit,
-                    'payment_status': trans.get('payment_status', 'not_completed'),
-                    'period_start': period_start,
-                    'period_end': period_end,
-                    'period_display': period_display,
-                    'generated_at': generated_at,
-                    # Optional extra details if the Worker provides them
-                    'service_breakdown': trans.get('service_breakdown'),
-                }
-
-                reports.append(report_data)
-
-            print(f"📊 vendor_transactions_history - returning {len(reports)} reports, months={sorted(list(available_months))}")
-
-            # Newest first based on generated_at / period_start
-            def _sort_key(r):
-                return (r.get('generated_at') or r.get('period_start') or '')
-
-            reports.sort(key=_sort_key, reverse=True)
-
-            return JsonResponse({
-                'success': True,
-                'reports': reports,
-                # Name expected by vendor dashboard JS
-                'available_months_list': sorted(list(available_months), reverse=True),
-            })
-
-        except requests.exceptions.RequestException as exc:
-            print(f"⚠️ Network error fetching vendor transactions from D1: {exc}")
-            return JsonResponse({
-                'success': False,
-                'error': f'Network error: {str(exc)}'
-            }, status=500)
-        except Exception as exc:
-            print(f"⚠️ Unexpected error fetching vendor transactions from D1: {exc}")
-            return JsonResponse({
-                'success': False,
-                'error': f'Unexpected error: {str(exc)}'
-            }, status=500)
-
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
 @csrf_exempt
 def mark_job_completed(request):
     """Mark a print job as completed by updating job_completed to 'YES' and free the token"""
@@ -12281,327 +11372,223 @@ def mark_job_completed(request):
             if not vendor_email:
                 return JsonResponse({'success': False, 'error': 'Vendor not authenticated'})
             
-            # Get or create a lock for this specific filename to prevent concurrent completions
-            with _job_completion_lock:
-                if filename not in _job_completion_locks:
-                    _job_completion_locks[filename] = threading.Lock()
-                file_lock = _job_completion_locks[filename]
+            # Get vendor details
+            vendor_details = get_vendor_details_by_email(vendor_email)
+            if not vendor_details:
+                return JsonResponse({'success': False, 'error': 'Vendor details not found'})
             
-            # Acquire lock for this specific job to prevent concurrent completions
-            if not file_lock.acquire(blocking=False):
-                # Another request is already processing this job
-                return JsonResponse({
-                    'success': False, 
-                    'error': 'Job completion already in progress. Please wait...'
-                }, status=409)
+            vendor_id = vendor_details.get('vendor_id', 'vendor1')
+            vendor_name = vendor_details.get('shop_name', 'Unknown Vendor')
             
+            # Get the token associated with this job before updating status
+            job_token = get_token_from_file_metadata(filename, vendor_id)
+            if job_token:
+                print(f"🔍 Found token {job_token} for job {filename}")
+            else:
+                print(f"⚠️ No token found for job {filename}")
+            
+            # Update job_completed in R2 metadata for both vendor and user folders
+            completion_time = datetime.datetime.now().isoformat()
+            success, user_email = update_job_status_comprehensive(filename, 'YES', vendor_id, completion_time)
+            
+            # Also update D1 database tables
             try:
-                # Get vendor details
-                vendor_details = get_vendor_details_by_email(vendor_email)
-                if not vendor_details:
-                    return JsonResponse({'success': False, 'error': 'Vendor details not found'})
+                api_url = getattr(settings, 'WORKER_API_URL', '')
+                api_key = getattr(settings, 'WORKER_API_KEY', '')
                 
-                vendor_id = vendor_details.get('vendor_id', 'vendor1')
-                vendor_name = vendor_details.get('shop_name', 'Unknown Vendor')
-                
-                # Get the token associated with this job before updating status
-                job_token = get_token_from_file_metadata(filename, vendor_id)
-                if job_token:
-                    print(f"🔍 Found token {job_token} for job {filename}")
-                else:
-                    # Try to get token from Vendor_print_jobs table if not found in metadata
-                    job_token = get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email)
-                    if job_token:
-                        print(f"🔍 Retrieved token {job_token} from Vendor_print_jobs for job {filename}")
-                    else:
-                        print(f"⚠️ No token found for job {filename}")
-                
-                # Get user_email from D1 Vendor_print_jobs table FIRST (before updating)
-                completion_time = datetime.datetime.now().isoformat()
-                user_email = None
-                
-                # Fetch user_email from D1 Vendor_print_jobs table
-                try:
-                    api_url_lookup = getattr(settings, 'WORKER_API_URL', '')
-                    api_key_lookup = getattr(settings, 'WORKER_API_KEY', '')
-                    if api_url_lookup and api_key_lookup:
-                        base_url_lookup = api_url_lookup.rstrip('/')
-                        if '/add-contact' in base_url_lookup:
-                            lookup_endpoint = base_url_lookup.replace('/add-contact', '/get-vendor-print-jobs')
-                        elif '/add-vendor-register' in base_url_lookup:
-                            lookup_endpoint = base_url_lookup.replace('/add-vendor-register', '/get-vendor-print-jobs')
-                        else:
-                            lookup_endpoint = base_url_lookup + '/get-vendor-print-jobs'
-
-                        lookup_payload = {
-                            'filename': filename,
-                            'vendor_id': vendor_id,
-                            'vendor_email': vendor_email,
-                        }
-
-                        lookup_resp = requests.post(
-                            lookup_endpoint,
-                            json=lookup_payload,
-                            headers={
-                                'Content-Type': 'application/json',
-                                'x-api-key': api_key_lookup,
-                            },
-                            timeout=10,
-                        )
-
-                        if lookup_resp.status_code == 200:
-                            lookup_data = lookup_resp.json()
-                            if lookup_data.get('success') and lookup_data.get('data'):
-                                jobs = lookup_data.get('data', [])
-                                if jobs:
-                                    inferred_email = jobs[0].get('user_email') or ''
-                                    if inferred_email:
-                                        user_email = inferred_email
-                                        print(f"📧 Retrieved user email from D1 Vendor_print_jobs for completion: {user_email}")
-                                    else:
-                                        print(f"⚠️ Job found in Vendor_print_jobs but user_email is empty for {filename}")
-                        else:
-                            print(f"⚠️ Failed to lookup user_email from Vendor_print_jobs: {lookup_resp.status_code}")
-                    else:
-                        print("⚠️ Worker API not configured for user_email lookup")
-                except Exception as e:
-                    print(f"⚠️ Error getting user email from D1 Vendor_print_jobs for completion: {e}")
-                
-                # Fallback: If user_email is not found in D1, try R2 metadata
-                if not user_email:
+                if api_url and api_key:
+                    # Update User_print_jobs table using add endpoint (handles updates on conflict)
+                    # First, we need to get the job details to update it properly
+                    # For now, use a simple update approach - the add endpoint handles updates
+                    worker_endpoint_user = api_url.rstrip('/') + '/add-user-print-job'
+                    # Note: This requires the full job data, but we'll update just the completion status
+                    # The worker endpoint will handle the UPDATE on conflict
+                    worker_payload_user = {
+                        'filename': filename,
+                        'user_email': user_email if user_email else '',
+                        'job_completed': 'YES',
+                        'completion_time': completion_time,
+                        'storage_folder': 'users'  # Default storage folder
+                    }
                     try:
-                        print(f"🔍 user_email not found in D1, trying R2 metadata for {filename}")
-                        user_email = get_user_email_from_file_metadata(filename, vendor_id)
-                        if user_email:
-                             print(f"📧 Retrieved user email from R2 metadata: {user_email}")
+                        resp_user = requests.post(
+                            worker_endpoint_user,
+                            json=worker_payload_user,
+                            headers={
+                                'x-api-key': api_key,
+                                'Content-Type': 'application/json'
+                            },
+                            timeout=10
+                        )
+                        if resp_user.status_code == 200:
+                            print(f"✅ Updated User_print_jobs table for {filename}")
+                        else:
+                            print(f"⚠️ Failed to update User_print_jobs: {resp_user.status_code}")
                     except Exception as e:
-                        print(f"⚠️ Error getting user email from R2 metadata: {e}")
+                        print(f"⚠️ Error updating User_print_jobs: {e}")
+                    
+                    # Update Vendor_print_jobs table using add endpoint (handles updates on conflict)
+                    worker_endpoint_vendor = api_url.rstrip('/') + '/add-vendor-print-job'
+                    worker_payload_vendor = {
+                        'filename': filename,
+                        'vendor_id': vendor_id,
+                        'user_email': user_email if user_email else '',
+                        'job_completed': 'YES',
+                        'completion_time': completion_time,
+                        'storage_folder': 'vendor_print_jobs'  # Default storage folder
+                    }
+                    try:
+                        resp_vendor = requests.post(
+                            worker_endpoint_vendor,
+                            json=worker_payload_vendor,
+                            headers={
+                                'x-api-key': api_key,
+                                'Content-Type': 'application/json'
+                            },
+                            timeout=10
+                        )
+                        if resp_vendor.status_code == 200:
+                            print(f"✅ Updated Vendor_print_jobs table for {filename}")
+                        else:
+                            print(f"⚠️ Failed to update Vendor_print_jobs: {resp_vendor.status_code}")
+                    except Exception as e:
+                        print(f"⚠️ Error updating Vendor_print_jobs: {e}")
+                else:
+                    print("⚠️ Worker API not configured - skipping D1 database update")
+            except Exception as e:
+                print(f"⚠️ Error updating D1 database: {e}")
+            
+            if success:
+                # Get pricing details from job metadata for transaction report
+                total_price = 0.0
+                platform_profit = 0.0
                 
-                # Update D1 database tables synchronously (User_print_jobs and Vendor_print_jobs)
-                db_update_success = False
+                # First, try to get from D1 database Vendor_print_jobs table
                 try:
                     api_url = getattr(settings, 'WORKER_API_URL', '')
                     api_key = getattr(settings, 'WORKER_API_KEY', '')
                     
                     if api_url and api_key:
-                        # Use /update-job-completed endpoint which properly UPDATES existing rows
-                        base_url = api_url.rstrip('/')
-                        if '/add-contact' in base_url:
-                            worker_endpoint = base_url.replace('/add-contact', '/update-job-completed')
-                        elif '/add-vendor-register' in base_url:
-                            worker_endpoint = base_url.replace('/add-vendor-register', '/update-job-completed')
-                        else:
-                            worker_endpoint = base_url + '/update-job-completed'
-                        
-                        worker_payload = {
-                            'filename': filename,
-                            'job_completed': 'YES',
-                            'rendered_status': 'YES',
-                            'completion_time': completion_time,
-                            'vendor_email': vendor_email,
-                            'vendor_id': vendor_id,
-                            'vendor_name': vendor_name,
-                            'user_email': user_email if user_email else ''
-                        }
-                        print(f"🔄 Updating D1 tables synchronously for {filename} with user_email: {user_email if user_email else 'NOT PROVIDED'}")
-                        try:
-                            resp = requests.post(
-                                worker_endpoint,
-                                json=worker_payload,
-                                headers={
-                                    'x-api-key': api_key,
-                                    'Content-Type': 'application/json'
-                                },
-                                timeout=10
-                            )
-                            if resp.status_code == 200:
-                                resp_data = resp.json()
-                                if resp_data.get('success'):
-                                    db_update_success = True
-                                    print(f"✅ Successfully updated User_print_jobs and Vendor_print_jobs tables synchronously for {filename} (user_email: {user_email if user_email else 'not provided'})")
-                                else:
-                                    error_msg = resp_data.get('error', 'Unknown error')
-                                    print(f"❌ Update endpoint returned success=false: {error_msg}")
-                                    return JsonResponse({
-                                        'success': False,
-                                        'error': f'Failed to update database tables: {error_msg}'
-                                    }, status=500)
-                            else:
-                                error_text = resp.text[:200] if resp.text else 'No response text'
-                                print(f"❌ Failed to update job status: {resp.status_code} - {error_text}")
-                                return JsonResponse({
-                                    'success': False,
-                                    'error': f'Failed to update database tables: HTTP {resp.status_code}'
-                                }, status=500)
-                        except Exception as e:
-                            print(f"❌ Error updating job status in D1: {e}")
-                            return JsonResponse({
-                                'success': False,
-                                'error': f'Database update error: {str(e)}'
-                            }, status=500)
-                    else:
-                        print("❌ Worker API not configured - cannot update database")
-                        return JsonResponse({
-                            'success': False,
-                            'error': 'Worker API not configured'
-                        }, status=500)
-                except Exception as e:
-                    print(f"❌ Error updating D1 database: {e}")
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Database update error: {str(e)}'
-                    }, status=500)
-                
-                # Only proceed with other operations if database update was successful
-                if db_update_success:
-                    # Get pricing details from job metadata for transaction report
-                    total_price = 0.0
-                    platform_profit = 0.0
-                    
-                    # First, try to get from D1 database Vendor_print_jobs table
-                    try:
-                        api_url = getattr(settings, 'WORKER_API_URL', '')
-                        api_key = getattr(settings, 'WORKER_API_KEY', '')
-                        
-                        if api_url and api_key:
-                            # Get job from Vendor_print_jobs table
-                            worker_endpoint = api_url.rstrip('/') + '/get-vendor-print-jobs'
-                            job_response = requests.post(
-                                worker_endpoint,
-                                json={'vendor_id': vendor_id, 'filename': filename},
-                                headers={
-                                    'Content-Type': 'application/json',
-                                    'x-api-key': api_key
-                                },
-                                timeout=10
-                            )
-                            
-                            if job_response.status_code == 200:
-                                job_data = job_response.json()
-                                if job_data.get('success') and job_data.get('data'):
-                                    jobs = job_data.get('data', [])
-                                    # Filter by filename to get exact match
-                                    matching_jobs = [j for j in jobs if j.get('filename') == filename]
-                                    if matching_jobs:
-                                        job = matching_jobs[0]  # Get first matching job
-                                        total_price = float(job.get('total_price', 0.0))
-                                        platform_profit = float(job.get('platform_profit', 0.0))
-                                        print(f"✅ Retrieved pricing from D1: total_price={total_price}, platform_profit={platform_profit}")
-                    except Exception as e:
-                        print(f"⚠️ Error getting pricing from D1: {e}")
-                    
-                    # Fallback to R2 metadata if D1 doesn't have pricing
-                    if total_price == 0.0 or platform_profit == 0.0:
-                        try:
-                            s3 = boto3.client('s3',
-                                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                                              endpoint_url=settings.R2_ENDPOINT,
-                                              region_name='auto')
-                            
-                            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-                            try:
-                                result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                                metadata = result.get('Metadata', {})
-                                
-                                # Extract pricing_details
-                                pricing_details_str = metadata.get('pricing_details')
-                                if pricing_details_str:
-                                    try:
-                                        pricing_obj = json.loads(pricing_details_str)
-                                        if total_price == 0.0:
-                                            total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
-                                        if platform_profit == 0.0:
-                                            platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                                    except:
-                                        pass
-                                
-                                # Fallback to metadata if pricing_details not available
-                                if total_price == 0.0:
-                                    total_price = float(metadata.get('total_price', 0.0))
-                                if platform_profit == 0.0:
-                                    platform_profit = float(metadata.get('platform_profit', 0.0))
-                            except Exception as e:
-                                print(f"⚠️ Error getting pricing from R2 metadata: {e}")
-                        except Exception as e:
-                            print(f"⚠️ Error accessing S3 for pricing: {e}")
-                    
-                    # Create or update vendor transaction report for 2-day period
-                    completion_date = datetime.datetime.now().date()
-                    try:
-                        create_or_update_vendor_transaction(
-                            vendor_email, vendor_id, vendor_name, 
-                            completion_date, filename, total_price, platform_profit
+                        # Get job from Vendor_print_jobs table
+                        worker_endpoint = api_url.rstrip('/') + '/get-vendor-print-jobs'
+                        job_response = requests.post(
+                            worker_endpoint,
+                            json={'vendor_id': vendor_id, 'filename': filename},
+                            headers={
+                                'Content-Type': 'application/json',
+                                'x-api-key': api_key
+                            },
+                            timeout=10
                         )
-                    except Exception as e:
-                        print(f"⚠️ Error creating transaction report: {e}")
-                    
-                    # Free the token if it was found
-                    token_freed = False
-                    if job_token:
+                        
+                        if job_response.status_code == 200:
+                            job_data = job_response.json()
+                            if job_data.get('success') and job_data.get('data'):
+                                jobs = job_data.get('data', [])
+                                # Filter by filename to get exact match
+                                matching_jobs = [j for j in jobs if j.get('filename') == filename]
+                                if matching_jobs:
+                                    job = matching_jobs[0]  # Get first matching job
+                                    total_price = float(job.get('total_price', 0.0))
+                                    platform_profit = float(job.get('platform_profit', 0.0))
+                                    print(f"✅ Retrieved pricing from D1: total_price={total_price}, platform_profit={platform_profit}")
+                except Exception as e:
+                    print(f"⚠️ Error getting pricing from D1: {e}")
+                
+                # Fallback to R2 metadata if D1 doesn't have pricing
+                if total_price == 0.0 or platform_profit == 0.0:
+                    try:
+                        s3 = boto3.client('s3',
+                                          aws_access_key_id=settings.R2_ACCESS_KEY,
+                                          aws_secret_access_key=settings.R2_SECRET_KEY,
+                                          endpoint_url=settings.R2_ENDPOINT,
+                                          region_name='auto')
+                        
+                        vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
                         try:
-                            token_freed = free_token_in_vendor_pool(vendor_email, job_token)
-                            if token_freed:
-                                print(f"✅ Token {job_token} freed for vendor {vendor_email}")
-                            else:
-                                print(f"❌ Failed to free token {job_token} for vendor {vendor_email}")
-                        except Exception as e:
-                            print(f"⚠️ Error freeing token {job_token}: {str(e)}")
-                    
-                    # Send notification to user and store vendor notification
-                    if user_email:
-                        try:
-                            print(f"📧 Preparing to send notification to user: {user_email} for job: {filename}")
-                            send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time, job_token)
-                            print(f"✅ Completion notification process completed for user: {user_email}")
+                            result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                            metadata = result.get('Metadata', {})
                             
-                            # Also store vendor notification directly with vendor email from session
-                            try:
-                                store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, job_token)
-                                print(f"✅ Stored vendor notification for {vendor_email}")
-                            except Exception as e:
-                                print(f"⚠️ Error storing vendor notification: {e}")
-                                import traceback
-                                traceback.print_exc()
+                            # Extract pricing_details
+                            pricing_details_str = metadata.get('pricing_details')
+                            if pricing_details_str:
+                                try:
+                                    pricing_obj = json.loads(pricing_details_str)
+                                    if total_price == 0.0:
+                                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                                    if platform_profit == 0.0:
+                                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
+                                except:
+                                    pass
+                            
+                            # Fallback to metadata if pricing_details not available
+                            if total_price == 0.0:
+                                total_price = float(metadata.get('total_price', 0.0))
+                            if platform_profit == 0.0:
+                                platform_profit = float(metadata.get('platform_profit', 0.0))
                         except Exception as e:
-                            print(f"❌ Error in notification process: {e}")
-                            import traceback
-                            traceback.print_exc()
-                    else:
-                        # Store vendor notification even if no user email (fallback)
+                            print(f"⚠️ Error getting pricing from R2 metadata: {e}")
+                    except Exception as e:
+                        print(f"⚠️ Error accessing S3 for pricing: {e}")
+                
+                # Create or update vendor transaction report for 2-day period
+                completion_date = datetime.datetime.now().date()
+                try:
+                    create_or_update_vendor_transaction(
+                        vendor_email, vendor_id, vendor_name, 
+                        completion_date, filename, total_price, platform_profit
+                    )
+                except Exception as e:
+                    print(f"⚠️ Error creating transaction report: {e}")
+                
+                # Free the token if it was found
+                token_freed = False
+                if job_token:
+                    try:
+                        token_freed = free_token_in_vendor_pool(vendor_email, job_token)
+                        if token_freed:
+                            print(f"✅ Token {job_token} freed for vendor {vendor_email}")
+                        else:
+                            print(f"❌ Failed to free token {job_token} for vendor {vendor_email}")
+                    except Exception as e:
+                        print(f"⚠️ Error freeing token {job_token}: {str(e)}")
+                
+                # Send notification to user and store vendor notification
+                if user_email:
+                    try:
+                        send_job_completion_notification(user_email, filename, vendor_id, 'completed', completion_time, job_token)
+                        print(f"✅ Sent completion notification to user: {user_email}")
+                        
+                        # Also store vendor notification directly with vendor email from session
                         try:
-                            store_vendor_notification_direct(vendor_email, filename, vendor_id, 'unknown@user.com', completion_time, job_token)
-                            print(f"✅ Stored vendor notification for {vendor_email} (no user email)")
+                            store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, job_token)
+                            print(f"✅ Stored vendor notification for {vendor_email}")
                         except Exception as e:
                             print(f"⚠️ Error storing vendor notification: {e}")
-                    
-                    return JsonResponse({
-                        'success': True, 
-                        'message': f'Job "{filename}" marked as completed successfully!',
-                        'vendor_name': vendor_name,
-                        'user_notified': user_email is not None,
-                        'token_freed': token_freed,
-                        'token_number': job_token if token_freed else None
-                    })
-            except Exception as e:
-                print(f"Error in mark_job_completed: {str(e)}")
-                import traceback
-                traceback.print_exc()
-                return JsonResponse({'success': False, 'error': str(e)})
-            finally:
-                # Always release the lock, even if there's an error
-                file_lock.release()
-                # Clean up lock if no longer needed (optional, to prevent memory leak)
-                with _job_completion_lock:
-                    if filename in _job_completion_locks:
-                        # Only remove if lock is not locked (i.e., no one is waiting)
-                        if not _job_completion_locks[filename].locked():
-                            del _job_completion_locks[filename]
+                            
+                    except Exception as e:
+                        print(f"⚠️ Error sending notification: {e}")
+                else:
+                    # Store vendor notification even if no user email (fallback)
+                    try:
+                        store_vendor_notification_direct(vendor_email, filename, vendor_id, 'unknown@user.com', completion_time, job_token)
+                        print(f"✅ Stored vendor notification for {vendor_email} (no user email)")
+                    except Exception as e:
+                        print(f"⚠️ Error storing vendor notification: {e}")
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': f'Job "{filename}" marked as completed successfully!',
+                    'vendor_name': vendor_name,
+                    'user_notified': user_email is not None,
+                    'token_freed': token_freed,
+                    'token_number': job_token if token_freed else None
+                })
+            else:
+                return JsonResponse({'success': False, 'error': 'Failed to update job status in both vendor and user folders'})
                 
         except Exception as e:
             print(f"Error in mark_job_completed: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
@@ -13086,11 +12073,10 @@ def update_job_failed_status_in_r2(filename, vendor_id, failed_status):
 def add_user_points(user_email, points, reason):
     """Add points to user account - stores in D1 database (User_points table)"""
     try:
-        # Store points data using IST timestamps
-        now_ist = timezone.localtime(timezone.now())
-        date_str = now_ist.strftime('%Y-%m-%d')
-        time_str = now_ist.strftime('%H:%M:%S')
-        timestamp = now_ist.isoformat()
+        # Store points data
+        date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+        time_str = datetime.datetime.now().strftime('%H:%M:%S')
+        timestamp = datetime.datetime.now().isoformat()
         
         # Store in D1 database via Worker API
         api_url = getattr(settings, 'WORKER_API_URL', '')
@@ -13491,7 +12477,7 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
                 except:
                     pass
         
-        # Also check metadata for pricing info using consistent fields
+        # Also check metadata for pricing info
         if total_price is None:
             total_price = metadata.get('total_price')
         if price_per_page is None:
@@ -13908,7 +12894,7 @@ def store_user_notification_in_db(notification_data):
             'vendor_id': notification_data.get('vendor_id', ''),
             'status': notification_data.get('status', ''),
             'completion_time': notification_data.get('completion_time', ''),
-            'created_at': notification_data.get('created_at', get_ist_timestamp()),
+            'created_at': notification_data.get('created_at', datetime.datetime.now().isoformat()),
             'read': notification_data.get('read', False),
             'type': notification_data.get('type', ''),
             'token': notification_data.get('token', ''),
@@ -13969,7 +12955,7 @@ def store_vendor_notification_in_db(notification_data):
             'platform_profit': platform_profit,
             'total_price': total_price,
             'completion_time': notification_data.get('completion_time', ''),
-            'timestamp': notification_data.get('timestamp', get_ist_timestamp()),
+            'timestamp': notification_data.get('timestamp', datetime.datetime.now().isoformat()),
             'token': notification_data.get('token', ''),
             'read': notification_data.get('read', False)
         }
@@ -13995,229 +12981,66 @@ def store_vendor_notification_in_db(notification_data):
         print(f"❌ Error storing vendor notification in database: {e}")
         return False
 
-def get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email):
-    """Get token number from Vendor_print_jobs table in D1"""
-    try:
-        api_url = getattr(settings, 'WORKER_API_URL', '')
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            return None
-        
-        # Get from Vendor_print_jobs table
-        base_url = api_url.rstrip('/')
-        if '/add-contact' in base_url:
-            worker_endpoint = base_url.replace('/add-contact', '/get-vendor-print-jobs')
-        elif '/add-vendor-register' in base_url:
-            worker_endpoint = base_url.replace('/add-vendor-register', '/get-vendor-print-jobs')
-        else:
-            worker_endpoint = base_url + '/get-vendor-print-jobs'
-        
-        job_response = requests.post(
-            worker_endpoint,
-            json={
-                'filename': filename,
-                'vendor_id': vendor_id,
-                'vendor_email': vendor_email
-            },
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
-            },
-            timeout=10
-        )
-        
-        if job_response.status_code == 200:
-            job_data = job_response.json()
-            if job_data.get('success') and job_data.get('data'):
-                jobs = job_data.get('data', [])
-                # Filter by filename to get exact match
-                matching_jobs = [j for j in jobs if j.get('filename') == filename or filename in j.get('filename', '')]
-                if matching_jobs:
-                    job = matching_jobs[0]  # Get first matching job
-                    token = job.get('token')
-                    if token:
-                        print(f"✅ Retrieved token from Vendor_print_jobs: {token} for {filename}")
-                        return str(token).strip()
-        
-        return None
-    except Exception as e:
-        print(f"⚠️ Error getting token from Vendor_print_jobs: {e}")
-        return None
-
-
-def get_pricing_from_user_print_jobs(user_email, filename):
-    """Get pricing (total_price and platform_profit) from User_print_jobs table in D1"""
-    try:
-        api_url = getattr(settings, 'WORKER_API_URL', '')
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
-        if not api_url or not api_key:
-            return None, None, None
-        
-        # Get from User_print_jobs table
-        base_url = api_url.rstrip('/')
-        if '/add-contact' in base_url:
-            worker_endpoint = base_url.replace('/add-contact', '/get-user-print-jobs')
-        elif '/add-vendor-register' in base_url:
-            worker_endpoint = base_url.replace('/add-vendor-register', '/get-user-print-jobs')
-        else:
-            worker_endpoint = base_url + '/get-user-print-jobs'
-        
-        job_response = requests.post(
-            worker_endpoint,
-            json={'user_email': user_email, 'filename': filename},
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
-            },
-            timeout=10
-        )
-        
-        total_price = None
-        platform_profit = None
-        service_type = None
-        
-        if job_response.status_code == 200:
-            job_data = job_response.json()
-            if job_data.get('success') and job_data.get('data'):
-                jobs = job_data.get('data', [])
-                # Filter by filename to get exact match
-                matching_jobs = [j for j in jobs if j.get('filename') == filename or filename in j.get('filename', '')]
-                if matching_jobs:
-                    job = matching_jobs[0]  # Get first matching job
-                    # Get service_type
-                    service_type = job.get('service_type', 'Print Job')
-                    
-                    # Get total_price
-                    total_price_val = job.get('total_price') or job.get('final_amount')
-                    if total_price_val is not None:
-                        try:
-                            total_price = float(total_price_val)
-                        except (ValueError, TypeError):
-                            total_price = 0.0
-                    else:
-                        total_price = 0.0
-                    
-                    # Get platform_profit - check both platform_profit and platform_pr
-                    platform_profit_val = job.get('platform_profit') or job.get('platform_pr')
-                    if platform_profit_val is not None:
-                        try:
-                            platform_profit = float(platform_profit_val)
-                        except (ValueError, TypeError):
-                            platform_profit = 0.0
-                    else:
-                        platform_profit = 0.0
-                    
-                    if total_price > 0 or platform_profit > 0:
-                        print(f"✅ Retrieved pricing from User_print_jobs: total_price={total_price}, platform_profit={platform_profit}, service_type={service_type}")
-                        return total_price, platform_profit, service_type
-        
-        return None, None, None
-    except Exception as e:
-        print(f"⚠️ Error getting pricing from User_print_jobs: {e}")
-        return None, None, None
-
-
 def send_job_completion_notification(user_email, filename, vendor_id, status, completion_time, token=None):
     """Send job completion notification to user and vendor"""
     try:
-        # Get token from Vendor_print_jobs table if not provided
+        # Use provided token or extract from filename as fallback
         if not token:
-            # Try to get vendor_email from vendor_id
-            vendor_email = get_vendor_email_by_id(vendor_id) if vendor_id else None
-            
-            if vendor_id and vendor_email:
-                token = get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email)
-            
-            # Fallback to filename if token still not found
-            if not token:
-                token = os.path.splitext(filename)[0]
-                print(f"⚠️ Using filename as token fallback for {filename}")
+            token = os.path.splitext(filename)[0]
         
-        # FIRST: Try to get pricing from User_print_jobs table (most accurate source)
+        # Get service type and platform_profit from job metadata if available
         service_type = "Print Job"
         platform_profit = 0.0
         total_price = 0.0
-        
-        if user_email and filename:
-            d1_total_price, d1_platform_profit, d1_service_type = get_pricing_from_user_print_jobs(user_email, filename)
-            if d1_total_price is not None and d1_total_price > 0:
-                total_price = d1_total_price
-                print(f"📊 Using total_price from User_print_jobs: {total_price}")
-            if d1_platform_profit is not None and d1_platform_profit > 0:
-                platform_profit = d1_platform_profit
-                print(f"📊 Using platform_profit from User_print_jobs: {platform_profit}")
-            if d1_service_type:
-                service_type = d1_service_type
-                print(f"📊 Using service_type from User_print_jobs: {service_type}")
-        
-        # FALLBACK: Try to get service type and pricing from R2 metadata if D1 didn't have pricing
-        if total_price == 0.0 or platform_profit == 0.0:
+        try:
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Try to get service type and platform_profit from vendor_print_jobs
+            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
             try:
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
+                result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                job_data = json.loads(result['Body'].read().decode('utf-8'))
+                service_type = job_data.get('service_type', 'Print Job')
                 
-                # Try to get service type and platform_profit from vendor_print_jobs
-                vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-                try:
-                    result = s3.get_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                    job_data = json.loads(result['Body'].read().decode('utf-8'))
-                    if not service_type or service_type == "Print Job":
-                        service_type = job_data.get('service_type', 'Print Job')
-                    
-                    # Only use R2 metadata if D1 didn't provide pricing
-                    if total_price == 0.0:
-                        # Extract platform_profit and total_price from pricing_details if available
-                        pricing_details = job_data.get('pricing_details')
-                        if pricing_details:
-                            try:
-                                if isinstance(pricing_details, str):
-                                    pricing_obj = json.loads(pricing_details)
-                                else:
-                                    pricing_obj = pricing_details
-                                
-                                # Try multiple possible keys for total_price
-                                total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
-                                
-                                print(f"📊 Extracted total_price from R2 pricing_details: {total_price}")
-                            except Exception as e:
-                                print(f"⚠️ Error parsing pricing_details: {e}")
+                # Extract platform_profit and total_price from pricing_details if available
+                pricing_details = job_data.get('pricing_details')
+                if pricing_details:
+                    try:
+                        if isinstance(pricing_details, str):
+                            pricing_obj = json.loads(pricing_details)
+                        else:
+                            pricing_obj = pricing_details
                         
-                        # If total_price still not found, try metadata
-                        if total_price == 0.0:
-                            total_price = float(job_data.get('total_price', 0.0))
-                            print(f"📊 Using total_price from R2 metadata: {total_price}")
-                    
-                    # Only use R2 metadata if D1 didn't provide platform_profit
-                    if platform_profit == 0.0:
-                        pricing_details = job_data.get('pricing_details')
-                        if pricing_details:
-                            try:
-                                if isinstance(pricing_details, str):
-                                    pricing_obj = json.loads(pricing_details)
-                                else:
-                                    pricing_obj = pricing_details
-                                
-                                # Try multiple possible keys for platform_profit
-                                platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                                
-                                print(f"📊 Extracted platform_profit from R2 pricing_details: {platform_profit}")
-                            except Exception as e:
-                                print(f"⚠️ Error parsing pricing_details: {e}")
+                        # Try multiple possible keys for platform_profit
+                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
                         
-                        # If platform_profit still not found, try metadata
-                        if platform_profit == 0.0:
-                            platform_profit = float(job_data.get('platform_profit', 0.0))
-                            print(f"📊 Using platform_profit from R2 metadata: {platform_profit}")
-                            
-                except:
-                    pass
+                        # Try multiple possible keys for total_price
+                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                        
+                        print(f"📊 Extracted pricing from pricing_details: platform_profit={platform_profit}, total_price={total_price}")
+                    except Exception as e:
+                        print(f"⚠️ Error parsing pricing_details: {e}")
+                        platform_profit = 0.0
+                        total_price = 0.0
+                
+                # If total_price not found in pricing_details, try metadata
+                if total_price == 0.0:
+                    total_price = float(job_data.get('total_price', 0.0))
+                    print(f"📊 Using total_price from metadata: {total_price}")
+                
+                # If platform_profit not found in pricing_details, try metadata
+                if platform_profit == 0.0:
+                    platform_profit = float(job_data.get('platform_profit', 0.0))
+                    print(f"📊 Using platform_profit from metadata: {platform_profit}")
+                    
             except:
                 pass
+        except:
+            pass
         
         # Create notification data in format expected by user dashboard
         notification_id = f"{filename}_{int(time.time())}"
@@ -14261,13 +13084,13 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
             'vendor_id': vendor_id,
             'status': status,
             'completion_time': completion_time,
-            'timestamp': get_ist_timestamp(),
-            'created_at': get_ist_timestamp(),
+            'timestamp': datetime.datetime.now().isoformat(),
+            'created_at': datetime.datetime.now().isoformat(),
             'read': False,
             'type': 'job_completed',
             'title': 'Print Job Completed',
             'message': f'Your document "{display_name}" is ready for pickup. Token: {token_display}',
-            'detailed_message': f'Document: {display_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: {token_display}\nCompleted at: {timezone.localtime(timezone.now()).strftime("%B %d, %Y at %I:%M %p")}',
+            'detailed_message': f'Document: {display_name}\nService Type: {formatted_service_type}\nStatus: Completed ✅\nToken: {token_display}\nCompleted at: {datetime.datetime.now().strftime("%B %d, %Y at %I:%M %p")}',
             'token': token,
             'document_name': document_name_base,
             'service_type': formatted_service_type,
@@ -14288,19 +13111,11 @@ def send_job_completion_notification(user_email, filename, vendor_id, status, co
         except Exception as e:
             print(f"❌ Error storing vendor notification: {e}")
         
-        # Send FCM push notification - CRITICAL: Must send even if other operations fail
-        fcm_sent = False
+        # Send FCM push notification
         try:
-            print(f"📱 Attempting to send FCM notification to {user_email} for job {filename}")
-            fcm_sent = send_fcm_notification(user_email, notification_data)
-            if fcm_sent:
-                print(f"✅ FCM notification sent successfully to {user_email}")
-            else:
-                print(f"⚠️ FCM notification failed to send to {user_email} - no active tokens or send failed")
+            send_fcm_notification(user_email, notification_data)
         except Exception as e:
-            print(f"❌ Error sending FCM notification: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"⚠️ Error sending FCM notification: {e}")
         
         # Send WebSocket notification for instant real-time updates
         try:
@@ -14498,36 +13313,21 @@ def send_fcm_notification(user_email, notification_data):
             else:
                 fcm_link = f'{site_domain}/userdashboard/'
         
-        # Ensure absolute URLs for icons (required for stable delivery on some devices)
-        if site_domain and not site_domain.startswith('http'):
-            # Basic protocol addition if missing (assumes https for prod)
-            full_domain = f"https://{site_domain}" if 'localhost' not in site_domain else f"http://{site_domain}"
-        else:
-             full_domain = site_domain or 'https://printmax.onrender.com'
-             
-        # Normalize domain to not have trailing slash
-        full_domain = full_domain.rstrip('/')
-        
-        # Use notification-icon.png as requested by user
-        icon_url = f"{full_domain}/static/images/notification-icon.png"
-        badge_url = f"{full_domain}/static/images/notification-icon.png"
-
         # Create FCM message
         # Build webpush config conditionally to avoid link issues
         webpush_notification = messaging.WebpushNotification(
             title=title,
             body=message,
-            icon=icon_url,
-            badge=badge_url,
+            icon='/static/images/android-chrome-192x192.png',
+            badge='/static/images/android-chrome-192x192.png',
             require_interaction=True
         )
         
         # Always use HTTPS link for FCM (required by FCM)
         # Ensure fcm_link is HTTPS
-        if not fcm_link.startswith('https://') and 'localhost' not in fcm_link and '127.0.0.1' not in fcm_link:
+        if not fcm_link.startswith('https://'):
             fcm_link = 'https://printmax.onrender.com/userdashboard/'
         
-        # Create FCM message configuration (reusuable parts)
         # Create webpush config with FCM options (always HTTPS)
         webpush_config = messaging.WebpushConfig(
             notification=webpush_notification,
@@ -14535,53 +13335,29 @@ def send_fcm_notification(user_email, notification_data):
                 link=fcm_link
             )
         )
-
-        sent_count = 0
-        failed_count = 0
         
-        # Send to tokens one by one, STOPPING after the first success to avoid duplicates
-        # We reverse the list to try the most recent tokens first (assuming they are appended)
-        print(f"📡 Attempting to send FCM notification to user {user_email} (has {len(tokens)} tokens)")
+        fcm_message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=message,
+                image=notification_data.get('icon', None)
+            ),
+            data={
+                'notification_id': notification_data.get('notification_id', ''),
+                'type': notification_data.get('type', 'job_completed'),
+                'filename': notification_data.get('filename', ''),
+                'token': notification_data.get('token', ''),
+                'status': notification_data.get('status', 'completed'),
+                'click_action': fcm_link
+            },
+            webpush=webpush_config,
+            token=tokens[0]  # Send to first token (you can extend this to send to all tokens)
+        )
         
-        for token in reversed(tokens):
-            try:
-                fcm_message = messaging.Message(
-                    notification=messaging.Notification(
-                        title=title,
-                        body=message,
-                        image=notification_data.get('icon', None)
-                    ),
-                    data={
-                        'notification_id': notification_data.get('notification_id', ''),
-                        'type': notification_data.get('type', 'job_completed'),
-                        'filename': notification_data.get('filename', ''),
-                        'token': notification_data.get('token', ''),
-                        'status': notification_data.get('status', 'completed'),
-                        'click_action': fcm_link
-                    },
-                    webpush=webpush_config,
-                    token=token
-                )
-                
-                # Send message
-                response = messaging.send(fcm_message)
-                print(f"✅ FCM notification sent to token {token[:10]}...: {response}")
-                sent_count += 1
-                
-                # Allow up to 3 successful deliveries to cover multiple active devices (e.g. Mobile + Desktop)
-                # But stop there to avoid excessive duplicates if they have many old active tokens
-                if sent_count >= 3:
-                     print("🛑 Reached 3 successful notifications, stopping to prevent spam.")
-                     break
-                
-            except Exception as e:
-                print(f"⚠️ Failed to send to token {token[:10]}...: {e}")
-                failed_count += 1
-        
-        if sent_count == 0:
-            print(f"❌ Failed to send notification to any of {len(tokens)} tokens")
-            
-        return sent_count > 0
+        # Send message
+        response = messaging.send(fcm_message)
+        print(f"✅ FCM notification sent successfully: {response}")
+        return True
         
     except Exception as e:
         print(f"❌ Error sending FCM notification: {e}")
@@ -14593,100 +13369,67 @@ def send_fcm_notification(user_email, notification_data):
 def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_email, completion_time, token=None):
     """Store vendor notification directly using vendor email from session"""
     try:
-        # Get token from Vendor_print_jobs table if not provided
-        if not token:
-            token = get_token_from_vendor_print_jobs(filename, vendor_id, vendor_email)
-            if not token:
-                token = os.path.splitext(filename)[0]
-                print(f"⚠️ Using filename as token fallback for {filename}")
-        
         # Parse completion time to get date
         completion_date = datetime.datetime.fromisoformat(completion_time.replace('Z', '+00:00')).date()
         
         # Get the appropriate 2-day date folder
         date_folder = get_vendor_notification_date_folder(completion_date)
         
-        # FIRST: Try to get pricing from User_print_jobs table (most accurate source)
+        # Get service type and pricing from job metadata
         service_type = "Print Job"
         platform_profit = 0.0
         total_price = 0.0
         
-        if user_email and filename:
-            d1_total_price, d1_platform_profit, d1_service_type = get_pricing_from_user_print_jobs(user_email, filename)
-            if d1_total_price is not None and d1_total_price > 0:
-                total_price = d1_total_price
-                print(f"📊 Using total_price from User_print_jobs for vendor notification: {total_price}")
-            if d1_platform_profit is not None and d1_platform_profit > 0:
-                platform_profit = d1_platform_profit
-                print(f"📊 Using platform_profit from User_print_jobs for vendor notification: {platform_profit}")
-            if d1_service_type:
-                service_type = d1_service_type
-                print(f"📊 Using service_type from User_print_jobs for vendor notification: {service_type}")
-        
-        # FALLBACK: Try to get service type and pricing from R2 metadata if D1 didn't have pricing
-        if total_price == 0.0 or platform_profit == 0.0:
+        try:
+            s3 = boto3.client('s3',
+                              aws_access_key_id=settings.R2_ACCESS_KEY,
+                              aws_secret_access_key=settings.R2_SECRET_KEY,
+                              endpoint_url=settings.R2_ENDPOINT,
+                              region_name='auto')
+            
+            # Try to get service type and platform_profit from vendor_print_jobs metadata
+            vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
             try:
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=settings.R2_ACCESS_KEY,
-                                  aws_secret_access_key=settings.R2_SECRET_KEY,
-                                  endpoint_url=settings.R2_ENDPOINT,
-                                  region_name='auto')
+                # Get object metadata instead of trying to read JSON from PDF
+                result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
+                metadata = result.get('Metadata', {})
                 
-                # Try to get service type and platform_profit from vendor_print_jobs metadata
-                vendor_key = f'vendor_print_jobs/{vendor_id}/{filename}'
-                try:
-                    # Get object metadata instead of trying to read JSON from PDF
-                    result = s3.head_object(Bucket=settings.R2_BUCKET, Key=vendor_key)
-                    metadata = result.get('Metadata', {})
-                    
-                    if not service_type or service_type == "Print Job":
-                        service_type = metadata.get('service_type', 'Print Job')
-                    
-                    # Only use R2 metadata if D1 didn't provide pricing
-                    if total_price == 0.0:
-                        # Extract platform_profit and total_price from pricing_details if available
-                        pricing_details_str = metadata.get('pricing_details')
-                        if pricing_details_str:
-                            try:
-                                pricing_obj = json.loads(pricing_details_str)
-                                
-                                # Try multiple possible keys for total_price
-                                total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
-                                
-                                print(f"📊 Extracted total_price from R2 pricing_details: {total_price}")
-                            except Exception as e:
-                                print(f"⚠️ Error parsing pricing_details: {e}")
+                service_type = metadata.get('service_type', 'Print Job')
+                
+                # Extract platform_profit and total_price from pricing_details if available
+                pricing_details_str = metadata.get('pricing_details')
+                if pricing_details_str:
+                    try:
+                        pricing_obj = json.loads(pricing_details_str)
                         
-                        # If total_price still not found, try metadata
-                        if total_price == 0.0:
-                            total_price = float(metadata.get('total_price', 0.0))
-                            print(f"📊 Using total_price from R2 metadata: {total_price}")
-                    
-                    # Only use R2 metadata if D1 didn't provide platform_profit
-                    if platform_profit == 0.0:
-                        pricing_details_str = metadata.get('pricing_details')
-                        if pricing_details_str:
-                            try:
-                                pricing_obj = json.loads(pricing_details_str)
-                                
-                                # Try multiple possible keys for platform_profit
-                                platform_profit = float(pricing_obj.get('platform_profit', 0.0))
-                                
-                                print(f"📊 Extracted platform_profit from R2 pricing_details: {platform_profit}")
-                            except Exception as e:
-                                print(f"⚠️ Error parsing pricing_details: {e}")
+                        # Try multiple possible keys for platform_profit
+                        platform_profit = float(pricing_obj.get('platform_profit', 0.0))
                         
-                        # If platform_profit still not found, try metadata
-                        if platform_profit == 0.0:
-                            platform_profit = float(metadata.get('platform_profit', 0.0))
-                            print(f"📊 Using platform_profit from R2 metadata: {platform_profit}")
-                            
-                except Exception as e:
-                    print(f"⚠️ Error reading metadata for {vendor_key}: {e}")
-                    pass
+                        # Try multiple possible keys for total_price
+                        total_price = float(pricing_obj.get('total', pricing_obj.get('total_price', 0.0)))
+                        
+                        print(f"📊 Extracted pricing from pricing_details: platform_profit={platform_profit}, total_price={total_price}")
+                    except Exception as e:
+                        print(f"⚠️ Error parsing pricing_details: {e}")
+                        platform_profit = 0.0
+                        total_price = 0.0
+                
+                # If total_price not found in pricing_details, try metadata
+                if total_price == 0.0:
+                    total_price = float(metadata.get('total_price', 0.0))
+                    print(f"📊 Using total_price from metadata: {total_price}")
+                
+                # If platform_profit not found in pricing_details, try metadata
+                if platform_profit == 0.0:
+                    platform_profit = float(metadata.get('platform_profit', 0.0))
+                    print(f"📊 Using platform_profit from metadata: {platform_profit}")
+                    
             except Exception as e:
-                print(f"⚠️ Error accessing S3: {e}")
+                print(f"⚠️ Error reading metadata for {vendor_key}: {e}")
                 pass
+        except Exception as e:
+            print(f"⚠️ Error accessing S3: {e}")
+            pass
         
         # Create notification ID
         notification_id = f"{filename}_{int(time.time())}"
@@ -14715,8 +13458,8 @@ def store_vendor_notification_direct(vendor_email, filename, vendor_id, user_ema
             'platform_profit': platform_profit,
             'total_price': total_price,
             'completion_time': completion_time,
-            'timestamp': get_ist_timestamp(),
-            'token': token,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'token': token or os.path.splitext(filename)[0],
             'document_name': document_name
         }
         
@@ -14958,24 +13701,18 @@ def update_vendor_status_in_r2(filename, status, vendor_id):
                     current_metadata['cancelled_time'] = datetime.datetime.now().isoformat()
                     current_metadata['job_failed'] = 'YES'  # Mark as failed for cancelled jobs
                 
-                # Avoid storing metadata for vendor/user print jobs; rely on DB tables
-                if path.startswith('vendor_print_jobs/') or path.startswith('users/'):
-                    print(f"ℹ️ Skipping R2 metadata write for {path}; DB holds metadata.")
-                    print(f"✅ Treated vendor_status as '{status}' for {filename} at {path} (DB-driven).")
-                    return True
-                else:
-                    # Copy object with updated metadata for non print-job assets
-                    copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
-                    s3.copy_object(
-                        CopySource=copy_source,
-                        Bucket=settings.R2_BUCKET,
-                        Key=path,
-                        Metadata=current_metadata,
-                        MetadataDirective='REPLACE'
-                    )
-                    
-                    print(f"✅ Updated vendor_status to '{status}' for {filename} at {path}")
-                    return True
+                # Copy object with updated metadata
+                copy_source = {'Bucket': settings.R2_BUCKET, 'Key': path}
+                s3.copy_object(
+                    CopySource=copy_source,
+                    Bucket=settings.R2_BUCKET,
+                    Key=path,
+                    Metadata=current_metadata,
+                    MetadataDirective='REPLACE'
+                )
+                
+                print(f"✅ Updated vendor_status to '{status}' for {filename} at {path}")
+                return True
                 
             except Exception as e:
                 print(f"   ⚠️ Not found at {path}: {str(e)}")
@@ -15374,88 +14111,6 @@ def hide_completed_job(request):
                 # Update vendor status to 'clear' instead of hiding
                 success = update_job_vendor_status_in_r2(filename, 'clear', vendor_id)
                 message = f'Job "{filename}" cleared from completed section'
-                
-                # CRITICAL: Also update database to set rendered_status='YES' and job_completed='YES' so job disappears from completed section
-                try:
-                    # Update D1 database via Worker API
-                    api_url = getattr(settings, 'WORKER_API_URL', '')
-                    api_key = getattr(settings, 'WORKER_API_KEY', '')
-                    
-                    if api_url and api_key:
-                        # Get user_email from the job metadata
-                        user_email = None
-                        try:
-                            s3 = boto3.client('s3',
-                                              aws_access_key_id=settings.R2_ACCESS_KEY,
-                                              aws_secret_access_key=settings.R2_SECRET_KEY,
-                                              endpoint_url=settings.R2_ENDPOINT,
-                                              region_name='auto')
-                            
-                            # Try to get user_email from R2 metadata
-                            possible_paths = [
-                                f'vendor_print_jobs/{vendor_id}/{filename}',
-                                f'vendor_manual_print_jobs/{vendor_id}/{filename}',
-                            ]
-                            
-                            for path in possible_paths:
-                                try:
-                                    head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=path)
-                                    metadata = head_response.get('Metadata', {})
-                                    user_email = metadata.get('user_email', '')
-                                    if user_email:
-                                        break
-                                except:
-                                    continue
-                        except Exception as e:
-                            print(f"⚠️ Error getting user_email from R2: {e}")
-                        
-                        if user_email:
-                            # Construct worker endpoint
-                            if '/add-contact' in api_url:
-                                worker_endpoint = api_url.replace('/add-contact', '/update-job-completed')
-                            elif '/add-vendor-register' in api_url:
-                                worker_endpoint = api_url.replace('/add-vendor-register', '/update-job-completed')
-                            else:
-                                worker_endpoint = api_url.rstrip('/') + '/update-job-completed'
-                            
-                            # Update both Vendor_print_jobs and User_print_jobs to set rendered_status='YES' and job_completed='YES'
-                            worker_payload = {
-                                'filename': filename,
-                                'vendor_id': vendor_id,
-                                'vendor_email': vendor_email,
-                                'user_email': user_email,
-                                'job_completed': 'YES',
-                                'rendered_status': 'YES',
-                                'completion_time': datetime.datetime.now().isoformat()
-                            }
-                            
-                            try:
-                                resp = requests.post(
-                                    worker_endpoint,
-                                    json=worker_payload,
-                                    headers={
-                                        'x-api-key': api_key,
-                                        'Content-Type': 'application/json'
-                                    },
-                                    timeout=10
-                                )
-                                if resp.status_code == 200:
-                                    resp_data = resp.json()
-                                    if resp_data.get('success'):
-                                        print(f"✅ Updated database: rendered_status='YES' and job_completed='YES' for {filename}")
-                                    else:
-                                        print(f"⚠️ Database update returned success=false: {resp_data.get('error')}")
-                                else:
-                                    print(f"⚠️ Failed to update database: {resp.status_code} - {resp.text[:200]}")
-                            except Exception as e:
-                                print(f"⚠️ Error updating database via Worker API: {e}")
-                        else:
-                            print(f"⚠️ Could not find user_email for {filename}, skipping database update")
-                    else:
-                        print("⚠️ Worker API not configured - skipping database update")
-                except Exception as db_error:
-                    print(f"⚠️ Error updating database for clear completed job: {db_error}")
-                    # Don't fail the request if database update fails
             else:
                 # Legacy behavior - update is_hidden status
                 success = update_job_hidden_status_in_r2(filename, 'true', vendor_id)
@@ -15698,25 +14353,14 @@ def logout(request):
     """
     Logout view that clears session data and redirects to home
     """
-    # Use Django's logout function to properly clear authentication
-    from django.contrib.auth import logout as django_logout
-    django_logout(request)
+    # Add success message before clearing session
+    messages.success(request, 'You have been successfully logged out!')
     
-    # Add success message (before session is cleared if possible)
-    try:
-        messages.success(request, 'You have been successfully logged out!')
-    except:
-        pass  # Session might already be cleared
-    
-    # Clear any remaining session data
+    # Clear all session data
     request.session.flush()
     
-    # Clear authentication cookies
-    response = redirect('home')
-    response.delete_cookie('sessionid')
-    response.delete_cookie('csrftoken')
-    
-    return response
+    # Redirect to home page
+    return redirect('home')
 
 
 # Connection monitoring system for vendor client
@@ -16082,15 +14726,3 @@ def get_vendor_connection_status(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
-
-
-def start_vendor_pending_jobs_scheduler():
-    """Start automatic vendor pending jobs snapshot scheduler"""
-    # Note: Scheduled snapshots are disabled because we need active vendor session
-    # Snapshots will be triggered on-demand when vendors access their dashboard
-    print("✅ Vendor pending jobs snapshot scheduler initialized (on-demand mode)")
-    print("📋 Snapshots will be stored when vendors access their dashboard")
-
-
-# Initialize automatic vendor pending jobs snapshot when the module is imported
-start_vendor_pending_jobs_scheduler()
