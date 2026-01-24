@@ -4021,6 +4021,11 @@ def upload_to_r2(request):
                         
                         # Validate that all metadata values are ASCII-compatible
                         for key, value in file_metadata.items():
+                            # Ensure all values are strings effectively
+                            if not isinstance(value, str):
+                                value = str(value)
+                                file_metadata[key] = value
+
                             try:
                                 value.encode('ascii')
                             except UnicodeEncodeError:
@@ -4028,12 +4033,12 @@ def upload_to_r2(request):
                                 # Replace non-ASCII characters with ASCII equivalents
                                 file_metadata[key] = value.encode('ascii', errors='replace').decode('ascii')
                         
-                        # Final validation - ensure all values are ASCII
+                        # Final validation - ensure all values are ASCII (Redundant but safe)
                         for key, value in file_metadata.items():
                             if not isinstance(value, str):
                                 file_metadata[key] = str(value)
                             # Ensure ASCII compatibility
-                            file_metadata[key] = value.encode('ascii', errors='replace').decode('ascii')
+                            file_metadata[key] = file_metadata[key].encode('ascii', errors='replace').decode('ascii')
                         
                         print(f"💰 Pricing details added to metadata: Rs{total_price}")
                     else:
@@ -10475,7 +10480,7 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                                         
                                         <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
                                             <span class="step-number" style="font-weight: bold; color: #4caf50; margin-right: 10px;">2.</span>
-                                            <strong>Watch the Demo Video:</strong> Please watch the training video before using the system to print customer documents.
+                                            <strong>Read the Rules:</strong> Please read the vendor rules and guidelines before using the system to print customer documents.
                                         </div>
                                         
                                         <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
@@ -10484,9 +10489,6 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                                         </div>
                                     </div>
 
-                                    <div style="text-align: center; margin: 30px 0;">
-                                        <a href="https://printmax.onrender.com/" style="display: inline-block; background: linear-gradient(135deg, #1976d2, #1565c0); color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 5px;">Login to Dashboard</a>
-                                    </div>
 
                                     <div class="footer" style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
                                         <p>Thank you for choosing PrintMax as your printing partner!</p>
@@ -10522,7 +10524,7 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
 
         NEXT STEPS:
         1. Access Your Dashboard: Click the "Vendor" button in the top navigation on the homepage to open your Vendor Dashboard.
-        2. Watch the Demo Video: Please watch the training video before using the system to print customer documents.
+        2. Read the Rules: Please read the vendor rules and guidelines before using the system to print customer documents.
         3. Start Receiving Orders: Once your account is activated, you will start receiving customer orders.
 
         Quick Link:
