@@ -1,19 +1,22 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="user-email" content="{{ user.email|default:'anonymous' }}">
     <title>Photo Print Service</title>
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}?v=2">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}?v=2">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}?v=2">
     <link rel="manifest" href="{% static 'images/site.webmanifest' %}?v=2">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script type="module" src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"></script>
@@ -23,21 +26,25 @@
                 transform: translateX(100%);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
             }
         }
+
         @keyframes slideOut {
             from {
                 transform: translateX(0);
                 opacity: 1;
             }
+
             to {
                 transform: translateX(100%);
                 opacity: 0;
             }
         }
+
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background: #e8ecf5;
@@ -46,19 +53,24 @@
             align-items: center;
             justify-content: center;
         }
+
         .modal-bg {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.35);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.35);
             z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
         .card-modal {
             background: #fff;
             border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
             max-width: 600px;
             min-width: 400px;
             width: 100%;
@@ -68,6 +80,7 @@
             flex-direction: column;
             overflow: hidden;
         }
+
         .modal-header {
             background: #2563eb;
             color: #fff;
@@ -75,14 +88,17 @@
             border-radius: 16px 16px 0 0;
             text-align: center;
         }
+
         .modal-header h1 {
             font-size: 1.4rem;
             margin-bottom: 4px;
         }
+
         .modal-header p {
             font-size: 1rem;
             color: #dbeafe;
         }
+
         .modal-content {
             flex: 1;
             overflow-y: auto;
@@ -94,6 +110,7 @@
             gap: 24px;
             position: relative;
         }
+
         .content-row {
             display: flex;
             flex-direction: row;
@@ -103,6 +120,7 @@
             flex-shrink: 0;
             flex-grow: 0;
         }
+
         .left-panel {
             flex: 1.2;
             display: flex;
@@ -112,6 +130,7 @@
             min-height: 0;
             flex-shrink: 1;
         }
+
         .right-panel {
             flex: 1;
             display: flex;
@@ -120,16 +139,20 @@
             justify-content: flex-start;
             flex-shrink: 1;
         }
+
         .right-panel .form-group {
             margin-bottom: 16px;
         }
+
         .right-panel label {
             font-size: 1rem;
             color: #222;
             margin-bottom: 4px;
             display: block;
         }
-        .right-panel select, .right-panel input[type=number] {
+
+        .right-panel select,
+        .right-panel input[type=number] {
             width: 100%;
             padding: 10px 10px;
             border-radius: 5px;
@@ -138,6 +161,7 @@
             background: #fff;
             margin-top: 2px;
         }
+
         .upload-btn {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: #fff;
@@ -158,18 +182,22 @@
             position: relative;
             overflow: hidden;
         }
+
         .upload-btn:hover {
             background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
         }
+
         .upload-btn:active {
             transform: translateY(0);
         }
+
         .upload-btn i {
             font-size: 1.2em;
             margin-right: 8px;
         }
+
         .upload-btn::before {
             content: '';
             position: absolute;
@@ -177,30 +205,35 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
             transition: left 0.5s;
         }
+
         .upload-btn:hover::before {
             left: 100%;
         }
+
         .photos-count {
             font-size: 1rem;
             color: #222;
             text-align: right;
             margin-bottom: 8px;
         }
+
         .thumbnails-grid-wrapper {
             display: flex;
             align-items: flex-start;
             gap: 8px;
             margin-bottom: 18px;
         }
+
         .thumbnails-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 6px;
             flex: 1;
         }
+
         .add-more-photos-btn {
             width: 50px;
             height: 50px;
@@ -215,9 +248,11 @@
             flex-shrink: 0;
             padding: 0;
         }
+
         .add-more-photos-btn.show {
             display: flex;
         }
+
         .add-more-photos-btn::before {
             content: '+';
             color: #000;
@@ -226,10 +261,12 @@
             line-height: 1;
             display: block;
         }
+
         .add-more-photos-btn:hover {
             background: rgba(0, 0, 0, 0.05);
             border-color: #333;
         }
+
         .thumb {
             position: relative;
             width: 50px;
@@ -237,13 +274,15 @@
             border-radius: 6px;
             overflow: hidden;
             background: #f1f5f9;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
         }
+
         .thumb img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
+
         .remove-thumb {
             position: absolute;
             top: 1px;
@@ -262,12 +301,14 @@
             z-index: 2;
             line-height: 1;
         }
+
         .layout-row {
             display: flex;
             justify-content: center;
             gap: 8px;
             margin: 10px 0 18px 0;
         }
+
         .layout-btn {
             background: #f1f5f9;
             border: 1.5px solid #d1d5db;
@@ -278,29 +319,38 @@
             cursor: pointer;
             transition: background 0.2s, border 0.2s;
         }
-        .layout-btn.active, .layout-btn:focus {
+
+        .layout-btn.active,
+        .layout-btn:focus {
             background: #2563eb;
             color: #fff;
             border-color: #2563eb;
         }
-        .shop-row, .orientation-row {
+
+        .shop-row,
+        .orientation-row {
             display: flex;
             align-items: center;
             gap: 10px;
             margin: 0 0 10px 0;
         }
-        .shop-row label, .orientation-row label {
+
+        .shop-row label,
+        .orientation-row label {
             font-size: 1rem;
             color: #222;
             min-width: 70px;
         }
-        .shop-row select, .orientation-row select {
+
+        .shop-row select,
+        .orientation-row select {
             flex: 1;
             padding: 7px 8px;
             border-radius: 5px;
             border: 1px solid #d1d5db;
             font-size: 1rem;
         }
+
         .preview-section {
             display: flex;
             justify-content: center;
@@ -311,6 +361,7 @@
             position: relative;
             flex-shrink: 0;
         }
+
         /* Desktop: Ensure preview is fully visible above buttons */
         @media (min-width: 801px) {
             .card-modal {
@@ -319,6 +370,7 @@
                 max-height: 98vh;
                 overflow: hidden;
             }
+
             .modal-content {
                 padding-bottom: 24px;
                 overflow-y: auto;
@@ -327,10 +379,12 @@
                 display: flex;
                 flex-direction: column;
             }
+
             .preview-section {
                 max-height: 420px;
                 flex-shrink: 0;
             }
+
             .footer-controls {
                 position: sticky;
                 bottom: 0;
@@ -338,15 +392,17 @@
                 flex-shrink: 0;
                 z-index: 10;
             }
+
             .points-section {
                 flex-shrink: 0;
             }
         }
+
         .a4-canvas {
             background: #fff;
             border: 2px solid #000;
             border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             width: 300px;
             height: 400px;
             max-width: 100%;
@@ -354,26 +410,32 @@
             display: block;
             margin-top: 8px;
         }
+
         @media (max-width: 768px) {
             .preview-section {
                 min-height: 240px;
                 max-height: 300px;
                 margin: 0 0 12px 0;
             }
+
             .a4-canvas {
                 width: 240px;
                 height: 320px;
             }
+
             .content-row {
                 flex-direction: column;
             }
+
             .left-panel {
                 order: 1;
             }
+
             .right-panel {
                 order: 2;
             }
         }
+
         .add-photo-plus {
             position: absolute;
             top: 10px;
@@ -391,6 +453,7 @@
             z-index: 10;
             padding: 0;
         }
+
         .add-photo-plus::before {
             content: '+';
             color: #000;
@@ -399,10 +462,12 @@
             line-height: 1;
             display: block;
         }
+
         .add-photo-plus:hover {
             background: rgba(0, 0, 0, 0.05);
             border-color: #333;
         }
+
         .footer-controls {
             display: flex;
             align-items: center;
@@ -416,17 +481,21 @@
             z-index: 2;
             flex-shrink: 0;
         }
-        .footer-controls select, .footer-controls input[type=number] {
+
+        .footer-controls select,
+        .footer-controls input[type=number] {
             padding: 6px 8px;
             border-radius: 5px;
             border: 1px solid #d1d5db;
             font-size: 1rem;
         }
+
         .footer-controls label {
             font-size: 1rem;
             color: #222;
             margin-right: 4px;
         }
+
         .print-btn {
             background: #2563eb;
             color: #fff;
@@ -437,18 +506,21 @@
             cursor: pointer;
             margin-left: auto;
             transition: background 0.2s;
-            box-shadow: 0 2px 8px rgba(37,99,235,0.08);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
             font-weight: 600;
             min-width: 110px;
         }
+
         .print-btn:disabled {
             background: #bcd0fa;
             color: #fff;
             cursor: not-allowed;
         }
+
         .print-btn:hover:not(:disabled) {
             background: #1746a2;
         }
+
         .cancel-btn {
             background: #222;
             color: #fff;
@@ -461,9 +533,11 @@
             transition: background 0.2s;
             min-width: 110px;
         }
+
         .cancel-btn:hover {
             background: #111;
         }
+
         .loading-pricing {
             display: flex;
             align-items: center;
@@ -472,19 +546,23 @@
             color: #6b7280;
             font-size: 14px;
         }
+
         .loading-pricing i {
             font-size: 16px;
         }
-.order-summary {
-    width: 100%;
-    display: none !important;
-    padding: 0 32px 18px;
-    margin-top: 0;
-    box-sizing: border-box;
-}
+
+        .order-summary {
+            width: 100%;
+            display: none !important;
+            padding: 0 32px 18px;
+            margin-top: 0;
+            box-sizing: border-box;
+        }
+
         .order-summary.show {
             display: none !important;
         }
+
         .pricing-summary-card {
             background: #fff;
             border-radius: 12px;
@@ -495,17 +573,20 @@
             flex-direction: column;
             gap: 1rem;
         }
+
         .pricing-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
         }
+
         .service-title {
             font-size: 1.1rem;
             font-weight: 700;
             color: #0f172a;
         }
+
         .service-status {
             background: #e0f2fe;
             color: #0369a1;
@@ -515,16 +596,19 @@
             font-size: 0.85rem;
             white-space: nowrap;
         }
+
         .service-details {
             display: flex;
             flex-direction: column;
             gap: 1rem;
         }
+
         .details-section {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 0.75rem;
         }
+
         .detail-item {
             background: #f8fafc;
             border-radius: 8px;
@@ -533,15 +617,18 @@
             flex-direction: column;
             gap: 0.15rem;
         }
+
         .detail-label {
             font-size: 0.8rem;
             color: #64748b;
         }
+
         .detail-value {
             font-size: 1rem;
             font-weight: 600;
             color: #0f172a;
         }
+
         .pricing-breakdown {
             border-top: 1px dashed #e2e8f0;
             padding-top: 1rem;
@@ -549,6 +636,7 @@
             flex-direction: column;
             gap: 0.75rem;
         }
+
         .breakdown-item {
             display: flex;
             align-items: center;
@@ -556,20 +644,25 @@
             font-size: 0.95rem;
             color: #1e293b;
         }
+
         .breakdown-item.points-applied {
             color: #b91c1c;
         }
+
         .breakdown-item.points-applied .breakdown-value {
             color: #b91c1c;
         }
+
         .breakdown-label {
             font-weight: 500;
             color: #475569;
         }
+
         .breakdown-value {
             font-weight: 600;
             color: #0f172a;
         }
+
         .breakdown-item.total-item {
             padding: 0.85rem;
             border-radius: 10px;
@@ -578,10 +671,12 @@
             color: #065f46;
             font-size: 1.05rem;
         }
+
         .breakdown-item.total-item .breakdown-label,
         .breakdown-item.total-item .breakdown-value {
             color: inherit;
         }
+
         .pricing-placeholder {
             display: flex;
             align-items: center;
@@ -589,15 +684,17 @@
             color: #475569;
             font-size: 0.95rem;
         }
+
         .pricing-placeholder i {
             color: #2563eb;
         }
-        
+
         .pricing-breakdown-list {
             margin: 0;
             padding: 0;
             list-style: none;
         }
+
         .pricing-item {
             display: flex;
             justify-content: space-between;
@@ -608,9 +705,11 @@
             gap: 20px;
             min-height: 24px;
         }
+
         .pricing-item:last-child {
             border-bottom: none;
         }
+
         .pricing-label {
             color: #475569;
             font-weight: 500;
@@ -619,6 +718,7 @@
             word-break: break-word;
             line-height: 1.4;
         }
+
         .pricing-value {
             color: #1e293b;
             font-weight: 600;
@@ -627,6 +727,7 @@
             flex-shrink: 0;
             min-width: 60px;
         }
+
         .pricing-item.total {
             font-size: 1.25rem;
             color: #059669;
@@ -643,6 +744,7 @@
             gap: 16px;
             box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
         }
+
         .pricing-item.total .fa-check-circle {
             color: #059669;
             font-size: 1.2em;
@@ -1066,13 +1168,15 @@
             }
         }
 
-        .points-available, .points-balance {
+        .points-available,
+        .points-balance {
             font-size: 0.85rem;
             color: #64748b;
             white-space: nowrap;
         }
 
-        .points-available span, .points-balance span {
+        .points-available span,
+        .points-balance span {
             font-weight: 600;
             color: #1e293b;
         }
@@ -1088,6 +1192,7 @@
                 width: 100%;
                 justify-content: stretch;
             }
+
             .points-actions button {
                 flex: 1;
                 min-width: 0;
@@ -1103,11 +1208,13 @@
                 gap: 0.5rem;
                 min-height: 44px;
             }
+
             .btn-apply-points {
                 background: linear-gradient(135deg, #f59e0b, #d97706) !important;
                 color: white !important;
                 border: none !important;
             }
+
             .btn-remove-points {
                 background: #ef4444 !important;
                 color: white !important;
@@ -1116,7 +1223,8 @@
             }
         }
 
-        .btn-apply-points, .btn-remove-points {
+        .btn-apply-points,
+        .btn-remove-points {
             padding: 0.5rem 1rem;
             border-radius: 6px;
             font-size: 0.85rem;
@@ -1159,11 +1267,13 @@
         .points-applied .points-icon {
             background: linear-gradient(135deg, #10b981, #059669);
         }
+
         .modal-bg.closing {
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.35s ease;
         }
+
         .photo-success-overlay {
             position: fixed;
             inset: 0;
@@ -1174,9 +1284,11 @@
             justify-content: center;
             z-index: 2000;
         }
+
         .photo-success-overlay.show {
             display: flex;
         }
+
         .photo-success-card {
             background: #fff;
             border-radius: 20px;
@@ -1185,6 +1297,7 @@
             text-align: center;
             box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
         }
+
         .photo-success-text {
             font-family: 'Poppins', sans-serif;
             font-size: 1.05rem;
@@ -1192,10 +1305,12 @@
             color: #0f172a;
             margin-top: 8px;
         }
+
         /* Shop Selection Button Styles - Simple Button */
         .vendor-selection {
             margin-bottom: 1rem;
         }
+
         .shop-selection-button {
             border: 2px solid #e5e7eb;
             border-radius: 8px;
@@ -1207,36 +1322,43 @@
             width: 100%;
             text-align: left;
         }
+
         .shop-selection-button:hover {
             border-color: #3b82f6;
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
             background: #f8fafc;
         }
+
         .shop-selection-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
         }
+
         .shop-selection-info {
             flex: 1;
             min-width: 0;
         }
+
         .shop-selection-title {
             font-weight: 600;
             color: #111827;
             font-size: 14px;
         }
+
         .shop-selection-subtitle {
             font-size: 12px;
             color: #6b7280;
             margin-top: 2px;
         }
+
         .shop-selection-arrow {
             color: #6b7280;
             font-size: 14px;
             flex-shrink: 0;
         }
+
         /* Shop Selection Modal */
         .shop-selection-modal {
             position: fixed;
@@ -1251,9 +1373,11 @@
             justify-content: center;
             padding: 20px;
         }
+
         .shop-selection-modal.open {
             display: flex;
         }
+
         .shop-selection-modal-content {
             background: #ffffff;
             border-radius: 16px;
@@ -1265,6 +1389,7 @@
             overflow: hidden;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
+
         .shop-selection-modal-header {
             padding: 20px 24px 16px 24px;
             border-bottom: 1px solid #e5e7eb;
@@ -1272,12 +1397,14 @@
             align-items: center;
             gap: 12px;
         }
+
         .shop-selection-modal-title {
             font-size: 18px;
             font-weight: 600;
             color: #111827;
             flex: 1;
         }
+
         .shop-selection-modal-close {
             background: none;
             border: none;
@@ -1291,14 +1418,17 @@
             font-size: 20px;
             transition: all 0.2s ease;
         }
+
         .shop-selection-modal-close:hover {
             background: #f3f4f6;
             color: #374151;
         }
+
         .shop-selection-search {
             padding: 16px 24px;
             border-bottom: 1px solid #e5e7eb;
         }
+
         .shop-selection-search-input {
             width: 100%;
             padding: 12px 16px;
@@ -1309,21 +1439,25 @@
             background: #ffffff;
             transition: all 0.3s ease;
         }
+
         .shop-selection-search-input:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+
         .shop-selection-modal-body {
             flex: 1;
             overflow-y: auto;
             padding: 16px 24px 24px 24px;
         }
+
         .shop-selection-list {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
+
         .shop-selection-item {
             border: 1px solid #e5e7eb;
             border-radius: 10px;
@@ -1332,21 +1466,25 @@
             transition: all 0.2s ease;
             background: #ffffff;
         }
+
         .shop-selection-item:hover {
             border-color: #3b82f6;
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
             transform: translateY(-1px);
         }
+
         .shop-selection-item.selected {
             border-color: #3b82f6;
             background: #f0f7ff;
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
         }
+
         .shop-selection-item-content {
             display: flex;
             align-items: center;
             gap: 12px;
         }
+
         .shop-selection-item-avatar {
             width: 44px;
             height: 44px;
@@ -1355,11 +1493,13 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
         }
+
         .shop-selection-item-info {
             flex: 1;
             min-width: 0;
             max-width: calc(100% - 120px);
         }
+
         .shop-selection-item-name {
             color: #111827;
             font-weight: 600;
@@ -1371,6 +1511,7 @@
             word-wrap: break-word;
             line-height: 1.4;
         }
+
         .shop-selection-item-address {
             white-space: nowrap;
             overflow: hidden;
@@ -1381,18 +1522,21 @@
             margin-bottom: 4px;
             line-height: 1.4;
         }
+
         .shop-selection-item-meta {
             display: flex;
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
         }
+
         .shop-selection-item-distance {
             color: #3b82f6;
             font-size: 14px;
             font-weight: 500;
             white-space: nowrap;
         }
+
         .shop-selection-item-track {
             background: #10b981;
             color: #fff;
@@ -1410,42 +1554,53 @@
             width: 32px;
             height: 32px;
         }
+
         .shop-selection-item-track:hover {
             background: #059669;
             transform: scale(1.05);
         }
+
         @media (max-width: 768px) {
             .shop-selection-modal {
                 padding: 10px;
             }
+
             .shop-selection-modal-content {
                 max-height: 90vh;
                 border-radius: 12px;
             }
         }
-            @media (max-width: 800px) {
+
+        @media (max-width: 800px) {
             .card-modal {
                 max-width: 99vw;
                 min-width: unset;
                 padding: 0 0 10px 0;
-                margin: 8px auto 20px auto; /* Add bottom margin so footer buttons are fully visible */
+                margin: 8px auto 20px auto;
+                /* Add bottom margin so footer buttons are fully visible */
             }
+
             .modal-content {
                 gap: 0;
                 padding: 18px 16px 0 16px;
             }
+
             .content-row {
                 flex-direction: column;
                 gap: 0;
             }
-            .left-panel, .right-panel {
+
+            .left-panel,
+            .right-panel {
                 width: 100%;
                 min-width: 0;
                 padding: 0;
             }
+
             .right-panel {
                 margin-top: 18px;
             }
+
             .pricing-summary {
                 width: 100%;
                 max-width: 100%;
@@ -1454,13 +1609,17 @@
                 margin-bottom: 20px;
                 align-self: center;
             }
+
             .bill-content {
                 padding: 0.85rem 10px;
             }
+
             .footer-controls {
-                padding: 16px 10px 24px 10px; /* Extra bottom padding for safe tap area above screen edge */
+                padding: 16px 10px 24px 10px;
+                /* Extra bottom padding for safe tap area above screen edge */
             }
         }
+
         @media (min-width: 801px) {
             .content-row {
                 display: flex;
@@ -1468,267 +1627,276 @@
         }
     </style>
 </head>
+
 <body>
-<div class="modal-bg">
-    <div class="card-modal">
-        <div class="modal-header">
-            <h1>Photo Print Service</h1>
-            <p>Upload your photos, select layout, and print instantly!</p>
-        </div>
-        <div class="modal-content">
-            <div class="content-row">
-            <div class="left-panel">
-                <button class="upload-btn" id="uploadBtn">
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 1.2em; margin-right: 8px;"></i>
-                    <span>Upload Photos</span>
-                </button>
-                <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
-                <div class="photos-count" id="photosCount">0 photos uploaded</div>
-                <div class="thumbnails-grid-wrapper">
-                    <div class="thumbnails-grid" id="thumbnailsGrid"></div>
-                    <button type="button" class="add-more-photos-btn" id="addMorePhotosBtn" title="Add more photos">
-                    </button>
-                </div>
-                <div class="layout-row">
-                    <button class="layout-btn active" data-layout="1">1</button>
-                    <button class="layout-btn" data-layout="2">2</button>
-                    <button class="layout-btn" data-layout="4">4</button>
-                    <button class="layout-btn" data-layout="6">6</button>
-                    <button class="layout-btn" data-layout="9">9</button>
-                </div>
-                <div class="preview-section">
-                    <canvas id="a4Canvas" class="a4-canvas" width="300" height="400"></canvas>
-                </div>
+    <div class="modal-bg">
+        <div class="card-modal">
+            <div class="modal-header">
+                <h1>Photo Print Service</h1>
+                <p>Upload your photos, select layout, and print instantly!</p>
             </div>
-            <div class="right-panel">
-                <div class="form-group">
-                    <label for="orientation">Orientation:</label>
-                    <select id="orientation">
-                        <option value="portrait">Portrait</option>
-                        <option value="landscape">Landscape</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="shopSelect">Shop:</label>
-                    <input type="hidden" id="shopSelect" value="" />
-                    <!-- Shop Selection Button - Simple Button -->
-                    <div class="vendor-selection" id="photo-vendor-selection">
-                        <button type="button" class="shop-selection-button" id="photo-shop-selection-button" onclick="openPhotoShopSelectionModal()">
-                            <div class="shop-selection-content">
-                                <div class="shop-selection-info">
-                                    <div class="shop-selection-title">Select Shop</div>
-                                    <div class="shop-selection-subtitle" id="photo-shop-subtitle">Choose a nearby print shop</div>
-                                </div>
-                                <div class="shop-selection-arrow">
-                                    <i class="fas fa-chevron-down"></i>
+            <div class="modal-content">
+                <div class="content-row">
+                    <div class="left-panel">
+                        <button class="upload-btn" id="uploadBtn">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 1.2em; margin-right: 8px;"></i>
+                            <span>Upload Photos</span>
+                        </button>
+                        <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
+                        <div class="photos-count" id="photosCount">0 photos uploaded</div>
+                        <div class="thumbnails-grid-wrapper">
+                            <div class="thumbnails-grid" id="thumbnailsGrid"></div>
+                            <button type="button" class="add-more-photos-btn" id="addMorePhotosBtn"
+                                title="Add more photos">
+                            </button>
+                        </div>
+                        <div class="layout-row">
+                            <button class="layout-btn active" data-layout="1">1</button>
+                            <button class="layout-btn" data-layout="2">2</button>
+                            <button class="layout-btn" data-layout="4">4</button>
+                            <button class="layout-btn" data-layout="6">6</button>
+                            <button class="layout-btn" data-layout="9">9</button>
+                        </div>
+                        <div class="preview-section">
+                            <canvas id="a4Canvas" class="a4-canvas" width="300" height="400"></canvas>
+                        </div>
+                    </div>
+                    <div class="right-panel">
+                        <div class="form-group">
+                            <label for="orientation">Orientation:</label>
+                            <select id="orientation">
+                                <option value="portrait">Portrait</option>
+                                <option value="landscape">Landscape</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="shopSelect">Shop:</label>
+                            <input type="hidden" id="shopSelect" value="" />
+                            <!-- Shop Selection Button - Simple Button -->
+                            <div class="vendor-selection" id="photo-vendor-selection">
+                                <button type="button" class="shop-selection-button" id="photo-shop-selection-button"
+                                    onclick="openPhotoShopSelectionModal()">
+                                    <div class="shop-selection-content">
+                                        <div class="shop-selection-info">
+                                            <div class="shop-selection-title">Select Shop</div>
+                                            <div class="shop-selection-subtitle" id="photo-shop-subtitle">Choose a
+                                                nearby print shop</div>
+                                        </div>
+                                        <div class="shop-selection-arrow">
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
-                            </div>
-                        </button>
+                        </div>
+                        <div class="form-group">
+                            <label for="color">Color:</label>
+                            <select id="color">
+                                <option value="Color">Color</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="copies">Copies:</label>
+                            <input type="number" id="copies" value="1" min="1" max="50" style="width:100%;">
+                        </div>
+                        <div class="form-group">
+                            <label for="pages">Pages:</label>
+                            <input type="number" id="pages" value="1" min="1" max="50" style="width:100%;" readonly>
+                        </div>
+
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="color">Color:</label>
-                    <select id="color">
-                                        <option value="Color">Color</option>
-                    </select>
+                <!-- Points Application Section - Placed below preview and above buttons like Document Print modal -->
+                <div class="points-section" id="photoprint-points-section" style="display: none;">
+                    <div class="points-header">
+                        <div class="points-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="points-title">Apply Points</div>
+                    </div>
+                    <div class="points-content">
+                        <div class="points-info">
+                            <span class="points-available">Available Points: <span
+                                    id="photoprint-available-points">0</span></span>
+                            <span class="points-balance">Balance after payment: <span
+                                    id="photoprint-points-balance">0</span></span>
+                        </div>
+                        <div class="points-actions">
+                            <button type="button" class="btn-apply-points" id="photoprint-apply-points-btn"
+                                onclick="applyPoints('photoprint')">
+                                <i class="fas fa-star"></i> Apply Points
+                            </button>
+                            <button type="button" class="btn-remove-points" id="photoprint-remove-points-btn"
+                                onclick="removePoints('photoprint')" style="display: none;">
+                                <i class="fas fa-times"></i> Remove Points
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="copies">Copies:</label>
-                    <input type="number" id="copies" value="1" min="1" max="50" style="width:100%;">
-                </div>
-                <div class="form-group">
-                    <label for="pages">Pages:</label>
-                    <input type="number" id="pages" value="1" min="1" max="50" style="width:100%;" readonly>
-                </div>
-                
             </div>
-            </div>
-            <!-- Points Application Section - Placed below preview and above buttons like Document Print modal -->
-            <div class="points-section" id="photoprint-points-section" style="display: none;">
-                <div class="points-header">
-                    <div class="points-icon">
-                        <i class="fas fa-star"></i>
+            <div class="order-summary" id="pricingSummary">
+                <div class="pricing-summary-card">
+                    <div class="pricing-header">
+                        <div class="service-title" id="photoSummaryService">Photo Printing</div>
+                        <div class="service-status">Ready to Process</div>
                     </div>
-                    <div class="points-title">Apply Points</div>
-                </div>
-                <div class="points-content">
-                    <div class="points-info">
-                        <span class="points-available">Available Points: <span id="photoprint-available-points">0</span></span>
-                        <span class="points-balance">Balance after payment: <span id="photoprint-points-balance">0</span></span>
-                    </div>
-                    <div class="points-actions">
-                        <button type="button" class="btn-apply-points" id="photoprint-apply-points-btn" onclick="applyPoints('photoprint')">
-                            <i class="fas fa-star"></i> Apply Points
-                        </button>
-                        <button type="button" class="btn-remove-points" id="photoprint-remove-points-btn" onclick="removePoints('photoprint')" style="display: none;">
-                            <i class="fas fa-times"></i> Remove Points
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="order-summary" id="pricingSummary">
-            <div class="pricing-summary-card">
-                <div class="pricing-header">
-                    <div class="service-title" id="photoSummaryService">Photo Printing</div>
-                    <div class="service-status">Ready to Process</div>
-                </div>
                     <div class="pricing-breakdown" id="pricingDetails">
                         <div class="pricing-placeholder">
                             <i class="fas fa-info-circle"></i>
                             <span>Upload photos and select a shop to see pricing.</span>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="footer-controls">
+                <button class="cancel-btn" id="cancelBtn">Cancel</button>
+                <button class="print-btn" id="printBtn" disabled>Print</button>
             </div>
         </div>
-        <div class="footer-controls">
-            <button class="cancel-btn" id="cancelBtn">Cancel</button>
-            <button class="print-btn" id="printBtn" disabled>Print</button>
+    </div>
+    <div id="photoSuccessOverlay" class="photo-success-overlay" aria-hidden="true">
+        <div class="photo-success-card">
+            <dotlottie-player src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame
+                style="width:140px; height:140px; margin:0 auto;"></dotlottie-player>
+            <div class="photo-success-text" id="photoSuccessText">✅ Print job sent to print successfully.</div>
         </div>
     </div>
-</div>
-<div id="photoSuccessOverlay" class="photo-success-overlay" aria-hidden="true">
-    <div class="photo-success-card">
-        <dotlottie-player src="{% static 'images/Success.lottie' %}" autoplay keep-last-frame style="width:140px; height:140px; margin:0 auto;"></dotlottie-player>
-        <div class="photo-success-text" id="photoSuccessText">✅ Print job sent to print successfully.</div>
-    </div>
-</div>
-<script>
-// Add a safe JSON parser to prevent "<!DOCTYPE" HTML parsing errors
-async function parseJsonResponse(response) {
-    const contentType = response.headers.get('content-type') || '';
-    const text = await response.text();
-    if (contentType.includes('application/json')) {
-        try { return JSON.parse(text); } catch (e) { throw new Error('Invalid JSON from server'); }
-    }
-    // If HTML returned (e.g., auth redirect/403), surface a clearer error
-    const snippet = text.slice(0, 120).replace(/\s+/g, ' ').trim();
-    throw new Error(snippet || 'Unexpected non-JSON response');
-}
-// --- Layout and slot sizes for each orientation ---
-const layoutSlotSizes = {
-    portrait: {
-        1:  [{w:2480, h:3508}],
-        2:  [{w:2480, h:1754}, {w:2480, h:1754}],
-        4:  Array(4).fill({w:1240, h:1754}),
-        6:  Array(6).fill({w:1240, h:1169}),
-        9:  Array(9).fill({w:826, h:1169})
-    },
-    landscape: {
-        1:  [{w:3508, h:2480}],
-        2:  [{w:1754, h:2480}, {w:1754, h:2480}],
-        4:  Array(4).fill({w:1754, h:1240}),
-        6:  Array(6).fill({w:1169, h:1240}),
-        9:  Array(9).fill({w:1169, h:826})
-    }
-};
-const a4Dims = {
-    portrait: {w:2480, h:3508, canvasW:300, canvasH:400},
-    landscape: {w:3508, h:2480, canvasW:400, canvasH:300}
-};
-let uploadedImages = [];
-let currentLayout = 1;
-let currentOrientation = 'portrait';
-let selectedShop = '';
-let availableShops = [];
-const uploadBtn = document.getElementById('uploadBtn');
-const fileInput = document.getElementById('fileInput');
-const photosCount = document.getElementById('photosCount');
-const thumbnailsGrid = document.getElementById('thumbnailsGrid');
-const a4Canvas = document.getElementById('a4Canvas');
-const layoutBtns = document.querySelectorAll('.layout-btn');
-const printBtn = document.getElementById('printBtn');
-const cancelBtn = document.getElementById('cancelBtn');
-const calculateBtn = document.getElementById('calculateBtn');
-const shopSelect = document.getElementById('shopSelect');
-const pricingSummary = document.getElementById('pricingSummary');
-const pricingDetails = document.getElementById('pricingDetails');
-const orientationSelect = document.getElementById('orientation');
-const copiesInput = document.getElementById('copies');
-const pagesInput = document.getElementById('pages');
-const summaryServiceName = document.getElementById('photoSummaryService');
-const photoSuccessOverlay = document.getElementById('photoSuccessOverlay');
-const photoSuccessText = document.getElementById('photoSuccessText');
+    <script>
+        // Add a safe JSON parser to prevent "<!DOCTYPE" HTML parsing errors
+        async function parseJsonResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            const text = await response.text();
+            if (contentType.includes('application/json')) {
+                try { return JSON.parse(text); } catch (e) { throw new Error('Invalid JSON from server'); }
+            }
+            // If HTML returned (e.g., auth redirect/403), surface a clearer error
+            const snippet = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+            throw new Error(snippet || 'Unexpected non-JSON response');
+        }
+        // --- Layout and slot sizes for each orientation ---
+        const layoutSlotSizes = {
+            portrait: {
+                1: [{ w: 2480, h: 3508 }],
+                2: [{ w: 2480, h: 1754 }, { w: 2480, h: 1754 }],
+                4: Array(4).fill({ w: 1240, h: 1754 }),
+                6: Array(6).fill({ w: 1240, h: 1169 }),
+                9: Array(9).fill({ w: 826, h: 1169 })
+            },
+            landscape: {
+                1: [{ w: 3508, h: 2480 }],
+                2: [{ w: 1754, h: 2480 }, { w: 1754, h: 2480 }],
+                4: Array(4).fill({ w: 1754, h: 1240 }),
+                6: Array(6).fill({ w: 1169, h: 1240 }),
+                9: Array(9).fill({ w: 1169, h: 826 })
+            }
+        };
+        const a4Dims = {
+            portrait: { w: 2480, h: 3508, canvasW: 300, canvasH: 400 },
+            landscape: { w: 3508, h: 2480, canvasW: 400, canvasH: 300 }
+        };
+        let uploadedImages = [];
+        let currentLayout = 1;
+        let currentOrientation = 'portrait';
+        let selectedShop = '';
+        let availableShops = [];
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const photosCount = document.getElementById('photosCount');
+        const thumbnailsGrid = document.getElementById('thumbnailsGrid');
+        const a4Canvas = document.getElementById('a4Canvas');
+        const layoutBtns = document.querySelectorAll('.layout-btn');
+        const printBtn = document.getElementById('printBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const shopSelect = document.getElementById('shopSelect');
+        const pricingSummary = document.getElementById('pricingSummary');
+        const pricingDetails = document.getElementById('pricingDetails');
+        const orientationSelect = document.getElementById('orientation');
+        const copiesInput = document.getElementById('copies');
+        const pagesInput = document.getElementById('pages');
+        const summaryServiceName = document.getElementById('photoSummaryService');
+        const photoSuccessOverlay = document.getElementById('photoSuccessOverlay');
+        const photoSuccessText = document.getElementById('photoSuccessText');
 
-function showPricingSummary() {
-    if (pricingSummary) {
-        pricingSummary.classList.add('show');
-    }
-}
+        function showPricingSummary() {
+            if (pricingSummary) {
+                pricingSummary.classList.add('show');
+            }
+        }
 
-function hidePricingSummary() {
-    if (pricingSummary) {
-        pricingSummary.classList.remove('show');
-    }
-    if (pricingDetails) {
-        pricingDetails.innerHTML = `
+        function hidePricingSummary() {
+            if (pricingSummary) {
+                pricingSummary.classList.remove('show');
+            }
+            if (pricingDetails) {
+                pricingDetails.innerHTML = `
           <div class="pricing-placeholder">
             <i class="fas fa-info-circle"></i>
             <span>Upload photos and select a shop to see pricing.</span>
           </div>
         `;
-    }
-}
+            }
+        }
 
-function renderPricingMessage(iconClass, message) {
-    if (!pricingDetails) return;
-    pricingDetails.innerHTML = `
+        function renderPricingMessage(iconClass, message) {
+            if (!pricingDetails) return;
+            pricingDetails.innerHTML = `
       <div class="pricing-placeholder">
         <i class="${iconClass}"></i>
         <span>${message}</span>
       </div>
     `;
-    showPricingSummary();
-}
+            showPricingSummary();
+        }
 
-function closePhotoPrintModalView() {
-    const modalBg = document.querySelector('.modal-bg');
-    if (!modalBg) return;
-    modalBg.classList.add('closing');
-    if (typeof modalBg.remove === 'function') {
-        modalBg.remove();
-    } else if (modalBg.parentNode) {
-        modalBg.parentNode.removeChild(modalBg);
-    }
-}
+        function closePhotoPrintModalView() {
+            const modalBg = document.querySelector('.modal-bg');
+            if (!modalBg) return;
+            modalBg.classList.add('closing');
+            if (typeof modalBg.remove === 'function') {
+                modalBg.remove();
+            } else if (modalBg.parentNode) {
+                modalBg.parentNode.removeChild(modalBg);
+            }
+        }
 
-function showPhotoSuccessOverlay(message) {
-    if (!photoSuccessOverlay) return;
-    if (photoSuccessText && message) {
-        photoSuccessText.textContent = message;
-    }
-    photoSuccessOverlay.classList.add('show');
-    photoSuccessOverlay.setAttribute('aria-hidden', 'false');
-}
+        function showPhotoSuccessOverlay(message) {
+            if (!photoSuccessOverlay) return;
+            if (photoSuccessText && message) {
+                photoSuccessText.textContent = message;
+            }
+            photoSuccessOverlay.classList.add('show');
+            photoSuccessOverlay.setAttribute('aria-hidden', 'false');
+        }
 
-function redirectToDashboardWithSuccess(message, token) {
-    const payload = {
-        message: message || '✅ Print job sent to print successfully.',
-        token: token || '',
-        timestamp: Date.now()
-    };
-    try {
-        sessionStorage.setItem('photoPrintSuccess', JSON.stringify(payload));
-    } catch (storageError) {
-        console.warn('Unable to persist success state:', storageError);
-    }
-    window.location.replace('/userdashboard/');
-}
+        function redirectToDashboardWithSuccess(message, token) {
+            const payload = {
+                message: message || '✅ Print job sent to print successfully.',
+                token: token || '',
+                timestamp: Date.now()
+            };
+            try {
+                sessionStorage.setItem('photoPrintSuccess', JSON.stringify(payload));
+            } catch (storageError) {
+                console.warn('Unable to persist success state:', storageError);
+            }
+            window.location.replace('/userdashboard/');
+        }
 
-function buildPhotoPricingBreakdown(breakdown, commission) {
-    const serviceName = (breakdown.pricing_key_used || 'Photo Print A4 Color')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, letter => letter.toUpperCase());
-    const basePrice = Number(breakdown.base_price || 0);
-    const subtotal = Number(breakdown.total_price || basePrice);
-    const totalAmount = Number(commission.total || subtotal);
-    const perPhoto = Number(breakdown.price_per_page || 0);
-    const pages = breakdown.photo_count || 1;
-    const copies = breakdown.copies || 1;
-    const color = breakdown.color || 'Color';
+        function buildPhotoPricingBreakdown(breakdown, commission) {
+            const serviceName = (breakdown.pricing_key_used || 'Photo Print A4 Color')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, letter => letter.toUpperCase());
+            const basePrice = Number(breakdown.base_price || 0);
+            const subtotal = Number(breakdown.total_price || basePrice);
+            const totalAmount = Number(commission.total || subtotal);
+            const perPhoto = Number(breakdown.price_per_page || 0);
+            const pages = breakdown.photo_count || 1;
+            const copies = breakdown.copies || 1;
+            const color = breakdown.color || 'Color';
 
-    // Use professional-bill format like Jumbo Print modal
-    let html = `
+            // Use professional-bill format like Jumbo Print modal
+            let html = `
         <div class="professional-bill">
             <div class="bill-header">
                 <div class="bill-identity">
@@ -1758,16 +1926,16 @@ function buildPhotoPricingBreakdown(breakdown, commission) {
                 <div class="invoice-items">
     `;
 
-    // Add service description
-    html += `
+            // Add service description
+            html += `
         <div class="invoice-item">
             <span class="invoice-item-label">${serviceName}</span>
             <span class="invoice-item-value">₹${basePrice.toFixed(2)}</span>
         </div>
     `;
 
-    // Add details
-    html += `
+            // Add details
+            html += `
         <div class="invoice-item">
             <span class="invoice-item-label">Number of photos</span>
             <span class="invoice-item-value">${pages}</span>
@@ -1786,32 +1954,32 @@ function buildPhotoPricingBreakdown(breakdown, commission) {
         </div>
     `;
 
-    if (perPhoto > 0) {
-        html += `
+            if (perPhoto > 0) {
+                html += `
             <div class="invoice-item">
                 <span class="invoice-item-label">Price per photo</span>
                 <span class="invoice-item-value">₹${perPhoto.toFixed(2)}</span>
             </div>
         `;
-    }
+            }
 
-    // Add subtotal
-    html += `
+            // Add subtotal
+            html += `
         <div class="invoice-item invoice-subtotal">
             <span class="invoice-item-label">Subtotal</span>
             <span class="invoice-item-value">₹${subtotal.toFixed(2)}</span>
         </div>
     `;
 
-    // Add grand total
-    html += `
+            // Add grand total
+            html += `
         <div class="invoice-item invoice-total" data-role="total">
             <span class="invoice-item-label">Grand Total</span>
             <span class="invoice-item-value">₹${totalAmount.toFixed(2)}</span>
         </div>
     `;
 
-    html += `
+            html += `
                 </div>
                 
                 <div class="bill-footer">
@@ -1828,117 +1996,117 @@ function buildPhotoPricingBreakdown(breakdown, commission) {
         </div>
     `;
 
-    return html;
-}
-// Distance calculation functions (same as dashboard)
-let userLocation = null;
+            return html;
+        }
+        // Distance calculation functions (same as dashboard)
+        let userLocation = null;
 
-function calculateDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-function formatDistance(distance) {
-    if (distance < 1) {
-        return Math.round(distance * 1000) + ' m';
-    } else {
-        return distance.toFixed(1) + ' km';
-    }
-}
-
-function getUserLocation() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation is not supported'));
-            return;
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
         }
 
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 60000
-        };
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    timestamp: Date.now()
-                };
-                resolve(userLocation);
-            },
-            (error) => {
-                console.log('Location error:', error.message);
-                reject(error);
-            },
-            options
-        );
-    });
-}
-
-function loadShops() {
-    fetch('/get-available-shops/', {headers: {'X-CSRFToken': getCookie('csrftoken')}})
-        .then(r=>r.json())
-        .then(data=>{
-            if(data.success && data.shops.length>0){
-                availableShops = data.shops;
-                
-                // Calculate distances if user location is available
-                if (userLocation) {
-                    availableShops = availableShops.map(shop => {
-                        if (shop.latitude && shop.longitude && 
-                            shop.latitude !== '' && shop.longitude !== '') {
-                            const shopLat = parseFloat(shop.latitude);
-                            const shopLng = parseFloat(shop.longitude);
-                            const distance = calculateDistance(
-                                userLocation.latitude, 
-                                userLocation.longitude, 
-                                shopLat, 
-                                shopLng
-                            );
-                            return {
-                                ...shop,
-                                distance: distance,
-                                distanceKm: distance,
-                                formattedDistance: formatDistance(distance)
-                            };
-                        } else {
-                            return {
-                                ...shop,
-                                distance: null,
-                                distanceKm: null,
-                                formattedDistance: 'Location not available'
-                            };
-                        }
-                    }).sort((a, b) => {
-                        if (a.distance === null && b.distance === null) return 0;
-                        if (a.distance === null) return 1;
-                        if (b.distance === null) return -1;
-                        return a.distance - b.distance;
-                    });
-                }
+        function formatDistance(distance) {
+            if (distance < 1) {
+                return Math.round(distance * 1000) + ' m';
             } else {
-                availableShops = [];
+                return distance.toFixed(1) + ' km';
             }
-        })
-        .catch(()=>{ availableShops = []; });
-}
+        }
 
-// Function to open shop selection modal for photo print
-function openPhotoShopSelectionModal() {
-    let modal = document.getElementById('photo-shop-selection-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.className = 'shop-selection-modal';
-        modal.id = 'photo-shop-selection-modal';
-        modal.innerHTML = `
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation is not supported'));
+                    return;
+                }
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 60000
+                };
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: Date.now()
+                        };
+                        resolve(userLocation);
+                    },
+                    (error) => {
+                        console.log('Location error:', error.message);
+                        reject(error);
+                    },
+                    options
+                );
+            });
+        }
+
+        function loadShops() {
+            fetch('/get-available-shops/', { headers: { 'X-CSRFToken': getCookie('csrftoken') } })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.shops.length > 0) {
+                        availableShops = data.shops;
+
+                        // Calculate distances if user location is available
+                        if (userLocation) {
+                            availableShops = availableShops.map(shop => {
+                                if (shop.latitude && shop.longitude &&
+                                    shop.latitude !== '' && shop.longitude !== '') {
+                                    const shopLat = parseFloat(shop.latitude);
+                                    const shopLng = parseFloat(shop.longitude);
+                                    const distance = calculateDistance(
+                                        userLocation.latitude,
+                                        userLocation.longitude,
+                                        shopLat,
+                                        shopLng
+                                    );
+                                    return {
+                                        ...shop,
+                                        distance: distance,
+                                        distanceKm: distance,
+                                        formattedDistance: formatDistance(distance)
+                                    };
+                                } else {
+                                    return {
+                                        ...shop,
+                                        distance: null,
+                                        distanceKm: null,
+                                        formattedDistance: 'Location not available'
+                                    };
+                                }
+                            }).sort((a, b) => {
+                                if (a.distance === null && b.distance === null) return 0;
+                                if (a.distance === null) return 1;
+                                if (b.distance === null) return -1;
+                                return a.distance - b.distance;
+                            });
+                        }
+                    } else {
+                        availableShops = [];
+                    }
+                })
+                .catch(() => { availableShops = []; });
+        }
+
+        // Function to open shop selection modal for photo print
+        function openPhotoShopSelectionModal() {
+            let modal = document.getElementById('photo-shop-selection-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.className = 'shop-selection-modal';
+                modal.id = 'photo-shop-selection-modal';
+                modal.innerHTML = `
           <div class="shop-selection-modal-content">
             <div class="shop-selection-modal-header">
               <div class="shop-selection-modal-title">Select Print Shop</div>
@@ -1959,165 +2127,165 @@ function openPhotoShopSelectionModal() {
             </div>
           </div>
         `;
-        document.body.appendChild(modal);
-        
-        // Setup modal events
-        setupPhotoShopSelectionModalEvents(modal);
-    }
-    
-    // Show modal
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    
-    // Load shops
-    loadShopsInPhotoModal();
-    
-    // Focus search input
-    setTimeout(() => {
-        const searchInput = document.getElementById('photo-shop-search-input');
-        if (searchInput) {
-            searchInput.focus();
-        }
-    }, 100);
-}
+                document.body.appendChild(modal);
 
-// Function to close shop selection modal
-function closePhotoShopSelectionModal() {
-    const modal = document.getElementById('photo-shop-selection-modal');
-    if (modal) {
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-}
+                // Setup modal events
+                setupPhotoShopSelectionModalEvents(modal);
+            }
 
-// Function to setup modal events
-function setupPhotoShopSelectionModalEvents(modal) {
-    const searchInput = document.getElementById('photo-shop-search-input');
-    const shopList = document.getElementById('photo-shop-selection-list');
-    
-    // Search functionality
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const shopItems = shopList.querySelectorAll('.shop-selection-item');
-            
-            shopItems.forEach(item => {
-                const name = item.querySelector('.shop-selection-item-name')?.textContent.toLowerCase() || '';
-                const address = item.querySelector('.shop-selection-item-address')?.textContent.toLowerCase() || '';
-                
-                if (name.includes(searchTerm) || address.includes(searchTerm)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
+            // Show modal
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+
+            // Load shops
+            loadShopsInPhotoModal();
+
+            // Focus search input
+            setTimeout(() => {
+                const searchInput = document.getElementById('photo-shop-search-input');
+                if (searchInput) {
+                    searchInput.focus();
                 }
-        });
-    });
-    }
-    
-    // Close modal when clicking outside
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closePhotoShopSelectionModal();
+            }, 100);
         }
-    });
-    
-    // Close modal with Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('open')) {
-            closePhotoShopSelectionModal();
-        }
-    });
-}
 
-// Function to load shops in modal
-function loadShopsInPhotoModal() {
-    const shopList = document.getElementById('photo-shop-selection-list');
-    if (!shopList) return;
-    
-    if (!availableShops || availableShops.length === 0) {
-        shopList.innerHTML = `
+        // Function to close shop selection modal
+        function closePhotoShopSelectionModal() {
+            const modal = document.getElementById('photo-shop-selection-modal');
+            if (modal) {
+                modal.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Function to setup modal events
+        function setupPhotoShopSelectionModalEvents(modal) {
+            const searchInput = document.getElementById('photo-shop-search-input');
+            const shopList = document.getElementById('photo-shop-selection-list');
+
+            // Search functionality
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const shopItems = shopList.querySelectorAll('.shop-selection-item');
+
+                    shopItems.forEach(item => {
+                        const name = item.querySelector('.shop-selection-item-name')?.textContent.toLowerCase() || '';
+                        const address = item.querySelector('.shop-selection-item-address')?.textContent.toLowerCase() || '';
+
+                        if (name.includes(searchTerm) || address.includes(searchTerm)) {
+                            item.style.display = 'block';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closePhotoShopSelectionModal();
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('open')) {
+                    closePhotoShopSelectionModal();
+                }
+            });
+        }
+
+        // Function to load shops in modal
+        function loadShopsInPhotoModal() {
+            const shopList = document.getElementById('photo-shop-selection-list');
+            if (!shopList) return;
+
+            if (!availableShops || availableShops.length === 0) {
+                shopList.innerHTML = `
           <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
             <i class="fas fa-store-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
             <p>No print shops available at the moment.</p>
           </div>
         `;
-        return;
-    }
-
-    // Filter shops to only show those within 3km radius (like jumbo print modal)
-    let shopsToRender = availableShops;
-    if (typeof locationBasedShops !== 'undefined' && locationBasedShops.length > 0) {
-        shopsToRender = locationBasedShops;
-    }
-    
-    // Filter to only show shops within 3km
-    const shopsWithin3km = shopsToRender.filter(shop => {
-        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : 
-                          (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
-        return distanceKm !== null && distanceKm !== undefined && distanceKm <= 3;
-    });
-    
-    // Use shops within 3km if available, otherwise use all shops
-    const finalShops = shopsWithin3km.length > 0 ? shopsWithin3km : shopsToRender;
-    
-    // Sort by distance
-    const sortedShops = [...finalShops].sort((a, b) => {
-        const aDist = (typeof a.distanceKm === 'number') ? a.distanceKm : (a.distance !== null && a.distance !== undefined) ? a.distance : Infinity;
-        const bDist = (typeof b.distanceKm === 'number') ? b.distanceKm : (b.distance !== null && b.distance !== undefined) ? b.distance : Infinity;
-        return aDist - bDist;
-    });
-
-    const shopItemsHtml = sortedShops.map((shop) => {
-        // Calculate distance if available
-        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm : 
-                          (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
-        let distance = '';
-        let hasDistance = false;
-        if (distanceKm !== null && distanceKm !== undefined) {
-            distance = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`;
-            hasDistance = true;
-        } else if (shop.formattedDistance) {
-            distance = shop.formattedDistance;
-            hasDistance = distance !== 'Location unavailable' && distance !== 'Distance not available';
-        } else if (shop.distance_km) {
-            const dist = Number(shop.distance_km);
-            distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
-            hasDistance = true;
-        } else {
-            distance = 'Location unavailable';
-            hasDistance = false;
-        }
-        
-        const address = [shop.shop_address, shop.city, shop.pincode].filter(Boolean).join(', ') || 
-                       [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code].filter(Boolean).join(', ') || 
-                       [shop.area, shop.city].filter(Boolean).join(', ') || 'Address not available';
-        
-        // Get traffic status like jumbo print modal
-        const pendingJobs = shop.pending_jobs_count || 0;
-        function getTrafficInfo(pendingJobs) {
-            const count = pendingJobs || 0;
-            if (count < 10) {
-                return { level: 'low', label: 'Low Traffic', color: '#10b981' };
-            } else if (count < 16) {
-                return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
-            } else {
-                return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+                return;
             }
-        }
-        const trafficInfo = getTrafficInfo(pendingJobs);
-        
-        // Distance display with icon for unavailable location
-        let distanceDisplay = '';
-        if (hasDistance) {
-            distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
-        } else {
-            distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
+
+            // Filter shops to only show those within 3km radius (like jumbo print modal)
+            let shopsToRender = availableShops;
+            if (typeof locationBasedShops !== 'undefined' && locationBasedShops.length > 0) {
+                shopsToRender = locationBasedShops;
+            }
+
+            // Filter to only show shops within 3km
+            const shopsWithin3km = shopsToRender.filter(shop => {
+                const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm :
+                    (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
+                return distanceKm !== null && distanceKm !== undefined && distanceKm <= 3;
+            });
+
+            // Use shops within 3km if available, otherwise use all shops
+            const finalShops = shopsWithin3km.length > 0 ? shopsWithin3km : shopsToRender;
+
+            // Sort by distance
+            const sortedShops = [...finalShops].sort((a, b) => {
+                const aDist = (typeof a.distanceKm === 'number') ? a.distanceKm : (a.distance !== null && a.distance !== undefined) ? a.distance : Infinity;
+                const bDist = (typeof b.distanceKm === 'number') ? b.distanceKm : (b.distance !== null && b.distance !== undefined) ? b.distance : Infinity;
+                return aDist - bDist;
+            });
+
+            const shopItemsHtml = sortedShops.map((shop) => {
+                // Calculate distance if available
+                const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm :
+                    (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
+                let distance = '';
+                let hasDistance = false;
+                if (distanceKm !== null && distanceKm !== undefined) {
+                    distance = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`;
+                    hasDistance = true;
+                } else if (shop.formattedDistance) {
+                    distance = shop.formattedDistance;
+                    hasDistance = distance !== 'Location unavailable' && distance !== 'Distance not available';
+                } else if (shop.distance_km) {
+                    const dist = Number(shop.distance_km);
+                    distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+                    hasDistance = true;
+                } else {
+                    distance = 'Location unavailable';
+                    hasDistance = false;
+                }
+
+                const address = [shop.shop_address, shop.city, shop.pincode].filter(Boolean).join(', ') ||
+                    [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code].filter(Boolean).join(', ') ||
+                    [shop.area, shop.city].filter(Boolean).join(', ') || 'Address not available';
+
+                // Get traffic status like jumbo print modal
+                const pendingJobs = shop.pending_jobs_count || 0;
+                function getTrafficInfo(pendingJobs) {
+                    const count = pendingJobs || 0;
+                    if (count < 10) {
+                        return { level: 'low', label: 'Low Traffic', color: '#10b981' };
+                    } else if (count < 16) {
+                        return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
+                    } else {
+                        return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+                    }
+                }
+                const trafficInfo = getTrafficInfo(pendingJobs);
+
+                // Distance display with icon for unavailable location
+                let distanceDisplay = '';
+                if (hasDistance) {
+                    distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
+                } else {
+                    distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
                 <i class="fas fa-map-marker-alt" style="font-size: 12px; color: #9ca3af;"></i>
                 <span>Location unavailable</span>
             </span>`;
-        }
-        
-        return `
+                }
+
+                return `
           <div class="shop-selection-item" 
                data-shop="${shop.shop_folder}"
                data-lat="${shop.latitude || ''}" 
@@ -2127,8 +2295,8 @@ function loadShopsInPhotoModal() {
                onclick="selectShopInPhotoModal('${shop.shop_folder}')">
             <div class="shop-selection-item-content">
               <img class="shop-selection-item-avatar" 
-                   src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name||'P')[0])}" 
-                   alt="${shop.shop_name||'Shop'}" />
+                   src="https://ui-avatars.com/api/?background=4f46e5&color=fff&name=${encodeURIComponent((shop.shop_name || 'P')[0])}" 
+                   alt="${shop.shop_name || 'Shop'}" />
               <div class="shop-selection-item-info">
                 <div class="shop-selection-item-name">${shop.shop_name || 'Print Shop'}</div>
                 <div class="shop-selection-item-address">${address}</div>
@@ -2145,553 +2313,553 @@ function loadShopsInPhotoModal() {
             </div>
           </div>
         `;
-    }).join('');
+            }).join('');
 
-    shopList.innerHTML = shopItemsHtml;
-}
-
-// Function to select shop in modal
-function selectShopInPhotoModal(shopFolder) {
-    const modal = document.getElementById('photo-shop-selection-modal');
-    const shopItems = modal.querySelectorAll('.shop-selection-item');
-    
-    // Remove selected class from all items
-    shopItems.forEach(item => item.classList.remove('selected'));
-    
-    // Add selected class to clicked item
-    const selectedItem = modal.querySelector(`[data-shop="${shopFolder}"]`);
-    if (selectedItem) {
-        selectedItem.classList.add('selected');
-        
-        const shopName = selectedItem.querySelector('.shop-selection-item-name')?.textContent || 'Selected Shop';
-        const shopAddress = selectedItem.querySelector('.shop-selection-item-address')?.textContent || '';
-        const distanceEl = selectedItem.querySelector('.shop-selection-item-meta .shop-selection-item-distance');
-        const distance = distanceEl ? distanceEl.textContent.trim() : '';
-        
-        // Update the shop selection button
-        const button = document.getElementById('photo-shop-selection-button');
-        if (button) {
-            const titleEl = button.querySelector('.shop-selection-title');
-            const subtitleEl = document.getElementById('photo-shop-subtitle');
-            if (titleEl) titleEl.textContent = shopName;
-            if (subtitleEl) {
-                subtitleEl.textContent = distance && distance !== 'Distance not available' ? `${shopAddress} • ${distance}` : shopAddress || 'Choose a nearby print shop';
-            }
+            shopList.innerHTML = shopItemsHtml;
         }
-        
-        // Update hidden input and selectedShop
-        selectedShop = shopFolder;
-        shopSelect.value = shopFolder;
-        
-        // Close modal
-        closePhotoShopSelectionModal();
-        
-        // Auto-calculate pricing if all required inputs are provided
-        setTimeout(() => {
-            if (uploadedImages.length > 0) {
-                const photoSize = document.getElementById('color');
-                const printQuantity = document.getElementById('copies');
-                const orientation = document.getElementById('orientation');
-                
-                if (photoSize && photoSize.value && printQuantity && printQuantity.value && 
-                    orientation && orientation.value) {
-                    // All inputs provided, auto-calculate
-                    calculatePhotoPrintPrice();
-                } else {
-                    // Show message to complete all inputs
-                    renderPricingMessage('fas fa-info-circle', 'Please complete all required fields to calculate pricing');
+
+        // Function to select shop in modal
+        function selectShopInPhotoModal(shopFolder) {
+            const modal = document.getElementById('photo-shop-selection-modal');
+            const shopItems = modal.querySelectorAll('.shop-selection-item');
+
+            // Remove selected class from all items
+            shopItems.forEach(item => item.classList.remove('selected'));
+
+            // Add selected class to clicked item
+            const selectedItem = modal.querySelector(`[data-shop="${shopFolder}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+
+                const shopName = selectedItem.querySelector('.shop-selection-item-name')?.textContent || 'Selected Shop';
+                const shopAddress = selectedItem.querySelector('.shop-selection-item-address')?.textContent || '';
+                const distanceEl = selectedItem.querySelector('.shop-selection-item-meta .shop-selection-item-distance');
+                const distance = distanceEl ? distanceEl.textContent.trim() : '';
+
+                // Update the shop selection button
+                const button = document.getElementById('photo-shop-selection-button');
+                if (button) {
+                    const titleEl = button.querySelector('.shop-selection-title');
+                    const subtitleEl = document.getElementById('photo-shop-subtitle');
+                    if (titleEl) titleEl.textContent = shopName;
+                    if (subtitleEl) {
+                        subtitleEl.textContent = distance && distance !== 'Distance not available' ? `${shopAddress} • ${distance}` : shopAddress || 'Choose a nearby print shop';
+                    }
                 }
-            } else {
-                renderPricingMessage('fas fa-upload', 'Please upload a photo first to calculate pricing');
+
+                // Update hidden input and selectedShop
+                selectedShop = shopFolder;
+                shopSelect.value = shopFolder;
+
+                // Close modal
+                closePhotoShopSelectionModal();
+
+                // Auto-calculate pricing if all required inputs are provided
+                setTimeout(() => {
+                    if (uploadedImages.length > 0) {
+                        const photoSize = document.getElementById('color');
+                        const printQuantity = document.getElementById('copies');
+                        const orientation = document.getElementById('orientation');
+
+                        if (photoSize && photoSize.value && printQuantity && printQuantity.value &&
+                            orientation && orientation.value) {
+                            // All inputs provided, auto-calculate
+                            calculatePhotoPrintPrice();
+                        } else {
+                            // Show message to complete all inputs
+                            renderPricingMessage('fas fa-info-circle', 'Please complete all required fields to calculate pricing');
+                        }
+                    } else {
+                        renderPricingMessage('fas fa-upload', 'Please upload a photo first to calculate pricing');
+                    }
+                }, 50);
             }
-        }, 50);
-    }
-}
-
-// Function to track shop location
-function trackShop(lat, lng) {
-    if (!lat || !lng || lat === '' || lng === '') {
-        alert('Location not available for this shop.');
-        return;
-    }
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&destination_place_id=&travelmode=driving`;
-    window.open(url, '_blank');
-}
-
-function handleFileUpload(e) {
-    const allFiles = Array.from(e.target.files);
-    if (allFiles.length === 0) return;
-    
-    // Validate file types - only allow PDF and images
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
-    
-    // Check for invalid files
-    const invalidFiles = [];
-    const validFiles = [];
-    
-    for (const file of allFiles) {
-        const fileName = file.name.toLowerCase();
-        const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-        const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
-        
-        if (!hasValidExtension && !hasValidType) {
-            invalidFiles.push(file);
-        } else {
-            validFiles.push(file);
         }
-    }
-    
-    // Show modal if invalid files found
-    if (invalidFiles.length > 0) {
-        showInvalidFileTypeModal(invalidFiles[0].name);
-        e.target.value = ''; // Clear the input
-        return; // Stop processing
-    }
-    
-    // Filter to only images (for photo print, we only accept images, not PDFs)
-    const imageFiles = validFiles.filter(file => file.type.startsWith('image/'));
-    if (imageFiles.length === 0) {
-        // If only PDFs were selected, show modal (photo print only accepts images)
-        if (validFiles.length > 0) {
-            showInvalidFileTypeModal(validFiles[0].name);
+
+        // Function to track shop location
+        function trackShop(lat, lng) {
+            if (!lat || !lng || lat === '' || lng === '') {
+                alert('Location not available for this shop.');
+                return;
+            }
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&destination_place_id=&travelmode=driving`;
+            window.open(url, '_blank');
         }
-        e.target.value = '';
-        return;
-    }
-    
-    // Don't clear existing images - append new ones
-    let loadedCount = 0;
-    imageFiles.forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            uploadedImages.push({
-                id: Date.now() + index + Math.random(), // Ensure unique IDs
-                data: event.target.result,
-                file: file,
-                name: file.name
+
+        function handleFileUpload(e) {
+            const allFiles = Array.from(e.target.files);
+            if (allFiles.length === 0) return;
+
+            // Validate file types - only allow PDF and images
+            const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+            const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+
+            // Check for invalid files
+            const invalidFiles = [];
+            const validFiles = [];
+
+            for (const file of allFiles) {
+                const fileName = file.name.toLowerCase();
+                const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+                const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
+
+                if (!hasValidExtension && !hasValidType) {
+                    invalidFiles.push(file);
+                } else {
+                    validFiles.push(file);
+                }
+            }
+
+            // Show modal if invalid files found
+            if (invalidFiles.length > 0) {
+                showInvalidFileTypeModal(invalidFiles[0].name);
+                e.target.value = ''; // Clear the input
+                return; // Stop processing
+            }
+
+            // Filter to only images (for photo print, we only accept images, not PDFs)
+            const imageFiles = validFiles.filter(file => file.type.startsWith('image/'));
+            if (imageFiles.length === 0) {
+                // If only PDFs were selected, show modal (photo print only accepts images)
+                if (validFiles.length > 0) {
+                    showInvalidFileTypeModal(validFiles[0].name);
+                }
+                e.target.value = '';
+                return;
+            }
+
+            // Don't clear existing images - append new ones
+            let loadedCount = 0;
+            imageFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    uploadedImages.push({
+                        id: Date.now() + index + Math.random(), // Ensure unique IDs
+                        data: event.target.result,
+                        file: file,
+                        name: file.name
+                    });
+                    loadedCount++;
+                    if (loadedCount === imageFiles.length) {
+                        autoSelectLayout();
+                        updateUI();
+                    }
+                };
+                reader.readAsDataURL(file);
             });
-            loadedCount++;
-            if (loadedCount === imageFiles.length) {
-                autoSelectLayout();
-                updateUI();
-            }
-        };
-        reader.readAsDataURL(file);
-    });
-    
-    // Clear the file input to allow re-uploading the same files
-    e.target.value = '';
-}
-function removePhoto(id) {
-    uploadedImages = uploadedImages.filter(img => img.id !== id);
-    autoSelectLayout();
-    updateUI();
-}
-function autoSelectLayout() {
-    const n = uploadedImages.length;
-    const valid = [1,2,4,6,9];
-    
-    // Auto-select layout based on number of images
-    if (n === 0) {
-        currentLayout = 1;
-    } else if (valid.includes(n)) {
-        currentLayout = n;
-    } else if (n > 9) {
-        currentLayout = 9; // Max layout
-    } else if (n > 6) {
-        currentLayout = 9;
-    } else if (n > 4) {
-        currentLayout = 6;
-    } else if (n > 2) {
-        currentLayout = 4;
-    } else if (n > 1) {
-        currentLayout = 2;
-    } else {
-        currentLayout = 1;
-    }
-    
-    // Update layout buttons
-    layoutBtns.forEach(b=>b.classList.remove('active'));
-    const btn = Array.from(layoutBtns).find(b=>parseInt(b.dataset.layout)===currentLayout);
-    if(btn) btn.classList.add('active');
-}
-function updateUI() {
-    photosCount.textContent = `${uploadedImages.length} photos uploaded`;
-    updateThumbnails();
-    updatePreview();
-    printBtn.disabled = uploadedImages.length === 0;
-    if (uploadedImages.length === 0) {
-        hidePricingSummary();
-    }
-}
-function updateThumbnails() {
-    const addMoreBtn = document.getElementById('addMorePhotosBtn');
-    if (uploadedImages.length === 0) {
-        thumbnailsGrid.innerHTML = '';
-        if (addMoreBtn) {
-            addMoreBtn.classList.remove('show');
+
+            // Clear the file input to allow re-uploading the same files
+            e.target.value = '';
         }
-        return;
-    }
-    thumbnailsGrid.innerHTML = uploadedImages.map(img => `
+        function removePhoto(id) {
+            uploadedImages = uploadedImages.filter(img => img.id !== id);
+            autoSelectLayout();
+            updateUI();
+        }
+        function autoSelectLayout() {
+            const n = uploadedImages.length;
+            const valid = [1, 2, 4, 6, 9];
+
+            // Auto-select layout based on number of images
+            if (n === 0) {
+                currentLayout = 1;
+            } else if (valid.includes(n)) {
+                currentLayout = n;
+            } else if (n > 9) {
+                currentLayout = 9; // Max layout
+            } else if (n > 6) {
+                currentLayout = 9;
+            } else if (n > 4) {
+                currentLayout = 6;
+            } else if (n > 2) {
+                currentLayout = 4;
+            } else if (n > 1) {
+                currentLayout = 2;
+            } else {
+                currentLayout = 1;
+            }
+
+            // Update layout buttons
+            layoutBtns.forEach(b => b.classList.remove('active'));
+            const btn = Array.from(layoutBtns).find(b => parseInt(b.dataset.layout) === currentLayout);
+            if (btn) btn.classList.add('active');
+        }
+        function updateUI() {
+            photosCount.textContent = `${uploadedImages.length} photos uploaded`;
+            updateThumbnails();
+            updatePreview();
+            printBtn.disabled = uploadedImages.length === 0;
+            if (uploadedImages.length === 0) {
+                hidePricingSummary();
+            }
+        }
+        function updateThumbnails() {
+            const addMoreBtn = document.getElementById('addMorePhotosBtn');
+            if (uploadedImages.length === 0) {
+                thumbnailsGrid.innerHTML = '';
+                if (addMoreBtn) {
+                    addMoreBtn.classList.remove('show');
+                }
+                return;
+            }
+            thumbnailsGrid.innerHTML = uploadedImages.map(img => `
         <div class="thumb">
             <img src="${img.data}" alt="thumb">
             <button class="remove-thumb" onclick="removePhoto(${img.id})">&times;</button>
         </div>
     `).join('');
-    if (addMoreBtn) {
-        addMoreBtn.classList.add('show');
-    }
-}
-function updatePreview() {
-    // Set canvas size for orientation
-    const dims = a4Dims[currentOrientation];
-    a4Canvas.width = dims.canvasW;
-    a4Canvas.height = dims.canvasH;
-    const ctx = a4Canvas.getContext('2d');
-    ctx.clearRect(0,0,dims.canvasW,dims.canvasH);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0,0,dims.canvasW,dims.canvasH);
-    
-    // Draw grid slots
-    let cols, rows;
-    switch(currentLayout) {
-        case 1: cols=1; rows=1; break;
-        case 2: cols=(currentOrientation==='portrait'?1:2); rows=(currentOrientation==='portrait'?2:1); break;
-        case 4: cols=2; rows=2; break;
-        case 6: cols=(currentOrientation==='portrait'?2:3); rows=(currentOrientation==='portrait'?3:2); break;
-        case 9: cols=3; rows=3; break;
-        default: cols=1; rows=1;
-    }
-    const slotW = dims.canvasW/cols;
-    const slotH = dims.canvasH/rows;
-    
-    // Track loaded images to ensure all are rendered
-    let imagesToLoad = 0;
-    let imagesLoaded = 0;
-    
-    for(let i=0; i<currentLayout; i++){
-        const x = (i%cols)*slotW;
-        const y = Math.floor(i/cols)*slotH;
-        
-        ctx.save();
-        
-        if(i < uploadedImages.length && uploadedImages[i]){
-            // Draw filled slot with actual image
-            ctx.strokeStyle = '#2563eb';
-            ctx.lineWidth = 1.2;
-            ctx.strokeRect(x+2,y+2,slotW-4,slotH-4);
-            
-            const img = uploadedImages[i];
-            const image = new window.Image();
-            image.src = img.data;
-            imagesToLoad++;
-            
-            image.onload = function() {
-                // Fit image in slot, keep aspect ratio
-                const aspect = image.width/image.height;
-                const slotAspect = slotW/slotH;
-                let drawW, drawH, dx, dy;
-                if(aspect>slotAspect){
-                    drawW = slotW-8;
-                    drawH = drawW/aspect;
-                }else{
-                    drawH = slotH-8;
-                    drawW = drawH*aspect;
-                }
-                dx = x+((slotW-drawW)/2);
-                dy = y+((slotH-drawH)/2);
-                ctx.drawImage(image,dx,dy,drawW,drawH);
-                imagesLoaded++;
-            };
-            
-            image.onerror = function() {
-                imagesLoaded++;
-            };
-        } else {
-            // Draw empty slot with dashed border
-            ctx.strokeStyle = '#d1d5db';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 5]);
-            ctx.strokeRect(x+2,y+2,slotW-4,slotH-4);
-            
-            // Add "Empty" text
-            ctx.fillStyle = '#9ca3af';
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Empty', x + slotW/2, y + slotH/2);
-        }
-        
-        ctx.restore();
-    }
-}
-async function createPDF() {
-    const { jsPDF } = window.jspdf;
-    const dims = a4Dims[currentOrientation];
-    const pdf = new jsPDF(currentOrientation==='portrait'?'p':'l', 'pt', [dims.w, dims.h]);
-    
-    // Set white background
-    pdf.setFillColor(255, 255, 255);
-    pdf.rect(0, 0, dims.w, dims.h, 'F');
-    
-    let cols, rows;
-    switch(currentLayout) {
-        case 1: cols=1; rows=1; break;
-        case 2: cols=(currentOrientation==='portrait'?1:2); rows=(currentOrientation==='portrait'?2:1); break;
-        case 4: cols=2; rows=2; break;
-        case 6: cols=(currentOrientation==='portrait'?2:3); rows=(currentOrientation==='portrait'?3:2); break;
-        case 9: cols=3; rows=3; break;
-        default: cols=1; rows=1;
-    }
-    
-    const margin = 20;
-    const spacing = 10;
-    const totalWidth = dims.w - (2 * margin);
-    const totalHeight = dims.h - (2 * margin);
-    const slotW = (totalWidth - ((cols - 1) * spacing)) / cols;
-    const slotH = (totalHeight - ((rows - 1) * spacing)) / rows;
-    
-    // Process only available uploaded images, don't replicate
-    const availableImages = uploadedImages.length;
-    
-    for(let i = 0; i < currentLayout; i++){
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const x = margin + col * (slotW + spacing);
-        const y = margin + row * (slotH + spacing);
-        
-        if(i < availableImages && uploadedImages[i]){
-            // Add actual image to slot
-            const img = uploadedImages[i];
-            await new Promise(resolve => {
-                const image = new Image();
-                image.onload = function() {
-                    try {
-                        // Calculate dimensions to fit image in slot while maintaining aspect ratio
-                        const imgAspect = image.width / image.height;
-                        const slotAspect = slotW / slotH;
-                        let drawW, drawH, dx, dy;
-                        
-                        if(imgAspect > slotAspect){
-                            drawW = slotW - 8;
-                            drawH = drawW / imgAspect;
-                        } else {
-                            drawH = slotH - 8;
-                            drawW = drawH * imgAspect;
-                        }
-                        
-                        dx = x + ((slotW - drawW) / 2);
-                        dy = y + ((slotH - drawH) / 2);
-                        
-                        // Add image to PDF
-                        pdf.addImage(image, 'JPEG', dx, dy, drawW, drawH);
-                        
-                        // Add border around image
-                        pdf.setDrawColor(100, 100, 100);
-                        pdf.setLineWidth(0.5);
-                        pdf.rect(x, y, slotW, slotH);
-                        
-                        resolve();
-                    } catch (error) {
-                        console.error('Error adding image to PDF:', error);
-                        resolve();
-                    }
-                };
-                image.onerror = function() {
-                    console.error('Error loading image for PDF');
-                    resolve();
-                };
-                image.src = img.data;
-            });
-        } else {
-            // Draw empty slot with dashed border
-            pdf.setDrawColor(200, 200, 200);
-            pdf.setLineWidth(1);
-            pdf.setLineDashPattern([3, 3], 0);
-            pdf.rect(x, y, slotW, slotH);
-            pdf.setLineDashPattern([], 0); // Reset dash pattern
-            
-            // Add "Empty Slot" text in light gray
-            pdf.setFontSize(10);
-            pdf.setTextColor(180, 180, 180);
-            pdf.text('Empty Slot', x + slotW/2, y + slotH/2, { align: 'center' });
-        }
-    }
-    
-    // No text added to PDF - clean layout only
-    
-    return pdf.output('blob');
-}
-printBtn.addEventListener('click', handlePrint);
-function resetPhotoPrintModal() {
-    uploadedImages = [];
-    currentLayout = 1;
-    currentOrientation = 'portrait';
-    selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : '';
-    document.getElementById('color').value = 'Color';
-    document.getElementById('copies').value = 1;
-    document.getElementById('pages').value = 1;
-    document.getElementById('orientation').value = 'portrait';
-    if (shopSelect) shopSelect.value = selectedShop || '';
-    layoutBtns.forEach(b => b.classList.remove('active'));
-    layoutBtns[0].classList.add('active');
-    
-    // Clear file input to allow re-uploading same files
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) fileInput.value = '';
-    
-    updateUI();
-    hidePricingSummary();
-}
-// Replace cancel behavior to go back without reloading
-cancelBtn.addEventListener('click', () => {
-        // Go back in browser history instead of reloading
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            // Fallback to dashboard if no history
-            window.location.href = '/userdashboard/';
-        }
-});
-layoutBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        layoutBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentLayout = parseInt(btn.dataset.layout);
-        updatePreview();
-    });
-});
-orientationSelect.addEventListener('change', ()=>{
-    currentOrientation = orientationSelect.value;
-    updatePreview();
-});
-
-// Sync pages with copies
-copiesInput.addEventListener('input', () => {
-    const copiesValue = parseInt(copiesInput.value) || 1;
-    pagesInput.value = copiesValue;
-});
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            cookie = cookie.trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+            if (addMoreBtn) {
+                addMoreBtn.classList.add('show');
             }
         }
-    }
-    return cookieValue;
-}
+        function updatePreview() {
+            // Set canvas size for orientation
+            const dims = a4Dims[currentOrientation];
+            a4Canvas.width = dims.canvasW;
+            a4Canvas.height = dims.canvasH;
+            const ctx = a4Canvas.getContext('2d');
+            ctx.clearRect(0, 0, dims.canvasW, dims.canvasH);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, dims.canvasW, dims.canvasH);
 
-// Commission helper (same logic as dashboard)
-function calculatePlatformCommission(serviceKey, vendorPrice) {
-    // Default 20% for A4 color-like services
-    const commissionRates = {
-        a4_print_bw: 0.12,
-        a4_print_color: 0.2,
-        digital_print_a4: 0.15,
-        digital_print_12x18: 0.18,
-        gloss_paper_a4: 0.2
-    };
-    const rate = commissionRates[serviceKey] ?? 0.2;
-    const amount = vendorPrice * rate;
-    return { rate, amount, total: vendorPrice + amount };
-}
+            // Draw grid slots
+            let cols, rows;
+            switch (currentLayout) {
+                case 1: cols = 1; rows = 1; break;
+                case 2: cols = (currentOrientation === 'portrait' ? 1 : 2); rows = (currentOrientation === 'portrait' ? 2 : 1); break;
+                case 4: cols = 2; rows = 2; break;
+                case 6: cols = (currentOrientation === 'portrait' ? 2 : 3); rows = (currentOrientation === 'portrait' ? 3 : 2); break;
+                case 9: cols = 3; rows = 3; break;
+                default: cols = 1; rows = 1;
+            }
+            const slotW = dims.canvasW / cols;
+            const slotH = dims.canvasH / rows;
 
-async function calculatePhotoPrintPrice() {
-    if (!selectedShop) {
-        renderPricingMessage('fas fa-info-circle', 'Please select a shop first to calculate pricing');
-        return;
-    }
+            // Track loaded images to ensure all are rendered
+            let imagesToLoad = 0;
+            let imagesLoaded = 0;
 
-    if (uploadedImages.length === 0) {
-        renderPricingMessage('fas fa-upload', 'Please upload at least one photo first');
-        return;
-    }
+            for (let i = 0; i < currentLayout; i++) {
+                const x = (i % cols) * slotW;
+                const y = Math.floor(i / cols) * slotH;
 
-    // Get selected vendor email
-    const selectedVendor = availableShops.find(shop => shop.shop_folder === selectedShop);
-    if (!selectedVendor || !selectedVendor.vendor_email) {
-        alert('Unable to get vendor information');
-        return;
-    }
+                ctx.save();
 
-    // Collect form data for photo print
-    const formData = {
-        vendor_email: selectedVendor.vendor_email,
-        photo_count: uploadedImages.length,
-        layout_slots: currentLayout,
-        orientation: currentOrientation,
-        color: document.getElementById('color').value,
-        copies: parseInt(document.getElementById('copies').value) || 1
-    };
+                if (i < uploadedImages.length && uploadedImages[i]) {
+                    // Draw filled slot with actual image
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.lineWidth = 1.2;
+                    ctx.strokeRect(x + 2, y + 2, slotW - 4, slotH - 4);
 
-    console.log('Photo print form data being sent:', formData);
+                    const img = uploadedImages[i];
+                    const image = new window.Image();
+                    image.src = img.data;
+                    imagesToLoad++;
 
-    // Show loading state
-    const pricingDetails = document.getElementById('pricingDetails');
-    if (pricingDetails) {
-        pricingDetails.innerHTML = `
+                    image.onload = function () {
+                        // Fit image in slot, keep aspect ratio
+                        const aspect = image.width / image.height;
+                        const slotAspect = slotW / slotH;
+                        let drawW, drawH, dx, dy;
+                        if (aspect > slotAspect) {
+                            drawW = slotW - 8;
+                            drawH = drawW / aspect;
+                        } else {
+                            drawH = slotH - 8;
+                            drawW = drawH * aspect;
+                        }
+                        dx = x + ((slotW - drawW) / 2);
+                        dy = y + ((slotH - drawH) / 2);
+                        ctx.drawImage(image, dx, dy, drawW, drawH);
+                        imagesLoaded++;
+                    };
+
+                    image.onerror = function () {
+                        imagesLoaded++;
+                    };
+                } else {
+                    // Draw empty slot with dashed border
+                    ctx.strokeStyle = '#d1d5db';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(x + 2, y + 2, slotW - 4, slotH - 4);
+
+                    // Add "Empty" text
+                    ctx.fillStyle = '#9ca3af';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Empty', x + slotW / 2, y + slotH / 2);
+                }
+
+                ctx.restore();
+            }
+        }
+        async function createPDF() {
+            const { jsPDF } = window.jspdf;
+            const dims = a4Dims[currentOrientation];
+            const pdf = new jsPDF(currentOrientation === 'portrait' ? 'p' : 'l', 'pt', [dims.w, dims.h]);
+
+            // Set white background
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, 0, dims.w, dims.h, 'F');
+
+            let cols, rows;
+            switch (currentLayout) {
+                case 1: cols = 1; rows = 1; break;
+                case 2: cols = (currentOrientation === 'portrait' ? 1 : 2); rows = (currentOrientation === 'portrait' ? 2 : 1); break;
+                case 4: cols = 2; rows = 2; break;
+                case 6: cols = (currentOrientation === 'portrait' ? 2 : 3); rows = (currentOrientation === 'portrait' ? 3 : 2); break;
+                case 9: cols = 3; rows = 3; break;
+                default: cols = 1; rows = 1;
+            }
+
+            const margin = 20;
+            const spacing = 10;
+            const totalWidth = dims.w - (2 * margin);
+            const totalHeight = dims.h - (2 * margin);
+            const slotW = (totalWidth - ((cols - 1) * spacing)) / cols;
+            const slotH = (totalHeight - ((rows - 1) * spacing)) / rows;
+
+            // Process only available uploaded images, don't replicate
+            const availableImages = uploadedImages.length;
+
+            for (let i = 0; i < currentLayout; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = margin + col * (slotW + spacing);
+                const y = margin + row * (slotH + spacing);
+
+                if (i < availableImages && uploadedImages[i]) {
+                    // Add actual image to slot
+                    const img = uploadedImages[i];
+                    await new Promise(resolve => {
+                        const image = new Image();
+                        image.onload = function () {
+                            try {
+                                // Calculate dimensions to fit image in slot while maintaining aspect ratio
+                                const imgAspect = image.width / image.height;
+                                const slotAspect = slotW / slotH;
+                                let drawW, drawH, dx, dy;
+
+                                if (imgAspect > slotAspect) {
+                                    drawW = slotW - 8;
+                                    drawH = drawW / imgAspect;
+                                } else {
+                                    drawH = slotH - 8;
+                                    drawW = drawH * imgAspect;
+                                }
+
+                                dx = x + ((slotW - drawW) / 2);
+                                dy = y + ((slotH - drawH) / 2);
+
+                                // Add image to PDF
+                                pdf.addImage(image, 'JPEG', dx, dy, drawW, drawH);
+
+                                // Add border around image
+                                pdf.setDrawColor(100, 100, 100);
+                                pdf.setLineWidth(0.5);
+                                pdf.rect(x, y, slotW, slotH);
+
+                                resolve();
+                            } catch (error) {
+                                console.error('Error adding image to PDF:', error);
+                                resolve();
+                            }
+                        };
+                        image.onerror = function () {
+                            console.error('Error loading image for PDF');
+                            resolve();
+                        };
+                        image.src = img.data;
+                    });
+                } else {
+                    // Draw empty slot with dashed border
+                    pdf.setDrawColor(200, 200, 200);
+                    pdf.setLineWidth(1);
+                    pdf.setLineDashPattern([3, 3], 0);
+                    pdf.rect(x, y, slotW, slotH);
+                    pdf.setLineDashPattern([], 0); // Reset dash pattern
+
+                    // Add "Empty Slot" text in light gray
+                    pdf.setFontSize(10);
+                    pdf.setTextColor(180, 180, 180);
+                    pdf.text('Empty Slot', x + slotW / 2, y + slotH / 2, { align: 'center' });
+                }
+            }
+
+            // No text added to PDF - clean layout only
+
+            return pdf.output('blob');
+        }
+        printBtn.addEventListener('click', handlePrint);
+        function resetPhotoPrintModal() {
+            uploadedImages = [];
+            currentLayout = 1;
+            currentOrientation = 'portrait';
+            selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : '';
+            document.getElementById('color').value = 'Color';
+            document.getElementById('copies').value = 1;
+            document.getElementById('pages').value = 1;
+            document.getElementById('orientation').value = 'portrait';
+            if (shopSelect) shopSelect.value = selectedShop || '';
+            layoutBtns.forEach(b => b.classList.remove('active'));
+            layoutBtns[0].classList.add('active');
+
+            // Clear file input to allow re-uploading same files
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) fileInput.value = '';
+
+            updateUI();
+            hidePricingSummary();
+        }
+        // Replace cancel behavior to go back without reloading
+        cancelBtn.addEventListener('click', () => {
+            // Go back in browser history instead of reloading
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                // Fallback to dashboard if no history
+                window.location.href = '/userdashboard/';
+            }
+        });
+        layoutBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                layoutBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLayout = parseInt(btn.dataset.layout);
+                updatePreview();
+            });
+        });
+        orientationSelect.addEventListener('change', () => {
+            currentOrientation = orientationSelect.value;
+            updatePreview();
+        });
+
+        // Sync pages with copies
+        copiesInput.addEventListener('input', () => {
+            const copiesValue = parseInt(copiesInput.value) || 1;
+            pagesInput.value = copiesValue;
+        });
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Commission helper (same logic as dashboard)
+        function calculatePlatformCommission(serviceKey, vendorPrice) {
+            // Default 20% for A4 color-like services
+            const commissionRates = {
+                a4_print_bw: 0.12,
+                a4_print_color: 0.2,
+                digital_print_a4: 0.15,
+                digital_print_12x18: 0.18,
+                gloss_paper_a4: 0.2
+            };
+            const rate = commissionRates[serviceKey] ?? 0.2;
+            const amount = vendorPrice * rate;
+            return { rate, amount, total: vendorPrice + amount };
+        }
+
+        async function calculatePhotoPrintPrice() {
+            if (!selectedShop) {
+                renderPricingMessage('fas fa-info-circle', 'Please select a shop first to calculate pricing');
+                return;
+            }
+
+            if (uploadedImages.length === 0) {
+                renderPricingMessage('fas fa-upload', 'Please upload at least one photo first');
+                return;
+            }
+
+            // Get selected vendor email
+            const selectedVendor = availableShops.find(shop => shop.shop_folder === selectedShop);
+            if (!selectedVendor || !selectedVendor.vendor_email) {
+                alert('Unable to get vendor information');
+                return;
+            }
+
+            // Collect form data for photo print
+            const formData = {
+                vendor_email: selectedVendor.vendor_email,
+                photo_count: uploadedImages.length,
+                layout_slots: currentLayout,
+                orientation: currentOrientation,
+                color: document.getElementById('color').value,
+                copies: parseInt(document.getElementById('copies').value) || 1
+            };
+
+            console.log('Photo print form data being sent:', formData);
+
+            // Show loading state
+            const pricingDetails = document.getElementById('pricingDetails');
+            if (pricingDetails) {
+                pricingDetails.innerHTML = `
           <div class="loading-pricing">
             <i class="fas fa-spinner fa-spin"></i>
             <span>Calculating pricing...</span>
           </div>
         `;
-        showPricingSummary();
-    }
-
-    try {
-        const response = await fetch('/calculate-photo-print-pricing/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify(formData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // Apply platform commission silently (same approach as dashboard)
-            const breakdown = result.pricing_breakdown;
-            const vendorPrice = Number(breakdown.total_price || 0);
-            // Use platform_profit from backend if available, otherwise calculate
-            const platformProfit = breakdown.platform_profit || breakdown.platform_commission || 0;
-            // Use A4 color pricing key for photo prints commission model
-            const commission = calculatePlatformCommission('a4_print_color', vendorPrice);
-
-            // Store pricing breakdown with platform profit in body dataset for later use
-            document.body.dataset.calculatedPrice = breakdown.final_amount || commission.total || vendorPrice;
-            document.body.dataset.pricingBreakdown = JSON.stringify({
-                ...breakdown,
-                platform_profit: platformProfit || commission.commission || 0,
-                platform_commission: breakdown.platform_commission || 20,
-                final_amount: breakdown.final_amount || commission.total || vendorPrice
-            });
-
-            if (summaryServiceName) summaryServiceName.textContent = 'Photo Printing';
-
-            if (pricingDetails) {
-                pricingDetails.innerHTML = buildPhotoPricingBreakdown(breakdown, commission);
+                showPricingSummary();
             }
-            showPricingSummary();
 
-            // Show points section if user has points
-            showPointsSection('photoprint');
-            
-            // Prompt user to apply points if available
-            if (userPoints > 0) {
-                setTimeout(() => {
-                    const pointsSection = document.getElementById('photoprint-points-section');
-                    if (pointsSection && pointsSection.style.display !== 'none') {
-                        // Show a friendly notification
-                        const notification = document.createElement('div');
-                        notification.style.cssText = `
+            try {
+                const response = await fetch('/calculate-photo-print-pricing/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Apply platform commission silently (same approach as dashboard)
+                    const breakdown = result.pricing_breakdown;
+                    const vendorPrice = Number(breakdown.total_price || 0);
+                    // Use platform_profit from backend if available, otherwise calculate
+                    const platformProfit = breakdown.platform_profit || breakdown.platform_commission || 0;
+                    // Use A4 color pricing key for photo prints commission model
+                    const commission = calculatePlatformCommission('a4_print_color', vendorPrice);
+
+                    // Store pricing breakdown with platform profit in body dataset for later use
+                    document.body.dataset.calculatedPrice = breakdown.final_amount || commission.total || vendorPrice;
+                    document.body.dataset.pricingBreakdown = JSON.stringify({
+                        ...breakdown,
+                        platform_profit: platformProfit || commission.commission || 0,
+                        platform_commission: breakdown.platform_commission || 20,
+                        final_amount: breakdown.final_amount || commission.total || vendorPrice
+                    });
+
+                    if (summaryServiceName) summaryServiceName.textContent = 'Photo Printing';
+
+                    if (pricingDetails) {
+                        pricingDetails.innerHTML = buildPhotoPricingBreakdown(breakdown, commission);
+                    }
+                    showPricingSummary();
+
+                    // Show points section if user has points
+                    showPointsSection('photoprint');
+
+                    // Prompt user to apply points if available
+                    if (userPoints > 0) {
+                        setTimeout(() => {
+                            const pointsSection = document.getElementById('photoprint-points-section');
+                            if (pointsSection && pointsSection.style.display !== 'none') {
+                                // Show a friendly notification
+                                const notification = document.createElement('div');
+                                notification.style.cssText = `
                             position: fixed;
                             top: 20px;
                             right: 20px;
@@ -2709,190 +2877,190 @@ async function calculatePhotoPrintPrice() {
                             font-weight: 500;
                             animation: slideIn 0.3s ease-out;
                         `;
-                        notification.innerHTML = `
+                                notification.innerHTML = `
                             <i class="fas fa-star" style="font-size: 1.2em;"></i>
                             <span>You have ${userPoints} points available! Apply them to save on your order.</span>
                         `;
-                        document.body.appendChild(notification);
-                        
-                        // Auto-remove after 5 seconds
-                        setTimeout(() => {
-                            notification.style.animation = 'slideOut 0.3s ease-out';
-                            setTimeout(() => notification.remove(), 300);
-                        }, 5000);
+                                document.body.appendChild(notification);
+
+                                // Auto-remove after 5 seconds
+                                setTimeout(() => {
+                                    notification.style.animation = 'slideOut 0.3s ease-out';
+                                    setTimeout(() => notification.remove(), 300);
+                                }, 5000);
+                            }
+                        }, 500);
                     }
-                }, 500);
-            }
 
-            // Store calculated price + breakdown in page dataset for submit
-            const finalBreakdown = { ...breakdown };
-            finalBreakdown.total_price = Number(commission.total).toFixed(2);
-            document.body.dataset.calculatedPrice = finalBreakdown.total_price;
-            document.body.dataset.pricingBreakdown = JSON.stringify(finalBreakdown);
+                    // Store calculated price + breakdown in page dataset for submit
+                    const finalBreakdown = { ...breakdown };
+                    finalBreakdown.total_price = Number(commission.total).toFixed(2);
+                    document.body.dataset.calculatedPrice = finalBreakdown.total_price;
+                    document.body.dataset.pricingBreakdown = JSON.stringify(finalBreakdown);
 
-        } else {
-            renderPricingMessage('fas fa-exclamation-circle', `Error: ${result.error || 'Unknown error'}`);
-        }
-    } catch (error) {
-        console.error('Error calculating photo print price:', error);
-        renderPricingMessage('fas fa-exclamation-circle', 'Error calculating price. Please try again.');
-    }
-}
-async function handlePrint() {
-    if (uploadedImages.length === 0) {
-        alert('Please upload at least one photo');
-        return;
-    }
-    if (!selectedShop) {
-        alert('Please select a shop');
-        return;
-    }
-    if (!document.body.dataset.calculatedPrice || !document.body.dataset.pricingBreakdown) {
-        alert('Please calculate the price before proceeding to print.');
-        return;
-    }
-    
-    printBtn.disabled = true;
-    printBtn.textContent = 'Creating PDF...';
-    
-    try {
-        // Create PDF in background
-        const pdfBlob = await createPDF();
-        const jobId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        const token = String(Math.floor(Math.random() * 900) + 100);
-        
-        const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
-        const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
-        const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
-        const shopName = selectedShopData ? (selectedShopData.shop_name || selectedShopData.vendor_name || '') : '';
-        const shopAddress = selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : '';
-        
-        // Use the first image's name for filename reference
-        const firstImg = uploadedImages[0];
-        const pdfFileName = `photo_layout_${jobId}.pdf`;
-        
-        // Get pricing details from modal metadata if available
-        let pricingDetails = null;
-        if (document.body.dataset.calculatedPrice && document.body.dataset.pricingBreakdown) {
-            try {
-                const breakdown = JSON.parse(document.body.dataset.pricingBreakdown);
-                pricingDetails = {
-                    total_price: breakdown.total_price || parseFloat(document.body.dataset.calculatedPrice),
-                    final_amount: breakdown.final_amount || parseFloat(document.body.dataset.calculatedPrice),
-                    platform_profit: breakdown.platform_profit || 0,
-                    platform_commission: breakdown.platform_commission || 20,
-                    pricing_breakdown: breakdown,
-                    calculation_timestamp: new Date().toISOString(),
-                    vendor_email: selectedShopData ? selectedShopData.vendor_email : null
-                };
-                console.log('💰 Pricing details stored in job metadata for photo print:', pricingDetails);
+                } else {
+                    renderPricingMessage('fas fa-exclamation-circle', `Error: ${result.error || 'Unknown error'}`);
+                }
             } catch (error) {
-                console.error('Error parsing pricing breakdown:', error);
+                console.error('Error calculating photo print price:', error);
+                renderPricingMessage('fas fa-exclamation-circle', 'Error calculating price. Please try again.');
             }
-        } else {
-            console.log('⚠️ No pricing details available for photo print job');
         }
-        
-        // Create comprehensive metadata similar to other modals
-        const metadata = {
-            filename: pdfFileName,
-            original_filename: firstImg ? firstImg.name : 'photo_layout.pdf',
-            service_type: 'photo_print',
-            service_name: 'Photo Print Service',
-            job_id: jobId,
-            token: token,
-            layout: `${currentLayout}`,
-            orientation: currentOrientation,
-            photo_count: String(uploadedImages.length),
-            total_slots: String(currentLayout),
-            empty_slots: String(Math.max(0, currentLayout - uploadedImages.length)),
-            paper_size: currentOrientation === 'portrait' ? 'A4' : 'A4 Landscape',
-            pageSize: currentOrientation === 'portrait' ? 'A4' : 'A4 Landscape',
-            color: document.getElementById('color').value,
-            copies: String(document.getElementById('copies').value),
-            pageRange: 'all',
-            specificPages: '',
-            priority: 'Medium',
-            quality: 'High',
-            thickness: '120gsm',
-            feedback: '',
-            spiralBinding: 'No',
-            lamination: 'No',
-            timestamp: new Date().toISOString(),
-            status: 'pending',
-            job_completed: 'NO',
-            trash: 'NO',
-            is_manual_job: 'YES',
-            vendor: vendorId,
-            vendor_email: selectedShopData ? selectedShopData.vendor_email : '',
-            user: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
-            user_email: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
-            pages: String(document.getElementById('pages').value || '1'),
-            layout_created: 'YES',
-            image_mode: 'individual_placement',
-            total_images: String(uploadedImages.length),
-            grid_layout: getGridLayoutString(currentLayout, currentOrientation),
-            layout_description: `${uploadedImages.length} images in ${currentLayout} slots (${Math.max(0, currentLayout - uploadedImages.length)} empty)`,
-            shop_name: shopName,
-            shop_address: shopAddress,
-            // Add pricing details if available
-            pricing_details: pricingDetails
-        };
-        
-        const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
-        
-        // Get points information
-        const modal = document.querySelector('.card-modal');
-        const pointsApplied = modal.dataset.pointsApplied === 'true';
-        const pointsUsed = modal.dataset.pointsUsed || '0';
-        const finalAmount = modal.dataset.finalAmount || document.body.dataset.calculatedPrice;
-        const isPointsApplied = modal.dataset.pointsApplied === 'true';
-        const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : (pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0);
-        const amountRs = finalAmountAfterPoints;
-        if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
-        
-        // Store PDF and metadata for order summary
-        window._photoPrintPendingData = {
-            pdfFile: pdfFile,
-            metadata: metadata,
-            selectedShop: selectedShop,
-            vendorId: vendorId,
-            vendorEmail: vendorEmail,
-            shopName: shopName,
-            shopAddress: shopAddress,
-            pointsApplied: pointsApplied,
-            pointsUsed: pointsUsed,
-            finalAmount: finalAmount,
-            amountRs: amountRs,
-            pricingDetails: pricingDetails
-        };
-        
-        // Show order summary
-        showPhotoPrintOrderSummary();
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert(`Error: ${error.message}`);
-        printBtn.disabled = false;
-        printBtn.textContent = 'Print';
-    }
-}
+        async function handlePrint() {
+            if (uploadedImages.length === 0) {
+                alert('Please upload at least one photo');
+                return;
+            }
+            if (!selectedShop) {
+                alert('Please select a shop');
+                return;
+            }
+            if (!document.body.dataset.calculatedPrice || !document.body.dataset.pricingBreakdown) {
+                alert('Please calculate the price before proceeding to print.');
+                return;
+            }
 
-// Function to show order summary for photo print
-function showPhotoPrintOrderSummary() {
-    const data = window._photoPrintPendingData;
-    if (!data) {
-        console.error('No pending photo print data found');
-        return;
-    }
-    
-    // Get or create order summary element
-    let orderSummary = document.getElementById('photoPrintOrderSummary');
-    if (!orderSummary) {
-        orderSummary = document.createElement('div');
-        orderSummary.id = 'photoPrintOrderSummary';
-        orderSummary.className = 'order-summary-modal';
-        orderSummary.innerHTML = `
+            printBtn.disabled = true;
+            printBtn.textContent = 'Creating PDF...';
+
+            try {
+                // Create PDF in background
+                const pdfBlob = await createPDF();
+                const jobId = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const token = String(Math.floor(Math.random() * 900) + 100);
+
+                const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShop);
+                const vendorId = selectedShopData ? selectedShopData.vendor_id : 'vendor1';
+                const vendorEmail = selectedShopData ? (selectedShopData.vendor_email || '') : '';
+                const shopName = selectedShopData ? (selectedShopData.shop_name || selectedShopData.vendor_name || '') : '';
+                const shopAddress = selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : '';
+
+                // Use the first image's name for filename reference
+                const firstImg = uploadedImages[0];
+                const pdfFileName = `photo_layout_${jobId}.pdf`;
+
+                // Get pricing details from modal metadata if available
+                let pricingDetails = null;
+                if (document.body.dataset.calculatedPrice && document.body.dataset.pricingBreakdown) {
+                    try {
+                        const breakdown = JSON.parse(document.body.dataset.pricingBreakdown);
+                        pricingDetails = {
+                            total_price: breakdown.total_price || parseFloat(document.body.dataset.calculatedPrice),
+                            final_amount: breakdown.final_amount || parseFloat(document.body.dataset.calculatedPrice),
+                            platform_profit: breakdown.platform_profit || 0,
+                            platform_commission: breakdown.platform_commission || 20,
+                            pricing_breakdown: breakdown,
+                            calculation_timestamp: new Date().toISOString(),
+                            vendor_email: selectedShopData ? selectedShopData.vendor_email : null
+                        };
+                        console.log('💰 Pricing details stored in job metadata for photo print:', pricingDetails);
+                    } catch (error) {
+                        console.error('Error parsing pricing breakdown:', error);
+                    }
+                } else {
+                    console.log('⚠️ No pricing details available for photo print job');
+                }
+
+                // Create comprehensive metadata similar to other modals
+                const metadata = {
+                    filename: pdfFileName,
+                    original_filename: firstImg ? firstImg.name : 'photo_layout.pdf',
+                    service_type: 'photo_print',
+                    service_name: 'Photo Print Service',
+                    job_id: jobId,
+                    token: token,
+                    layout: `${currentLayout}`,
+                    orientation: currentOrientation,
+                    photo_count: String(uploadedImages.length),
+                    total_slots: String(currentLayout),
+                    empty_slots: String(Math.max(0, currentLayout - uploadedImages.length)),
+                    paper_size: currentOrientation === 'portrait' ? 'A4' : 'A4 Landscape',
+                    pageSize: currentOrientation === 'portrait' ? 'A4' : 'A4 Landscape',
+                    color: document.getElementById('color').value,
+                    copies: String(document.getElementById('copies').value),
+                    pageRange: 'all',
+                    specificPages: '',
+                    priority: 'Medium',
+                    quality: 'High',
+                    thickness: '120gsm',
+                    feedback: '',
+                    spiralBinding: 'No',
+                    lamination: 'No',
+                    timestamp: new Date().toISOString(),
+                    status: 'pending',
+                    job_completed: 'NO',
+                    trash: 'NO',
+                    is_manual_job: 'YES',
+                    vendor: vendorId,
+                    vendor_email: selectedShopData ? selectedShopData.vendor_email : '',
+                    user: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
+                    user_email: document.querySelector('meta[name="user-email"]')?.content || 'anonymous',
+                    pages: String(document.getElementById('pages').value || '1'),
+                    layout_created: 'YES',
+                    image_mode: 'individual_placement',
+                    total_images: String(uploadedImages.length),
+                    grid_layout: getGridLayoutString(currentLayout, currentOrientation),
+                    layout_description: `${uploadedImages.length} images in ${currentLayout} slots (${Math.max(0, currentLayout - uploadedImages.length)} empty)`,
+                    shop_name: shopName,
+                    shop_address: shopAddress,
+                    // Add pricing details if available
+                    pricing_details: pricingDetails
+                };
+
+                const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+
+                // Get points information
+                const modal = document.querySelector('.card-modal');
+                const pointsApplied = modal.dataset.pointsApplied === 'true';
+                const pointsUsed = modal.dataset.pointsUsed || '0';
+                const finalAmount = modal.dataset.finalAmount || document.body.dataset.calculatedPrice;
+                const isPointsApplied = modal.dataset.pointsApplied === 'true';
+                const finalAmountAfterPoints = isPointsApplied ? parseFloat(modal.dataset.finalAmount || '0') : (pricingDetails?.total_price ? Number(pricingDetails.total_price) : 0);
+                const amountRs = finalAmountAfterPoints;
+                if (!amountRs || isNaN(amountRs) || amountRs <= 0) { throw new Error('Invalid amount. Please calculate price again.'); }
+
+                // Store PDF and metadata for order summary
+                window._photoPrintPendingData = {
+                    pdfFile: pdfFile,
+                    metadata: metadata,
+                    selectedShop: selectedShop,
+                    vendorId: vendorId,
+                    vendorEmail: vendorEmail,
+                    shopName: shopName,
+                    shopAddress: shopAddress,
+                    pointsApplied: pointsApplied,
+                    pointsUsed: pointsUsed,
+                    finalAmount: finalAmount,
+                    amountRs: amountRs,
+                    pricingDetails: pricingDetails
+                };
+
+                // Show order summary
+                showPhotoPrintOrderSummary();
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+                printBtn.disabled = false;
+                printBtn.textContent = 'Print';
+            }
+        }
+
+        // Function to show order summary for photo print
+        function showPhotoPrintOrderSummary() {
+            const data = window._photoPrintPendingData;
+            if (!data) {
+                console.error('No pending photo print data found');
+                return;
+            }
+
+            // Get or create order summary element
+            let orderSummary = document.getElementById('photoPrintOrderSummary');
+            if (!orderSummary) {
+                orderSummary = document.createElement('div');
+                orderSummary.id = 'photoPrintOrderSummary';
+                orderSummary.className = 'order-summary-modal';
+                orderSummary.innerHTML = `
             <div class="order-summary-content">
                 <div class="order-summary-header">
                     <div class="modal-icon">
@@ -2977,13 +3145,13 @@ function showPhotoPrintOrderSummary() {
                 </div>
             </div>
         `;
-        document.body.appendChild(orderSummary);
-        
-        // Add styles if not already added
-        if (!document.getElementById('photoPrintOrderSummaryStyles')) {
-            const style = document.createElement('style');
-            style.id = 'photoPrintOrderSummaryStyles';
-            style.textContent = `
+                document.body.appendChild(orderSummary);
+
+                // Add styles if not already added
+                if (!document.getElementById('photoPrintOrderSummaryStyles')) {
+                    const style = document.createElement('style');
+                    style.id = 'photoPrintOrderSummaryStyles';
+                    style.textContent = `
                 .order-summary-modal {
                     position: fixed;
                     top: 0;
@@ -3390,486 +3558,489 @@ function showPhotoPrintOrderSummary() {
                     }
                 }
             `;
-            document.head.appendChild(style);
+                    document.head.appendChild(style);
+                }
+            }
+
+            // Populate order summary data
+            // Set date and time
+            const now = new Date();
+            const dateEl = document.getElementById('photoOrderDate');
+            if (dateEl) dateEl.textContent = now.toLocaleDateString();
+            const timeEl = document.getElementById('photoOrderTime');
+            if (timeEl) timeEl.textContent = now.toLocaleTimeString();
+
+            // Calculate and display ETA based on pending jobs
+            function calculateETA(pendingJobs) {
+                const count = pendingJobs || 0;
+                if (count <= 4) {
+                    return { min: 7, max: 12, message: 'Ready in 7–12 min' };
+                } else if (count <= 9) {
+                    return { min: 15, max: 20, message: 'Ready in 15–20 min' };
+                } else if (count <= 14) {
+                    return { min: 25, max: 30, message: 'Ready in 25–30 min' };
+                } else if (count <= 19) {
+                    return { min: 40, max: 45, message: 'Ready in 40–45 min' };
+                } else {
+                    return { min: 60, max: null, message: 'Ready in 60+ min' };
+                }
+            }
+
+            // Get pending jobs from shop data
+            const selectedShopData = availableShops.find(shop => shop.shop_folder === data.selectedShop);
+            const pendingJobs = selectedShopData ? (selectedShopData.pending_jobs_count || 0) : 0;
+            const eta = calculateETA(pendingJobs);
+            const etaEl = document.getElementById('photoOrderETA');
+            if (etaEl) etaEl.textContent = eta.message;
+
+            const shopNameEl = document.getElementById('photoOrderShopName');
+            if (shopNameEl) shopNameEl.textContent = data.shopName || '-';
+            const shopAddressEl = document.getElementById('photoOrderShopAddress');
+            const shopAddressRow = document.getElementById('photoOrderShopAddressRow');
+            if (data.shopAddress && shopAddressEl && shopAddressRow) {
+                // Show full address without truncation
+                shopAddressEl.textContent = data.shopAddress.trim();
+                shopAddressEl.style.whiteSpace = 'normal';
+                shopAddressEl.style.overflow = 'visible';
+                shopAddressEl.style.textOverflow = 'clip';
+                shopAddressRow.style.display = 'flex';
+            } else if (shopAddressRow) {
+                shopAddressRow.style.display = 'none';
+            }
+            const colorEl = document.getElementById('photoOrderColor');
+            if (colorEl) colorEl.textContent = data.metadata.color || 'Color';
+            const imagesEl = document.getElementById('photoOrderImages');
+            if (imagesEl) imagesEl.textContent = data.metadata.total_images || '0';
+            const totalEl = document.getElementById('photoOrderTotal');
+            if (totalEl) totalEl.textContent = `₹${data.amountRs.toFixed(2)}`;
+
+            // Show modal
+            orderSummary.style.display = 'flex';
+            printBtn.disabled = false;
+            printBtn.textContent = 'Print';
         }
-    }
-    
-    // Populate order summary data
-    // Set date and time
-    const now = new Date();
-    const dateEl = document.getElementById('photoOrderDate');
-    if (dateEl) dateEl.textContent = now.toLocaleDateString();
-    const timeEl = document.getElementById('photoOrderTime');
-    if (timeEl) timeEl.textContent = now.toLocaleTimeString();
-    
-    // Calculate and display ETA based on pending jobs
-    function calculateETA(pendingJobs) {
-        const count = pendingJobs || 0;
-        if (count <= 4) {
-            return { min: 7, max: 12, message: 'Ready in 7–12 min' };
-        } else if (count <= 9) {
-            return { min: 15, max: 20, message: 'Ready in 15–20 min' };
-        } else if (count <= 14) {
-            return { min: 25, max: 30, message: 'Ready in 25–30 min' };
-        } else if (count <= 19) {
-            return { min: 40, max: 45, message: 'Ready in 40–45 min' };
-        } else {
-            return { min: 60, max: null, message: 'Ready in 60+ min' };
+
+        // Function to close order summary
+        function closePhotoPrintOrderSummary() {
+            const orderSummary = document.getElementById('photoPrintOrderSummary');
+            if (orderSummary) {
+                orderSummary.style.display = 'none';
+            }
         }
-    }
-    
-    // Get pending jobs from shop data
-    const selectedShopData = availableShops.find(shop => shop.shop_folder === data.selectedShop);
-    const pendingJobs = selectedShopData ? (selectedShopData.pending_jobs_count || 0) : 0;
-    const eta = calculateETA(pendingJobs);
-    const etaEl = document.getElementById('photoOrderETA');
-    if (etaEl) etaEl.textContent = eta.message;
-    
-    const shopNameEl = document.getElementById('photoOrderShopName');
-    if (shopNameEl) shopNameEl.textContent = data.shopName || '-';
-    const shopAddressEl = document.getElementById('photoOrderShopAddress');
-    const shopAddressRow = document.getElementById('photoOrderShopAddressRow');
-    if (data.shopAddress && shopAddressEl && shopAddressRow) {
-        // Show full address without truncation
-        shopAddressEl.textContent = data.shopAddress.trim();
-        shopAddressEl.style.whiteSpace = 'normal';
-        shopAddressEl.style.overflow = 'visible';
-        shopAddressEl.style.textOverflow = 'clip';
-        shopAddressRow.style.display = 'flex';
-    } else if (shopAddressRow) {
-        shopAddressRow.style.display = 'none';
-    }
-    const colorEl = document.getElementById('photoOrderColor');
-    if (colorEl) colorEl.textContent = data.metadata.color || 'Color';
-    const imagesEl = document.getElementById('photoOrderImages');
-    if (imagesEl) imagesEl.textContent = data.metadata.total_images || '0';
-    const totalEl = document.getElementById('photoOrderTotal');
-    if (totalEl) totalEl.textContent = `₹${data.amountRs.toFixed(2)}`;
-    
-    // Show modal
-    orderSummary.style.display = 'flex';
-    printBtn.disabled = false;
-    printBtn.textContent = 'Print';
-}
 
-// Function to close order summary
-function closePhotoPrintOrderSummary() {
-    const orderSummary = document.getElementById('photoPrintOrderSummary');
-    if (orderSummary) {
-        orderSummary.style.display = 'none';
-    }
-}
+        // Function to process photo print payment
+        async function processPhotoPrintPayment() {
+            const data = window._photoPrintPendingData;
+            if (!data) {
+                alert('No pending order data found. Please try again.');
+                return;
+            }
 
-// Function to process photo print payment
-async function processPhotoPrintPayment() {
-    const data = window._photoPrintPendingData;
-    if (!data) {
-        alert('No pending order data found. Please try again.');
-        return;
-    }
-    
-    const payBtn = document.getElementById('photoPrintPayNowBtn');
-    if (payBtn) {
-        payBtn.disabled = true;
-        payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    }
-    
-    try {
-        // Start generating the PDF as soon as user clicks Pay Now.
-        // This runs in parallel while the Razorpay window is open.
-        if (!data.pdfPromise) {
-            data.pdfPromise = (async () => {
-                const pdfBlob = await createPDF();
-                const pdfFileName = data.metadata && data.metadata.filename
-                    ? data.metadata.filename
-                    : `photo_layout_${data.metadata && data.metadata.job_id ? data.metadata.job_id : ('photo_' + Date.now())}.pdf`;
-                const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
-                data.pdfFile = pdfFile;
-                return pdfFile;
-            })();
-        }
-        const pdfPromise = data.pdfPromise;
+            const payBtn = document.getElementById('photoPrintPayNowBtn');
+            if (payBtn) {
+                payBtn.disabled = true;
+                payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
 
-        // Create Razorpay order
-        const orderResp = await fetch('/payments/create-order/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({ amount_paise: Math.round(data.amountRs * 100), receipt: `photo_${Date.now()}` })
-        });
-        const orderData = await parseJsonResponse(orderResp);
-        if (!orderResp.ok || !orderData.success) { throw new Error(orderData.error || 'Failed to create Razorpay order'); }
+            try {
+                // Start generating the PDF as soon as user clicks Pay Now.
+                // This runs in parallel while the Razorpay window is open.
+                if (!data.pdfPromise) {
+                    data.pdfPromise = (async () => {
+                        const pdfBlob = await createPDF();
+                        const pdfFileName = data.metadata && data.metadata.filename
+                            ? data.metadata.filename
+                            : `photo_layout_${data.metadata && data.metadata.job_id ? data.metadata.job_id : ('photo_' + Date.now())}.pdf`;
+                        const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
+                        data.pdfFile = pdfFile;
+                        return pdfFile;
+                    })();
+                }
+                const pdfPromise = data.pdfPromise;
 
-        // Open Razorpay payment window
-        await new Promise((resolve) => {
-            const rzp = new Razorpay({
-                key: orderData.key_id,
-                amount: orderData.order.amount,
-                currency: orderData.order.currency,
-                name: 'SmartPrint',
-                description: 'Photo Print',
-                order_id: orderData.order.id,
-                handler: async function (response) {
-                    try {
-                        // Ensure PDF is fully generated before uploading to server
-                        const pdfFile = await pdfPromise;
+                // Create Razorpay order
+                const orderResp = await fetch('/payments/create-order/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ amount_paise: Math.round(data.amountRs * 100), receipt: `photo_${Date.now()}` })
+                });
+                const orderData = await parseJsonResponse(orderResp);
+                if (!orderResp.ok || !orderData.success) { throw new Error(orderData.error || 'Failed to create Razorpay order'); }
 
-                        // Build form data after PDF is ready
-                        const formData = new FormData();
-                        formData.append('file_0', pdfFile);
-                        formData.append('file_count', '1');
-                        formData.append('settings_0', JSON.stringify(data.metadata));
-                        formData.append('selected_vendor', data.selectedShop);
-                        formData.append('vendor_id', data.vendorId);
-                        formData.append('vendor_email', data.vendorEmail || '');
-                        formData.append('shop_name', data.shopName || '');
-                        formData.append('shop_address', data.shopAddress || '');
-                        formData.append('storage_folder', 'vendor_print_jobs');
-                        formData.append('points_applied', data.pointsApplied.toString());
-                        formData.append('points_used', data.pointsUsed);
-                        formData.append('final_amount', data.finalAmount);
+                // Open Razorpay payment window
+                await new Promise((resolve) => {
+                    const rzp = new Razorpay({
+                        key: orderData.key_id,
+                        amount: orderData.order.amount,
+                        currency: orderData.order.currency,
+                        name: 'SmartPrint',
+                        description: 'Photo Print',
+                        order_id: orderData.order.id,
+                        handler: async function (response) {
+                            try {
+                                // Ensure PDF is fully generated before uploading to server
+                                const pdfFile = await pdfPromise;
 
-                        formData.append('razorpay_payment_id', response.razorpay_payment_id);
-                        formData.append('razorpay_order_id', response.razorpay_order_id);
-                        formData.append('razorpay_signature', response.razorpay_signature);
+                                // Build form data after PDF is ready
+                                const formData = new FormData();
+                                formData.append('file_0', pdfFile);
+                                formData.append('file_count', '1');
+                                formData.append('settings_0', JSON.stringify({
+                                    ...data.metadata,
+                                    service_type: 'passport_photo'
+                                }));
+                                formData.append('selected_vendor', data.selectedShop);
+                                formData.append('vendor_id', data.vendorId);
+                                formData.append('vendor_email', data.vendorEmail || '');
+                                formData.append('shop_name', data.shopName || '');
+                                formData.append('shop_address', data.shopAddress || '');
+                                formData.append('storage_folder', 'vendor_print_jobs');
+                                formData.append('points_applied', data.pointsApplied.toString());
+                                formData.append('points_used', data.pointsUsed);
+                                formData.append('final_amount', data.finalAmount);
 
-                        const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
-                        const verifyData = await parseJsonResponse(verifyResp);
-                        if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
+                                formData.append('razorpay_payment_id', response.razorpay_payment_id);
+                                formData.append('razorpay_order_id', response.razorpay_order_id);
+                                formData.append('razorpay_signature', response.razorpay_signature);
 
-                        // If any files failed to store, surface refund information just like dashboard modals
-                        if (verifyData.files_failed && verifyData.files_failed > 0) {
-                            const failedFiles = verifyData.failed_files || [];
-                            const failedNames = failedFiles.map(f => f.filename).join(', ') || 'Unknown files';
-                            const refundMsg = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to upload failure for: ${failedNames}`;
-                            alert(refundMsg);
-                        } else {
-                            const serverToken = verifyData.token || data.metadata.token;
-                            const successMessage = '✅ Print job sent to print successfully.';
-                            closePhotoPrintOrderSummary();
-                            closePhotoPrintModalView();
-                            redirectToDashboardWithSuccess(successMessage, serverToken);
-                        }
+                                const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+                                const verifyData = await parseJsonResponse(verifyResp);
+                                if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
 
+                                // If any files failed to store, surface refund information just like dashboard modals
+                                if (verifyData.files_failed && verifyData.files_failed > 0) {
+                                    const failedFiles = verifyData.failed_files || [];
+                                    const failedNames = failedFiles.map(f => f.filename).join(', ') || 'Unknown files';
+                                    const refundMsg = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to upload failure for: ${failedNames}`;
+                                    alert(refundMsg);
+                                } else {
+                                    const serverToken = verifyData.token || data.metadata.token;
+                                    const successMessage = '✅ Print job sent to print successfully.';
+                                    closePhotoPrintOrderSummary();
+                                    closePhotoPrintModalView();
+                                    redirectToDashboardWithSuccess(successMessage, serverToken);
+                                }
+
+                                resolve();
+                                return;
+                            } catch (err) {
+                                console.error('Photo print payment handler error:', err);
+                                alert(err.message || 'Payment verified but upload failed');
+                                resolve();
+                            }
+                        },
+                        modal: { ondismiss: function () { resolve(); } },
+                        theme: { color: '#3b82f6' }
+                    });
+                    rzp.on('payment.failed', function (resp) {
+                        alert('Payment failed: ' + (resp.error && resp.error.description ? resp.error.description : 'Please try again.'));
                         resolve();
-                        return;
-                    } catch (err) {
-                        console.error('Photo print payment handler error:', err);
-                        alert(err.message || 'Payment verified but upload failed');
-                        resolve();
+                    });
+                    rzp.open();
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                if (payBtn) {
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
+                }
+            }
+        }
+
+        function getGridLayoutString(layout, orientation) {
+            let cols, rows;
+            switch (layout) {
+                case 1: cols = 1; rows = 1; break;
+                case 2: cols = (orientation === 'portrait' ? 1 : 2); rows = (orientation === 'portrait' ? 2 : 1); break;
+                case 4: cols = 2; rows = 2; break;
+                case 6: cols = (orientation === 'portrait' ? 2 : 3); rows = (orientation === 'portrait' ? 3 : 2); break;
+                case 9: cols = 3; rows = 3; break;
+                default: cols = 1; rows = 1;
+            }
+            return `${cols}x${rows}`;
+        }
+        // Points Application Functions
+        let userPoints = 0;
+        let pointsApplied = false;
+        let pointsUsed = 0;
+
+        // Load user points on page load
+        async function loadUserPoints() {
+            try {
+                const response = await fetch('/get-user-points/', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
                     }
-                },
-                modal: { ondismiss: function(){ resolve(); } },
-                theme: { color: '#3b82f6' }
-            });
-            rzp.on('payment.failed', function (resp) {
-                alert('Payment failed: ' + (resp.error && resp.error.description ? resp.error.description : 'Please try again.'));
-                resolve();
-            });
-            rzp.open();
-        });
-    } catch (error) {
-        console.error('Error:', error);
-        alert(`Error: ${error.message}`);
-    } finally {
-        if (payBtn) {
-            payBtn.disabled = false;
-            payBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay Now';
-        }
-    }
-}
-
-function getGridLayoutString(layout, orientation) {
-    let cols, rows;
-    switch(layout) {
-        case 1: cols=1; rows=1; break;
-        case 2: cols=(orientation==='portrait'?1:2); rows=(orientation==='portrait'?2:1); break;
-        case 4: cols=2; rows=2; break;
-        case 6: cols=(orientation==='portrait'?2:3); rows=(orientation==='portrait'?3:2); break;
-        case 9: cols=3; rows=3; break;
-        default: cols=1; rows=1;
-    }
-    return `${cols}x${rows}`;
-}
-// Points Application Functions
-let userPoints = 0;
-let pointsApplied = false;
-let pointsUsed = 0;
-
-// Load user points on page load
-async function loadUserPoints() {
-    try {
-        const response = await fetch('/get-user-points/', {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
+                });
+                const data = await response.json();
+                if (data.success) {
+                    userPoints = data.total_points || 0;
+                    updatePointsDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading user points:', error);
             }
-        });
-        const data = await response.json();
-        if (data.success) {
-            userPoints = data.total_points || 0;
+        }
+
+        // Update points display in all modals
+        function updatePointsDisplay() {
+            const pointsSections = document.querySelectorAll('.points-section');
+            pointsSections.forEach(section => {
+                const availablePoints = section.querySelector('.points-available span');
+                const pointsBalance = section.querySelector('.points-balance span');
+
+                if (availablePoints) {
+                    availablePoints.textContent = userPoints;
+                }
+
+                if (pointsBalance) {
+                    const remainingPoints = Math.max(0, userPoints - pointsUsed);
+                    pointsBalance.textContent = remainingPoints;
+                }
+            });
+        }
+
+        // Apply points to a specific service modal
+        async function applyPoints(service) {
+            let modal = document.querySelector('.card-modal');
+            if (!modal) return;
+
+            const calculatedPrice = parseFloat(document.body.dataset.calculatedPrice);
+            if (!calculatedPrice || calculatedPrice <= 0) {
+                alert('Please calculate the price first');
+                return;
+            }
+
+            // Calculate maximum points that can be used (ensure at least 1 rupee remains)
+            const maxPointsToUse = Math.min(userPoints, Math.floor(calculatedPrice - 1));
+
+            if (maxPointsToUse <= 0) {
+                alert('Not enough points to apply. You need at least 1 rupee remaining after applying points.');
+                return;
+            }
+
+            // Use all available points up to the maximum
+            pointsUsed = maxPointsToUse;
+            const finalAmount = calculatedPrice - pointsUsed;
+
+            // Update local userPoints variable immediately
+            userPoints = Math.max(0, userPoints - pointsUsed);
+
+            // Update the pricing display
+            updatePricingWithPoints(service, calculatedPrice, pointsUsed, finalAmount);
+
+            // Update points section
+            const pointsSection = modal.querySelector(`#${service}-points-section`);
+            if (pointsSection) {
+                pointsSection.style.display = 'block';
+                pointsSection.classList.add('points-applied');
+
+                const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
+                const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
+
+                if (applyBtn) applyBtn.style.display = 'none';
+                if (removeBtn) removeBtn.style.display = 'flex';
+            }
+
+            // Update points display immediately
             updatePointsDisplay();
+
+            // Store points application data
+            modal.dataset.pointsApplied = 'true';
+            modal.dataset.pointsUsed = pointsUsed.toString();
+            modal.dataset.finalAmount = finalAmount.toString();
+
+            alert(`Points Applied: ${pointsUsed} points. Final amount: ₹${finalAmount.toFixed(2)}`);
         }
-    } catch (error) {
-        console.error('Error loading user points:', error);
-    }
-}
 
-// Update points display in all modals
-function updatePointsDisplay() {
-    const pointsSections = document.querySelectorAll('.points-section');
-    pointsSections.forEach(section => {
-        const availablePoints = section.querySelector('.points-available span');
-        const pointsBalance = section.querySelector('.points-balance span');
-        
-        if (availablePoints) {
-            availablePoints.textContent = userPoints;
-        }
-        
-        if (pointsBalance) {
-            const remainingPoints = Math.max(0, userPoints - pointsUsed);
-            pointsBalance.textContent = remainingPoints;
-        }
-    });
-}
+        // Remove points from a specific service modal
+        function removePoints(service) {
+            let modal = document.querySelector('.card-modal');
+            if (!modal) return;
 
-// Apply points to a specific service modal
-async function applyPoints(service) {
-    let modal = document.querySelector('.card-modal');
-    if (!modal) return;
+            const originalPrice = parseFloat(document.body.dataset.calculatedPrice);
+            if (!originalPrice) return;
 
-    const calculatedPrice = parseFloat(document.body.dataset.calculatedPrice);
-    if (!calculatedPrice || calculatedPrice <= 0) {
-        alert('Please calculate the price first');
-        return;
-    }
+            // Get the points that were used to restore them
+            const pointsToRestore = parseInt(modal.dataset.pointsUsed || '0');
 
-    // Calculate maximum points that can be used (ensure at least 1 rupee remains)
-    const maxPointsToUse = Math.min(userPoints, Math.floor(calculatedPrice - 1));
-    
-    if (maxPointsToUse <= 0) {
-        alert('Not enough points to apply. You need at least 1 rupee remaining after applying points.');
-        return;
-    }
+            // Reset points
+            pointsUsed = 0;
 
-    // Use all available points up to the maximum
-    pointsUsed = maxPointsToUse;
-    const finalAmount = calculatedPrice - pointsUsed;
+            // Restore points to userPoints variable
+            userPoints = userPoints + pointsToRestore;
 
-    // Update local userPoints variable immediately
-    userPoints = Math.max(0, userPoints - pointsUsed);
+            // Update the pricing display back to original
+            updatePricingWithPoints(service, originalPrice, 0, originalPrice);
 
-    // Update the pricing display
-    updatePricingWithPoints(service, calculatedPrice, pointsUsed, finalAmount);
+            // Update points section
+            const pointsSection = modal.querySelector(`#${service}-points-section`);
+            if (pointsSection) {
+                pointsSection.classList.remove('points-applied');
 
-    // Update points section
-    const pointsSection = modal.querySelector(`#${service}-points-section`);
-    if (pointsSection) {
-        pointsSection.style.display = 'block';
-        pointsSection.classList.add('points-applied');
-        
-        const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
-        const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
-        
-        if (applyBtn) applyBtn.style.display = 'none';
-        if (removeBtn) removeBtn.style.display = 'flex';
-    }
+                const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
+                const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
 
-    // Update points display immediately
-    updatePointsDisplay();
-
-    // Store points application data
-    modal.dataset.pointsApplied = 'true';
-    modal.dataset.pointsUsed = pointsUsed.toString();
-    modal.dataset.finalAmount = finalAmount.toString();
-
-    alert(`Points Applied: ${pointsUsed} points. Final amount: ₹${finalAmount.toFixed(2)}`);
-}
-
-// Remove points from a specific service modal
-function removePoints(service) {
-    let modal = document.querySelector('.card-modal');
-    if (!modal) return;
-
-    const originalPrice = parseFloat(document.body.dataset.calculatedPrice);
-    if (!originalPrice) return;
-
-    // Get the points that were used to restore them
-    const pointsToRestore = parseInt(modal.dataset.pointsUsed || '0');
-    
-    // Reset points
-    pointsUsed = 0;
-
-    // Restore points to userPoints variable
-    userPoints = userPoints + pointsToRestore;
-
-    // Update the pricing display back to original
-    updatePricingWithPoints(service, originalPrice, 0, originalPrice);
-
-    // Update points section
-    const pointsSection = modal.querySelector(`#${service}-points-section`);
-    if (pointsSection) {
-        pointsSection.classList.remove('points-applied');
-        
-        const applyBtn = modal.querySelector(`#${service}-apply-points-btn`);
-        const removeBtn = modal.querySelector(`#${service}-remove-points-btn`);
-        
-        if (applyBtn) applyBtn.style.display = 'flex';
-        if (removeBtn) removeBtn.style.display = 'none';
-    }
-
-    // Update points display immediately
-    updatePointsDisplay();
-
-    // Clear points application data
-    modal.dataset.pointsApplied = 'false';
-    modal.dataset.pointsUsed = '0';
-    modal.dataset.finalAmount = originalPrice.toString();
-
-    alert('Points removed. Original amount restored.');
-}
-
-// Update pricing display with points applied
-function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount) {
-    const pricingDetails = document.getElementById('pricingDetails');
-    if (!pricingDetails) return;
-
-    // Check if using professional-bill format (new format) or old breakdown format
-    const invoiceItems = pricingDetails.querySelector('.invoice-items');
-    if (invoiceItems) {
-        // Professional-bill format (new)
-        const totalItem = invoiceItems.querySelector('.invoice-total[data-role="total"]');
-        if (totalItem) {
-            // Remove any existing points line
-            const existingPointsLine = invoiceItems.querySelector('.invoice-item.points-applied');
-            if (existingPointsLine) {
-                existingPointsLine.remove();
+                if (applyBtn) applyBtn.style.display = 'flex';
+                if (removeBtn) removeBtn.style.display = 'none';
             }
 
-            // Add points applied line before total
-            if (pointsUsed > 0) {
-                const pointsLine = document.createElement('div');
-                pointsLine.className = 'invoice-item points-applied';
-                pointsLine.dataset.role = 'points';
-                pointsLine.innerHTML = `
+            // Update points display immediately
+            updatePointsDisplay();
+
+            // Clear points application data
+            modal.dataset.pointsApplied = 'false';
+            modal.dataset.pointsUsed = '0';
+            modal.dataset.finalAmount = originalPrice.toString();
+
+            alert('Points removed. Original amount restored.');
+        }
+
+        // Update pricing display with points applied
+        function updatePricingWithPoints(service, originalPrice, pointsUsed, finalAmount) {
+            const pricingDetails = document.getElementById('pricingDetails');
+            if (!pricingDetails) return;
+
+            // Check if using professional-bill format (new format) or old breakdown format
+            const invoiceItems = pricingDetails.querySelector('.invoice-items');
+            if (invoiceItems) {
+                // Professional-bill format (new)
+                const totalItem = invoiceItems.querySelector('.invoice-total[data-role="total"]');
+                if (totalItem) {
+                    // Remove any existing points line
+                    const existingPointsLine = invoiceItems.querySelector('.invoice-item.points-applied');
+                    if (existingPointsLine) {
+                        existingPointsLine.remove();
+                    }
+
+                    // Add points applied line before total
+                    if (pointsUsed > 0) {
+                        const pointsLine = document.createElement('div');
+                        pointsLine.className = 'invoice-item points-applied';
+                        pointsLine.dataset.role = 'points';
+                        pointsLine.innerHTML = `
                     <span class="invoice-item-label">Points Applied</span>
                     <span class="invoice-item-value">-₹${pointsUsed.toFixed(2)}</span>
                 `;
-                totalItem.parentNode.insertBefore(pointsLine, totalItem);
-            }
+                        totalItem.parentNode.insertBefore(pointsLine, totalItem);
+                    }
 
-            // Update total amount
-            const totalValue = totalItem.querySelector('.invoice-item-value');
-            if (totalValue) {
-                totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
-            }
-        }
-    } else {
-        // Old breakdown format (fallback)
-        const totalItem = pricingDetails.querySelector('.breakdown-item[data-role="total"]');
-        if (totalItem) {
-            // Remove any existing points line
-            const existingPointsLine = pricingDetails.querySelector('.breakdown-item.points-applied');
-            if (existingPointsLine) {
-                existingPointsLine.remove();
-            }
+                    // Update total amount
+                    const totalValue = totalItem.querySelector('.invoice-item-value');
+                    if (totalValue) {
+                        totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+                    }
+                }
+            } else {
+                // Old breakdown format (fallback)
+                const totalItem = pricingDetails.querySelector('.breakdown-item[data-role="total"]');
+                if (totalItem) {
+                    // Remove any existing points line
+                    const existingPointsLine = pricingDetails.querySelector('.breakdown-item.points-applied');
+                    if (existingPointsLine) {
+                        existingPointsLine.remove();
+                    }
 
-            // Add points applied line before total
-            if (pointsUsed > 0) {
-                const pointsLine = document.createElement('div');
-                pointsLine.className = 'breakdown-item points-applied';
-                pointsLine.dataset.role = 'points';
-                pointsLine.innerHTML = `
+                    // Add points applied line before total
+                    if (pointsUsed > 0) {
+                        const pointsLine = document.createElement('div');
+                        pointsLine.className = 'breakdown-item points-applied';
+                        pointsLine.dataset.role = 'points';
+                        pointsLine.innerHTML = `
                     <span class="breakdown-label">Points Applied</span>
                     <span class="breakdown-value">-₹${pointsUsed.toFixed(2)}</span>
                 `;
-                totalItem.parentNode.insertBefore(pointsLine, totalItem);
-            }
+                        totalItem.parentNode.insertBefore(pointsLine, totalItem);
+                    }
 
-            // Update total amount
-            const totalValue = totalItem.querySelector('.breakdown-value');
-            if (totalValue) {
-                totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+                    // Update total amount
+                    const totalValue = totalItem.querySelector('.breakdown-value');
+                    if (totalValue) {
+                        totalValue.textContent = `₹${finalAmount.toFixed(2)}`;
+                    }
+                }
             }
         }
-    }
-}
 
-// Show points section when pricing is calculated
-function showPointsSection(service) {
-    let modal = document.querySelector('.card-modal');
-    if (!modal) return;
+        // Show points section when pricing is calculated
+        function showPointsSection(service) {
+            let modal = document.querySelector('.card-modal');
+            if (!modal) return;
 
-    const pointsSection = modal.querySelector(`#${service}-points-section`);
-    if (pointsSection && userPoints > 0) {
-        pointsSection.style.display = 'block';
-        updatePointsDisplay();
-    }
-}
-
-// Initialize: Get location first, then load shops with distance
-getUserLocation().then(() => {
-loadShops();
-}).catch(() => {
-    // If location fails, just load shops without distance
-    loadShops();
-});
-
-loadUserPoints();
-updatePreview();
-updateThumbnails();
-window.removePhoto = removePhoto;
-window.openPhotoShopSelectionModal = openPhotoShopSelectionModal;
-window.closePhotoShopSelectionModal = closePhotoShopSelectionModal;
-window.selectShopInPhotoModal = selectShopInPhotoModal;
-window.trackShop = trackShop;
-uploadBtn.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', handleFileUpload);
-
-// Add more photos button handler (beside thumbnails)
-const addMorePhotosBtn = document.getElementById('addMorePhotosBtn');
-if (addMorePhotosBtn) {
-    addMorePhotosBtn.addEventListener('click', () => {
-        fileInput.click();
-    });
-}
-
-// Invalid File Type Modal Functions
-function showInvalidFileTypeModal(fileName) {
-    const modal = document.getElementById('invalidFileTypeModal');
-    if (modal) {
-        const messageEl = document.getElementById('invalidFileTypeMessage');
-        if (messageEl && fileName) {
-            messageEl.textContent = `"${fileName}" is not allowed for printing.`;
+            const pointsSection = modal.querySelector(`#${service}-points-section`);
+            if (pointsSection && userPoints > 0) {
+                pointsSection.style.display = 'block';
+                updatePointsDisplay();
+            }
         }
-        modal.style.display = 'flex';
-    }
-}
 
-function hideInvalidFileTypeModal() {
-    const modal = document.getElementById('invalidFileTypeModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-</script>
+        // Initialize: Get location first, then load shops with distance
+        getUserLocation().then(() => {
+            loadShops();
+        }).catch(() => {
+            // If location fails, just load shops without distance
+            loadShops();
+        });
 
-<!-- Invalid File Type Modal -->
-<div id="invalidFileTypeModal" class="modal-bg" style="display: none; z-index: 10000;">
-    <div class="card-modal" style="max-width: 400px; min-width: 300px; min-height: auto;">
-        <div class="modal-header" style="background: #ef4444;">
-            <h1 style="margin: 0;">File Type Not Allowed</h1>
-        </div>
-        <div class="modal-content" style="text-align: center; padding: 32px 24px;">
-            <div style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;">
-                <i class="fas fa-file-excel"></i>
+        loadUserPoints();
+        updatePreview();
+        updateThumbnails();
+        window.removePhoto = removePhoto;
+        window.openPhotoShopSelectionModal = openPhotoShopSelectionModal;
+        window.closePhotoShopSelectionModal = closePhotoShopSelectionModal;
+        window.selectShopInPhotoModal = selectShopInPhotoModal;
+        window.trackShop = trackShop;
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileUpload);
+
+        // Add more photos button handler (beside thumbnails)
+        const addMorePhotosBtn = document.getElementById('addMorePhotosBtn');
+        if (addMorePhotosBtn) {
+            addMorePhotosBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        // Invalid File Type Modal Functions
+        function showInvalidFileTypeModal(fileName) {
+            const modal = document.getElementById('invalidFileTypeModal');
+            if (modal) {
+                const messageEl = document.getElementById('invalidFileTypeMessage');
+                if (messageEl && fileName) {
+                    messageEl.textContent = `"${fileName}" is not allowed for printing.`;
+                }
+                modal.style.display = 'flex';
+            }
+        }
+
+        function hideInvalidFileTypeModal() {
+            const modal = document.getElementById('invalidFileTypeModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+
+    <!-- Invalid File Type Modal -->
+    <div id="invalidFileTypeModal" class="modal-bg" style="display: none; z-index: 10000;">
+        <div class="card-modal" style="max-width: 400px; min-width: 300px; min-height: auto;">
+            <div class="modal-header" style="background: #ef4444;">
+                <h1 style="margin: 0;">File Type Not Allowed</h1>
             </div>
-            <p id="invalidFileTypeMessage" style="font-size: 1rem; color: #374151; margin-bottom: 8px;">
-                This file type is not allowed for printing.
-            </p>
-            <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 24px;">
-                Please upload only image files (JPG, PNG) for photo printing.
-            </p>
-            <button onclick="hideInvalidFileTypeModal()" style="
+            <div class="modal-content" style="text-align: center; padding: 32px 24px;">
+                <div style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <p id="invalidFileTypeMessage" style="font-size: 1rem; color: #374151; margin-bottom: 8px;">
+                    This file type is not allowed for printing.
+                </p>
+                <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 24px;">
+                    Please upload only image files (JPG, PNG) for photo printing.
+                </p>
+                <button onclick="hideInvalidFileTypeModal()" style="
                 background: #2563eb;
                 color: white;
                 border: none;
@@ -3880,8 +4051,9 @@ function hideInvalidFileTypeModal() {
                 font-weight: 600;
                 width: 100%;
             ">OK</button>
+            </div>
         </div>
     </div>
-</div>
 </body>
+
 </html>
