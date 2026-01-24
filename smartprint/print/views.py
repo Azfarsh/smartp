@@ -3786,22 +3786,26 @@ def update_file_job_status(filename, status='YES', vendor_id=None, completion_ti
 def upload_to_r2(request):
     """
     Upload files to R2 storage with service-based folder routing:
-    Refactored to enforce strict "Golden Rule": No DB success = Refund points.
+    
+    Manual Job Services (stored in vendor_manual_print_jobs/):
+    - digital_print: Digital Document Printing
+    - gloss_printing: Gloss Print  
+    - jumbo_printing: Jumbo Paper Printing
+    - golden_embossing: Golden Embossing
+    - project_binding: Project Binding
+    
+    Other Services (stored in vendor_print_jobs/):
+    - photo_print: Photo Print
+    - passport_photo: Passport Photo
+    - Any other services
     """
     if request.method == 'POST':
         try:
-            # 🧠 REQUIRED STATE VARIABLES
-            files_processed = 0
-            files_failed = 0
-            failed_files = []
-            successful_jobs = []
-            total_refund_amount = 0.0
-            points_to_refund = 0
-            
+            files_uploaded = 0
             file_count = int(request.POST.get('file_count', 0))
             selected_vendor = request.POST.get('selected_vendor', 'firozshop')
             vendor_id = request.POST.get('vendor_id') or get_vendor_id_by_shop_folder(selected_vendor)
-            db_storage_failed = False 
+            db_storage_failed = False  # Initialize flag for database storage status
 
             # Initialize S3 client
             s3 = boto3.client('s3',
@@ -3833,21 +3837,8 @@ def upload_to_r2(request):
             elif vendor_email:
                 print(f"✅ Got vendor_email from form data: {vendor_email}")
 
-            # Initialize token variable
+            # Initialize token variable - will be assigned once per request (not per file)
             token = None
-
-            # Calculate points per file for potential refunds
-            # Try to get total points used from request
-            total_points_used_req = request.POST.get('points_used', '0')
-            try:
-                total_points_val = float(total_points_used_req)
-            except (ValueError, TypeError):
-                total_points_val = 0.0
-            
-            # This is an approximation if points are for the whole batch
-            points_per_file = 0
-            if file_count > 0:
-                points_per_file = int(total_points_val / file_count)
 
             # Process each file with its corresponding settings
             for i in range(file_count):
@@ -3863,35 +3854,46 @@ def upload_to_r2(request):
                     settings_json = request.POST.get(settings_key)
                     print_settings = json.loads(settings_json)
                     
-                    # Store refund amount for this file if needed
-                    file_refund_amount = 0.0
-                    if print_settings.get('pricing_details'):
-                        try:
-                            file_refund_amount = float(print_settings['pricing_details'].get('total_price', 0))
-                        except:
-                            file_refund_amount = 0.0
+                    # Debug: Log the print settings to see what's being sent
+                    print(f"📋 Print settings for {file.name}:")
+                    print(f"   Service type: {print_settings.get('service_type')}")
+                    print(f"   Pricing details: {print_settings.get('pricing_details')}")
+                    print(f"   All settings keys: {list(print_settings.keys())}")
 
                     # Get vendor email from settings_json if not already set (fallback)
                     if not vendor_email:
                         vendor_email = print_settings.get('vendor_email', '').strip()
+                        if vendor_email:
+                            print(f"✅ Got vendor_email from settings_json: {vendor_email}")
                     
-                    # Final fallback
+                    # Final fallback: Get vendor email from shop folder if still not set
                     if not vendor_email and selected_vendor:
                         try:
                             vendor_email = get_vendor_email_by_shop_folder(selected_vendor)
-                        except Exception:
-                            pass
+                            print(f"✅ Got vendor_email from shop folder (final fallback): {vendor_email}")
+                        except Exception as e:
+                            print(f"⚠️ Could not get vendor email for {selected_vendor}: {str(e)}")
                     
-                    # Assign token
-                    if not token:
+                    # Assign token from vendor pool if vendor email is available
+                    # IMPORTANT: Only assign token once per request (not per file) to prevent duplicate token assignments
+                    if not token:  # Only assign if token hasn't been assigned yet in this request
                         if vendor_email:
                             token = assign_token_from_vendor_pool(vendor_email)
                             if token is None:
+                                # Fallback to sequential token if vendor pool is empty
                                 token = get_next_sequential_token()
+                                print(f"⚠️ Vendor token pool empty, using fallback token: {token}")
+                            else:
+                                print(f"✅ Assigned token {token} from vendor pool for {vendor_email}")
                         else:
+                            # Fallback to sequential token if no vendor email
                             token = get_next_sequential_token()
+                            print(f"⚠️ No vendor email available, using fallback token: {token}")
+                    else:
+                        # Reuse the same token for all files in this request
+                        print(f"✅ Reusing token {token} for file {file.name} (same request)")
 
-                    # Generate a unique job_id
+                    # Generate a unique job_id for this file (use original_filename + timestamp for idempotency)
                     job_id = print_settings.get('job_id')
                     if not job_id:
                         job_id = str(uuid.uuid4())
@@ -3899,6 +3901,9 @@ def upload_to_r2(request):
 
                     # Determine content type
                     content_type = file.content_type or 'application/octet-stream'
+
+                    # Get file extension for better content type detection
+                    file_extension = file.name.split('.')[-1].lower() if '.' in file.name else ''
 
                     # Get points information from form data
                     points_applied = request.POST.get('points_applied', 'false').lower() == 'true'
@@ -3926,12 +3931,12 @@ def upload_to_r2(request):
                         'user': user_email,
                         'user_id': user_id,
                         'vendor': vendor_id,
-                        'vendor_id': vendor_id,
-                        'vendor_email': vendor_email or '',
+                        'vendor_id': vendor_id,  # Explicitly include vendor_id for User_print_jobs table
+                        'vendor_email': vendor_email or '',  # Explicitly include vendor_email
                         'shop_id': str(vendor_id or ''),
-                        'job_id': job_id,
-                        'service_type': print_settings.get('service_type', 'regular print'),
-                        'token': token,
+                        'job_id': job_id,  # Explicitly include job_id
+                        'service_type': print_settings.get('service_type', 'regular print'),  # Explicitly include service_type
+                        'token': token,  # Explicitly include token
                         'feedback': print_settings.get('feedback', ''),
                         'quality': print_settings.get('quality', ''),
                         'thickness': print_settings.get('thickness', ''),
@@ -3947,94 +3952,154 @@ def upload_to_r2(request):
                     # Add pricing details to metadata if available
                     pricing_details = print_settings.get('pricing_details')
                     if pricing_details:
-                        # [Existing pricing logic preserved but trimmed for brevity in this replacement]
-                        # Assume we just need to pack it. The implementation plan implies strict flow override.
-                        # I'll reuse the existing logic structure for packing:
-                         # Create a compact summary for metadata display
+                        # Create a compact summary for metadata display
                         total_price = pricing_details.get('total_price', 0)
                         breakdown = pricing_details.get('pricing_breakdown', {})
                         
-                        # Handle different breakdown formats (simplified for replacement)
+                        # Handle different breakdown formats
                         price_per_page = 0
-                        page_count_p = 0
+                        page_count = 0
                         num_copies = 0
                         pricing_key = ''
                         
+                        # Check if breakdown is a dictionary (gloss print format)
                         if isinstance(breakdown, dict):
                             price_per_page = breakdown.get('price_per_page', 0)
-                            page_count_p = breakdown.get('page_count', 0)
+                            page_count = breakdown.get('page_count', 0)
                             num_copies = breakdown.get('num_copies', 0)
                             pricing_key = breakdown.get('pricing_key_used', '')
+                        # Check if breakdown is a list (golden embossing format)
                         elif isinstance(breakdown, list):
-                            # ... usage of existing extraction logic ...
-                            pass # Rely on metadata having loose pricing if needed or assume breakdown dict for now
-
-                        # Compact pricing for metadata
+                            # Extract information from list format
+                            for item in breakdown:
+                                if isinstance(item, dict):
+                                    label = item.get('label', '')
+                                    value = item.get('value', '₹0')
+                                    # Extract numeric value from ₹ format
+                                    if value.startswith('₹'):
+                                        value = value[1:]
+                                    try:
+                                        numeric_value = int(value)
+                                        if 'page' in label.lower():
+                                            page_count = numeric_value
+                                        elif 'copy' in label.lower():
+                                            num_copies = numeric_value
+                                        elif 'per page' in label.lower():
+                                            price_per_page = numeric_value
+                                    except (ValueError, TypeError):
+                                        pass
+                            
+                            # Check if structured data is available for golden embossing
+                            if pricing_details.get('structured_data'):
+                                structured = pricing_details.get('structured_data', {})
+                                price_per_page = structured.get('price_per_page', price_per_page)
+                                page_count = structured.get('page_count', page_count)
+                                num_copies = structured.get('num_copies', num_copies)
+                                pricing_key = f"golden_emboss_{structured.get('paper_type', 'unknown')}"
+                        
+                        # Store pricing details as compact JSON (ASCII only)
                         compact_pricing = {
                             "total": total_price,
                             "per_page": price_per_page,
-                            "pages": page_count_p,
-                            "copies": num_copies
+                            "pages": page_count,
+                            "copies": num_copies,
+                            "key": pricing_key,
+                            "quality": breakdown.get('quality_upgrade', 0) if isinstance(breakdown, dict) else 0
                         }
-                        file_metadata['pricing_details'] = json.dumps(compact_pricing)
+                        
+                        # Include platform_profit if available in original pricing_details
+                        if 'platform_profit' in pricing_details:
+                            compact_pricing['platform_profit'] = pricing_details['platform_profit']
+                        file_metadata['pricing_details'] = json.dumps(compact_pricing, separators=(',', ':'))
+                        
+                        # Also store individual fields for better visibility
+                        file_metadata['total_price'] = str(total_price)
+                        file_metadata['price_per_page'] = str(price_per_page)
+                        file_metadata['page_count'] = str(page_count)
+                        file_metadata['num_copies'] = str(num_copies)
+                        file_metadata['pricing_key'] = pricing_key
+                        
+                        # Validate that all metadata values are ASCII-compatible
+                        for key, value in file_metadata.items():
+                            try:
+                                value.encode('ascii')
+                            except UnicodeEncodeError:
+                                print(f"⚠️ Warning: Non-ASCII character found in metadata key '{key}': {value}")
+                                # Replace non-ASCII characters with ASCII equivalents
+                                file_metadata[key] = value.encode('ascii', errors='replace').decode('ascii')
+                        
+                        # Final validation - ensure all values are ASCII
+                        for key, value in file_metadata.items():
+                            if not isinstance(value, str):
+                                file_metadata[key] = str(value)
+                            # Ensure ASCII compatibility
+                            file_metadata[key] = value.encode('ascii', errors='replace').decode('ascii')
+                        
+                        print(f"💰 Pricing details added to metadata: Rs{total_price}")
+                    else:
+                        print("⚠️ No pricing details found in print settings")
 
                     # Check if this is a photo print service
                     service_type = print_settings.get('service_type', '')
                     service_type_lc = service_type.lower() if service_type else ''
                     
+                    # Store every user dashboard job under vendor_print_jobs to keep metadata consistent with D1
                     storage_folder = 'vendor_print_jobs'
                     vendor_file_key = f'{storage_folder}/{vendor_id}/{file.name}'
                     user_file_key = f'users/{user_email}/{file.name}'
                     file_metadata['storage_folder'] = storage_folder
+                    print(f"📁 Storing {service_type or 'regular print'} job in {storage_folder} folder")
 
-                    # Ensure a default render flag
+                    # Ensure a default render flag so dashboard can avoid double-rendering
                     if 'rendered_status' not in file_metadata:
                         file_metadata['rendered_status'] = 'NO'
 
-                    # Logic to determine if we should store in DB NOW or LATER
-                    # User requirement: Passport/Photo MUST store NOW (mandatory)
-                    
+                    # ALL userdashboard modals should NOT store in database here - they will be stored AFTER successful payment
+                    # in verify_razorpay_payment (same pattern as jumbo_printing)
+                    # This ensures data is only stored after payment is verified, preventing orphaned records
                     document_print_services = ['regular_print', 'regular print', 'document_print']
                     passport_photo_services = ['passport_photo', 'passport_print', 'photo_print']
+                    digital_services = ['digital_print']
+                    golden_services = ['golden_embossing', 'golden_emboss']
+                    gloss_services = ['gloss_printing', 'gloss_print']
+                    jumbo_services = ['jumbo_printing', 'jumbo_print']
                     
-                    # Original logic skipped payment required services
-                    # Modified logic: Store if regular OR if passport/photo (Golden Rule)
-                    
-                    force_db_storage = service_type in ['photo_print', 'passport_photo', 'passport_print']
-                    
-                    # Standard logic for other modals (jumbo, etc) might still want to wait?
-                    # "jumbo print modal does ... store only after payment verification"
-                    # But user says "like document print service" for passport.
-                    
-                    is_delayed_storage = False
-                    if not force_db_storage:
-                        # Check original list
-                        all_payment_required_services = (document_print_services + passport_photo_services + 
-                                                          ['digital_print', 'golden_embossing', 'gloss_printing', 'jumbo_printing'])
-                        if service_type_lc in [s.lower() for s in all_payment_required_services]:
-                             # Check if it's NOT in the force list (which we already did)
-                             # If it's regular print, it used to store immediately?
-                             if service_type in document_print_services:
-                                 is_delayed_storage = False # Store now
-                             else:
-                                 is_delayed_storage = True # Wait for payment
-
-                    # ✅ STEP 1: PROCESS FILE (Layout Gen)
-                    pdf_data_to_upload = None
-                    file_content_to_upload = file_content
-                    upload_content_type = content_type
+                    # All userdashboard modal services - skip database storage before payment
+                    all_payment_required_services = (document_print_services + passport_photo_services + 
+                                                      digital_services + golden_services + gloss_services + jumbo_services)
+                    is_payment_required_service = service_type_lc in [s.lower() for s in all_payment_required_services]
 
                     if service_type in ['photo_print', 'passport_photo']:
+                        # If the uploaded file is a PDF, just upload it directly (from jsPDF frontend)
                         if file.name.lower().endswith('.pdf') or file.content_type == 'application/pdf':
-                             # PDF direct upload
-                             pass 
+                            # Use the same keys as above
+                            # Store only the binary file in R2; keep all metadata in database tables
+                            s3.put_object(
+                                Bucket=settings.R2_BUCKET,
+                                Key=vendor_file_key,
+                                Body=file_content,
+                                ContentType='application/pdf'
+                            )
+                            s3.put_object(
+                                Bucket=settings.R2_BUCKET,
+                                Key=user_file_key,
+                                Body=file_content,
+                                ContentType='application/pdf'
+                            )
+                            print(f"✅ PDF uploaded directly: {file.name}")
                         else:
-                            # Layout gen
-                            # Collect images logic...
-                            image_files_data = [] # ... (simplified for replacement context)
-                             # Re-implement image collection briefly
-                            image_files_data = [file_content] # Use current as primary
-                            
+                            # Handle photo print processing (backend layout generation)
+                            print(f"📸 Processing {service_type} service...")
+                            # Collect all image files for this job
+                            image_files_data = []
+                            for j in range(file_count):
+                                if f'file_{j}' in request.FILES:
+                                    temp_file = request.FILES[f'file_{j}']
+                                    if temp_file.content_type and temp_file.content_type.startswith('image/'):
+                                        image_files_data.append(temp_file.read())
+                            if not image_files_data:
+                                image_files_data = [file_content]  # Use current file if no other images
+                            # Create layout configuration
                             layout_config = {
                                 'photo_count': int(print_settings.get('photo_count', 1)),
                                 'layout': print_settings.get('layout', '1x1'),
@@ -4042,147 +4107,132 @@ def upload_to_r2(request):
                                 'color': print_settings.get('color', 'Color'),
                                 'paper_size': print_settings.get('paper_size', 'A4')
                             }
-                            
-                            pdf_data = None
+                            # Create photo layout PDF
                             if service_type == 'passport_photo':
+                                # Get country and package from settings
                                 country = print_settings.get('country', 'India')
                                 total_prints = int(print_settings.get("copies", 8))
+                                
+                                print(f"🔍 Processing passport photo: Country={country}, Prints={total_prints}")
+
+                                # Country-specific passport photo processing
                                 pdf_data = create_passport_photo_layout(file_content, total_prints, country)
                             else:
+                                # New photo print layout
                                 pdf_data = create_photo_print_layout(image_files_data, layout_config)
-                            
-                            if not pdf_data:
-                                # ❌ Layout Failed
+                            if pdf_data:
+                                # Update file metadata for photo service
+                                if service_type == 'passport_photo':
+                                    file_metadata.update({
+                                        'service_type': service_type,
+                                        'photo_count': str(total_prints),
+                                        'country': country,
+                                        'layout_created': 'YES',
+                                        'original_filename': file.name,
+                                        'paper_size': 'A4',
+                                        'photo_dimensions': get_passport_photo_dimensions(country)
+                                    })
+                                else:
+                                    file_metadata.update({
+                                        'service_type': service_type,
+                                        'photo_count': str(layout_config['photo_count']),
+                                        'layout': layout_config['layout'],
+                                        'image_mode': layout_config['image_mode'],
+                                        'layout_created': 'YES',
+                                        'original_filename': file.name,
+                                        'paper_size': layout_config['paper_size']
+                                    })
+                                # Store only the PDF; persist metadata solely in the database
+                                s3.put_object(
+                                    Bucket=settings.R2_BUCKET,
+                                    Key=vendor_file_key,
+                                    Body=pdf_data,
+                                    ContentType='application/pdf'
+                                )
+                                s3.put_object(
+                                    Bucket=settings.R2_BUCKET,
+                                    Key=user_file_key,
+                                    Body=pdf_data,
+                                    ContentType='application/pdf'
+                                )
+                                print(f"✅ Photo layout saved as PDF: {file.name}")
+                                
+                            else:
                                 print(f"❌ Failed to create {service_type} layout")
-                                files_failed += 1
-                                failed_files.append({
-                                    'filename': file.name,
-                                    'error': 'Passport photo layout generation failed',
-                                    'service_type': service_type
-                                })
-                                total_refund_amount += file_refund_amount
-                                if points_applied:
-                                    points_to_refund += points_per_file
-                                continue # NEXT FILE
-                            
-                            # Success Layout
-                            pdf_data_to_upload = pdf_data
-                            file_content_to_upload = pdf_data
-                            upload_content_type = 'application/pdf'
-                            
-                            # Update metadata
-                            if service_type == 'passport_photo':
-                                file_metadata.update({
-                                    'service_type': service_type,
-                                    'layout_created': 'YES',
-                                    'original_filename': file.name,
-                                    'paper_size': 'A4'
-                                })
-
-                    # ✅ STEP 2: UPLOAD FILE TO R2
-                    try:
+                                return JsonResponse({'success': False, 'error': f'Failed to create {service_type} layout'}, status=500)
+                    else:
+                        # Regular file upload for non-passport services (no metadata stored in R2)
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=vendor_file_key,
-                            Body=file_content_to_upload,
-                            ContentType=upload_content_type
+                            Body=file_content,
+                            ContentType=content_type
                         )
                         s3.put_object(
                             Bucket=settings.R2_BUCKET,
                             Key=user_file_key,
-                            Body=file_content_to_upload,
-                            ContentType=upload_content_type
+                            Body=file_content,
+                            ContentType=content_type
                         )
-                    except Exception as e:
-                        # ❌ Upload Failed
-                        print(f"❌ R2 Upload Failed: {e}")
-                        files_failed += 1
-                        failed_files.append({'filename': file.name, 'error': str(e)})
-                        total_refund_amount += file_refund_amount
-                        if points_applied:
-                            points_to_refund += points_per_file
-                        continue
 
-                    # ✅ STEP 3: STORE DATA IN DATABASE (MANDATORY for passport)
-                    if not is_delayed_storage or force_db_storage:
+                    # Store print job in D1 database (R2 storage is already done above)
+                    # SKIP database storage for ALL userdashboard modal services - they will be stored AFTER successful payment
+                    # in verify_razorpay_payment (same pattern as jumbo_printing)
+                    # This ensures data is only stored after payment verification, preventing orphaned records
+                    if not is_payment_required_service:
                         try:
-                            # Store in Vendor DB
-                            success_v = store_vendor_print_job_in_db(
+                            store_vendor_print_job_in_db(
                                 vendor_id=vendor_id,
                                 vendor_email=vendor_email,
                                 user_email=user_email,
                                 filename=file.name,
-                                storage_folder=storage_folder,
+                                storage_folder=file_metadata.get('storage_folder', 'vendor_print_jobs'),
                                 r2_path=vendor_file_key,
                                 metadata=file_metadata,
                                 pricing_details=pricing_details,
                                 user_id=user_id,
                                 shop_id=vendor_id
                             )
-                            
-                            # Store in User DB
-                            success_u = store_user_print_job_in_db(
+                        except Exception as db_err:
+                            print(f"⚠️ Error storing print job in database: {db_err}")
+                            # Don't fail the upload if database storage fails
+
+                        try:
+                            user_metadata = dict(file_metadata)
+                            user_metadata['storage_folder'] = 'users'
+                            store_user_print_job_in_db(
                                 vendor_id=vendor_id,
                                 vendor_email=vendor_email,
                                 user_email=user_email,
                                 filename=file.name,
                                 storage_folder='users',
                                 r2_path=user_file_key,
-                                metadata=file_metadata,
+                                metadata=user_metadata,
                                 pricing_details=pricing_details,
                                 user_id=user_id,
                                 shop_id=vendor_id
                             )
-
-                            if not success_v:
-                                raise Exception("Database insertion failed for vendor job")
-
-                        except Exception as db_err:
-                            # ❌ DB Store Failed
-                            print(f"❌ DB Storage Failed: {db_err}")
-                            files_failed += 1
-                            failed_files.append({'filename': file.name, 'error': 'DB insert failed'})
-                            total_refund_amount += file_refund_amount
-                            if points_applied:
-                                points_to_refund += points_per_file
-                            
-                            # Note: Files are in R2 but DB failed. 
-                            # User says "rollback points". 
-                            continue 
+                        except Exception as user_db_err:
+                            print(f"⚠️ Error storing user print job in database: {user_db_err}")
                     else:
-                        print(f"⏭️ Skipping DB storage for {service_type} (waiting for payment)")
+                        print(f"⏭️ Skipping database storage for {service_type} - will be stored after successful payment (same as jumbo_printing)")
+                        print(f"   ✅ All userdashboard modals now follow the same pattern: store only after payment verification")
 
-                    # ✅ STEP 4: MARK SUCCESS
-                    files_processed += 1
-                    successful_jobs.append(file.name)
+                    files_uploaded += 1
 
-
-            # 🔴 CRITICAL FAILSAFE (PASSPORT BUG FIX)
-            # If nothing processed but we had failures/silent drops for passport, assume failure
-            # If files_failed is already > 0, we are good.
-            # Just relying on files_failed check below.
-
-            # ✅ STEP 5: REFUND POINTS (GUARANTEED)
-            if points_to_refund > 0:
-                print(f"⚠️ Refund needed: {points_to_refund} points")
-                try:
-                    add_user_points(user_email, points_to_refund, f"Refund for {files_failed} failed file(s) - Passport/Photo upload error")
-                    print(f"✅ Returned {points_to_refund} points to {user_email}")
-                except Exception as e:
-                    print(f"❌ Failed to return points: {e}")
-
-            if total_refund_amount > 0:
-                print(f"💰 Refund needed: Rs.{total_refund_amount}")
-
-            # ✅ FINAL RESPONSE TO FRONTEND
-            return JsonResponse({
-                'success': files_processed > 0,
-                'uploaded': successful_jobs,
-                'failed': failed_files,
-                'points_refunded': points_to_refund,
-                'refund_amount': total_refund_amount,
-                'message': f'{files_processed} file(s) processed successfully'
-            })
+            if files_uploaded > 0:
+                # If database storage failed but files uploaded to R2, inform the user explicitly
+                if 'db_storage_failed' in locals() and db_storage_failed:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Your file was uploaded, but we could not store the print job in our database. Please try again or contact support.'
+                    }, status=500)
+                return JsonResponse({
+                    'success': True,
+                    'message': f'{files_uploaded} file(s) uploaded successfully'
+                })
+            else:
+                return JsonResponse({'success': False, 'error': 'No files uploaded'}, status=400)
 
         except json.JSONDecodeError as e:
             return JsonResponse({'success': False, 'error': f'Invalid JSON in settings: {str(e)}'}, status=400)
@@ -5430,53 +5480,37 @@ def verify_razorpay_payment(request):
                         pricing_details_serialized = json.dumps(pricing_details)
                     except Exception:
                         pricing_details_serialized = None
-                
                 try:
-                    # Robust parsing for pricing details (handle both dict and string)
-                    if isinstance(pricing_details, str):
-                        try:
-                            pricing_data = json.loads(pricing_details)
-                            pricing_details = pricing_data # Update local var to be dict
-                        except:
-                            pricing_data = {}
-                    else:
-                        pricing_data = pricing_details if isinstance(pricing_details, dict) else {}
-
-                    breakdown = pricing_data.get('pricing_breakdown', {})
+                    breakdown = pricing_details.get('pricing_breakdown', {})
                     price_per_page = 0
                     page_count = 0
                     num_copies = 0
                     pricing_key = ''
-                    
                     if isinstance(breakdown, dict):
                         price_per_page = breakdown.get('price_per_page', 0)
                         page_count = breakdown.get('page_count', 0)
                         num_copies = breakdown.get('num_copies', 0)
                         pricing_key = breakdown.get('pricing_key_used', '')
-                    
                     # Also try to get from print_settings directly if not in breakdown
                     if page_count == 0:
-                        page_count = pricing_data.get('page_count', pricing_data.get('pages', print_settings.get('page_count', print_settings.get('pages', 0))))
+                        page_count = print_settings.get('page_count', print_settings.get('pages', 0))
                     if num_copies == 0:
-                        num_copies = pricing_data.get('num_copies', pricing_data.get('copies', print_settings.get('copies', 1)))
+                        num_copies = print_settings.get('copies', 1)
                     
                     # Store only base_price in pricing_details (not full JSON)
                     base_price = breakdown.get('base_price', 0) if isinstance(breakdown, dict) else 0
                     if base_price == 0:
-                        base_price = pricing_data.get('base_price', 0)
+                        base_price = pricing_details.get('base_price', 0)
                     
                     # Store only base_price value, not full JSON
                     metadata['pricing_details'] = str(base_price) if base_price else None
-                    metadata['total_price'] = str(pricing_data.get('total_price', pricing_data.get('total', 0)))
+                    metadata['total_price'] = str(pricing_details.get('total_price', 0))
                     # Explicitly store page_count and num_copies in metadata for database storage
                     metadata['page_count'] = str(page_count)
                     metadata['num_copies'] = str(num_copies)
                     metadata['price_per_page'] = str(price_per_page)
-                    
-                    # Handle platform profit
-                    platform_profit = pricing_data.get('platform_profit', pricing_data.get('platform_commission'))
-                    if platform_profit is not None:
-                        metadata['platform_profit'] = str(platform_profit)
+                    if 'platform_profit' in pricing_details:
+                        metadata['platform_profit'] = str(pricing_details['platform_profit'])
                 except Exception as e:
                     print(f"⚠️ Error processing pricing details: {e}")
                     pass
@@ -5695,8 +5729,7 @@ def verify_razorpay_payment(request):
         # Points are only refunded when payment fails (see refund logic below)
 
         # REFUND LOGIC: If files failed to upload, refund the payment amount AND return points used
-        if files_failed > 0:
-            # 1. Return Points Checks (Decoupled from money refund)
+        if files_failed > 0 and total_payment_amount > 0:
             try:
                 # CRITICAL: Return points that were used if files failed to store
                 if points_applied and points_used_numeric > 0 and user_email:
@@ -5714,64 +5747,59 @@ def verify_razorpay_payment(request):
                             print(f"❌ Failed to return {points_used_numeric} points to {user_email}")
                     except Exception as points_return_error:
                         print(f"⚠️ Error returning points after file storage failure: {str(points_return_error)}")
-            except Exception as e:
-                print(f"⚠️ Outer error returning points: {e}")
-
-            # 2. Return Money / Refund / Compensation logic
-            if total_payment_amount > 0:
-                try:
-                    # Convert amount to paise (Razorpay uses paise)
-                    refund_amount_paise = int(float(total_payment_amount) * 100)
-                    
-                    # Attempt Razorpay refund (only if payment_id exists - skip for document print without payment)
-                    refund_success = False
-                    refund_id = None
-                    if payment_id:  # Only attempt refund if payment was made
-                        try:
-                            if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
-                                client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-                                refund_data = {
-                                    'amount': refund_amount_paise,
-                                    'notes': {
-                                        'reason': 'Document upload failed',
-                                        'failed_files': ', '.join([f['filename'] for f in failed_files]),
-                                        'payment_id': payment_id
-                                    }
+                
+                # Convert amount to paise (Razorpay uses paise)
+                refund_amount_paise = int(float(total_payment_amount) * 100)
+                
+                # Attempt Razorpay refund (only if payment_id exists - skip for document print without payment)
+                refund_success = False
+                refund_id = None
+                if payment_id:  # Only attempt refund if payment was made
+                    try:
+                        if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+                            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                            refund_data = {
+                                'amount': refund_amount_paise,
+                                'notes': {
+                                    'reason': 'Document upload failed',
+                                    'failed_files': ', '.join([f['filename'] for f in failed_files]),
+                                    'payment_id': payment_id
                                 }
-                                refund_response = client.payment.refund(payment_id, refund_data)
-                                if refund_response and refund_response.get('id'):
-                                    refund_id = refund_response.get('id')
-                                    refund_success = True
-                                    print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
-                                else:
-                                    print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
+                            }
+                            refund_response = client.payment.refund(payment_id, refund_data)
+                            if refund_response and refund_response.get('id'):
+                                refund_id = refund_response.get('id')
+                                refund_success = True
+                                print(f"✅ Successfully refunded ₹{total_payment_amount} (Payment ID: {payment_id}, Refund ID: {refund_id})")
                             else:
-                                print(f"⚠️ Razorpay keys not configured, cannot process refund")
-                        except Exception as refund_err:
-                            print(f"❌ Razorpay refund failed: {str(refund_err)}")
-                            # Fallback to points if refund fails
-                            refund_success = False
-                    else:
-                        print(f"⚠️ Skipping Razorpay refund - no payment_id (document print without payment)")
+                                print(f"⚠️ Razorpay refund API returned unexpected response: {refund_response}")
+                        else:
+                            print(f"⚠️ Razorpay keys not configured, cannot process refund")
+                    except Exception as refund_err:
+                        print(f"❌ Razorpay refund failed: {str(refund_err)}")
+                        # Fallback to points if refund fails
                         refund_success = False
-                    
-                    # If refund failed, compensate with points
-                    if not refund_success and compensation_points_awarded == 0:
-                        user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
-                        if user_email_for_refund != 'anonymous':
-                            # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
-                            points_to_assign = float(total_payment_amount)
-                            payment_ref = payment_id if payment_id else 'no_payment'
-                            success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_ref}")
-                            if success:
-                                compensation_points_awarded = points_to_assign
-                                response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
-                                response_data['points_compensated'] = points_to_assign
-                                print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
-                            else:
-                                print(f"❌ Failed to assign points to {user_email_for_refund} for failed uploads")
-                except Exception as e:
-                    print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
+                else:
+                    print(f"⚠️ Skipping Razorpay refund - no payment_id (document print without payment)")
+                    refund_success = False
+                
+                # If refund failed, compensate with points
+                if not refund_success and compensation_points_awarded == 0:
+                    user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
+                    if user_email_for_refund != 'anonymous':
+                        # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
+                        points_to_assign = float(total_payment_amount)
+                        payment_ref = payment_id if payment_id else 'no_payment'
+                        success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_ref}")
+                        if success:
+                            compensation_points_awarded = points_to_assign
+                            response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
+                            response_data['points_compensated'] = points_to_assign
+                            print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
+                        else:
+                            print(f"❌ Failed to assign points to {user_email_for_refund} for failed uploads")
+            except Exception as e:
+                print(f"⚠️ Error processing refund/compensation for failed uploads: {str(e)}")
 
         # Prepare response with refund information
         # Include refund details in response for ALL service types (regular_print, jumbo_printing, etc.)
@@ -5859,11 +5887,19 @@ def verify_razorpay_payment(request):
             points_used = int(request.POST.get('points_used', '0'))
             user_email = request.user.email if request.user.is_authenticated else None
             
-            # Always return points if payment fails/errors (STRICT REFUND POLICY)
+            # Check if we're on localhost
+            is_localhost = request.get_host() in ['127.0.0.1:8000', 'localhost:8000', '127.0.0.1', 'localhost']
+            
+            # Return points if payment verification failed and points were used
             if points_applied and points_used > 0 and user_email:
-                success = add_user_points(user_email, points_used, f'Points returned - payment verification/processing failed: {str(e)}')
-                if success:
-                    print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure")
+                # Check if points were already deducted (they shouldn't be, but check anyway)
+                # Actually, points are only deducted after successful verification, so this is a safety check
+                # But if verification fails, we should return points if they were somehow deducted
+                if is_localhost:
+                    # Always return points on localhost if payment fails
+                    success = add_user_points(user_email, points_used, f'Points returned - payment verification failed on localhost: {str(e)}')
+                    if success:
+                        print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure on localhost")
         except Exception as return_error:
             print(f"⚠️ Error returning points after verification failure: {str(return_error)}")
         
@@ -10425,7 +10461,7 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                                         
                                         <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
                                             <span class="step-number" style="font-weight: bold; color: #4caf50; margin-right: 10px;">2.</span>
-                                            <strong>Read the Rules:</strong> Please read the vendor rules and guidelines before using the system to print customer documents.
+                                            <strong>Watch the Demo Video:</strong> Please watch the training video before using the system to print customer documents.
                                         </div>
                                         
                                         <div class="step" style="margin: 15px 0; padding: 10px; background: white; border-left: 4px solid #4caf50; border-radius: 0 5px 5px 0;">
@@ -10434,6 +10470,9 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
                                         </div>
                                     </div>
 
+                                    <div style="text-align: center; margin: 30px 0;">
+                                        <a href="https://printmax.onrender.com/" style="display: inline-block; background: linear-gradient(135deg, #1976d2, #1565c0); color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 5px;">Login to Dashboard</a>
+                                    </div>
 
                                     <div class="footer" style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
                                         <p>Thank you for choosing PrintMax as your printing partner!</p>
@@ -10469,7 +10508,7 @@ def send_welcome_email(email, vendor_name, password, vendor_id):
 
         NEXT STEPS:
         1. Access Your Dashboard: Click the "Vendor" button in the top navigation on the homepage to open your Vendor Dashboard.
-        2. Read the Rules: Please read the vendor rules and guidelines before using the system to print customer documents.
+        2. Watch the Demo Video: Please watch the training video before using the system to print customer documents.
         3. Start Receiving Orders: Once your account is activated, you will start receiving customer orders.
 
         Quick Link:
@@ -13438,7 +13477,7 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
                 except:
                     pass
         
-        # Also check metadata for pricing info using consistent fields
+        # Also check metadata for pricing info
         if total_price is None:
             total_price = metadata.get('total_price')
         if price_per_page is None:
