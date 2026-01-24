@@ -5887,19 +5887,11 @@ def verify_razorpay_payment(request):
             points_used = int(request.POST.get('points_used', '0'))
             user_email = request.user.email if request.user.is_authenticated else None
             
-            # Check if we're on localhost
-            is_localhost = request.get_host() in ['127.0.0.1:8000', 'localhost:8000', '127.0.0.1', 'localhost']
-            
-            # Return points if payment verification failed and points were used
+            # Always return points if payment fails/errors (STRICT REFUND POLICY)
             if points_applied and points_used > 0 and user_email:
-                # Check if points were already deducted (they shouldn't be, but check anyway)
-                # Actually, points are only deducted after successful verification, so this is a safety check
-                # But if verification fails, we should return points if they were somehow deducted
-                if is_localhost:
-                    # Always return points on localhost if payment fails
-                    success = add_user_points(user_email, points_used, f'Points returned - payment verification failed on localhost: {str(e)}')
-                    if success:
-                        print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure on localhost")
+                success = add_user_points(user_email, points_used, f'Points returned - payment verification/processing failed: {str(e)}')
+                if success:
+                    print(f"✅ Returned {points_used} points to {user_email} due to payment verification failure")
         except Exception as return_error:
             print(f"⚠️ Error returning points after verification failure: {str(return_error)}")
         
