@@ -6953,8 +6953,20 @@
             `;
         }
 
+        // Track pending job completion requests to prevent concurrent requests for same job
+        const pendingJobCompletions = new Set();
+
         // Mark job as completed (AJAX) - INSTANT MOVEMENT
         async function markJobCompleted(filename) {
+            // Prevent concurrent requests for the same job
+            if (pendingJobCompletions.has(filename)) {
+                showToast(`Job "${filename}" is already being processed. Please wait...`, 'warning');
+                return;
+            }
+
+            // Add to pending set
+            pendingJobCompletions.add(filename);
+
             // INSTANTLY move the job to completed section BEFORE API call
             const jobIndex = allJobs.findIndex(job => job.filename === filename);
             if (jobIndex !== -1) {
@@ -7000,6 +7012,9 @@
                 })
             }).then(response => response.json())
                 .then(data => {
+                    // Remove from pending set
+                    pendingJobCompletions.delete(filename);
+
                     if (!data.success) {
                         // If API call fails, revert the change
                         const jobIndex = allJobs.findIndex(job => job.filename === filename);
@@ -7008,7 +7023,13 @@
                             delete allJobs[jobIndex].completion_time;
                             categorizeJobs();
                         }
-                        showToast(`Error marking job as completed: ${data.error || 'Unknown error'}`);
+                        
+                        // Check if it's a concurrent request error (409)
+                        if (data.error && data.error.includes('already in progress')) {
+                            showToast(`Job "${filename}" is already being processed. Please wait...`, 'warning');
+                        } else {
+                            showToast(`Error marking job as completed: ${data.error || 'Unknown error'}`);
+                        }
                     } else {
                         // Extract document name for better display
                         const documentName = filename.split('_')[0] || filename;
@@ -7025,6 +7046,9 @@
                     }
                 })
                 .catch(err => {
+                    // Remove from pending set
+                    pendingJobCompletions.delete(filename);
+
                     // If API call fails, revert the change
                     const jobIndex = allJobs.findIndex(job => job.filename === filename);
                     if (jobIndex !== -1) {

@@ -3253,6 +3253,7 @@ export default {
           let token_freed = false;
           let token_number = null;
           let jobData = null;
+          let vendorJob = null; // Declare vendorJob outside the if block to fix scope issue
 
           // Get rendered_status from request body (if provided, otherwise default to 'NO')
           // Define this BEFORE the conditional blocks so it's available for User_print_jobs update
@@ -3262,7 +3263,6 @@ export default {
           // Update Vendor_print_jobs if vendor_email or vendor_id is provided
           if (vendor_email || vendor_id) {
             // Get the full job data including pricing and storage_folder before updating
-            let vendorJob;
             if (vendor_email) {
               vendorJob = await env.DB.prepare(`
                 SELECT * FROM Vendor_print_jobs
