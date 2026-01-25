@@ -15477,8 +15477,16 @@
                           const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                           const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
 
-                          // Show failed upload modal with refund message
-                          showFailedUploadModal(verifyData.files_failed, failedFileNames, refundMessage);
+                          // Build message with points information if points were allotted (like jumboprint modal)
+                          let modalMessage = refundMessage;
+                          if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
+                            modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
+                          } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                            modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
+                          }
+                          
+                          // Show failed upload modal with refund message and points info (like jumboprint)
+                          showFailedUploadModal(verifyData.files_failed, failedFileNames, modalMessage);
 
                           // CRITICAL: Return points if files failed to store
                           if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
@@ -15493,34 +15501,24 @@
                             }
                           }
 
-                          // Show compensation points message if awarded
-                          if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                            showCursorNotification(
-                              'Compensation Added',
-                              'success',
-                              `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
-                              'success',
-                              5000
-                            );
-                            if (typeof userPoints !== 'undefined') {
-                              userPoints = (userPoints || 0) + Number(verifyData.compensation_points_awarded);
-                              updatePointsDisplay();
-                              const totalPointsElement = document.getElementById('totalPointsCount');
-                              if (totalPointsElement) {
-                                const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
-                                totalPointsElement.textContent = displayPoints;
-                              }
+                          // Add points if compensation_points_awarded or points_allotted (only on failure)
+                          const pointsToAdd = verifyData.points_allotted || verifyData.compensation_points_awarded || 0;
+                          if (pointsToAdd > 0 && typeof userPoints !== 'undefined') {
+                            userPoints = (userPoints || 0) + Number(pointsToAdd);
+                            updatePointsDisplay();
+                            const totalPointsElement = document.getElementById('totalPointsCount');
+                            if (totalPointsElement) {
+                              const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
+                              totalPointsElement.textContent = displayPoints;
                             }
                           }
                         } else {
-                          // Upload successful - update points if allotted or deducted
+                          // Upload successful - only update points if deducted (points_allotted should be 0 on success)
                           if (typeof userPoints !== 'undefined') {
                             if (verifyData.points_deducted) {
                               userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
                             }
-                            if (verifyData.points_allotted && verifyData.points_allotted > 0) {
-                              userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
-                            }
+                            // CRITICAL: Do NOT add points_allotted on successful upload - points should only be returned on failure
                             updatePointsDisplay();
                             const totalPointsElement = document.getElementById('totalPointsCount');
                             if (totalPointsElement) {
@@ -15529,16 +15527,7 @@
                             }
                           }
 
-                          // Show compensation points message if awarded (for successful uploads)
-                          if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                            showCursorNotification(
-                              'Compensation Added',
-                              'success',
-                              `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
-                              'success',
-                              5000
-                            );
-                          }
+                          // Do NOT show compensation points message on successful uploads - only show on failure
 
                           // Update job list again after successful background storage
                           updateJobListAfterPayment();
@@ -20106,6 +20095,12 @@
           const message = parsed?.message || '✅ Print job sent to print successfully.';
           // Show success modal with animation (same as document print)
           showSuccessModalWithAnimation();
+          // Trigger print request section update after successful photoprint upload
+          if (typeof updateJobListAfterPayment === 'function') {
+            setTimeout(() => {
+              updateJobListAfterPayment();
+            }, 500);
+          }
         }
       } catch (error) {
         console.warn('Unable to read photo print success state', error);
@@ -21217,7 +21212,7 @@
       });
     }
 
-    // Function to load shops in modal
+    // Function to load shops in modal - uses exact same logic as photoprint.html
     async function loadShopsInModal(service) {
       const shopList = document.getElementById(`${service}-shop-selection-list`);
       if (!shopList) return;
@@ -21244,8 +21239,20 @@
         }
       }
 
-      // Get shops with distance info (prefer locationBasedShops if available)
+      // Get shops with distance info (prefer locationBasedShops if available) - same as photoprint
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
+      
+      // For document print (service === 'print'), use exact same filtering as photoprint
+      if (service === 'print') {
+        // Filter to only show shops within 3km (same as photoprint)
+        const shopsWithin3km = shopsWithDistance.filter(shop => {
+          const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm :
+            (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
+          return distanceKm !== null && distanceKm !== undefined && distanceKm <= 3;
+        });
+        // Use shops within 3km if available, otherwise use all shops (same as photoprint)
+        shopsWithDistance = shopsWithin3km.length > 0 ? shopsWithin3km : shopsWithDistance;
+      }
 
       // Map service names to service availability field names
       const serviceAvailabilityMap = {
@@ -21284,6 +21291,17 @@
 
       // Filter shops based on search text
       const { displayShops, within3km } = getFilteredShops(shopsWithDistance, searchText);
+      
+      // For document print (service === 'print'), sort by distance exactly like photoprint
+      if (service === 'print' && displayShops.length > 0) {
+        displayShops.sort((a, b) => {
+          const aDist = (typeof a.distanceKm === 'number') ? a.distanceKm : 
+            (a.distance !== null && a.distance !== undefined) ? a.distance : Infinity;
+          const bDist = (typeof b.distanceKm === 'number') ? b.distanceKm : 
+            (b.distance !== null && b.distance !== undefined) ? b.distance : Infinity;
+          return aDist - bDist;
+        });
+      }
 
       // Show appropriate message based on mode
       if (searchText.length === 0) {
@@ -21326,25 +21344,35 @@
       }
 
       const shopItemsHtml = shopsToRender.map((shop, index) => {
-        const distance = shop.formattedDistance || shop.distanceText || null;
-        const hasDistance = distance && distance !== 'N/A' && distance !== 'Location unavailable';
+        // Calculate distance exactly like photoprint.html
+        const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm :
+          (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
+        let distance = '';
+        let hasDistance = false;
+        if (distanceKm !== null && distanceKm !== undefined) {
+          distance = distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`;
+          hasDistance = true;
+        } else if (shop.formattedDistance) {
+          distance = shop.formattedDistance;
+          hasDistance = distance !== 'Location unavailable' && distance !== 'Distance not available';
+        } else if (shop.distance_km) {
+          const dist = Number(shop.distance_km);
+          distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+          hasDistance = true;
+        } else {
+          distance = 'Location unavailable';
+          hasDistance = false;
+        }
 
-        // Build address from multiple possible fields
-        const address = [shop.shop_address, shop.city, shop.pincode]
-          .filter(Boolean)
-          .join(', ') ||
-          [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code]
-            .filter(Boolean)
-            .join(', ') ||
-          [shop.area, shop.city]
-            .filter(Boolean)
-            .join(', ') ||
-          'Address not available';
+        // Build address from multiple possible fields (same as photoprint)
+        const address = [shop.shop_address, shop.city, shop.pincode].filter(Boolean).join(', ') ||
+          [shop.address_line1, shop.address_line2, shop.city, shop.state, shop.postal_code].filter(Boolean).join(', ') ||
+          [shop.area, shop.city].filter(Boolean).join(', ') || 'Address not available';
 
         const pendingJobs = shop.pending_jobs_count || 0;
         const trafficInfo = getTrafficInfo(pendingJobs);
 
-        // Distance display with icon for unavailable location
+        // Distance display with icon for unavailable location (same as photoprint)
         let distanceDisplay = '';
         if (hasDistance) {
           distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
@@ -21541,14 +21569,15 @@
       }
     }
 
-    // Function to update shop selection button
+    // Function to update shop selection button - uses exact same logic as photoprint.html
     function updateShopSelectionButton(service, selectedItem) {
       const button = document.getElementById(`${service}-shop-selection-button`);
       if (!button) return;
 
       const name = selectedItem.querySelector('.shop-selection-item-name')?.textContent || 'Selected Shop';
       const address = selectedItem.querySelector('.shop-selection-item-address')?.textContent || '';
-      const distance = selectedItem.querySelector('.shop-selection-item-distance')?.textContent || '';
+      const distanceEl = selectedItem.querySelector('.shop-selection-item-meta .shop-selection-item-distance');
+      const distance = distanceEl ? distanceEl.textContent.trim() : '';
 
       // Get shop folder from selectedItem's onclick or data attributes
       let shopFolder = '';
@@ -21570,9 +21599,11 @@
       const subtitleEl = button.querySelector('.shop-selection-subtitle') || document.getElementById(`${service}-shop-subtitle`);
 
       if (titleEl) titleEl.textContent = name;
-      // Show only address (like photo print modal) - address only, same font and size
+      // Show address and distance exactly like photoprint.html
       if (subtitleEl) {
-        subtitleEl.textContent = address || 'Choose a nearby print shop';
+        subtitleEl.textContent = distance && distance !== 'Distance not available' && distance !== 'Location unavailable' 
+          ? `${address} • ${distance}` 
+          : address || 'Choose a nearby print shop';
       }
 
       // Remove any error styling when shop is selected
@@ -28048,8 +28079,14 @@
                       ? parseFloat(verifyData.refund_amount)
                       : actualPaymentAmount;
 
-                    const refundMessage = verifyData.refund_message ||
+                    // Build message with points information if points were allotted (like jumboprint modal)
+                    let refundMessage = verifyData.refund_message ||
                       `Payment of ₹${refundAmount.toFixed(2)} has been refunded due to document upload failure.`;
+                    if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
+                      refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
+                    } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                      refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
+                    }
                     showFailedUploadModal(actualFilesFailed, failedFileNames, refundMessage);
 
                     // CRITICAL: Return points if files failed to store
@@ -28132,14 +28169,12 @@
                       }
                     }
                   } else {
-                    // Upload successful - update points if allotted or deducted
+                    // Upload successful - only update points if deducted (points_allotted should be 0 on success)
                     if (typeof userPoints !== 'undefined') {
                       if (verifyData.points_deducted) {
                         userPoints = Math.max(0, Number((userPoints || 0) - Number(verifyData.points_deducted)));
                       }
-                      if (verifyData.points_allotted && verifyData.points_allotted > 0) {
-                        userPoints = Math.max(0, Number(userPoints + verifyData.points_allotted));
-                      }
+                      // CRITICAL: Do NOT add points_allotted on successful upload - points should only be returned on failure
                       updatePointsDisplay();
                       const totalPointsElement = document.getElementById('totalPointsCount');
                       if (totalPointsElement) {
@@ -28148,16 +28183,7 @@
                       }
                     }
 
-                    // Show compensation points message if awarded (for successful uploads)
-                    if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                      showCursorNotification(
-                        'Compensation Added',
-                        'success',
-                        `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
-                        'success',
-                        5000
-                      );
-                    }
+                    // Do NOT show compensation points message on successful uploads - only show on failure
 
                     // Update job list again after successful background storage
                     if (typeof updateJobListAfterPayment === 'function') {

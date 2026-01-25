@@ -5164,7 +5164,7 @@ def verify_razorpay_payment(request):
             'failed_files': [],
             'token': '',
             'printer_name': '',
-            'points_allotted': 0
+            'points_allotted': 0  # Only set to non-zero when upload fails (see below)
         }
 
         def safe_float(value, default=0.0):
@@ -5286,6 +5286,9 @@ def verify_razorpay_payment(request):
             service_type_raw = (print_settings.get('service_type') or '').strip()
             service_type_lc = service_type_raw.lower()
             
+            # Check service_name to distinguish between photoprint and passport photo
+            service_name = (print_settings.get('service_name') or '').strip().lower()
+            
             # Normalize service_type: convert 'regular print' to 'regular_print' for consistency with jumbo_printing
             # This ensures regular print is handled EXACTLY like jumbo_printing
             # CRITICAL: Document print modal must use 'regular_print' to match jumbo_printing storage pattern
@@ -5295,6 +5298,10 @@ def verify_razorpay_payment(request):
             elif service_type_lc in ['jumbo_printing', 'jumbo_print']:
                 service_type = 'jumbo_printing'  # Keep jumbo_printing as-is
                 print(f"📝 Service type '{service_type_raw}' -> 'jumbo_printing'")
+            elif service_type_lc in ['photo_print'] and service_name == 'photprint':
+                # CRITICAL: Keep 'photo_print' as-is when service_name is 'photprint' (photoprint service)
+                service_type = 'photo_print'
+                print(f"📝 Keeping service_type 'photo_print' for photoprint service (service_name: '{service_name}')")
             elif service_type_lc in ['passport_photo', 'passport_print', 'photo_print', 'passport photo', 'passport print']:
                 service_type = 'passport_photo'  # Normalize all passport photo variants to 'passport_photo'
                 print(f"📝 Normalized service_type '{service_type_raw}' -> 'passport_photo'")
@@ -5865,6 +5872,15 @@ def verify_razorpay_payment(request):
                 if compensation_points_awarded > 0:
                     response_data['compensation_points_awarded'] = compensation_points_awarded
                     response_data['points_compensated'] = compensation_points_awarded
+        
+        # CRITICAL: Set points_allotted only when upload fails (for modal message display)
+        # points_allotted should match compensation_points_awarded when files fail
+        if files_failed > 0 and compensation_points_awarded > 0:
+            response_data['points_allotted'] = compensation_points_awarded
+            print(f"💰 Set points_allotted to {compensation_points_awarded} for failed uploads")
+        else:
+            # Ensure points_allotted is 0 on success
+            response_data['points_allotted'] = 0
         
         # Add refund information if files failed
         if files_failed > 0 and total_payment_amount > 0:
