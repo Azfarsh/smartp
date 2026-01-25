@@ -15471,6 +15471,9 @@
                           return;
                         }
 
+                        // CRITICAL: Track upload success/failure flag
+                        const uploadSuccess = verifyResp.ok && verifyData.success && verifyData.files_processed > 0 && verifyData.files_failed === 0;
+                        
                         // Check for failed uploads - ONLY refund if files actually failed to upload
                         if (verifyData.files_failed > 0) {
                           const failedFiles = verifyData.failed_files || [];
@@ -15487,6 +15490,13 @@
                           
                           // Show failed upload modal with refund message and points info (like jumboprint)
                           showFailedUploadModal(verifyData.files_failed, failedFileNames, modalMessage);
+                          
+                          // CRITICAL: Upload failed - log for tracking
+                          console.error('❌ Document print upload failed:', {
+                            files_failed: verifyData.files_failed,
+                            files_processed: verifyData.files_processed,
+                            upload_success: false
+                          });
 
                           // CRITICAL: Return points if files failed to store
                           if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
@@ -15513,6 +15523,15 @@
                             }
                           }
                         } else {
+                          // CRITICAL: Upload successful - track success flag
+                          if (uploadSuccess) {
+                            console.log('✅ Document print upload successful:', {
+                              files_processed: verifyData.files_processed,
+                              files_failed: verifyData.files_failed,
+                              upload_success: true
+                            });
+                          }
+                          
                           // Upload successful - only update points if deducted (points_allotted should be 0 on success)
                           if (typeof userPoints !== 'undefined') {
                             if (verifyData.points_deducted) {
@@ -20093,13 +20112,25 @@
           let parsed = {};
           try { parsed = JSON.parse(stored); } catch (err) { parsed = {}; }
           const message = parsed?.message || '✅ Print job sent to print successfully.';
-          // Show success modal with animation (same as document print)
-          showSuccessModalWithAnimation();
-          // Trigger print request section update after successful photoprint upload
-          if (typeof updateJobListAfterPayment === 'function') {
-            setTimeout(() => {
+          const uploadSuccess = parsed?.upload_success === true;
+          const filesProcessed = parsed?.files_processed || 0;
+          
+          // CRITICAL: Only show success if upload was actually successful
+          if (uploadSuccess && filesProcessed > 0) {
+            // Show success modal with animation (same as document print)
+            showSuccessModalWithAnimation();
+            // CRITICAL: Trigger print request section update IMMEDIATELY after successful photoprint upload
+            // This ensures the print requests section shows the new job instantly
+            if (typeof updateJobListAfterPayment === 'function') {
+              // Call immediately, then again after a short delay to ensure data is fresh
               updateJobListAfterPayment();
-            }, 500);
+              setTimeout(() => {
+                updateJobListAfterPayment();
+              }, 500);
+            }
+          } else {
+            // Upload failed or status unclear - log warning
+            console.warn('Photo print upload may have failed. Upload success:', uploadSuccess, 'Files processed:', filesProcessed);
           }
         }
       } catch (error) {
@@ -28050,6 +28081,9 @@
                     r2PathsCount: verifyData.r2_paths ? verifyData.r2_paths.length : 0
                   });
 
+                  // CRITICAL: Track upload success/failure flag
+                  const uploadSuccess = verifyResp.ok && verifyData.success && filesProcessed > 0 && filesFailed === 0;
+                  
                   // Check for failed uploads: either explicit failure count OR no files processed when files were expected
                   // CRITICAL: Only refund if files_failed > 0 (actual failure from server response)
                   const hasUploadFailure = filesFailed > 0;
@@ -28169,6 +28203,15 @@
                       }
                     }
                   } else {
+                    // CRITICAL: Upload successful - track success flag
+                    if (uploadSuccess) {
+                      console.log('✅ Document print upload successful:', {
+                        files_processed: filesProcessed,
+                        files_failed: filesFailed,
+                        upload_success: true
+                      });
+                    }
+                    
                     // Upload successful - only update points if deducted (points_allotted should be 0 on success)
                     if (typeof userPoints !== 'undefined') {
                       if (verifyData.points_deducted) {

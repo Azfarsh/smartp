@@ -3686,9 +3686,13 @@
                                 const formData = new FormData();
                                 formData.append('file_0', pdfFile);
                                 formData.append('file_count', '1');
+                                // CRITICAL: Keep service_type as 'photo_print' and service_name as 'photprint' from metadata
+                                // Do NOT override with 'passport_photo' - this ensures proper database storage
                                 formData.append('settings_0', JSON.stringify({
                                     ...data.metadata,
-                                    service_type: 'passport_photo'
+                                    // Keep service_type and service_name from metadata (already set correctly)
+                                    service_type: data.metadata.service_type || 'photo_print',
+                                    service_name: data.metadata.service_name || 'photprint'
                                 }));
                                 formData.append('selected_vendor', data.selectedShop);
                                 formData.append('vendor_id', data.vendorId);
@@ -3699,6 +3703,11 @@
                                 formData.append('points_applied', data.pointsApplied.toString());
                                 formData.append('points_used', data.pointsUsed);
                                 formData.append('final_amount', data.finalAmount);
+                                // CRITICAL: Add user_email for proper database storage
+                                const userEmail = document.querySelector('meta[name="user-email"]')?.content || data.metadata.user_email || '';
+                                if (userEmail) {
+                                    formData.append('user_email', userEmail);
+                                }
 
                                 formData.append('razorpay_payment_id', response.razorpay_payment_id);
                                 formData.append('razorpay_order_id', response.razorpay_order_id);
@@ -3706,20 +3715,92 @@
 
                                 const verifyResp = await fetch('/payments/verify/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } });
                                 const verifyData = await parseJsonResponse(verifyResp);
-                                if (!verifyResp.ok || !verifyData.success) { throw new Error(verifyData.error || 'Payment verification failed'); }
+                                
+                                // CRITICAL: Track upload success/failure flag
+                                const uploadSuccess = verifyResp.ok && verifyData.success && verifyData.files_processed > 0 && verifyData.files_failed === 0;
+                                
+                                if (!verifyResp.ok || !verifyData.success) {
+                                    console.error('Payment verification failed:', verifyData.error || 'Unknown error');
+                                    throw new Error(verifyData.error || 'Payment verification failed');
+                                }
 
-                                // If any files failed to store, surface refund information just like dashboard modals
+                                // CRITICAL: Handle failed uploads with proper points compensation (like document print modal)
                                 if (verifyData.files_failed && verifyData.files_failed > 0) {
                                     const failedFiles = verifyData.failed_files || [];
                                     const failedNames = failedFiles.map(f => f.filename).join(', ') || 'Unknown files';
-                                    const refundMsg = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to upload failure for: ${failedNames}`;
+                                    
+                                    // Build refund message with points information
+                                    let refundMsg = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to upload failure for: ${failedNames}`;
+                                    if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
+                                        refundMsg = `${refundMsg}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
+                                    } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                                        refundMsg = `${refundMsg}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
+                                    }
+                                    
                                     alert(refundMsg);
-                                } else {
+                                    
+                                    // CRITICAL: Return points if files failed to store
+                                    const pointsUsed = parseFloat(data.pointsUsed || '0');
+                                    const pointsApplied = data.pointsApplied === true;
+                                    
+                                    // 1. Return points that were used (if any)
+                                    if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
+                                        // Points already returned by server
+                                        console.log(`✅ Points returned by server: ${verifyData.points_returned}`);
+                                    } else if (pointsApplied && pointsUsed > 0 && userEmail) {
+                                        // Return points via API
+                                        fetch('/payments/return-points/', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRFToken': getCookie('csrftoken')
+                                            },
+                                            body: JSON.stringify({
+                                                user_email: userEmail,
+                                                points: pointsUsed,
+                                                reason: 'Points returned - photprint upload failed after payment'
+                                            })
+                                        }).catch(err => console.error('Error returning points:', err));
+                                    }
+                                    
+                                    // 2. Add compensation points if awarded
+                                    if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                                        console.log(`✅ Compensation points awarded: ${verifyData.compensation_points_awarded}`);
+                                        // Points are already added by server, just log for user awareness
+                                    }
+                                    
+                                    // Upload failed - do not redirect
+                                    return;
+                                }
+                                
+                                // CRITICAL: Upload successful - store success flag and trigger print requests update
+                                if (uploadSuccess) {
                                     const serverToken = verifyData.token || data.metadata.token;
                                     const successMessage = '✅ Print job sent to print successfully.';
+                                    
+                                    // Store success flag in sessionStorage for dashboard
+                                    try {
+                                        const successPayload = {
+                                            message: successMessage,
+                                            token: serverToken,
+                                            timestamp: Date.now(),
+                                            upload_success: true,
+                                            files_processed: verifyData.files_processed || 1
+                                        };
+                                        sessionStorage.setItem('photoPrintSuccess', JSON.stringify(successPayload));
+                                    } catch (storageError) {
+                                        console.warn('Unable to persist success state:', storageError);
+                                    }
+                                    
+                                    // Close modals
                                     closePhotoPrintOrderSummary();
                                     closePhotoPrintModalView();
+                                    
+                                    // Redirect to dashboard - updateJobListAfterPayment will be called on page load
                                     redirectToDashboardWithSuccess(successMessage, serverToken);
+                                } else {
+                                    // Upload status unclear - show error
+                                    throw new Error('Upload status unclear. Please check your print requests.');
                                 }
 
                                 resolve();
