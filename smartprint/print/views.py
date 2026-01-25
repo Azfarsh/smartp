@@ -5157,6 +5157,7 @@ def verify_razorpay_payment(request):
         failed_files = []
         total_payment_amount = 0
         compensation_points_awarded = 0
+        points_refunded = False  # CRITICAL: Single authoritative guard flag to prevent double refunding
         response_data = {
             'success': True,
             'files_processed': 0,
@@ -5796,8 +5797,8 @@ def verify_razorpay_payment(request):
                     print(f"⚠️ Skipping Razorpay refund - no payment_id (document print without payment)")
                     refund_success = False
                 
-                # If refund failed, compensate with points
-                if not refund_success and compensation_points_awarded == 0:
+                # If refund failed, compensate with points (ONLY if not already refunded)
+                if not refund_success and not points_refunded:
                     user_email_for_refund = request.user.email if request.user.is_authenticated else 'anonymous'
                     if user_email_for_refund != 'anonymous':
                         # Convert payment amount to points (1 rupee = 1 point) - preserve decimal values
@@ -5806,6 +5807,7 @@ def verify_razorpay_payment(request):
                         success = add_user_points(user_email_for_refund, points_to_assign, f"Compensation for {files_failed} failed upload(s) - refund failed for payment {payment_ref}")
                         if success:
                             compensation_points_awarded = points_to_assign
+                            points_refunded = True  # Mark as refunded to prevent double refunding
                             response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
                             response_data['points_compensated'] = points_to_assign
                             print(f"💰 Assigned {points_to_assign} points to {user_email_for_refund} as compensation (refund failed)")
@@ -5837,41 +5839,39 @@ def verify_razorpay_payment(request):
 
         # Always store points in user_points when uploads fail so they are instantly available
         # This ensures compensation for ALL service types (document print, passport photo, jumbo print, etc.)
-        if files_failed > 0 and total_payment_amount > 0:
-            # Check if compensation was already awarded in refund logic
-            compensation_already_awarded = compensation_points_awarded > 0
-            
-            if not compensation_already_awarded:
-                try:
-                    user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
-                    if user_email_for_points:
-                        points_to_assign = float(total_payment_amount)
-                        payment_ref = payment_id if payment_id else 'no_payment'
-                        # Get service types of failed files for better logging
-                        failed_service_types = [f.get('service_type', 'unknown') for f in failed_files]
-                        service_types_str = ', '.join(set(failed_service_types))
-                        success = add_user_points(
-                            user_email_for_points,
-                            points_to_assign,
-                            f"Compensation points for {files_failed} failed upload(s) ({service_types_str}) - payment {payment_ref}"
-                        )
-                        if success:
-                            compensation_points_awarded = points_to_assign
-                            response_data['points_compensated'] = points_to_assign
-                            response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
-                            print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads (compensation) - Service types: {service_types_str}")
-                        else:
-                            print(f"❌ Failed to assign compensation points to {user_email_for_points}")
-                except Exception as e:
-                    print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                print(f"✅ Compensation points already awarded: {compensation_points_awarded} points")
-                # Ensure compensation_points_awarded is in response even if already awarded
-                if compensation_points_awarded > 0:
-                    response_data['compensation_points_awarded'] = compensation_points_awarded
-                    response_data['points_compensated'] = compensation_points_awarded
+        # CRITICAL: Only award points if not already refunded (prevents double refunding)
+        if files_failed > 0 and total_payment_amount > 0 and not points_refunded:
+            try:
+                user_email_for_points = user_email or (request.user.email if request.user.is_authenticated else None)
+                if user_email_for_points:
+                    points_to_assign = float(total_payment_amount)
+                    payment_ref = payment_id if payment_id else 'no_payment'
+                    # Get service types of failed files for better logging
+                    failed_service_types = [f.get('service_type', 'unknown') for f in failed_files]
+                    service_types_str = ', '.join(set(failed_service_types))
+                    success = add_user_points(
+                        user_email_for_points,
+                        points_to_assign,
+                        f"Compensation points for {files_failed} failed upload(s) ({service_types_str}) - payment {payment_ref}"
+                    )
+                    if success:
+                        compensation_points_awarded = points_to_assign
+                        points_refunded = True  # Mark as refunded to prevent double refunding
+                        response_data['points_compensated'] = points_to_assign
+                        response_data['compensation_points_awarded'] = points_to_assign  # Add for frontend compatibility
+                        print(f"💰 Assigned {points_to_assign} points to {user_email_for_points} for failed uploads (compensation) - Service types: {service_types_str}")
+                    else:
+                        print(f"❌ Failed to assign compensation points to {user_email_for_points}")
+            except Exception as e:
+                print(f"⚠️ Error assigning compensation points after failed uploads: {str(e)}")
+                import traceback
+                traceback.print_exc()
+        elif files_failed > 0 and total_payment_amount > 0 and points_refunded:
+            # Points already refunded - ensure response includes the compensation info
+            print(f"✅ Compensation points already awarded: {compensation_points_awarded} points (prevented double refund)")
+            if compensation_points_awarded > 0:
+                response_data['compensation_points_awarded'] = compensation_points_awarded
+                response_data['points_compensated'] = compensation_points_awarded
         
         # CRITICAL: Set points_allotted only when upload fails (for modal message display)
         # points_allotted should match compensation_points_awarded when files fail
