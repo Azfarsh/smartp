@@ -17073,9 +17073,12 @@
       const jobsSection = document.getElementById('jobsSection');
       if (!container) return;
 
-      // Get current date for filtering completed jobs
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Get current date in IST (Indian Standard Time, UTC+5:30) for filtering completed jobs
+      // IST is UTC+5:30, so we need to add 5 hours and 30 minutes to UTC
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds (5 hours 30 minutes)
+      const istTime = new Date(now.getTime() + (istOffset - now.getTimezoneOffset() * 60 * 1000));
+      const today = new Date(istTime.getFullYear(), istTime.getMonth(), istTime.getDate());
 
       // Separate pending and completed jobs
       // CRITICAL: Only render jobs that exist in D1 User_print_jobs table (must have r2_path or service_type)
@@ -17091,7 +17094,7 @@
         return jobCompleted !== 'YES';
       });
 
-      // Filter completed jobs: only show if completed today
+      // Filter completed jobs: show if completed on the current date (more robust date comparison)
       const completedJobs = (jobs || []).filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
         if (jobCompleted !== 'YES') return false;
@@ -17131,13 +17134,56 @@
           }
         }
 
-        // Only show completed jobs if completed today
+        // Show completed jobs if completed on the current date in IST (compare date parts in IST)
         if (completionDate && !isNaN(completionDate.getTime())) {
-          completionDate.setHours(0, 0, 0, 0);
-          return completionDate.getTime() === today.getTime();
+          // Convert completion date to IST for comparison
+          const completionUTC = completionDate.getTime() + (completionDate.getTimezoneOffset() * 60 * 1000);
+          const completionIST = new Date(completionUTC + istOffset);
+          const completionYear = completionIST.getFullYear();
+          const completionMonth = completionIST.getMonth();
+          const completionDay = completionIST.getDate();
+          const todayYear = today.getFullYear();
+          const todayMonth = today.getMonth();
+          const todayDay = today.getDate();
+          
+          return completionYear === todayYear && 
+                 completionMonth === todayMonth && 
+                 completionDay === todayDay;
         }
 
-        // If no completion date or invalid date, don't show (likely old completed job)
+        // If no completion date but job is marked completed, show it if timestamp is from today in IST
+        // This handles cases where completion_time might not be set yet
+        if (job.timestamp) {
+          try {
+            let timestampDate = null;
+            if (typeof job.timestamp === 'string' && (job.timestamp.includes('T') || job.timestamp.includes(' '))) {
+              timestampDate = new Date(job.timestamp);
+            } else {
+              const timestamp = typeof job.timestamp === 'number' ? job.timestamp : parseFloat(job.timestamp);
+              timestampDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+            }
+            if (timestampDate && !isNaN(timestampDate.getTime())) {
+              // Convert timestamp date to IST for comparison
+              const timestampUTC = timestampDate.getTime() + (timestampDate.getTimezoneOffset() * 60 * 1000);
+              const timestampIST = new Date(timestampUTC + istOffset);
+              const timestampYear = timestampIST.getFullYear();
+              const timestampMonth = timestampIST.getMonth();
+              const timestampDay = timestampIST.getDate();
+              const todayYear = today.getFullYear();
+              const todayMonth = today.getMonth();
+              const todayDay = today.getDate();
+              
+              // Show if timestamp is from today in IST (fallback for jobs without completion_time)
+              return timestampYear === todayYear && 
+                     timestampMonth === todayMonth && 
+                     timestampDay === todayDay;
+            }
+          } catch (e) {
+            console.error('Error parsing timestamp fallback:', e);
+          }
+        }
+
+        // If no valid date found, don't show (likely old completed job)
         return false;
       });
 
@@ -22332,9 +22378,14 @@
         return;
       }
 
-      // Get current date for filtering completed jobs
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Get current date in IST (Indian Standard Time, UTC+5:30) for filtering completed jobs
+      // IST is UTC+5:30, so we convert UTC time to IST by adding 5 hours 30 minutes
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds (5 hours 30 minutes)
+      // Get UTC time and add IST offset to get IST time
+      const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+      const istTime = new Date(utcTime + istOffset);
+      const today = new Date(istTime.getFullYear(), istTime.getMonth(), istTime.getDate());
 
       // Filter jobs efficiently - STRICT FILTER: Only pending jobs (case-insensitive), exclude cancelled jobs older than a day
       // CRITICAL: Only render jobs that exist in D1 User_print_jobs table (must have r2_path or service_type)
@@ -22373,7 +22424,7 @@
         return jobCompleted !== 'YES';
       });
 
-      // Filter completed jobs: only show if completed today
+      // Filter completed jobs: show if completed on the current date (more robust date comparison)
       const completedJobs = userJobs.filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
         if (jobCompleted !== 'YES') return false;
@@ -22413,13 +22464,56 @@
           }
         }
 
-        // Only show completed jobs if completed today
+        // Show completed jobs if completed on the current date in IST (compare date parts in IST)
         if (completionDate && !isNaN(completionDate.getTime())) {
-          completionDate.setHours(0, 0, 0, 0);
-          return completionDate.getTime() === today.getTime();
+          // Convert completion date to IST for comparison
+          const completionUTC = completionDate.getTime() + (completionDate.getTimezoneOffset() * 60 * 1000);
+          const completionIST = new Date(completionUTC + istOffset);
+          const completionYear = completionIST.getFullYear();
+          const completionMonth = completionIST.getMonth();
+          const completionDay = completionIST.getDate();
+          const todayYear = today.getFullYear();
+          const todayMonth = today.getMonth();
+          const todayDay = today.getDate();
+          
+          return completionYear === todayYear && 
+                 completionMonth === todayMonth && 
+                 completionDay === todayDay;
         }
 
-        // If no completion date or invalid date, don't show (likely old completed job)
+        // If no completion date but job is marked completed, show it if timestamp is from today in IST
+        // This handles cases where completion_time might not be set yet
+        if (job.timestamp) {
+          try {
+            let timestampDate = null;
+            if (typeof job.timestamp === 'string' && (job.timestamp.includes('T') || job.timestamp.includes(' '))) {
+              timestampDate = new Date(job.timestamp);
+            } else {
+              const timestamp = typeof job.timestamp === 'number' ? job.timestamp : parseFloat(job.timestamp);
+              timestampDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+            }
+            if (timestampDate && !isNaN(timestampDate.getTime())) {
+              // Convert timestamp date to IST for comparison
+              const timestampUTC = timestampDate.getTime() + (timestampDate.getTimezoneOffset() * 60 * 1000);
+              const timestampIST = new Date(timestampUTC + istOffset);
+              const timestampYear = timestampIST.getFullYear();
+              const timestampMonth = timestampIST.getMonth();
+              const timestampDay = timestampIST.getDate();
+              const todayYear = today.getFullYear();
+              const todayMonth = today.getMonth();
+              const todayDay = today.getDate();
+              
+              // Show if timestamp is from today in IST (fallback for jobs without completion_time)
+              return timestampYear === todayYear && 
+                     timestampMonth === todayMonth && 
+                     timestampDay === todayDay;
+            }
+          } catch (e) {
+            console.error('Error parsing timestamp fallback:', e);
+          }
+        }
+
+        // If no valid date found, don't show (likely old completed job)
         return false;
       });
 
@@ -27083,8 +27177,10 @@
       }
       // Store original button text
       const originalButtonText = confirmPayBtn.innerHTML;
+      // Disable button to prevent double-clicks but don't show processing state
+      // PDF is created and stored instantly after payment like document print
       confirmPayBtn.disabled = true;
-      confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      // Don't change button text - keep it as "Pay Now" to avoid showing processing
 
       // CRITICAL: Read amount and pricing data from order summary modal BEFORE closing it
       const orderSummaryModal = document.getElementById('orderSummaryModal');
@@ -27645,10 +27741,15 @@
           // Create metadata for each file
           for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            // Fix: Use 'photprint' as service_name for photo service instead of 'Premium Photo Printing' or 'Passport Photo'
+            let serviceName = tmpl.title;
+            if (serviceType === 'photo' || serviceType === 'photo_print' || tmpl.service_type === 'photo_print') {
+              serviceName = 'photprint';
+            }
             const settingsJson = {
               filename: file.name,
               service_type: tmpl.service_type,
-              service_name: tmpl.title,
+              service_name: serviceName,
               copies: serviceType === 'passport' ? 1 : copies,
               color: color,
               orientation: orientation,

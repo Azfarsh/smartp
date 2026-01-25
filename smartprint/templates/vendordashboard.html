@@ -1759,6 +1759,27 @@
             font-style: italic;
         }
 
+        /* Search highlighting styles */
+        .job-card.search-highlight {
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.05);
+            animation: searchPulse 1.5s ease-in-out;
+        }
+
+        .job-card.search-hidden {
+            display: none !important;
+        }
+
+        @keyframes searchPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3);
+            }
+        }
+
         .search-icon {
             position: absolute;
             left: 12px;
@@ -6753,6 +6774,14 @@
                 // Add job card class
                 cardElement.classList.add('job-card');
 
+                // Add data attributes for search functionality
+                if (job.filename) cardElement.dataset.filename = job.filename;
+                if (job.token) cardElement.dataset.token = job.token.toString();
+                if (job.user || job.user_email) cardElement.dataset.user = (job.user || job.user_email || '').toLowerCase();
+                if (job.service_type) cardElement.dataset.serviceType = job.service_type.toLowerCase();
+                if (job.service_name) cardElement.dataset.serviceName = job.service_name.toLowerCase();
+                if (job.job_id) cardElement.dataset.jobId = job.job_id.toString();
+
                 // NO ANIMATIONS - instant static display for all job types
                 cardElement.style.opacity = '1';
                 cardElement.style.transform = 'translateY(0)';
@@ -6993,6 +7022,20 @@
                 // Add to completed section instantly - NO ANIMATION
                 renderSingleJob('completed', currentJob, false);
 
+                // Calculate vendor payment and update earnings card
+                const vendorPayment = getVendorPayment(currentJob);
+                if (vendorPayment > 0) {
+                    const earningsCard = document.getElementById('totalStatCount');
+                    if (earningsCard) {
+                        // Extract current earnings value (remove ₹ symbol and parse)
+                        const currentEarningsText = earningsCard.textContent.trim();
+                        const currentEarnings = parseFloat(currentEarningsText.replace('₹', '').replace(/,/g, '')) || 0;
+                        const newEarnings = currentEarnings + vendorPayment;
+                        earningsCard.textContent = `₹${newEarnings.toFixed(2)}`;
+                        console.log(`💰 Updated earnings: ₹${currentEarnings.toFixed(2)} + ₹${vendorPayment.toFixed(2)} = ₹${newEarnings.toFixed(2)}`);
+                    }
+                }
+
                 // Update counts
                 updateCounts({
                     pending: allJobs.filter(j => j.job_completed === 'NO').length,
@@ -7205,6 +7248,54 @@
                 return 0;
             } catch (e) {
                 console.log('Error extracting job price:', e);
+                return 0;
+            }
+        }
+
+        // Function to get vendor payment (total_price - platform_profit)
+        function getVendorPayment(job) {
+            try {
+                let totalPrice = 0;
+                let platformProfit = 0;
+
+                // Try total_price first
+                if (job.total_price && !isNaN(parseFloat(job.total_price))) {
+                    totalPrice = parseFloat(job.total_price);
+                } else if (job.price && !isNaN(parseFloat(job.price))) {
+                    totalPrice = parseFloat(job.price);
+                }
+
+                // Try platform_profit
+                if (job.platform_profit && !isNaN(parseFloat(job.platform_profit))) {
+                    platformProfit = parseFloat(job.platform_profit);
+                }
+
+                // Try pricing_details
+                if (job.pricing_details) {
+                    try {
+                        const pricingDetails = typeof job.pricing_details === 'string'
+                            ? JSON.parse(job.pricing_details)
+                            : job.pricing_details;
+
+                        if (!totalPrice && pricingDetails.total) {
+                            totalPrice = parseFloat(pricingDetails.total);
+                        }
+                        if (!totalPrice && pricingDetails.total_price) {
+                            totalPrice = parseFloat(pricingDetails.total_price);
+                        }
+                        if (!platformProfit && pricingDetails.platform_profit) {
+                            platformProfit = parseFloat(pricingDetails.platform_profit);
+                        }
+                    } catch (e) {
+                        console.log('Error parsing pricing_details for vendor payment:', e);
+                    }
+                }
+
+                // Calculate vendor payment (Total - Platform Profit)
+                const vendorPayment = Math.max(0, totalPrice - platformProfit);
+                return vendorPayment;
+            } catch (e) {
+                console.log('Error calculating vendor payment:', e);
                 return 0;
             }
         }
@@ -8089,12 +8180,25 @@
             const jobs = filteredJobs[type] || [];
             const sectionIdMap = { pending: 'pending-section', completed: 'completed-section' };
             const containerIdMap = { pending: 'pendingJobs', completed: 'completedJobs' };
-            const section = document.getElementById(sectionIdMap[type]);
+            const sectionId = sectionIdMap[type] || 'pending-section';
+            const section = document.getElementById(sectionId);
             const searchInput = section ? section.querySelector('.search-input') : null;
+            const containerId = containerIdMap[type] || 'pendingJobs';
+            const container = document.getElementById(containerId);
 
             if (!term.trim()) {
-                // Clear search - restore original jobs
-                renderJobs(type, jobs);
+                // Clear search - remove highlights and restore all jobs visibility
+                const jobCards = container.querySelectorAll('.job-card');
+                jobCards.forEach(card => {
+                    card.classList.remove('search-highlight', 'search-hidden');
+                    card.style.display = '';
+                    card.style.opacity = '1';
+                });
+                // Remove search results info
+                const existingInfo = container.querySelector('.search-results-info');
+                if (existingInfo) {
+                    existingInfo.remove();
+                }
                 if (searchInput) {
                     searchInput.classList.remove('searching');
                 }
@@ -8108,76 +8212,82 @@
                 searchInput.classList.add('searching');
             }
 
-            const filtered = jobs.filter(job => {
-                // Search by filename (PDF name)
-                if (job.filename && job.filename.toLowerCase().includes(searchTerm)) {
-                    return true;
-                }
+            // Get all job cards in the container
+            const jobCards = container.querySelectorAll('.job-card');
+            let matchCount = 0;
 
-                // Search by token (with or without #)
-                if (job.token) {
-                    const tokenStr = job.token.toString();
-                    if (tokenStr.includes(searchTerm) ||
-                        `#${tokenStr}`.includes(searchTerm) ||
-                        searchTerm.includes(tokenStr)) {
-                        return true;
-                    }
-                }
+            // Check each job card against search term
+            jobCards.forEach(card => {
+                // Get job data from card attributes or text content
+                const filename = card.dataset.filename || card.querySelector('[data-filename]')?.dataset.filename || '';
+                const token = card.dataset.token || card.querySelector('[data-token]')?.dataset.token || '';
+                const user = card.dataset.user || card.querySelector('[data-user]')?.dataset.user || '';
+                const serviceType = card.dataset.serviceType || card.querySelector('[data-service-type]')?.dataset.serviceType || '';
+                const serviceName = card.dataset.serviceName || card.querySelector('[data-service-name]')?.dataset.serviceName || '';
+                const jobId = card.dataset.jobId || card.querySelector('[data-job-id]')?.dataset.jobId || '';
+                
+                // Get text content as fallback
+                const cardText = card.textContent || '';
+                
+                // Check if this job matches the search term
+                const matches = (
+                    (filename && filename.toLowerCase().includes(searchTerm)) ||
+                    (token && (token.toString().includes(searchTerm) || `#${token}`.includes(searchTerm))) ||
+                    (user && user.toLowerCase().includes(searchTerm)) ||
+                    (serviceType && serviceType.toLowerCase().includes(searchTerm)) ||
+                    (serviceName && serviceName.toLowerCase().includes(searchTerm)) ||
+                    (jobId && jobId.toLowerCase().includes(searchTerm)) ||
+                    cardText.toLowerCase().includes(searchTerm)
+                );
 
-                // Search by user email/name
-                if (job.user && job.user.toLowerCase().includes(searchTerm)) {
-                    return true;
+                if (matches) {
+                    // Highlight matching job block
+                    card.classList.add('search-highlight');
+                    card.classList.remove('search-hidden');
+                    card.style.display = '';
+                    card.style.opacity = '1';
+                    matchCount++;
+                } else {
+                    // Hide non-matching job blocks (but keep them in DOM)
+                    card.classList.remove('search-highlight');
+                    card.classList.add('search-hidden');
+                    card.style.display = 'none';
                 }
-
-                // Search by service type
-                if (job.service_type && job.service_type.toLowerCase().includes(searchTerm)) {
-                    return true;
-                }
-
-                // Search by service name
-                if (job.service_name && job.service_name.toLowerCase().includes(searchTerm)) {
-                    return true;
-                }
-
-                // Search by job ID
-                if (job.job_id && job.job_id.toLowerCase().includes(searchTerm)) {
-                    return true;
-                }
-
-                return false;
             });
 
-            renderJobs(type, filtered);
-
-            // Show search results count and feedback
-            const containerId = containerIdMap[type] || 'pendingJobs';
-            const container = document.getElementById(containerId);
-
-            if (filtered.length === 0 && searchTerm) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h3>No results found</h3>
-                        <p>No jobs found matching "${term}"</p>
-                        <div class="search-results-info">
-                            Try searching by: filename, token number, user email, or service type
-                        </div>
-                    </div>
-                `;
-            } else if (searchTerm) {
-                // Add search results info
-                const existingInfo = container.querySelector('.search-results-info');
+            // Update search results info
+            const existingInfo = container.querySelector('.search-results-info');
+            if (matchCount === 0 && searchTerm) {
+                // Show empty state message but keep all blocks in place
                 if (!existingInfo) {
                     const infoDiv = document.createElement('div');
                     infoDiv.className = 'search-results-info';
-                    infoDiv.textContent = `Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${term}"`;
+                    infoDiv.innerHTML = `
+                        <div class="empty-state" style="margin-top: 20px;">
+                            <i class="fas fa-search"></i>
+                            <h3>No results found</h3>
+                            <p>No jobs found matching "${term}"</p>
+                        </div>
+                    `;
+                    container.appendChild(infoDiv);
+                }
+            } else {
+                // Remove empty state if it exists
+                if (existingInfo) {
+                    existingInfo.remove();
+                }
+                // Add match count info
+                if (searchTerm && matchCount > 0) {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'search-results-info';
+                    infoDiv.textContent = `Found ${matchCount} result${matchCount !== 1 ? 's' : ''} for "${term}"`;
                     container.appendChild(infoDiv);
                 }
             }
 
             // Show toast for search feedback
-            if (searchTerm && filtered.length > 0) {
-                showToast(`Found ${filtered.length} job${filtered.length !== 1 ? 's' : ''} matching "${term}"`);
+            if (searchTerm && matchCount > 0) {
+                showToast(`Found ${matchCount} job${matchCount !== 1 ? 's' : ''} matching "${term}"`);
             }
         }
 
@@ -9345,21 +9455,18 @@
 
             // Auto-refresh Pending Jobs (every 1 minute)
             setInterval(function () {
-                // Reload the page to refresh print jobs as requested
-                // "pending sections is triggered after a minute continously to render the print jobs"
-                // Using location.reload() is the most robust way to ensure everything re-renders if no specific fetch function is exposed.
-                // But we can try to be smarter. 
-                // However, since we don't have the fetch function clearly exposed in global scope (it's inside closures likely), we will reload.
-                // Wait, refreshing the whole page every minute is bad. 
-                // Let's check if 'fetchVendorJobs' or similar exists from previous steps. 
-                // I searched for 'fetch' and found 'loadVendorServicePrices' and 'autoLoginVendor'. 
-                // I didn't see a job fetcher. 
-                // Let's assume a page reload is acceptable functionality for now to ensure "render the print jobs".
-                // But to be "continuous" and likely "compact", maybe the user wants AJAX.
-                // Given constraints, I will use location.reload() but check if the user is interacting to avoid disruption?
-                // No, simple interval is requested.
-                console.log("Auto-refreshing pending jobs...");
-                window.location.reload();
+                // Only refresh pending and completed sections without full page reload
+                // Keep all print job blocks at their place without clearing them
+                console.log("Auto-refreshing pending and completed jobs...");
+                // Call loadJobs to fetch new data and update only the sections
+                if (typeof loadJobs === 'function') {
+                    loadJobs().then(() => {
+                        // After loading, categorizeJobs will automatically update the sections
+                        console.log("✅ Jobs refreshed without page reload");
+                    }).catch(err => {
+                        console.error("Error refreshing jobs:", err);
+                    });
+                }
             }, 60000);
         });
     </script>
