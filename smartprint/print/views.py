@@ -317,10 +317,16 @@ messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
+  // Use notification-icon.png or printmaxdarklogo.png as fallback (as requested by user)
+  const defaultIcon = '/static/images/notification-icon.png';
+  const fallbackIcon = '/static/images/printmaxdarklogo.png';
+  const notificationIcon = payload.notification?.icon || payload.data?.icon || defaultIcon;
+  const notificationBadge = payload.data?.badge || defaultIcon;
+  
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'You have a new notification',
-    icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
-    badge: '/static/images/android-chrome-192x192.png',
+    icon: notificationIcon,
+    badge: notificationBadge,
     tag: payload.data?.notification_id || 'printmax-notification',
     requireInteraction: true,
     data: payload.data || {}
@@ -14494,9 +14500,10 @@ def send_fcm_notification(user_email, notification_data):
         # Normalize domain to not have trailing slash
         full_domain = full_domain.rstrip('/')
         
-        # Use notification-icon.png as requested by user
+        # Use notification-icon.png as requested by user, with printmaxdarklogo.png as fallback
         icon_url = f"{full_domain}/static/images/notification-icon.png"
         badge_url = f"{full_domain}/static/images/notification-icon.png"
+        fallback_icon_url = f"{full_domain}/static/images/printmaxdarklogo.png"
 
         # Create FCM message
         # Build webpush config conditionally to avoid link issues
@@ -14535,7 +14542,8 @@ def send_fcm_notification(user_email, notification_data):
                     notification=messaging.Notification(
                         title=title,
                         body=message,
-                        image=notification_data.get('icon', None)
+                        image=notification_data.get('icon', None),
+                        icon=icon_url  # Add icon to Notification object for better compatibility
                     ),
                     data={
                         'notification_id': notification_data.get('notification_id', ''),
@@ -14543,7 +14551,9 @@ def send_fcm_notification(user_email, notification_data):
                         'filename': notification_data.get('filename', ''),
                         'token': notification_data.get('token', ''),
                         'status': notification_data.get('status', 'completed'),
-                        'click_action': fcm_link
+                        'click_action': fcm_link,
+                        'icon': icon_url,  # Include icon in data payload for service worker
+                        'badge': badge_url  # Include badge in data payload for service worker
                     },
                     webpush=webpush_config,
                     token=token
