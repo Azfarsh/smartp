@@ -1759,24 +1759,20 @@
             font-style: italic;
         }
 
-        /* Search highlighting styles */
+        /* Search highlighting styles - matching print job blocks highlighted in red only */
         .job-card.search-highlight {
-            border: 2px solid #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-            background: rgba(59, 130, 246, 0.05);
+            border: 2px solid #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
+            background: rgba(220, 38, 38, 0.08);
             animation: searchPulse 1.5s ease-in-out;
-        }
-
-        .job-card.search-hidden {
-            display: none !important;
         }
 
         @keyframes searchPulse {
             0%, 100% {
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+                box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
             }
             50% {
-                box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3);
+                box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.35);
             }
         }
 
@@ -5138,7 +5134,7 @@
             }[(job.service_type || '').trim().toLowerCase()] || (job.service_type ? job.service_type.replace('_', ' ').toUpperCase() : 'DOCUMENT PRINT');
 
             return `
-                <div class="job-card completed compact" data-filename="${job.filename}" style="padding:10px 10px 8px; border-radius:10px; min-height:160px;">
+                <div class="job-card completed compact" data-filename="${job.filename}" data-token="${(job.token || '').toString()}" style="padding:10px 10px 8px; border-radius:10px; min-height:160px;">
                     <div class="job-header compact" style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--outline-variant);">
                         <div class="job-token" title="Job Token" style="font-size:11px; padding:4px 8px; border-radius:6px;">${tokenNumber}</div>
                         <div class="job-status status-completed" style="font-size:10px; padding:4px 8px; border-radius:6px;">DONE</div>
@@ -6947,7 +6943,7 @@
             // Main info block (compact)
             const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
-                <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}">
+                <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
                     <div class="job-header compact">
                         <div class="job-token" title="Job Token">${tokenNumber}</div>
@@ -8216,50 +8212,56 @@
             const jobCards = container.querySelectorAll('.job-card');
             let matchCount = 0;
 
-            // Check each job card against search term
+            // Check each job card against search term - keep ALL blocks visible, only highlight matches in red
+            const searchNumeric = /^\d+$/.test(searchTerm);
             jobCards.forEach(card => {
-                // Get job data from card attributes or text content
-                const filename = card.dataset.filename || card.querySelector('[data-filename]')?.dataset.filename || '';
-                const token = card.dataset.token || card.querySelector('[data-token]')?.dataset.token || '';
-                const user = card.dataset.user || card.querySelector('[data-user]')?.dataset.user || '';
-                const serviceType = card.dataset.serviceType || card.querySelector('[data-service-type]')?.dataset.serviceType || '';
-                const serviceName = card.dataset.serviceName || card.querySelector('[data-service-name]')?.dataset.serviceName || '';
-                const jobId = card.dataset.jobId || card.querySelector('[data-job-id]')?.dataset.jobId || '';
-                
-                // Get text content as fallback
-                const cardText = card.textContent || '';
-                
-                // Check if this job matches the search term
-                const matches = (
-                    (filename && filename.toLowerCase().includes(searchTerm)) ||
-                    (token && (token.toString().includes(searchTerm) || `#${token}`.includes(searchTerm))) ||
-                    (user && user.toLowerCase().includes(searchTerm)) ||
-                    (serviceType && serviceType.toLowerCase().includes(searchTerm)) ||
-                    (serviceName && serviceName.toLowerCase().includes(searchTerm)) ||
-                    (jobId && jobId.toLowerCase().includes(searchTerm)) ||
-                    cardText.toLowerCase().includes(searchTerm)
-                );
+                const filename = (card.dataset.filename || card.querySelector('[data-filename]')?.dataset.filename || '').toString();
+                const token = (card.dataset.token || card.querySelector('[data-token]')?.dataset.token || '').toString();
+                const user = (card.dataset.user || card.querySelector('[data-user]')?.dataset.user || '').toString();
+                const serviceType = (card.dataset.serviceType || card.querySelector('[data-service-type]')?.dataset.serviceType || '').toString();
+                const serviceName = (card.dataset.serviceName || card.querySelector('[data-service-name]')?.dataset.serviceName || '').toString();
+                const jobId = (card.dataset.jobId || card.querySelector('[data-job-id]')?.dataset.jobId || '').toString();
+
+                let matches = false;
+                if (searchNumeric) {
+                    // Token-only search: match ONLY the token so "9" highlights just Token 9, not filenames with "9"
+                    if (token) {
+                        matches = token === searchTerm || token.startsWith(searchTerm);
+                    }
+                } else {
+                    const tokenMatch = token && (token.includes(searchTerm) || (`#${token}`).includes(searchTerm));
+                    const filenameMatch = filename && filename.toLowerCase().includes(searchTerm);
+                    const userMatch = user && user.toLowerCase().includes(searchTerm);
+                    const serviceMatch = (serviceType && serviceType.toLowerCase().includes(searchTerm)) ||
+                        (serviceName && serviceName.toLowerCase().includes(searchTerm));
+                    const jobIdMatch = jobId && jobId.toLowerCase().includes(searchTerm);
+                    matches = tokenMatch || filenameMatch || userMatch || serviceMatch || jobIdMatch;
+                }
 
                 if (matches) {
-                    // Highlight matching job block
+                    // Highlight matching print job block in red only
                     card.classList.add('search-highlight');
                     card.classList.remove('search-hidden');
                     card.style.display = '';
                     card.style.opacity = '1';
                     matchCount++;
                 } else {
-                    // Hide non-matching job blocks (but keep them in DOM)
+                    // Keep non-matching blocks visible as-is; only remove highlight
                     card.classList.remove('search-highlight');
-                    card.classList.add('search-hidden');
-                    card.style.display = 'none';
+                    card.classList.remove('search-hidden');
+                    card.style.display = '';
+                    card.style.opacity = '1';
                 }
             });
 
-            // Update search results info
+            // Update search results info (always clear previous message first)
             const existingInfo = container.querySelector('.search-results-info');
-            if (matchCount === 0 && searchTerm) {
-                // Show empty state message but keep all blocks in place
-                if (!existingInfo) {
+            if (existingInfo) {
+                existingInfo.remove();
+            }
+            if (searchTerm) {
+                if (matchCount === 0) {
+                    // No matches - show message; all blocks remain visible, none highlighted
                     const infoDiv = document.createElement('div');
                     infoDiv.className = 'search-results-info';
                     infoDiv.innerHTML = `
@@ -8270,14 +8272,7 @@
                         </div>
                     `;
                     container.appendChild(infoDiv);
-                }
-            } else {
-                // Remove empty state if it exists
-                if (existingInfo) {
-                    existingInfo.remove();
-                }
-                // Add match count info
-                if (searchTerm && matchCount > 0) {
+                } else {
                     const infoDiv = document.createElement('div');
                     infoDiv.className = 'search-results-info';
                     infoDiv.textContent = `Found ${matchCount} result${matchCount !== 1 ? 's' : ''} for "${term}"`;
