@@ -17087,9 +17087,24 @@
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
 
         // CRITICAL: Filter out phantom jobs not stored in D1 - must have r2_path or service_type from database
-        if (!job.r2_path && !job.service_type && !job.filename) {
+        // IMPORTANT: Photo print jobs may not have r2_path immediately, so check service_type first
+        const hasServiceType = job.service_type && String(job.service_type).trim().length > 0;
+        const hasR2Path = job.r2_path && String(job.r2_path).trim().length > 0;
+        const hasFilename = job.filename && String(job.filename).trim().length > 0;
+        
+        if (!hasR2Path && !hasServiceType && !hasFilename) {
           console.warn('⚠️ Filtering out phantom job (missing r2_path/service_type/filename):', job);
           return false;
+        }
+        
+        // Log photo print jobs for debugging
+        if (hasServiceType && String(job.service_type).toLowerCase().includes('photo')) {
+          console.log('📸 Photo print job found:', { 
+            filename: job.filename, 
+            service_type: job.service_type, 
+            job_completed: jobCompleted,
+            hasR2Path: hasR2Path 
+          });
         }
 
         return jobCompleted !== 'YES';
@@ -17112,8 +17127,12 @@
         hidePdfAnimation();
 
         // Show the Print Requests section with smooth fade-in
+        // CRITICAL: Force visibility on mobile to ensure photo print jobs are displayed
         if (jobsSection) {
           jobsSection.style.display = 'block';
+          jobsSection.style.visibility = 'visible';
+          // Force reflow to ensure mobile browsers render the change
+          void jobsSection.offsetHeight;
           // Trigger fade-in after display is set
           setTimeout(() => {
             jobsSection.style.opacity = '1';
@@ -17132,6 +17151,27 @@
         while (tempDiv.firstChild) { fragment.appendChild(tempDiv.firstChild); }
         container.innerHTML = '';
         container.appendChild(fragment);
+        
+        // CRITICAL: Force layout recalculation on mobile to ensure photo print job cards render
+        // This fixes the issue where photo print jobs don't show on mobile after redirect
+        void container.offsetHeight;
+        if (jobsSection) {
+          void jobsSection.offsetHeight;
+          // Ensure section is visible on mobile (double-check)
+          jobsSection.style.display = 'block';
+          jobsSection.style.visibility = 'visible';
+          jobsSection.style.opacity = '1';
+        }
+        
+        // Log rendered jobs for debugging (especially photo print jobs)
+        const photoPrintJobs = sortedJobs.filter(job => {
+          const serviceType = String(job.service_type || '').toLowerCase();
+          return serviceType.includes('photo');
+        });
+        if (photoPrintJobs.length > 0) {
+          console.log(`📸 Rendered ${photoPrintJobs.length} photo print job(s) in mobile view`);
+        }
+        
         updateJobTrackDistances();
       } else {
         // No jobs found, let animation continue for 3 seconds, then hide Print Requests section
@@ -20011,7 +20051,8 @@
       dashboardSuccessOverlay.setAttribute('aria-hidden', 'true');
     }
 
-    (function initPhotoPrintSuccessOverlay() {
+    // Initialize photo print success overlay - wait for DOM and function definitions
+    function initPhotoPrintSuccessOverlay() {
       if (!dashboardSuccessOverlay) return;
       dashboardSuccessOverlay.addEventListener('click', hideDashboardSuccess);
       try {
@@ -20028,14 +20069,49 @@
           if (uploadSuccess && filesProcessed > 0) {
             // Show success modal with animation (same as document print)
             showSuccessModalWithAnimation();
-            // CRITICAL: Trigger print request section update IMMEDIATELY after successful photoprint upload
-            // This ensures the print requests section shows the new job instantly
-            if (typeof updateJobListAfterPayment === 'function') {
-              // Call immediately, then again after a short delay to ensure data is fresh
-              updateJobListAfterPayment();
-              setTimeout(() => {
+            
+            // CRITICAL: Wait for DOM and function to be ready, then trigger job list update
+            // This ensures photo print jobs display correctly on both desktop and mobile
+            const triggerJobListUpdate = () => {
+              const container = document.getElementById('jobsContainer');
+              const jobsSection = document.getElementById('jobsSection');
+              
+              // Ensure DOM elements exist
+              if (!container || !jobsSection) {
+                console.log('⏳ Waiting for DOM elements...');
+                setTimeout(triggerJobListUpdate, 100);
+                return;
+              }
+              
+              // Ensure function is defined
+              if (typeof updateJobListAfterPayment === 'function') {
+                console.log('✅ Triggering job list update for photo print jobs...');
+                // Call with increasing delays to ensure backend has saved the job
+                // First call: immediate (in case job is already saved)
                 updateJobListAfterPayment();
-              }, 500);
+                // Second call: after 800ms (give backend time to save)
+                setTimeout(() => {
+                  console.log('🔄 Second job list update...');
+                  updateJobListAfterPayment();
+                }, 800);
+                // Third call: after 2000ms (ensure mobile rendering works)
+                setTimeout(() => {
+                  console.log('🔄 Third job list update for mobile...');
+                  updateJobListAfterPayment();
+                }, 2000);
+              } else {
+                console.log('⏳ Waiting for updateJobListAfterPayment function...');
+                setTimeout(triggerJobListUpdate, 100);
+              }
+            };
+            
+            // Start the update process after a short delay to ensure DOM is ready
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(triggerJobListUpdate, 200);
+              });
+            } else {
+              setTimeout(triggerJobListUpdate, 200);
             }
           } else {
             // Upload failed or status unclear - log warning
@@ -20045,7 +20121,15 @@
       } catch (error) {
         console.warn('Unable to read photo print success state', error);
       }
-    })();
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPhotoPrintSuccessOverlay);
+    } else {
+      // DOM already loaded, but wait a bit for other scripts
+      setTimeout(initPhotoPrintSuccessOverlay, 100);
+    }
 
     // Cursor-style Notification Functions
     function showCursorNotification(title, status, message, type = 'info', duration = 5000) {
@@ -30773,6 +30857,12 @@
 
             // Update the print requests section immediately
             // Render using the full job list so completed jobs show too.
+            // CRITICAL: Ensure jobsSection is visible before rendering (especially on mobile)
+            const jobsSection = document.getElementById('jobsSection');
+            if (jobsSection) {
+              jobsSection.style.display = 'block';
+              jobsSection.style.visibility = 'visible';
+            }
             renderJobsWithAnimation(userJobs);
 
             // Update job counts
