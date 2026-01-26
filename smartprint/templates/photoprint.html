@@ -1870,13 +1870,33 @@
         }
 
         function redirectToDashboardWithSuccess(message, token) {
-            const payload = {
-                message: message || '✅ Print job sent to print successfully.',
-                token: token || '',
-                timestamp: Date.now()
-            };
+            // IMPORTANT:
+            // The payment-success handler stores a richer `photoPrintSuccess` payload
+            // (e.g., upload_success, files_processed). Do NOT overwrite it here,
+            // otherwise the dashboard won't trigger job list refresh on mobile.
             try {
-                sessionStorage.setItem('photoPrintSuccess', JSON.stringify(payload));
+                const existing = sessionStorage.getItem('photoPrintSuccess');
+                if (existing) {
+                    // Keep existing flags and just ensure message/token exist.
+                    let parsed = {};
+                    try { parsed = JSON.parse(existing) || {}; } catch (e) { parsed = {}; }
+                    const merged = {
+                        ...parsed,
+                        message: parsed.message || message || '✅ Print job sent to print successfully.',
+                        token: parsed.token || token || '',
+                        timestamp: parsed.timestamp || Date.now()
+                    };
+                    sessionStorage.setItem('photoPrintSuccess', JSON.stringify(merged));
+                } else {
+                    const payload = {
+                        message: message || '✅ Print job sent to print successfully.',
+                        token: token || '',
+                        timestamp: Date.now(),
+                        upload_success: true,
+                        files_processed: (Array.isArray(uploadedImages) ? uploadedImages.length : 1)
+                    };
+                    sessionStorage.setItem('photoPrintSuccess', JSON.stringify(payload));
+                }
             } catch (storageError) {
                 console.warn('Unable to persist success state:', storageError);
             }

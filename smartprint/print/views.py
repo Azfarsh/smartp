@@ -317,11 +317,10 @@ messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
-  // Use notification-icon.png or printmaxdarklogo.png as fallback (as requested by user)
-  const defaultIcon = '/static/images/notification-icon.png';
-  const fallbackIcon = '/static/images/printmaxdarklogo.png';
+  // Default to PrintMax colored logo (shows like Ola/Rapido style icons)
+  const defaultIcon = '/static/images/printmax-color-512.png';
   const notificationIcon = payload.notification?.icon || payload.data?.icon || defaultIcon;
-  const notificationBadge = payload.data?.badge || defaultIcon;
+  const notificationBadge = payload.data?.badge || payload.notification?.badge || defaultIcon;
   
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'You have a new notification',
