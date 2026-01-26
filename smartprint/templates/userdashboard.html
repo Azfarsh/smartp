@@ -17081,13 +17081,6 @@
       const jobsSection = document.getElementById('jobsSection');
       if (!container) return;
 
-      // Get current date in IST (Indian Standard Time, UTC+5:30) for filtering completed jobs
-      // IST is UTC+5:30, so we need to add 5 hours and 30 minutes to UTC
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds (5 hours 30 minutes)
-      const istTime = new Date(now.getTime() + (istOffset - now.getTimezoneOffset() * 60 * 1000));
-      const today = new Date(istTime.getFullYear(), istTime.getMonth(), istTime.getDate());
-
       // Separate pending and completed jobs
       // CRITICAL: Only render jobs that exist in D1 User_print_jobs table (must have r2_path or service_type)
       const pendingJobs = (jobs || []).filter(job => {
@@ -17102,106 +17095,20 @@
         return jobCompleted !== 'YES';
       });
 
-      // Filter completed jobs: show if completed on the current date (more robust date comparison)
+      // Completed jobs: include all completed jobs so KPI "Completed" matches the cards shown.
+      // (Previously filtered to "today only", which could show Completed count > 0 but no job blocks.)
       const completedJobs = (jobs || []).filter(job => {
         const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
-        if (jobCompleted !== 'YES') return false;
-
-        // Get completion date - handle both ISO strings and timestamps
-        let completionDate = null;
-        if (job.completion_time) {
-          try {
-            // Try parsing as ISO string first
-            if (typeof job.completion_time === 'string' && (job.completion_time.includes('T') || job.completion_time.includes(' '))) {
-              completionDate = new Date(job.completion_time);
-            } else {
-              // Try parsing as timestamp (seconds or milliseconds)
-              const timestamp = typeof job.completion_time === 'number' ? job.completion_time : parseFloat(job.completion_time);
-              completionDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
-            }
-          } catch (e) {
-            console.error('Error parsing completion_time:', e);
-          }
-        } else if (job.completed_at) {
-          try {
-            completionDate = new Date(job.completed_at);
-          } catch (e) {
-            console.error('Error parsing completed_at:', e);
-          }
-        } else if (job.timestamp && jobCompleted === 'YES') {
-          // If no completion_time, use timestamp as fallback
-          try {
-            if (typeof job.timestamp === 'string' && (job.timestamp.includes('T') || job.timestamp.includes(' '))) {
-              completionDate = new Date(job.timestamp);
-            } else {
-              const timestamp = typeof job.timestamp === 'number' ? job.timestamp : parseFloat(job.timestamp);
-              completionDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
-            }
-          } catch (e) {
-            console.error('Error parsing timestamp:', e);
-          }
-        }
-
-        // Show completed jobs if completed on the current date in IST (compare date parts in IST)
-        if (completionDate && !isNaN(completionDate.getTime())) {
-          // Convert completion date to IST for comparison
-          const completionUTC = completionDate.getTime() + (completionDate.getTimezoneOffset() * 60 * 1000);
-          const completionIST = new Date(completionUTC + istOffset);
-          const completionYear = completionIST.getFullYear();
-          const completionMonth = completionIST.getMonth();
-          const completionDay = completionIST.getDate();
-          const todayYear = today.getFullYear();
-          const todayMonth = today.getMonth();
-          const todayDay = today.getDate();
-          
-          return completionYear === todayYear && 
-                 completionMonth === todayMonth && 
-                 completionDay === todayDay;
-        }
-
-        // If no completion date but job is marked completed, show it if timestamp is from today in IST
-        // This handles cases where completion_time might not be set yet
-        if (job.timestamp) {
-          try {
-            let timestampDate = null;
-            if (typeof job.timestamp === 'string' && (job.timestamp.includes('T') || job.timestamp.includes(' '))) {
-              timestampDate = new Date(job.timestamp);
-            } else {
-              const timestamp = typeof job.timestamp === 'number' ? job.timestamp : parseFloat(job.timestamp);
-              timestampDate = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
-            }
-            if (timestampDate && !isNaN(timestampDate.getTime())) {
-              // Convert timestamp date to IST for comparison
-              const timestampUTC = timestampDate.getTime() + (timestampDate.getTimezoneOffset() * 60 * 1000);
-              const timestampIST = new Date(timestampUTC + istOffset);
-              const timestampYear = timestampIST.getFullYear();
-              const timestampMonth = timestampIST.getMonth();
-              const timestampDay = timestampIST.getDate();
-              const todayYear = today.getFullYear();
-              const todayMonth = today.getMonth();
-              const todayDay = today.getDate();
-              
-              // Show if timestamp is from today in IST (fallback for jobs without completion_time)
-              return timestampYear === todayYear && 
-                     timestampMonth === todayMonth && 
-                     timestampDay === todayDay;
-            }
-          } catch (e) {
-            console.error('Error parsing timestamp fallback:', e);
-          }
-        }
-
-        // If no valid date found, don't show (likely old completed job)
-        return false;
+        return jobCompleted === 'YES';
       });
 
-      // Combine: pending first, then completed (only today's completed)
+      // Combine: pending first, then completed
       const sortedJobs = [...pendingJobs, ...completedJobs];
 
       // If jobs found, hide animation immediately and show Print Requests section
       if (sortedJobs && sortedJobs.length > 0) {
         console.log('📄 PDF Animation: Jobs found, hiding animation immediately');
-        console.log(`📊 Rendering ${pendingJobs.length} pending jobs and ${completedJobs.length} completed jobs (today only)`);
+        console.log(`📊 Rendering ${pendingJobs.length} pending jobs and ${completedJobs.length} completed jobs`);
         hidePdfAnimation();
 
         // Show the Print Requests section with smooth fade-in
@@ -17262,7 +17169,8 @@
         if (typeof cacheVendorCoordinatesFromJobs === 'function') {
           cacheVendorCoordinatesFromJobs(userJobs);
         }
-        renderJobsWithAnimation(window.preloadedPendingJobs);
+        // Render using the full job list so completed jobs show too.
+        renderJobsWithAnimation(userJobs);
         updateLayoutBasedOnJobs();
       } else {
         // Show skeletons already present; fetch lightweight JSON and render without blocking navigation
@@ -17289,7 +17197,8 @@
             ];
             updates.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; });
 
-            renderJobsWithAnimation(window.preloadedPendingJobs);
+            // Render using the full job list so completed jobs show too.
+            renderJobsWithAnimation(userJobs);
             updateLayoutBasedOnJobs();
           })
           .catch(err => {
@@ -20151,12 +20060,8 @@
       const notificationId = 'cursor-notification-' + Date.now();
       notification.setAttribute('id', notificationId);
 
-      // Set icon based on type
-      let icon = 'C';
-      if (type === 'success') icon = '✓';
-      else if (type === 'error') icon = '✕';
-      else if (type === 'warning') icon = '!';
-      else if (type === 'info') icon = 'i';
+      // Use PrintMax logo instead of a letter icon (e.g., "P")
+      const icon = `<img src="{% static 'images/printmax-color-512.png' %}" alt="PrintMax" style="width: 18px; height: 18px; border-radius: 4px;">`;
 
       // Clean message to remove # symbols from token values
       const cleanMessage = message.replace(/#(\d+)/g, '$1');
@@ -22336,7 +22241,8 @@
             const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
             return jobCompleted !== 'YES';
           });
-          renderJobsWithAnimation(pendingJobs);
+          // Render using the full job list so completed jobs show too.
+          renderJobsWithAnimation(userJobs);
           console.log(`⚡ CACHED LOAD: ${userJobs.length} jobs loaded from cache`);
           return;
         }
@@ -22361,8 +22267,8 @@
         }
 
         // Render jobs with animation control
-        const pendingJobs = userJobs.filter(job => job.job_completed === 'NO');
-        renderJobsWithAnimation(pendingJobs);
+        // Render using the full job list so completed jobs show too.
+        renderJobsWithAnimation(userJobs);
         console.log(`⚡ INSTANT LOAD: ${userJobs.length} jobs loaded and rendered immediately`);
       } catch (error) {
         console.error('Error loading user jobs:', error);
@@ -30866,11 +30772,8 @@
             localStorage.setItem('userJobsCacheTimestamp', Date.now().toString());
 
             // Update the print requests section immediately
-            const pendingJobs = userJobs.filter(job => {
-              const jobCompleted = String(job.job_completed || 'NO').trim().toUpperCase();
-              return jobCompleted !== 'YES';
-            });
-            renderJobsWithAnimation(pendingJobs);
+            // Render using the full job list so completed jobs show too.
+            renderJobsWithAnimation(userJobs);
 
             // Update job counts
             const updates = [
@@ -30883,7 +30786,7 @@
               if (el && val !== undefined) el.textContent = val;
             });
 
-            console.log(`✅ Updated job list: ${pendingJobs.length} pending jobs displayed`);
+            console.log(`✅ Updated job list: ${userJobs.length} jobs displayed`);
           }
         }
       } catch (error) {

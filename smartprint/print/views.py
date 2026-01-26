@@ -14517,8 +14517,10 @@ def send_fcm_notification(user_email, notification_data):
         full_domain = full_domain.rstrip('/')
         
         # Use notification-icon.png as requested by user, with printmaxdarklogo.png as fallback
-        icon_url = f"{full_domain}/static/images/notification-icon.png"
-        badge_url = f"{full_domain}/static/images/notification-icon.png"
+        # Use PrintMax colored logo as the primary notification icon
+        icon_url = f"{full_domain}/static/images/printmax-color-512.png"
+        # Reuse the same logo for badge so branding is consistent
+        badge_url = f"{full_domain}/static/images/printmax-color-512.png"
         fallback_icon_url = f"{full_domain}/static/images/printmaxdarklogo.png"
 
         # Create FCM message
@@ -14554,12 +14556,13 @@ def send_fcm_notification(user_email, notification_data):
         
         for token in reversed(tokens):
             try:
+                # NOTE: firebase_admin.messaging.Notification does NOT accept an `icon` argument.
+                # Icon is provided via Webpush/Web app options instead (icon_url above and data payload).
                 fcm_message = messaging.Message(
                     notification=messaging.Notification(
                         title=title,
                         body=message,
-                        image=notification_data.get('icon', None),
-                        icon=icon_url  # Add icon to Notification object for better compatibility
+                        image=notification_data.get('icon', None)
                     ),
                     data={
                         'notification_id': notification_data.get('notification_id', ''),
