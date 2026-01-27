@@ -14,7 +14,7 @@ from .views import (
     update_vendor_availability, update_vendor_profile, get_vendor_profile_image, test_profile_image_url, test_r2_url_generation, test_r2_simple, list_vendor_folder, logout,
     create_razorpay_order, verify_razorpay_payment, accept_print_job, mark_job_completed, hide_completed_job, debug_file_locations,
     contact_view, save_contact_details,
-    vendor_transactions_history,
+    vendor_transactions_history, vendor_transaction_details,
 )
 
 urlpatterns = [
@@ -26,6 +26,7 @@ urlpatterns = [
     path('userdashboard-data/', views.userdashboard_data, name='userdashboard_data'),
     path('vendordashboard/', views.vendordashboard, name='vendordashboard'),
     path('vendor-transactions/', vendor_transactions_history, name='vendor_transactions_history'),
+    path('vendor-transaction-details/', vendor_transaction_details, name='vendor_transaction_details'),
     path('get-print-requests/',
          views.get_print_requests,
          name='get-print-requests'),

@@ -21232,7 +21232,7 @@
       });
     }
 
-    // Function to load shops in modal - uses exact same logic as photoprint.html
+    // Function to load shops in modal - uses shared location + search logic
     async function loadShopsInModal(service) {
       const shopList = document.getElementById(`${service}-shop-selection-list`);
       if (!shopList) return;
@@ -21259,20 +21259,8 @@
         }
       }
 
-      // Get shops with distance info (prefer locationBasedShops if available) - same as photoprint
+      // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
-      
-      // For document print (service === 'print'), use exact same filtering as photoprint
-      if (service === 'print') {
-        // Filter to only show shops within 3km (same as photoprint)
-        const shopsWithin3km = shopsWithDistance.filter(shop => {
-          const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm :
-            (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
-          return distanceKm !== null && distanceKm !== undefined && distanceKm <= 3;
-        });
-        // Use shops within 3km if available, otherwise use all shops (same as photoprint)
-        shopsWithDistance = shopsWithin3km.length > 0 ? shopsWithin3km : shopsWithDistance;
-      }
 
       // Map service names to service availability field names
       const serviceAvailabilityMap = {
@@ -21309,19 +21297,8 @@
       const searchInput = document.getElementById(`${service}-shop-search-input`);
       const searchText = searchInput ? searchInput.value.trim() : '';
 
-      // Filter shops based on search text
-      const { displayShops, within3km } = getFilteredShops(shopsWithDistance, searchText);
-      
-      // For document print (service === 'print'), sort by distance exactly like photoprint
-      if (service === 'print' && displayShops.length > 0) {
-        displayShops.sort((a, b) => {
-          const aDist = (typeof a.distanceKm === 'number') ? a.distanceKm : 
-            (a.distance !== null && a.distance !== undefined) ? a.distance : Infinity;
-          const bDist = (typeof b.distanceKm === 'number') ? b.distanceKm : 
-            (b.distance !== null && b.distance !== undefined) ? b.distance : Infinity;
-          return aDist - bDist;
-        });
-      }
+      // Filter shops based on search text (uses shared 3km + search logic)
+      const { displayShops } = getFilteredShops(shopsWithDistance, searchText);
 
       // Show appropriate message based on mode
       if (searchText.length === 0) {
@@ -28725,15 +28702,25 @@
       let displayShops = [];
 
       if (searchText.length === 0) {
-        // DEFAULT MODE: STRICTLY show only shops within 3km
-        displayShops = [...within3km].sort((a, b) => {
-          if (a.distanceKm == null) return 1;
-          if (b.distanceKm == null) return -1;
-          return a.distanceKm - b.distanceKm;
-        });
-        console.log("Showing shops within 3km only:", displayShops.length);
+        // DEFAULT MODE:
+        // - Prefer all shops within 3km, sorted by distance
+        // - If we don't have any distance info yet, gracefully fall back to ALL shops
+        if (within3km.length > 0) {
+          displayShops = [...within3km].sort((a, b) => {
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+          });
+        } else {
+          // No shops with a valid distanceKm – show everything so the user
+          // still sees all available shops instead of an empty list.
+          displayShops = [...shops];
+        }
+        console.log("Showing default shops:", displayShops.length);
       } else {
-        // SEARCH MODE: Show shops matching search text, but prioritize within 3km
+        // SEARCH MODE: Show all shops matching search text (name / address / city / pincode),
+        // without hiding shops that are slightly beyond 3km. This makes sure
+        // typing a shop name always shows that shop if it exists.
         const searchLower = searchText.toLowerCase();
         const matchedShops = shops.filter(shop => {
           const shopName = (shop.shop_name || '').toLowerCase();
@@ -28746,27 +28733,15 @@
             shopPincode.includes(searchLower);
         });
 
-        // Filter matched shops to only show those within 3km
-        const matchedWithin3km = matchedShops.filter(shop => shop.distanceKm != null && shop.distanceKm <= 3);
+        // Sort matched shops by distance when available, but do NOT filter them out by distance.
+        displayShops = matchedShops.sort((a, b) => {
+          const aDist = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+          const bDist = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+          if (aDist === bDist) return 0;
+          return aDist - bDist;
+        });
 
-        // If search results have shops within 3km, show only those; otherwise show all matched (for location/name search)
-        if (matchedWithin3km.length > 0) {
-          displayShops = matchedWithin3km.sort((a, b) => {
-            if (a.distanceKm == null) return 1;
-            if (b.distanceKm == null) return -1;
-            return a.distanceKm - b.distanceKm;
-          });
-        } else {
-          // If no matches within 3km, show all matched shops (for name/location search)
-          displayShops = matchedShops.sort((a, b) => {
-            if (a.distanceKm == null && b.distanceKm == null) return 0;
-            if (a.distanceKm == null) return 1;
-            if (b.distanceKm == null) return -1;
-            return a.distanceKm - b.distanceKm;
-          });
-        }
-
-        console.log("Matched shops:", displayShops.length, "Within 3km:", matchedWithin3km.length);
+        console.log("Matched shops (search):", displayShops.length);
       }
 
       console.log("Rendered shops:", displayShops.length);
