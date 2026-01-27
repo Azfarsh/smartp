@@ -12272,6 +12272,131 @@ def vendor_transactions_history(request):
             'error': str(e)
         }, status=500)
 
+
+@csrf_exempt
+def vendor_transaction_details(request):
+    """
+    Return per-job details for a specific 2-day vendor transaction period.
+    Data is sourced from the vendor_notification table via the Worker API.
+    """
+    if request.method != 'POST':
+        return JsonResponse(
+            {'success': False, 'error': 'Only POST method is allowed'},
+            status=405
+        )
+
+    try:
+        try:
+            payload = json.loads(request.body or '{}')
+        except Exception:
+            payload = request.POST
+
+        period_start = (payload.get('period_start') or '').strip()
+        period_end = (payload.get('period_end') or '').strip()
+
+        if not period_start or not period_end:
+            return JsonResponse(
+                {'success': False, 'error': 'period_start and period_end are required'},
+                status=400
+            )
+
+        vendor_email = (request.session.get('vendor_email') or '').strip().lower()
+        if not vendor_email:
+            return JsonResponse(
+                {'success': False, 'error': 'Vendor email not found in session'},
+                status=401
+            )
+
+        api_url = getattr(settings, 'WORKER_API_URL', '')
+        api_key = getattr(settings, 'WORKER_API_KEY', '')
+
+        if not api_url or not api_key:
+            return JsonResponse(
+                {'success': False, 'error': 'Worker API not configured'},
+                status=500
+            )
+
+        worker_endpoint = api_url.rstrip('/') + '/get-all-vendor-jobs'
+        request_payload = {
+            'vendor_email': vendor_email,
+            'week_start': period_start,
+            'week_end': period_end,
+        }
+
+        try:
+            resp = requests.post(
+                worker_endpoint,
+                json=request_payload,
+                headers={
+                    'x-api-key': api_key,
+                    'Content-Type': 'application/json'
+                },
+                timeout=20
+            )
+
+            if resp.status_code != 200:
+                error_text = resp.text[:500] if hasattr(resp, 'text') else 'No error details'
+                print(f"⚠️ Failed to get vendor jobs for details: {resp.status_code} - {error_text}")
+                return JsonResponse(
+                    {'success': False, 'error': 'Failed to fetch report details'},
+                    status=500
+                )
+
+            data = resp.json()
+            if not data.get('success'):
+                error_msg = data.get('error', 'Unknown error')
+                print(f"⚠️ Worker API returned error for vendor jobs details: {error_msg}")
+                return JsonResponse(
+                    {'success': False, 'error': error_msg},
+                    status=500
+                )
+
+            jobs_raw = data.get('data', []) or []
+            jobs = []
+
+            for job in jobs_raw:
+                filename = (job.get('filename') or '').strip() or 'Unknown file'
+                token = (job.get('token') or '').strip()
+
+                try:
+                    total_price = float(job.get('total_price', 0.0) or 0.0)
+                except Exception:
+                    total_price = 0.0
+
+                try:
+                    platform_profit = float(job.get('platform_profit', 0.0) or 0.0)
+                except Exception:
+                    platform_profit = 0.0
+
+                payment = total_price - platform_profit
+
+                jobs.append({
+                    'filename': filename,
+                    'token': token,
+                    'payment': round(payment, 2),
+                })
+
+            return JsonResponse({'success': True, 'jobs': jobs})
+
+        except requests.exceptions.RequestException as exc:
+            print(f"⚠️ Network error fetching vendor jobs details from D1: {exc}")
+            return JsonResponse(
+                {'success': False, 'error': 'Network error while fetching report details'},
+                status=500
+            )
+        except Exception as exc:
+            print(f"⚠️ Unexpected error fetching vendor jobs details from D1: {exc}")
+            return JsonResponse(
+                {'success': False, 'error': 'Unexpected error while fetching report details'},
+                status=500
+            )
+
+    except Exception as e:
+        return JsonResponse(
+            {'success': False, 'error': str(e)},
+            status=500
+        )
+
 @csrf_exempt
 def mark_job_completed(request):
     """Mark a print job as completed by updating job_completed to 'YES' and free the token"""

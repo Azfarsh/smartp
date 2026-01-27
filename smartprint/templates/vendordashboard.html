@@ -4342,7 +4342,7 @@
                 <a href="#history" class="nav-link"
                     onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showHistory()">
                     <i class="fas fa-history"></i>
-                    <span>History</span>
+                    <span>Payment History</span>
                 </a>
             </div>
 
@@ -4577,7 +4577,38 @@
         </div>
     </div>
 
-    <!-- Print Info Modal -->
+        <!-- History Details Modal -->
+        <div id="historyDetailsModal" class="modal-overlay"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 10000; align-items: center; justify-content: center;">
+            <div class="modal-content"
+                style="background: var(--surface); border-radius: 12px; max-width: 720px; width: 95%; max-height: 75vh; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18); position: relative; display: flex; flex-direction: column;">
+                <div
+                    style="padding: 16px 20px; border-bottom: 1px solid var(--outline); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, var(--surface-variant) 0%, var(--surface-container) 100%); border-radius: 12px 12px 0 0;">
+                    <h2
+                        style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--on-surface); display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-list-ul" style="color: var(--primary);"></i>
+                        <span id="historyDetailsTitle">Report Details</span>
+                    </h2>
+                    <button onclick="closeHistoryDetailsModal()"
+                        style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--on-surface-variant); padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;"
+                        onmouseover="this.style.background='var(--surface-container-high)'"
+                        onmouseout="this.style.background='none'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="historyDetailsContent"
+                    style="padding: 12px 20px 16px; overflow-y: auto; flex: 1; background: var(--surface);">
+                    <div style="text-align: center; padding: 24px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 1.4rem; color: var(--primary);"></i>
+                        <p style="margin-top: 10px; color: var(--on-surface-variant); font-size: 0.9rem;">
+                            Loading report details...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Print Info Modal -->
     <div class="modal" id="printInfoModal">
         <div class="modal-content print-info-modal">
             <div class="modal-header">
@@ -5732,11 +5763,14 @@
                 monthData.reports.forEach(report => {
                     const reportDate = new Date(report.generated_at);
                     const statusClass = report.payment_status === 'completed' ? 'completed' : 'not-completed';
+                    const periodStart = report.period_start || '';
+                    const periodEnd = report.period_end || '';
+                    const periodDisplaySafe = report.period_display || `${periodStart} to ${periodEnd}` || 'N/A';
 
                     html += `
                         <div class="report-card">
                             <div class="report-header">
-                                <div class="report-period">${report.period_display || 'N/A'}</div>
+                                <div class="report-period">${periodDisplaySafe}</div>
                                 <div class="report-status ${statusClass}">
                                     ${report.payment_status === 'completed' ? 'Completed' : 'Pending'}
                                 </div>
@@ -5765,23 +5799,29 @@
                                 ${report.service_breakdown ? `
                                     <div class="report-services">
                                         <div class="report-services-title">Services:</div>
-                        <div class="service-tags">
+                                        <div class="service-tags">
                                             ${Object.entries(report.service_breakdown).map(([service, count]) =>
-                        `<span class="service-tag">${service}: ${count}</span>`
-                    ).join('')}
-                        </div>
-                    </div>
+                                                `<span class="service-tag">${service}: ${count}</span>`
+                                            ).join('')}
+                                        </div>
+                                    </div>
                                 ` : ''}
-                </div>
+                            </div>
                             <div class="report-footer">
                                 <div class="report-date">
                                     Generated: ${reportDate.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    })}
+                                </div>
+                                <div class="report-actions">
+                                    <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; margin-top: 4px;"
+                                        onclick="openHistoryDetailsModal('${periodStart}', '${periodEnd}', '${periodDisplaySafe}')">
+                                        Show
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -5816,6 +5856,147 @@
                 option.value = '';
                 option.textContent = 'No data available';
                 monthSelect.appendChild(option);
+            }
+        }
+
+        // History details modal (per 2-day report)
+        async function openHistoryDetailsModal(periodStart, periodEnd, periodLabel) {
+            const modal = document.getElementById('historyDetailsModal');
+            const content = document.getElementById('historyDetailsContent');
+            const titleEl = document.getElementById('historyDetailsTitle');
+
+            if (titleEl) {
+                const label = periodLabel && periodLabel.trim() ? periodLabel.trim() : `${periodStart} to ${periodEnd}`;
+                titleEl.textContent = `Report Details: ${label}`;
+            }
+
+            if (content) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 24px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 1.4rem; color: var(--primary);"></i>
+                        <p style="margin-top: 10px; color: var(--on-surface-variant); font-size: 0.9rem;">
+                            Loading report details...
+                        </p>
+                    </div>
+                `;
+            }
+
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+            try {
+                await loadHistoryDetails(periodStart, periodEnd);
+            } catch (error) {
+                console.error('Error loading history details:', error);
+            }
+        }
+
+        function closeHistoryDetailsModal() {
+            const modal = document.getElementById('historyDetailsModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+
+        async function loadHistoryDetails(periodStart, periodEnd) {
+            const content = document.getElementById('historyDetailsContent');
+            if (!content) return;
+
+            try {
+                const response = await fetch('/vendor-transaction-details/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        period_start: periodStart,
+                        period_end: periodEnd
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load details');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    content.innerHTML = `
+                        <div style="text-align: center; padding: 24px;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 1.6rem; color: #ef4444;"></i>
+                            <h3 style="margin: 12px 0 4px; color: var(--on-surface); font-size: 1rem;">Unable to load details</h3>
+                            <p style="margin: 0; color: var(--on-surface-variant); font-size: 0.9rem;">
+                                ${data.error || 'Please try again later.'}
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+
+                if (jobs.length === 0) {
+                    content.innerHTML = `
+                        <div style="text-align: center; padding: 24px;">
+                            <i class="fas fa-file-alt" style="font-size: 1.6rem; color: var(--on-surface-variant);"></i>
+                            <h3 style="margin: 12px 0 4px; color: var(--on-surface); font-size: 1rem;">No jobs found</h3>
+                            <p style="margin: 0; color: var(--on-surface-variant); font-size: 0.9rem;">
+                                There are no completed jobs for this report period.
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const rowsHtml = jobs.map((job, index) => {
+                    const filename = job.filename || '-';
+                    const token = job.token || '-';
+                    const payment = typeof job.payment === 'number'
+                        ? job.payment.toFixed(2)
+                        : parseFloat(job.payment || 0).toFixed(2);
+
+                    return `
+                        <tr>
+                            <td style="padding: 8px 10px; font-size: 0.85rem; color: var(--on-surface-variant); text-align: center;">${index + 1}</td>
+                            <td style="padding: 8px 10px; font-size: 0.85rem; color: var(--on-surface); word-break: break-all;">${filename}</td>
+                            <td style="padding: 8px 10px; font-size: 0.85rem; color: var(--on-surface-variant);">${token}</td>
+                            <td style="padding: 8px 10px; font-size: 0.85rem; color: var(--on-surface); font-weight: 600; text-align: right;">₹${payment}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                content.innerHTML = `
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="background: var(--surface-variant);">
+                                    <th style="padding: 8px 10px; text-align: center; font-weight: 600; color: var(--on-surface-variant); border-bottom: 1px solid var(--outline-variant); width: 40px;">#</th>
+                                    <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: var(--on-surface-variant); border-bottom: 1px solid var(--outline-variant);">Filename</th>
+                                    <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: var(--on-surface-variant); border-bottom: 1px solid var(--outline-variant);">Token</th>
+                                    <th style="padding: 8px 10px; text-align: right; font-weight: 600; color: var(--on-surface-variant); border-bottom: 1px solid var(--outline-variant); white-space: nowrap;">Payment (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading history details:', error);
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 24px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.6rem; color: #ef4444;"></i>
+                        <h3 style="margin: 12px 0 4px; color: var(--on-surface); font-size: 1rem;">Error loading details</h3>
+                        <p style="margin: 0; color: var(--on-surface-variant); font-size: 0.9rem;">
+                            Please refresh the page and try again.
+                        </p>
+                    </div>
+                `;
             }
         }
 
