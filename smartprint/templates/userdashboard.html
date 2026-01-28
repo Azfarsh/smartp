@@ -15471,56 +15471,73 @@
                           return;
                         }
 
-                        // CRITICAL: Track upload success/failure flag
+                        // CRITICAL: Track upload success/failure flag (use upload_failed from server when available)
                         const uploadSuccess = verifyResp.ok && verifyData.success && verifyData.files_processed > 0 && verifyData.files_failed === 0;
-                        
-                        // Check for failed uploads - ONLY refund if files actually failed to upload
-                        if (verifyData.files_failed > 0) {
+                        const uploadFailed = verifyData.upload_failed === true || (verifyData.files_failed | 0) > 0;
+
+                        if (uploadFailed) {
                           const failedFiles = verifyData.failed_files || [];
                           const failedFileNames = failedFiles.map(f => f.filename).join(', ');
                           const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
 
-                          // Build message with points information if points were allotted (like jumboprint modal)
                           let modalMessage = refundMessage;
                           if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
                             modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
                           } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
                             modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
                           }
-                          
-                          // Show failed upload modal with refund message and points info (like jumboprint)
-                          showFailedUploadModal(verifyData.files_failed, failedFileNames, modalMessage);
-                          
-                          // CRITICAL: Upload failed - log for tracking
+                          showFailedUploadModal(verifyData.files_failed || 0, failedFileNames, modalMessage);
+
                           console.error('❌ Document print upload failed:', {
                             files_failed: verifyData.files_failed,
                             files_processed: verifyData.files_processed,
                             upload_success: false
                           });
 
-                          // CRITICAL: Return points if files failed to store
+                          // Refund points instantly using upload_failed flag
+                          let pointsRefunded = 0;
                           if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
-                            if (typeof userPoints !== 'undefined') {
-                              userPoints = (userPoints || 0) + Number(verifyData.points_returned);
-                              updatePointsDisplay();
-                              const totalPointsElement = document.getElementById('totalPointsCount');
-                              if (totalPointsElement) {
-                                const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
-                                totalPointsElement.textContent = displayPoints;
+                            pointsRefunded = Number(verifyData.points_returned);
+                          } else {
+                            const orderSummaryModal = document.getElementById('orderSummaryModal');
+                            const pointsApplied = modal?.dataset?.pointsApplied === 'true' || orderSummaryModal?.dataset?.pointsApplied === 'true';
+                            const pointsUsed = parseInt(modal?.dataset?.pointsUsed || orderSummaryModal?.dataset?.pointsUsed || '0');
+                            if (pointsApplied && pointsUsed > 0) {
+                              let userEmail = document.body?.dataset?.userEmail || (typeof userEmailFromTemplate !== 'undefined' ? userEmailFromTemplate : null);
+                              if (!userEmail) {
+                                const el = document.querySelector('.sidebar-user-info p, .user-info-dropdown p');
+                                if (el) userEmail = el.textContent.trim();
+                              }
+                              if (userEmail) {
+                                try {
+                                  const returnResp = await fetch('/payments/return-points/', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                                    body: JSON.stringify({
+                                      user_email: userEmail,
+                                      points: pointsUsed,
+                                      reason: 'Points returned - document upload failed after payment'
+                                    })
+                                  });
+                                  const returnData = await (returnResp.json ? returnResp.json() : {});
+                                  if (returnData.success) pointsRefunded = pointsUsed;
+                                } catch (e) { console.error('Error returning points:', e); }
                               }
                             }
                           }
+                          if (pointsRefunded > 0 && typeof userPoints !== 'undefined') {
+                            userPoints = (userPoints || 0) + pointsRefunded;
+                            updatePointsDisplay();
+                            const totalPointsElement = document.getElementById('totalPointsCount');
+                            if (totalPointsElement) totalPointsElement.textContent = (userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1));
+                          }
 
-                          // Add points if compensation_points_awarded or points_allotted (only on failure)
                           const pointsToAdd = verifyData.points_allotted || verifyData.compensation_points_awarded || 0;
                           if (pointsToAdd > 0 && typeof userPoints !== 'undefined') {
                             userPoints = (userPoints || 0) + Number(pointsToAdd);
                             updatePointsDisplay();
                             const totalPointsElement = document.getElementById('totalPointsCount');
-                            if (totalPointsElement) {
-                              const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
-                              totalPointsElement.textContent = displayPoints;
-                            }
+                            if (totalPointsElement) totalPointsElement.textContent = (userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1));
                           }
                         } else {
                           // CRITICAL: Upload successful - track success flag
@@ -26288,19 +26305,16 @@
       // Service name should be just "A4 print"
       const serviceName = 'A4 print';
 
-      // Format color display text - show "Both" when Mixed, otherwise exact color type
+      // Format color display text - show exact color type, not Mixed
       let colorDisplayText = 'Black and White'; // Default
-      if (colorType === 'Mixed' || (breakdownObj && (breakdownObj.color || '').toString().toLowerCase() === 'both')) {
-        colorDisplayText = 'Both';
-      } else if (colorType === 'color') {
+      if (colorType === 'color') {
         colorDisplayText = 'Color';
       } else if (colorType === 'bw' || colorType === 'black_white' || colorType === 'Black & White' || colorType === 'Black and White') {
         colorDisplayText = 'Black and White';
       } else if (breakdownObj && breakdownObj.color) {
-        const breakdownColor = (breakdownObj.color || '').toString().toLowerCase();
-        if (breakdownColor === 'both' || breakdownColor === 'mixed') {
-          colorDisplayText = 'Both';
-        } else if (breakdownColor.includes('color') && !breakdownColor.includes('black')) {
+        // Use breakdown color if available
+        const breakdownColor = breakdownObj.color.toLowerCase();
+        if (breakdownColor.includes('color')) {
           colorDisplayText = 'Color';
         } else if (breakdownColor.includes('black') || breakdownColor.includes('white') || breakdownColor.includes('bw')) {
           colorDisplayText = 'Black and White';
@@ -26308,10 +26322,8 @@
           colorDisplayText = breakdownObj.color;
         }
       } else if (breakdownObj && breakdownObj.print_color) {
-        const printColor = (breakdownObj.print_color || '').toString().toLowerCase();
-        if (printColor.includes('both') || printColor.includes('mixed')) {
-          colorDisplayText = 'Both';
-        } else if (printColor.includes('color')) {
+        const printColor = breakdownObj.print_color.toLowerCase();
+        if (printColor.includes('color')) {
           colorDisplayText = 'Color';
         } else {
           colorDisplayText = 'Black and White';
@@ -26584,6 +26596,13 @@
               }
             });
           }
+          // Fallback: use stored page ranges from breakdown (e.g. from D1 / backend)
+          if (!bwRangeDisplay && (breakdownObj.bwPageRangeValue || breakdownObj.bw_page_range_value)) {
+            bwRangeDisplay = breakdownObj.bwPageRangeValue || breakdownObj.bw_page_range_value || '';
+          }
+          if (!colorRangeDisplay && (breakdownObj.colorPageRangeValue || breakdownObj.color_page_range_value)) {
+            colorRangeDisplay = breakdownObj.colorPageRangeValue || breakdownObj.color_page_range_value || '';
+          }
 
           invoiceHtml += `
             <div class="invoice-item">
@@ -26621,32 +26640,21 @@
             }
           }
 
-          const isMixed = (bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && parseInt(breakdownObj.bw_pages) > 0)) &&
-            (colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && parseInt(breakdownObj.color_pages) > 0));
-          if (!isMixed) {
-            let pageRangeDisplay = (bwRangeDisplay || colorRangeDisplay || '').trim();
-            if (!pageRangeDisplay && breakdownObj) {
-              const pr = (breakdownObj.pageRange || breakdownObj.page_range || 'all').toString().toLowerCase();
-              const sp = (breakdownObj.specificPages || breakdownObj.specific_pages || '').toString().trim();
-              if (pr === 'odd') pageRangeDisplay = 'Odd pages';
-              else if (pr === 'even') pageRangeDisplay = 'Even pages';
-              else if (pr === 'specific' && sp) pageRangeDisplay = 'Pages: ' + sp;
-              else pageRangeDisplay = 'All pages';
-            }
-            if (!pageRangeDisplay) pageRangeDisplay = 'All pages';
+          // Page range for single-color "specific" case (when not Mixed/Both)
+          const specificPagesVal = breakdownObj.specificPages || breakdownObj.specific_pages ||
+            (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].specificPages : '');
+          const pageRangeVal = breakdownObj.pageRange || breakdownObj.page_range ||
+            (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].pageRange : '');
+          const isMixed = (colorType === 'Mixed' || (breakdownObj.color && (breakdownObj.color + '').toLowerCase() === 'mixed'));
+          if (!isMixed && (pageRangeVal + '').toLowerCase() === 'specific' && specificPagesVal) {
             invoiceHtml += `
-                <div class="invoice-item">
-                  <span class="invoice-item-label">Page Range</span>
-                  <span class="invoice-item-value">${pageRangeDisplay}</span>
-                </div>
-              `;
+              <div class="invoice-item">
+                <span class="invoice-item-label">Page range</span>
+                <span class="invoice-item-value">${String(specificPagesVal)}</span>
+              </div>
+            `;
           }
-          invoiceHtml += `
-            <div class="invoice-item">
-              <span class="invoice-item-label">Color</span>
-              <span class="invoice-item-value">${displayColor}</span>
-            </div>
-          `;
+
           invoiceHtml += `
             <div class="invoice-item">
               <span class="invoice-item-label">Total Pages</span>
@@ -28079,12 +28087,9 @@
                     r2PathsCount: verifyData.r2_paths ? verifyData.r2_paths.length : 0
                   });
 
-                  // CRITICAL: Track upload success/failure flag
+                  // CRITICAL: Track upload success/failure flag (use upload_failed from server when available)
                   const uploadSuccess = verifyResp.ok && verifyData.success && filesProcessed > 0 && filesFailed === 0;
-                  
-                  // Check for failed uploads: either explicit failure count OR no files processed when files were expected
-                  // CRITICAL: Only refund if files_failed > 0 (actual failure from server response)
-                  const hasUploadFailure = filesFailed > 0;
+                  const hasUploadFailure = verifyData.upload_failed === true || filesFailed > 0;
 
                   // Check for failed uploads FIRST and show refund message in modal
                   if (hasUploadFailure) {
@@ -28129,25 +28134,32 @@
                     let pointsToReturn = 0;
                     let compensationPoints = 0;
 
-                    // 1. Return points that were used (if any)
+                    // 1. Return points that were used (if any) - refund instantly using upload_failed flag
                     if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
                       pointsToReturn = Number(verifyData.points_returned);
                     } else if (pointsApplied && pointsUsed > 0) {
                       pointsToReturn = pointsUsed;
-                      // Return points via API
                       if (userEmail && pointsToReturn > 0) {
-                        fetch('/payments/return-points/', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('csrftoken')
-                          },
-                          body: JSON.stringify({
-                            user_email: userEmail,
-                            points: pointsToReturn,
-                            reason: 'Points returned - document upload failed after payment'
-                          })
-                        }).catch(err => console.error('Error returning points:', err));
+                        try {
+                          const returnResp = await fetch('/payments/return-points/', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                              user_email: userEmail,
+                              points: pointsToReturn,
+                              reason: 'Points returned - document upload failed after payment'
+                            })
+                          });
+                          const returnData = await (returnResp.json ? returnResp.json() : {});
+                          if (!returnData.success) {
+                            console.error('Error returning points:', returnData.error);
+                          }
+                        } catch (err) {
+                          console.error('Error returning points:', err);
+                        }
                       }
                     }
 
@@ -28181,25 +28193,6 @@
                       }
                     }
 
-                    // Show compensation points message if awarded
-                    if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                      showCursorNotification(
-                        'Compensation Added',
-                        'success',
-                        `You received ${verifyData.compensation_points_awarded} points for upload issues.`,
-                        'success',
-                        5000
-                      );
-                      if (typeof userPoints !== 'undefined') {
-                        userPoints = (userPoints || 0) + Number(verifyData.compensation_points_awarded);
-                        updatePointsDisplay();
-                        const totalPointsElement = document.getElementById('totalPointsCount');
-                        if (totalPointsElement) {
-                          const displayPoints = userPoints % 1 === 0 ? userPoints : userPoints.toFixed(1);
-                          totalPointsElement.textContent = displayPoints;
-                        }
-                      }
-                    }
                   } else {
                     // CRITICAL: Upload successful - track success flag
                     if (uploadSuccess) {

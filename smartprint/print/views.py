@@ -5398,27 +5398,19 @@ def verify_razorpay_payment(request):
             
             # Build metadata (extend base with payment details)
             # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
-            # Handle Mixed (Both) color with page ranges; store "Both" in DB when user selects Mixed
-            color_raw = print_settings.get('color', 'Black and White')
-            if color_raw == 'Mixed':
-                color_value = 'Both'
-            elif isinstance(color_raw, str) and color_raw.strip().lower() == 'color':
-                color_value = 'Color'
-            else:
-                color_value = color_raw if color_raw else 'Black and White'
-            page_range_value = str(print_settings.get('pageRange', '') or '').strip()
-            specific_pages_value = str(print_settings.get('specificPages', '') or '').strip()
-            if not page_range_value:
-                page_range_value = 'all'
-            if page_range_value == 'specific' and not specific_pages_value:
-                pass  # keep specificPages as-is (may be empty)
+            # Handle Mixed color with page ranges
+            color_value = print_settings.get('color', 'Black and White')
+            page_range_value = str(print_settings.get('pageRange', ''))
+            specific_pages_value = str(print_settings.get('specificPages', ''))
             
-            # For Mixed (Both) color, combine bw and color page ranges into pageRange field
-            if color_raw == 'Mixed':
+            # For Mixed color, combine bw and color page ranges into pageRange field
+            if color_value == 'Mixed':
                 bw_range = print_settings.get('bwPageRange', 'all')
-                bw_range_value = str(print_settings.get('bwPageRangeValue', '') or '').strip()
+                bw_range_value = print_settings.get('bwPageRangeValue', '')
                 color_range = print_settings.get('colorPageRange', 'all')
-                color_range_value = str(print_settings.get('colorPageRangeValue', '') or '').strip()
+                color_range_value = print_settings.get('colorPageRangeValue', '')
+                
+                # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
                 if bw_range == 'all' and color_range == 'all':
                     page_range_value = 'BW: all | Color: all'
                 else:
@@ -5453,8 +5445,8 @@ def verify_razorpay_payment(request):
                 'order_id': order_id
             }
             
-            # Store Mixed (Both) color page ranges separately for reference
-            if color_raw == 'Mixed':
+            # Store Mixed color page ranges separately for reference
+            if color_value == 'Mixed':
                 metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
                 metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
                 metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
@@ -5838,6 +5830,7 @@ def verify_razorpay_payment(request):
             'files_processed': files_processed,
             'files_failed': files_failed,
             'failed_files': failed_files,
+            'upload_failed': files_failed > 0,
             'token': token_value,
             'printer_name': locals().get('metadata', {}).get('printer_name', '') if files_processed else response_data.get('printer_name', ''),
             'refund_message': refund_message,
@@ -5901,7 +5894,9 @@ def verify_razorpay_payment(request):
             response_data['files_failed'] = files_failed
         if 'failed_files' not in response_data:
             response_data['failed_files'] = failed_files
-        
+        if 'upload_failed' not in response_data:
+            response_data['upload_failed'] = files_failed > 0
+
         print(f"📊 Final response: files_processed={files_processed}, files_failed={files_failed}, token={token_value}")
         return JsonResponse(response_data)
     except Exception as e:
@@ -13733,8 +13728,8 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'color': metadata.get('color', ''),
             'orientation': metadata.get('orientation', ''),
             'pageSize': metadata.get('pageSize', ''),
-            'pageRange': (metadata.get('pageRange', '') or '').strip() or 'all',
-            'specificPages': (metadata.get('specificPages', '') or '').strip(),
+            'pageRange': metadata.get('pageRange', ''),
+            'specificPages': metadata.get('specificPages', ''),
             # Mixed (Both) color support: store separate page ranges too
             'bwPageRange': metadata.get('bwPageRange', ''),
             'bwPageRangeValue': metadata.get('bwPageRangeValue', ''),
@@ -13951,8 +13946,8 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'color': metadata.get('color', ''),
             'orientation': metadata.get('orientation', ''),
             'pageSize': metadata.get('pageSize', ''),
-            'pageRange': (metadata.get('pageRange', '') or '').strip() or 'all',
-            'specificPages': (metadata.get('specificPages', '') or '').strip(),
+            'pageRange': metadata.get('pageRange', ''),
+            'specificPages': metadata.get('specificPages', ''),
             # Mixed (Both) color support: store separate page ranges too
             'bwPageRange': metadata.get('bwPageRange', ''),
             'bwPageRangeValue': metadata.get('bwPageRangeValue', ''),
