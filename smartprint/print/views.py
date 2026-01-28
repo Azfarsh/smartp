@@ -5404,23 +5404,25 @@ def verify_razorpay_payment(request):
             specific_pages_value = str(print_settings.get('specificPages', ''))
             
             # For Mixed color, combine bw and color page ranges into pageRange field
+            bw_range_value = str(print_settings.get('bwPageRangeValue', '') or '').strip()
+            color_range_value = str(print_settings.get('colorPageRangeValue', '') or '').strip()
             if color_value == 'Mixed':
-                bw_range = print_settings.get('bwPageRange', 'all')
-                bw_range_value = print_settings.get('bwPageRangeValue', '')
-                color_range = print_settings.get('colorPageRange', 'all')
-                color_range_value = print_settings.get('colorPageRangeValue', '')
-                
-                # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
-                if bw_range == 'all' and color_range == 'all':
+                bw_range = (print_settings.get('bwPageRange') or 'all').lower()
+                color_range = (print_settings.get('colorPageRange') or 'all').lower()
+                use_bw_val = bw_range in ('range', 'specific') or bool(bw_range_value)
+                use_color_val = color_range in ('range', 'specific') or bool(color_range_value)
+                if not use_bw_val and not use_color_val:
                     page_range_value = 'BW: all | Color: all'
                 else:
-                    bw_str = f"BW: {bw_range_value if bw_range == 'range' else 'all'}"
-                    color_str = f"Color: {color_range_value if color_range == 'range' else 'all'}"
+                    bw_str = f"BW: {bw_range_value if use_bw_val else 'all'}"
+                    color_str = f"Color: {color_range_value if use_color_val else 'all'}"
                     page_range_value = f"{bw_str} | {color_str}"
             
+            # Store "Mix" in DB when user selects Both (Mixed); keep Mixed elsewhere for compatibility
+            color_for_db = 'Mix' if color_value == 'Mixed' else color_value
             metadata = {
                 'copies': str(print_settings.get('copies', '1')),
-                'color': color_value,
+                'color': color_for_db,
                 'orientation': print_settings.get('orientation', 'portrait'),
                 'pageRange': page_range_value,
                 'specificPages': specific_pages_value,
@@ -5445,13 +5447,12 @@ def verify_razorpay_payment(request):
                 'order_id': order_id
             }
             
-            # Store Mixed color page ranges separately for reference
-            if color_value == 'Mixed':
-                metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
-                metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
-                metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
-                metadata['colorPageRangeValue'] = str(print_settings.get('colorPageRangeValue', ''))
-            
+            # Always store B&W and Color page range values for DB (Mixed and non-Mixed)
+            metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
+            metadata['bwPageRangeValue'] = bw_range_value
+            metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
+            metadata['colorPageRangeValue'] = color_range_value
+
             # Ensure default rendered_status
             if 'rendered_status' not in metadata:
                 metadata['rendered_status'] = 'NO'

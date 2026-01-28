@@ -26305,16 +26305,19 @@
       // Service name should be just "A4 print"
       const serviceName = 'A4 print';
 
-      // Format color display text - show exact color type, not Mixed
+      // Format color display text - show exact color type; use "Mix" for Both/Mixed
       let colorDisplayText = 'Black and White'; // Default
       if (colorType === 'color') {
         colorDisplayText = 'Color';
+      } else if (colorType === 'Mix' || colorType === 'Mixed' || (breakdownObj && /^(Mix|Mixed|Both)$/i.test((breakdownObj.color || '') + ''))) {
+        colorDisplayText = 'Mix';
       } else if (colorType === 'bw' || colorType === 'black_white' || colorType === 'Black & White' || colorType === 'Black and White') {
         colorDisplayText = 'Black and White';
       } else if (breakdownObj && breakdownObj.color) {
-        // Use breakdown color if available
-        const breakdownColor = breakdownObj.color.toLowerCase();
-        if (breakdownColor.includes('color')) {
+        const breakdownColor = (breakdownObj.color + '').toLowerCase();
+        if (/^(mix|mixed|both)$/.test(breakdownColor)) {
+          colorDisplayText = 'Mix';
+        } else if (breakdownColor.includes('color')) {
           colorDisplayText = 'Color';
         } else if (breakdownColor.includes('black') || breakdownColor.includes('white') || breakdownColor.includes('bw')) {
           colorDisplayText = 'Black and White';
@@ -26611,33 +26614,28 @@
             </div>
           `;
 
-          // Always show B&W and Color pages if we have the data (from backend breakdown)
-          // Show B&W pages if count > 0 or if breakdown has the data
-          if (bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && breakdownObj.bw_pages > 0)) {
+          const isMixedForBill = /^(Mix|Mixed|Both)$/i.test(colorType + '') || (breakdownObj.color && /^(Mix|Mixed|Both)$/i.test((breakdownObj.color || '') + ''));
+          const showBw = bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && breakdownObj.bw_pages > 0) || (isMixedForBill && bwRangeDisplay);
+          const showColor = colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && breakdownObj.color_pages > 0) || (isMixedForBill && colorRangeDisplay);
+          if (showBw) {
             const bwRangeText = bwRangeDisplay ? ` (${bwRangeDisplay})` : '';
             const displayBwPages = bwPagesCount > 0 ? bwPagesCount : (parseInt(breakdownObj.bw_pages) || 0);
-            if (displayBwPages > 0) {
-              invoiceHtml += `
-                <div class="invoice-item">
-                  <span class="invoice-item-label">Black & White Pages</span>
-                  <span class="invoice-item-value">${displayBwPages}${bwRangeText}</span>
-                </div>
-              `;
-            }
+            invoiceHtml += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Black & White Pages</span>
+                <span class="invoice-item-value">${displayBwPages}${bwRangeText}</span>
+              </div>
+            `;
           }
-
-          // Show color pages if count > 0 or if breakdown has the data
-          if (colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && breakdownObj.color_pages > 0)) {
+          if (showColor) {
             const colorRangeText = colorRangeDisplay ? ` (${colorRangeDisplay})` : '';
             const displayColorPages = colorPagesCount > 0 ? colorPagesCount : (parseInt(breakdownObj.color_pages) || 0);
-            if (displayColorPages > 0) {
-              invoiceHtml += `
-                <div class="invoice-item">
-                  <span class="invoice-item-label">Color Pages</span>
-                  <span class="invoice-item-value">${displayColorPages}${colorRangeText}</span>
-                </div>
-              `;
-            }
+            invoiceHtml += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Color Pages</span>
+                <span class="invoice-item-value">${displayColorPages}${colorRangeText}</span>
+              </div>
+            `;
           }
 
           // Page range for single-color "specific" case (when not Mixed/Both)
@@ -26645,8 +26643,7 @@
             (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].specificPages : '');
           const pageRangeVal = breakdownObj.pageRange || breakdownObj.page_range ||
             (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].pageRange : '');
-          const isMixed = (colorType === 'Mixed' || (breakdownObj.color && (breakdownObj.color + '').toLowerCase() === 'mixed'));
-          if (!isMixed && (pageRangeVal + '').toLowerCase() === 'specific' && specificPagesVal) {
+          if (!isMixedForBill && (pageRangeVal + '').toLowerCase() === 'specific' && specificPagesVal) {
             invoiceHtml += `
               <div class="invoice-item">
                 <span class="invoice-item-label">Page range</span>
