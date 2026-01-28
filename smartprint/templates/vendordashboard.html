@@ -7776,7 +7776,10 @@
                 if ((pageRange || '').toLowerCase() === 'specific' && specificPages) {
                     rangeDisplay = `Pages: ${specificPages}`;
                 }
-                if (rangeDisplay && pageRangeItem) {
+                if (!rangeDisplay || (rangeDisplay.toLowerCase() === 'all' && !specificPages)) {
+                    rangeDisplay = 'All pages';
+                }
+                if (pageRangeItem) {
                     pageRangeItem.style.display = 'flex';
                     document.getElementById('printInfoPageRange').textContent = rangeDisplay;
                 }

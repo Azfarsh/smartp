@@ -2349,8 +2349,12 @@ export default {
         const color = (body.color || "").trim();
         const orientation = (body.orientation || "").trim();
         const pageSize = (body.pageSize || "").trim();
-        const pageRange = (body.pageRange || "").trim();
+        const pageRange = ((body.pageRange || "").trim()) || "all";
         const specificPages = (body.specificPages || "").trim();
+        const bwPageRange = (body.bwPageRange || "").trim();
+        const bwPageRangeValue = (body.bwPageRangeValue || "").trim();
+        const colorPageRange = (body.colorPageRange || "").trim();
+        const colorPageRangeValue = (body.colorPageRangeValue || "").trim();
         const spiralBinding = (body.spiralBinding || "No").trim();
         const lamination = (body.lamination || "No").trim();
         const service_name = (body.service_name || "").trim();
@@ -2419,6 +2423,10 @@ export default {
                 pageSize TEXT,
                 pageRange TEXT,
                 specificPages TEXT,
+                bwPageRange TEXT,
+                bwPageRangeValue TEXT,
+                colorPageRange TEXT,
+                colorPageRangeValue TEXT,
                 spiralBinding TEXT,
                 lamination TEXT,
                 service_name TEXT,
@@ -2444,6 +2452,17 @@ export default {
             `).run();
           }
 
+          // Ensure page-range columns exist (migration for existing D1 tables)
+          const vendorTableInfo = await env.DB.prepare("PRAGMA table_info(Vendor_print_jobs)").all();
+          const vendorCols = new Set((vendorTableInfo.results || []).map((c) => (c.name || "").toLowerCase()));
+          for (const col of ["bwPageRange", "bwPageRangeValue", "colorPageRange", "colorPageRangeValue"]) {
+            if (!vendorCols.has(col.toLowerCase())) {
+              try {
+                await env.DB.prepare(`ALTER TABLE Vendor_print_jobs ADD COLUMN ${col} TEXT`).run();
+              } catch (e) { /* ignore if already exists */ }
+            }
+          }
+
           const shopNameColumn = await resolveShopNameColumn(env, "Vendor_print_jobs");
           const shopNameColumnSql = quoteIdentifier(shopNameColumn);
 
@@ -2454,16 +2473,18 @@ export default {
                 vendor_id, vendor_email, user_email, filename, storage_folder, r2_path,
                 service_type, status, job_completed, vendor_status, token, job_id,
                 copies, color, orientation, pageSize, pageRange, specificPages,
+                bwPageRange, bwPageRangeValue, colorPageRange, colorPageRangeValue,
                 spiralBinding, lamination, service_name, feedback, quality, thickness,
                 points_applied, points_used, timestamp, completion_time, rendered_status,
                 trash, total_price, platform_profit, price_per_page, final_amount,
                 page_count, num_copies, pricing_details, shop_address, ${shopNameColumnSql}
               )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
               vendor_id, vendor_email || null, user_email, filename, storage_folder, r2_path,
               service_type || null, status, job_completed, vendor_status, token || null, job_id || null,
               copies, color || null, orientation || null, pageSize || null, pageRange || null, specificPages || null,
+              bwPageRange || null, bwPageRangeValue || null, colorPageRange || null, colorPageRangeValue || null,
               spiralBinding, lamination, service_name || null, feedback || null, quality || null, thickness || null,
               points_applied, points_used, timestamp, completion_time || null, rendered_status, trash,
               total_price, platform_profit, price_per_page, final_amount,
@@ -2489,6 +2510,10 @@ export default {
                   pageSize = ?,
                   pageRange = ?,
                   specificPages = ?,
+                  bwPageRange = ?,
+                  bwPageRangeValue = ?,
+                  colorPageRange = ?,
+                  colorPageRangeValue = ?,
                   spiralBinding = ?,
                   lamination = ?,
                   service_name = ?,
@@ -2515,6 +2540,7 @@ export default {
                 vendor_email || null, user_email, r2_path,
                 service_type || null, status, job_completed, vendor_status, token || null, job_id || null,
                 copies, color || null, orientation || null, pageSize || null, pageRange || null, specificPages || null,
+                bwPageRange || null, bwPageRangeValue || null, colorPageRange || null, colorPageRangeValue || null,
                 spiralBinding, lamination, service_name || null, feedback || null, quality || null, thickness || null,
                 points_applied, points_used, timestamp, completion_time || null, rendered_status, trash,
                 total_price, platform_profit, price_per_page, final_amount,
@@ -2955,8 +2981,12 @@ export default {
         const color = (body.color || "").trim();
         const orientation = (body.orientation || "").trim();
         const pageSize = (body.pageSize || "").trim();
-        const pageRange = (body.pageRange || "").trim();
+        const pageRange = ((body.pageRange || "").trim()) || "all";
         const specificPages = (body.specificPages || "").trim();
+        const bwPageRange = (body.bwPageRange || "").trim();
+        const bwPageRangeValue = (body.bwPageRangeValue || "").trim();
+        const colorPageRange = (body.colorPageRange || "").trim();
+        const colorPageRangeValue = (body.colorPageRangeValue || "").trim();
         const spiralBinding = (body.spiralBinding || "No").trim();
         const lamination = (body.lamination || "No").trim();
         const service_name = (body.service_name || "").trim();
@@ -3026,6 +3056,10 @@ export default {
                 pageSize TEXT,
                 pageRange TEXT,
                 specificPages TEXT,
+                bwPageRange TEXT,
+                bwPageRangeValue TEXT,
+                colorPageRange TEXT,
+                colorPageRangeValue TEXT,
                 spiralBinding TEXT,
                 lamination TEXT,
                 service_name TEXT,
@@ -3051,6 +3085,17 @@ export default {
             `).run();
           }
 
+          // Ensure page-range columns exist (migration for existing D1 tables)
+          const userTableInfo = await env.DB.prepare("PRAGMA table_info(User_print_jobs)").all();
+          const userCols = new Set((userTableInfo.results || []).map((c) => (c.name || "").toLowerCase()));
+          for (const col of ["bwPageRange", "bwPageRangeValue", "colorPageRange", "colorPageRangeValue"]) {
+            if (!userCols.has(col.toLowerCase())) {
+              try {
+                await env.DB.prepare(`ALTER TABLE User_print_jobs ADD COLUMN ${col} TEXT`).run();
+              } catch (e) { /* ignore */ }
+            }
+          }
+
           const shopNameColumn = await resolveShopNameColumn(env, "User_print_jobs");
           const shopNameColumnSql = quoteIdentifier(shopNameColumn);
 
@@ -3061,16 +3106,18 @@ export default {
                 vendor_id, vendor_email, user_email, filename, storage_folder, r2_path,
                 service_type, status, job_completed, vendor_status, token, job_id,
                 copies, color, orientation, pageSize, pageRange, specificPages,
+                bwPageRange, bwPageRangeValue, colorPageRange, colorPageRangeValue,
                 spiralBinding, lamination, service_name, feedback, quality, thickness,
                 points_applied, points_used, timestamp, completion_time, rendered_status,
                 trash, total_price, platform_profit, price_per_page, final_amount,
                 page_count, num_copies, pricing_details, shop_address, ${shopNameColumnSql}
               )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(
               vendor_id || null, vendor_email || null, user_email, filename, storage_folder, r2_path,
               service_type || null, status, job_completed, vendor_status, token || null, job_id || null,
               copies, color || null, orientation || null, pageSize || null, pageRange || null, specificPages || null,
+              bwPageRange || null, bwPageRangeValue || null, colorPageRange || null, colorPageRangeValue || null,
               spiralBinding, lamination, service_name || null, feedback || null, quality || null, thickness || null,
               points_applied, points_used, timestamp, completion_time || null, rendered_status, trash,
               total_price, platform_profit, price_per_page, final_amount,
@@ -3101,6 +3148,10 @@ export default {
               const final_pageSize = pageSize || existing?.pageSize || null;
               const final_pageRange = pageRange || existing?.pageRange || null;
               const final_specificPages = specificPages || existing?.specificPages || null;
+              const final_bwPageRange = bwPageRange || existing?.bwPageRange || null;
+              const final_bwPageRangeValue = bwPageRangeValue || existing?.bwPageRangeValue || null;
+              const final_colorPageRange = colorPageRange || existing?.colorPageRange || null;
+              const final_colorPageRangeValue = colorPageRangeValue || existing?.colorPageRangeValue || null;
               const final_spiralBinding = spiralBinding || existing?.spiralBinding || 'No';
               const final_lamination = lamination || existing?.lamination || 'No';
               const final_service_name = service_name || existing?.service_name || null;
@@ -3140,6 +3191,10 @@ export default {
                   pageSize = ?,
                   pageRange = ?,
                   specificPages = ?,
+                  bwPageRange = ?,
+                  bwPageRangeValue = ?,
+                  colorPageRange = ?,
+                  colorPageRangeValue = ?,
                   spiralBinding = ?,
                   lamination = ?,
                   service_name = ?,
@@ -3166,6 +3221,7 @@ export default {
                 final_vendor_id, final_vendor_email, final_r2_path,
                 final_service_type, final_status, final_job_completed, final_vendor_status, final_token, final_job_id,
                 final_copies, final_color, final_orientation, final_pageSize, final_pageRange, final_specificPages,
+                final_bwPageRange, final_bwPageRangeValue, final_colorPageRange, final_colorPageRangeValue,
                 final_spiralBinding, final_lamination, final_service_name, final_feedback, final_quality, final_thickness,
                 final_points_applied, final_points_used, final_timestamp, final_completion_time, final_rendered_status, final_trash,
                 final_total_price, final_platform_profit, final_price_per_page, final_final_amount,

@@ -26288,16 +26288,19 @@
       // Service name should be just "A4 print"
       const serviceName = 'A4 print';
 
-      // Format color display text - show exact color type, not Mixed
+      // Format color display text - show "Both" when Mixed, otherwise exact color type
       let colorDisplayText = 'Black and White'; // Default
-      if (colorType === 'color') {
+      if (colorType === 'Mixed' || (breakdownObj && (breakdownObj.color || '').toString().toLowerCase() === 'both')) {
+        colorDisplayText = 'Both';
+      } else if (colorType === 'color') {
         colorDisplayText = 'Color';
       } else if (colorType === 'bw' || colorType === 'black_white' || colorType === 'Black & White' || colorType === 'Black and White') {
         colorDisplayText = 'Black and White';
       } else if (breakdownObj && breakdownObj.color) {
-        // Use breakdown color if available
-        const breakdownColor = breakdownObj.color.toLowerCase();
-        if (breakdownColor.includes('color')) {
+        const breakdownColor = (breakdownObj.color || '').toString().toLowerCase();
+        if (breakdownColor === 'both' || breakdownColor === 'mixed') {
+          colorDisplayText = 'Both';
+        } else if (breakdownColor.includes('color') && !breakdownColor.includes('black')) {
           colorDisplayText = 'Color';
         } else if (breakdownColor.includes('black') || breakdownColor.includes('white') || breakdownColor.includes('bw')) {
           colorDisplayText = 'Black and White';
@@ -26305,8 +26308,10 @@
           colorDisplayText = breakdownObj.color;
         }
       } else if (breakdownObj && breakdownObj.print_color) {
-        const printColor = breakdownObj.print_color.toLowerCase();
-        if (printColor.includes('color')) {
+        const printColor = (breakdownObj.print_color || '').toString().toLowerCase();
+        if (printColor.includes('both') || printColor.includes('mixed')) {
+          colorDisplayText = 'Both';
+        } else if (printColor.includes('color')) {
           colorDisplayText = 'Color';
         } else {
           colorDisplayText = 'Black and White';
@@ -26616,6 +26621,32 @@
             }
           }
 
+          const isMixed = (bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && parseInt(breakdownObj.bw_pages) > 0)) &&
+            (colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && parseInt(breakdownObj.color_pages) > 0));
+          if (!isMixed) {
+            let pageRangeDisplay = (bwRangeDisplay || colorRangeDisplay || '').trim();
+            if (!pageRangeDisplay && breakdownObj) {
+              const pr = (breakdownObj.pageRange || breakdownObj.page_range || 'all').toString().toLowerCase();
+              const sp = (breakdownObj.specificPages || breakdownObj.specific_pages || '').toString().trim();
+              if (pr === 'odd') pageRangeDisplay = 'Odd pages';
+              else if (pr === 'even') pageRangeDisplay = 'Even pages';
+              else if (pr === 'specific' && sp) pageRangeDisplay = 'Pages: ' + sp;
+              else pageRangeDisplay = 'All pages';
+            }
+            if (!pageRangeDisplay) pageRangeDisplay = 'All pages';
+            invoiceHtml += `
+                <div class="invoice-item">
+                  <span class="invoice-item-label">Page Range</span>
+                  <span class="invoice-item-value">${pageRangeDisplay}</span>
+                </div>
+              `;
+          }
+          invoiceHtml += `
+            <div class="invoice-item">
+              <span class="invoice-item-label">Color</span>
+              <span class="invoice-item-value">${displayColor}</span>
+            </div>
+          `;
           invoiceHtml += `
             <div class="invoice-item">
               <span class="invoice-item-label">Total Pages</span>
