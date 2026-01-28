@@ -5398,19 +5398,27 @@ def verify_razorpay_payment(request):
             
             # Build metadata (extend base with payment details)
             # Ensure ALL required fields are included: vendor_id, vendor_email, service_type, token, job_id
-            # Handle Mixed color with page ranges
-            color_value = print_settings.get('color', 'Black and White')
-            page_range_value = str(print_settings.get('pageRange', ''))
-            specific_pages_value = str(print_settings.get('specificPages', ''))
+            # Handle Mixed (Both) color with page ranges; store "Both" in DB when user selects Mixed
+            color_raw = print_settings.get('color', 'Black and White')
+            if color_raw == 'Mixed':
+                color_value = 'Both'
+            elif isinstance(color_raw, str) and color_raw.strip().lower() == 'color':
+                color_value = 'Color'
+            else:
+                color_value = color_raw if color_raw else 'Black and White'
+            page_range_value = str(print_settings.get('pageRange', '') or '').strip()
+            specific_pages_value = str(print_settings.get('specificPages', '') or '').strip()
+            if not page_range_value:
+                page_range_value = 'all'
+            if page_range_value == 'specific' and not specific_pages_value:
+                pass  # keep specificPages as-is (may be empty)
             
-            # For Mixed color, combine bw and color page ranges into pageRange field
-            if color_value == 'Mixed':
+            # For Mixed (Both) color, combine bw and color page ranges into pageRange field
+            if color_raw == 'Mixed':
                 bw_range = print_settings.get('bwPageRange', 'all')
-                bw_range_value = print_settings.get('bwPageRangeValue', '')
+                bw_range_value = str(print_settings.get('bwPageRangeValue', '') or '').strip()
                 color_range = print_settings.get('colorPageRange', 'all')
-                color_range_value = print_settings.get('colorPageRangeValue', '')
-                
-                # Format: "BW: range_value | Color: range_value" or "BW: all | Color: all"
+                color_range_value = str(print_settings.get('colorPageRangeValue', '') or '').strip()
                 if bw_range == 'all' and color_range == 'all':
                     page_range_value = 'BW: all | Color: all'
                 else:
@@ -5445,8 +5453,8 @@ def verify_razorpay_payment(request):
                 'order_id': order_id
             }
             
-            # Store Mixed color page ranges separately for reference
-            if color_value == 'Mixed':
+            # Store Mixed (Both) color page ranges separately for reference
+            if color_raw == 'Mixed':
                 metadata['bwPageRange'] = str(print_settings.get('bwPageRange', 'all'))
                 metadata['bwPageRangeValue'] = str(print_settings.get('bwPageRangeValue', ''))
                 metadata['colorPageRange'] = str(print_settings.get('colorPageRange', 'all'))
@@ -13725,8 +13733,8 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'color': metadata.get('color', ''),
             'orientation': metadata.get('orientation', ''),
             'pageSize': metadata.get('pageSize', ''),
-            'pageRange': metadata.get('pageRange', ''),
-            'specificPages': metadata.get('specificPages', ''),
+            'pageRange': (metadata.get('pageRange', '') or '').strip() or 'all',
+            'specificPages': (metadata.get('specificPages', '') or '').strip(),
             # Mixed (Both) color support: store separate page ranges too
             'bwPageRange': metadata.get('bwPageRange', ''),
             'bwPageRangeValue': metadata.get('bwPageRangeValue', ''),
@@ -13943,8 +13951,8 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'color': metadata.get('color', ''),
             'orientation': metadata.get('orientation', ''),
             'pageSize': metadata.get('pageSize', ''),
-            'pageRange': metadata.get('pageRange', ''),
-            'specificPages': metadata.get('specificPages', ''),
+            'pageRange': (metadata.get('pageRange', '') or '').strip() or 'all',
+            'specificPages': (metadata.get('specificPages', '') or '').strip(),
             # Mixed (Both) color support: store separate page ranges too
             'bwPageRange': metadata.get('bwPageRange', ''),
             'bwPageRangeValue': metadata.get('bwPageRangeValue', ''),
