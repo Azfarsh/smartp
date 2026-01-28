@@ -4653,6 +4653,18 @@
                         <span class="print-info-label">Pages:</span>
                         <span class="print-info-value" id="printInfoPages">-</span>
                     </div>
+                    <div class="print-info-item" id="printInfoPageRangeItem" style="display: none;">
+                        <span class="print-info-label">Page Range:</span>
+                        <span class="print-info-value" id="printInfoPageRange">-</span>
+                    </div>
+                    <div class="print-info-item" id="printInfoBwPageRangeItem" style="display: none;">
+                        <span class="print-info-label">B/W Page Range:</span>
+                        <span class="print-info-value" id="printInfoBwPageRange">-</span>
+                    </div>
+                    <div class="print-info-item" id="printInfoColorPageRangeItem" style="display: none;">
+                        <span class="print-info-label">Color Page Range:</span>
+                        <span class="print-info-value" id="printInfoColorPageRange">-</span>
+                    </div>
                     <div class="print-info-item" id="printInfoThicknessItem" style="display: none;">
                         <span class="print-info-label">Thickness:</span>
                         <span class="print-info-value" id="printInfoThickness">-</span>
@@ -7718,6 +7730,57 @@
             }
             document.getElementById('printInfoPages').textContent = actualPages;
             document.getElementById('printInfoServiceType').textContent = formatServiceType(jobData.service_type || '');
+
+            // Page range display (support Mixed/Both)
+            const pageRangeItem = document.getElementById('printInfoPageRangeItem');
+            const bwRangeItem = document.getElementById('printInfoBwPageRangeItem');
+            const colorRangeItem = document.getElementById('printInfoColorPageRangeItem');
+            const colorValue = (jobData.color || '').toString();
+            const isMixed = colorValue === 'Mixed' || colorValue.toLowerCase() === 'mixed' || colorValue.toLowerCase() === 'both';
+
+            const pageRange = (jobData.pageRange || jobData.page_range || '').toString();
+            const specificPages = (jobData.specificPages || jobData.specific_pages || '').toString();
+
+            const bwRangeValue = (jobData.bwPageRangeValue || '').toString();
+            const colorRangeValue = (jobData.colorPageRangeValue || '').toString();
+
+            // Reset
+            if (pageRangeItem) pageRangeItem.style.display = 'none';
+            if (bwRangeItem) bwRangeItem.style.display = 'none';
+            if (colorRangeItem) colorRangeItem.style.display = 'none';
+
+            if (isMixed) {
+                // Prefer separate columns; fall back to combined pageRange string ("BW: ... | Color: ...")
+                let bwDisplay = bwRangeValue;
+                let colorDisplay = colorRangeValue;
+
+                if ((!bwDisplay || !colorDisplay) && pageRange && pageRange.includes('|')) {
+                    const parts = pageRange.split('|').map(p => p.trim());
+                    const bwPart = parts.find(p => p.toLowerCase().startsWith('bw:'));
+                    const colorPart = parts.find(p => p.toLowerCase().startsWith('color:'));
+                    if (!bwDisplay && bwPart) bwDisplay = bwPart.replace(/^bw:\s*/i, '').trim();
+                    if (!colorDisplay && colorPart) colorDisplay = colorPart.replace(/^color:\s*/i, '').trim();
+                }
+
+                if (bwRangeItem) {
+                    bwRangeItem.style.display = 'flex';
+                    document.getElementById('printInfoBwPageRange').textContent = bwDisplay || 'all';
+                }
+                if (colorRangeItem) {
+                    colorRangeItem.style.display = 'flex';
+                    document.getElementById('printInfoColorPageRange').textContent = colorDisplay || 'all';
+                }
+            } else {
+                // Non-mixed: show pageRange (and specificPages if relevant)
+                let rangeDisplay = pageRange;
+                if ((pageRange || '').toLowerCase() === 'specific' && specificPages) {
+                    rangeDisplay = `Pages: ${specificPages}`;
+                }
+                if (rangeDisplay && pageRangeItem) {
+                    pageRangeItem.style.display = 'flex';
+                    document.getElementById('printInfoPageRange').textContent = rangeDisplay;
+                }
+            }
 
             // Show thickness if available (for jumbo printing)
             const thicknessItem = document.getElementById('printInfoThicknessItem');
