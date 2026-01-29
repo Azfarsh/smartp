@@ -135,77 +135,68 @@ def post_to_worker(path, payload=None, timeout=10):
     return endpoint, response
 
 
-def create_or_update_admin_user_in_d1(username, password_hash, email=None, first_name=None, last_name=None, is_superuser=False, is_staff=True, is_active=True, permissions=None):
+def create_or_update_admin_user_in_d1(
+    username,
+    password_hash,
+    email=None,
+    first_name=None,
+    last_name=None,
+    is_superuser=False,
+    is_staff=True,
+    is_active=True,
+    permissions=None,
+):
     """
-    Create or update an admin user in D1 database
+    Create or update an admin user in D1 database.
+
+    NOTE: This helper is only responsible for admin user management and must
+    not depend on print‑job metadata. A previous version accidentally
+    referenced a non‑existent ``metadata`` variable, which could raise a
+    NameError during execution.
     """
     try:
-        api_url = getattr(settings, 'WORKER_API_URL', '').strip()
-        api_key = getattr(settings, 'WORKER_API_KEY', '')
-        
+        api_url = getattr(settings, "WORKER_API_URL", "").strip()
+        api_key = getattr(settings, "WORKER_API_KEY", "")
+
         if not api_url or not api_key:
             raise RuntimeError("Worker API not configured")
-        
+
         # Build endpoint
-        base_url = api_url.rstrip('/')
-        if '/add-contact' in base_url:
-            endpoint = base_url.replace('/add-contact', '/create-admin-user')
-        elif '/add-vendor-register' in base_url:
-            endpoint = base_url.replace('/add-vendor-register', '/create-admin-user')
+        base_url = api_url.rstrip("/")
+        if "/add-contact" in base_url:
+            endpoint = base_url.replace("/add-contact", "/create-admin-user")
+        elif "/add-vendor-register" in base_url:
+            endpoint = base_url.replace("/add-vendor-register", "/create-admin-user")
         else:
-            endpoint = base_url + '/create-admin-user'
-        
-        # Normalize color and page range for D1 (ensure Mixed/Both is stored correctly)
-        raw_color = metadata.get('color_mode', metadata.get('color', 'Black and White'))
-        bw_range_value_db = (metadata.get('bwPageRangeValue') or '').strip()
-        color_range_value_db = (metadata.get('colorPageRangeValue') or '').strip()
-
-        # If both BW and Color ranges are present, treat this as a mixed (Both) job
-        # even if the upstream code forgot to set color="Mix"
-        if bw_range_value_db and color_range_value_db and raw_color in ['Black and White', 'Color', 'bw', 'color']:
-            normalized_color = 'Mix'
-        else:
-            # Preserve explicit Mix/Mixed values, otherwise use whatever came from metadata
-            if str(raw_color).lower() in ['mix', 'mixed', 'both']:
-                normalized_color = 'Mix'
-            else:
-                normalized_color = raw_color
-
-        # Ensure a human-readable combined pageRange string for mixed jobs
-        page_range_combined = metadata.get('pageRange', '') or ''
-        if normalized_color == 'Mix':
-            bw_label = bw_range_value_db if bw_range_value_db else 'all'
-            color_label = color_range_value_db if color_range_value_db else 'all'
-            page_range_combined = f"BW: {bw_label} | Color: {color_label}"
+            endpoint = base_url + "/create-admin-user"
 
         payload = {
-            'username': username,
-            'password_hash': password_hash,
-            'email': email,
-            'first_name': first_name,
-            'last_name': last_name,
-            'is_superuser': is_superuser,
-            'is_staff': is_staff,
-            'is_active': is_active,
-            'permissions': permissions
+            "username": username,
+            "password_hash": password_hash,
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "is_superuser": is_superuser,
+            "is_staff": is_staff,
+            "is_active": is_active,
+            "permissions": permissions,
         }
-        
+
         response = requests.post(
             endpoint,
             json=payload,
             headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
             },
-            timeout=10
+            timeout=10,
         )
-        
+
         if response.status_code == 200:
             data = response.json()
-            return data.get('success', False)
-        else:
-            return False
-            
+            return data.get("success", False)
+        return False
+
     except Exception as e:
         print(f"Error creating/updating admin user in D1: {e}")
         return False
@@ -13675,6 +13666,29 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
         if num_copies is None:
             num_copies = metadata.get('num_copies')
         pages_value = metadata.get('page_count') or metadata.get('pages')
+
+        # Normalize color and page range for Vendor_print_jobs (Mixed/Both support)
+        raw_color = metadata.get('color_mode', metadata.get('color', 'Black and White'))
+        bw_range_value_db = (metadata.get('bwPageRangeValue') or '').strip()
+        color_range_value_db = (metadata.get('colorPageRangeValue') or '').strip()
+
+        # If both BW and Color ranges are present, treat this as a mixed (Both) job
+        # even if the upstream code forgot to set color="Mix"
+        if bw_range_value_db and color_range_value_db and raw_color in ['Black and White', 'Color', 'bw', 'color']:
+            normalized_color = 'Mix'
+        else:
+            # Preserve explicit Mix/Mixed values, otherwise use whatever came from metadata
+            if str(raw_color).lower() in ['mix', 'mixed', 'both']:
+                normalized_color = 'Mix'
+            else:
+                normalized_color = raw_color
+
+        # Ensure a human-readable combined pageRange string for mixed jobs
+        page_range_combined = metadata.get('pageRange', '') or ''
+        if normalized_color == 'Mix':
+            bw_label = bw_range_value_db if bw_range_value_db else 'all'
+            color_label = color_range_value_db if color_range_value_db else 'all'
+            page_range_combined = f"BW: {bw_label} | Color: {color_label}"
         
         # Convert string values to appropriate types
         if total_price:
