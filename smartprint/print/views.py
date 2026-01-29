@@ -5722,8 +5722,20 @@ def verify_razorpay_payment(request):
         # CRITICAL: If any files failed (including database storage failures), calculate total refund
         # This includes files that failed R2 upload OR database storage
         if files_failed > 0:
-            print(f"⚠️ {files_failed} file(s) failed to store. Total refund amount: ₹{total_payment_amount}")
+            print(f"⚠️ {files_failed} file(s) failed to store. Raw refund amount before capping: ₹{total_payment_amount}")
             print(f"⚠️ Failed files: {[f['filename'] for f in failed_files]}")
+
+            # IMPORTANT: Cap the refund/compensation amount to the ACTUAL amount charged after points
+            # Frontend always sends 'final_amount' which already includes any point discounts.
+            try:
+                final_amount_str = request.POST.get('final_amount')
+                final_amount_paid = safe_float(final_amount_str, 0.0) if final_amount_str else 0.0
+            except Exception:
+                final_amount_paid = 0.0
+
+            if final_amount_paid > 0 and total_payment_amount > final_amount_paid:
+                print(f"⚖️ Capping total_payment_amount from ₹{total_payment_amount} to actual paid amount ₹{final_amount_paid}")
+                total_payment_amount = final_amount_paid
 
         # Deduct points immediately after successful payment verification
         try:
@@ -5846,7 +5858,7 @@ def verify_razorpay_payment(request):
         if files_failed > 0 and total_payment_amount > 0:
             refund_amount = total_payment_amount
             if compensation_points_awarded > 0:
-                refund_message = f"Payment of ₹{refund_amount:.2f} has been compensated with {compensation_points_awarded} points due to upload failure."
+                refund_message = f"Payment of ₹{refund_amount:.2f} has been compensated with {compensation_points_awarded:.1f} points due to upload failure."
             else:
                 refund_message = f"Payment of ₹{refund_amount:.2f} has been refunded due to document upload failure."
         
@@ -5908,8 +5920,11 @@ def verify_razorpay_payment(request):
         
         # Add refund information if files failed
         if files_failed > 0 and total_payment_amount > 0:
-            response_data['refund_amount'] = total_payment_amount
-            response_data['refund_message'] = f"Payment of ₹{total_payment_amount} has been refunded due to document upload failure. Please check your payment method for the refund."
+            response_data['refund_amount'] = float(f"{total_payment_amount:.2f}")
+            response_data['refund_message'] = (
+                f"Payment of ₹{total_payment_amount:.2f} has been refunded due to document upload failure. "
+                "Please check your payment method for the refund."
+            )
         
         # Final validation: Ensure response includes all required fields
         if 'files_processed' not in response_data:
