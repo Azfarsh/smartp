@@ -155,6 +155,29 @@ def create_or_update_admin_user_in_d1(username, password_hash, email=None, first
         else:
             endpoint = base_url + '/create-admin-user'
         
+        # Normalize color and page range for D1 (ensure Mixed/Both is stored correctly)
+        raw_color = metadata.get('color_mode', metadata.get('color', 'Black and White'))
+        bw_range_value_db = (metadata.get('bwPageRangeValue') or '').strip()
+        color_range_value_db = (metadata.get('colorPageRangeValue') or '').strip()
+
+        # If both BW and Color ranges are present, treat this as a mixed (Both) job
+        # even if the upstream code forgot to set color="Mix"
+        if bw_range_value_db and color_range_value_db and raw_color in ['Black and White', 'Color', 'bw', 'color']:
+            normalized_color = 'Mix'
+        else:
+            # Preserve explicit Mix/Mixed values, otherwise use whatever came from metadata
+            if str(raw_color).lower() in ['mix', 'mixed', 'both']:
+                normalized_color = 'Mix'
+            else:
+                normalized_color = raw_color
+
+        # Ensure a human-readable combined pageRange string for mixed jobs
+        page_range_combined = metadata.get('pageRange', '') or ''
+        if normalized_color == 'Mix':
+            bw_label = bw_range_value_db if bw_range_value_db else 'all'
+            color_label = color_range_value_db if color_range_value_db else 'all'
+            page_range_combined = f"BW: {bw_label} | Color: {color_label}"
+
         payload = {
             'username': username,
             'password_hash': password_hash,
@@ -13726,10 +13749,10 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'token': metadata.get('token', ''),
             'job_id': metadata.get('job_id', ''),
             'copies': metadata.get('copies', '1'),
-            'color': metadata.get('color', ''),
+            'color': normalized_color,
             'orientation': metadata.get('orientation', ''),
             'pageSize': metadata.get('pageSize', ''),
-            'pageRange': metadata.get('pageRange', ''),
+            'pageRange': page_range_combined,
             'specificPages': metadata.get('specificPages', ''),
             # Mixed (Both) color support: store separate page ranges too
             'bwPageRange': metadata.get('bwPageRange', ''),
@@ -13756,7 +13779,7 @@ def store_vendor_print_job_in_db(vendor_id, vendor_email, user_email, filename, 
             'pages': pages_value,
             'num_copies': num_copies,
             'paper_type': metadata.get('paper_type', ''),
-            'color_mode': metadata.get('color_mode', metadata.get('color', '')),
+            'color_mode': normalized_color,
             'layout_type': metadata.get('layout_type', ''),
             'pricing_details': pricing_details_str,
             'shop_address': shop_address,
@@ -13888,6 +13911,25 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
         num_copies = to_int(num_copies)
         pages_value = to_int(pages_value)
 
+        # Normalize color and page range for User_print_jobs as well
+        raw_color = metadata.get('color_mode', metadata.get('color', 'Black and White'))
+        bw_range_value_db = (metadata.get('bwPageRangeValue') or '').strip()
+        color_range_value_db = (metadata.get('colorPageRangeValue') or '').strip()
+
+        if bw_range_value_db and color_range_value_db and raw_color in ['Black and White', 'Color', 'bw', 'color']:
+            normalized_color = 'Mix'
+        else:
+            if str(raw_color).lower() in ['mix', 'mixed', 'both']:
+                normalized_color = 'Mix'
+            else:
+                normalized_color = raw_color
+
+        page_range_combined = metadata.get('pageRange', '') or ''
+        if normalized_color == 'Mix':
+            bw_label = bw_range_value_db if bw_range_value_db else 'all'
+            color_label = color_range_value_db if color_range_value_db else 'all'
+            page_range_combined = f"BW: {bw_label} | Color: {color_label}"
+
         # Store only base_price in pricing_details (not full JSON)
         pricing_details_str = None
         if pricing_details:
@@ -13944,10 +13986,10 @@ def store_user_print_job_in_db(vendor_id, vendor_email, user_email, filename, st
             'token': metadata.get('token', ''),
             'job_id': metadata.get('job_id', ''),
             'copies': metadata.get('copies', '1'),
-            'color': metadata.get('color', ''),
+            'color': normalized_color,
             'orientation': metadata.get('orientation', ''),
             'pageSize': metadata.get('pageSize', ''),
-            'pageRange': metadata.get('pageRange', ''),
+            'pageRange': page_range_combined,
             'specificPages': metadata.get('specificPages', ''),
             # Mixed (Both) color support: store separate page ranges too
             'bwPageRange': metadata.get('bwPageRange', ''),
