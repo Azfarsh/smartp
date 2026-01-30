@@ -3744,31 +3744,29 @@
                                     throw new Error(verifyData.error || 'Payment verification failed');
                                 }
 
-                                // CRITICAL: Handle failed uploads with proper points compensation (like document print modal)
+                                // CRITICAL: Handle failed uploads - compensate points only amount (like document print modal)
                                 if (verifyData.files_failed && verifyData.files_failed > 0) {
                                     const failedFiles = verifyData.failed_files || [];
                                     const failedNames = failedFiles.map(f => f.filename).join(', ') || 'Unknown files';
-                                    
-                                    // Build refund message with points information
+                                    const pointsUsed = parseFloat(data.pointsUsed || '0');
+                                    const pointsApplied = data.pointsApplied === true;
+
+                                    // Build refund message: show points returned when points were applied
                                     let refundMsg = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to upload failure for: ${failedNames}`;
+                                    if (pointsApplied && pointsUsed > 0) {
+                                        refundMsg = `${refundMsg}\n\nYour applied points (${pointsUsed}) have been returned to your account.`;
+                                    }
                                     if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
                                         refundMsg = `${refundMsg}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
                                     } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
                                         refundMsg = `${refundMsg}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
                                     }
-                                    
                                     alert(refundMsg);
-                                    
-                                    // CRITICAL: Return points if files failed to store
-                                    const pointsUsed = parseFloat(data.pointsUsed || '0');
-                                    const pointsApplied = data.pointsApplied === true;
-                                    
-                                    // 1. Return points that were used (if any)
+
+                                    // 1. Return only the points that were used (same as document print)
                                     if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
-                                        // Points already returned by server
                                         console.log(`✅ Points returned by server: ${verifyData.points_returned}`);
                                     } else if (pointsApplied && pointsUsed > 0 && userEmail) {
-                                        // Return points via API
                                         fetch('/payments/return-points/', {
                                             method: 'POST',
                                             headers: {
@@ -3778,15 +3776,14 @@
                                             body: JSON.stringify({
                                                 user_email: userEmail,
                                                 points: pointsUsed,
-                                                reason: 'Points returned - photprint upload failed after payment'
+                                                reason: 'Points returned - photoprint upload failed after payment'
                                             })
                                         }).catch(err => console.error('Error returning points:', err));
                                     }
-                                    
-                                    // 2. Add compensation points if awarded
+
+                                    // 2. Compensation points if awarded by server
                                     if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
                                         console.log(`✅ Compensation points awarded: ${verifyData.compensation_points_awarded}`);
-                                        // Points are already added by server, just log for user awareness
                                     }
                                     
                                     // Upload failed - do not redirect

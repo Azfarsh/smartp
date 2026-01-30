@@ -1806,6 +1806,22 @@ def get_user_jobs_from_d1(user_email):
                     if parsed_pricing is not None:
                         job['pricing_details'] = parsed_pricing
 
+                    # Page range and B&W/Color range values for invoice (Mix type)
+                    page_range_raw = (job.get('page_range') or job.get('pageRange') or '').strip()
+                    job['page_range'] = page_range_raw
+                    bw_range_display = (job.get('bw_page_range_value') or job.get('bwPageRangeValue') or '').strip()
+                    color_range_display = (job.get('color_page_range_value') or job.get('colorPageRangeValue') or '').strip()
+                    if not bw_range_display and not color_range_display and page_range_raw:
+                        import re
+                        bw_m = re.search(r'BW:\s*([^|]+)', page_range_raw, re.I)
+                        color_m = re.search(r'Color:\s*(.+)$', page_range_raw, re.I)
+                        if bw_m:
+                            bw_range_display = bw_m.group(1).strip()
+                        if color_m:
+                            color_range_display = color_m.group(1).strip()
+                    job['bw_page_range_value'] = bw_range_display or None
+                    job['color_page_range_value'] = color_range_display or None
+
                     # Create metadata structure from D1 fields (not R2)
                     job['metadata'] = {
                         'status': job.get('status', 'pending'),
@@ -1826,6 +1842,9 @@ def get_user_jobs_from_d1(user_email):
                         'vendor_status': job.get('vendor_status', 'not sended'),
                         'total_price': job.get('total_price', 0),
                         'final_amount': job.get('final_amount', 0),
+                        'pageRange': page_range_raw,
+                        'bwPageRangeValue': bw_range_display or '',
+                        'colorPageRangeValue': color_range_display or '',
                     }
                     
                     job['metadata']['pricing_details'] = parsed_pricing

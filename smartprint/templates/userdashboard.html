@@ -5295,23 +5295,24 @@
       }
     }
 
-    /* Vertical Invoice Modal Style */
+    /* Vertical Invoice Modal Style - compact for desktop */
     .invoice-modal {
-      width: min(600px, 95vw);
-      max-width: 600px;
-      max-height: 85vh;
+      width: min(440px, 92vw);
+      max-width: 440px;
+      max-height: 78vh;
       background: #fff;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
       margin: 2rem auto;
-      /* Add margin for desktop view readability */
     }
 
     @media (min-width: 769px) {
       .invoice-modal {
-        margin: 3rem auto;
-        /* More margin on larger desktop screens */
+        margin: 2.5rem auto;
+        width: min(420px, 90vw);
+        max-width: 420px;
+        max-height: 75vh;
       }
     }
 
@@ -15478,15 +15479,20 @@
                         if (uploadFailed) {
                           const failedFiles = verifyData.failed_files || [];
                           const failedFileNames = failedFiles.map(f => f.filename).join(', ');
-                          const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
+                          const orderSummaryModal = document.getElementById('orderSummaryModal');
+                          const pointsUsed = parseInt(modal?.dataset?.pointsUsed || orderSummaryModal?.dataset?.pointsUsed || '0');
+                          const pointsApplied = modal?.dataset?.pointsApplied === 'true' || orderSummaryModal?.dataset?.pointsApplied === 'true';
 
-                          let modalMessage = refundMessage;
-                          if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
-                            modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
-                          } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                            modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
+                          let refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
+                          if (pointsApplied && pointsUsed > 0) {
+                            refundMessage = `${refundMessage}\n\nYour applied points (${pointsUsed}) have been returned to your account.`;
                           }
-                          showFailedUploadModal(verifyData.files_failed || 0, failedFileNames, modalMessage);
+                          if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
+                            refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
+                          } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
+                            refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
+                          }
+                          showFailedUploadModal(verifyData.files_failed || 0, failedFileNames, refundMessage);
 
                           console.error('❌ Document print upload failed:', {
                             files_failed: verifyData.files_failed,
@@ -17888,7 +17894,7 @@
                 <div class="color-option-icon">
                   <i class="fas fa-adjust" style="color: #9C27B0;"></i>
                 </div>
-                <div class="color-option-label">Both</div>
+                <div class="color-option-label">Mixed</div>
               </div>
             </div>
 
@@ -22915,6 +22921,14 @@
           print_color: job.color || 'Black and White',
           total_price: job.total_price || job.final_amount || 0
         };
+        if (job.metadata) {
+          breakdown.bwPageRangeValue = job.metadata.bwPageRangeValue || breakdown.bwPageRangeValue;
+          breakdown.colorPageRangeValue = job.metadata.colorPageRangeValue || breakdown.colorPageRangeValue;
+          breakdown.pageRange = job.metadata.pageRange || breakdown.pageRange;
+        }
+        if (job.bw_page_range_value != null) breakdown.bwPageRangeValue = job.bw_page_range_value;
+        if (job.color_page_range_value != null) breakdown.colorPageRangeValue = job.color_page_range_value;
+        if (job.page_range != null) breakdown.pageRange = job.page_range;
         pricing = {
           total_price: job.total_price || job.final_amount || 0,
           pricing_breakdown: breakdown
@@ -23092,11 +23106,28 @@
         }
       }
 
-      // Add pages, color, and copies details
+      // Add pages, color, and copies details (for Mix show B&W and Color range values)
       const pages = breakdown.page_count || breakdown.pages || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || breakdown.copies || 1;
-      const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || 'Black and White';
+      const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || (job && job.color) || 'Black and White';
       const size = breakdown.print_size || breakdown.size || 'N/A';
+      const isMixColor = /^(mix|mixed|both)$/i.test(String(color));
+
+      let bwRangeDisplay = '';
+      let colorRangeDisplay = '';
+      if (isMixColor) {
+        bwRangeDisplay = (breakdown.bwPageRangeValue || (job && job.bw_page_range_value) || (job && job.metadata && job.metadata.bwPageRangeValue) || '').toString().trim();
+        colorRangeDisplay = (breakdown.colorPageRangeValue || (job && job.color_page_range_value) || (job && job.metadata && job.metadata.colorPageRangeValue) || '').toString().trim();
+        const pageRangeStr = String(breakdown.pageRange || (job && job.page_range) || (job && job.metadata && job.metadata.pageRange) || '');
+        if (!bwRangeDisplay && !colorRangeDisplay && pageRangeStr) {
+          const bwMatch = pageRangeStr.match(/BW:\s*([^|]+)/);
+          const colorMatch = pageRangeStr.match(/Color:\s*(.+)/);
+          if (bwMatch) bwRangeDisplay = bwMatch[1].trim();
+          if (colorMatch) colorRangeDisplay = colorMatch[1].trim();
+        }
+        if (!bwRangeDisplay) bwRangeDisplay = 'all';
+        if (!colorRangeDisplay) colorRangeDisplay = 'all';
+      }
 
       html += `
         <div class="invoice-item">
@@ -23107,6 +23138,16 @@
           <span class="invoice-item-label">Color</span>
           <span class="invoice-item-value">${color}</span>
         </div>
+        ${isMixColor ? `
+        <div class="invoice-item">
+          <span class="invoice-item-label">B&W Pages</span>
+          <span class="invoice-item-value">${bwRangeDisplay}</span>
+        </div>
+        <div class="invoice-item">
+          <span class="invoice-item-label">Color Pages</span>
+          <span class="invoice-item-value">${colorRangeDisplay}</span>
+        </div>
+        ` : ''}
         <div class="invoice-item">
           <span class="invoice-item-label">Copies</span>
           <span class="invoice-item-value">${copies}</span>
@@ -23903,38 +23944,10 @@
         pdfLoadedForFileId = fileObj.id;
       }
 
-      // Build filtered pages based on selection
-      // Use new range settings based on color selection
-      let rangeType = 'all';
-      let rangeText = '';
-      if (settings.color === 'color') {
-        rangeType = settings.colorPageRange || 'all';
-        rangeText = settings.colorPageRangeValue || '';
-      } else if (settings.color === 'Mixed') {
-        // For Mixed, we need to handle both ranges
-        // Use the appropriate range based on current page being viewed
-        rangeType = settings.colorPageRange || 'all';
-        rangeText = settings.colorPageRangeValue || '';
-      } else {
-        rangeType = settings.bwPageRange || 'all';
-        rangeText = settings.bwPageRangeValue || '';
-      }
-
-      // Handle 'range' type - check if rangeText is 'odd' or 'even'
-      if (rangeType === 'range') {
-        const rangeTextLower = rangeText.trim().toLowerCase();
-        if (rangeTextLower === 'odd') {
-          rangeType = 'odd';
-          rangeText = '';
-        } else if (rangeTextLower === 'even') {
-          rangeType = 'even';
-          rangeText = '';
-        } else {
-          rangeType = 'specific';
-        }
-      }
-
-      filteredPageNumbers = buildFilteredPages(pdfDocument.numPages, rangeType, rangeText);
+      // Preview remains static: always show all pages (do not filter by B&W or Color range)
+      const totalPages = pdfDocument.numPages;
+      filteredPageNumbers = [];
+      for (let p = 1; p <= totalPages; p++) filteredPageNumbers.push(p);
       if (filteredPageNumbers.length === 0) filteredPageNumbers = [1];
       if (currentPreviewPageIdx >= filteredPageNumbers.length) currentPreviewPageIdx = 0;
 
@@ -25445,9 +25458,8 @@
           updateCurrentFileSettings('bwPageRange', 'range');
           updateCurrentFileSettings('bwPageRangeValue', currentValue);
 
-          // Debounce preview update to avoid multiple renders
+          // Do NOT update preview when range changes - keep preview static (full document)
           bwPageRangeInput._debounceTimeout = setTimeout(() => {
-            debouncedUpdateDocumentPreview();
             if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
           }, 300);
         };
@@ -25505,9 +25517,8 @@
           updateCurrentFileSettings('colorPageRange', 'range');
           updateCurrentFileSettings('colorPageRangeValue', currentValue);
 
-          // Debounce preview update to avoid multiple renders
+          // Do NOT update preview when range changes - keep preview static (full document)
           colorPageRangeInput._debounceTimeout = setTimeout(() => {
-            debouncedUpdateDocumentPreview();
             if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
           }, 300);
         };
@@ -25634,7 +25645,23 @@
         return;
       }
 
-      if (uploadedFiles.length === 0) {
+      // Prefer currently uploaded files, but gracefully fall back to files stored
+      // on the modals (order summary / print modal) so that calculation still
+      // works after the first step of the flow.
+      let filesForCalc = uploadedFiles || [];
+      if (!filesForCalc || filesForCalc.length === 0) {
+        const orderSummaryModal = document.getElementById('orderSummaryModal');
+        if (orderSummaryModal && Array.isArray(orderSummaryModal._pendingFiles) && orderSummaryModal._pendingFiles.length > 0) {
+          filesForCalc = orderSummaryModal._pendingFiles;
+        } else {
+          const printModal = document.getElementById('printModal');
+          if (printModal && Array.isArray(printModal._uploadedFiles) && printModal._uploadedFiles.length > 0) {
+            filesForCalc = printModal._uploadedFiles;
+          }
+        }
+      }
+
+      if (!filesForCalc || filesForCalc.length === 0) {
         if (!suppress) alert('Please upload at least one file first');
         return;
       }
@@ -25655,7 +25682,7 @@
       let colorPages = 0;  // Color pages per copy (sum across all files)
       let colorType = 'Black and White'; // Default
 
-      for (const fileObj of uploadedFiles) {
+      for (const fileObj of filesForCalc) {
         const settings = fileSettings[fileObj.id];
         const pages = fileObj.pages;
         const copies = settings.copies;
@@ -25781,6 +25808,25 @@
             additional_options: additionalOptions,
             subtotal: totalBillAmount  // Subtotal before commission
           };
+
+          // Include B&W and Color page range display values for invoice (so bill shows actual ranges, not "all")
+          let bwRangeDisplay = '';
+          let colorRangeDisplay = '';
+          if (filesForCalc && filesForCalc.length > 0 && typeof fileSettings !== 'undefined') {
+            const bwParts = filesForCalc.map(f => (fileSettings[f.id] && fileSettings[f.id].bwPageRangeValue) ? String(fileSettings[f.id].bwPageRangeValue).trim() : '').filter(Boolean);
+            const colorParts = filesForCalc.map(f => (fileSettings[f.id] && fileSettings[f.id].colorPageRangeValue) ? String(fileSettings[f.id].colorPageRangeValue).trim() : '').filter(Boolean);
+            bwRangeDisplay = bwParts.length ? bwParts.join(', ') : '';
+            colorRangeDisplay = colorParts.length ? colorParts.join(', ') : '';
+          }
+          if (!bwRangeDisplay || !colorRangeDisplay) {
+            const bwInput = document.getElementById('bwPageRangeInput');
+            const colorInput = document.getElementById('colorPageRangeInput');
+            if (bwInput && bwInput.value) bwRangeDisplay = bwInput.value.trim();
+            if (colorInput && colorInput.value) colorRangeDisplay = colorInput.value.trim();
+          }
+          completeBreakdown.bwPageRangeValue = bwRangeDisplay;
+          completeBreakdown.colorPageRangeValue = colorRangeDisplay;
+          completeBreakdown.print_color = colorType;
 
           // Store the calculated price in modal metadata (final amount with 20% commission already applied)
           const printModalEl = document.getElementById('printModal');
@@ -26136,8 +26182,8 @@
         };
       }
 
-      // IMPORTANT: Store files in order summary modal before closing print modal
-      // This ensures files persist even if print modal gets reset (same logic as photoprint modal)
+      // IMPORTANT: Store files AND file settings in order summary modal before closing print modal
+      // This ensures files and Mixed B&W/color ranges persist when Pay now is clicked (same logic as photoprint modal)
       // Reuse orderSummaryModal variable declared earlier in this function
       if (orderSummaryModal && typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
         // Convert uploadedFiles array to File objects for storage
@@ -26149,7 +26195,13 @@
         if (filesToStore.length > 0) {
           // Store files as a property on the order summary modal (File objects can't be in dataset)
           orderSummaryModal._pendingFiles = filesToStore;
-          console.log('📁 Files stored in order summary modal (print modal):', filesToStore.map(f => ({ name: f.name, type: f.type, size: f.size })));
+          // Store file settings (including Mixed B&W/color ranges) so Pay now can use them even if fileSettings is cleared
+          orderSummaryModal._pendingFileSettings = uploadedFiles.map(fileObj =>
+            (typeof fileSettings !== 'undefined' && fileSettings[fileObj.id])
+              ? { ...fileSettings[fileObj.id] }
+              : {}
+          );
+          console.log('📁 Files and settings stored in order summary modal (print modal):', filesToStore.length, 'files, Mixed ranges preserved');
         }
       }
 
@@ -27270,7 +27322,7 @@
       // Close order summary modal
       closeOrderSummaryModal();
 
-      // Show loading state while processing payment
+      // Show loading state while processing payment / direct submission
       showPaymentProcessingState();
 
       try {
@@ -27285,7 +27337,7 @@
         let files = [];
         let selectedShopValue = '';
         let modal = null;
-        let totalAmountRupees = 0; // Declare outside if/else blocks
+        let totalAmountRupees = 0; // Declare outside if/else blocks (used only for Razorpay flows)
 
         if (isPrintModal) {
           // Handle print modal
@@ -27369,18 +27421,19 @@
               throw new Error(`Invalid file properties for ${fileToUpload.name || 'file'}. Please try uploading again.`);
             }
 
-            // Find corresponding fileObj from uploadedFiles for settings
+            // Prefer stored _pendingFileSettings (includes Mixed B&W/color ranges) so data is never lost
             let fileObj = null;
             let settings = {};
+            if (orderSummaryModal._pendingFileSettings && orderSummaryModal._pendingFileSettings[i]) {
+              settings = { ...orderSummaryModal._pendingFileSettings[i] };
+            }
             if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles)) {
               fileObj = uploadedFiles.find(f => (f.file && f.file === fileToUpload) || f === fileToUpload);
-              if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id]) {
+              if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id] && Object.keys(settings).length === 0) {
                 settings = fileSettings[fileObj.id];
               }
             }
-
-            // If no settings found, use defaults
-            if (!fileObj || !settings || Object.keys(settings).length === 0) {
+            if (Object.keys(settings).length === 0) {
               settings = {
                 copies: 1,
                 color: 'Black and White',
@@ -27425,7 +27478,7 @@
             console.log(`✅ File ${i} appended to formData:`, { name: processedFile.name, size: processedFile.size, type: processedFile.type });
 
             // Extract page_count and num_copies from pricing breakdown for database storage (same as jumbo print)
-            let pageCountForDb = fileObj ? (fileObj.pages || 1) : 1;
+            let pageCountForDb = fileObj ? (fileObj.pages || 1) : (settings.pages || settings.page_count || 1);
             let numCopiesForDb = settings.copies || 1;
 
             // Get all file names for document_count (same as jumbo print)
@@ -27437,14 +27490,36 @@
               service_type: 'regular_print', // CRITICAL: Use 'regular_print' (normalized) to match jumbo_printing storage pattern
               service_name: 'Regular Print', // Default service name for regular print modal
               copies: settings.copies || 1,
+              // Preserve explicit Mixed selection so backend can store Mix instead of Black and White
               color: settings.color || 'Black and White',
               orientation: settings.orientation || 'portrait',
               pageRange: settings.pageRange || 'all',
               specificPages: settings.specificPages || '',
               bwPageRange: settings.bwPageRange || 'all',
-              bwPageRangeValue: settings.bwPageRangeValue || '',
+              // Ensure latest Mixed color range values from the modal inputs are sent to backend
+              bwPageRangeValue: (() => {
+                let value = settings.bwPageRangeValue || '';
+                if (settings.color === 'Mixed') {
+                  const bwInput = document.getElementById('bwPageRangeInput');
+                  if (bwInput && bwInput.value != null) {
+                    const trimmed = bwInput.value.trim();
+                    if (trimmed) value = trimmed;
+                  }
+                }
+                return value;
+              })(),
               colorPageRange: settings.colorPageRange || 'all',
-              colorPageRangeValue: settings.colorPageRangeValue || '',
+              colorPageRangeValue: (() => {
+                let value = settings.colorPageRangeValue || '';
+                if (settings.color === 'Mixed') {
+                  const colorInput = document.getElementById('colorPageRangeInput');
+                  if (colorInput && colorInput.value != null) {
+                    const trimmed = colorInput.value.trim();
+                    if (trimmed) value = trimmed;
+                  }
+                }
+                return value;
+              })(),
               pageSize: settings.pageSize || 'A4',
               page_count: pageCountForDb,
               num_copies: numCopiesForDb,
@@ -27905,7 +27980,7 @@
 
         const amountPaise = Math.round(totalAmountRupees * 100);
 
-        // 1) Create Razorpay order from server
+        // 1) Create Razorpay order from server (all services including document print, same as jumbo)
         const orderResp = await fetch('/payments/create-order/', {
           method: 'POST',
           headers: {
@@ -27952,6 +28027,7 @@
               const orderSummaryModal = document.getElementById('orderSummaryModal');
               if (orderSummaryModal && orderSummaryModal._pendingFiles) {
                 delete orderSummaryModal._pendingFiles;
+                if (orderSummaryModal._pendingFileSettings) delete orderSummaryModal._pendingFileSettings;
                 console.log('✅ Cleaned up stored files from order summary modal');
               }
 
@@ -28113,20 +28189,23 @@
                       ? parseFloat(verifyData.refund_amount)
                       : actualPaymentAmount;
 
-                    // Build message with points information if points were allotted (like jumboprint modal)
+                    // CRITICAL: Return points first (only the amount that was applied), then build message
+                    const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
+                    const pointsUsed = parseInt(orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0');
+                    const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
+
+                    // Build message with points information: compensate only points amount (like document print)
                     let refundMessage = verifyData.refund_message ||
                       `Payment of ₹${refundAmount.toFixed(2)} has been refunded due to document upload failure.`;
+                    if (pointsApplied && pointsUsed > 0) {
+                      refundMessage = `${refundMessage}\n\nYour applied points (${pointsUsed}) have been returned to your account.`;
+                    }
                     if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
                       refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
                     } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
                       refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
                     }
                     showFailedUploadModal(actualFilesFailed, failedFileNames, refundMessage);
-
-                    // CRITICAL: Return points if files failed to store
-                    const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
-                    const pointsUsed = parseInt(orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0');
-                    const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
 
                     let pointsToReturn = 0;
                     let compensationPoints = 0;
@@ -28293,7 +28372,7 @@
           }
         };
 
-        // Ensure Razorpay is loaded
+        // Ensure Razorpay is loaded for paid service modals
         if (typeof Razorpay === 'undefined') {
           throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
         }
@@ -30108,8 +30187,8 @@
       border-radius: 24px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
       width: 90%;
-      max-width: 400px;
-      padding: 2rem 1.5rem;
+      max-width: 380px;
+      padding: 1.75rem 1.5rem;
       text-align: center;
       transform: scale(0.85) translateY(20px);
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -30516,22 +30595,27 @@
     }
 
     @media (min-width: 769px) {
+      .success-modal {
+        max-width: 360px;
+        padding: 1.5rem 1.25rem;
+      }
+
       .success-lottie-container {
-        width: 220px;
-        height: 220px;
+        width: 180px;
+        height: 180px;
       }
 
       .success-lottie-player {
-        width: 220px !important;
-        height: 220px !important;
+        width: 180px !important;
+        height: 180px !important;
       }
 
       .success-title {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
       }
 
       .success-subtitle {
-        font-size: 1.1rem;
+        font-size: 1rem;
       }
     }
 
