@@ -12567,7 +12567,7 @@
             {
               label: 'Select Photo File',
               type: 'file',
-              accept: '.jpg,.jpeg,.png,.bmp,.tiff,.gif',
+              accept: '.jpg,.jpeg,.png,.pdf',
               required: true,
               description: 'Upload your photo in JPG, PNG, BMP, TIFF, or GIF format (Max 10MB)',
               icon: 'fas fa-image'
@@ -12586,10 +12586,10 @@
               label: 'Photo Size',
               type: 'select',
               options: [
-                { value: '4x6', label: '4" x 6" (Standard)', price: '₹5' },
-                { value: '5x7', label: '5" x 7" (Large)', price: '₹8' },
-                { value: '6x8', label: '6" x 8" (Extra Large)', price: '₹12' },
-                { value: 'A4', label: 'A4 (Full Page)', price: '₹15' }
+                { value: '4x6', label: '4" x 6" (Standard)', price: '' },
+                { value: '5x7', label: '5" x 7" (Large)', price: '' },
+                { value: '6x8', label: '6" x 8" (Extra Large)', price: '' },
+                { value: 'A4', label: 'A4 (Full Page)', price: '' }
               ],
               required: true,
               description: 'Choose the size for your photo prints',
@@ -12600,8 +12600,8 @@
               type: 'select',
               options: [
                 { value: 'standard', label: 'Standard Glossy', price: 'Included' },
-                { value: 'premium', label: 'Premium Glossy', price: '+₹2' },
-                { value: 'matte', label: 'Matte Finish', price: '+₹3' }
+                { value: 'premium', label: 'Premium Glossy', price: '' },
+                { value: 'matte', label: 'Matte Finish', price: '' }
               ],
               required: true,
               description: 'Select the paper finish for your photos',
@@ -12621,7 +12621,7 @@
               accept: '.pdf,.jpeg,.png,',
               required: true,
               multiple: true,
-              description: 'Upload PDF, Word, PPT, Excel, Text, or image files (Multiple files supported). Image previews will be shown.',
+              description: 'Upload PDF or image files (.pdf,.jpg,.jpeg,.png) Image previews will be shown.',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12674,8 +12674,8 @@
               label: 'Print Quality',
               type: 'select',
               options: [
-                { value: 'standard_quality', label: 'Standard Quality - ₹5' },
-                { value: 'high_quality', label: 'High Quality - ₹24' }
+                { value: 'standard_quality', label: 'Standard Quality ' },
+                { value: 'high_quality', label: 'High Quality ' }
               ],
               required: true,
               description: 'Choose the print quality for your documents',
@@ -12695,7 +12695,7 @@
               accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx',
               required: true,
               multiple: true,
-              description: 'Upload your documents in PDF, Word, PowerPoint, Excel, or Text format (Multiple files supported)',
+              description: 'Upload your documents in PDF (Multiple files supported)',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12751,7 +12751,7 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png',
+              accept: '.pdf,jpg,png',
               required: true,
               multiple: true,
               description: 'Upload your documents or images for glossy printing (Multiple files supported)',
@@ -14175,7 +14175,7 @@
               ${fieldsHtml}
                 <div class="file-preview" id="${service}-file-preview" style="margin-bottom: 16px;"></div>
                 ${shopSelectionHtml}
-                ${feedbackHtml}
+                ${service !== 'jumbo' && service !== 'gloss' && service !== 'digital' && service !== 'passport' && service !== 'goldenemboss' ? feedbackHtml : ''}
                 
                 <!-- Points Application Section (Redeem card) -->
                 <!-- Points section removed - points are now only applied in order summary modal -->
