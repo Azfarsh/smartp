@@ -1642,7 +1642,7 @@
                             <i class="fas fa-cloud-upload-alt" style="font-size: 1.2em; margin-right: 8px;"></i>
                             <span>Upload Photos</span>
                         </button>
-                        <input type="file" id="fileInput" accept="image/*" multiple style="display:none;">
+                        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png" multiple style="display:none;">
                         <div class="photos-count" id="photosCount">0 photos uploaded</div>
                         <div class="thumbnails-grid-wrapper">
                             <div class="thumbnails-grid" id="thumbnailsGrid"></div>
@@ -2411,34 +2411,34 @@
             const allFiles = Array.from(e.target.files);
             if (allFiles.length === 0) return;
 
-            // Validate file types - only allow PDF and images
-            const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-            const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+            // Validate file types - only allow images (JPG, PNG). Deny CSV, DOC, PDF, etc.
+            const deniedExtensions = ['.csv', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.pdf', '.bmp', '.tiff', '.gif'];
+            const validExtensions = ['.jpg', '.jpeg', '.png'];
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
 
-            // Check for invalid files
             const invalidFiles = [];
             const validFiles = [];
 
             for (const file of allFiles) {
                 const fileName = file.name.toLowerCase();
+                const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
+                const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
                 const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
                 const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
 
-                if (!hasValidExtension && !hasValidType) {
+                if (isDenied || !hasValidExtension || !hasValidType) {
                     invalidFiles.push(file);
                 } else {
                     validFiles.push(file);
                 }
             }
 
-            // Show modal if invalid files found
             if (invalidFiles.length > 0) {
                 showInvalidFileTypeModal(invalidFiles[0].name);
-                e.target.value = ''; // Clear the input
-                return; // Stop processing
+                e.target.value = '';
+                return;
             }
 
-            // Filter to only images (for photo print, we only accept images, not PDFs)
             const imageFiles = validFiles.filter(file => file.type.startsWith('image/'));
             if (imageFiles.length === 0) {
                 // If only PDFs were selected, show modal (photo print only accepts images)
@@ -3744,8 +3744,9 @@
                                     throw new Error(verifyData.error || 'Payment verification failed');
                                 }
 
-                                // CRITICAL: Handle failed uploads - compensate points only amount (like document print modal)
-                                if (verifyData.files_failed && verifyData.files_failed > 0) {
+                                // CRITICAL: Handle failed uploads - refund points (same as document print modal)
+                                const hasUploadFailure = verifyData.upload_failed === true || (verifyData.files_failed && verifyData.files_failed > 0);
+                                if (hasUploadFailure) {
                                     const failedFiles = verifyData.failed_files || [];
                                     const failedNames = failedFiles.map(f => f.filename).join(', ') || 'Unknown files';
                                     const pointsUsed = parseFloat(data.pointsUsed || '0');
@@ -3763,27 +3764,37 @@
                                     }
                                     alert(refundMsg);
 
-                                    // 1. Return only the points that were used (same as document print)
+                                    // 1. Return points that were used (same as document print modal)
+                                    let pointsRefunded = 0;
                                     if (verifyData.points_returned && Number(verifyData.points_returned) > 0) {
+                                        pointsRefunded = Number(verifyData.points_returned);
                                         console.log(`✅ Points returned by server: ${verifyData.points_returned}`);
                                     } else if (pointsApplied && pointsUsed > 0 && userEmail) {
-                                        fetch('/payments/return-points/', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRFToken': getCookie('csrftoken')
-                                            },
-                                            body: JSON.stringify({
-                                                user_email: userEmail,
-                                                points: pointsUsed,
-                                                reason: 'Points returned - photoprint upload failed after payment'
-                                            })
-                                        }).catch(err => console.error('Error returning points:', err));
+                                        try {
+                                            const returnResp = await fetch('/payments/return-points/', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRFToken': getCookie('csrftoken')
+                                                },
+                                                body: JSON.stringify({
+                                                    user_email: userEmail,
+                                                    points: pointsUsed,
+                                                    reason: 'Points returned - photoprint upload failed after payment'
+                                                })
+                                            });
+                                            const returnData = await (returnResp.json ? returnResp.json() : {});
+                                            if (returnData.success) pointsRefunded = pointsUsed;
+                                        } catch (err) { console.error('Error returning points:', err); }
                                     }
-
-                                    // 2. Compensation points if awarded by server
-                                    if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                                        console.log(`✅ Compensation points awarded: ${verifyData.compensation_points_awarded}`);
+                                    if (pointsRefunded > 0) {
+                                        userPoints = (userPoints || 0) + pointsRefunded;
+                                        updatePointsDisplay();
+                                    }
+                                    const compensationPoints = verifyData.compensation_points_awarded || verifyData.points_allotted || 0;
+                                    if (Number(compensationPoints) > 0) {
+                                        userPoints = (userPoints || 0) + Number(compensationPoints);
+                                        updatePointsDisplay();
                                     }
                                     
                                     // Upload failed - do not redirect
@@ -4137,7 +4148,7 @@
                     This file type is not allowed for printing.
                 </p>
                 <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 24px;">
-                    Please upload only image files (JPG, PNG) for photo printing.
+                    Please upload only image files (.jpg, .jpeg, .png). CSV, DOC, PDF and other formats are not allowed.
                 </p>
                 <button onclick="hideInvalidFileTypeModal()" style="
                 background: #2563eb;

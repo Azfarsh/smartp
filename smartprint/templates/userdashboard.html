@@ -12567,9 +12567,9 @@
             {
               label: 'Select Photo File',
               type: 'file',
-              accept: '.jpg,.jpeg,.png,.pdf',
+              accept: '.pdf,.jpg,.jpeg,.png',
               required: true,
-              description: 'Upload your photo in JPG, PNG, BMP, TIFF, or GIF format (Max 10MB)',
+              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). Other formats like CSV, DOC, XLS are not allowed.',
               icon: 'fas fa-image'
             },
             {
@@ -12618,10 +12618,10 @@
             {
               label: 'Upload Document or Images',
               type: 'file',
-              accept: '.pdf,.jpeg,.png,',
+              accept: '.pdf,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF or image files (.pdf,.jpg,.jpeg,.png) Image previews will be shown.',
+              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12692,10 +12692,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx',
+              accept: '.pdf,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload your documents in PDF (Multiple files supported)',
+              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12751,10 +12751,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,jpg,png',
+              accept: '.pdf,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload your documents or images for glossy printing (Multiple files supported)',
+              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
               icon: 'fas fa-file-upload'
             },
             {
@@ -12826,7 +12826,7 @@
               accept: '.pdf,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload your documents or images for large format printing (Multiple files supported)',
+              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
               icon: 'fas fa-file-upload'
             },
             {
@@ -12897,7 +12897,7 @@
               type: 'file',
               accept: '.jpg,.jpeg,.png',
               required: true,
-              description: 'Upload a clear, front-facing photo with good lighting',
+              description: 'Upload image files only (.jpg, .jpeg, .png). PDF and other formats not allowed for passport photos.',
               icon: 'fas fa-camera'
             },
             {
@@ -14269,23 +14269,46 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
 
-            // Validate file types - only allow PDF and images
+            // Denied extensions - CSV, DOC, XLS, and all non-PDF/image formats
+            const deniedExtensions = ['.csv', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
             const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
             const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+            // Passport only allows images, no PDF
+            const passportValidExtensions = ['.jpg', '.jpeg', '.png'];
 
             for (const file of files) {
               const fileName = file.name.toLowerCase();
-              const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-              const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
+              const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
+              const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
+              const allowedExts = service === 'passport' ? passportValidExtensions : validExtensions;
+              const hasValidExtension = allowedExts.some(ext => fileName.endsWith(ext));
+              const hasValidType = service === 'passport'
+                ? (file.type.startsWith('image/') && ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type))
+                : (validTypes.includes(file.type) || file.type.startsWith('image/'));
 
-              if (!hasValidExtension && !hasValidType) {
-                // Invalid file type - show modal and reset input
+              if (isDenied || !hasValidExtension || !hasValidType) {
                 showInvalidFileTypeModal(file.name);
-                e.target.value = ''; // Clear the input
-                if (modal._uploadedFiles) {
-                  modal._uploadedFiles = [];
+                e.target.value = '';
+                if (modal._uploadedFiles) modal._uploadedFiles = [];
+                return;
+              }
+              // Reject password-encrypted PDFs
+              if (file.type === 'application/pdf' && service !== 'passport' && typeof pdfjsLib !== 'undefined') {
+                try {
+                  const buf = await file.arrayBuffer();
+                  const loadingTask = pdfjsLib.getDocument({ data: buf });
+                  const pdf = await loadingTask.promise;
+                  if (pdf && pdf.numPages) { /* readable */ }
+                } catch (pdfErr) {
+                  const errMsg = (pdfErr?.message || String(pdfErr)).toLowerCase();
+                  if (errMsg.includes('password') || errMsg.includes('encrypted') || errMsg.includes('permission')) {
+                    showInvalidFileTypeModal(file.name, true);
+                    e.target.value = '';
+                    if (modal._uploadedFiles) modal._uploadedFiles = [];
+                    return;
+                  }
+                  throw pdfErr;
                 }
-                return; // Stop processing
               }
             }
 
@@ -23750,10 +23773,16 @@
           );
 
           if (!isDuplicate) {
-            const fileId = Date.now() + Math.random();
-
-            // Get accurate page count
-            const pages = await getPageCount(file);
+            let pages;
+            try {
+              pages = await getPageCount(file);
+            } catch (pageErr) {
+              if (pageErr?.message === 'PASSWORD_PROTECTED_PDF') {
+                showInvalidFileTypeModal(file.name, true);
+                continue;
+              }
+              throw pageErr;
+            }
             console.log(`File ${file.name} has ${pages} pages`);
 
             // Enforce 100-page limit for PDFs/documents
@@ -23762,6 +23791,7 @@
               continue;
             }
 
+            const fileId = Date.now() + Math.random();
             const fileObj = {
               id: fileId,
               file: file,
@@ -23803,17 +23833,15 @@
     }
 
     function isValidFile(file) {
-      const validTypes = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png'
-      ];
-
-      const fileName = file.name.toLowerCase();
+      const deniedExtensions = ['.csv', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
       const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+      const fileName = file.name.toLowerCase();
+      const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
+      const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
       const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-
-      return validTypes.includes(file.type) || hasValidExtension;
+      const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
+      return !isDenied && hasValidExtension && hasValidType;
     }
 
     // Build filtered page list based on settings
@@ -24048,7 +24076,7 @@
       }
     }
 
-    // Function to get PDF page count using PDF.js
+    // Function to get PDF page count using PDF.js - rejects password-encrypted PDFs
     async function getPDFPageCount(file) {
       try {
         const arrayBuffer = await file.arrayBuffer();
@@ -24056,8 +24084,13 @@
         const pdf = await loadingTask.promise;
         return pdf.numPages;
       } catch (error) {
+        const errMsg = (error?.message || String(error)).toLowerCase();
+        if (errMsg.includes('password') || errMsg.includes('encrypted') || errMsg.includes('permission')) {
+          const e = new Error('PASSWORD_PROTECTED_PDF');
+          e.originalError = error;
+          throw e;
+        }
         console.warn('Error reading PDF pages, using estimation:', error);
-        // Fallback to size-based estimation for PDFs
         const sizeInKB = file.size / 1024;
         return Math.max(1, Math.ceil(sizeInKB / 100));
       }
@@ -30799,12 +30832,20 @@
     }
 
     // Invalid File Type Modal Functions
-    function showInvalidFileTypeModal(fileName) {
+    function showInvalidFileTypeModal(fileName, isPasswordProtectedPdf) {
       const modal = document.getElementById('invalidFileTypeModal');
       if (modal) {
         const messageEl = document.getElementById('invalidFileTypeMessage');
+        const noteEl = modal.querySelector('.failed-upload-note');
         if (messageEl && fileName) {
-          messageEl.textContent = `"${fileName}" is not allowed for printing.`;
+          messageEl.textContent = isPasswordProtectedPdf
+            ? `"${fileName}" is password-protected or encrypted. Please upload an unprotected PDF.`
+            : `"${fileName}" is not allowed for printing. Only PDF and image files (.pdf, .jpg, .jpeg, .png) are accepted.`;
+        }
+        if (noteEl) {
+          noteEl.textContent = isPasswordProtectedPdf
+            ? 'Password-encrypted PDFs cannot be processed. Please remove the password and try again.'
+            : 'Please upload only PDF or image files (JPG, PNG). CSV, DOC, XLS and other formats are not allowed.';
         }
         modal.classList.add('active');
       }
