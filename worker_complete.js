@@ -2346,13 +2346,18 @@ export default {
         const token = (body.token || "").trim();
         const job_id = (body.job_id || "").trim();
         const copies = (body.copies || "1").trim();
-        const color = (body.color || "").trim();
+        let color = (body.color || "").trim();
         const orientation = (body.orientation || "").trim();
         const pageSize = (body.pageSize || "").trim();
-        const pageRange = (body.pageRange || "").trim();
+        let pageRange = (body.pageRange || "").trim();
         const specificPages = (body.specificPages || "").trim();
         const bwPageRangeValue = (body.bwPageRangeValue || "").trim();
         const colorPageRangeValue = (body.colorPageRangeValue || "").trim();
+        // When both BW and Color page ranges are present, store color as Mix (not Black and White)
+        if (bwPageRangeValue && colorPageRangeValue) {
+          color = "Mix";
+          if (!pageRange) pageRange = `BW: ${bwPageRangeValue} | Color: ${colorPageRangeValue}`;
+        }
         const spiralBinding = (body.spiralBinding || "No").trim();
         const lamination = (body.lamination || "No").trim();
         const service_name = (body.service_name || "").trim();

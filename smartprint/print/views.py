@@ -2471,6 +2471,9 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
                 'service_name': job.get('service_name', '') or '',
                 'completion_time': job.get('completion_time', '') or '',
                 'platform_profit': job.get('platform_profit', 0) or 0,
+                'pageRange': job.get('pageRange', '') or '',
+                'bwPageRangeValue': job.get('bwPageRangeValue', '') or '',
+                'colorPageRangeValue': job.get('colorPageRangeValue', '') or '',
             }
             
             # Add pricing details from D1 if available
@@ -2863,7 +2866,8 @@ def upload_vendor_documents(request):
 @csrf_exempt
 def get_vendor_print_jobs(request):
     """
-    Fetch print jobs for a specific vendor from vendor_print_jobs/<vendor_id>/
+    Fetch print jobs for a specific vendor from Vendor_print_jobs table (D1) only.
+    Uses Worker API for job list; R2 only for generating download URLs.
     """
     if request.method == 'POST':
         try:
@@ -2872,16 +2876,7 @@ def get_vendor_print_jobs(request):
             if not vendor_id:
                 return JsonResponse({'success': False, 'error': 'Missing vendor_id'})
 
-            # Convert vendor_id to string to ensure consistency
             vendor_id = str(vendor_id).strip()
-
-            s3 = boto3.client(
-                's3',
-                aws_access_key_id=settings.R2_ACCESS_KEY,
-                aws_secret_access_key=settings.R2_SECRET_KEY,
-                endpoint_url=settings.R2_ENDPOINT,
-                region_name='auto'
-            )
 
             # Treat successful polling as connection activity to prevent UI flapping
             try:
@@ -2890,21 +2885,6 @@ def get_vendor_print_jobs(request):
             except Exception:
                 pass
 
-            # HARDCODED PATH: Only fetch from vendor_print_jobs/<vendor_id>/
-            prefix = f'vendor_print_jobs/{vendor_id}/'
-            print(f"🔍 HARDCODED PATH - Searching for jobs in: {prefix}")
-            print(f"🔑 Vendor ID: '{vendor_id}' (type: {type(vendor_id)})")
-
-            # First, let's list all objects under vendor_print_jobs/ to debug
-            debug_prefix = 'vendor_print_jobs/'
-            debug_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=debug_prefix)
-            print(f"🔍 DEBUG - All vendor folders under {debug_prefix}:")
-            for obj in debug_response.get('Contents', []):
-                print(f"   📁 {obj['Key']}")
-
-            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-            jobs = []
-            # Load vendor printer configuration for assignment
             try:
                 vendor_email = get_vendor_email_by_vendor_id(vendor_id)
             except Exception:
@@ -2913,211 +2893,41 @@ def get_vendor_print_jobs(request):
             if vendor_email:
                 printer_config = get_vendor_printer_configuration(vendor_email)
 
-            print(f"📊 Response details:")
-            print(f"   - IsTruncated: {response.get('IsTruncated', False)}")
-            print(f"   - KeyCount: {response.get('KeyCount', 0)}")
-            print(f"   - Contents count: {len(response.get('Contents', []))}")
+            # Fetch jobs from Vendor_print_jobs table (D1) only via Worker API
+            d1_jobs = get_vendor_jobs_from_d1(
+                vendor_id=vendor_id,
+                vendor_email=vendor_email,
+                job_status='NO'
+            )
 
-            if 'Contents' not in response or len(response.get('Contents', [])) == 0:
-                print(f"📭 No objects found in {prefix}")
-                print(f"📊 Available vendors in vendor_print_jobs/:")
-
-                # List all vendor folders for debugging
-                vendor_prefix = 'vendor_print_jobs/'
-                vendor_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_prefix, Delimiter='/')
-                for prefix_info in vendor_response.get('CommonPrefixes', []):
-                    folder_name = prefix_info['Prefix'].replace('vendor_print_jobs/', '').rstrip('/')
-                    print(f"   📂 Found vendor folder: '{folder_name}'")
-
-                return JsonResponse({
-                    'success': True, 
-                    'jobs': [],
-                    'debug_info': {
-                        'searched_prefix': prefix,
-                        'vendor_id': vendor_id,
-                        'available_vendors': [p['Prefix'].replace('vendor_print_jobs/', '').rstrip('/') 
-                                            for p in vendor_response.get('CommonPrefixes', [])]
-                    }
-                })
-
-            print(f"🎯 Found {len(response.get('Contents', []))} objects in {prefix}")
-
-            for obj in response.get('Contents', []):
-                key = obj['Key']
-                filename = key.split('/')[-1]
-
-                print(f"🔍 Processing object: {key}")
-                print(f"   📄 Filename: '{filename}'")
-                print(f"   📏 Size: {obj.get('Size', 0)} bytes")
-                print(f"   📅 LastModified: {obj.get('LastModified', 'Unknown')}")
-
-                # Skip folder itself but include all files (even without extensions)
-                if not filename or filename == '':
-                    print(f"   ⏭️ Skipping empty filename")
+            # Filter to accepted jobs only (same behavior as previous R2-based filter)
+            allowed_services = {
+                'regular print', 'regular_print',
+                'passport photo', 'passport_photo', 'passport print', 'passport_print',
+                'photo print', 'photo_print'
+            }
+            jobs = []
+            for job in d1_jobs:
+                service_type = (job.get('service_type') or '').strip().lower()
+                vendor_status = (job.get('vendor_status') or 'not sended').strip().lower()
+                if service_type not in allowed_services or vendor_status != 'accepted':
                     continue
+                pages_value = job.get('metadata', {}).get('pages', job.get('pages', '0'))
+                service_value = job.get('service_type', 'regular print')
+                assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
+                meta = job.get('metadata', {})
+                meta['vendor_status'] = 'sended'
+                meta['assigned_printer'] = assigned
+                job_info = {
+                    'filename': job.get('filename', ''),
+                    'download_url': job.get('download_url', ''),
+                    'r2_path': job.get('r2_path', ''),
+                    'metadata': meta,
+                    'assigned_printer': assigned
+                }
+                jobs.append(job_info)
 
-                try:
-                    # Generate download URL first (always works)
-                    download_url = s3.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': settings.R2_BUCKET, 'Key': key},
-                        ExpiresIn=3600
-                    )
-
-                    # Try to get object metadata (might fail for some objects)
-                    metadata = {}
-                    try:
-                        head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
-                        metadata = head_response.get('Metadata', {})
-                        print(f"   ✅ Retrieved metadata: {metadata}")
-                    except Exception as meta_error:
-                        print(f"   ⚠️ Could not get metadata: {meta_error}")
-                        metadata = {}
-
-                    # Create default metadata if none exists
-                    if not metadata:
-                        print(f"   🔧 Creating default metadata for {filename}")
-                        metadata = {
-                            'job_completed': 'NO',
-                            'status': 'pending',
-                            'copies': '1',
-                            'color': 'Black and White',
-                            'orientation': 'portrait',
-                            'pagesize': 'A4',
-                            'service_type': 'regular print',
-                            'vendor': vendor_id,
-                            'user': 'Unknown',
-                            'timestamp': obj["LastModified"].isoformat(),
-                            'rendered_status': 'NO'
-                        }
-
-                    # Filter only desired services and statuses - ONLY ACCEPTED JOBS
-                    service_type = (metadata.get('service_type') or '').strip().lower()
-                    job_completed = (metadata.get('job_completed') or 'NO').upper()
-                    vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
-                    # Accept both underscore and space variants to avoid skipping jobs
-                    allowed_services = {
-                        'regular print', 'regular_print',
-                        'passport photo', 'passport_photo', 'passport print', 'passport_print',
-                        'photo print', 'photo_print'
-                    }
-                    # Accept both underscore and space variants to avoid skipping jobs
-                    allowed_services = {
-                        'regular print', 'regular_print',
-                        'passport photo', 'passport_photo', 'passport print', 'passport_print',
-                        'photo print', 'photo_print'
-                    }
-
-                    # Only process jobs that are accepted by vendor and not completed
-                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
-                        print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
-                        continue
-                    
-                    print(f"   ✅ Found accepted job: {filename} (service: {service_type}, vendor_status: {vendor_status})")
-
-                    # Force job to be pending for processing and assign printer
-                    pages_value = metadata.get('pages', '0')
-                    service_value = metadata.get('service_type', 'regular print')
-                    assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
-                    job_info = {
-                        'filename': filename,
-                        'download_url': download_url,
-                        'r2_path': key,
-                        'metadata': {
-                            'status': 'no',  # Force status to 'no' for pending jobs
-                            'job_completed': 'NO',  # Force to pending
-                            'copies': metadata.get('copies', '1'),
-                            'color': metadata.get('color', 'Black and White'),
-                            'orientation': metadata.get('orientation', 'portrait'),
-                            'page_size': metadata.get('pagesize', 'A4'),
-                            'pages': metadata.get('pages', '1'),
-                            'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
-                            'vendor': vendor_id,
-                            'user': metadata.get('user', 'Unknown'),
-                            'service_type': metadata.get('service_type', 'regular print'),
-                            'job_id': metadata.get('job_id', filename.split('.')[0]),
-                            'token': metadata.get('token', filename.split('.')[0]),
-                            'vendor_id': vendor_id,
-                            'vendor_status': 'sended',
-                            'assigned_printer': assigned,
-                            'rendered_status': metadata.get('rendered_status', 'NO')
-                        },
-                        'assigned_printer': assigned
-                    }
-
-                    jobs.append(job_info)
-                    # Update metadata in R2 to mark vendor_status as sended
-                    try:
-                        current_metadata = metadata.copy()
-                        current_metadata['vendor_status'] = 'sended'
-                        # Initialize rendered_status if missing
-                        if 'rendered_status' not in current_metadata:
-                            current_metadata['rendered_status'] = 'NO'
-                        # Keep original keys lowercase as in R2 metadata
-                        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
-                        s3.copy_object(
-                            CopySource=copy_source,
-                            Bucket=settings.R2_BUCKET,
-                            Key=key,
-                            Metadata=current_metadata,
-                            MetadataDirective='REPLACE'
-                        )
-                        print(f"   ✉️ Marked vendor_status=sended for {filename}")
-                    except Exception as mark_err:
-                        print(f"   ⚠️ Failed to mark vendor_status for {filename}: {mark_err}")
-                    print(f"   ✅ Added job: {filename}")
-
-                except Exception as e:
-                    print(f"   ❌ Error processing file {key}: {str(e)}")
-                    # Add file anyway with minimal metadata
-                    try:
-                        download_url = s3.generate_presigned_url(
-                            'get_object',
-                            Params={'Bucket': settings.R2_BUCKET, 'Key': key},
-                            ExpiresIn=3600
-                        )
-
-                        # Minimal metadata path: still assign a printer deterministically
-                        pages_value = '1'
-                        service_value = 'regular print'
-                        assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
-                        job_info = {
-                            'filename': filename,
-                            'download_url': download_url,
-                            'r2_path': key,
-                            'metadata': {
-                                'status': 'no',
-                                'job_completed': 'NO',
-                                'copies': '1',
-                                'color': 'Black and White',
-                                'orientation': 'portrait',
-                                'page_size': 'A4',
-                                'pages': '1',
-                                'timestamp': obj["LastModified"].isoformat(),
-                                'vendor': vendor_id,
-                                'user': 'Unknown',
-                                'service_type': 'regular print',
-                                'job_id': filename.split('.')[0],
-                                'token': filename.split('.')[0],
-                                'vendor_id': vendor_id,
-                                'feedback': '',
-                                'quality': '',
-                                'thickness': '',
-                                'service_name': '',
-                                'assigned_printer': assigned
-                            },
-                            'assigned_printer': assigned
-                        }
-                        jobs.append(job_info)
-                        print(f"   ⚠️ Added job with minimal metadata: {filename}")
-                    except Exception as e2:
-                        print(f"   ❌ Failed to create job entry: {e2}")
-                        continue
-
-            print(f"📋 FINAL RESULT: Found {len(jobs)} jobs for vendor {vendor_id}")
-            for job in jobs:
-                print(f"   📄 {job['filename']} - {job['r2_path']}")
-
+            print(f"📋 get_vendor_print_jobs (D1 only): {len(jobs)} jobs for vendor {vendor_id}")
             return JsonResponse({'success': True, 'jobs': jobs})
 
         except Exception as e:

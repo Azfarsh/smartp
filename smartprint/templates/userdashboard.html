@@ -27490,8 +27490,8 @@
               service_type: 'regular_print', // CRITICAL: Use 'regular_print' (normalized) to match jumbo_printing storage pattern
               service_name: 'Regular Print', // Default service name for regular print modal
               copies: settings.copies || 1,
-              // Preserve explicit Mixed selection so backend can store Mix instead of Black and White
-              color: settings.color || 'Black and White',
+              // Store Mix (not Black and White) when Mixed is selected so Vendor_print_jobs and User_print_jobs get correct color
+              color: (settings.color === 'Mixed' ? 'Mix' : (settings.color || 'Black and White')),
               orientation: settings.orientation || 'portrait',
               pageRange: settings.pageRange || 'all',
               specificPages: settings.specificPages || '',
