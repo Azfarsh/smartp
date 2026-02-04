@@ -4066,15 +4066,83 @@
       overflow: hidden;
     }
 
-    /* Desktop: Make order summary more compact and readable */
+    /* Desktop: Match jumbo print modal design exactly */
     @media (min-width: 769px) {
       #orderSummaryModal .service-modal {
         max-width: 700px;
+        width: 700px;
       }
 
       #orderSummaryModal .modal-body {
         padding: 1rem 1.25rem;
         padding-bottom: 1.5rem;
+      }
+    }
+
+    /* Desktop: Match jumbo print modal design exactly - exact dimensions */
+    @media (min-width: 1024px) {
+      #orderSummaryModal .service-modal {
+        max-width: 700px;
+        width: 700px;
+        max-height: none;
+        height: auto;
+      }
+
+      #orderSummaryModal .modal-body {
+        overflow-y: visible;
+        max-height: none;
+        padding: 1.5rem 2rem;
+      }
+
+      /* Match jumbo print modal professional bill styling */
+      #orderSummaryModal .professional-bill {
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      #orderSummaryModal .bill-header {
+        padding: 1.5rem 2rem;
+        border-radius: 12px 12px 0 0;
+      }
+
+      #orderSummaryModal .bill-content {
+        padding: 1.5rem 2rem;
+      }
+
+      #orderSummaryModal .invoice-items {
+        margin-top: 1rem;
+      }
+
+      #orderSummaryModal .invoice-item {
+        padding: 0.875rem 0;
+        font-size: 0.95rem;
+      }
+
+      #orderSummaryModal .invoice-item-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      #orderSummaryModal .invoice-item-value {
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      #orderSummaryModal .invoice-item.invoice-total {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 2px solid var(--border-light);
+      }
+
+      #orderSummaryModal .invoice-item.invoice-total .invoice-item-label {
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+
+      #orderSummaryModal .invoice-item.invoice-total .invoice-item-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f6f7f8;
       }
     }
 
@@ -4434,11 +4502,17 @@
         text-align: right;
         width: auto;
         flex-shrink: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.75rem;
+        align-items: center;
+        justify-content: flex-end;
       }
 
       #orderSummaryModal .bill-date p {
-        margin: 0.2rem 0;
+        margin: 0;
         text-align: right;
+        white-space: nowrap;
       }
 
       #orderSummaryModal .bill-duration {
@@ -6537,8 +6611,12 @@
       font-size: 0.9rem;
       opacity: 0.95;
       font-weight: 500;
-      white-space: nowrap;
       flex-shrink: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.75rem;
+      align-items: center;
+      justify-content: flex-end;
     }
 
     @media (max-width: 768px) {
@@ -6546,13 +6624,14 @@
         text-align: left;
         font-size: 0.85rem;
         width: 100%;
-        white-space: normal;
+        justify-content: flex-start;
       }
     }
 
     .bill-date p {
-      margin: 0.3rem 0;
+      margin: 0;
       line-height: 1.5;
+      white-space: nowrap;
     }
 
     .bill-content {
@@ -7702,7 +7781,7 @@
       border-radius: 6px;
       padding: 0 0.5em;
       margin-right: 0.5em;
-      font-size: 0.95em;
+      font-size: 0.96rem;
     }
 
     /* Footer Gradient Hover */
@@ -8353,7 +8432,7 @@
     <section class="stats-section">
       <h2 class="section-title">
         <span class="material-icons">dashboard</span>
-        Printing Overview
+        Dashboard Overview
       </h2>
       <div class="stats-grid">
         <div class="stat-card">
@@ -9415,8 +9494,9 @@
         .service-modal .field-header,
         .modal .field-header {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 0.5rem;
+          width: 100%;
         }
 
         .service-modal .field-label,
@@ -12567,9 +12647,9 @@
             {
               label: 'Select Photo File',
               type: 'file',
-              accept: '.pdf,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
               required: true,
-              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). Other formats like CSV, DOC, XLS are not allowed.',
+              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). Other formats like CSV, XLS are not allowed.',
               icon: 'fas fa-image'
             },
             {
@@ -12618,10 +12698,10 @@
             {
               label: 'Upload Document or Images',
               type: 'file',
-              accept: '.pdf,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
+              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12692,10 +12772,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
+              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12751,10 +12831,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
+              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
               icon: 'fas fa-file-upload'
             },
             {
@@ -12823,10 +12903,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF or image files only (.pdf, .jpg, .jpeg, .png). CSV, DOC, XLS and other formats not allowed.',
+              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
               icon: 'fas fa-file-upload'
             },
             {
@@ -14269,10 +14349,17 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
 
-            // Denied extensions - CSV, DOC, XLS, and all non-PDF/image formats
-            const deniedExtensions = ['.csv', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
-            const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-            const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+            // Denied extensions - CSV, Excel, PowerPoint, text and other non-PDF/image/Word formats
+            const deniedExtensions = ['.csv', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
+            const validTypes = [
+              'application/pdf',
+              'application/msword',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'image/jpeg',
+              'image/png',
+              'image/jpg'
+            ];
+            const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
             // Passport only allows images, no PDF
             const passportValidExtensions = ['.jpg', '.jpeg', '.png'];
 
@@ -14417,6 +14504,42 @@
                       }
                     };
                     reader.readAsArrayBuffer(file);
+                  } else {
+                    // Fallback preview for DOC/DOCX and other supported document types
+                    const isWordDoc =
+                      file.type === 'application/msword' ||
+                      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                      file.name.toLowerCase().endsWith('.doc') ||
+                      file.name.toLowerCase().endsWith('.docx');
+
+                    if (isWordDoc) {
+                      const safeName = file.name || 'Document';
+                      const html = `
+                          <div class="image-preview-container active" style="margin-top: .5rem;">
+                            <div class="preview-title">
+                              <i class="fas fa-file-word"></i>
+                              Document Preview
+                            </div>
+                            <div class="preview-canvas-container" style="display:flex;align-items:center;justify-content:center;min-height:260px;">
+                              <div style="text-align:center;padding:1.5rem;">
+                                <div style="font-size:2.5rem;margin-bottom:.75rem;color:#2563eb;">
+                                  <i class="fas fa-file-word"></i>
+                                </div>
+                                <div style="font-weight:600;color:#111827;margin-bottom:.25rem;word-break:break-word;">
+                                  ${safeName}
+                                </div>
+                                <div style="font-size:.875rem;color:#6b7280;max-width:320px;margin:0 auto;">
+                                  Live page-by-page preview is currently available for PDF and image files. The full DOC/DOCX document will still be printed correctly.
+                                </div>
+                              </div>
+                            </div>
+                            <div class="preview-info">
+                              <span>File type: DOC/DOCX</span>
+                              <span>Pages: ${await getPageCount(file)}</span>
+                            </div>
+                          </div>`;
+                      filePreview.innerHTML = html;
+                    }
                   }
                 }
               }
@@ -16181,11 +16304,7 @@
             </div>
             <div class="bill-content">
               <div class="service-info">
-                <h4>Service Details</h4>
-                <div class="service-row">
-                  <span class="service-name">${serviceDisplayName}</span>
-                  <span class="service-status">Ready to Process</span>
-                </div>
+                <h4>Print Details</h4>
               </div>
               <div class="invoice-items">
         `;
@@ -16219,7 +16338,7 @@
 
         html += `
                 <div class="invoice-total">
-                  <span class="invoice-total-label">Grand Total</span>
+                  <span class="invoice-total-label">Total Payment</span>
                   <span class="invoice-total-value">₹${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
@@ -17532,12 +17651,12 @@
               </div>
             </div>
             
-            <div class="job-card-actions">
-              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
-                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
+      <div class="job-card-actions">
+              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="Preview Details">
+                <i class="fas fa-eye"></i><span class="job-action-label">Preview</span>
               </button>
-              <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
-                <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
+              <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Invoice">
+                <i class="fas fa-receipt"></i><span class="job-action-label">Invoice</span>
               </button>
               <button class="job-action-btn track-btn" 
                       data-job-filename="${job.filename}"
@@ -17547,8 +17666,8 @@
                       data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
                       data-vendor-id="${job.vendor_id || job.vendor || ''}"
                       data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
-                      onclick="trackVendorLocation('${job.filename}', this)" title="Track Vendor">
-                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
+                      onclick="trackVendorLocation('${job.filename}', this)" title="Find Shop">
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Find shop</span>
               </button>
             </div>
           </div>
@@ -17802,7 +17921,7 @@
           </div>
         </div>
 
-        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png">
+        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
 
         <!-- File List -->
         <div class="file-list" id="fileList">
@@ -18133,11 +18252,7 @@
             </div>
             <div class="bill-content">
               <div class="service-info">
-                <h4>Service Details</h4>
-                <div class="service-row">
-                  <span class="service-name" id="orderSummaryServiceName">-</span>
-                  <span class="service-status">Ready to Process</span>
-                </div>
+                <h4>Print Details</h4>
                 <div class="shop-name-row">
                   <span class="shop-label">Shop:</span>
                   <span class="shop-value" id="orderSummaryShopName">-</span>
@@ -18151,7 +18266,7 @@
                 <div id="orderSummaryServiceSpecificDetails"></div>
                 <div id="orderSummaryAdditionalOptions"></div>
                 <div class="invoice-item invoice-total">
-                  <span class="invoice-item-label">Grand Total</span>
+                  <span class="invoice-item-label">Total Payment</span>
                   <span class="invoice-item-value" id="orderSummaryTotalAmount">₹0.00</span>
                 </div>
               </div>
@@ -18406,10 +18521,10 @@
             
             <div class="job-card-actions">
               <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
-                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
+                <i class="fas fa-eye"></i><span class="job-action-label">Preview</span>
               </button>
               <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
-                <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
+                <i class="fas fa-receipt"></i><span class="job-action-label">Invoice</span>
               </button>
               <button class="job-action-btn track-btn" 
                       data-job-filename="${job.filename}"
@@ -18420,7 +18535,7 @@
                       data-vendor-id="${job.vendor_id || job.vendor || ''}"
                       data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
                       onclick="trackVendorLocation('${job.filename}', this)" title="Track Vendor">
-                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Find shop</span>
               </button>
             </div>
           </div>
@@ -18449,7 +18564,7 @@
           const lat = parseFloat(btn.dataset.lat);
           const lng = parseFloat(btn.dataset.lng);
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            label.textContent = 'Track';
+            label.textContent = 'Find shop';
             btn.removeAttribute('data-distance-km');
             btn.removeAttribute('data-distance-label');
             return;
@@ -19014,11 +19129,7 @@
             
             <div class="bill-content">
               <div class="service-info">
-                <h4>Service Details</h4>
-                <div class="service-row">
-                  <span class="service-name">${serviceDisplayName}</span>
-                  <span class="service-status">Ready to Process</span>
-                </div>
+                <h4>Print Details</h4>
               </div>
               
               <div class="invoice-items">
@@ -19084,11 +19195,14 @@
         subtotal += amount;
       }
 
-      // Add pages, color, and copies details
+      // Add pages, color, orientation, and copies details
       const pages = breakdown.page_count || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || 1;
       const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || 'Black and White';
       const size = breakdown.print_size || breakdown.size || 'N/A';
+      let orientation = breakdown.orientation || breakdown['Print Orientation'] || 'Portrait';
+      // Capitalize first letter
+      orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
 
       html += `
           <div class="invoice-item">
@@ -19098,6 +19212,10 @@
           <div class="invoice-item">
             <span class="invoice-item-label">Color</span>
             <span class="invoice-item-value">${color}</span>
+          </div>
+          <div class="invoice-item">
+            <span class="invoice-item-label">Orientation</span>
+            <span class="invoice-item-value">${orientation}</span>
           </div>
           <div class="invoice-item">
             <span class="invoice-item-label">Copies</span>
@@ -19176,7 +19294,7 @@
       // Grand total only (includes commission on base price)
       html += `
           <div class="invoice-item invoice-total">
-            <span class="invoice-item-label">Grand Total</span>
+            <span class="invoice-item-label">Total Payment</span>
             <span class="invoice-item-value">₹${finalSubtotal.toFixed(2)}</span>
           </div>
         `;
@@ -19191,7 +19309,7 @@
                 </div>
                 <div class="contact-info">
                   <p>Thank you for choosing PrintMax!</p>
-                  <p>For queries, contact: support@printmax.com</p>
+                  <p>For queries, contact: printmax_support@printmax.in</p>
                 </div>
               </div>
             </div>
@@ -20466,11 +20584,11 @@
       function getTrafficInfo(pendingJobs) {
         const count = pendingJobs || 0;
         if (count < 10) {
-          return { level: 'low', label: 'Low Traffic', color: '#10b981' };
+          return { level: 'low', label: 'Low shop traffic', color: '#10b981' };
         } else if (count < 16) {
-          return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
+          return { level: 'medium', label: 'Mid shop traffic', color: '#f59e0b' };
         } else {
-          return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+          return { level: 'high', label: 'High shop traffic', color: '#ef4444' };
         }
       }
 
@@ -21378,11 +21496,11 @@
       function getTrafficInfo(pendingJobs) {
         const count = pendingJobs || 0;
         if (count < 10) {
-          return { level: 'low', label: 'Low Traffic', color: '#10b981' };
+          return { level: 'low', label: 'Low shop traffic', color: '#10b981' };
         } else if (count < 16) {
-          return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
+          return { level: 'medium', label: 'Mid shop traffic', color: '#f59e0b' };
         } else {
-          return { level: 'high', label: 'High Traffic', color: '#ef4444' };
+          return { level: 'high', label: 'High shop traffic', color: '#ef4444' };
         }
       }
 
@@ -23030,7 +23148,7 @@
           
           <div class="bill-content">
             <div class="service-info">
-              <h4>Service Details</h4>
+              <h4>Print Details</h4>
               <div class="service-row">
                 <span class="service-name">${serviceDisplayName}</span>
                 <span class="service-status">Completed</span>
@@ -23129,11 +23247,14 @@
         }
       }
 
-      // Add pages, color, and copies details (for Mix show B&W and Color range values)
+      // Add pages, color, orientation, and copies details (for Mix show B&W and Color range values)
       const pages = breakdown.page_count || breakdown.pages || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || breakdown.copies || 1;
       const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || (job && job.color) || 'Black and White';
       const size = breakdown.print_size || breakdown.size || 'N/A';
+      let orientation = breakdown.orientation || breakdown['Print Orientation'] || (job && job.orientation) || 'Portrait';
+      // Capitalize first letter
+      orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
       const isMixColor = /^(mix|mixed|both)$/i.test(String(color));
 
       let bwRangeDisplay = '';
@@ -23160,6 +23281,10 @@
         <div class="invoice-item">
           <span class="invoice-item-label">Color</span>
           <span class="invoice-item-value">${color}</span>
+        </div>
+        <div class="invoice-item">
+          <span class="invoice-item-label">Orientation</span>
+          <span class="invoice-item-value">${orientation}</span>
         </div>
         ${isMixColor ? `
         <div class="invoice-item">
@@ -23222,7 +23347,7 @@
       // Grand total only (no subtotal)
       html += `
         <div class="invoice-item invoice-total">
-          <span class="invoice-item-label">Grand Total</span>
+          <span class="invoice-item-label">Total Payment</span>
           <span class="invoice-item-value">₹${Number(finalTotal).toFixed(2)}</span>
         </div>
       `;
@@ -23237,7 +23362,7 @@
               </div>
               <div class="contact-info">
                 <p>Thank you for choosing PrintMax!</p>
-                <p>For queries, contact: support@printmax.com</p>
+                <p>For queries, contact: printmax_support@printmax.in</p>
               </div>
             </div>
           </div>
@@ -23833,9 +23958,16 @@
     }
 
     function isValidFile(file) {
-      const deniedExtensions = ['.csv', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-      const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+      const deniedExtensions = ['.csv', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
+      const validTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/jpg'
+      ];
+      const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
       const fileName = file.name.toLowerCase();
       const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
       const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
@@ -23951,6 +24083,71 @@
         if (pageCounter) pageCounter.textContent = '1 / 1';
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
+        return;
+      }
+
+      const fileType = (fileObj.file && fileObj.file.type) || '';
+      const fileName = (fileObj.name || '').toLowerCase();
+      const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf');
+
+      // For non-PDF documents (e.g. DOC/DOCX), show a static placeholder preview instead of using pdf.js
+      if (!isPDF) {
+        if (canvas) {
+          const container = canvas.parentElement;
+          const previewWrapper = document.getElementById('imagePreviewContainer');
+          if (previewWrapper) {
+            previewWrapper.classList.add('active');
+          }
+
+          const width = 640;
+          const height = 400;
+          canvas.width = width;
+          canvas.height = height;
+
+          // Background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+
+          // Border
+          ctx.strokeStyle = '#e5e7eb';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1, 1, width - 2, height - 2);
+
+          // Icon circle
+          ctx.fillStyle = '#2563eb';
+          ctx.beginPath();
+          ctx.arc(width / 2, height / 2 - 40, 40, 0, Math.PI * 2);
+          ctx.fill();
+
+          // "W" like Word icon
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 32px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('W', width / 2, height / 2 - 30);
+
+          // File name
+          ctx.fillStyle = '#111827';
+          ctx.font = '600 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          const displayName = fileObj.name || 'Document';
+          ctx.fillText(displayName.length > 40 ? displayName.slice(0, 37) + '...' : displayName, width / 2, height / 2 + 20);
+
+          // Helper text
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '400 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.fillText('Preview is limited for DOC/DOCX. File will print normally.', width / 2, height / 2 + 48);
+        }
+
+        if (pageCounter) pageCounter.textContent = '1 / 1';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+
+        // Reset PDF state so future PDF uploads work normally
+        pdfDocument = null;
+        pdfLoadedForFileId = null;
+        filteredPageNumbers = [1];
+        currentPreviewPageIdx = 0;
+        currentRenderTask = null;
+        isRendering = false;
         return;
       }
 
@@ -25783,8 +25980,8 @@
         tape_binding: tapeBinding
       };
 
-      console.log('📊 A4 print form data being sent:', formData);
-      console.log(`💰 Expected pricing key: a4_print_${printType}`);
+      console.log('📊 Document print form data being sent:', formData);
+      console.log(`💰 Expected pricing key: Document_print_${printType}`);
 
       // Show loading state
       const originalText = calculateBtn ? calculateBtn.innerHTML : '';
@@ -25901,7 +26098,7 @@
           }
         }
       } catch (error) {
-        console.error('Error calculating A4 print price:', error);
+        console.error('Error calculating Document print price:', error);
         // Only show alert if user explicitly clicked calculate button
         if (!suppress) {
           alert('Error calculating price. Please try again.');
@@ -26388,7 +26585,7 @@
 
       const printType = colorType === 'color' ? 'single_color' : 'single_bw';
       // Service name should be just "A4 print"
-      const serviceName = 'A4 print';
+      const serviceName = 'Document print';
 
       // Format color display text - show exact color type; use "Mix" for Both/Mixed
       let colorDisplayText = 'Black and White'; // Default
@@ -26417,6 +26614,20 @@
           colorDisplayText = 'Black and White';
         }
       }
+
+      // Determine orientation display text (Portrait / Landscape / Mixed)
+      let orientationDisplayText = 'Portrait';
+      if (orientationTypes && orientationTypes.size === 1) {
+        const rawOrientation = Array.from(orientationTypes)[0];
+        if (rawOrientation) {
+          orientationDisplayText = String(rawOrientation);
+        }
+      } else if (orientationTypes && orientationTypes.size > 1) {
+        orientationDisplayText = 'Mixed';
+      } else if (breakdownObj && (breakdownObj.orientation || breakdownObj['Print Orientation'])) {
+        orientationDisplayText = String(breakdownObj.orientation || breakdownObj['Print Orientation']);
+      }
+      orientationDisplayText = orientationDisplayText.charAt(0).toUpperCase() + orientationDisplayText.slice(1).toLowerCase();
 
       // Calculate commission if not available - use same method as jumbo print
       if (commissionPercent === 0) {
@@ -26552,7 +26763,8 @@
 
       // Populate modal fields
       document.getElementById('orderSummaryShopName').textContent = shopName;
-      document.getElementById('orderSummaryServiceName').textContent = serviceName;
+      const serviceNameEl = document.getElementById('orderSummaryServiceName');
+      if (serviceNameEl) serviceNameEl.textContent = serviceName;
 
       // Get and display shop address if available - show below shop name (full address, no truncation)
       const shopAddress = selectedVendorData ? (selectedVendorData.shop_address || selectedVendorData.address || '') : '';
@@ -26628,7 +26840,7 @@
             `;
           });
 
-          // Show total pages and copies summary for multiple documents
+          // Show total pages, copies, and orientation summary for multiple documents
           invoiceHtml += `
             <div class="invoice-item">
               <span class="invoice-item-label">Pages</span>
@@ -26638,10 +26850,14 @@
               <span class="invoice-item-label">Copies</span>
               <span class="invoice-item-value">${totalCopiesSum}</span>
             </div>
+            <div class="invoice-item">
+              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-value">${orientationDisplayText}</span>
+            </div>
           `;
         } else {
           // Single document or no files - show standard format with accurate details
-          // Service details
+          // Print details
           // Ensure we have valid values
           const displayPages = totalPagesCount > 0 ? totalPagesCount : (breakdownObj?.total_pages || breakdownObj?.page_count || 1);
           const displayCopies = totalCopiesCount > 0 ? totalCopiesCount : (breakdownObj?.total_copies || breakdownObj?.num_copies || breakdownObj?.copies || 1);
@@ -26692,9 +26908,10 @@
             colorRangeDisplay = breakdownObj.colorPageRangeValue || breakdownObj.color_page_range_value || '';
           }
 
+          // Base print service + page breakdown
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Print Name</span>
+              <span class="invoice-item-label">Print Service</span>
               <span class="invoice-item-value">${serviceName}</span>
             </div>
           `;
@@ -26741,6 +26958,10 @@
             <div class="invoice-item">
               <span class="invoice-item-label">Total Pages</span>
               <span class="invoice-item-value">${displayPages}</span>
+            </div>
+            <div class="invoice-item">
+              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-value">${orientationDisplayText}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">Copies</span>
@@ -26974,7 +27195,8 @@
 
       // Populate modal fields
       document.getElementById('orderSummaryShopName').textContent = shopName;
-      document.getElementById('orderSummaryServiceName').textContent = serviceDisplayName;
+      const serviceNameEl = document.getElementById('orderSummaryServiceName');
+      if (serviceNameEl) serviceNameEl.textContent = serviceDisplayName;
 
       // Get and display shop address if available - show below shop name (full address, no truncation)
       const shopAddress = selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : '';
@@ -26997,11 +27219,12 @@
       if (serviceSpecificContainer) {
         let invoiceHtml = '';
 
-        // Extract print name, color, pages, copies from service details or breakdown
+        // Extract print name, color, pages, copies, orientation from print details or breakdown
         let printName = serviceDisplayName;
         let printColor = 'N/A';
         let pages = 1;
         let copies = 1;
+        let orientation = 'Portrait';
 
         // Get values from form inputs first (most accurate), then fallback to breakdown
         const form = modal.querySelector(`#${service}-modal-form`);
@@ -27031,6 +27254,18 @@
               printColor = colorValue;
             }
           }
+
+          // Get orientation from form
+          const orientationInput = form.querySelector('select[id*="orientation"], input[id*="orientation"], .orientation-option.selected');
+          if (orientationInput) {
+            if (orientationInput.classList && orientationInput.classList.contains('orientation-option')) {
+              orientation = orientationInput.getAttribute('data-orientation') || orientation;
+            } else {
+              orientation = orientationInput.value || orientation;
+            }
+            // Capitalize first letter
+            orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
+          }
         }
 
         // Fallback to breakdown if form values not found
@@ -27038,6 +27273,9 @@
           if (pages === 1) pages = breakdownObj.page_count || breakdownObj.print_quantity || breakdownObj.total_pages || pages;
           if (copies === 1) copies = breakdownObj.num_copies || breakdownObj.copies || copies;
           if (printColor === 'N/A') printColor = breakdownObj.print_color || breakdownObj.color || breakdownObj.color_photo || breakdownObj['Print Color'] || printColor;
+          if (orientation === 'Portrait') orientation = breakdownObj.orientation || breakdownObj['Print Orientation'] || orientation;
+          // Capitalize first letter
+          if (orientation) orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
         }
 
         // For passport photos, always show "Color" instead of "N/A"
@@ -27126,6 +27364,10 @@
               <span class="invoice-item-value">${printColor}</span>
             </div>
             <div class="invoice-item">
+              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-value">${orientation || 'Portrait'}</span>
+            </div>
+            <div class="invoice-item">
               <span class="invoice-item-label">Copies</span>
               <span class="invoice-item-value">${copies}</span>
             </div>
@@ -27157,6 +27399,10 @@
             <div class="invoice-item">
               <span class="invoice-item-label">Color</span>
               <span class="invoice-item-value">${printColor}</span>
+            </div>
+            <div class="invoice-item">
+              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-value">${orientation}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">${service === 'passport' ? 'Total Photos' : 'Copies'}</span>
@@ -29272,8 +29518,8 @@
 
       // Service name mapping
       const serviceNames = {
-        'a4_print_bw': 'A4 Print (Black & White)',
-        'a4_print_color': 'A4 Print (Color)',
+        'a4_print_bw': 'Document Print (Black & White)',
+        'a4_print_color': 'Dcoument Print (Color)',
         'photo_print_a4_bw': 'Photo Print A4 (Black & White)',
         'photo_print_a4_color': 'Photo Print A4 (Color)',
         'passport_photo': 'Passport Photo',
@@ -29928,6 +30174,97 @@
 
     [data-theme="dark"] .pricing-summary-modal {
       background: #fff;
+    }
+
+    /* Desktop: align legacy invoice modal with photoprint-style professional bill */
+    @media (min-width: 769px) {
+      #pricingSummaryModal {
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+
+      #pricingSummaryModal .invoice-modal {
+        max-width: 720px;
+        width: 100%;
+        border-radius: 24px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+        overflow: hidden;
+      }
+
+      #pricingSummaryModal .invoice-header {
+        background: #2563eb;
+        color: #ffffff;
+        padding: 1.5rem 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      #pricingSummaryModal .invoice-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      #pricingSummaryModal .invoice-date {
+        font-size: 0.85rem;
+        opacity: 0.95;
+      }
+
+      #pricingSummaryModal .invoice-content {
+        padding: 1.5rem 2rem;
+        background: #f9fafb;
+      }
+
+      #pricingSummaryModal .invoice-items {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+      }
+
+      #pricingSummaryModal .invoice-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.4rem 0;
+        font-size: 0.95rem;
+      }
+
+      #pricingSummaryModal .invoice-item-label {
+        color: #4b5563;
+        font-weight: 500;
+      }
+
+      #pricingSummaryModal .invoice-item-value {
+        color: #111827;
+        font-weight: 600;
+      }
+
+      #pricingSummaryModal .invoice-item.invoice-total {
+        margin-top: 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 14px;
+        background: #2563eb;
+        color: #ffffff;
+      }
+
+      #pricingSummaryModal .invoice-item.invoice-total .invoice-item-label,
+      #pricingSummaryModal .invoice-item.invoice-total .invoice-item-value {
+        color: #ffffff;
+        font-size: 1.05rem;
+      }
+
+      #pricingSummaryModal .invoice-footer {
+        padding: 1.25rem 1.75rem 1.5rem;
+        background: #ffffff;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+      }
     }
 
     .pricing-header {
@@ -30755,7 +31092,7 @@
         const total = pricingData.total_price || pricingData.breakdown.total_price || subtotal + tax;
         html += `
           <div class="invoice-item invoice-total">
-            <span class="invoice-item-label">Grand Total</span>
+            <span class="invoice-item-label">Total Payment</span>
             <span class="invoice-item-value">₹${parseFloat(total).toFixed(2)}</span>
           </div>
         `;

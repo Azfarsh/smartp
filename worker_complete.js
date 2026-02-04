@@ -4160,8 +4160,39 @@ export default {
             WHERE LOWER(email) = ? LIMIT 1
           `).bind(vendorEmail).all();
 
-          const vendorId = vendorDetails && vendorDetails.length > 0 ? vendorDetails[0].vendor_id : '';
-          const vendorName = vendorDetails && vendorDetails.length > 0 ? vendorDetails[0].vendor_name : '';
+          const vendorId = vendorDetails && vendorDetails.length > 0 ? (vendorDetails[0].vendor_id || '') : '';
+          const vendorNameFromRegister = vendorDetails && vendorDetails.length > 0 ? (vendorDetails[0].vendor_name || '') : '';
+
+          // Resolve the best possible vendor/shop name for transactions
+          const rawBodyVendorName = (body.vendor_name || '').toString().trim();
+          const isPlaceholderName = (name) => {
+            if (!name) return true;
+            const lower = name.toLowerCase();
+            return lower === 'unknown vendor' || lower === 'printmax vendor';
+          };
+
+          let finalVendorName = rawBodyVendorName;
+
+          // Prefer registered vendor name when body name is missing or a placeholder
+          if (isPlaceholderName(finalVendorName)) {
+            if (vendorNameFromRegister && !isPlaceholderName(vendorNameFromRegister)) {
+              finalVendorName = vendorNameFromRegister.trim();
+            }
+          }
+
+          // Fallback: try to read shop_name from any available print job / notification
+          if (isPlaceholderName(finalVendorName)) {
+            const sampleJob = (printJobs && printJobs.length > 0) ? printJobs[0] : ((notifications && notifications.length > 0) ? notifications[0] : null);
+            const shopNameFromRecord = getShopNameFromRecord(sampleJob);
+            if (shopNameFromRecord && !isPlaceholderName(shopNameFromRecord)) {
+              finalVendorName = shopNameFromRecord.toString().trim();
+            }
+          }
+
+          // Last-resort fallback: use vendor email so it's never "Unknown Vendor"
+          if (!finalVendorName) {
+            finalVendorName = vendorEmail;
+          }
 
           // Check if transaction already exists
           const existing = await env.DB.prepare(`
@@ -4192,16 +4223,17 @@ export default {
             
             const recalcEarning = recalcPrice - recalcProfit;
             
-            // Update with recalculated values, but preserve payment_status and amount_paid
+            // Update with recalculated values, and refresh vendor_name, but preserve payment_status and amount_paid
             await env.DB.prepare(`
               UPDATE vendor_transaction SET
+                vendor_name = ?,
                 total_documents = ?,
                 total_price = ?,
                 platform_profit = ?,
                 total_earning = ?,
                 updated_at = datetime('now')
               WHERE LOWER(vendor_email) = ? AND period_start = ? AND period_end = ?
-            `).bind(recalcDocuments, recalcPrice, recalcProfit, recalcEarning, vendorEmail, periodStart, periodEnd).run();
+            `).bind(finalVendorName, recalcDocuments, recalcPrice, recalcProfit, recalcEarning, vendorEmail, periodStart, periodEnd).run();
           } else {
             // Insert new transaction
             await env.DB.prepare(`
@@ -4211,7 +4243,7 @@ export default {
                 amount_paid, payment_status, created_at, updated_at
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             `).bind(
-              vendorId, vendorEmail, vendorName, periodStart, periodEnd,
+              vendorId, vendorEmail, finalVendorName, periodStart, periodEnd,
               totalDocuments, totalPrice, platformProfit, totalEarning,
               0.0, 'not_completed'
             ).run();

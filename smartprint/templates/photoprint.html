@@ -851,13 +851,12 @@
             font-size: 0.9rem;
             opacity: 0.95;
             font-weight: 500;
-            white-space: nowrap;
             flex-shrink: 0;
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: center;
-            gap: 0.25rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.25rem 0.75rem;
         }
 
         @media (max-width: 768px) {
@@ -865,7 +864,6 @@
                 text-align: left;
                 font-size: 0.85rem;
                 width: 100%;
-                white-space: normal;
                 align-items: flex-start;
             }
         }
@@ -876,6 +874,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .bill-content {
@@ -1738,7 +1737,6 @@
                 <div class="pricing-summary-card">
                     <div class="pricing-header">
                         <div class="service-title" id="photoSummaryService">Photo Printing</div>
-                        <div class="service-status">Ready to Process</div>
                     </div>
                     <div class="pricing-breakdown" id="pricingDetails">
                         <div class="pricing-placeholder">
@@ -1938,10 +1936,6 @@
             <div class="bill-content">
                 <div class="service-info">
                     <h4>Service Details</h4>
-                    <div class="service-row">
-                        <span class="service-name">Photo Printing</span>
-                        <span class="service-status">Ready to Process</span>
-                    </div>
                 </div>
                 
                 <div class="invoice-items">
@@ -3108,16 +3102,12 @@
                             <div class="bill-date">
                                 <p>Date: <span id="photoOrderDate">-</span></p>
                                 <p>Time: <span id="photoOrderTime">-</span></p>
-                                <p>Print Duration: <span id="photoOrderETA">-</span></p>
+                                <p class="bill-duration">Print Duration: <span id="photoOrderETA">-</span></p>
                             </div>
                         </div>
                         <div class="bill-content">
                             <div class="service-info">
                                 <h4>Service Details</h4>
-                                <div class="service-row">
-                                    <span class="service-name">Photo Printing</span>
-                                    <span class="service-status">Ready to Process</span>
-                                </div>
                                 <div class="shop-name-row">
                                     <span class="shop-label">Shop:</span>
                                     <span class="shop-value" id="photoOrderShopName">-</span>
@@ -3194,6 +3184,7 @@
                     max-height: 90vh;
                     overflow-y: auto;
                     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
                 }
                 .order-summary-header {
                     background: #2563eb;
@@ -3229,6 +3220,28 @@
                     font-size: 0.875rem;
                     opacity: 0.9;
                     line-height: 1.4;
+                }
+                .order-summary-body {
+                    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+                }
+                .professional-bill {
+                    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+                }
+                .bill-date {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px 14px;
+                    justify-content: flex-end;
+                    align-items: center;
+                }
+                .bill-date p {
+                    margin: 0;
+                    white-space: nowrap;
+                }
+                .bill-date .bill-duration {
+                    flex-basis: 100%;
+                    text-align: right;
+                    opacity: 0.95;
                 }
                 .close-order-summary {
                     position: absolute;
