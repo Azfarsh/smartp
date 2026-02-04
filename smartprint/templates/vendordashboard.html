@@ -3198,6 +3198,7 @@
             width: 600px;
             max-width: 95%;
             max-height: 80vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
 
         .print-info-grid {
@@ -3214,6 +3215,7 @@
             border: 1px solid var(--outline);
             border-radius: 12px;
             padding: 20px;
+            font-family: inherit;
         }
 
         .print-info-title {
@@ -3412,6 +3414,18 @@
 
         .print-info-grid::-webkit-scrollbar-thumb:hover {
             background: var(--on-surface-variant);
+        }
+
+        /* Desktop: show all print info without inner scrolling */
+        @media (min-width: 1024px) {
+            .print-info-modal {
+                max-height: none;
+            }
+
+            .print-info-grid {
+                max-height: none;
+                overflow-y: visible;
+            }
         }
 
         .modal-header {
@@ -4421,7 +4435,7 @@
                     </div>
                 </div>
                 <div class="stat-number" id="manualStatCount">0</div>
-                <div class="stat-label">Pending Prints</div>
+                <div class="stat-label">Pending Print Requests</div>
             </div>
             <div class="stat-card requests">
                 <div class="stat-header">
@@ -4439,7 +4453,7 @@
                     </div>
                 </div>
                 <div class="stat-number" id="completedStatCount">0</div>
-                <div class="stat-label">Completed Prints</div>
+                <div class="stat-label">Completed Print Requests</div>
             </div>
             <div class="stat-card total">
                 <div class="stat-header">
@@ -4459,7 +4473,7 @@
                     <div class="section-icon requests">
                         <i class="fas fa-tasks"></i>
                     </div>
-                    <h2 class="section-title">Pending Jobs <span class="pending-warning-icon" id="pendingSectionWarning"
+                    <h2 class="section-title">Pending Print Jobs <span class="pending-warning-icon" id="pendingSectionWarning"
                             style="display: none; margin-left: 8px; color: #ef4444; font-size: 1.1em;">⚠️</span></h2>
                 </div>
                 <div class="section-controls">
@@ -4495,7 +4509,7 @@
                     <div class="section-icon completed">
                         <i class="fas fa-check-circle"></i>
                     </div>
-                    <h2 class="section-title">Completed Jobs</h2>
+                    <h2 class="section-title">Completed Prints history</h2>
                 </div>
                 <div class="section-controls">
                     <div class="search-container">
@@ -4633,25 +4647,24 @@
                         <span class="print-info-label">Token:</span>
                         <span class="print-info-value highlight" id="printInfoToken">-</span>
                     </div>
-                    <div class="print-info-item">
-                        <span class="print-info-label">Copies:</span>
-                        <span class="print-info-value" id="printInfoCopies">-</span>
+                    <div class="print-info-item" id="printInfoPaymentItem">
+                        <span class="print-info-label">Payment Received:</span>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                            <span class="print-info-value highlight" id="printInfoPaymentValue">₹0.00</span>
+                            <span style="display:none;" id="printInfoPaymentDetails"></span>
+                        </div>
                     </div>
                     <div class="print-info-item">
                         <span class="print-info-label">Color:</span>
                         <span class="print-info-value" id="printInfoColor">-</span>
                     </div>
                     <div class="print-info-item">
-                        <span class="print-info-label">Orientation:</span>
-                        <span class="print-info-value" id="printInfoOrientation">-</span>
-                    </div>
-                    <div class="print-info-item">
-                        <span class="print-info-label">Page Size:</span>
-                        <span class="print-info-value" id="printInfoPageSize">-</span>
-                    </div>
-                    <div class="print-info-item">
                         <span class="print-info-label">Pages:</span>
                         <span class="print-info-value" id="printInfoPages">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Copies:</span>
+                        <span class="print-info-value" id="printInfoCopies">-</span>
                     </div>
                     <div class="print-info-item" id="printInfoPageRangeItem" style="display: none;">
                         <span class="print-info-label">Page Range:</span>
@@ -4670,6 +4683,14 @@
                         <span class="print-info-value" id="printInfoThickness">-</span>
                     </div>
                     <div class="print-info-item">
+                        <span class="print-info-label">Page Size:</span>
+                        <span class="print-info-value" id="printInfoPageSize">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Orientation:</span>
+                        <span class="print-info-value" id="printInfoOrientation">-</span>
+                    </div>
+                    <div class="print-info-item">
                         <span class="print-info-label">Service Type:</span>
                         <span class="print-info-value" id="printInfoServiceType">-</span>
                     </div>
@@ -4680,13 +4701,6 @@
                     <div class="print-info-item" id="printInfoFeedbackItem" style="display: none;">
                         <span class="print-info-label">Feedback:</span>
                         <span class="print-info-value" id="printInfoFeedback">-</span>
-                    </div>
-                    <div class="print-info-item" id="printInfoPaymentItem">
-                        <span class="print-info-label">Payment Received:</span>
-                        <div style="display:flex; flex-direction:column;">
-                            <span class="print-info-value highlight" id="printInfoPaymentValue">₹0.00</span>
-                            <span style="display:none;" id="printInfoPaymentDetails"></span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -5631,9 +5645,12 @@
                     if (loading) loading.style.display = 'none';
 
                     if (data.success && Array.isArray(data.reports) && data.reports.length > 0) {
-                        displayHistoryReports(data.reports);
+                        // Always filter strictly on the selected month on the client as a safety net,
+                        // in case the worker returns a broader date range.
+                        const effectiveMonth = selectedMonth || (document.getElementById('history-month-select')?.value || null);
+                        displayHistoryReports(data.reports, effectiveMonth);
                         if (Array.isArray(data.available_months_list)) {
-                            updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                            updateHistoryMonthSelector(data.available_months_list, effectiveMonth);
                         }
                     } else {
                         if (container) {
@@ -5673,7 +5690,7 @@
                 });
         }
 
-        function displayHistoryReports(reports) {
+        function displayHistoryReports(reports, selectedMonth = null) {
             const container = document.getElementById('history-container');
             const emptyState = document.getElementById('history-empty');
             const loading = document.getElementById('history-loading');
@@ -5702,17 +5719,45 @@
                 return;
             }
 
-            // Show container when we have data
+            // Normalize and optionally filter by the selected month (YYYY-MM)
+            const normalizedReports = (reports || []).map(report => {
+                const generated = report.generated_at || report.period_start || '';
+                let monthKey = '';
+                try {
+                    if (generated && generated.length >= 7) {
+                        monthKey = generated.substring(0, 7); // YYYY-MM
+                    }
+                } catch (e) {
+                    monthKey = '';
+                }
+                return { ...report, _monthKey: monthKey };
+            }).filter(report => {
+                if (!selectedMonth) return true;
+                return report._monthKey === selectedMonth;
+            });
+
+            if (normalizedReports.length === 0) {
+                if (container) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+                if (emptyState) {
+                    emptyState.style.display = 'block';
+                }
+                return;
+            }
+
+            // Show container when we have filtered data
             if (container) container.style.display = 'block';
 
             // Sort reports by date (newest first)
-            reports.sort((a, b) => new Date(b.generated_at) - new Date(a.generated_at));
+            normalizedReports.sort((a, b) => new Date(b.generated_at || b.period_start) - new Date(a.generated_at || a.period_start));
 
             // Group reports by month
             const reportsByMonth = {};
-            reports.forEach(report => {
-                const date = new Date(report.generated_at);
-                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            normalizedReports.forEach(report => {
+                const date = new Date(report.generated_at || report.period_start);
+                const monthKey = report._monthKey || `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
                 if (!reportsByMonth[monthKey]) {
@@ -5765,16 +5810,18 @@
                         <div class="month-header">
                             <h3>${monthData.monthName}</h3>
                             <div class="month-stats">
-                                <span class="month-earnings">₹${monthEarnings.toFixed(2)}</span>
-                                <span class="month-documents">${monthDocuments} docs</span>
+                                <span class="month-earnings">Total Earnings: ₹${monthEarnings.toFixed(2)}</span>
+                                <span class="month-documents">Total Documents: ${monthDocuments} docs</span>
                             </div>
                         </div>
                         <div class="reports-grid">
                 `;
 
                 monthData.reports.forEach(report => {
-                    const reportDate = new Date(report.generated_at);
-                    const statusClass = report.payment_status === 'completed' ? 'completed' : 'not-completed';
+                    const reportDate = new Date(report.generated_at || report.period_start);
+                    const rawStatus = (report.payment_status || '').toString().toLowerCase();
+                    const isPaid = ['paid', 'completed', 'complete', 'success'].includes(rawStatus);
+                    const statusClass = isPaid ? 'completed' : 'not-completed';
                     const periodStart = report.period_start || '';
                     const periodEnd = report.period_end || '';
                     const periodDisplaySafe = report.period_display || `${periodStart} to ${periodEnd}` || 'N/A';
@@ -5784,7 +5831,7 @@
                             <div class="report-header">
                                 <div class="report-period">${periodDisplaySafe}</div>
                                 <div class="report-status ${statusClass}">
-                                    ${report.payment_status === 'completed' ? 'Completed' : 'Pending'}
+                                    ${isPaid ? 'Paid' : 'Pending'}
                                 </div>
                             </div>
                             <div class="report-content">
@@ -6859,7 +6906,7 @@
             // CRITICAL: Always set pending count - this is the main fix
             if (manualStatEl) {
                 manualStatEl.textContent = totalPending;
-                console.log(`✅ Updated pending prints count to: ${totalPending}`);
+                console.log(`✅ Updated pending print requests count to: ${totalPending}`);
             }
             if (completedStatEl) completedStatEl.textContent = actualCompletedCount;
             // Earnings placeholder (sum not computed yet) => keep as ₹0

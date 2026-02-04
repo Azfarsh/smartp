@@ -11894,6 +11894,29 @@ def create_or_update_vendor_transaction(vendor_email, vendor_id, vendor_name, co
             print("⚠️ Worker API not configured - skipping transaction report creation")
             return False
         
+        # Best-effort: resolve a friendly vendor/shop name if we only have a placeholder
+        try:
+            normalized_name = (vendor_name or '').strip()
+            if not normalized_name or normalized_name.lower() in ['printmax vendor', 'unknown vendor']:
+                # Try rich vendor details first
+                details = get_vendor_details_by_email(vendor_email) or {}
+                resolved_name = (
+                    details.get('vendor_name')
+                    or details.get('shop_name')
+                )
+                # Fallback to coordinates helper (which also returns vendor_name / shop_name)
+                if not resolved_name:
+                    coords = get_vendor_coordinates_from_email(vendor_email) or {}
+                    resolved_name = (
+                        coords.get('vendor_name')
+                        or coords.get('shop_name')
+                    )
+                if resolved_name:
+                    vendor_name = resolved_name
+        except Exception as name_err:
+            # Do not block transaction creation because of name resolution issues
+            print(f"⚠️ Unable to resolve vendor_name for transactions: {name_err}")
+
         # Calculate 2-day period
         period_start, period_end = get_2day_period_for_date(completion_date)
         period_start_str = period_start.strftime('%Y-%m-%d')
