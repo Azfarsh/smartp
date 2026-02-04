@@ -84,6 +84,7 @@ urlpatterns = [
     path('calculate-passport-photo-pricing/', calculate_passport_photo_pricing, name='calculate_passport_photo_pricing'),
     path('calculate-a4-print-pricing/', calculate_a4_print_pricing, name='calculate_a4_print_pricing'),
     path('calculate-golden-emboss-pricing/', calculate_golden_emboss_pricing, name='calculate_golden_emboss_pricing'),
+    path('convert-to-pdf/', views.convert_to_pdf, name='convert_to_pdf'),
      path('vendor_documents', views.vendor_documents, name='vendor_documents'),
     path('payments/create-order/', create_razorpay_order, name='create_razorpay_order'),
     path('payments/verify/', verify_razorpay_payment, name='verify_razorpay_payment'),

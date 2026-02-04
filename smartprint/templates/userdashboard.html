@@ -1883,6 +1883,19 @@
         /* Extra padding to show peek of second card */
         padding-left: 0.5rem;
         /* Left padding for first card */
+        scroll-behavior: smooth;
+        /* Smooth scrolling for carousel */
+      }
+
+      /* Mobile: Ensure print job block left color highlight is visible */
+      .jobs-row .job-card-mobile .job-card-left-border,
+      .job-card-mobile .job-card-left-border {
+        width: 5px !important;
+        min-width: 4px !important;
+        flex-shrink: 0 !important;
+        min-height: 100% !important;
+        border-radius: 4px 0 0 4px !important;
+        /* More prominent on mobile for visibility */
       }
 
       /* Job cards on mobile - fixed width to show peek of next card */
@@ -2093,6 +2106,8 @@
       border-radius: 2px 0 0 2px;
       background: var(--primary);
       /* default fallback to ensure all cards show color */
+      flex-shrink: 0;
+      /* never collapse on mobile */
     }
 
     /* Status fallback colors (when service is unknown) */
@@ -6499,6 +6514,8 @@
       #orderSummaryModal .bill-header {
         padding: 0.875rem 1rem;
         gap: 0.875rem;
+        align-items: center;
+        justify-content: space-between;
       }
 
       #orderSummaryModal .bill-logo {
@@ -6518,6 +6535,17 @@
       #orderSummaryModal .bill-date {
         font-size: 0.75rem;
         text-align: right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 0.125rem;
+      }
+      
+      #orderSummaryModal .bill-date p {
+        margin: 0;
+        line-height: 1.4;
+        white-space: nowrap;
       }
 
       #orderSummaryModal .bill-duration {
@@ -14349,27 +14377,30 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
 
-            // Denied extensions - CSV, Excel, PowerPoint, text and other non-PDF/image/Word formats
-            const deniedExtensions = ['.csv', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
+            // Denied extensions - CSV, Excel, text and other non-PDF/image/Word/PPT formats (allow .ppt/.pptx for document, gloss, jumbo, golden emboss, digital)
+            const deniedExtensions = ['.csv', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
             const validTypes = [
               'application/pdf',
               'application/msword',
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'application/vnd.ms-powerpoint',
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
               'image/jpeg',
               'image/png',
               'image/jpg'
             ];
-            const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
-            // Passport only allows images, no PDF
+            const validExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png'];
+            // Passport and photo print only allow images, no PDF/Word/PPT
             const passportValidExtensions = ['.jpg', '.jpeg', '.png'];
+            const photoValidExtensions = ['.jpg', '.jpeg', '.png'];
 
             for (const file of files) {
               const fileName = file.name.toLowerCase();
               const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
               const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
-              const allowedExts = service === 'passport' ? passportValidExtensions : validExtensions;
+              const allowedExts = service === 'passport' ? passportValidExtensions : (service === 'photo' ? photoValidExtensions : validExtensions);
               const hasValidExtension = allowedExts.some(ext => fileName.endsWith(ext));
-              const hasValidType = service === 'passport'
+              const hasValidType = (service === 'passport' || service === 'photo')
                 ? (file.type.startsWith('image/') && ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type))
                 : (validTypes.includes(file.type) || file.type.startsWith('image/'));
 
@@ -14379,8 +14410,8 @@
                 if (modal._uploadedFiles) modal._uploadedFiles = [];
                 return;
               }
-              // Reject password-encrypted PDFs
-              if (file.type === 'application/pdf' && service !== 'passport' && typeof pdfjsLib !== 'undefined') {
+              // Reject password-encrypted PDFs (passport and photo don't allow PDF)
+              if (file.type === 'application/pdf' && service !== 'passport' && service !== 'photo' && typeof pdfjsLib !== 'undefined') {
                 try {
                   const buf = await file.arrayBuffer();
                   const loadingTask = pdfjsLib.getDocument({ data: buf });
@@ -14505,40 +14536,67 @@
                     };
                     reader.readAsArrayBuffer(file);
                   } else {
-                    // Fallback preview for DOC/DOCX and other supported document types
-                    const isWordDoc =
+                    // Word or PPT: convert to PDF, show PDF preview, and store PDF for upload (document, gloss, jumbo, golden emboss, digital)
+                    const isWordOrPpt =
                       file.type === 'application/msword' ||
                       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                      file.name.toLowerCase().endsWith('.doc') ||
-                      file.name.toLowerCase().endsWith('.docx');
+                      file.type === 'application/vnd.ms-powerpoint' ||
+                      file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+                      /\.(doc|docx|ppt|pptx)$/i.test(file.name || '');
 
-                    if (isWordDoc) {
-                      const safeName = file.name || 'Document';
-                      const html = `
+                    if (isWordOrPpt && typeof convertWordOrPptToPdf === 'function') {
+                      try {
+                        fileUploadLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting to PDF...';
+                        const pdfFile = await convertWordOrPptToPdf(file);
+                        modal._uploadedFiles = [pdfFile];
+                        modal.dataset.fileName = pdfFile.name;
+                        const pdfPages = await getPDFPageCount(pdfFile);
+                        modal.dataset.filePageCount = pdfPages;
+                        fileUploadLabel.textContent = `${pdfFile.name} (${pdfPages} pages)`;
+                        const html = `
                           <div class="image-preview-container active" style="margin-top: .5rem;">
-                            <div class="preview-title">
-                              <i class="fas fa-file-word"></i>
-                              Document Preview
-                            </div>
-                            <div class="preview-canvas-container" style="display:flex;align-items:center;justify-content:center;min-height:260px;">
-                              <div style="text-align:center;padding:1.5rem;">
-                                <div style="font-size:2.5rem;margin-bottom:.75rem;color:#2563eb;">
-                                  <i class="fas fa-file-word"></i>
-                                </div>
-                                <div style="font-weight:600;color:#111827;margin-bottom:.25rem;word-break:break-word;">
-                                  ${safeName}
-                                </div>
-                                <div style="font-size:.875rem;color:#6b7280;max-width:320px;margin:0 auto;">
-                                  Live page-by-page preview is currently available for PDF and image files. The full DOC/DOCX document will still be printed correctly.
-                                </div>
-                              </div>
+                            <div class="preview-title"><i class="fas fa-eye"></i> Live Preview</div>
+                            <div class="preview-canvas-container">
+                              <canvas id="${service}PreviewCanvas" class="preview-canvas" style="max-width:100%; border-radius:12px;"></canvas>
                             </div>
                             <div class="preview-info">
-                              <span>File type: DOC/DOCX</span>
-                              <span>Pages: ${await getPageCount(file)}</span>
+                              <span id="${service}PreviewDimensions">Dimensions: -</span>
+                              <span id="${service}PreviewOrientation">Orientation: Portrait</span>
+                              <span id="${service}PreviewPages">Pages: -</span>
+                            </div>
+                            <div class="preview-controls" style="display:flex;align-items:center;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
+                              <button type="button" id="${service}PrevPageBtn" class="copies-btn" title="Previous page" disabled><i class="fas fa-chevron-left"></i></button>
+                              <span id="${service}PageCounter" style="min-width:64px;text-align:center">0 / 0</span>
+                              <button type="button" id="${service}NextPageBtn" class="copies-btn" title="Next page" disabled><i class="fas fa-chevron-right"></i></button>
                             </div>
                           </div>`;
-                      filePreview.innerHTML = html;
+                        filePreview.innerHTML = html;
+                        const pdfArrayBuffer = await pdfFile.arrayBuffer();
+                        await initializeServicePDFPreview(service, pdfFile, pdfArrayBuffer);
+                      } catch (convErr) {
+                        console.error('Convert to PDF failed:', convErr);
+                        filePreview.innerHTML = '<div style="color:#ef4444; margin-top: .5rem;">' + (convErr.message || 'Could not convert to PDF. Please upload a PDF.') + '</div>';
+                        fileUploadLabel.textContent = 'Click to select file';
+                        modal._uploadedFiles = [];
+                      }
+                    } else {
+                      const isWordDoc = /\.(doc|docx)$/i.test(file.name || '') || file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                      if (isWordDoc) {
+                        const safeName = file.name || 'Document';
+                        const html = `
+                          <div class="image-preview-container active" style="margin-top: .5rem;">
+                            <div class="preview-title"><i class="fas fa-file-word"></i> Document Preview</div>
+                            <div class="preview-canvas-container" style="display:flex;align-items:center;justify-content:center;min-height:260px;">
+                              <div style="text-align:center;padding:1.5rem;">
+                                <div style="font-size:2.5rem;margin-bottom:.75rem;color:#2563eb;"><i class="fas fa-file-word"></i></div>
+                                <div style="font-weight:600;color:#111827;margin-bottom:.25rem;word-break:break-word;">${safeName}</div>
+                                <div style="font-size:.875rem;color:#6b7280;max-width:320px;margin:0 auto;">Live page-by-page preview is available for PDF. Converted PDF will be stored for printing.</div>
+                              </div>
+                            </div>
+                            <div class="preview-info"><span>File type: DOC/DOCX</span><span>Pages: ${await getPageCount(file)}</span></div>
+                          </div>`;
+                        filePreview.innerHTML = html;
+                      }
                     }
                   }
                 }
@@ -17913,7 +17971,7 @@
             <i class="fas fa-cloud-upload-alt upload-icon"></i>
             <span class="upload-text">Click to select files</span>
             <span class="upload-hint">or drag and drop them into this window</span>
-            <span class="upload-subtitle">Supported: PDF, JPEG, PNG</span>
+            <span class="upload-subtitle">Supported: PDF, Word, PPT, JPEG, PNG</span>
             <button class="upload-btn" id="uploadBtn">
               <i class="fas fa-file-upload"></i>
               Add files
@@ -18598,6 +18656,71 @@
         console.warn('Unable to update track button distances:', distanceError);
       }
     }
+
+    // Carousel for print job blocks (mobile only, auto-scroll every 10 seconds)
+    let jobsCarouselInterval = null;
+    function startJobsCarousel() {
+      // Clear any existing interval
+      if (jobsCarouselInterval) {
+        clearInterval(jobsCarouselInterval);
+        jobsCarouselInterval = null;
+      }
+
+      // Only run on mobile (max-width: 768px)
+      if (window.innerWidth > 768) {
+        return;
+      }
+
+      const scrollWrapper = document.querySelector('.jobs-scroll-wrapper');
+      const jobsRow = document.getElementById('jobsContainer');
+      
+      if (!scrollWrapper || !jobsRow || jobsRow.children.length <= 1) {
+        return; // No carousel needed if 1 or fewer cards
+      }
+
+      let currentIndex = 0;
+      const cardWidth = window.innerWidth - 3 * 16; // calc(100vw - 3rem) in pixels
+      const gap = 12; // 0.75rem gap
+
+      function scrollToNext() {
+        if (!scrollWrapper || !jobsRow) return;
+        
+        const totalCards = jobsRow.children.length;
+        if (totalCards <= 1) return;
+
+        currentIndex = (currentIndex + 1) % totalCards;
+        const scrollPosition = currentIndex * (cardWidth + gap);
+        
+        scrollWrapper.scrollTo({
+          left: scrollPosition,
+          behavior: 'smooth'
+        });
+      }
+
+      // Start carousel: scroll every 10 seconds
+      jobsCarouselInterval = setInterval(scrollToNext, 10000);
+      
+      // Reset carousel when user manually scrolls
+      let scrollTimeout;
+      scrollWrapper.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          // Update currentIndex based on scroll position
+          const scrollLeft = scrollWrapper.scrollLeft;
+          currentIndex = Math.round(scrollLeft / (cardWidth + gap));
+        }, 100);
+      }, { passive: true });
+    }
+
+    // Stop carousel when window resizes to desktop
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768 && jobsCarouselInterval) {
+        clearInterval(jobsCarouselInterval);
+        jobsCarouselInterval = null;
+      } else if (window.innerWidth <= 768 && !jobsCarouselInterval) {
+        startJobsCarousel();
+      }
+    });
 
     const vendorCoordinateRegistry = (() => {
       const byEmail = new Map();
@@ -22731,6 +22854,9 @@
         container.innerHTML = '';
         container.appendChild(fragment);
         updateJobTrackDistances();
+        
+        // Start carousel for mobile (auto-scroll every 10 seconds)
+        startJobsCarousel();
       }
 
       // Completed jobs are displayed via the History modal only
@@ -23782,7 +23908,7 @@
             <i class="fas fa-cloud-upload-alt upload-icon"></i>
             <span class="upload-text">Click to select files</span>
             <span class="upload-hint">or drag and drop them into this window</span>
-            <span class="upload-subtitle">Supported: PDF,JPG, PNG </span>
+            <span class="upload-subtitle">Supported: PDF, Word, PPT, JPEG, PNG</span>
             <button class="upload-btn" id="uploadBtn">
               <i class="fas fa-file-upload"></i>
               Add files
@@ -23917,6 +24043,9 @@
             }
 
             const fileId = Date.now() + Math.random();
+            const isWordOrPpt = /\.(doc|docx|ppt|pptx)$/i.test(file.name) ||
+              ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'].includes(file.type);
             const fileObj = {
               id: fileId,
               file: file,
@@ -23924,13 +24053,34 @@
               size: file.size,
               pages: pages,
               isImage: file.type.startsWith('image/'),
-              originalImageFile: file.type.startsWith('image/') ? file : null
+              originalImageFile: file.type.startsWith('image/') ? file : null,
+              convertedPdfFile: null
             };
 
             uploadedFiles.push(fileObj);
             fileSettings[fileId] = { ...defaultSettings };
             filesAdded = true;
-            console.log('File added successfully:', file.name, 'with', pages, 'pages');
+
+            if (isWordOrPpt) {
+              try {
+                loadingMessage.querySelector('p').textContent = `Converting ${file.name} to PDF...`;
+                const pdfFile = await convertWordOrPptToPdf(file);
+                fileObj.convertedPdfFile = pdfFile;
+                fileObj.pages = await getPDFPageCount(pdfFile);
+                console.log('Word/PPT converted to PDF:', pdfFile.name, fileObj.pages, 'pages');
+              } catch (convErr) {
+                console.error('Convert to PDF failed:', convErr);
+                uploadedFiles.pop();
+                fileSettings[fileId] = undefined;
+                filesAdded = false;
+                loadingMessage.remove();
+                alert(convErr.message || 'Could not convert document to PDF. Please upload a PDF or try again.');
+                return;
+              }
+            }
+
+            if (loadingMessage.querySelector('p')) loadingMessage.querySelector('p').textContent = 'Processing files and counting pages...';
+            console.log('File added successfully:', file.name, 'with', fileObj.pages, 'pages');
           } else {
             console.log('Duplicate file skipped:', file.name);
           }
@@ -23958,16 +24108,18 @@
     }
 
     function isValidFile(file) {
-      const deniedExtensions = ['.csv', '.ppt', '.pptx', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
+      const deniedExtensions = ['.csv', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
       const validTypes = [
         'application/pdf',
         'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         'image/jpeg',
         'image/png',
         'image/jpg'
       ];
-      const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+      const validExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png'];
       const fileName = file.name.toLowerCase();
       const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
       const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
@@ -24089,8 +24241,62 @@
       const fileType = (fileObj.file && fileObj.file.type) || '';
       const fileName = (fileObj.name || '').toLowerCase();
       const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf');
+      const hasConvertedPdf = fileObj.convertedPdfFile && fileObj.convertedPdfFile.type === 'application/pdf';
 
-      // For non-PDF documents (e.g. DOC/DOCX), show a static placeholder preview instead of using pdf.js
+      // Use converted PDF for preview when available (Word/PPT converted to PDF)
+      if (hasConvertedPdf) {
+        const bytes = await fileObj.convertedPdfFile.arrayBuffer();
+        const task = pdfjsLib.getDocument({ data: bytes });
+        pdfDocument = await task.promise;
+        pdfLoadedForFileId = fileObj.id;
+        const totalPages = pdfDocument.numPages;
+        filteredPageNumbers = [];
+        for (let p = 1; p <= totalPages; p++) filteredPageNumbers.push(p);
+        if (filteredPageNumbers.length === 0) filteredPageNumbers = [1];
+        if (currentPreviewPageIdx >= filteredPageNumbers.length) currentPreviewPageIdx = 0;
+        async function renderCurrent() {
+          if (currentRenderTask) {
+            try { currentRenderTask.cancel(); } catch (e) {}
+            currentRenderTask = null;
+          }
+          if (canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+          isRendering = true;
+          try {
+            const pageNumber = filteredPageNumbers[currentPreviewPageIdx];
+            const page = await pdfDocument.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: 1.2 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const renderTask = page.render({ canvasContext: ctx, viewport });
+            currentRenderTask = renderTask;
+            await renderTask.promise;
+            if (currentRenderTask === renderTask && isRendering) {
+              if (pageCounter) pageCounter.textContent = `${currentPreviewPageIdx + 1} / ${filteredPageNumbers.length}`;
+              if (prevBtn) prevBtn.disabled = currentPreviewPageIdx === 0;
+              if (nextBtn) nextBtn.disabled = currentPreviewPageIdx === filteredPageNumbers.length - 1;
+              currentRenderTask = null;
+              isRendering = false;
+            }
+          } catch (err) {
+            if (err.name !== 'RenderingCancelledException') console.error('Error rendering PDF preview:', err);
+            currentRenderTask = null;
+            isRendering = false;
+          }
+        }
+        if (!prevBtn._wired) {
+          prevBtn._wired = true;
+          prevBtn.addEventListener('click', () => { if (currentPreviewPageIdx > 0) { currentPreviewPageIdx--; renderCurrent(); } });
+        }
+        if (!nextBtn._wired) {
+          nextBtn._wired = true;
+          nextBtn.addEventListener('click', () => { if (currentPreviewPageIdx < filteredPageNumbers.length - 1) { currentPreviewPageIdx++; renderCurrent(); } });
+        }
+        await renderCurrent();
+        return;
+      }
+
+      // For non-PDF documents (e.g. DOC/DOCX) without conversion, show a static placeholder preview
       if (!isPDF) {
         if (canvas) {
           const container = canvas.parentElement;
@@ -24255,6 +24461,24 @@
       }
 
       await renderCurrent();
+    }
+
+    // Convert Word/PPT to PDF via backend (for document, gloss, jumbo, golden emboss, digital)
+    async function convertWordOrPptToPdf(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/convert-to-pdf/', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' }
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(err.error || 'Conversion failed');
+      }
+      const blob = await response.blob();
+      const baseName = (file.name || 'document').replace(/\.[^/.]+$/, '');
+      return new File([blob], baseName + '.pdf', { type: 'application/pdf' });
     }
 
     // Function to get accurate page count for files
@@ -26416,10 +26640,9 @@
       // This ensures files and Mixed B&W/color ranges persist when Pay now is clicked (same logic as photoprint modal)
       // Reuse orderSummaryModal variable declared earlier in this function
       if (orderSummaryModal && typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        // Convert uploadedFiles array to File objects for storage
+        // Convert uploadedFiles array to File objects for storage (use converted PDF for Word/PPT so storage gets PDF)
         const filesToStore = uploadedFiles.map(fileObj => {
-          // Return the actual File object from fileObj.file
-          return fileObj.file || fileObj;
+          return (fileObj.convertedPdfFile || fileObj.file || fileObj);
         }).filter(file => file instanceof File);
 
         if (filesToStore.length > 0) {
@@ -26908,56 +27131,20 @@
             colorRangeDisplay = breakdownObj.colorPageRangeValue || breakdownObj.color_page_range_value || '';
           }
 
-          // Base print service + page breakdown
+          // Desktop: match jumbo print order summary exactly - Print Name, Pages, Color, Orientation, Copies
+          const printName = serviceName;
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Print Service</span>
-              <span class="invoice-item-value">${serviceName}</span>
+              <span class="invoice-item-label">Print Name</span>
+              <span class="invoice-item-value">${printName}</span>
             </div>
-          `;
-
-          const isMixedForBill = /^(Mix|Mixed|Both)$/i.test(colorType + '') || (breakdownObj.color && /^(Mix|Mixed|Both)$/i.test((breakdownObj.color || '') + ''));
-          const showBw = bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && breakdownObj.bw_pages > 0) || (isMixedForBill && bwRangeDisplay);
-          const showColor = colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && breakdownObj.color_pages > 0) || (isMixedForBill && colorRangeDisplay);
-          if (showBw) {
-            const bwRangeText = bwRangeDisplay ? ` (${bwRangeDisplay})` : '';
-            const displayBwPages = bwPagesCount > 0 ? bwPagesCount : (parseInt(breakdownObj.bw_pages) || 0);
-            invoiceHtml += `
-              <div class="invoice-item">
-                <span class="invoice-item-label">Black & White Pages</span>
-                <span class="invoice-item-value">${displayBwPages}${bwRangeText}</span>
-              </div>
-            `;
-          }
-          if (showColor) {
-            const colorRangeText = colorRangeDisplay ? ` (${colorRangeDisplay})` : '';
-            const displayColorPages = colorPagesCount > 0 ? colorPagesCount : (parseInt(breakdownObj.color_pages) || 0);
-            invoiceHtml += `
-              <div class="invoice-item">
-                <span class="invoice-item-label">Color Pages</span>
-                <span class="invoice-item-value">${displayColorPages}${colorRangeText}</span>
-              </div>
-            `;
-          }
-
-          // Page range for single-color "specific" case (when not Mixed/Both)
-          const specificPagesVal = breakdownObj.specificPages || breakdownObj.specific_pages ||
-            (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].specificPages : '');
-          const pageRangeVal = breakdownObj.pageRange || breakdownObj.page_range ||
-            (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].pageRange : '');
-          if (!isMixedForBill && (pageRangeVal + '').toLowerCase() === 'specific' && specificPagesVal) {
-            invoiceHtml += `
-              <div class="invoice-item">
-                <span class="invoice-item-label">Page range</span>
-                <span class="invoice-item-value">${String(specificPagesVal)}</span>
-              </div>
-            `;
-          }
-
-          invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Total Pages</span>
+              <span class="invoice-item-label">Pages</span>
               <span class="invoice-item-value">${displayPages}</span>
+            </div>
+            <div class="invoice-item">
+              <span class="invoice-item-label">Color</span>
+              <span class="invoice-item-value">${displayColor}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">Orientation</span>
@@ -27707,7 +27894,7 @@
               settings = { ...orderSummaryModal._pendingFileSettings[i] };
             }
             if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles)) {
-              fileObj = uploadedFiles.find(f => (f.file && f.file === fileToUpload) || f === fileToUpload);
+              fileObj = uploadedFiles.find(f => (f.file && f.file === fileToUpload) || (f.convertedPdfFile && f.convertedPdfFile === fileToUpload) || f === fileToUpload);
               if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id] && Object.keys(settings).length === 0) {
                 settings = fileSettings[fileObj.id];
               }

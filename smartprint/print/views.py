@@ -33,6 +33,9 @@ import io
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 import threading
 import schedule
+import subprocess
+import tempfile
+import shutil
 from urllib.parse import urlparse, urlunparse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -4650,6 +4653,179 @@ def process_print_request(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+# ─────────────────────────────────────────────────────────────
+# CONVERT WORD / PPT TO PDF (for document, gloss, jumbo, golden emboss, digital)
+# Try Docling first (modern, no LibreOffice); fall back to LibreOffice
+# ─────────────────────────────────────────────────────────────
+
+ALLOWED_CONVERT_EXTENSIONS = ('.doc', '.docx', '.ppt', '.pptx')
+MAX_CONVERT_SIZE = 50 * 1024 * 1024  # 50 MB
+
+PY_CONVERT_FORMATS = ('.docx', '.pptx')
+
+
+def _html_to_pdf(html_content):
+    """Convert HTML string to PDF bytes. Returns bytes or None."""
+    try:
+        from xhtml2pdf import pisa
+        import io
+        html_full = f'''<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>body{{font-family:Segoe UI,Arial,sans-serif;padding:24px;line-height:1.5;color:#333;}}
+        table{{border-collapse:collapse;margin:1em 0;width:100%;}}
+        td,th{{border:1px solid #ddd;padding:8px;}}
+        pre{{background:#f5f5f5;padding:10px;overflow-x:auto;}}
+        h1,h2,h3{{margin-top:1em;}} img{{max-width:100%;}}</style></head>
+        <body>{html_content}</body></html>'''
+        pdf_buffer = io.BytesIO()
+        pisa_status = pisa.CreatePDF(html_full, dest=pdf_buffer, encoding='utf-8')
+        return pdf_buffer.getvalue() if not pisa_status.err else None
+    except Exception:
+        return None
+
+
+def _convert_docx_with_mammoth(input_path):
+    """Convert DOCX to PDF using mammoth (fast, pure Python). Returns PDF bytes or None."""
+    try:
+        import mammoth
+        with open(input_path, 'rb') as f:
+            result = mammoth.convert_to_html(f)
+        html = result.value
+        if not html or not html.strip():
+            return None
+        return _html_to_pdf(html)
+    except Exception:
+        return None
+
+
+def _convert_pptx_with_pptx(input_path):
+    """Convert PPTX to PDF using python-pptx (fast, pure Python). Returns PDF bytes or None."""
+    try:
+        from pptx import Presentation
+        import html
+        prs = Presentation(input_path)
+        parts = []
+        for slide_num, slide in enumerate(prs.slides, 1):
+            parts.append(f'<div class="slide"><h3>Slide {slide_num}</h3>')
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    text = shape.text.strip()
+                    if text:
+                        escaped = html.escape(text).replace('\n', '<br>')
+                        parts.append(f'<p>{escaped}</p>')
+            parts.append('</div>')
+        html_content = ''.join(parts) if parts else '<p>No content</p>'
+        return _html_to_pdf(html_content)
+    except Exception:
+        return None
+
+
+def _convert_with_python(ext, input_path):
+    """Try Python-based conversion. Returns PDF bytes or None."""
+    if ext == '.docx':
+        return _convert_docx_with_mammoth(input_path)
+    if ext == '.pptx':
+        return _convert_pptx_with_pptx(input_path)
+    return None
+
+
+def _find_libreoffice():
+    """Return path to LibreOffice executable or None."""
+    names = ['soffice', 'soffice.exe', 'libreoffice', 'libreoffice.exe']
+    for name in names:
+        path = shutil.which(name)
+        if path:
+            return path
+    # Common Windows paths
+    if os.name == 'nt':
+        for base in [os.environ.get('ProgramFiles', 'C:\\Program Files'),
+                     os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)')]:
+            for sub in ['LibreOffice\\program', 'OpenOffice 4\\program']:
+                exe = os.path.join(base, sub, 'soffice.exe')
+                if os.path.isfile(exe):
+                    return exe
+    return None
+
+
+@csrf_exempt
+@require_POST
+def convert_to_pdf(request):
+    """Accept a single doc/docx/ppt/pptx file; return PDF bytes. Used by document, gloss, jumbo, golden emboss, digital modals."""
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'error': 'No file provided'}, status=400)
+    file = request.FILES['file']
+    name = (file.name or '').lower()
+    ext = os.path.splitext(name)[1]
+    if ext not in ALLOWED_CONVERT_EXTENSIONS:
+        return JsonResponse({'success': False, 'error': 'Invalid file type. Allowed: .doc, .docx, .ppt, .pptx'}, status=400)
+    if file.size > MAX_CONVERT_SIZE:
+        return JsonResponse({'success': False, 'error': 'File too large (max 50 MB)'}, status=400)
+
+    tmpdir = None
+    try:
+        tmpdir = tempfile.mkdtemp()
+        input_path = os.path.join(tmpdir, file.name.replace('/', '_').replace('\\', '_'))
+        with open(input_path, 'wb') as f:
+            for chunk in file.chunks():
+                f.write(chunk)
+
+        base = os.path.splitext(os.path.basename(input_path))[0]
+        pdf_data = None
+
+        # Try Python converters first (mammoth for DOCX, python-pptx for PPTX - fast, no external deps)
+        if ext in PY_CONVERT_FORMATS:
+            pdf_data = _convert_with_python(ext, input_path)
+
+        # Fall back to LibreOffice if Docling failed or format is .doc/.ppt
+        if not pdf_data:
+            soffice = _find_libreoffice()
+            if not soffice:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Server conversion not available. Please upload a PDF or install LibreOffice.'
+                }, status=501)
+            outdir = os.path.join(tmpdir, 'out')
+            os.makedirs(outdir, exist_ok=True)
+            cmd = [
+                soffice,
+                '--headless',
+                '--convert-to', 'pdf',
+                '--outdir', outdir,
+                input_path
+            ]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=120,
+                cwd=tmpdir
+            )
+            if proc.returncode != 0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Conversion failed. Please try uploading a PDF instead.'
+                }, status=500)
+            pdf_path = os.path.join(outdir, base + '.pdf')
+            if not os.path.isfile(pdf_path):
+                return JsonResponse({'success': False, 'error': 'Conversion produced no PDF'}, status=500)
+            with open(pdf_path, 'rb') as f:
+                pdf_data = f.read()
+
+        from django.http import HttpResponse
+        response = HttpResponse(pdf_data, content_type='application/pdf')
+        response['Content-Disposition'] = 'inline; filename="%s.pdf"' % (base.replace('"', '_'),)
+        return response
+    except subprocess.TimeoutExpired:
+        return JsonResponse({'success': False, 'error': 'Conversion timed out'}, status=504)
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    finally:
+        if tmpdir and os.path.isdir(tmpdir):
+            try:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            except Exception:
+                pass
 
 
 from django.shortcuts import render
