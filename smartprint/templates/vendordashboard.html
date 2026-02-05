@@ -1903,7 +1903,7 @@
         }
 
         .job-card.compact .job-token::before {
-            font-size: 11px;
+            font-size: 14px;
         }
 
         .job-card.compact .job-status {
@@ -2972,12 +2972,13 @@
 
         .manual-job-actions .btn-success {
             background: var(--success);
-            color: var(--on-success);
+            color: #0f172a;
             border: none;
         }
 
         .manual-job-actions .btn-success:hover {
-            background: var(--success-dark);
+            background: #22c55e;
+            color: #0f172a;
             transform: translateY(-1px);
         }
 
@@ -3114,7 +3115,18 @@
 
         .btn-success {
             background: var(--completed-color);
-            color: var(--on-primary);
+            color: #0f172a;
+        }
+
+        .btn-success:hover {
+            background: #22c55e;
+            color: #0f172a;
+        }
+
+        [data-theme="dark"] .btn-success:hover,
+        [data-theme="dark"] .manual-job-actions .btn-success:hover {
+            color: #d1d5db;
+            background: #16a34a;
         }
 
         .btn-danger {
@@ -3262,7 +3274,7 @@
             background: var(--primary-bg);
             padding: 4px 8px;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .print-preview-section {
@@ -3440,14 +3452,14 @@
 
         .modal-close-top {
             position: absolute;
-            top: -12px;
+            top: -4px;
             right: -12px;
             background: var(--manual-color);
             color: var(--on-primary);
             border: none;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -4869,7 +4881,7 @@
                     <ul>
                         <li>Always greet customers with a smile</li>
                         <li>Maintain calm and professional behavior at all times</li>
-                        <li>Handle complaints with patience and understanding</li>
+                        <li>Handle complaints with patience and resolve them as soon as possible</li>
                         <li>Never show anger or frustration to customers</li>
                         <li>Provide clear explanations for any issues</li>
                     </ul>
@@ -4894,9 +4906,9 @@
                             receive more print requests</li>
                         <li>Build strong relationships with regular customers</li>
                         <li>Offer quality service to encourage repeat business</li>
-                        <li>Ask satisfied customers for referrals</li>
-                        <li>Maintain clean and professional workspace</li>
-                        <li>Keep updated with latest printing technologies</li>
+                
+                        <li>Maintain clean and professional workspace by providing ontime prints</li>
+                        
                     </ul>
                 </div>
 
@@ -4905,7 +4917,7 @@
                     <ul>
                         <li>Check your dashboard regularly for new jobs</li>
                         <li>Keep your profile information updated</li>
-                        <li>Maintain good communication with the support team</li>
+                        <li>Maintain good communication with the Customers</li>
                         <li>Follow all platform policies and guidelines</li>
                         <li>Report any technical issues immediately</li>
                     </ul>
@@ -5769,15 +5781,21 @@
                 reportsByMonth[monthKey].reports.push(report);
             });
 
-            // Calculate summary statistics for the 4 cards
-            const totalReports = reports.length;
-            const totalEarnings = reports.reduce((sum, report) => sum + (report.total_amount || report.total_earning || 0), 0);
-            const totalDocuments = reports.reduce((sum, report) => sum + (report.total_documents || 0), 0);
-            const activeMonths = Object.keys(reportsByMonth).length;
+        // Calculate summary statistics for the overview cards using the selected (or most recent) month only
+        const monthKeys = Object.keys(reportsByMonth).sort();
+        const activeMonthKey = (selectedMonth && reportsByMonth[selectedMonth]) ? selectedMonth : (monthKeys.length ? monthKeys[monthKeys.length - 1] : null);
+        const activeMonthData = activeMonthKey ? reportsByMonth[activeMonthKey] : { monthName: 'Selected Month', reports: [] };
+        const monthReports = activeMonthData.reports || [];
+
+        const totalReports = monthReports.length;
+        const totalEarnings = monthReports.reduce((sum, report) => sum + (report.total_amount || report.total_earning || 0), 0);
+        const totalDocuments = monthReports.reduce((sum, report) => sum + (report.total_documents || 0), 0);
+        const activeMonths = Object.keys(reportsByMonth).length;
 
             // Display the 4 summary cards
             let html = `
                 <div class="history-summary">
+                <div class="summary-note">Overview for ${activeMonthData.monthName || 'selected month'}</div>
                     <div class="summary-stats">
                         <div class="stat-item">
                             <div class="stat-value">${totalReports}</div>
@@ -7125,10 +7143,10 @@
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
                         <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})" title="Cancel job">
-                            <i class="fas fa-times"></i> Cancel
+                            <i class="fas fa-times"></i> Cancel print
                         </button>
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
-                            <i class="fas fa-check"></i> Completed
+                            <i class="fas fa-check"></i>Mark Completed
                         </button>
                     </div>`;
             } else if (type === 'requests') {
@@ -7144,7 +7162,7 @@
                 } else if (vendorStatus === 'accepted') {
                     actions = `
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
-                            <i class="fas fa-check"></i> Completed
+                            <i class="fas fa-check"></i>Completed
                         </button>`;
                 } else {
                     actions = `
@@ -8723,6 +8741,11 @@
                             toggle.checked = data.data[service];
                         }
                     });
+                    enforceOfflineWhenServicesDisabled(Array.from(toggles).reduce((acc, toggle) => {
+                        const service = toggle.getAttribute('onchange').match(/toggleService\('([^']+)'/)[1];
+                        acc[service] = toggle.checked;
+                        return acc;
+                    }, {}));
                 }
             } catch (error) {
                 console.error('Error loading service availability:', error);
@@ -8740,6 +8763,21 @@
         function closeRulesModal() {
             document.getElementById('rulesModal').classList.remove('show');
         }
+        function enforceOfflineWhenServicesDisabled(serviceAvailability) {
+            const availabilityValues = serviceAvailability ? Object.values(serviceAvailability) : [];
+            const areAllServicesOff = availabilityValues.length > 0 && availabilityValues.every(v => v === false);
+            if (areAllServicesOff) {
+                showToast('All services are off. Please enable a service to accept jobs.');
+                vendorAvailability = 'offline';
+                localStorage.setItem('vendorAvailability', 'offline');
+                updateAvailabilityUI();
+                if (typeof scheduleAvailabilitySync === 'function') {
+                    scheduleAvailabilitySync('offline');
+                } else if (typeof saveAvailabilityStatus === 'function') {
+                    saveAvailabilityStatus('offline');
+                }
+            }
+        }
         // Toggle service handler - updates backend
         async function toggleService(serviceKey, isEnabled) {
             try {
@@ -8751,6 +8789,8 @@
                     const service = toggle.getAttribute('onchange').match(/toggleService\('([^']+)'/)[1];
                     serviceAvailability[service] = toggle.checked;
                 });
+
+                enforceOfflineWhenServicesDisabled(serviceAvailability);
 
                 console.log('🔍 DEBUG - Sending service availability:', serviceAvailability);
 

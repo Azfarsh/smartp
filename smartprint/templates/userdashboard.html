@@ -8253,7 +8253,7 @@
       <li class="nav-item">
         <a href="#" class="nav-link" id="historyBtn">
           <i class="fas fa-history"></i>
-          History
+          Print History
         </a>
       </li>
       <li class="nav-item">
@@ -29541,28 +29541,67 @@
             .then(data => {
               if (data.success) {
                 const completedJobs = data.jobs || [];
+                const twoDaysAgo = new Date();
+                twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-                if (completedJobs.length === 0) {
+                const parseJobDate = (job) => {
+                  const rawDate = job.uploaded_at || job.completion_time || job.timestamp || job.created_at || job.updated_at;
+                  if (!rawDate) return null;
+                  const numeric = Number(rawDate);
+                  if (!Number.isNaN(numeric) && rawDate !== true && rawDate !== false) {
+                    const millis = rawDate.toString().length <= 10 ? numeric * 1000 : numeric;
+                    const parsed = new Date(millis);
+                    return Number.isNaN(parsed.getTime()) ? null : parsed;
+                  }
+                  const parsed = new Date(rawDate);
+                  return Number.isNaN(parsed.getTime()) ? null : parsed;
+                };
+
+                const recentJobs = completedJobs.filter(job => {
+                  const parsedDate = parseJobDate(job);
+                  return parsedDate && parsedDate >= twoDaysAgo;
+                });
+
+                if (recentJobs.length === 0) {
                   completedJobsList.innerHTML = '<div class="no-jobs-message"><i class="fas fa-history"></i><p>No completed print jobs found.</p></div>';
                   return;
                 }
 
-                completedJobsList.innerHTML = completedJobs.map(job => {
+                completedJobsList.innerHTML = recentJobs.map(job => {
                   // STRICT: Use ONLY database fields from User_print_jobs table, NOT metadata
                   let resolvedPages = 'N/A';
                   let resolvedCopies = '1';
+                  let resolvedSize = job.pageSize || job.page_size || 'A4';
+                  const pricingDetails = (() => {
+                    if (!job.pricing_details) return {};
+                    if (typeof job.pricing_details === 'string') {
+                      try { return JSON.parse(job.pricing_details); } catch (e) { return {}; }
+                    }
+                    return job.pricing_details;
+                  })();
 
                   if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
                     resolvedPages = String(job.page_count);
                   } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
                     resolvedPages = String(job.pages);
+                  } else if (pricingDetails.pages) {
+                    resolvedPages = String(pricingDetails.pages);
+                  } else if (pricingDetails.page_count) {
+                    resolvedPages = String(pricingDetails.page_count);
                   }
 
                   if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
                     resolvedCopies = String(job.num_copies);
                   } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
                     resolvedCopies = String(job.copies);
+                  } else if (pricingDetails.copies) {
+                    resolvedCopies = String(pricingDetails.copies);
                   }
+                  if (!resolvedSize && pricingDetails.page_size) {
+                    resolvedSize = pricingDetails.page_size;
+                  }
+
+                  const resolvedColor = job.color || job.color_mode || pricingDetails.color_mode || pricingDetails.color || 'Color';
                   const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (
                     parseInt(job.pages || 1) * parseInt(job.copies || 1) * (job.color === 'color' ? 5 : 3)
                     + (job.spiralBinding === 'Yes' ? 20 * parseInt(job.copies || 1) : 0)
@@ -29582,8 +29621,8 @@
                     <div class="completed-job-details">
                       <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${resolvedPages}</span></div>
                       <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${resolvedCopies}</span></div>
-                      <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</span></div>
-                      <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
+                      <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${resolvedColor === 'Black and White' ? 'Black and White' : resolvedColor}</span></div>
+                      <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${resolvedSize}</span></div>
                     </div>
                   </div>
                   <div class="completed-job-section">
@@ -29592,18 +29631,6 @@
                       <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${totalPrice}</span></div>
                       <div><span class="completed-job-details-label">Status</span><br><span class="completed-job-details-value">Paid</span></div>
                     </div>
-                  </div>
-                  <div class="completed-job-actions">
-                    <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
-                    <button class="completed-job-btn track-vendor-btn" 
-                            data-job-filename="${job.filename}"
-                            data-lat="${job.vendor_lat || ''}" 
-                            data-lng="${job.vendor_lng || ''}"
-                            data-vendor="${job.vendor_label || job.vendor || ''}"
-                            data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
-                            data-vendor-id="${job.vendor_id || job.vendor || ''}"
-                            data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
-                            onclick="trackVendorLocation('${job.filename}', this)"><i class="fas fa-map-marker-alt"></i> Track</button>
                   </div>
                 </div>
               `}).join('');
