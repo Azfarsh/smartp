@@ -12031,15 +12031,13 @@ def get_2day_period_for_date(date_obj):
     """
     Calculate the 2-day period for a given date.
     Returns (period_start, period_end) as date objects.
-    Ensures non-overlapping periods: 27-28, 28-29, etc.
+    Ensures non-overlapping 2-day buckets: 1-2, 3-4, 5-6, ..., 27-28, 29-30 (not 2-3, 3-4, 4-5).
     """
     # Get the day of month
     day = date_obj.day
     
-    # Calculate which 2-day period this date belongs to
-    # Periods: 1-2, 3-4, 5-6, ..., 27-28, 29-30, 31 (if applicable)
-    # For odd days: start is the day itself, end is day+1
-    # For even days: start is day-1, end is the day itself
+    # 2-day buckets: (1-2), (3-4), (5-6), ... so one row per two calendar days
+    # Odd days (1,3,5,...): start=this day, end=next day. Even days (2,4,6,...): start=prev day, end=this day
     
     if day % 2 == 1:  # Odd day (1, 3, 5, ..., 27, 29, 31)
         period_start = date_obj
@@ -12495,7 +12493,8 @@ def mark_job_completed(request):
                     return JsonResponse({'success': False, 'error': 'Vendor details not found'})
                 
                 vendor_id = vendor_details.get('vendor_id', 'vendor1')
-                vendor_name = vendor_details.get('shop_name', 'Unknown Vendor')
+                # Get vendor shop name - try vendor_name first (from database), then shop_name as fallback
+                vendor_name = vendor_details.get('vendor_name') or vendor_details.get('shop_name', 'Unknown Vendor')
                 
                 # Get the token associated with this job before updating status
                 job_token = get_token_from_file_metadata(filename, vendor_id)

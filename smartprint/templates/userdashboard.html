@@ -15357,11 +15357,17 @@
               console.log('📁 Files stored in order summary modal:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
             }
 
-            // For photo print modal, create PDF in background (like passport photo modal)
+            // For photo print modal, images will be converted to PDF during payment processing
+            // This ensures all images are stored in PDF format only
             if (service === 'photo' && files.length > 0) {
-              // Photo print files are already images, no need to convert to PDF
-              // The backend will handle the photo print processing
-              console.log('📸 Photo print files ready for processing:', files.length);
+              // Mark files as images so they get converted to PDF during payment
+              files.forEach(file => {
+                if (file.type.startsWith('image/')) {
+                  file.isImage = true;
+                  file.originalImageFile = file;
+                }
+              });
+              console.log('📸 Photo print files ready for PDF conversion:', files.length);
             }
 
             // Close service modal and open order summary modal
@@ -27916,21 +27922,39 @@
             let finalFilename = fileToUpload.name;
             let processedFile = fileToUpload;
 
-            // Convert images to PDF based on settings (if fileObj exists and has originalImageFile)
-            if (fileObj && fileObj.isImage && fileObj.originalImageFile) {
+            // Convert ALL images to PDF format (for all modals including photo print)
+            // Check if file is an image (jpg, jpeg, png, etc.)
+            const isImageFile = fileToUpload.type.startsWith('image/') || 
+                               /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileToUpload.name);
+            
+            if (isImageFile) {
               try {
-                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
-                processedFile = await convertImageToPDF(fileObj.originalImageFile, settings);
+                // Get original image file (either from fileObj or use fileToUpload directly)
+                const originalImageFile = (fileObj && fileObj.originalImageFile) ? fileObj.originalImageFile : fileToUpload;
+                
+                // Ensure settings have required fields for PDF conversion
+                if (!settings.pageSize) {
+                  settings.pageSize = 'A4';
+                }
+                if (!settings.orientation) {
+                  settings.orientation = 'portrait';
+                }
+                
+                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting image to PDF...';
+                processedFile = await convertImageToPDF(originalImageFile, settings);
                 finalFilename = fileToUpload.name.replace(/\.[^/.]+$/, ".pdf");
+                
                 // Validate converted file is still a File object
                 if (!(processedFile instanceof File)) {
                   console.error('❌ Converted file is not a File object, using original');
-                  processedFile = fileObj.originalImageFile || fileToUpload;
+                  processedFile = originalImageFile || fileToUpload;
+                } else {
+                  console.log(`✅ Converted image ${fileToUpload.name} to PDF: ${finalFilename}`);
                 }
               } catch (error) {
                 console.error('Error converting image to PDF:', error);
                 // Fallback to original file if conversion fails
-                processedFile = fileObj.originalImageFile || fileToUpload;
+                processedFile = (fileObj && fileObj.originalImageFile) ? fileObj.originalImageFile : fileToUpload;
               }
             }
 
