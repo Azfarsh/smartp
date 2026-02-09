@@ -392,8 +392,7 @@
       align-items: center;
       position: relative;
       overflow: hidden;
-      /* Reduce top padding to tighten space under navbar */
-      padding: 70px 0 50px;
+      padding: 24px 0 40px;
     }
 
     /* Slightly lift the media on desktop for better alignment */
@@ -815,7 +814,7 @@
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
       body {
-        padding-top: 48px;
+        padding-top: 16px;
       }
 
       .navbar {
@@ -826,8 +825,14 @@
         font-size: 1.5rem;
       }
 
+      .hero .container {
+        max-width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+
       .hero {
-        padding: 30px 0 100px;
+        padding: 1.5rem 0 2.5rem;
       }
 
       .hero-title {
@@ -1584,9 +1589,6 @@
           <div class="dot"></div>
           <div class="dot"></div>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
-        </div>
       </div>
     </div>
   </div>
@@ -2114,11 +2116,83 @@
     }
 
     /* Responsive Design for Vendor Modal */
+    /* iPad and tablet specific (768px - 1024px) */
+    @media (min-width: 768px) and (max-width: 1024px) {
+      #vendorLoginModal .modal-dialog {
+        margin: 2vh auto;
+        max-width: 90vw;
+        width: 90vw;
+      }
+
+      #vendorLoginModal .vendor-modal-content {
+        max-width: 100%;
+        width: 100%;
+        max-height: 96vh;
+        height: auto;
+        min-height: auto;
+        border-radius: 24px;
+      }
+
+      #vendorLoginModal .vendor-modal-left {
+        min-height: 180px;
+        height: 180px;
+        flex: 0 0 auto;
+      }
+
+      #vendorLoginModal .vendor-modal-right {
+        min-height: auto;
+        height: auto;
+        padding: 2rem 2.5rem 1.5rem;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+
+      #vendorLoginModal .vendor-modal-right .row {
+        margin-bottom: 0;
+      }
+
+      #vendorLoginModal .vendor-modal-right .col-md-6:last-child {
+        padding-bottom: 0;
+        margin-bottom: 0;
+      }
+
+      #vendorLoginModal #vendor-form-modal {
+        max-width: 100%;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        padding-bottom: 0;
+      }
+
+      #vendorLoginModal #vendor-form-modal form {
+        margin-bottom: 0;
+      }
+
+      #vendorLoginModal #vendor-form-modal > div:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      #vendorLoginModal .btn-outline-primary:last-of-type {
+        margin-bottom: 0;
+      }
+
+      #vendorLoginModal .login-header {
+        margin-bottom: 1.5rem;
+      }
+
+      #vendorLoginModal .form-group {
+        margin-bottom: 1.25rem;
+      }
+    }
+
     @media (max-width: 1024px) {
       #vendorLoginModal .vendor-modal-content {
         max-width: 100%;
         width: 100vw;
-        height: 100vh;
+        height: 60vh;
         border-radius: 28px;
       }
 
@@ -2141,23 +2215,26 @@
       #vendorLoginModal .vendor-modal-content {
         border-radius: 24px;
         width: 100vw;
-        height: 100vh;
-        min-height: 100vh;
+        max-width: 100vw;
+        min-height: auto;
+        height: auto;
+        max-height: 95vh;
       }
 
       #vendorLoginModal .vendor-modal-right {
-        padding: 1rem;
+        padding: 1rem 1.25rem 1.25rem;
       }
 
       #vendorLoginModal .vendor-modal-left {
-        min-height: 200px;
-        height: 200px;
+        min-height: 160px;
+        height: 160px;
         border-radius: 24px 24px 0 0;
       }
 
       #vendorLoginModal .vendor-modal-right {
-        min-height: calc(100vh - 200px);
-        height: calc(100vh - 200px);
+        min-height: auto;
+        height: auto;
+        padding-bottom: 1.5rem;
         border-radius: 0 0 24px 24px;
       }
 
@@ -2404,22 +2481,6 @@
       animation-delay: -0.16s;
     }
 
-    /* Progress Bar */
-    #welcomeScreen .progress-bar {
-      width: 250px;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    #welcomeScreen .progress-fill {
-      height: 100%;
-      background: white;
-      border-radius: 10px;
-      animation: progress 2s ease-in-out;
-    }
-
     /* Animations */
     @keyframes fadeInDown {
       from {
@@ -2467,16 +2528,6 @@
 
       100% {
         transform: rotate(360deg);
-      }
-    }
-
-    @keyframes progress {
-      0% {
-        width: 0%;
-      }
-
-      100% {
-        width: 100%;
       }
     }
 

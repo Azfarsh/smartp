@@ -4061,14 +4061,91 @@ export default {
         }
 
         try {
+          // Helper function to validate and normalize 2-day period
+          const validateAndNormalize2DayPeriod = (startStr, endStr, completionDateStr) => {
+            if (!startStr || !endStr) return null;
+            
+            const startDate = new Date(startStr + 'T00:00:00');
+            const endDate = new Date(endStr + 'T00:00:00');
+            const completionDate = completionDateStr ? new Date(completionDateStr + 'T00:00:00') : new Date();
+            
+            // Calculate days difference
+            const daysDiff = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+            
+            // Must be exactly 1 day apart (2-day bucket: start to start+1)
+            if (daysDiff !== 1) {
+              console.log(`⚠️ Invalid period span: ${daysDiff} days. Recalculating for date: ${completionDateStr || 'current'}`);
+              return null; // Will recalculate below
+            }
+            
+            // Check if start day is odd (required for 2-day buckets: 1-2, 3-4, 5-6, etc.)
+            const startDay = startDate.getDate();
+            if (startDay % 2 !== 1) {
+              console.log(`⚠️ Period start day ${startDay} is not odd. Recalculating for proper 2-day bucket.`);
+              return null; // Will recalculate below
+            }
+            
+            // Validate that end day is start day + 1
+            const endDay = endDate.getDate();
+            if (endDay !== startDay + 1 && !(startDate.getMonth() !== endDate.getMonth() && endDay === 1)) {
+              // Allow month boundary case (e.g., Jan 31 - Jan 31 if month has 31 days)
+              const lastDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+              if (startDay === lastDayOfMonth && endDay === lastDayOfMonth) {
+                // Last day of month - this is valid
+                return { start: startStr, end: endStr };
+              }
+              console.log(`⚠️ Period end day ${endDay} is not start day + 1. Recalculating.`);
+              return null;
+            }
+            
+            return { start: startStr, end: endStr };
+          };
+          
           // Calculate 2-day period for current date
-          // Use provided period_start and period_end if available, otherwise calculate
+          // Use provided period_start and period_end if available and valid, otherwise calculate
           let periodStart, periodEnd;
           
           if (body.period_start && body.period_end) {
-            // Use provided period dates
-            periodStart = body.period_start;
-            periodEnd = body.period_end;
+            // Validate the provided period
+            const validated = validateAndNormalize2DayPeriod(
+              body.period_start, 
+              body.period_end, 
+              body.current_date || currentDate
+            );
+            
+            if (validated) {
+              periodStart = validated.start;
+              periodEnd = validated.end;
+            } else {
+              // Invalid period provided, recalculate
+              console.log(`⚠️ Provided period ${body.period_start} to ${body.period_end} is invalid. Recalculating.`);
+              const date = new Date(body.current_date || currentDate);
+              const day = date.getDate();
+              
+              let startDate, endDate;
+              if (day % 2 === 1) {
+                // Odd day: start is the day itself, end is day+1
+                startDate = new Date(date);
+                endDate = new Date(date);
+                endDate.setDate(endDate.getDate() + 1);
+              } else {
+                // Even day: start is day-1, end is the day itself
+                startDate = new Date(date);
+                startDate.setDate(startDate.getDate() - 1);
+                endDate = new Date(date);
+              }
+              
+              // Handle month boundaries
+              if (endDate.getMonth() !== startDate.getMonth()) {
+                // If end goes into next month, adjust to last day of current month
+                const lastDay = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+                endDate = new Date(startDate.getFullYear(), startDate.getMonth(), lastDay);
+              }
+              
+              periodStart = startDate.toISOString().split('T')[0];
+              periodEnd = endDate.toISOString().split('T')[0];
+              console.log(`✅ Recalculated period: ${periodStart} to ${periodEnd}`);
+            }
           } else {
             // Calculate 2-day period: 1-2, 3-4, ..., 27-28, 29-30, 31 (if applicable)
             const date = new Date(currentDate);
@@ -4097,6 +4174,19 @@ export default {
             periodStart = startDate.toISOString().split('T')[0];
             periodEnd = endDate.toISOString().split('T')[0];
           }
+          
+          // Final validation before proceeding
+          const finalValidation = validateAndNormalize2DayPeriod(periodStart, periodEnd, body.current_date || currentDate);
+          if (!finalValidation) {
+            console.error(`❌ Failed to create valid 2-day period. Start: ${periodStart}, End: ${periodEnd}`);
+            return json({ 
+              success: false, 
+              error: `Invalid 2-day period: ${periodStart} to ${periodEnd}. Periods must be 2-day buckets (1-2, 3-4, 5-6, etc.)` 
+            }, 400, corsHeaders);
+          }
+          
+          periodStart = finalValidation.start;
+          periodEnd = finalValidation.end;
 
           // Get vendor notifications for this period
           const { results: notifications } = await env.DB.prepare(`
