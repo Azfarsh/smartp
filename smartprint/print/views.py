@@ -6875,6 +6875,9 @@ def vendor_pricing(request):
                     # Regular Print
                     'regular_print_a4_bw': 'regular_print_a4_bw',
                     'regular_print_a4_color': 'regular_print_a4_color',
+                    # Document Print (Letter)
+                    'doc_letter_bw': 'doc_letter_bw',
+                    'doc_letter_color': 'doc_letter_color',
                     # Photo Print
                     'photo_print_a4_bw': 'photo_print_a4_bw',
                     'photo_print_a4_color': 'photo_print_a4_color',
@@ -8869,7 +8872,7 @@ def calculate_passport_photo_pricing(request):
 
 @csrf_exempt
 def calculate_a4_print_pricing(request):
-    """Calculate pricing for A4 print service based on vendor pricing.json
+    """Calculate pricing for document print service (A4 / Letter / A3) based on vendor pricing.json
     Formula: Copies × [(B&W Pages × B&W Rate) + (Color Pages × Color Rate) + 
              (IF Lamination Selected → Lamination Rate) + 
              (IF Spiral Binding Selected → Spiral Binding Rate for page based of document ELSE → 0) + 
@@ -8888,8 +8891,10 @@ def calculate_a4_print_pricing(request):
             lamination = data.get('lamination', False)  # Lamination option
             spiral_binding = data.get('spiral_binding', False)  # Spiral binding option
             tape_binding = data.get('tape_binding', False)  # Tape binding option
+            page_size_raw = data.get('page_size', 'A4')
+            page_size = str(page_size_raw).strip().upper() if page_size_raw else 'A4'
             
-            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, bw_pages={bw_pages}, color_pages={color_pages}, lamination={lamination}, spiral_binding={spiral_binding}, tape_binding={tape_binding}")
+            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, bw_pages={bw_pages}, color_pages={color_pages}, lamination={lamination}, spiral_binding={spiral_binding}, tape_binding={tape_binding}, page_size={page_size}")
             
             # Convert values to int/float
             try:
@@ -8933,8 +8938,9 @@ def calculate_a4_print_pricing(request):
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
                 })
             
-            # Access categorized pricing
+            # Access categorized pricing and flat pricing
             categorized_pricing = pricing_data.get('categorized_pricing', {})
+            flat_pricing = pricing_data.get('pricing_data') or pricing_data.get('pricing') or {}
             print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
             
             a4_pricing = categorized_pricing.get('a4_print', {})
@@ -8945,16 +8951,24 @@ def calculate_a4_print_pricing(request):
             print(f"📊 Lamination pricing keys: {list(lamination_pricing.keys())}")
             print(f"📊 Binding pricing keys: {list(binding_pricing.keys())}")
             
-            # Get B&W and Color rates - STRICTLY from vendor pricing, no defaults
-            bw_rate_key = 'regular_print_a4_bw'
-            color_rate_key = 'regular_print_a4_color'
-            
-            bw_rate = a4_pricing.get(bw_rate_key)
-            color_rate = a4_pricing.get(color_rate_key)
+            # Get B&W and Color rates - STRICTLY from vendor pricing, no defaults.
+            if page_size == 'LETTER':
+                # Use dedicated Letter document print pricing from Vendor_pricing
+                bw_rate = flat_pricing.get('doc_letter_bw')
+                color_rate = flat_pricing.get('doc_letter_color')
+            elif page_size == 'A3':
+                # For A3 document printing, reuse Jumbo A3 rates
+                jumbo_pricing = categorized_pricing.get('jumbo_print', {})
+                bw_rate = jumbo_pricing.get('jumbo_print_a3_bw')
+                color_rate = jumbo_pricing.get('jumbo_print_a3_color')
+            else:
+                # Default and backward‑compatible behaviour: A4 pricing
+                bw_rate = a4_pricing.get('regular_print_a4_bw')
+                color_rate = a4_pricing.get('regular_print_a4_color')
             
             # Check if pricing is available - STRICTLY require vendor pricing
             if bw_rate is None and bw_pages > 0:
-                print(f"❌ B&W pricing not found for key: {bw_rate_key}")
+                print(f"❌ B&W pricing not found for page_size={page_size}")
                 print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
                 return JsonResponse({
                     'success': False,
@@ -8962,7 +8976,7 @@ def calculate_a4_print_pricing(request):
                 })
             
             if color_rate is None and color_pages > 0:
-                print(f"❌ Color pricing not found for key: {color_rate_key}")
+                print(f"❌ Color pricing not found for page_size={page_size}")
                 print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
                 return JsonResponse({
                     'success': False,
