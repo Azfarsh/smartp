@@ -839,6 +839,9 @@ export default {
           gloss_print_a2_color: ['gloss_print_a2_color'],
           gloss_print_a1_color: ['gloss_print_a1_color'],
           gloss_print_a0_color: ['gloss_print_a0_color'],
+          // Document Print (Letter) - dedicated columns
+          doc_letter_bw: ['doc_letter_bw'],
+          doc_letter_color: ['doc_letter_color'],
           // Jumbo Print
           jumbo_print_a3_bw: ['jumbo_print_a3_bw', 'jumbo_print_a3_single_bw'],
           jumbo_print_a3_color: ['jumbo_print_a3_color', 'jumbo_print_a3_single_color'],
@@ -4070,7 +4073,9 @@ export default {
             const completionDate = completionDateStr ? new Date(completionDateStr + 'T00:00:00') : new Date();
             
             // Calculate days difference
-            const daysDiff = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+            const daysDiff = Math.round(
+              (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+            );
             
             // Must be exactly 1 day apart (2-day bucket: start to start+1)
             if (daysDiff !== 1) {

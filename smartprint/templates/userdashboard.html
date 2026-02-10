@@ -18163,6 +18163,18 @@
                 </div>
                 <div class="page-size-label">A4</div>
               </div>
+              <div class="page-size-option" data-size="letter">
+                <div class="page-size-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="page-size-label">Letter</div>
+              </div>
+              <div class="page-size-option" data-size="a3">
+                <div class="page-size-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="page-size-label">A3</div>
+              </div>
             </div>
           </div>
 
@@ -19091,22 +19103,66 @@
       const orientation = formData['Print Orientation'] || 'portrait';
       const numCopies = formData['Number of Copies'] || 1;
       const pageRange = formData['Page Range'] || formData['pageRange'] || 'all';
+      const rawSize =
+        formData['Page Size'] ||
+        formData['pageSize'] ||
+        formData.pageSize ||
+        'A4';
+      const normalizedSize = String(rawSize).trim().toUpperCase();
+      // For now, pricing always uses the vendor's A4 document print rates.
+      // We still surface the visual size label in the breakdown.
+      const sizeForLabel =
+        normalizedSize === 'LETTER'
+          ? 'Letter'
+          : normalizedSize === 'A3'
+          ? 'A3'
+          : 'A4';
 
       // Determine print type based on color and orientation
       let printType = 'single_bw'; // Default to single-sided black & white
       if (color === 'Color') {
         printType = 'single_color';
       }
-
-      // Construct the pricing key
-      const pricingKey = `a4_print_${printType}`;
-
-      // Get the categorized pricing for A4 print
       const categorizedPricing = vendorPricing['categorized_pricing'] || {};
       const a4PrintPricing = categorizedPricing['a4_print'] || {};
+      const jumboPricing = categorizedPricing['jumbo_print'] || {};
+      const flatPricing = vendorPricing || {};
+      let basePrice = 0;
 
-      // Get the base price for this print type
-      let basePrice = a4PrintPricing[pricingKey] || 2; // Default to ₹2 if not found
+      if (normalizedSize === 'A4') {
+        // Preferred modern keys: a4_print_single_bw / a4_print_single_color
+        const pricingKey = `a4_print_${printType}`;
+        basePrice = a4PrintPricing[pricingKey];
+
+        // Fallback to legacy A4 keys stored under a4_print or flat pricing
+        if (!basePrice) {
+          const legacyKey =
+            color === 'Color' ? 'regular_print_a4_color' : 'regular_print_a4_bw';
+          basePrice =
+            a4PrintPricing[legacyKey] ||
+            flatPricing[legacyKey] ||
+            0;
+        }
+      } else if (normalizedSize === 'LETTER') {
+        // Use dedicated doc_letter_* keys from vendor pricing table
+        const legacyKey =
+          color === 'Color'
+            ? 'doc_letter_color'
+            : 'doc_letter_bw';
+        basePrice = flatPricing[legacyKey] || 0;
+      } else if (normalizedSize === 'A3') {
+        // For A3 document printing, reuse Jumbo A3 rates from vendor pricing
+        const jumboKey =
+          color === 'Color'
+            ? 'jumbo_print_a3_color'
+            : 'jumbo_print_a3_bw';
+        basePrice = jumboPricing[jumboKey] || flatPricing[jumboKey] || 0;
+      }
+
+      // Final safety fallback
+      if (!basePrice || isNaN(basePrice)) {
+        basePrice = 2; // Default per‑page price if nothing configured
+      }
 
       // Calculate actual pages to print based on page range
       let actualPages = pages;
@@ -19135,7 +19191,7 @@
       // Calculate total price based on actual pages to print
       let subtotal = basePrice * actualPages * copies;
       breakdown.push({
-        label: `A4 ${color} Print (${actualPages}${pageRangeLabel} pages × ${copies} copies)`,
+        label: `${sizeForLabel} ${color} Print (${actualPages}${pageRangeLabel} pages × ${copies} copies)`,
         value: `₹${subtotal}`
       });
 
@@ -19145,6 +19201,7 @@
       breakdown.totalPages = pages;
       breakdown.page_count = actualPages; // Use actualPages as page_count for server
       breakdown.num_copies = copies; // Store copies for server
+      breakdown.page_size = sizeForLabel;
 
       total += subtotal;
 
@@ -26195,6 +26252,26 @@
       const lamination = document.getElementById('lamination').checked;
       const tapeBinding = document.getElementById('tapeBinding').checked;
 
+      // Derive a primary page size for this batch (assumes same size across files)
+      let primaryPageSize = 'A4';
+      try {
+        if (filesForCalc && filesForCalc.length > 0) {
+          for (const fileObj of filesForCalc) {
+            const settings = fileSettings[fileObj.id] || {};
+            if (settings.pageSize) {
+              const sz = String(settings.pageSize).trim();
+              if (sz) {
+                primaryPageSize = sz.toUpperCase();
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Unable to determine primary page size, defaulting to A4', e);
+        primaryPageSize = 'A4';
+      }
+
       // Collect form data for A4 print
       // Backend expects: bw_pages and color_pages as per-copy counts (not multiplied by copies)
       // Backend formula: Copies × [(B&W Pages × B&W Rate) + (Color Pages × Color Rate) + ...]
@@ -26207,7 +26284,8 @@
         color_pages: colorPages,  // Color pages per copy
         spiral_binding: spiralBinding,
         lamination: lamination,
-        tape_binding: tapeBinding
+        tape_binding: tapeBinding,
+        page_size: primaryPageSize   // NEW: allow backend to differentiate A4 / LETTER / A3
       };
 
       console.log('📊 Document print form data being sent:', formData);
