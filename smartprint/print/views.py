@@ -4833,7 +4833,6 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import hmac
 import hashlib
-import razorpay
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 
@@ -5107,6 +5106,10 @@ def create_razorpay_order(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     try:
+        # Lazy import so that deploys/admin startup don't fail
+        # if Razorpay or its transitive dependencies are missing.
+        import razorpay
+
         body = json.loads(request.body.decode('utf-8')) if request.body else {}
         amount_paise = int(body.get('amount_paise'))  # amount in paise
         receipt = body.get('receipt', f"rcpt_{int(time.time())}")
@@ -5801,6 +5804,10 @@ def verify_razorpay_payment(request):
                 refund_id = None
                 if payment_id:  # Only attempt refund if payment was made
                     try:
+                        # Lazy import to avoid startup-time failures if Razorpay
+                        # isn't available; this code path only runs after payment.
+                        import razorpay
+
                         if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
                             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
                             refund_data = {
