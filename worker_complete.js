@@ -261,11 +261,9 @@ function rowToServicePayload(row) {
   }
 
   SERVICE_FLAG_KEYS.forEach((key) => {
-    if (row[key] === undefined || row[key] === null) {
-      return;
-    }
-    // Keep boolean for functionality, but we'll convert to "on"/"off" in admin endpoints
-    payload[key] = !!row[key];
+    // Only 1 (or true) = available; 0, null, undefined = NOT available
+    const val = row[key];
+    payload[key] = val === 1 || val === true || val === "1" || val === "true";
   });
 
   SERVICE_TEXT_KEYS.forEach((key) => {
@@ -1612,12 +1610,31 @@ export default {
           }
 
           if (vendors && vendors.results && vendors.results.length > 0) {
-            // Fetch pending jobs count for all vendors from vendor_pending_jobs_track
+            // Build service availability map from Vendor_service_availability table
+            let serviceAvailabilityMap = {};
+            try {
+              await ensureVendorServiceTable(env);
+              const serviceRows = await env.DB.prepare(`
+                SELECT ${VENDOR_SERVICE_SELECT_FIELDS}
+                FROM Vendor_service_availability
+              `).all();
+              if (serviceRows && serviceRows.results) {
+                serviceRows.results.forEach((row) => {
+                  const email = (row.vendor_email || '').trim().toLowerCase();
+                  if (email) {
+                    serviceAvailabilityMap[email] = rowToServicePayload(row);
+                  }
+                });
+              }
+            } catch (svcErr) {
+              console.warn(`Could not fetch Vendor_service_availability: ${svcErr}`);
+            }
+
+            // Fetch pending jobs count and merge service availability for all vendors
             const vendorsWithPendingJobs = await Promise.all(
               vendors.results.map(async (vendor) => {
                 let pendingJobsCount = 0;
                 try {
-                  // Try to get pending jobs count by vendor_id first
                   if (vendor.vendor_id) {
                     const pendingJobsResult = await env.DB.prepare(`
                       SELECT job_count FROM vendor_pending_jobs_track 
@@ -1628,8 +1645,6 @@ export default {
                       pendingJobsCount = pendingJobsResult.job_count || 0;
                     }
                   }
-                  
-                  // If not found by vendor_id, try by vendor_email
                   if (pendingJobsCount === 0 && vendor.email) {
                     const pendingJobsResult = await env.DB.prepare(`
                       SELECT job_count FROM vendor_pending_jobs_track 
@@ -1641,14 +1656,22 @@ export default {
                     }
                   }
                 } catch (err) {
-                  // If table doesn't exist or query fails, default to 0
                   console.warn(`Could not fetch pending jobs for vendor ${vendor.vendor_id || vendor.email}: ${err}`);
                   pendingJobsCount = 0;
                 }
-                
+
+                const vendorEmail = (vendor.email || '').trim().toLowerCase();
+                // No Vendor_service_availability row = all services NOT available (only 1 = available)
+                let serviceAvailability = serviceAvailabilityMap[vendorEmail];
+                if (!serviceAvailability) {
+                  serviceAvailability = { ...SERVICE_TEXT_DEFAULTS };
+                  SERVICE_FLAG_KEYS.forEach((k) => { serviceAvailability[k] = false; });
+                }
+
                 return {
                   ...vendor,
-                  pending_jobs_count: pendingJobsCount
+                  pending_jobs_count: pendingJobsCount,
+                  service_availability: { service_data: serviceAvailability }
                 };
               })
             );
