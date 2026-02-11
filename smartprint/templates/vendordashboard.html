@@ -6,6 +6,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PrintMax Print Shop Dashboard - Manage print jobs efficiently">
+    <script>
+        // Reduce console noise: keep only warn/error/debug (no functional changes).
+        (function () {
+            try {
+                if (window.__printmaxConsoleFilterInstalled) return;
+                window.__printmaxConsoleFilterInstalled = true;
+
+                if (!window.console) return;
+
+                const original = {
+                    debug: (console.debug || console.log).bind(console),
+                    warn: (console.warn || console.log).bind(console),
+                    error: (console.error || console.log).bind(console),
+                };
+
+                function routeToLevel(args) {
+                    const first = args && args.length ? args[0] : '';
+                    const msg = typeof first === 'string' ? first : '';
+                    const lower = msg.toLowerCase();
+
+                    if (msg.includes('❌') || lower.includes('error') || lower.includes('failed')) return 'error';
+                    if (msg.includes('⚠️') || lower.includes('warning')) return 'warn';
+                    return 'debug';
+                }
+
+                console.log = (...args) => original[routeToLevel(args)](...args);
+                console.info = (...args) => original[routeToLevel(args)](...args);
+                console.table = (...args) => original[routeToLevel(args)](...args);
+                console.dir = (...args) => original[routeToLevel(args)](...args);
+                console.trace = (...args) => original[routeToLevel(args)](...args);
+            } catch (_) {
+                // Never block app behavior if console filtering fails.
+            }
+        })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         if (window.pdfjsLib) {
@@ -5452,9 +5487,8 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     }
-                }).catch(err => {
+                }).catch(() => {
                     // Silent fail - snapshot is not critical
-                    console.log('Snapshot request failed (non-critical):', err);
                 });
             } catch (e) {
                 // Silent fail
@@ -5528,7 +5562,6 @@
             // Ensure availability status is saved after page loads
             setTimeout(async () => {
                 if (vendorAvailability) {
-                    console.log('🔍 DEBUG - Ensuring availability status is saved on page load:', vendorAvailability);
                     await saveAvailabilityStatus(vendorAvailability);
                 }
             }, 3000);
@@ -5537,13 +5570,6 @@
             setTimeout(() => {
                 const toggleBtn = document.getElementById('availabilityToggle');
                 const icon = toggleBtn?.querySelector('i');
-                console.log('Availability toggle debug:', {
-                    vendorAvailability,
-                    toggleBtn: !!toggleBtn,
-                    icon: !!icon,
-                    iconClass: icon?.className,
-                    iconVisible: icon?.offsetWidth > 0
-                });
             }, 1000);
         });
 
@@ -6370,23 +6396,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    console.log('🔍 Profile Image URL Test:', JSON.stringify({
-                        url: data.profile_image_url,
-                        is_accessible: data.is_accessible,
-                        status_code: data.status_code,
-                        error_message: data.error_message,
-                        file_exists_in_r2: data.file_exists_in_r2,
-                        extracted_key: data.extracted_key
-                    }, null, 2));
-
                     if (data.profile_image_url && !data.is_accessible) {
                         showToast('Warning: Profile image URL is not accessible');
-                        console.log('❌ Profile image URL is not accessible:', data.profile_image_url);
-
                         // Also test R2 URL generation
                         const r2Response = await fetch('/test-r2-url-generation/');
                         const r2Data = await r2Response.json();
-                        console.log('🔍 R2 URL Generation Test:', JSON.stringify(r2Data, null, 2));
                     }
                 }
             } catch (error) {
@@ -6508,7 +6522,6 @@
 
                     // If availability status is not in the data, save it automatically
                     if (!data.data.vendor_shop_avaliability) {
-                        console.log('🔍 DEBUG - Availability status not found in data, saving automatically...');
                         await saveAvailabilityStatus(vendorAvailability);
                     }
                 } else {
@@ -6545,7 +6558,6 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    console.log('✅ DEBUG - Availability status saved successfully:', status);
                 } else {
                     console.error('❌ DEBUG - Failed to save availability status:', data.error);
                 }
@@ -6882,9 +6894,6 @@
                 completed: completedCount
             });
 
-            // Double-check: Log for debugging
-            console.log(`📊 Pending count update: ${pendingCount} pending, ${completedCount} completed`);
-
             renderJobs('pending', pendingJobs);
 
             // Render completed jobs quickly
@@ -6896,7 +6905,6 @@
                 const manualStatEl = document.getElementById('manualStatCount');
                 if (manualStatEl && pendingCount !== parseInt(manualStatEl.textContent)) {
                     manualStatEl.textContent = pendingCount;
-                    console.log(`🔧 Fixed pending count: ${pendingCount}`);
                 }
             }, 100);
         }
@@ -6934,7 +6942,6 @@
             // CRITICAL: Always set pending count - this is the main fix
             if (manualStatEl) {
                 manualStatEl.textContent = totalPending;
-                console.log(`✅ Updated pending print requests count to: ${totalPending}`);
             }
             if (completedStatEl) completedStatEl.textContent = actualCompletedCount;
             // Earnings placeholder (sum not computed yet) => keep as ₹0
@@ -7296,7 +7303,6 @@
                         const currentEarnings = parseFloat(currentEarningsText.replace('₹', '').replace(/,/g, '')) || 0;
                         const newEarnings = currentEarnings + vendorPayment;
                         earningsCard.textContent = `₹${newEarnings.toFixed(2)}`;
-                        console.log(`💰 Updated earnings: ₹${currentEarnings.toFixed(2)} + ₹${vendorPayment.toFixed(2)} = ₹${newEarnings.toFixed(2)}`);
                     }
                 }
 
@@ -7504,14 +7510,12 @@
                             return parseFloat(pricingDetails.total);
                         }
                     } catch (e) {
-                        console.log('Error parsing pricing_details:', e);
                     }
                 }
 
                 // Default to 0 if no price found
                 return 0;
             } catch (e) {
-                console.log('Error extracting job price:', e);
                 return 0;
             }
         }
@@ -7551,7 +7555,6 @@
                             platformProfit = parseFloat(pricingDetails.platform_profit);
                         }
                     } catch (e) {
-                        console.log('Error parsing pricing_details for vendor payment:', e);
                     }
                 }
 
@@ -7559,7 +7562,6 @@
                 const vendorPayment = Math.max(0, totalPrice - platformProfit);
                 return vendorPayment;
             } catch (e) {
-                console.log('Error calculating vendor payment:', e);
                 return 0;
             }
         }
@@ -7918,9 +7920,7 @@
             modal.dataset.jobData = JSON.stringify(jobData);
 
             // Show modal
-            console.log('Showing print info modal for:', filename);
             modal.classList.add('show');
-            console.log('Modal classes after show:', modal.className);
         }
 
         function closePrintInfoModal() {
@@ -7928,13 +7928,11 @@
         }
 
         function loadPrintInfoPreview(url, filename) {
-            console.log('loadPrintInfoPreview called with:', { url, filename });
             const frame = document.getElementById('printInfoPreviewFrame');
             const image = document.getElementById('printInfoPreviewImage');
             const canvas = document.getElementById('printInfoPreviewCanvas');
             const ext = filename.split('.').pop().toLowerCase();
 
-            console.log('Preview elements found:', { frame: !!frame, image: !!image, canvas: !!canvas, ext });
 
             // Reset any previous content
             frame.src = 'about:blank';
@@ -7957,7 +7955,6 @@
                             await ensurePdfJsLoaded();
                             await renderPdfToCanvas(pdfUrl, canvas);
                         } catch (e) {
-                            console.log('PDF.js failed, trying iframe fallback:', e);
                             // Fallback 1: iframe
                             canvas.style.display = 'none';
                             frame.style.display = 'block';
@@ -7966,14 +7963,12 @@
                             frame.style.border = 'none';
                             frame.src = pdfUrl;
                             frame.onerror = () => {
-                                console.log('Direct iframe failed, trying Google Docs viewer');
                                 // Fallback 2: Google Docs viewer
                                 frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
                             };
                         }
                     })();
                 } else {
-                    console.log('Canvas not available, using iframe fallback');
                     // If canvas not available, fallback to iframe with Google Docs viewer fallback
                     frame.style.display = 'block';
                     frame.style.width = '100%';
@@ -7982,7 +7977,6 @@
                     const directUrl = url || '';
                     frame.src = directUrl;
                     frame.onerror = () => {
-                        console.log('Direct iframe failed, trying Google Docs viewer');
                         frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(directUrl)}&embedded=true`;
                     };
                 }
@@ -8019,7 +8013,6 @@
 
         // Render first page of a PDF into a canvas element
         async function renderPdfToCanvas(pdfUrl, canvas) {
-            console.log('Rendering PDF to canvas:', pdfUrl);
             try {
                 const pdf = await window.pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise;
                 const page = await pdf.getPage(1);
@@ -8033,11 +8026,7 @@
                 canvas.style.height = 'auto';
                 canvas.style.maxHeight = '400px';
                 canvas.style.objectFit = 'contain';
-
-                console.log('Canvas dimensions set:', { width: canvas.width, height: canvas.height });
-
                 await page.render({ canvasContext: context, viewport }).promise;
-                console.log('PDF rendered successfully to canvas');
             } catch (error) {
                 console.error('Error rendering PDF to canvas:', error);
                 throw error;
@@ -8802,8 +8791,6 @@
 
                 enforceOfflineWhenServicesDisabled(serviceAvailability);
 
-                console.log('🔍 DEBUG - Sending service availability:', serviceAvailability);
-
                 // Send to backend
                 const response = await fetch('/update-vendor-service-availability/', {
                     method: 'POST',
@@ -8814,9 +8801,7 @@
                     body: JSON.stringify(serviceAvailability)
                 });
 
-                console.log('🔍 DEBUG - Response status:', response.status);
                 const data = await response.json();
-                console.log('🔍 DEBUG - Response data:', data);
 
                 if (data.success) {
                     showToast(`${formatServiceType(serviceKey)} ${isEnabled ? 'enabled' : 'disabled'}`);
