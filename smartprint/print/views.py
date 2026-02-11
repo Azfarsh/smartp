@@ -331,7 +331,7 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.debug('[firebase-messaging-sw.js] Received background message', payload);
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
   // Default to PrintMax colored logo (shows like Ola/Rapido style icons)
@@ -358,7 +358,7 @@ messaging.onBackgroundMessage(function(payload) {
 
 // Handle notification clicks
 self.addEventListener('notificationclick', function(event) {
-  console.log('[firebase-messaging-sw.js] Notification click received.');
+  console.debug('[firebase-messaging-sw.js] Notification click received.');
   
   event.notification.close();
 
@@ -5100,12 +5100,49 @@ def sign_in(request):
 # ─────────────────────────────────────────────────────────────
 # Razorpay: Create Order
 # ─────────────────────────────────────────────────────────────
+def _ensure_pkg_resources_available_for_razorpay():
+    """
+    Razorpay Python SDK (razorpay==1.4.2) hard-depends on `pkg_resources`
+    (from setuptools). Some environments (minimal installs / certain packagers)
+    omit it and crash on import.
+
+    This function preserves existing behavior when `pkg_resources` exists,
+    and provides a tiny compatibility shim when it doesn't, using
+    `importlib.metadata` for the version lookup Razorpay uses.
+    """
+    try:
+        import pkg_resources  # noqa: F401
+        return
+    except ModuleNotFoundError:
+        pass
+
+    import sys
+    import types
+    from importlib import metadata as importlib_metadata
+
+    class DistributionNotFound(Exception):
+        """Compat: mirrors pkg_resources.DistributionNotFound"""
+
+    def require(dist_name: str):
+        try:
+            version = importlib_metadata.version(dist_name)
+        except importlib_metadata.PackageNotFoundError as e:
+            raise DistributionNotFound(str(e))
+        # Razorpay accesses: pkg_resources.require("razorpay")[0].version
+        return [types.SimpleNamespace(version=version)]
+
+    shim = types.ModuleType("pkg_resources")
+    shim.DistributionNotFound = DistributionNotFound
+    shim.require = require
+    sys.modules["pkg_resources"] = shim
+
 @csrf_exempt
 def create_razorpay_order(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     try:
+        _ensure_pkg_resources_available_for_razorpay()
         # Lazy import so that deploys/admin startup don't fail
         # if Razorpay or its transitive dependencies are missing.
         import razorpay
@@ -5804,6 +5841,7 @@ def verify_razorpay_payment(request):
                 refund_id = None
                 if payment_id:  # Only attempt refund if payment was made
                     try:
+                        _ensure_pkg_resources_available_for_razorpay()
                         # Lazy import to avoid startup-time failures if Razorpay
                         # isn't available; this code path only runs after payment.
                         import razorpay

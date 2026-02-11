@@ -6,6 +6,41 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PrintMax - Login</title>
+  <script>
+    // Reduce console noise: keep only warn/error/debug (no functional changes).
+    (function () {
+      try {
+        if (window.__printmaxConsoleFilterInstalled) return;
+        window.__printmaxConsoleFilterInstalled = true;
+
+        if (!window.console) return;
+
+        const original = {
+          debug: (console.debug || console.log).bind(console),
+          warn: (console.warn || console.log).bind(console),
+          error: (console.error || console.log).bind(console),
+        };
+
+        function routeToLevel(args) {
+          const first = args && args.length ? args[0] : '';
+          const msg = typeof first === 'string' ? first : '';
+          const lower = msg.toLowerCase();
+
+          if (msg.includes('❌') || lower.includes('error') || lower.includes('failed')) return 'error';
+          if (msg.includes('⚠️') || lower.includes('warning')) return 'warn';
+          return 'debug';
+        }
+
+        console.log = (...args) => original[routeToLevel(args)](...args);
+        console.info = (...args) => original[routeToLevel(args)](...args);
+        console.table = (...args) => original[routeToLevel(args)](...args);
+        console.dir = (...args) => original[routeToLevel(args)](...args);
+        console.trace = (...args) => original[routeToLevel(args)](...args);
+      } catch (_) {
+        // Never block app behavior if console filtering fails.
+      }
+    })();
+  </script>
   
   <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">

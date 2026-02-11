@@ -707,7 +707,7 @@ export default {
           }
         } catch (checkError) {
           // If check fails, continue anyway (table might not exist yet or schema issue)
-          console.log(`Warning: Could not check for duplicate email: ${String(checkError)}`);
+          console.warn(`Warning: Could not check for duplicate email: ${String(checkError)}`);
         }
 
         // NOTE: Check the actual table schema first (same pattern as contact page)
@@ -1555,7 +1555,7 @@ export default {
             }
           } catch (listErr) {
             // If listing fails, try common variations
-            console.log(`Could not list tables: ${String(listErr)}`);
+            console.warn(`Could not list tables: ${String(listErr)}`);
           }
 
           // Try different table name variations
@@ -1580,7 +1580,7 @@ export default {
               vendors = await env.DB.prepare(query).all();
               
               if (vendors && vendors.results && vendors.results.length > 0) {
-                console.log(`✅ Successfully fetched vendors from table: ${table}`);
+                console.debug(`✅ Successfully fetched vendors from table: ${table}`);
                 break;
               }
             } catch (err) {
@@ -1601,7 +1601,7 @@ export default {
                 vendors = await env.DB.prepare(query).all();
                 
                 if (vendors && vendors.results && vendors.results.length > 0) {
-                  console.log(`✅ Successfully fetched vendors from table: ${table} (no status filter)`);
+                  console.debug(`✅ Successfully fetched vendors from table: ${table} (no status filter)`);
                   break;
                 }
               } catch (err) {
@@ -1642,7 +1642,7 @@ export default {
                   }
                 } catch (err) {
                   // If table doesn't exist or query fails, default to 0
-                  console.log(`Could not fetch pending jobs for vendor ${vendor.vendor_id || vendor.email}: ${err}`);
+                  console.warn(`Could not fetch pending jobs for vendor ${vendor.vendor_id || vendor.email}: ${err}`);
                   pendingJobsCount = 0;
                 }
                 
@@ -2337,7 +2337,7 @@ export default {
           const expected_path = `${storage_folder}/${vendor_id}/${filename}`;
           if (!r2_path || !r2_path.startsWith(`${storage_folder}/${vendor_id}/`)) {
             r2_path = expected_path;
-            console.log(`📦 Reconstructed R2 path for ${service_type}: ${r2_path}`);
+            console.debug(`📦 Reconstructed R2 path for ${service_type}: ${r2_path}`);
           }
         } else if (storage_folder && vendor_id && filename && !r2_path) {
           // Fallback: construct r2_path if not provided
@@ -2786,12 +2786,12 @@ export default {
           `).all();
 
           if (!tableCheck1 || tableCheck1.length === 0) {
-            console.log("⚠️ User_notifications table not found");
+            console.warn("⚠️ User_notifications table not found");
             return json({ success: true, data: [] }, 200, corsHeaders);
           }
 
           const tableName = tableCheck1[0].name; // Use actual table name from database
-          console.log(`✅ Found table: ${tableName}`);
+          console.debug(`✅ Found table: ${tableName}`);
 
           const conditions = [];
           const params = [];
@@ -2825,7 +2825,7 @@ export default {
               id DESC
           `;
 
-          console.log(`🔍 Executing query: ${query.substring(0, 200)}...`);
+          console.debug(`🔍 Executing query: ${query.substring(0, 200)}...`);
           const statement = env.DB.prepare(query);
           let result;
           if (params.length > 0) {
@@ -2835,7 +2835,7 @@ export default {
           }
           const { results } = result || {};
 
-          console.log(`✅ Retrieved ${(results || []).length} user notifications`);
+          console.debug(`✅ Retrieved ${(results || []).length} user notifications`);
           return json({ success: true, data: results || [] }, 200, corsHeaders);
         } catch (dbError) {
           console.error("❌ Error in /get-all-user-notifications:", dbError);
@@ -2898,12 +2898,12 @@ export default {
           `).all();
 
           if (!tableCheck1 || tableCheck1.length === 0) {
-            console.log("⚠️ vendor_notification table not found");
+            console.warn("⚠️ vendor_notification table not found");
             return json({ success: true, data: [] }, 200, corsHeaders);
           }
 
           const tableName = tableCheck1[0].name; // Use actual table name from database
-          console.log(`✅ Found table: ${tableName}`);
+          console.debug(`✅ Found table: ${tableName}`);
 
           const conditions = [];
           const params = [];
@@ -2939,7 +2939,7 @@ export default {
             ORDER BY completion_time DESC, timestamp DESC
           `;
 
-          console.log(`🔍 Executing query: ${query.substring(0, 200)}...`);
+          console.debug(`🔍 Executing query: ${query.substring(0, 200)}...`);
           const statement = env.DB.prepare(query);
           let result;
           if (params.length > 0) {
@@ -2949,7 +2949,7 @@ export default {
           }
           const { results } = result || {};
 
-          console.log(`✅ Retrieved ${(results || []).length} vendor notifications`);
+          console.debug(`✅ Retrieved ${(results || []).length} vendor notifications`);
           return json({ success: true, data: results || [] }, 200, corsHeaders);
         } catch (dbError) {
           console.error("❌ Error in /get-all-vendor-jobs:", dbError);
@@ -3521,7 +3521,7 @@ export default {
             if (!updateSuccess) {
               console.warn(`⚠️ Failed to update Vendor_print_jobs after all attempts. Attempts: ${updateAttempts.join('; ')}`);
             } else {
-              console.log(`✅ Successfully updated Vendor_print_jobs. Attempts: ${updateAttempts.join('; ')}`);
+              console.debug(`✅ Successfully updated Vendor_print_jobs. Attempts: ${updateAttempts.join('; ')}`);
             }
 
             // Only perform token freeing and transaction updates if job data was found
@@ -3730,8 +3730,8 @@ export default {
         `;
         
         // Debug logging
-        console.log(`🔍 get-vendor-print-jobs: vendor_id=${vendor_id}, vendor_email=${vendor_email}, job_completed=${job_completed}`);
-        console.log(`🔍 get-vendor-print-jobs: whereClause=${whereClause}, params=${JSON.stringify(params)}`);
+        console.debug(`🔍 get-vendor-print-jobs: vendor_id=${vendor_id}, vendor_email=${vendor_email}, job_completed=${job_completed}`);
+        console.debug(`🔍 get-vendor-print-jobs: whereClause=${whereClause}, params=${JSON.stringify(params)}`);
 
         let orderClause = "ORDER BY rowid DESC";
 
@@ -3767,9 +3767,9 @@ export default {
           const statement = env.DB.prepare(query);
           const { results: allResults } = await statement.bind(...params).all();
           
-          console.log(`🔍 get-vendor-print-jobs: Query returned ${(allResults || []).length} total jobs`);
+          console.debug(`🔍 get-vendor-print-jobs: Query returned ${(allResults || []).length} total jobs`);
           if (allResults && allResults.length > 0) {
-            console.log(`📋 All jobs from query: ${allResults.map(j => `${j.filename || 'N/A'} (vendor_id=${j.vendor_id || 'N/A'}, vendor_email=${j.vendor_email || 'N/A'}, service_type=${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
+            console.debug(`📋 All jobs from query: ${allResults.map(j => `${j.filename || 'N/A'} (vendor_id=${j.vendor_id || 'N/A'}, vendor_email=${j.vendor_email || 'N/A'}, service_type=${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
           }
           
           // Filter by job_completed status (same approach as user dashboard)
@@ -3790,7 +3790,7 @@ export default {
               if (requestedStatus === 'NO') {
                 const matches = jobCompleted === 'NO' || jobCompleted === '' || !job.job_completed || job.job_completed === null;
                 if (!matches) {
-                  console.log(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected NO)`);
+                  console.warn(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected NO)`);
                 }
                 return matches;
               }
@@ -3798,7 +3798,7 @@ export default {
               // For other statuses, do exact match
               const matches = jobCompleted === requestedStatus;
               if (!matches) {
-                console.log(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected ${requestedStatus})`);
+                console.warn(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected ${requestedStatus})`);
               }
               return matches;
             }
@@ -3807,11 +3807,11 @@ export default {
             return true;
           });
           
-          console.log(`✅ get-vendor-print-jobs: Returning ${filteredResults.length} jobs after job_completed filter (requested: ${job_completed || 'ALL'}, total from DB: ${(allResults || []).length})`);
+          console.debug(`✅ get-vendor-print-jobs: Returning ${filteredResults.length} jobs after job_completed filter (requested: ${job_completed || 'ALL'}, total from DB: ${(allResults || []).length})`);
           if (filteredResults.length > 0) {
-            console.log(`📋 Filtered jobs: ${filteredResults.map(j => `${j.filename || 'N/A'} (${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
+            console.debug(`📋 Filtered jobs: ${filteredResults.map(j => `${j.filename || 'N/A'} (${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
           } else if ((allResults || []).length > 0) {
-            console.log(`⚠️ WARNING: ${(allResults || []).length} jobs found in DB but 0 jobs match filter job_completed=${job_completed}`);
+            console.warn(`⚠️ WARNING: ${(allResults || []).length} jobs found in DB but 0 jobs match filter job_completed=${job_completed}`);
           }
           return json({ success: true, data: filteredResults }, 200, corsHeaders);
         } catch (dbError) {
@@ -3958,7 +3958,7 @@ export default {
           query += ` ORDER BY period_start DESC, created_at DESC`;
 
           const { results } = await env.DB.prepare(query).bind(...params).all();
-          console.log(`✅ Retrieved ${(results || []).length} non-completed vendor transactions`);
+          console.debug(`✅ Retrieved ${(results || []).length} non-completed vendor transactions`);
           return json({ success: true, transactions: results || [] }, 200, corsHeaders);
         } catch (dbError) {
           console.error("Error in /get-vendor-transactions:", dbError);
@@ -4079,14 +4079,14 @@ export default {
             
             // Must be exactly 1 day apart (2-day bucket: start to start+1)
             if (daysDiff !== 1) {
-              console.log(`⚠️ Invalid period span: ${daysDiff} days. Recalculating for date: ${completionDateStr || 'current'}`);
+              console.warn(`⚠️ Invalid period span: ${daysDiff} days. Recalculating for date: ${completionDateStr || 'current'}`);
               return null; // Will recalculate below
             }
             
             // Check if start day is odd (required for 2-day buckets: 1-2, 3-4, 5-6, etc.)
             const startDay = startDate.getDate();
             if (startDay % 2 !== 1) {
-              console.log(`⚠️ Period start day ${startDay} is not odd. Recalculating for proper 2-day bucket.`);
+              console.warn(`⚠️ Period start day ${startDay} is not odd. Recalculating for proper 2-day bucket.`);
               return null; // Will recalculate below
             }
             
@@ -4099,7 +4099,7 @@ export default {
                 // Last day of month - this is valid
                 return { start: startStr, end: endStr };
               }
-              console.log(`⚠️ Period end day ${endDay} is not start day + 1. Recalculating.`);
+              console.warn(`⚠️ Period end day ${endDay} is not start day + 1. Recalculating.`);
               return null;
             }
             
@@ -4123,7 +4123,7 @@ export default {
               periodEnd = validated.end;
             } else {
               // Invalid period provided, recalculate
-              console.log(`⚠️ Provided period ${body.period_start} to ${body.period_end} is invalid. Recalculating.`);
+              console.warn(`⚠️ Provided period ${body.period_start} to ${body.period_end} is invalid. Recalculating.`);
               const date = new Date(body.current_date || currentDate);
               const day = date.getDate();
               
@@ -4149,7 +4149,7 @@ export default {
               
               periodStart = startDate.toISOString().split('T')[0];
               periodEnd = endDate.toISOString().split('T')[0];
-              console.log(`✅ Recalculated period: ${periodStart} to ${periodEnd}`);
+              console.debug(`✅ Recalculated period: ${periodStart} to ${periodEnd}`);
             }
           } else {
             // Calculate 2-day period: 1-2, 3-4, ..., 27-28, 29-30, 31 (if applicable)
@@ -4737,7 +4737,7 @@ export default {
                 `).run();
               } catch (e) {
                 // Ignore if index creation fails
-                console.log(`Note: Could not create unique index on vendor_email: ${e}`);
+                console.debug(`Note: Could not create unique index on vendor_email: ${e}`);
               }
             }
           }
