@@ -2939,9 +2939,11 @@
             return cookieValue;
         }
 
-                 // Function to handle enabling/disabling price inputs
+         // Function to handle enabling/disabling price inputs
          function toggleServiceInput(checkbox, inputId) {
              const input = document.getElementById(inputId);
+             if (!input) return;
+
              if (checkbox.checked) {
                  input.disabled = false;
                  input.required = true;
@@ -2949,6 +2951,7 @@
                  input.style.background = 'white';
                  input.style.color = 'var(--text-primary)';
              } else {
+                 // Only disable/reset when the vendor explicitly turns the service off.
                  input.disabled = true;
                  input.value = '';
                  input.required = false;
@@ -2961,18 +2964,28 @@
          // Function to auto-tick checkbox when user enters a value
          function autoTick(input) {
              const checkbox = input.parentElement.parentElement.parentElement.querySelector('input[type="checkbox"]');
-             if (input.value && input.value > 0) {
+             if (!checkbox) return;
+
+             const value = (input.value || '').trim();
+
+             // When a positive value is entered, automatically enable the service.
+             if (value !== '' && Number(value) > 0) {
                  checkbox.checked = true;
                  input.disabled = false;
                  input.required = true;
                  input.style.background = 'white';
                  input.style.color = 'var(--text-primary)';
-             } else if (input.value === '' || input.value == 0) {
-                 checkbox.checked = false;
-                 input.disabled = true;
-                 input.required = false;
-                 input.style.background = 'var(--bg-tertiary)';
-                 input.style.color = 'var(--text-muted)';
+                 return;
+             }
+
+             // When the value is cleared while the service is enabled, keep the checkbox ON
+             // so the vendor can type a new price without the enable switch turning off.
+             // Validation on submit will ensure enabled services cannot be left empty.
+             if (checkbox.checked) {
+                 input.disabled = false;
+                 input.required = true;
+                 input.style.background = 'white';
+                 input.style.color = 'var(--text-primary)';
              }
          }
 

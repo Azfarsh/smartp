@@ -4437,7 +4437,7 @@
 
     #orderSummaryModal .modal-footer .btn-cancel {
       background: #e5e7eb;
-      color: #374151;
+      color: #000000;
       border: 1px solid #cfd3da;
     }
 
@@ -4548,7 +4548,7 @@
       }
 
       #orderSummaryModal .bill-subtitle {
-        font-size: 0.7rem;
+        font-size: 0.9rem;
       }
 
       #orderSummaryModal .bill-date {
@@ -4786,7 +4786,7 @@
       #orderSummaryModal .shop-name-row .shop-label {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #4b5563;
+        color: #2f353b ;
         white-space: nowrap;
         margin: 0;
         padding: 0;
@@ -4865,7 +4865,7 @@
       #orderSummaryModal .shop-address-row .shop-label {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #4b5563;
+        color: #2f353b;
         white-space: nowrap;
         margin: 0;
         padding: 0;
@@ -5073,7 +5073,7 @@
       }
 
       #orderSummaryModal .bill-subtitle {
-        font-size: 0.65rem;
+        font-size: 0.8rem;
       }
 
       #orderSummaryModal .bill-date {
@@ -5097,7 +5097,7 @@
       }
 
       #orderSummaryModal .service-info h4 {
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         margin-bottom: 0.375rem;
       }
 
@@ -5142,7 +5142,7 @@
         flex: 1;
         min-width: 0;
         text-align: left;
-        color: #6b7280;
+        color: #2f353b;
         font-weight: 500;
       }
 
@@ -5290,39 +5290,40 @@
       display: none;
     }
 
-    /* Fix: ensure Document Print modal actions are fixed at bottom and only visible after file upload */
-    #printModal .modal-footer.fixed-bottom-buttons {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--surface);
-      border-top: 1px solid var(--outline-variant);
-      padding: 1rem;
-      display: none;
-      /* Hidden by default - only show after file upload */
-      gap: 0.75rem;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 1000;
-      min-height: 60px;
-      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Show buttons when files are uploaded (no scroll requirement) */
-    #printModal .modal-footer.fixed-bottom-buttons.show {
-      display: flex !important;
+    /* Document Print modal: match Jumbo/Order Summary layout - footer outside body, always visible at bottom */
+    #printModal .service-modal {
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
     }
 
     #printModal .modal-body {
-      padding-bottom: 80px;
-      /* Space for fixed buttons */
-      max-height: calc(100vh - 200px);
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 0.15rem;
+      -webkit-overflow-scrolling: touch;
     }
 
-    #printModal .modal-footer .btn-cancel,
-    #printModal .modal-footer .btn-submit {
+    /* Action buttons - inside modal-body flow (scroll to bottom to see, like jumbo print modal) */
+    #printModal .print-modal-action-buttons {
+      display: none;
+      gap: 0.75rem;
+      margin-top: 0.15rem;
+      padding-top: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #printModal .print-modal-action-buttons.show {
+      display: flex !important;
+    }
+
+    #printModal .print-modal-action-buttons .btn-cancel,
+    #printModal .print-modal-action-buttons .btn-submit {
       flex: 1;
       min-height: 44px;
       font-weight: 600;
@@ -5337,89 +5338,41 @@
       font-size: 0.9rem;
     }
 
-    #printModal .modal-footer .btn-cancel {
+    #printModal .print-modal-action-buttons .btn-cancel {
       background: #e5e7eb;
       color: #374151;
       border: 1px solid #cfd3da;
     }
 
-    #printModal .modal-footer .btn-submit {
+    #printModal .print-modal-action-buttons .btn-submit {
       background: #3b82f6;
       color: white;
       border: none;
     }
 
-    #printModal .modal-footer .btn-cancel:hover,
-    #printModal .modal-footer .btn-submit:hover {
+    #printModal .print-modal-action-buttons .btn-cancel:hover,
+    #printModal .print-modal-action-buttons .btn-submit:hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
-    /* Keep modal body scroll smooth and prevent scrollbar vibration at bottom */
-    #printModal .modal {
-      position: relative;
-      padding-bottom: 0;
-    }
-
-    #printModal .modal .modal-body {
-      overflow-y: auto;
-      scrollbar-gutter: stable both-edges;
-    }
-
-    /* Mobile: stack action buttons for better visibility */
+    /* Mobile: stack action buttons - in flow at bottom like Jumbo modal */
     @media (max-width: 480px) {
-      #printModal .modal-footer.fixed-bottom-buttons {
+      #printModal .print-modal-action-buttons {
         flex-direction: column;
         align-items: stretch;
-        position: fixed !important;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: white;
-        border-top: 2px solid #e5e7eb;
-        padding: 0.75rem;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        display: none;
-        /* Hidden by default */
+        padding: 0.75rem 0;
       }
 
-      #printModal .modal-footer.fixed-bottom-buttons.show {
-        display: flex !important;
-      }
-
-      #printModal .modal-footer .btn-cancel,
-      #printModal .modal-footer .btn-submit {
+      #printModal .print-modal-action-buttons .btn-cancel,
+      #printModal .print-modal-action-buttons .btn-submit {
         width: 100%;
         min-height: 44px;
         font-size: 14px;
-        font-weight: 600;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        transition: all 0.2s ease;
-        border: 1px solid #d1d5db;
-        padding: 0.75rem 1rem;
-      }
-
-      #printModal .modal-footer .btn-cancel {
-        background: #e5e7eb;
-        color: #374151;
-        border: 1px solid #cfd3da;
-      }
-
-      #printModal .modal-footer .btn-submit {
-        background: #3b82f6;
-        color: white;
-        border: none;
       }
 
       #printModal .modal-body {
-        padding-bottom: 120px;
-        /* Space for fixed buttons */
-        max-height: calc(100vh - 150px);
+        padding-bottom: 1rem;
       }
     }
 
@@ -6903,7 +6856,7 @@
       #orderSummaryModal .shop-address-row .shop-label {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #4b5563;
+        color: #2f353b;
         white-space: nowrap;
         flex-shrink: 0;
         min-width: 100px;
@@ -7078,7 +7031,7 @@
     }
 
     .shop-label {
-      color: #6b7280;
+      color: #2f353b;
       font-weight: 500;
       font-size: 0.85rem;
       flex-shrink: 0;
@@ -9279,7 +9232,7 @@
               </div>
               <div class="service-info">
                 <div class="service-name">Golden Embossing Black Book</div>
-                <div class="service-description">Premium black book with golden embossing for projects and theses</div>
+                <div class="service-description">Premium black book with golden embossing for projects and thesis</div>
                 <div class="service-price">Custom pricing</div>
               </div>
             </div>
@@ -18007,15 +17960,16 @@
           </div>
         </div>
         <div class="batch-preview-panel" id="batchPreviewPanel">
-          <div class="batch-preview-header">
-            <span>Batch Preview</span>
-            <span class="batch-preview-count" id="batchFileCount">0 files</span>
-          </div>
+          
           <div class="batch-preview-list" id="batchPreviewList">
             <div class="batch-preview-empty">Upload files to see a combined summary.</div>
           </div>
         </div>
 
+        <button class="upload-btn" id="addMoreBtn" style="display: none; width: 100%; margin-bottom: 1.5rem;">
+          <i class="fas fa-plus"></i>
+          Add files
+        </button>
         <!-- Image Preview -->
         <div class="image-preview-container" id="imagePreviewContainer">
           <div class="preview-title">
@@ -18042,10 +17996,7 @@
         </div>
 
         <!-- Add More Files Button -->
-        <button class="upload-btn" id="addMoreBtn" style="display: none; width: 100%; margin-bottom: 1.5rem;">
-          <i class="fas fa-plus"></i>
-          Add files
-        </button>
+        
 
         <!-- Print Settings -->
         <div class="print-settings" id="printSettings" style="display: none;">
@@ -18192,7 +18143,7 @@
           </div>
 
           <!-- Additional Options -->
-          <div class="settings-group">
+          <div class="settings-group" id="additionalOptionsSection">
             <label class="settings-label">Additional options</label>
             <p class="settings-subtitle">Extra services for your print job</p>
 
@@ -18202,7 +18153,7 @@
                 <label for="spiralBinding" class="option-label">
                   <i class="fas fa-ring"></i>
                   Spiral binding
-                  <span class="option-price">+₹20</span>
+                  <span class="option-price"></span>
                 </label>
               </div>
 
@@ -18211,7 +18162,7 @@
                 <label for="lamination" class="option-label">
                   <i class="fas fa-shield-alt"></i>
                   Lamination
-                  <span class="option-price">+₹15 per page</span>
+                  <span class="option-price"></span>
                 </label>
               </div>
 
@@ -18220,7 +18171,7 @@
                 <label for="tapeBinding" class="option-label">
                   <i class="fas fa-grip-lines"></i>
                   Tape binding
-                  <span class="option-price">+₹25</span>
+                  <span class="option-price"></span>
                 </label>
               </div>
             </div>
@@ -18285,11 +18236,8 @@
           </div>
         </div>
 
-
-
-
-        <!-- Action Buttons - Only shown after successful file upload -->
-        <div class="modal-footer fixed-bottom-buttons" id="actionButtons" style="display: none;">
+        <!-- Action Buttons - Inside modal-body flow (scroll to bottom to see, like jumbo print modal) -->
+        <div class="print-modal-action-buttons" id="actionButtons" style="display: none;">
           <button type="button" class="btn-cancel" id="cancelBtn">
             <i class="fas fa-times"></i>
             Cancel
@@ -19405,19 +19353,19 @@
 
       html += `
           <div class="invoice-item">
-            <span class="invoice-item-label">Pages</span>
+            <span class="invoice-item-label"><b>Pages</b></span>
             <span class="invoice-item-value">${pages}</span>
           </div>
           <div class="invoice-item">
-            <span class="invoice-item-label">Color</span>
+            <span class="invoice-item-label"><b>Color</b></span>
             <span class="invoice-item-value">${color}</span>
           </div>
           <div class="invoice-item">
-            <span class="invoice-item-label">Orientation</span>
+            <span class="invoice-item-label"><b>Orientation</b></span>
             <span class="invoice-item-value">${orientation}</span>
           </div>
           <div class="invoice-item">
-            <span class="invoice-item-label">Copies</span>
+            <span class="invoice-item-label"><b>Copies</b></span>
             <span class="invoice-item-value">${copies}</span>
           </div>
         `;
@@ -19913,7 +19861,7 @@
                       const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
                       const notificationOptions = {
                         body: payload.notification?.body || payload.data?.message || 'You have a new notification',
-                        icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
+                        icon: payload.notification?.icon || payload.data?.icon || '/static/images/printmaxdaylogo.png',
                         badge: '/static/images/android-chrome-192x192.png',
                         tag: payload.data?.notification_id || 'printmax-notification',
                         requireInteraction: true,
@@ -20723,20 +20671,17 @@
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
 
-      // Filter shops by service availability for document printing (regular_print)
+      // Filter shops by service availability - only 1/true = available
       shopsWithDistance = shopsWithDistance.filter(shop => {
-        // If shop has service_availability data, check it
+        const isAvailable = (val) => val === true || val === 1 || val === '1' || val === 'true';
         if (shop.service_availability && typeof shop.service_availability === 'object') {
           const serviceData = shop.service_availability.service_data || shop.service_availability;
-          // Check if regular_print is available (default to true if not specified)
-          return serviceData.regular_print !== false && serviceData.regular_print !== 0;
+          return isAvailable(serviceData.regular_print);
         }
-        // If shop has direct service availability fields, check them
         if (shop.regular_print !== undefined) {
-          return shop.regular_print !== false && shop.regular_print !== 0;
+          return isAvailable(shop.regular_print);
         }
-        // Default to true (show shop) if service availability data is not available
-        return true;
+        return false;
       });
 
       // Filter shops based on search text
@@ -21625,34 +21570,33 @@
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
 
-      // Map service names to service availability field names
+      // Map service names to Vendor_service_availability field names
       const serviceAvailabilityMap = {
         'print': 'regular_print',
-        'orderSummary': 'regular_print', // Order summary modal uses regular_print service
+        'orderSummary': 'regular_print',
         'digital': 'digital_print',
         'gloss': 'gloss_printing',
         'jumbo': 'jumbo_printing',
         'photo': 'photo_print',
         'passport': 'passport_print',
-        'goldenemboss': 'project_binding' // Assuming golden emboss uses project_binding
+        'passport_photo': 'passport_print',
+        'goldenemboss': 'project_binding',
+        'golden_embossing': 'project_binding'
       };
 
-      // Filter shops by service availability
+      // Filter shops by service availability - only 1/true = available
       const serviceAvailabilityField = serviceAvailabilityMap[service];
+      const isServiceAvailable = (val) => val === true || val === 1 || val === '1' || val === 'true';
       if (serviceAvailabilityField) {
         shopsWithDistance = shopsWithDistance.filter(shop => {
-          // If shop has service_availability data, check it
           if (shop.service_availability && typeof shop.service_availability === 'object') {
             const serviceData = shop.service_availability.service_data || shop.service_availability;
-            // Check if service is available (default to true if not specified)
-            return serviceData[serviceAvailabilityField] !== false && serviceData[serviceAvailabilityField] !== 0;
+            return isServiceAvailable(serviceData[serviceAvailabilityField]);
           }
-          // If shop has direct service availability fields, check them
           if (shop[serviceAvailabilityField] !== undefined) {
-            return shop[serviceAvailabilityField] !== false && shop[serviceAvailabilityField] !== 0;
+            return isServiceAvailable(shop[serviceAvailabilityField]);
           }
-          // Default to true (show shop) if service availability data is not available
-          return true;
+          return false;
         });
       }
 
@@ -23477,29 +23421,29 @@
 
       html += `
         <div class="invoice-item">
-          <span class="invoice-item-label">Pages</span>
+          <span class="invoice-item-label"><b>Pages</b></span>
           <span class="invoice-item-value">${pages}</span>
         </div>
         <div class="invoice-item">
-          <span class="invoice-item-label">Color</span>
+          <span class="invoice-item-label"><b>Color</b></span>
           <span class="invoice-item-value">${color}</span>
         </div>
         <div class="invoice-item">
-          <span class="invoice-item-label">Orientation</span>
+          <span class="invoice-item-label"><b>Orientation</b></span>
           <span class="invoice-item-value">${orientation}</span>
         </div>
         ${isMixColor ? `
         <div class="invoice-item">
-          <span class="invoice-item-label">B&W Pages</span>
+          <span class="invoice-item-label"><b>B&W Pages</b></span>
           <span class="invoice-item-value">${bwRangeDisplay}</span>
         </div>
         <div class="invoice-item">
-          <span class="invoice-item-label">Color Pages</span>
+          <span class="invoice-item-label"><b>Color Pages</b></span>
           <span class="invoice-item-value">${colorRangeDisplay}</span>
         </div>
         ` : ''}
         <div class="invoice-item">
-          <span class="invoice-item-label">Copies</span>
+          <span class="invoice-item-label"><b>Copies</b></span>
           <span class="invoice-item-value">${copies}</span>
         </div>
       `;
@@ -23933,6 +23877,18 @@
       ensureModalButtonsVisible();
       const body = printModal.querySelector('.modal-body');
       if (body) body.addEventListener('scroll', ensureModalButtonsVisible, { passive: true });
+
+      // For document print, scroll the modal body so that the "Additional options"
+      // section is visible by default, avoiding overlap with the action buttons.
+      const additionalOptionsSection = printModal.querySelector('#additionalOptionsSection');
+      if (body && additionalOptionsSection) {
+        try {
+          additionalOptionsSection.scrollIntoView({ behavior: 'auto', block: 'start' });
+        } catch (e) {
+          // Fallback for older browsers
+          body.scrollTop = additionalOptionsSection.offsetTop - body.offsetTop;
+        }
+      }
 
       // Show points section if price is already calculated and user has points
       const printModalEl = document.getElementById('printModal');
@@ -24658,21 +24614,7 @@
         const settings = fileSettings[fileObj.id] || defaultSettings;
         const colorLabel = settings.color === 'color' ? 'Color' : 'Black & White';
         return `
-          <div class="batch-preview-item">
-            <div class="batch-preview-info">
-              <div class="batch-preview-name" title="${fileObj.name}">${fileObj.name}</div>
-              <div class="batch-preview-meta">
-                <span><i class="fas fa-file-alt"></i>${fileObj.pages} pages</span>
-                <span><i class="fas fa-copy"></i>${settings.copies} copies</span>
-                <span><i class="fas fa-palette"></i>${colorLabel}</span>
-              </div>
-            </div>
-            <div class="batch-preview-actions">
-              <button class="batch-preview-btn" onclick="handleBatchPreviewClick(${index})">
-                View
-              </button>
-            </div>
-          </div>
+         
         `;
       }).join('');
     }
@@ -24741,7 +24683,8 @@
         }
       }
 
-      // Only show action buttons after successful file upload
+      // Show action buttons when files are uploaded (like jumbo print modal).
+      // Cancel/Print bar appears below the Additional options section.
       if (actionButtons) {
         if (hasFiles) {
           actionButtons.style.display = 'flex';
@@ -25493,22 +25436,19 @@
         }
       });
 
-      // Handle Document Print modal actions - show buttons when files are uploaded (no scroll requirement)
+      // Handle Document Print modal actions - show buttons when files are uploaded (like jumbo print modal)
       const printModal = document.getElementById('printModal');
       if (printModal && printModal.classList.contains('active')) {
         const body = printModal.querySelector('.modal-body');
         const actionButtons = document.getElementById('actionButtons');
 
         if (body && actionButtons) {
-          // Only show buttons if files are uploaded.
-          // `uploadedFiles` is maintained by the print modal logic; keep `window.uploadedFiles` as a fallback.
           const hasFiles =
             (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) ||
             (window.uploadedFiles && window.uploadedFiles.length > 0);
 
           if (hasFiles) {
             actionButtons.classList.add('show');
-            // Ensure inline style doesn't keep it hidden (some flows set style="display:none")
             actionButtons.style.display = 'flex';
           } else {
             actionButtons.classList.remove('show');
@@ -26398,10 +26338,13 @@
           // REMOVED: Order summary elements no longer exist in print modal
           // Order summary is now shown in separate orderSummaryModal when user clicks Print button
 
-          // Show action buttons after successful price calculation
+          // Show action buttons after successful price calculation.
+          // Visibility is also guarded by updateUI/ensureModalButtonsVisible so they
+          // remain hidden until pricing is available.
           const actionButtonsEl = document.getElementById('actionButtons');
           if (actionButtonsEl) {
             actionButtonsEl.style.display = 'flex';
+            actionButtonsEl.classList.add('show');
           }
 
           // Show points section after price calculation - always show it (like photoprint modal)
@@ -27170,15 +27113,15 @@
           // Show total pages, copies, and orientation summary for multiple documents
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Pages</span>
+              <span class="invoice-item-label"><b>Pages</b></span>
               <span class="invoice-item-value">${totalPagesSum}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Copies</span>
+              <span class="invoice-item-label"><b>Copies</b></span>
               <span class="invoice-item-value">${totalCopiesSum}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientationDisplayText}</span>
             </div>
           `;
@@ -27239,23 +27182,23 @@
           const printName = serviceName;
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Print Name</span>
+              <span class="invoice-item-label"><b>Print Name</b></span>
               <span class="invoice-item-value">${printName}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Pages</span>
+              <span class="invoice-item-label"><b>Pages</b></span>
               <span class="invoice-item-value">${displayPages}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Color</span>
+              <span class="invoice-item-label"><b>Color</b></span>
               <span class="invoice-item-value">${displayColor}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientationDisplayText}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Copies</span>
+              <span class="invoice-item-label"><b>Copies</b></span>
               <span class="invoice-item-value">${displayCopies}</span>
             </div>
           `;
@@ -27643,27 +27586,27 @@
 
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Print Name</span>
+              <span class="invoice-item-label"><b>Print Name</b></span>
               <span class="invoice-item-value">${serviceDisplayName}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Pages</span>
+              <span class="invoice-item-label"><b>Pages</b></span>
               <span class="invoice-item-value">${pages}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Color</span>
+              <span class="invoice-item-label"><b>Color</b></span>
               <span class="invoice-item-value">${printColor}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientation || 'Portrait'}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Copies</span>
+              <span class="invoice-item-label"><b>Copies</b></span>
               <span class="invoice-item-value">${copies}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Paper Type</span>
+              <span class="invoice-item-label"><b>Paper Type</b></span>
               <span class="invoice-item-value">${paperType}</span>
             </div>
           `;
@@ -27671,7 +27614,7 @@
           if (breakdownObj.emboss_cost) {
             invoiceHtml += `
               <div class="invoice-item">
-                <span class="invoice-item-label">Golden Embossing</span>
+                <span class="invoice-item-label"><b>Golden Embossing</b></span>
                 <span class="invoice-item-value">₹${Number(breakdownObj.emboss_cost).toFixed(2)}</span>
               </div>
             `;
@@ -27680,19 +27623,19 @@
           // Standard format for other services
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label">Print Name</span>
+              <span class="invoice-item-label"><b>Print Name</b></span>
               <span class="invoice-item-value">${printName}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Pages</span>
+              <span class="invoice-item-label"><b>Pages</b></span>
               <span class="invoice-item-value">${pages}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Color</span>
+              <span class="invoice-item-label"><b>Color</b></span>
               <span class="invoice-item-value">${printColor}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label">Orientation</span>
+              <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientation}</span>
             </div>
             <div class="invoice-item">
@@ -27976,6 +27919,14 @@
           // Log files being added to formData for debugging
           console.log('📦 Building formData with files:', filesFromPrintModal.length, 'files');
 
+          // Decide for which services image files should be converted to PDF.
+          // As requested, DO NOT convert images to PDF for:
+          // - document print (serviceType: 'print')
+          // - gloss, jumbo, or digital print services
+          // Only allow conversion for services that explicitly need PDF storage (e.g. photo/passport).
+          const imagePdfConversionServices = ['photo', 'passport'];
+          const shouldConvertImagesToPdf = imagePdfConversionServices.includes((serviceType || '').toLowerCase());
+
           // CRITICAL: Validate files are proper File objects before processing
           for (let i = 0; i < filesFromPrintModal.length; i++) {
             const fileToUpload = filesFromPrintModal[i];
@@ -28020,12 +27971,14 @@
             let finalFilename = fileToUpload.name;
             let processedFile = fileToUpload;
 
-            // Convert ALL images to PDF format (for all modals including photo print)
             // Check if file is an image (jpg, jpeg, png, etc.)
-            const isImageFile = fileToUpload.type.startsWith('image/') || 
+            const isImageFile = fileToUpload.type.startsWith('image/') ||
                                /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileToUpload.name);
-            
-            if (isImageFile) {
+
+            // Only convert images to PDF for specific services (e.g. photo/passport).
+            // For document, gloss, jumbo, and digital print services we keep the original
+            // PNG/JPG files and store them as images, not PDFs.
+            if (isImageFile && shouldConvertImagesToPdf) {
               try {
                 // Get original image file (either from fileObj or use fileToUpload directly)
                 const originalImageFile = (fileObj && fileObj.originalImageFile) ? fileObj.originalImageFile : fileToUpload;

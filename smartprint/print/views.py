@@ -9247,6 +9247,7 @@ def get_available_shops(request):
                             
                             if vendor_name and vendor_email:
                                 shop_folder = sanitize_shop_name(vendor_name)
+                                service_availability = vendor.get('service_availability') or {}
                                 shop_info = {
                                     'shop_name': vendor_name,
                                     'shop_folder': shop_folder,
@@ -9260,7 +9261,16 @@ def get_available_shops(request):
                                     'status': vendor.get('status', 'Available'),
                                     'vendor_id': vendor.get('vendor_id', ''),
                                     'vendor_token': vendor.get('vendor_token', ''),
-                                    'pending_jobs_count': vendor.get('pending_jobs_count', 0)
+                                    'pending_jobs_count': vendor.get('pending_jobs_count', 0),
+                                    'service_availability': service_availability,
+                                    # Flatten service flags - only 1/true = available, else NOT available
+                                    'digital_print': service_availability.get('service_data', {}).get('digital_print', False),
+                                    'project_binding': service_availability.get('service_data', {}).get('project_binding', False),
+                                    'gloss_printing': service_availability.get('service_data', {}).get('gloss_printing', False),
+                                    'jumbo_printing': service_availability.get('service_data', {}).get('jumbo_printing', False),
+                                    'regular_print': service_availability.get('service_data', {}).get('regular_print', False),
+                                    'passport_print': service_availability.get('service_data', {}).get('passport_print', False),
+                                    'photo_print': service_availability.get('service_data', {}).get('photo_print', False),
                                 }
                                 if not any(s['shop_folder'] == shop_folder for s in shops):
                                     shops.append(shop_info)
@@ -14811,12 +14821,11 @@ def send_fcm_notification(user_email, notification_data):
         # Normalize domain to not have trailing slash
         full_domain = full_domain.rstrip('/')
         
-        # Use notification-icon.png as requested by user, with printmaxdarklogo.png as fallback
-        # Use PrintMax colored logo as the primary notification icon
-        icon_url = f"{full_domain}/static/images/printmax-color-512.png"
+        # Use PrintMax day-time logo for mobile notifications (visible in system notification shade)
+        icon_url = f"{full_domain}/static/images/printmaxdaylogo.png"
         # Reuse the same logo for badge so branding is consistent
-        badge_url = f"{full_domain}/static/images/printmax-color-512.png"
-        fallback_icon_url = f"{full_domain}/static/images/printmaxdarklogo.png"
+        badge_url = f"{full_domain}/static/images/printmaxdaylogo.png"
+        fallback_icon_url = f"{full_domain}/static/images/printmax-color-512.png"
 
         # Create FCM message
         # Build webpush config conditionally to avoid link issues
