@@ -2109,7 +2109,6 @@
       margin-left: 0.5rem;
       /* left margin for separation */
       margin-right: 0.5rem;
-      /* right margin for separation */
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       /* more prominent shadow */
       border: 1px solid #6b7280;
@@ -2425,7 +2424,7 @@
       justify-content: center;
       margin-top: auto;
       width: 100%;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
     }
 
     .job-action-btn {
@@ -2543,13 +2542,20 @@
       }
 
       .job-card-actions {
-        gap: 6px;
+        gap: 4px;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0 2px;
       }
 
       .job-action-btn {
-        height: 30px;
-        padding: 0 .55rem;
-        min-width: 90px;
+        height: 28px;
+        padding: 0 .35rem;
+        min-width: 0;
+        flex: 1 1 0;
+        font-size: 10px;
         max-width: none;
       }
 
@@ -2561,20 +2567,13 @@
         font-size: 12px;
       }
 
-      .job-action-btn {
-        width: 28px;
-        /* increased width for better touch targets */
-        height: 28px;
-        /* increased height */
-        font-size: 9px;
-        /* increased font size */
-        padding: 0.2rem 0.4rem;
-        /* added padding */
+      .job-action-btn .job-action-label {
+        font-size: 10px;
       }
 
       .job-card-status-badge {
         font-size: 11px;
-        padding: 3px 6px;
+        padding: 3px 5px;
       }
     }
 
@@ -4704,188 +4703,58 @@
         flex-shrink: 0;
       }
 
-      #orderSummaryModal .shop-name-row {
+      /* Shop name and address rows - match invoice-item layout (label left, value right) */
+      #orderSummaryModal .shop-name-row,
+      #orderSummaryModal .shop-address-row {
         display: flex;
         flex-direction: row;
-        align-items: flex-start;
+        align-items: center;
+        justify-content: space-between;
         gap: 0.75rem;
-        margin-top: 1rem;
-        padding: 1rem 1.25rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
+        padding: 0.5rem 0;
         font-size: 0.9rem;
-        flex-wrap: wrap;
+        width: 100%;
+        box-sizing: border-box;
+        border-bottom: 1px solid #e5e7eb;
       }
 
-      /* Desktop: Impressive horizontal layout like jumbo print - single line */
-      @media (min-width: 769px) {
-        #orderSummaryModal .shop-name-row {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.25rem;
-          padding: 1rem 1.5rem;
-          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-          margin-bottom: 0.5rem;
-        }
-
-        #orderSummaryModal .shop-name-row .shop-label {
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.9rem;
-          margin-bottom: 0;
-        }
-
-        #orderSummaryModal .shop-name-row .shop-value {
-          font-size: 1.1rem;
-          color: #111827;
-          line-height: 1.5;
-          font-weight: 700;
-          width: 100%;
-          white-space: normal;
-          word-wrap: break-word;
-        }
-
-        #orderSummaryModal .shop-address-row {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.25rem;
-          padding: 0 1.5rem 1rem 1.5rem;
-          margin-top: 0;
-        }
-
-        #orderSummaryModal .shop-address-row .shop-label {
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.9rem;
-          margin-bottom: 0;
-        }
-
-        #orderSummaryModal .shop-address-row .shop-value {
-          font-size: 0.95rem;
-          color: #111827;
-          line-height: 1.6;
-          font-weight: 500;
-          width: 100%;
-          white-space: normal;
-          word-wrap: break-word;
-        }
-      }
-
-      #orderSummaryModal .shop-name-row {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 0.75rem;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #2f353b ;
-        white-space: nowrap;
-        margin: 0;
-        padding: 0;
-        min-width: 60px;
-        flex-shrink: 0;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-value {
-        font-size: 0.85rem;
-        line-height: 1.4;
-        color: #1f2937;
-        font-weight: 500;
-        white-space: normal;
-        overflow: visible;
-        text-overflow: clip;
-        margin: 0;
-        padding: 0;
-        flex: 1;
-        word-wrap: break-word;
-        text-align: left;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-address-label {
-        min-width: 70px;
-        flex-shrink: 0;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #4b5563;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-address-value {
-        flex: 1;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        color: #1f2937;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        min-width: 0;
-      }
-
-      /* Mobile: Stack shop and address */
-      @media (max-width: 768px) {
-        #orderSummaryModal .shop-name-row {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.75rem;
-        }
-
-        #orderSummaryModal .shop-name-row .shop-label,
-        #orderSummaryModal .shop-name-row .shop-address-label {
-          margin-top: 0.5rem;
-        }
-
-        #orderSummaryModal .shop-name-row .shop-address-label {
-          margin-top: 0.75rem;
-        }
-      }
-
-      /* Shop address row styling for order summary modal */
-      #orderSummaryModal .shop-address-row {
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        font-size: 0.75rem;
-        gap: 0.375rem;
-      }
-
-      #orderSummaryModal .shop-address-row {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 0.75rem;
-      }
-
+      #orderSummaryModal .shop-name-row .shop-label,
       #orderSummaryModal .shop-address-row .shop-label {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 600;
-        color: #2f353b;
-        white-space: nowrap;
-        margin: 0;
-        padding: 0;
-        min-width: 100px;
+        color: #374151;
+        flex: 1;
+        text-align: left;
         flex-shrink: 0;
       }
 
+      #orderSummaryModal .shop-name-row .shop-value,
       #orderSummaryModal .shop-address-row .shop-value {
-        font-size: 0.85rem;
-        color: #1f2937;
-        flex: 1;
-        text-align: left;
+        font-size: 0.9rem;
+        color: #4b5563;
         font-weight: 500;
-        white-space: normal;
-        overflow: visible;
-        text-overflow: clip;
-        margin: 0;
-        padding: 0;
-        margin-left: 0.25rem;
+        text-align: right;
+        flex-shrink: 0;
         word-wrap: break-word;
+        max-width: 60%;
+      }
+
+      /* Shop address row - value can wrap for long addresses */
+      #orderSummaryModal .shop-address-row .shop-value {
+        text-align: right;
+        white-space: normal;
+        word-break: break-word;
+        max-width: 65%;
+      }
+
+      #orderSummaryModal .shop-address-row {
+        margin-top: 0;
+        padding-top: 0.5rem;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      #orderSummaryModal .shop-address-row:last-of-type {
+        border-bottom: none;
       }
 
       #orderSummaryModal .invoice-items {
@@ -4903,8 +4772,9 @@
       }
 
       #orderSummaryModal .invoice-item-label {
-        font-size: 0.75rem;
-        color: #6b7280;
+        font-size: 0.9rem;
+        color: #374151;
+        font-weight: 600;
         margin-right: 0;
         flex: 1;
         line-height: 1.3;
@@ -4913,13 +4783,19 @@
         min-width: 0;
       }
 
+      #orderSummaryModal .service-info .shop-value,
+      #orderSummaryModal .invoice-items .invoice-item:not(.invoice-total) .invoice-item-value {
+        font-size: 0.9rem !important;
+        color: #4b5563 !important;
+      }
+
       #orderSummaryModal .invoice-item-value {
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.9rem;
+        font-weight: 500;
         text-align: right;
         white-space: nowrap;
         flex-shrink: 0;
-        color: #1f2937;
+        color: #4b5563;
         margin-left: 0.5rem;
       }
 
@@ -5466,6 +5342,37 @@
       color: #374151;
     }
 
+    /* Close button inside bill header (blue background, beside PrintMax Invoice) */
+    .invoice-close-btn-in-bill {
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      transform: translateY(-50%);
+      background: #1e40af;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+      border-radius: 8px;
+      padding: 8px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s ease;
+    }
+
+    .invoice-close-btn-in-bill:hover {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .bill-header-with-close {
+      position: relative;
+      padding-right: 56px;
+    }
+
     .invoice-close-btn {
       position: absolute;
       top: 16px;
@@ -5496,14 +5403,36 @@
 
     .invoice-content {
       padding: 0;
-      max-height: calc(85vh - 200px);
+      max-height: calc(90vh - 120px);
       overflow-y: auto;
     }
 
     @media (max-width: 768px) {
       .invoice-content {
-        max-height: calc(90vh - 180px);
+        max-height: calc(90vh - 100px);
       }
+    }
+
+    /* Consistent dark grey for invoice and order summary text (exclude Total Payment - white) */
+    #pricingSummaryModal .job-invoice-bill .shop-label,
+    #pricingSummaryModal .job-invoice-bill .shop-value,
+    #pricingSummaryModal .job-invoice-bill .invoice-item:not(.invoice-total) .invoice-item-label,
+    #pricingSummaryModal .job-invoice-bill .invoice-item:not(.invoice-total) .invoice-item-value,
+    #pricingSummaryModal .job-invoice-bill .service-info h4,
+    #orderSummaryModal .shop-label,
+    #orderSummaryModal .shop-value,
+    #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-label,
+    #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value,
+    #orderSummaryModal .service-info h4 {
+      color: #4b5563 !important;
+    }
+
+    /* Total Payment - white text on blue background */
+    #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-label,
+    #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-value,
+    #orderSummaryModal .invoice-item.invoice-total .invoice-item-label,
+    #orderSummaryModal .invoice-item.invoice-total .invoice-item-value {
+      color: #ffffff !important;
     }
 
     .invoice-items {
@@ -6720,6 +6649,80 @@
         padding: 0.25rem 0.625rem;
       }
 
+      #pricingSummaryModal .job-invoice-bill .shop-name-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-size: 0.85rem;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .shop-address-row {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-size: 0.85rem;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .shop-name-row .shop-label,
+      #pricingSummaryModal .job-invoice-bill .shop-address-row .shop-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #374151;
+        min-width: auto;
+        flex-shrink: 0;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .shop-name-row .shop-value,
+      #pricingSummaryModal .job-invoice-bill .shop-address-row .shop-value {
+        font-size: 0.85rem;
+        color: #1f2937;
+        flex: 1;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .invoice-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        font-size: 0.85rem;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .invoice-item-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        flex: 1;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .invoice-item-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #1f2937;
+        text-align: right;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total {
+        margin-top: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-top: 2px solid #e5e7eb;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        border-radius: 10px;
+      }
+
+      #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-label,
+      #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-value {
+        color: #ffffff;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
       #pricingSummaryModal .shop-name-row {
         margin-top: 0.5rem;
         padding-top: 0.5rem;
@@ -6810,68 +6813,34 @@
         flex-shrink: 0;
       }
 
-      #orderSummaryModal .shop-name-row {
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
-        font-size: 0.85rem;
-        gap: 0.75rem;
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        justify-content: flex-start;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #4b5563;
-        white-space: nowrap;
-        flex-shrink: 0;
-        min-width: 100px;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-value {
-        font-size: 0.85rem;
-        text-align: left;
-        flex: 1;
-        word-wrap: break-word;
-        word-break: break-word;
-        white-space: normal;
-        overflow-wrap: break-word;
-      }
-
+      #orderSummaryModal .shop-name-row,
       #orderSummaryModal .shop-address-row {
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        padding-bottom: 0.5rem;
-        font-size: 0.85rem;
-        gap: 0.75rem;
         display: flex;
         flex-direction: row;
-        align-items: flex-start;
-        justify-content: flex-start;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        font-size: 0.85rem;
       }
 
+      #orderSummaryModal .shop-name-row .shop-label,
       #orderSummaryModal .shop-address-row .shop-label {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 600;
-        color: #2f353b;
-        white-space: nowrap;
-        flex-shrink: 0;
-        min-width: 100px;
+        color: #374151;
+        flex: 1;
+        text-align: left;
       }
 
+      #orderSummaryModal .shop-name-row .shop-value,
       #orderSummaryModal .shop-address-row .shop-value {
-        font-size: 0.85rem;
-        text-align: left;
-        flex: 1;
+        font-size: 0.9rem;
+        color: #4b5563;
+        text-align: right;
+        flex-shrink: 0;
         word-wrap: break-word;
-        word-break: break-word;
-        white-space: normal;
-        overflow-wrap: break-word;
-        line-height: 1.5;
-        color: #1f2937;
+        max-width: 60%;
       }
 
       #orderSummaryModal .invoice-items {
@@ -6895,19 +6864,22 @@
       }
 
       #orderSummaryModal .invoice-item-label {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
+        color: #374151;
+        font-weight: 600;
         flex: 1;
         text-align: left;
         word-wrap: break-word;
         word-break: break-word;
       }
 
-      #orderSummaryModal .invoice-item-value {
+      #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value {
         font-size: 0.9rem;
+        color: #4b5563;
         text-align: right;
         flex-shrink: 0;
         white-space: nowrap;
-        font-weight: 600;
+        font-weight: 500;
       }
 
       #orderSummaryModal .invoice-item.invoice-total {
@@ -7050,7 +7022,7 @@
       display: flex;
       flex-direction: row;
       align-items: flex-start;
-      gap: 0;
+      gap: 0.5rem;
       margin-top: 0.25rem;
       padding: 0.25rem 0;
       border-top: none;
@@ -7077,7 +7049,6 @@
       line-height: 1.5;
       margin: 0;
       padding: 0;
-      margin-left: 0.25rem;
     }
 
     #orderSummaryShopAddress {
@@ -7087,7 +7058,7 @@
       max-width: 100%;
       display: inline-block;
       line-height: 1.5;
-      color: #374151;
+      color: #4b5563;
       font-size: 0.9rem;
       margin: 0;
       padding: 0;
@@ -7098,7 +7069,7 @@
       display: flex;
       flex-direction: row;
       align-items: flex-start;
-      gap: 0;
+      gap: 0.5rem;
       margin-bottom: 0.25rem;
       padding: 0.75rem 0 0.25rem 0;
       border-bottom: 1px solid #e5e7eb;
@@ -7128,7 +7099,6 @@
       line-height: 1.5;
       margin: 0;
       padding: 0;
-      margin-left: 0.25rem;
     }
 
     @media (max-width: 768px) {
@@ -7761,6 +7731,7 @@
       display: flex;
       gap: 0.5rem;
       margin-top: 0.4rem;
+      flex-wrap: wrap;
     }
 
     .completed-job-btn {
@@ -7790,6 +7761,15 @@
       .completed-jobs-grid {
         grid-template-columns: 1fr;
       }
+
+      .completed-job-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .completed-job-btn {
+        min-width: 80px;
+      }
     }
 
     /* Job Token Badge */
@@ -7801,7 +7781,7 @@
       border-radius: 6px;
       padding: 0 0.5em;
       margin-right: 0.5em;
-      font-size: 0.96rem;
+      font-size: 0.90rem;
     }
 
     /* Footer Gradient Hover */
@@ -11012,7 +10992,7 @@
         }
 
         .invoice-item {
-          padding: 14px 20px;
+          padding: 14px 1px;
           font-size: 0.875rem;
         }
 
@@ -18291,7 +18271,7 @@
               <div class="service-info">
                 <h4>Print Details</h4>
                 <div class="shop-name-row">
-                  <span class="shop-label">Shop:</span>
+                  <span class="shop-label">Shop Name:</span>
                   <span class="shop-value" id="orderSummaryShopName">-</span>
                 </div>
                 <div class="shop-address-row" id="orderSummaryShopAddressRow" style="display: none;">
@@ -18307,32 +18287,6 @@
                   <span class="invoice-item-value" id="orderSummaryTotalAmount">₹0.00</span>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Points Application Section - Like photprint modal -->
-        <div class="points-section" id="orderSummary-points-section" style="display: none;">
-          <div class="points-header">
-            <div class="points-icon">
-              <i class="fas fa-star"></i>
-            </div>
-            <div class="points-title">Apply Points</div>
-          </div>
-          <div class="points-content">
-            <div class="points-info">
-              <span class="points-available">Available Points: <span id="orderSummary-available-points">0</span></span>
-              <span class="points-balance">Balance after payment: <span id="orderSummary-points-balance">0</span></span>
-            </div>
-            <div class="points-actions">
-              <button type="button" class="btn-apply-points" id="orderSummary-apply-points-btn"
-                onclick="applyPoints('orderSummary')">
-                <i class="fas fa-star"></i> Apply Points
-              </button>
-              <button type="button" class="btn-remove-points" id="orderSummary-remove-points-btn"
-                onclick="removePoints('orderSummary')" style="display: none;">
-                <i class="fas fa-times"></i> Remove Points
-              </button>
             </div>
           </div>
         </div>
@@ -23225,7 +23179,6 @@
       // Use the existing pricing summary modal
       const modal = document.getElementById('pricingSummaryModal');
       const breakdownEl = document.getElementById('pricingBreakdown');
-      const invoiceDate = document.getElementById('invoiceDate');
 
       if (!modal || !breakdownEl) {
         alert('Invoice modal not available.');
@@ -23253,30 +23206,14 @@
       };
       const serviceDisplayName = serviceNames[serviceType] || 'Printing Service';
 
-      // Set current date and time
-      const now = new Date();
-      const options = {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      };
-      const formattedDate = now.toLocaleDateString('en-US', options);
-      if (invoiceDate) {
-        invoiceDate.textContent = formattedDate;
-      }
-
       // Get shop name and address with fallbacks for different field name variations
       const shopName = job.shop_name || job['shop name'] || job.shopName || job.vendor_name || job.vendor_label || '';
       const shopAddress = job.shop_address || job['shop address'] || job.shopAddress || '';
 
-      // Build professional bill format matching the modal
+      // Build professional bill format matching order summary modal exactly
       let html = `
-        <div class="professional-bill">
-          <div class="bill-header">
+        <div class="professional-bill job-invoice-bill">
+          <div class="bill-header bill-header-with-close">
             <div class="bill-identity">
               <div class="bill-logo">
                 <i class="fas fa-print" style="color: rgba(255, 255, 255, 0.95); font-size: 1.75rem;"></i>
@@ -23286,27 +23223,22 @@
                 <p class="bill-subtitle">Professional Printing Services</p>
               </div>
             </div>
-            <div class="bill-date">
-              <p>Date: ${new Date().toLocaleDateString()}</p>
-              <p>Time: ${new Date().toLocaleTimeString()}</p>
-            </div>
+            <button class="invoice-close-btn-in-bill" onclick="hidePricingSummary()" title="Close">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
           
           <div class="bill-content">
             <div class="service-info">
               <h4>Print Details</h4>
-              <div class="service-row">
-                <span class="service-name">${serviceDisplayName}</span>
-                <span class="service-status">Completed</span>
-              </div>
               ${shopName ? `
                 <div class="shop-name-row">
-                  <span class="shop-label">Shop:</span>
+                  <span class="shop-label">Shop Name:</span>
                   <span class="shop-value">${shopName}</span>
                 </div>
               ` : ''}
               ${shopAddress ? `
-                <div class="shop-name-row">
+                <div class="shop-address-row">
                   <span class="shop-label">Shop Address:</span>
                   <span class="shop-value">${shopAddress}</span>
                 </div>
@@ -23345,32 +23277,20 @@
           subtotal += embossCost;
         }
       } else if (breakdown.pricing_key_used) {
-        const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        // Don't add redundant row (e.g. "Gloss Printing ₹2.48") - Service row already shows service name
         const qty = breakdown.page_count || breakdown.print_quantity || 1;
         const copies = breakdown.num_copies || 1;
         const totalQty = qty * copies;
         const rate = Number(breakdown.base_price || 0);
-        // Calculate amount, but prefer job.total_price if available (final amount customer paid)
         let amount = rate * totalQty;
-        // If calculated amount is 0 or job has a total_price, use that instead
         if (amount === 0 && Number(job.total_price || 0) > 0) {
           amount = Number(job.total_price);
         } else if (Number(job.total_price || 0) > 0 && Number(job.total_price) !== amount) {
-          // If job.total_price exists and differs, use it (it's the final amount with commission)
           amount = Number(job.total_price);
         }
-
-        html += `
-          <div class="invoice-item">
-            <span class="invoice-item-label">${serviceDesc}</span>
-            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
-          </div>
-        `;
         subtotal += amount;
       } else {
-        const serviceDesc = serviceDisplayName;
-        // Use job.total_price as primary source (final amount customer paid), then fallback to breakdown/pricing
-        // This ensures we always show the actual final amount, not 0
+        // Don't add redundant row (e.g. "Gloss Printing ₹2.48") - Service row later shows service name, amount flows to Total Payment
         const amount = Number(job.total_price || 0) > 0
           ? Number(job.total_price)
           : (Number(breakdown.total_price || 0) > 0
@@ -23379,13 +23299,6 @@
               ? Number(pricing.total_price)
               : (subtotal > 0 ? subtotal : 0)));
 
-        html += `
-          <div class="invoice-item">
-            <span class="invoice-item-label">${serviceDesc}</span>
-            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
-          </div>
-        `;
-        // Only add to subtotal if amount is valid and we haven't already calculated it
         if (amount > 0 && subtotal === 0) {
           subtotal = amount;
         } else if (amount > 0) {
@@ -23393,13 +23306,12 @@
         }
       }
 
-      // Add pages, color, orientation, and copies details (for Mix show B&W and Color range values)
+      // Add service, pages, color, orientation, copies (match order summary modal layout)
       const pages = breakdown.page_count || breakdown.pages || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || breakdown.copies || 1;
       const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || (job && job.color) || 'Black and White';
       const size = breakdown.print_size || breakdown.size || 'N/A';
       let orientation = breakdown.orientation || breakdown['Print Orientation'] || (job && job.orientation) || 'Portrait';
-      // Capitalize first letter
       orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
       const isMixColor = /^(mix|mixed|both)$/i.test(String(color));
 
@@ -23421,29 +23333,33 @@
 
       html += `
         <div class="invoice-item">
-          <span class="invoice-item-label"><b>Pages</b></span>
+          <span class="invoice-item-label">Service</span>
+          <span class="invoice-item-value">${serviceDisplayName}</span>
+        </div>
+        <div class="invoice-item">
+          <span class="invoice-item-label">Pages</span>
           <span class="invoice-item-value">${pages}</span>
         </div>
         <div class="invoice-item">
-          <span class="invoice-item-label"><b>Color</b></span>
+          <span class="invoice-item-label">Color</span>
           <span class="invoice-item-value">${color}</span>
         </div>
         <div class="invoice-item">
-          <span class="invoice-item-label"><b>Orientation</b></span>
+          <span class="invoice-item-label">Orientation</span>
           <span class="invoice-item-value">${orientation}</span>
         </div>
         ${isMixColor ? `
         <div class="invoice-item">
-          <span class="invoice-item-label"><b>B&W Pages</b></span>
+          <span class="invoice-item-label">B&W Pages</span>
           <span class="invoice-item-value">${bwRangeDisplay}</span>
         </div>
         <div class="invoice-item">
-          <span class="invoice-item-label"><b>Color Pages</b></span>
+          <span class="invoice-item-label">Color Pages</span>
           <span class="invoice-item-value">${colorRangeDisplay}</span>
         </div>
         ` : ''}
         <div class="invoice-item">
-          <span class="invoice-item-label"><b>Copies</b></span>
+          <span class="invoice-item-label">Copies</span>
           <span class="invoice-item-value">${copies}</span>
         </div>
       `;
@@ -23499,17 +23415,6 @@
       `;
 
       html += `
-            </div>
-            
-            <div class="bill-footer">
-              <div class="payment-info">
-                <p><strong>Payment Method:</strong> Online Payment</p>
-                <p><strong>Status:</strong> <span class="status-paid" style="color: #059669; font-weight: 600;">Paid</span></p>
-              </div>
-              <div class="contact-info">
-                <p>Thank you for choosing PrintMax!</p>
-                <p>For queries, contact: printmax_support@printmax.in</p>
-              </div>
             </div>
           </div>
         </div>
@@ -26415,12 +26320,13 @@
       }
 
       if (unconfiguredFiles.length > 0) {
-        const fileList = unconfiguredFiles.length === 1
-          ? `File ${unconfiguredFiles[0].index + 1}: ${unconfiguredFiles[0].name}`
-          : unconfiguredFiles.map(f => `File ${f.index + 1}: ${f.name}`).join(', ');
+        const hasColorMissing = unconfiguredFiles.some(f => f.missingFields && f.missingFields.includes('color'));
+        const message = hasColorMissing
+          ? 'Please choose color for print .'
+          : 'Please configure print settings for each file.';
         return {
           valid: false,
-          message: `Please provide details for all documents before proceeding. Missing details for: ${fileList}. Click on each file to configure its settings.`,
+          message: message,
           unconfiguredFiles: unconfiguredFiles
         };
       }
@@ -26542,6 +26448,21 @@
         icon.remove();
       });
 
+      // Validate shop selection first (required before proceeding)
+      const shopSelectionButton = document.getElementById('print-shop-selection-button');
+      let currentSelectedVendor = selectedVendor;
+      if (shopSelectionButton && shopSelectionButton.dataset.selectedShop) {
+        currentSelectedVendor = shopSelectionButton.dataset.selectedShop;
+      }
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal && orderSummaryModal.dataset.selectedShop) {
+        currentSelectedVendor = orderSummaryModal.dataset.selectedShop;
+      }
+      if (!currentSelectedVendor || currentSelectedVendor === '') {
+        alert('Please choose shop for print.');
+        return;
+      }
+
       // Validate inputs - use alerts like jumbo print modal
       if (uploadedFiles.length === 0) {
         alert('Please upload at least one file.');
@@ -26566,10 +26487,7 @@
         });
 
         if (filesWithoutColor.length > 0) {
-          const fileList = filesWithoutColor.length === 1
-            ? filesWithoutColor[0].name
-            : filesWithoutColor.map(f => f.name).join(', ');
-          alert(`Please select print color for: ${fileList}`);
+          alert('Please choose color for print.');
           return;
         }
 
@@ -26610,27 +26528,6 @@
             }
           }
         }
-      }
-
-      // Check if a shop is selected first (needed for calculation)
-      // First check if shop is selected from shop selection button
-      const shopSelectionButton = document.getElementById('print-shop-selection-button');
-      let currentSelectedVendor = selectedVendor;
-
-      // If shopSelectionButton exists and has a selected shop, use that instead
-      if (shopSelectionButton && shopSelectionButton.dataset.selectedShop) {
-        currentSelectedVendor = shopSelectionButton.dataset.selectedShop;
-      }
-
-      // Also check if there's a shop selected in the order summary modal (for multiple uploads)
-      const orderSummaryModal = document.getElementById('orderSummaryModal');
-      if (orderSummaryModal && orderSummaryModal.dataset.selectedShop) {
-        currentSelectedVendor = orderSummaryModal.dataset.selectedShop;
-      }
-
-      if (!currentSelectedVendor || currentSelectedVendor === '') {
-        alert('Please select a print shop.');
-        return;
       }
 
       // Update selectedVendor BEFORE calculation (critical for calculateA4PrintPrice to work)
@@ -30408,16 +30305,6 @@
   <!-- Order Summary Modal - Vertical Invoice Style -->
   <div id="pricingSummaryModal" class="modal-overlay" style="display: none;">
     <div class="modal-content invoice-modal">
-      <div class="invoice-header">
-        <h2 class="invoice-title">Invoice</h2>
-        <div class="invoice-date" id="invoiceDate">
-          <!-- Date will be populated here -->
-        </div>
-        <button class="invoice-close-btn" onclick="hidePricingSummary()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-
       <div class="invoice-content">
         <div class="invoice-items" id="pricingBreakdown">
           <!-- Pricing details will be populated here -->
@@ -31315,25 +31202,8 @@
     function showPricingSummary(pricingData) {
       const modal = document.getElementById('pricingSummaryModal');
       const breakdown = document.getElementById('pricingBreakdown');
-      const invoiceDate = document.getElementById('invoiceDate');
 
       if (!modal || !breakdown) return;
-
-      // Set current date and time
-      const now = new Date();
-      const options = {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      };
-      const formattedDate = now.toLocaleDateString('en-US', options);
-      if (invoiceDate) {
-        invoiceDate.textContent = formattedDate;
-      }
 
       // Build vertical invoice format
       let html = '';
