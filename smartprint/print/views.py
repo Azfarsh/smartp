@@ -4762,6 +4762,59 @@ def create_passport_photo_layout(input_image_data, total_prints=8, country='Indi
 
 
 @csrf_exempt
+def convert_to_pdf(request):
+    """
+    Convert an uploaded image file (JPG/PNG/WEBP) to PDF.
+    If the uploaded file is already a PDF, return it unchanged.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+    try:
+        uploaded_file = (
+            request.FILES.get('file')
+            or request.FILES.get('image')
+            or request.FILES.get('uploaded_file')
+        )
+
+        if not uploaded_file:
+            return JsonResponse({'success': False, 'error': 'No file provided'}, status=400)
+
+        original_name = uploaded_file.name or 'document'
+        lower_name = original_name.lower()
+        file_bytes = uploaded_file.read()
+
+        # Already PDF: return as-is to preserve existing client flow.
+        if lower_name.endswith('.pdf') or uploaded_file.content_type == 'application/pdf':
+            response = HttpResponse(file_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{os.path.splitext(original_name)[0]}.pdf"'
+            return response
+
+        # Convert supported image formats to PDF.
+        if not (lower_name.endswith(('.jpg', '.jpeg', '.png', '.webp')) or (uploaded_file.content_type or '').startswith('image/')):
+            return JsonResponse({'success': False, 'error': 'Unsupported file type. Please upload PDF or image file.'}, status=400)
+
+        image = Image.open(io.BytesIO(file_bytes))
+        if image.mode not in ('RGB',):
+            image = image.convert('RGB')
+
+        pdf_buffer = io.BytesIO()
+        image.save(pdf_buffer, format='PDF', resolution=300.0)
+        pdf_data = pdf_buffer.getvalue()
+        pdf_buffer.close()
+
+        output_name = f"{os.path.splitext(original_name)[0]}.pdf"
+        response = HttpResponse(pdf_data, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{output_name}"'
+        return response
+
+    except Exception as e:
+        print(f"❌ Error in convert_to_pdf: {e}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
 def process_print_request(request):
     if request.method == 'POST':
         try:
