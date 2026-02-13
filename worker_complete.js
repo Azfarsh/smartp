@@ -261,9 +261,11 @@ function rowToServicePayload(row) {
   }
 
   SERVICE_FLAG_KEYS.forEach((key) => {
-    // Only 1 (or true) = available; 0, null, undefined = NOT available
-    const val = row[key];
-    payload[key] = val === 1 || val === true || val === "1" || val === "true";
+    if (row[key] === undefined || row[key] === null) {
+      return;
+    }
+    // Keep boolean for functionality, but we'll convert to "on"/"off" in admin endpoints
+    payload[key] = !!row[key];
   });
 
   SERVICE_TEXT_KEYS.forEach((key) => {
@@ -705,7 +707,7 @@ export default {
           }
         } catch (checkError) {
           // If check fails, continue anyway (table might not exist yet or schema issue)
-          console.warn(`Warning: Could not check for duplicate email: ${String(checkError)}`);
+          console.log(`Warning: Could not check for duplicate email: ${String(checkError)}`);
         }
 
         // NOTE: Check the actual table schema first (same pattern as contact page)
@@ -837,9 +839,6 @@ export default {
           gloss_print_a2_color: ['gloss_print_a2_color'],
           gloss_print_a1_color: ['gloss_print_a1_color'],
           gloss_print_a0_color: ['gloss_print_a0_color'],
-          // Document Print (Letter) - dedicated columns
-          doc_letter_bw: ['doc_letter_bw'],
-          doc_letter_color: ['doc_letter_color'],
           // Jumbo Print
           jumbo_print_a3_bw: ['jumbo_print_a3_bw', 'jumbo_print_a3_single_bw'],
           jumbo_print_a3_color: ['jumbo_print_a3_color', 'jumbo_print_a3_single_color'],
@@ -855,6 +854,7 @@ export default {
           passport_print_30: ['passport_print_30', 'passport_photo_30_photos'],
           // Golden Embossing
           golden_emboss_cover: ['golden_emboss_cover', 'golden_embossing_per_book'],
+          golden_emboss_a4_color: ['golden_emboss_a4_color', 'golden_emboss_a4_per_page'],
           golden_emboss_bond_color: ['golden_emboss_bond_color', 'golden_emboss_color_per_page'],
           // Lamination
           lamination_a4_standard: ['lamination_a4_standard', 'lamination_a4'],
@@ -1553,7 +1553,7 @@ export default {
             }
           } catch (listErr) {
             // If listing fails, try common variations
-            console.warn(`Could not list tables: ${String(listErr)}`);
+            console.log(`Could not list tables: ${String(listErr)}`);
           }
 
           // Try different table name variations
@@ -1578,7 +1578,7 @@ export default {
               vendors = await env.DB.prepare(query).all();
               
               if (vendors && vendors.results && vendors.results.length > 0) {
-                console.debug(`✅ Successfully fetched vendors from table: ${table}`);
+                console.log(`✅ Successfully fetched vendors from table: ${table}`);
                 break;
               }
             } catch (err) {
@@ -1599,7 +1599,7 @@ export default {
                 vendors = await env.DB.prepare(query).all();
                 
                 if (vendors && vendors.results && vendors.results.length > 0) {
-                  console.debug(`✅ Successfully fetched vendors from table: ${table} (no status filter)`);
+                  console.log(`✅ Successfully fetched vendors from table: ${table} (no status filter)`);
                   break;
                 }
               } catch (err) {
@@ -1610,31 +1610,12 @@ export default {
           }
 
           if (vendors && vendors.results && vendors.results.length > 0) {
-            // Build service availability map from Vendor_service_availability table
-            let serviceAvailabilityMap = {};
-            try {
-              await ensureVendorServiceTable(env);
-              const serviceRows = await env.DB.prepare(`
-                SELECT ${VENDOR_SERVICE_SELECT_FIELDS}
-                FROM Vendor_service_availability
-              `).all();
-              if (serviceRows && serviceRows.results) {
-                serviceRows.results.forEach((row) => {
-                  const email = (row.vendor_email || '').trim().toLowerCase();
-                  if (email) {
-                    serviceAvailabilityMap[email] = rowToServicePayload(row);
-                  }
-                });
-              }
-            } catch (svcErr) {
-              console.warn(`Could not fetch Vendor_service_availability: ${svcErr}`);
-            }
-
-            // Fetch pending jobs count and merge service availability for all vendors
+            // Fetch pending jobs count for all vendors from vendor_pending_jobs_track
             const vendorsWithPendingJobs = await Promise.all(
               vendors.results.map(async (vendor) => {
                 let pendingJobsCount = 0;
                 try {
+                  // Try to get pending jobs count by vendor_id first
                   if (vendor.vendor_id) {
                     const pendingJobsResult = await env.DB.prepare(`
                       SELECT job_count FROM vendor_pending_jobs_track 
@@ -1645,6 +1626,8 @@ export default {
                       pendingJobsCount = pendingJobsResult.job_count || 0;
                     }
                   }
+                  
+                  // If not found by vendor_id, try by vendor_email
                   if (pendingJobsCount === 0 && vendor.email) {
                     const pendingJobsResult = await env.DB.prepare(`
                       SELECT job_count FROM vendor_pending_jobs_track 
@@ -1656,22 +1639,14 @@ export default {
                     }
                   }
                 } catch (err) {
-                  console.warn(`Could not fetch pending jobs for vendor ${vendor.vendor_id || vendor.email}: ${err}`);
+                  // If table doesn't exist or query fails, default to 0
+                  console.log(`Could not fetch pending jobs for vendor ${vendor.vendor_id || vendor.email}: ${err}`);
                   pendingJobsCount = 0;
                 }
-
-                const vendorEmail = (vendor.email || '').trim().toLowerCase();
-                // No Vendor_service_availability row = all services NOT available (only 1 = available)
-                let serviceAvailability = serviceAvailabilityMap[vendorEmail];
-                if (!serviceAvailability) {
-                  serviceAvailability = { ...SERVICE_TEXT_DEFAULTS };
-                  SERVICE_FLAG_KEYS.forEach((k) => { serviceAvailability[k] = false; });
-                }
-
+                
                 return {
                   ...vendor,
-                  pending_jobs_count: pendingJobsCount,
-                  service_availability: { service_data: serviceAvailability }
+                  pending_jobs_count: pendingJobsCount
                 };
               })
             );
@@ -2360,7 +2335,7 @@ export default {
           const expected_path = `${storage_folder}/${vendor_id}/${filename}`;
           if (!r2_path || !r2_path.startsWith(`${storage_folder}/${vendor_id}/`)) {
             r2_path = expected_path;
-            console.debug(`📦 Reconstructed R2 path for ${service_type}: ${r2_path}`);
+            console.log(`📦 Reconstructed R2 path for ${service_type}: ${r2_path}`);
           }
         } else if (storage_folder && vendor_id && filename && !r2_path) {
           // Fallback: construct r2_path if not provided
@@ -2372,18 +2347,13 @@ export default {
         const token = (body.token || "").trim();
         const job_id = (body.job_id || "").trim();
         const copies = (body.copies || "1").trim();
-        let color = (body.color || "").trim();
+        const color = (body.color || "").trim();
         const orientation = (body.orientation || "").trim();
         const pageSize = (body.pageSize || "").trim();
-        let pageRange = (body.pageRange || "").trim();
+        const pageRange = (body.pageRange || "").trim();
         const specificPages = (body.specificPages || "").trim();
         const bwPageRangeValue = (body.bwPageRangeValue || "").trim();
         const colorPageRangeValue = (body.colorPageRangeValue || "").trim();
-        // When both BW and Color page ranges are present, store color as Mix (not Black and White)
-        if (bwPageRangeValue && colorPageRangeValue) {
-          color = "Mix";
-          if (!pageRange) pageRange = `BW: ${bwPageRangeValue} | Color: ${colorPageRangeValue}`;
-        }
         const spiralBinding = (body.spiralBinding || "No").trim();
         const lamination = (body.lamination || "No").trim();
         const service_name = (body.service_name || "").trim();
@@ -2809,12 +2779,12 @@ export default {
           `).all();
 
           if (!tableCheck1 || tableCheck1.length === 0) {
-            console.warn("⚠️ User_notifications table not found");
+            console.log("⚠️ User_notifications table not found");
             return json({ success: true, data: [] }, 200, corsHeaders);
           }
 
           const tableName = tableCheck1[0].name; // Use actual table name from database
-          console.debug(`✅ Found table: ${tableName}`);
+          console.log(`✅ Found table: ${tableName}`);
 
           const conditions = [];
           const params = [];
@@ -2848,7 +2818,7 @@ export default {
               id DESC
           `;
 
-          console.debug(`🔍 Executing query: ${query.substring(0, 200)}...`);
+          console.log(`🔍 Executing query: ${query.substring(0, 200)}...`);
           const statement = env.DB.prepare(query);
           let result;
           if (params.length > 0) {
@@ -2858,7 +2828,7 @@ export default {
           }
           const { results } = result || {};
 
-          console.debug(`✅ Retrieved ${(results || []).length} user notifications`);
+          console.log(`✅ Retrieved ${(results || []).length} user notifications`);
           return json({ success: true, data: results || [] }, 200, corsHeaders);
         } catch (dbError) {
           console.error("❌ Error in /get-all-user-notifications:", dbError);
@@ -2921,12 +2891,12 @@ export default {
           `).all();
 
           if (!tableCheck1 || tableCheck1.length === 0) {
-            console.warn("⚠️ vendor_notification table not found");
+            console.log("⚠️ vendor_notification table not found");
             return json({ success: true, data: [] }, 200, corsHeaders);
           }
 
           const tableName = tableCheck1[0].name; // Use actual table name from database
-          console.debug(`✅ Found table: ${tableName}`);
+          console.log(`✅ Found table: ${tableName}`);
 
           const conditions = [];
           const params = [];
@@ -2962,7 +2932,7 @@ export default {
             ORDER BY completion_time DESC, timestamp DESC
           `;
 
-          console.debug(`🔍 Executing query: ${query.substring(0, 200)}...`);
+          console.log(`🔍 Executing query: ${query.substring(0, 200)}...`);
           const statement = env.DB.prepare(query);
           let result;
           if (params.length > 0) {
@@ -2972,7 +2942,7 @@ export default {
           }
           const { results } = result || {};
 
-          console.debug(`✅ Retrieved ${(results || []).length} vendor notifications`);
+          console.log(`✅ Retrieved ${(results || []).length} vendor notifications`);
           return json({ success: true, data: results || [] }, 200, corsHeaders);
         } catch (dbError) {
           console.error("❌ Error in /get-all-vendor-jobs:", dbError);
@@ -3544,7 +3514,7 @@ export default {
             if (!updateSuccess) {
               console.warn(`⚠️ Failed to update Vendor_print_jobs after all attempts. Attempts: ${updateAttempts.join('; ')}`);
             } else {
-              console.debug(`✅ Successfully updated Vendor_print_jobs. Attempts: ${updateAttempts.join('; ')}`);
+              console.log(`✅ Successfully updated Vendor_print_jobs. Attempts: ${updateAttempts.join('; ')}`);
             }
 
             // Only perform token freeing and transaction updates if job data was found
@@ -3753,8 +3723,8 @@ export default {
         `;
         
         // Debug logging
-        console.debug(`🔍 get-vendor-print-jobs: vendor_id=${vendor_id}, vendor_email=${vendor_email}, job_completed=${job_completed}`);
-        console.debug(`🔍 get-vendor-print-jobs: whereClause=${whereClause}, params=${JSON.stringify(params)}`);
+        console.log(`🔍 get-vendor-print-jobs: vendor_id=${vendor_id}, vendor_email=${vendor_email}, job_completed=${job_completed}`);
+        console.log(`🔍 get-vendor-print-jobs: whereClause=${whereClause}, params=${JSON.stringify(params)}`);
 
         let orderClause = "ORDER BY rowid DESC";
 
@@ -3790,9 +3760,9 @@ export default {
           const statement = env.DB.prepare(query);
           const { results: allResults } = await statement.bind(...params).all();
           
-          console.debug(`🔍 get-vendor-print-jobs: Query returned ${(allResults || []).length} total jobs`);
+          console.log(`🔍 get-vendor-print-jobs: Query returned ${(allResults || []).length} total jobs`);
           if (allResults && allResults.length > 0) {
-            console.debug(`📋 All jobs from query: ${allResults.map(j => `${j.filename || 'N/A'} (vendor_id=${j.vendor_id || 'N/A'}, vendor_email=${j.vendor_email || 'N/A'}, service_type=${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
+            console.log(`📋 All jobs from query: ${allResults.map(j => `${j.filename || 'N/A'} (vendor_id=${j.vendor_id || 'N/A'}, vendor_email=${j.vendor_email || 'N/A'}, service_type=${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
           }
           
           // Filter by job_completed status (same approach as user dashboard)
@@ -3813,7 +3783,7 @@ export default {
               if (requestedStatus === 'NO') {
                 const matches = jobCompleted === 'NO' || jobCompleted === '' || !job.job_completed || job.job_completed === null;
                 if (!matches) {
-                  console.warn(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected NO)`);
+                  console.log(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected NO)`);
                 }
                 return matches;
               }
@@ -3821,7 +3791,7 @@ export default {
               // For other statuses, do exact match
               const matches = jobCompleted === requestedStatus;
               if (!matches) {
-                console.warn(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected ${requestedStatus})`);
+                console.log(`⚠️ Job filtered out: ${job.filename || 'N/A'} - job_completed="${job.job_completed}" (expected ${requestedStatus})`);
               }
               return matches;
             }
@@ -3830,11 +3800,11 @@ export default {
             return true;
           });
           
-          console.debug(`✅ get-vendor-print-jobs: Returning ${filteredResults.length} jobs after job_completed filter (requested: ${job_completed || 'ALL'}, total from DB: ${(allResults || []).length})`);
+          console.log(`✅ get-vendor-print-jobs: Returning ${filteredResults.length} jobs after job_completed filter (requested: ${job_completed || 'ALL'}, total from DB: ${(allResults || []).length})`);
           if (filteredResults.length > 0) {
-            console.debug(`📋 Filtered jobs: ${filteredResults.map(j => `${j.filename || 'N/A'} (${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
+            console.log(`📋 Filtered jobs: ${filteredResults.map(j => `${j.filename || 'N/A'} (${j.service_type || 'N/A'}, job_completed=${j.job_completed || 'N/A'})`).join(' | ')}`);
           } else if ((allResults || []).length > 0) {
-            console.warn(`⚠️ WARNING: ${(allResults || []).length} jobs found in DB but 0 jobs match filter job_completed=${job_completed}`);
+            console.log(`⚠️ WARNING: ${(allResults || []).length} jobs found in DB but 0 jobs match filter job_completed=${job_completed}`);
           }
           return json({ success: true, data: filteredResults }, 200, corsHeaders);
         } catch (dbError) {
@@ -3981,7 +3951,7 @@ export default {
           query += ` ORDER BY period_start DESC, created_at DESC`;
 
           const { results } = await env.DB.prepare(query).bind(...params).all();
-          console.debug(`✅ Retrieved ${(results || []).length} non-completed vendor transactions`);
+          console.log(`✅ Retrieved ${(results || []).length} non-completed vendor transactions`);
           return json({ success: true, transactions: results || [] }, 200, corsHeaders);
         } catch (dbError) {
           console.error("Error in /get-vendor-transactions:", dbError);
@@ -4087,93 +4057,14 @@ export default {
         }
 
         try {
-          // Helper function to validate and normalize 2-day period
-          const validateAndNormalize2DayPeriod = (startStr, endStr, completionDateStr) => {
-            if (!startStr || !endStr) return null;
-            
-            const startDate = new Date(startStr + 'T00:00:00');
-            const endDate = new Date(endStr + 'T00:00:00');
-            const completionDate = completionDateStr ? new Date(completionDateStr + 'T00:00:00') : new Date();
-            
-            // Calculate days difference
-            const daysDiff = Math.round(
-              (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-            );
-            
-            // Must be exactly 1 day apart (2-day bucket: start to start+1)
-            if (daysDiff !== 1) {
-              console.warn(`⚠️ Invalid period span: ${daysDiff} days. Recalculating for date: ${completionDateStr || 'current'}`);
-              return null; // Will recalculate below
-            }
-            
-            // Check if start day is odd (required for 2-day buckets: 1-2, 3-4, 5-6, etc.)
-            const startDay = startDate.getDate();
-            if (startDay % 2 !== 1) {
-              console.warn(`⚠️ Period start day ${startDay} is not odd. Recalculating for proper 2-day bucket.`);
-              return null; // Will recalculate below
-            }
-            
-            // Validate that end day is start day + 1
-            const endDay = endDate.getDate();
-            if (endDay !== startDay + 1 && !(startDate.getMonth() !== endDate.getMonth() && endDay === 1)) {
-              // Allow month boundary case (e.g., Jan 31 - Jan 31 if month has 31 days)
-              const lastDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-              if (startDay === lastDayOfMonth && endDay === lastDayOfMonth) {
-                // Last day of month - this is valid
-                return { start: startStr, end: endStr };
-              }
-              console.warn(`⚠️ Period end day ${endDay} is not start day + 1. Recalculating.`);
-              return null;
-            }
-            
-            return { start: startStr, end: endStr };
-          };
-          
           // Calculate 2-day period for current date
-          // Use provided period_start and period_end if available and valid, otherwise calculate
+          // Use provided period_start and period_end if available, otherwise calculate
           let periodStart, periodEnd;
           
           if (body.period_start && body.period_end) {
-            // Validate the provided period
-            const validated = validateAndNormalize2DayPeriod(
-              body.period_start, 
-              body.period_end, 
-              body.current_date || currentDate
-            );
-            
-            if (validated) {
-              periodStart = validated.start;
-              periodEnd = validated.end;
-            } else {
-              // Invalid period provided, recalculate
-              console.warn(`⚠️ Provided period ${body.period_start} to ${body.period_end} is invalid. Recalculating.`);
-              const date = new Date(body.current_date || currentDate);
-              const day = date.getDate();
-              
-              let startDate, endDate;
-              if (day % 2 === 1) {
-                // Odd day: start is the day itself, end is day+1
-                startDate = new Date(date);
-                endDate = new Date(date);
-                endDate.setDate(endDate.getDate() + 1);
-              } else {
-                // Even day: start is day-1, end is the day itself
-                startDate = new Date(date);
-                startDate.setDate(startDate.getDate() - 1);
-                endDate = new Date(date);
-              }
-              
-              // Handle month boundaries
-              if (endDate.getMonth() !== startDate.getMonth()) {
-                // If end goes into next month, adjust to last day of current month
-                const lastDay = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-                endDate = new Date(startDate.getFullYear(), startDate.getMonth(), lastDay);
-              }
-              
-              periodStart = startDate.toISOString().split('T')[0];
-              periodEnd = endDate.toISOString().split('T')[0];
-              console.debug(`✅ Recalculated period: ${periodStart} to ${periodEnd}`);
-            }
+            // Use provided period dates
+            periodStart = body.period_start;
+            periodEnd = body.period_end;
           } else {
             // Calculate 2-day period: 1-2, 3-4, ..., 27-28, 29-30, 31 (if applicable)
             const date = new Date(currentDate);
@@ -4202,19 +4093,6 @@ export default {
             periodStart = startDate.toISOString().split('T')[0];
             periodEnd = endDate.toISOString().split('T')[0];
           }
-          
-          // Final validation before proceeding
-          const finalValidation = validateAndNormalize2DayPeriod(periodStart, periodEnd, body.current_date || currentDate);
-          if (!finalValidation) {
-            console.error(`❌ Failed to create valid 2-day period. Start: ${periodStart}, End: ${periodEnd}`);
-            return json({ 
-              success: false, 
-              error: `Invalid 2-day period: ${periodStart} to ${periodEnd}. Periods must be 2-day buckets (1-2, 3-4, 5-6, etc.)` 
-            }, 400, corsHeaders);
-          }
-          
-          periodStart = finalValidation.start;
-          periodEnd = finalValidation.end;
 
           // Get vendor notifications for this period
           const { results: notifications } = await env.DB.prepare(`
@@ -4278,39 +4156,8 @@ export default {
             WHERE LOWER(email) = ? LIMIT 1
           `).bind(vendorEmail).all();
 
-          const vendorId = vendorDetails && vendorDetails.length > 0 ? (vendorDetails[0].vendor_id || '') : '';
-          const vendorNameFromRegister = vendorDetails && vendorDetails.length > 0 ? (vendorDetails[0].vendor_name || '') : '';
-
-          // Resolve the best possible vendor/shop name for transactions
-          const rawBodyVendorName = (body.vendor_name || '').toString().trim();
-          const isPlaceholderName = (name) => {
-            if (!name) return true;
-            const lower = name.toLowerCase();
-            return lower === 'unknown vendor' || lower === 'printmax vendor';
-          };
-
-          let finalVendorName = rawBodyVendorName;
-
-          // Prefer registered vendor name when body name is missing or a placeholder
-          if (isPlaceholderName(finalVendorName)) {
-            if (vendorNameFromRegister && !isPlaceholderName(vendorNameFromRegister)) {
-              finalVendorName = vendorNameFromRegister.trim();
-            }
-          }
-
-          // Fallback: try to read shop_name from any available print job / notification
-          if (isPlaceholderName(finalVendorName)) {
-            const sampleJob = (printJobs && printJobs.length > 0) ? printJobs[0] : ((notifications && notifications.length > 0) ? notifications[0] : null);
-            const shopNameFromRecord = getShopNameFromRecord(sampleJob);
-            if (shopNameFromRecord && !isPlaceholderName(shopNameFromRecord)) {
-              finalVendorName = shopNameFromRecord.toString().trim();
-            }
-          }
-
-          // Last-resort fallback: use vendor email so it's never "Unknown Vendor"
-          if (!finalVendorName) {
-            finalVendorName = vendorEmail;
-          }
+          const vendorId = vendorDetails && vendorDetails.length > 0 ? vendorDetails[0].vendor_id : '';
+          const vendorName = vendorDetails && vendorDetails.length > 0 ? vendorDetails[0].vendor_name : '';
 
           // Check if transaction already exists
           const existing = await env.DB.prepare(`
@@ -4341,17 +4188,16 @@ export default {
             
             const recalcEarning = recalcPrice - recalcProfit;
             
-            // Update with recalculated values, and refresh vendor_name, but preserve payment_status and amount_paid
+            // Update with recalculated values, but preserve payment_status and amount_paid
             await env.DB.prepare(`
               UPDATE vendor_transaction SET
-                vendor_name = ?,
                 total_documents = ?,
                 total_price = ?,
                 platform_profit = ?,
                 total_earning = ?,
                 updated_at = datetime('now')
               WHERE LOWER(vendor_email) = ? AND period_start = ? AND period_end = ?
-            `).bind(finalVendorName, recalcDocuments, recalcPrice, recalcProfit, recalcEarning, vendorEmail, periodStart, periodEnd).run();
+            `).bind(recalcDocuments, recalcPrice, recalcProfit, recalcEarning, vendorEmail, periodStart, periodEnd).run();
           } else {
             // Insert new transaction
             await env.DB.prepare(`
@@ -4361,7 +4207,7 @@ export default {
                 amount_paid, payment_status, created_at, updated_at
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             `).bind(
-              vendorId, vendorEmail, finalVendorName, periodStart, periodEnd,
+              vendorId, vendorEmail, vendorName, periodStart, periodEnd,
               totalDocuments, totalPrice, platformProfit, totalEarning,
               0.0, 'not_completed'
             ).run();
@@ -4760,7 +4606,7 @@ export default {
                 `).run();
               } catch (e) {
                 // Ignore if index creation fails
-                console.debug(`Note: Could not create unique index on vendor_email: ${e}`);
+                console.log(`Note: Could not create unique index on vendor_email: ${e}`);
               }
             }
           }
