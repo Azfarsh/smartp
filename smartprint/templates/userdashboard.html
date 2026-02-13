@@ -16055,33 +16055,29 @@
         // Get the categorized pricing for golden embossing
         const categorizedPricing = pricing['categorized_pricing'] || {};
         const goldenEmbossPricing = categorizedPricing['golden_embossing'] || {};
-        const digitalPrintPricing = categorizedPricing['digital_print'] || {};
-
-        // Base printing cost - use digital print pricing for the paper type
-        let paperSizeKey = paperType.toLowerCase();
-        if (paperSizeKey === 'a1') {
-          paperSizeKey = 'al';
-        }
-
-        const digitalPriceKey = `digital_print_${paperSizeKey}_single_color`;
-        let basePrice = digitalPrintPricing[digitalPriceKey] || 5; // Default fallback
-
-        let printingCost = basePrice * pages * copies;
-        breakdown.push({ label: `${color} Printing (${pages} pages × ${copies} copies)`, value: `₹${printingCost}` });
-        total += printingCost;
 
         // Golden embossing cost - black cover
-        let embossPrice = goldenEmbossPricing['emboss_black_cover'] || 50;
+        let embossPrice =
+          goldenEmbossPricing['golden_emboss_cover'] ||
+          goldenEmbossPricing['emboss_black_cover'] ||
+          50;
         let embossCost = embossPrice * copies;
         breakdown.push({ label: `Golden Embossing Black Cover (${copies} books)`, value: `₹${embossCost}` });
         total += embossCost;
 
         // Paper type cost
         let paperPrice = 0;
-        if (paperType === 'A4') {
-          paperPrice = goldenEmbossPricing['emboss_a4_paper'] || 0;
-        } else if (paperType === 'Bond') {
-          paperPrice = goldenEmbossPricing['emboss_bond_paper'] || 0;
+        const normalizedPaper = String(paperType).toLowerCase();
+        if (normalizedPaper === 'a4') {
+          paperPrice =
+            goldenEmbossPricing['golden_emboss_a4_color'] ||
+            goldenEmbossPricing['emboss_a4_paper'] ||
+            0;
+        } else if (normalizedPaper === 'bond' || normalizedPaper === 'bond paper' || normalizedPaper === 'bond_paper') {
+          paperPrice =
+            goldenEmbossPricing['golden_emboss_bond_color'] ||
+            goldenEmbossPricing['emboss_bond_paper'] ||
+            0;
         }
 
         if (paperPrice > 0) {
@@ -16785,14 +16781,15 @@
             const paperType = modal.querySelector(`#${service}-field-2`).value;
 
             // Map form data to pricing keys from pricing.json
-            let serviceKey = 'emboss_a4_paper'; // Default fallback
+            const normalizedPaperType = String(paperType || '').toLowerCase();
+            let serviceKey = 'golden_emboss_a4_color'; // Default fallback
 
-            if (paperType === 'black_cover') {
+            if (normalizedPaperType === 'black_cover') {
               serviceKey = 'emboss_black_cover';
-            } else if (paperType === 'a4_paper') {
-              serviceKey = 'emboss_a4_paper';
-            } else if (paperType === 'bond_paper') {
-              serviceKey = 'emboss_bond_paper';
+            } else if (normalizedPaperType === 'a4_paper' || normalizedPaperType === 'a4') {
+              serviceKey = 'golden_emboss_a4_color';
+            } else if (normalizedPaperType === 'bond_paper' || normalizedPaperType === 'bond' || normalizedPaperType === 'bond paper') {
+              serviceKey = 'golden_emboss_bond_color';
             }
 
             // Build a normalized breakdown so the shared renderer can compute totals correctly
