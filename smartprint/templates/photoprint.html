@@ -2614,11 +2614,7 @@
                 ctx.save();
 
                 if (i < uploadedImages.length && uploadedImages[i]) {
-                    // Draw filled slot with actual image
-                    ctx.strokeStyle = '#2563eb';
-                    ctx.lineWidth = 1.2;
-                    ctx.strokeRect(x, y, geometry.slotW, geometry.slotH);
-
+                    // Draw filled slot with actual image (no border)
                     const img = uploadedImages[i];
                     const image = new window.Image();
                     image.src = img.data;
@@ -2646,17 +2642,7 @@
                         imagesLoaded++;
                     };
                 } else {
-                    // Draw empty slot with dashed border
-                    ctx.strokeStyle = '#d1d5db';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([5, 5]);
-                    ctx.strokeRect(x, y, geometry.slotW, geometry.slotH);
-
-                    // Add "Empty" text
-                    ctx.fillStyle = '#9ca3af';
-                    ctx.font = '12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Empty', x + geometry.slotW / 2, y + geometry.slotH / 2);
+                    // Keep empty slots clean (no border/text) to match requested output.
                 }
 
                 ctx.restore();
@@ -2708,11 +2694,6 @@
                                 // Add image to PDF
                                 pdf.addImage(image, 'JPEG', dx, dy, drawW, drawH);
 
-                                // Add border around image
-                                pdf.setDrawColor(100, 100, 100);
-                                pdf.setLineWidth(0.5);
-                                pdf.rect(x, y, geometry.slotW, geometry.slotH);
-
                                 resolve();
                             } catch (error) {
                                 console.error('Error adding image to PDF:', error);
@@ -2726,17 +2707,7 @@
                         image.src = img.data;
                     });
                 } else {
-                    // Draw empty slot with dashed border
-                    pdf.setDrawColor(200, 200, 200);
-                    pdf.setLineWidth(1);
-                    pdf.setLineDashPattern([3, 3], 0);
-                    pdf.rect(x, y, geometry.slotW, geometry.slotH);
-                    pdf.setLineDashPattern([], 0); // Reset dash pattern
-
-                    // Add "Empty Slot" text in light gray
-                    pdf.setFontSize(10);
-                    pdf.setTextColor(180, 180, 180);
-                    pdf.text('Empty Slot', x + geometry.slotW / 2, y + geometry.slotH / 2, { align: 'center' });
+                    // Keep empty slots clean in generated PDF (no border/text).
                 }
             }
 
