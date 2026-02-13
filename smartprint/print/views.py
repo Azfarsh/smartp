@@ -6947,6 +6947,7 @@ def vendor_pricing(request):
                     'passport_print_30': 'passport_print_30',
                     # Golden Embossing
                     'golden_emboss_cover': 'golden_emboss_cover',
+                    'golden_emboss_a4_color': 'golden_emboss_a4_color',
                     'golden_emboss_bond_color': 'golden_emboss_bond_color',
                     # Lamination
                     'lamination_a4_standard': 'lamination_a4_standard',
@@ -7996,6 +7997,7 @@ def get_vendor_pricing(request):
                 'passport_print_16': 70,
                 'passport_print_30': 120,
                 'golden_emboss_cover': 50,
+                'golden_emboss_a4_color': 10,
                 'golden_emboss_bond_color': 10,
                 'lamination_a4_standard': 30,
                 'lamination_a4_glossy': 35,
@@ -8059,6 +8061,7 @@ def get_vendor_pricing(request):
                 },
                 'golden_embossing': {
                     'golden_emboss_cover': 50,
+                    'golden_emboss_a4_color': 10,
                     'golden_emboss_bond_color': 10
                 },
                 'lamination': {

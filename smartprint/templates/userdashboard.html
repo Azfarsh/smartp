@@ -16214,7 +16214,7 @@
         total += printingCost;
 
         // Golden embossing cost - black cover
-        let embossPrice = goldenEmbossPricing['emboss_black_cover'] || 50;
+        let embossPrice = goldenEmbossPricing['golden_emboss_cover'] || goldenEmbossPricing['emboss_black_cover'] || 50;
         let embossCost = embossPrice * copies;
         breakdown.push({ label: `Golden Embossing Black Cover (${copies} books)`, value: `₹${embossCost}` });
         total += embossCost;
@@ -16222,9 +16222,9 @@
         // Paper type cost
         let paperPrice = 0;
         if (paperType === 'A4') {
-          paperPrice = goldenEmbossPricing['emboss_a4_paper'] || 0;
+          paperPrice = goldenEmbossPricing['golden_emboss_a4_color'] || goldenEmbossPricing['emboss_a4_paper'] || 0;
         } else if (paperType === 'Bond') {
-          paperPrice = goldenEmbossPricing['emboss_bond_paper'] || 0;
+          paperPrice = goldenEmbossPricing['golden_emboss_bond_color'] || goldenEmbossPricing['emboss_bond_paper'] || 0;
         }
 
         if (paperPrice > 0) {
@@ -16924,14 +16924,10 @@
             const paperType = modal.querySelector(`#${service}-field-2`).value;
 
             // Map form data to pricing keys from pricing.json
-            let serviceKey = 'emboss_a4_paper'; // Default fallback
+            let serviceKey = 'golden_emboss_a4_color';
 
-            if (paperType === 'black_cover') {
-              serviceKey = 'emboss_black_cover';
-            } else if (paperType === 'a4_paper') {
-              serviceKey = 'emboss_a4_paper';
-            } else if (paperType === 'bond_paper') {
-              serviceKey = 'emboss_bond_paper';
+            if (paperType === 'Bond' || paperType === 'bond_paper') {
+              serviceKey = 'golden_emboss_bond_color';
             }
 
             // Build a normalized breakdown so the shared renderer can compute totals correctly
@@ -19314,7 +19310,6 @@
           subtotal += embossCost;
         }
       } else if (breakdown.pricing_key_used) {
-        const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         const qty = breakdown.page_count || breakdown.print_quantity || 1;
         const copies = breakdown.num_copies || 1;
         const totalQty = qty * copies;
@@ -23286,19 +23281,11 @@
                 <p class="bill-subtitle">Professional Printing Services</p>
               </div>
             </div>
-            <div class="bill-date">
-              <p>Date: ${new Date().toLocaleDateString()}</p>
-              <p>Time: ${new Date().toLocaleTimeString()}</p>
-            </div>
           </div>
           
           <div class="bill-content">
             <div class="service-info">
               <h4>Print Details</h4>
-              <div class="service-row">
-                <span class="service-name">${serviceDisplayName}</span>
-                <span class="service-status">Completed</span>
-              </div>
               ${shopName ? `
                 <div class="shop-name-row">
                   <span class="shop-label">Shop:</span>
@@ -23345,7 +23332,6 @@
           subtotal += embossCost;
         }
       } else if (breakdown.pricing_key_used) {
-        const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         const qty = breakdown.page_count || breakdown.print_quantity || 1;
         const copies = breakdown.num_copies || 1;
         const totalQty = qty * copies;
@@ -23360,15 +23346,8 @@
           amount = Number(job.total_price);
         }
 
-        html += `
-          <div class="invoice-item">
-            <span class="invoice-item-label">${serviceDesc}</span>
-            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
-          </div>
-        `;
         subtotal += amount;
       } else {
-        const serviceDesc = serviceDisplayName;
         // Use job.total_price as primary source (final amount customer paid), then fallback to breakdown/pricing
         // This ensures we always show the actual final amount, not 0
         const amount = Number(job.total_price || 0) > 0
@@ -23379,12 +23358,6 @@
               ? Number(pricing.total_price)
               : (subtotal > 0 ? subtotal : 0)));
 
-        html += `
-          <div class="invoice-item">
-            <span class="invoice-item-label">${serviceDesc}</span>
-            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
-          </div>
-        `;
         // Only add to subtotal if amount is valid and we haven't already calculated it
         if (amount > 0 && subtotal === 0) {
           subtotal = amount;
@@ -23499,17 +23472,6 @@
       `;
 
       html += `
-            </div>
-            
-            <div class="bill-footer">
-              <div class="payment-info">
-                <p><strong>Payment Method:</strong> Online Payment</p>
-                <p><strong>Status:</strong> <span class="status-paid" style="color: #059669; font-weight: 600;">Paid</span></p>
-              </div>
-              <div class="contact-info">
-                <p>Thank you for choosing PrintMax!</p>
-                <p>For queries, contact: printmax_support@printmax.in</p>
-              </div>
             </div>
           </div>
         </div>
@@ -27647,7 +27609,10 @@
           // Add other service-specific details
           serviceSpecificDetails.forEach(detail => {
             const labelLower = detail.label.toLowerCase();
-            if (!labelLower.includes('color') && !labelLower.includes('copies') && !labelLower.includes('quantity') && !labelLower.includes('package') && !labelLower.includes('pages')) {
+            const detailValue = (detail.value || '').toString().trim();
+            const isServiceOrStatusRow = labelLower.includes('service') || labelLower.includes('status') || labelLower.includes('completed');
+            const isCurrencyOnlyValue = /^₹?\s*\d+(\.\d+)?$/.test(detailValue);
+            if (!labelLower.includes('color') && !labelLower.includes('copies') && !labelLower.includes('quantity') && !labelLower.includes('package') && !labelLower.includes('pages') && !isServiceOrStatusRow && !isCurrencyOnlyValue) {
               invoiceHtml += `
                 <div class="invoice-item">
                   <span class="invoice-item-label">${detail.label}</span>
@@ -30409,10 +30374,6 @@
   <div id="pricingSummaryModal" class="modal-overlay" style="display: none;">
     <div class="modal-content invoice-modal">
       <div class="invoice-header">
-        <h2 class="invoice-title">Invoice</h2>
-        <div class="invoice-date" id="invoiceDate">
-          <!-- Date will be populated here -->
-        </div>
         <button class="invoice-close-btn" onclick="hidePricingSummary()">
           <i class="fas fa-times"></i>
         </button>
@@ -30484,22 +30445,22 @@
       #pricingSummaryModal .invoice-header {
         background: #2563eb;
         color: #ffffff;
-        padding: 1.5rem 1.75rem;
+        padding: 0.9rem 1rem;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 1rem;
+        position: relative;
       }
 
-      #pricingSummaryModal .invoice-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin: 0;
-      }
-
-      #pricingSummaryModal .invoice-date {
-        font-size: 0.85rem;
-        opacity: 0.95;
+      #pricingSummaryModal .invoice-close-btn {
+        position: static;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        color: #ffffff;
       }
 
       #pricingSummaryModal .invoice-content {
@@ -30544,6 +30505,19 @@
       #pricingSummaryModal .invoice-item.invoice-total .invoice-item-value {
         color: #ffffff;
         font-size: 1.05rem;
+      }
+
+      #orderSummaryModal .shop-label,
+      #orderSummaryModal .shop-value,
+      #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-label,
+      #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value {
+        font-size: 0.88rem !important;
+        color: #1f2937 !important;
+        font-weight: 500 !important;
+      }
+
+      #orderSummaryModal .bill-date {
+        display: none !important;
       }
 
       #pricingSummaryModal .invoice-footer {
