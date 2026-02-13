@@ -8437,7 +8437,7 @@
   <div class="photo-success-overlay" id="dashboardSuccessOverlay" aria-hidden="true">
     <div class="photo-success-card">
       <dotlottie-player src="{% static 'images/success confetti.lottie' %}" autoplay loop="false"
-        style="width:200px; height:200px; margin:0 auto;"></dotlottie-player>
+        class="success-lottie-player dashboard-success-lottie" style="margin:0 auto;"></dotlottie-player>
       <div class="photo-success-text" id="dashboardSuccessText">✅ Print job sent to print successfully.</div>
     </div>
   </div>
@@ -21671,9 +21671,10 @@
               <div class="shop-selection-item-info">
                 <div class="shop-selection-item-name">${shop.shop_name || 'Print Shop'}</div>
                 <div class="shop-selection-item-address">${address}</div>
+                ${service === 'photo' ? '' : `
                 <div class="shop-selection-item-traffic" style="font-size: 13px; color: ${trafficInfo.color}; margin-top: 6px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
                   <i class="fas fa-circle" style="font-size: 8px;"></i><span>${trafficInfo.label}</span>
-                </div>
+                </div>`}
               </div>
               <div class="shop-selection-item-meta">
                 ${distanceDisplay}
@@ -21872,11 +21873,15 @@
       const subtitleEl = button.querySelector('.shop-selection-subtitle') || document.getElementById(`${service}-shop-subtitle`);
 
       if (titleEl) titleEl.textContent = name;
-      // Show address and distance exactly like photoprint.html
+      // Keep photo subtitle style aligned with document print service modal.
       if (subtitleEl) {
-        subtitleEl.textContent = distance && distance !== 'Distance not available' && distance !== 'Location unavailable' 
-          ? `${address} • ${distance}` 
-          : address || 'Choose a nearby print shop';
+        if (service === 'photo') {
+          subtitleEl.textContent = address || 'Choose a nearby print shop';
+        } else {
+          subtitleEl.textContent = distance && distance !== 'Distance not available' && distance !== 'Location unavailable'
+            ? `${address} • ${distance}`
+            : address || 'Choose a nearby print shop';
+        }
       }
 
       // Remove any error styling when shop is selected
@@ -25552,7 +25557,7 @@
     // Function to convert image to PDF based on settings
     async function convertImageToPDF(imageFile, settings) {
       try {
-        const { PDFDocument, rgb } = PDFLib;
+        const { PDFDocument } = PDFLib;
 
         // Create a new PDF document
         const pdfDoc = await PDFDocument.create();
@@ -25601,16 +25606,18 @@
 
         const imgAspect = imgDims.width / imgDims.height;
         const pageAspect = pageWidth / pageHeight;
+        const serviceType = String(settings?.serviceType || settings?.service || '').toLowerCase();
+        const fillScale = (serviceType === 'photo' || serviceType === 'passport') ? 1.0 : 0.9;
 
         let drawWidth, drawHeight;
 
         if (imgAspect > pageAspect) {
           // Image is wider than page aspect ratio
-          drawWidth = pageWidth * 0.9; // 90% of page width with margin
+          drawWidth = pageWidth * fillScale;
           drawHeight = drawWidth / imgAspect;
         } else {
           // Image is taller than page aspect ratio
-          drawHeight = pageHeight * 0.9; // 90% of page height with margin
+          drawHeight = pageHeight * fillScale;
           drawWidth = drawHeight * imgAspect;
         }
 
@@ -27979,7 +27986,7 @@
                 }
                 
                 confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting image to PDF...';
-                processedFile = await convertImageToPDF(originalImageFile, settings);
+                processedFile = await convertImageToPDF(originalImageFile, { ...settings, serviceType });
                 finalFilename = fileToUpload.name.replace(/\.[^/.]+$/, ".pdf");
                 
                 // Validate converted file is still a File object
@@ -31062,8 +31069,8 @@
     }
 
     .success-lottie-container {
-      width: 200px;
-      height: 200px;
+      width: 216px;
+      height: 216px;
       margin: 0 auto 1rem;
       display: flex;
       align-items: center;
@@ -31071,8 +31078,13 @@
     }
 
     .success-lottie-player {
-      width: 200px !important;
-      height: 200px !important;
+      width: 216px !important;
+      height: 216px !important;
+    }
+
+    .dashboard-success-lottie {
+      width: 216px !important;
+      height: 216px !important;
     }
 
     .success-content {
@@ -31345,8 +31357,8 @@
     }
 
     .success-lottie-container {
-      width: 120px;
-      height: 120px;
+      width: 136px;
+      height: 136px;
       margin: 0 auto 0.25rem;
       position: relative;
       display: flex;
@@ -31440,14 +31452,14 @@
       }
 
       .success-lottie-container {
-        width: 160px;
-        height: 160px;
+        width: 176px;
+        height: 176px;
         margin-bottom: 1rem;
       }
 
       .success-lottie-player {
-        width: 160px !important;
-        height: 160px !important;
+        width: 176px !important;
+        height: 176px !important;
       }
 
       .success-title {
@@ -31466,13 +31478,13 @@
       }
 
       .success-lottie-container {
-        width: 180px;
-        height: 180px;
+        width: 196px;
+        height: 196px;
       }
 
       .success-lottie-player {
-        width: 180px !important;
-        height: 180px !important;
+        width: 196px !important;
+        height: 196px !important;
       }
 
       .success-title {
@@ -31491,14 +31503,14 @@
       }
 
       .success-lottie-container {
-        width: 140px;
-        height: 140px;
+        width: 154px;
+        height: 154px;
         margin-bottom: 0.75rem;
       }
 
       .success-lottie-player {
-        width: 140px !important;
-        height: 140px !important;
+        width: 154px !important;
+        height: 154px !important;
       }
 
       .success-title {
