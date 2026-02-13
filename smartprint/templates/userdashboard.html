@@ -12,45 +12,6 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <script>
-    // Reduce console noise: keep only warn/error/debug (no functional changes).
-    (function () {
-      try {
-        if (window.__printmaxConsoleFilterInstalled) return;
-        window.__printmaxConsoleFilterInstalled = true;
-
-        if (!window.console) return;
-
-        const original = {
-          debug: (console.debug || console.log).bind(console),
-          warn: (console.warn || console.log).bind(console),
-          error: (console.error || console.log).bind(console),
-        };
-
-        function routeToLevel(args) {
-          const first = args && args.length ? args[0] : '';
-          const msg = typeof first === 'string' ? first : '';
-          const lower = msg.toLowerCase();
-
-          // Promote explicit warning/error markers to visible levels.
-          if (msg.includes('❌') || lower.includes('error') || lower.includes('failed')) return 'error';
-          if (msg.includes('⚠️') || lower.includes('warning')) return 'warn';
-
-          // Everything else becomes debug/verbose.
-          return 'debug';
-        }
-
-        console.log = (...args) => original[routeToLevel(args)](...args);
-        console.info = (...args) => original[routeToLevel(args)](...args);
-        console.table = (...args) => original[routeToLevel(args)](...args);
-        console.dir = (...args) => original[routeToLevel(args)](...args);
-        console.trace = (...args) => original[routeToLevel(args)](...args);
-      } catch (_) {
-        // Never block app behavior if console filtering fails.
-      }
-    })();
-  </script>
-
   <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
   <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}?v=2">
@@ -1922,19 +1883,6 @@
         /* Extra padding to show peek of second card */
         padding-left: 0.5rem;
         /* Left padding for first card */
-        scroll-behavior: smooth;
-        /* Smooth scrolling for carousel */
-      }
-
-      /* Mobile: Ensure print job block left color highlight is visible */
-      .jobs-row .job-card-mobile .job-card-left-border,
-      .job-card-mobile .job-card-left-border {
-        width: 5px !important;
-        min-width: 4px !important;
-        flex-shrink: 0 !important;
-        min-height: 100% !important;
-        border-radius: 4px 0 0 4px !important;
-        /* More prominent on mobile for visibility */
       }
 
       /* Job cards on mobile - fixed width to show peek of next card */
@@ -2109,6 +2057,7 @@
       margin-left: 0.5rem;
       /* left margin for separation */
       margin-right: 0.5rem;
+      /* right margin for separation */
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       /* more prominent shadow */
       border: 1px solid #6b7280;
@@ -2144,8 +2093,6 @@
       border-radius: 2px 0 0 2px;
       background: var(--primary);
       /* default fallback to ensure all cards show color */
-      flex-shrink: 0;
-      /* never collapse on mobile */
     }
 
     /* Status fallback colors (when service is unknown) */
@@ -2424,7 +2371,7 @@
       justify-content: center;
       margin-top: auto;
       width: 100%;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     .job-action-btn {
@@ -2542,20 +2489,13 @@
       }
 
       .job-card-actions {
-        gap: 4px;
-        flex-wrap: nowrap;
-        justify-content: space-between;
-        width: 100%;
-        box-sizing: border-box;
-        padding: 0 2px;
+        gap: 6px;
       }
 
       .job-action-btn {
-        height: 28px;
-        padding: 0 .35rem;
-        min-width: 0;
-        flex: 1 1 0;
-        font-size: 10px;
+        height: 30px;
+        padding: 0 .55rem;
+        min-width: 90px;
         max-width: none;
       }
 
@@ -2567,13 +2507,20 @@
         font-size: 12px;
       }
 
-      .job-action-btn .job-action-label {
-        font-size: 10px;
+      .job-action-btn {
+        width: 28px;
+        /* increased width for better touch targets */
+        height: 28px;
+        /* increased height */
+        font-size: 9px;
+        /* increased font size */
+        padding: 0.2rem 0.4rem;
+        /* added padding */
       }
 
       .job-card-status-badge {
         font-size: 11px;
-        padding: 3px 5px;
+        padding: 3px 6px;
       }
     }
 
@@ -4119,83 +4066,15 @@
       overflow: hidden;
     }
 
-    /* Desktop: Match jumbo print modal design exactly */
+    /* Desktop: Make order summary more compact and readable */
     @media (min-width: 769px) {
       #orderSummaryModal .service-modal {
         max-width: 700px;
-        width: 700px;
       }
 
       #orderSummaryModal .modal-body {
         padding: 1rem 1.25rem;
         padding-bottom: 1.5rem;
-      }
-    }
-
-    /* Desktop: Match jumbo print modal design exactly - exact dimensions */
-    @media (min-width: 1024px) {
-      #orderSummaryModal .service-modal {
-        max-width: 700px;
-        width: 700px;
-        max-height: none;
-        height: auto;
-      }
-
-      #orderSummaryModal .modal-body {
-        overflow-y: visible;
-        max-height: none;
-        padding: 1.5rem 2rem;
-      }
-
-      /* Match jumbo print modal professional bill styling */
-      #orderSummaryModal .professional-bill {
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
-
-      #orderSummaryModal .bill-header {
-        padding: 1.5rem 2rem;
-        border-radius: 12px 12px 0 0;
-      }
-
-      #orderSummaryModal .bill-content {
-        padding: 1.5rem 2rem;
-      }
-
-      #orderSummaryModal .invoice-items {
-        margin-top: 1rem;
-      }
-
-      #orderSummaryModal .invoice-item {
-        padding: 0.875rem 0;
-        font-size: 0.95rem;
-      }
-
-      #orderSummaryModal .invoice-item-label {
-        font-weight: 500;
-        color: var(--text-secondary);
-      }
-
-      #orderSummaryModal .invoice-item-value {
-        font-weight: 600;
-        color: var(--text-primary);
-      }
-
-      #orderSummaryModal .invoice-item.invoice-total {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 2px solid var(--border-light);
-      }
-
-      #orderSummaryModal .invoice-item.invoice-total .invoice-item-label {
-        font-size: 1.1rem;
-        font-weight: 700;
-      }
-
-      #orderSummaryModal .invoice-item.invoice-total .invoice-item-value {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #f6f7f8;
       }
     }
 
@@ -4436,7 +4315,7 @@
 
     #orderSummaryModal .modal-footer .btn-cancel {
       background: #e5e7eb;
-      color: #000000;
+      color: #374151;
       border: 1px solid #cfd3da;
     }
 
@@ -4547,7 +4426,7 @@
       }
 
       #orderSummaryModal .bill-subtitle {
-        font-size: 0.9rem;
+        font-size: 0.7rem;
       }
 
       #orderSummaryModal .bill-date {
@@ -4555,17 +4434,11 @@
         text-align: right;
         width: auto;
         flex-shrink: 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem 0.75rem;
-        align-items: center;
-        justify-content: flex-end;
       }
 
       #orderSummaryModal .bill-date p {
-        margin: 0;
+        margin: 0.2rem 0;
         text-align: right;
-        white-space: nowrap;
       }
 
       #orderSummaryModal .bill-duration {
@@ -4703,58 +4576,188 @@
         flex-shrink: 0;
       }
 
-      /* Shop name and address rows - match invoice-item layout (label left, value right) */
-      #orderSummaryModal .shop-name-row,
+      #orderSummaryModal .shop-name-row {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        padding: 1rem 1.25rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.9rem;
+        flex-wrap: wrap;
+      }
+
+      /* Desktop: Impressive horizontal layout like jumbo print - single line */
+      @media (min-width: 769px) {
+        #orderSummaryModal .shop-name-row {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+          padding: 1rem 1.5rem;
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+          margin-bottom: 0.5rem;
+        }
+
+        #orderSummaryModal .shop-name-row .shop-label {
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.9rem;
+          margin-bottom: 0;
+        }
+
+        #orderSummaryModal .shop-name-row .shop-value {
+          font-size: 1.1rem;
+          color: #111827;
+          line-height: 1.5;
+          font-weight: 700;
+          width: 100%;
+          white-space: normal;
+          word-wrap: break-word;
+        }
+
+        #orderSummaryModal .shop-address-row {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+          padding: 0 1.5rem 1rem 1.5rem;
+          margin-top: 0;
+        }
+
+        #orderSummaryModal .shop-address-row .shop-label {
+          font-weight: 600;
+          color: #374151;
+          font-size: 0.9rem;
+          margin-bottom: 0;
+        }
+
+        #orderSummaryModal .shop-address-row .shop-value {
+          font-size: 0.95rem;
+          color: #111827;
+          line-height: 1.6;
+          font-weight: 500;
+          width: 100%;
+          white-space: normal;
+          word-wrap: break-word;
+        }
+      }
+
+      #orderSummaryModal .shop-name-row {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #4b5563;
+        white-space: nowrap;
+        margin: 0;
+        padding: 0;
+        min-width: 60px;
+        flex-shrink: 0;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-value {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        color: #1f2937;
+        font-weight: 500;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+        word-wrap: break-word;
+        text-align: left;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-address-label {
+        min-width: 70px;
+        flex-shrink: 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #4b5563;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-address-value {
+        flex: 1;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        color: #1f2937;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+
+      /* Mobile: Stack shop and address */
+      @media (max-width: 768px) {
+        #orderSummaryModal .shop-name-row {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        #orderSummaryModal .shop-name-row .shop-label,
+        #orderSummaryModal .shop-name-row .shop-address-label {
+          margin-top: 0.5rem;
+        }
+
+        #orderSummaryModal .shop-name-row .shop-address-label {
+          margin-top: 0.75rem;
+        }
+      }
+
+      /* Shop address row styling for order summary modal */
+      #orderSummaryModal .shop-address-row {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-size: 0.75rem;
+        gap: 0.375rem;
+      }
+
       #orderSummaryModal .shop-address-row {
         display: flex;
         flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
+        align-items: flex-start;
         gap: 0.75rem;
-        padding: 0.5rem 0;
-        font-size: 0.9rem;
-        width: 100%;
-        box-sizing: border-box;
-        border-bottom: 1px solid #e5e7eb;
       }
 
-      #orderSummaryModal .shop-name-row .shop-label,
       #orderSummaryModal .shop-address-row .shop-label {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 600;
-        color: #374151;
+        color: #4b5563;
+        white-space: nowrap;
+        margin: 0;
+        padding: 0;
+        min-width: 100px;
+        flex-shrink: 0;
+      }
+
+      #orderSummaryModal .shop-address-row .shop-value {
+        font-size: 0.85rem;
+        color: #1f2937;
         flex: 1;
         text-align: left;
-        flex-shrink: 0;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-value,
-      #orderSummaryModal .shop-address-row .shop-value {
-        font-size: 0.9rem;
-        color: #4b5563;
         font-weight: 500;
-        text-align: right;
-        flex-shrink: 0;
-        word-wrap: break-word;
-        max-width: 60%;
-      }
-
-      /* Shop address row - value can wrap for long addresses */
-      #orderSummaryModal .shop-address-row .shop-value {
-        text-align: right;
         white-space: normal;
-        word-break: break-word;
-        max-width: 65%;
-      }
-
-      #orderSummaryModal .shop-address-row {
-        margin-top: 0;
-        padding-top: 0.5rem;
-        border-bottom: 1px solid #e5e7eb;
-      }
-
-      #orderSummaryModal .shop-address-row:last-of-type {
-        border-bottom: none;
+        overflow: visible;
+        text-overflow: clip;
+        margin: 0;
+        padding: 0;
+        margin-left: 0.25rem;
+        word-wrap: break-word;
       }
 
       #orderSummaryModal .invoice-items {
@@ -4772,9 +4775,8 @@
       }
 
       #orderSummaryModal .invoice-item-label {
-        font-size: 0.9rem;
-        color: #374151;
-        font-weight: 600;
+        font-size: 0.75rem;
+        color: #6b7280;
         margin-right: 0;
         flex: 1;
         line-height: 1.3;
@@ -4783,19 +4785,13 @@
         min-width: 0;
       }
 
-      #orderSummaryModal .service-info .shop-value,
-      #orderSummaryModal .invoice-items .invoice-item:not(.invoice-total) .invoice-item-value {
-        font-size: 0.9rem !important;
-        color: #4b5563 !important;
-      }
-
       #orderSummaryModal .invoice-item-value {
-        font-size: 0.9rem;
-        font-weight: 500;
+        font-size: 0.8rem;
+        font-weight: 600;
         text-align: right;
         white-space: nowrap;
         flex-shrink: 0;
-        color: #4b5563;
+        color: #1f2937;
         margin-left: 0.5rem;
       }
 
@@ -4949,7 +4945,7 @@
       }
 
       #orderSummaryModal .bill-subtitle {
-        font-size: 0.8rem;
+        font-size: 0.65rem;
       }
 
       #orderSummaryModal .bill-date {
@@ -4973,7 +4969,7 @@
       }
 
       #orderSummaryModal .service-info h4 {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         margin-bottom: 0.375rem;
       }
 
@@ -5018,7 +5014,7 @@
         flex: 1;
         min-width: 0;
         text-align: left;
-        color: #2f353b;
+        color: #6b7280;
         font-weight: 500;
       }
 
@@ -5157,49 +5153,56 @@
       }
     }
 
-    /* Fix: avoid double chevrons in selects within service modals and fields */
-    .select-wrapper .select-arrow {
-      display: none;
+    /* Keep visible dropdown arrows for all option fields in service modals */
+    .service-modal .select-wrapper .select-arrow,
+    .modal .select-wrapper .select-arrow {
+      display: block;
+    }
+
+    /* Use custom icon element arrow to avoid inconsistent native arrows */
+    .service-modal .select-wrapper select,
+    .modal .select-wrapper select {
+      background-image: none !important;
+      padding-right: 2.5rem;
     }
 
     .shop-caret {
       display: none;
     }
 
-    /* Document Print modal: match Jumbo/Order Summary layout - footer outside body, always visible at bottom */
-    #printModal .service-modal {
-      display: flex;
-      flex-direction: column;
-      max-height: 90vh;
-      overflow: hidden;
-    }
-
-    #printModal .modal-body {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-bottom: 0.15rem;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Action buttons - inside modal-body flow (scroll to bottom to see, like jumbo print modal) */
-    #printModal .print-modal-action-buttons {
+    /* Fix: ensure Document Print modal actions are fixed at bottom and only visible after file upload */
+    #printModal .modal-footer.fixed-bottom-buttons {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--outline-variant);
+      padding: 1rem;
       display: none;
+      /* Hidden by default - only show after file upload */
       gap: 0.75rem;
-      margin-top: 0.15rem;
-      padding-top: 1rem;
-      flex-wrap: wrap;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
+      z-index: 1000;
+      min-height: 60px;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
     }
 
-    #printModal .print-modal-action-buttons.show {
+    /* Show buttons when files are uploaded (no scroll requirement) */
+    #printModal .modal-footer.fixed-bottom-buttons.show {
       display: flex !important;
     }
 
-    #printModal .print-modal-action-buttons .btn-cancel,
-    #printModal .print-modal-action-buttons .btn-submit {
+    #printModal .modal-body {
+      padding-bottom: 80px;
+      /* Space for fixed buttons */
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    #printModal .modal-footer .btn-cancel,
+    #printModal .modal-footer .btn-submit {
       flex: 1;
       min-height: 44px;
       font-weight: 600;
@@ -5214,62 +5217,109 @@
       font-size: 0.9rem;
     }
 
-    #printModal .print-modal-action-buttons .btn-cancel {
+    #printModal .modal-footer .btn-cancel {
       background: #e5e7eb;
       color: #374151;
       border: 1px solid #cfd3da;
     }
 
-    #printModal .print-modal-action-buttons .btn-submit {
+    #printModal .modal-footer .btn-submit {
       background: #3b82f6;
       color: white;
       border: none;
     }
 
-    #printModal .print-modal-action-buttons .btn-cancel:hover,
-    #printModal .print-modal-action-buttons .btn-submit:hover {
+    #printModal .modal-footer .btn-cancel:hover,
+    #printModal .modal-footer .btn-submit:hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 
-    /* Mobile: stack action buttons - in flow at bottom like Jumbo modal */
+    /* Keep modal body scroll smooth and prevent scrollbar vibration at bottom */
+    #printModal .modal {
+      position: relative;
+      padding-bottom: 0;
+    }
+
+    #printModal .modal .modal-body {
+      overflow-y: auto;
+      scrollbar-gutter: stable both-edges;
+    }
+
+    /* Mobile: stack action buttons for better visibility */
     @media (max-width: 480px) {
-      #printModal .print-modal-action-buttons {
+      #printModal .modal-footer.fixed-bottom-buttons {
         flex-direction: column;
         align-items: stretch;
-        padding: 0.75rem 0;
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 2px solid #e5e7eb;
+        padding: 0.75rem;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        display: none;
+        /* Hidden by default */
       }
 
-      #printModal .print-modal-action-buttons .btn-cancel,
-      #printModal .print-modal-action-buttons .btn-submit {
+      #printModal .modal-footer.fixed-bottom-buttons.show {
+        display: flex !important;
+      }
+
+      #printModal .modal-footer .btn-cancel,
+      #printModal .modal-footer .btn-submit {
         width: 100%;
         min-height: 44px;
         font-size: 14px;
+        font-weight: 600;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        border: 1px solid #d1d5db;
+        padding: 0.75rem 1rem;
+      }
+
+      #printModal .modal-footer .btn-cancel {
+        background: #e5e7eb;
+        color: #374151;
+        border: 1px solid #cfd3da;
+      }
+
+      #printModal .modal-footer .btn-submit {
+        background: #3b82f6;
+        color: white;
+        border: none;
       }
 
       #printModal .modal-body {
-        padding-bottom: 1rem;
+        padding-bottom: 120px;
+        /* Space for fixed buttons */
+        max-height: calc(100vh - 150px);
       }
     }
 
-    /* Vertical Invoice Modal Style - compact for desktop */
+    /* Vertical Invoice Modal Style */
     .invoice-modal {
-      width: min(440px, 92vw);
-      max-width: 440px;
-      max-height: 78vh;
+      width: min(600px, 95vw);
+      max-width: 600px;
+      max-height: 85vh;
       background: #fff;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
       margin: 2rem auto;
+      /* Add margin for desktop view readability */
     }
 
     @media (min-width: 769px) {
       .invoice-modal {
-        margin: 2.5rem auto;
-        width: min(420px, 90vw);
-        max-width: 420px;
-        max-height: 75vh;
+        margin: 3rem auto;
+        /* More margin on larger desktop screens */
       }
     }
 
@@ -5342,37 +5392,6 @@
       color: #374151;
     }
 
-    /* Close button inside bill header (blue background, beside PrintMax Invoice) */
-    .invoice-close-btn-in-bill {
-      position: absolute;
-      top: 50%;
-      right: 12px;
-      transform: translateY(-50%);
-      background: #1e40af;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #ffffff;
-      border-radius: 8px;
-      padding: 8px;
-      cursor: pointer;
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: background 0.2s ease;
-    }
-
-    .invoice-close-btn-in-bill:hover {
-      background: #1d4ed8;
-      color: #ffffff;
-    }
-
-    .bill-header-with-close {
-      position: relative;
-      padding-right: 56px;
-    }
-
     .invoice-close-btn {
       position: absolute;
       top: 16px;
@@ -5403,36 +5422,14 @@
 
     .invoice-content {
       padding: 0;
-      max-height: calc(90vh - 120px);
+      max-height: calc(85vh - 200px);
       overflow-y: auto;
     }
 
     @media (max-width: 768px) {
       .invoice-content {
-        max-height: calc(90vh - 100px);
+        max-height: calc(90vh - 180px);
       }
-    }
-
-    /* Consistent dark grey for invoice and order summary text (exclude Total Payment - white) */
-    #pricingSummaryModal .job-invoice-bill .shop-label,
-    #pricingSummaryModal .job-invoice-bill .shop-value,
-    #pricingSummaryModal .job-invoice-bill .invoice-item:not(.invoice-total) .invoice-item-label,
-    #pricingSummaryModal .job-invoice-bill .invoice-item:not(.invoice-total) .invoice-item-value,
-    #pricingSummaryModal .job-invoice-bill .service-info h4,
-    #orderSummaryModal .shop-label,
-    #orderSummaryModal .shop-value,
-    #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-label,
-    #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value,
-    #orderSummaryModal .service-info h4 {
-      color: #4b5563 !important;
-    }
-
-    /* Total Payment - white text on blue background */
-    #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-label,
-    #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-value,
-    #orderSummaryModal .invoice-item.invoice-total .invoice-item-label,
-    #orderSummaryModal .invoice-item.invoice-total .invoice-item-value {
-      color: #ffffff !important;
     }
 
     .invoice-items {
@@ -6435,8 +6432,6 @@
       #orderSummaryModal .bill-header {
         padding: 0.875rem 1rem;
         gap: 0.875rem;
-        align-items: center;
-        justify-content: space-between;
       }
 
       #orderSummaryModal .bill-logo {
@@ -6456,17 +6451,6 @@
       #orderSummaryModal .bill-date {
         font-size: 0.75rem;
         text-align: right;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        justify-content: center;
-        gap: 0.125rem;
-      }
-      
-      #orderSummaryModal .bill-date p {
-        margin: 0;
-        line-height: 1.4;
-        white-space: nowrap;
       }
 
       #orderSummaryModal .bill-duration {
@@ -6560,12 +6544,8 @@
       font-size: 0.9rem;
       opacity: 0.95;
       font-weight: 500;
+      white-space: nowrap;
       flex-shrink: 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem 0.75rem;
-      align-items: center;
-      justify-content: flex-end;
     }
 
     @media (max-width: 768px) {
@@ -6573,14 +6553,13 @@
         text-align: left;
         font-size: 0.85rem;
         width: 100%;
-        justify-content: flex-start;
+        white-space: normal;
       }
     }
 
     .bill-date p {
-      margin: 0;
+      margin: 0.3rem 0;
       line-height: 1.5;
-      white-space: nowrap;
     }
 
     .bill-content {
@@ -6647,80 +6626,6 @@
       #pricingSummaryModal .service-status {
         font-size: 0.65rem;
         padding: 0.25rem 0.625rem;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .shop-name-row {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        flex-wrap: nowrap;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        font-size: 0.85rem;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .shop-address-row {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        font-size: 0.85rem;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .shop-name-row .shop-label,
-      #pricingSummaryModal .job-invoice-bill .shop-address-row .shop-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #374151;
-        min-width: auto;
-        flex-shrink: 0;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .shop-name-row .shop-value,
-      #pricingSummaryModal .job-invoice-bill .shop-address-row .shop-value {
-        font-size: 0.85rem;
-        color: #1f2937;
-        flex: 1;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .invoice-item {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        font-size: 0.85rem;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .invoice-item-label {
-        font-size: 0.85rem;
-        color: #6b7280;
-        flex: 1;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .invoice-item-value {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #1f2937;
-        text-align: right;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total {
-        margin-top: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-top: 2px solid #e5e7eb;
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        border-radius: 10px;
-      }
-
-      #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-label,
-      #pricingSummaryModal .job-invoice-bill .invoice-item.invoice-total .invoice-item-value {
-        color: #ffffff;
-        font-size: 0.9rem;
-        font-weight: 700;
       }
 
       #pricingSummaryModal .shop-name-row {
@@ -6813,34 +6718,68 @@
         flex-shrink: 0;
       }
 
-      #orderSummaryModal .shop-name-row,
-      #orderSummaryModal .shop-address-row {
+      #orderSummaryModal .shop-name-row {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        font-size: 0.85rem;
+        gap: 0.75rem;
         display: flex;
         flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding: 0.5rem 0;
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-label {
         font-size: 0.85rem;
-      }
-
-      #orderSummaryModal .shop-name-row .shop-label,
-      #orderSummaryModal .shop-address-row .shop-label {
-        font-size: 0.9rem;
         font-weight: 600;
-        color: #374151;
-        flex: 1;
-        text-align: left;
+        color: #4b5563;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-width: 100px;
       }
 
-      #orderSummaryModal .shop-name-row .shop-value,
-      #orderSummaryModal .shop-address-row .shop-value {
-        font-size: 0.9rem;
-        color: #4b5563;
-        text-align: right;
-        flex-shrink: 0;
+      #orderSummaryModal .shop-name-row .shop-value {
+        font-size: 0.85rem;
+        text-align: left;
+        flex: 1;
         word-wrap: break-word;
-        max-width: 60%;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+      }
+
+      #orderSummaryModal .shop-address-row {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        font-size: 0.85rem;
+        gap: 0.75rem;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+
+      #orderSummaryModal .shop-address-row .shop-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #4b5563;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-width: 100px;
+      }
+
+      #orderSummaryModal .shop-address-row .shop-value {
+        font-size: 0.85rem;
+        text-align: left;
+        flex: 1;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.5;
+        color: #1f2937;
       }
 
       #orderSummaryModal .invoice-items {
@@ -6864,22 +6803,19 @@
       }
 
       #orderSummaryModal .invoice-item-label {
-        font-size: 0.9rem;
-        color: #374151;
-        font-weight: 600;
+        font-size: 0.85rem;
         flex: 1;
         text-align: left;
         word-wrap: break-word;
         word-break: break-word;
       }
 
-      #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value {
+      #orderSummaryModal .invoice-item-value {
         font-size: 0.9rem;
-        color: #4b5563;
         text-align: right;
         flex-shrink: 0;
         white-space: nowrap;
-        font-weight: 500;
+        font-weight: 600;
       }
 
       #orderSummaryModal .invoice-item.invoice-total {
@@ -7003,7 +6939,7 @@
     }
 
     .shop-label {
-      color: #2f353b;
+      color: #6b7280;
       font-weight: 500;
       font-size: 0.85rem;
       flex-shrink: 0;
@@ -7022,7 +6958,7 @@
       display: flex;
       flex-direction: row;
       align-items: flex-start;
-      gap: 0.5rem;
+      gap: 0;
       margin-top: 0.25rem;
       padding: 0.25rem 0;
       border-top: none;
@@ -7049,6 +6985,7 @@
       line-height: 1.5;
       margin: 0;
       padding: 0;
+      margin-left: 0.25rem;
     }
 
     #orderSummaryShopAddress {
@@ -7058,7 +6995,7 @@
       max-width: 100%;
       display: inline-block;
       line-height: 1.5;
-      color: #4b5563;
+      color: #374151;
       font-size: 0.9rem;
       margin: 0;
       padding: 0;
@@ -7069,7 +7006,7 @@
       display: flex;
       flex-direction: row;
       align-items: flex-start;
-      gap: 0.5rem;
+      gap: 0;
       margin-bottom: 0.25rem;
       padding: 0.75rem 0 0.25rem 0;
       border-bottom: 1px solid #e5e7eb;
@@ -7099,6 +7036,7 @@
       line-height: 1.5;
       margin: 0;
       padding: 0;
+      margin-left: 0.25rem;
     }
 
     @media (max-width: 768px) {
@@ -7731,7 +7669,6 @@
       display: flex;
       gap: 0.5rem;
       margin-top: 0.4rem;
-      flex-wrap: wrap;
     }
 
     .completed-job-btn {
@@ -7761,15 +7698,6 @@
       .completed-jobs-grid {
         grid-template-columns: 1fr;
       }
-
-      .completed-job-actions {
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-
-      .completed-job-btn {
-        min-width: 80px;
-      }
     }
 
     /* Job Token Badge */
@@ -7781,7 +7709,7 @@
       border-radius: 6px;
       padding: 0 0.5em;
       margin-right: 0.5em;
-      font-size: 0.90rem;
+      font-size: 0.95em;
     }
 
     /* Footer Gradient Hover */
@@ -8225,7 +8153,7 @@
       <li class="nav-item">
         <a href="#" class="nav-link" id="historyBtn">
           <i class="fas fa-history"></i>
-          Print History
+          History
         </a>
       </li>
       <li class="nav-item">
@@ -8432,7 +8360,7 @@
     <section class="stats-section">
       <h2 class="section-title">
         <span class="material-icons">dashboard</span>
-        Dashboard Overview
+        Printing Overview
       </h2>
       <div class="stats-grid">
         <div class="stat-card">
@@ -9212,7 +9140,7 @@
               </div>
               <div class="service-info">
                 <div class="service-name">Golden Embossing Black Book</div>
-                <div class="service-description">Premium black book with golden embossing for projects and thesis</div>
+                <div class="service-description">Premium black book with golden embossing for projects and theses</div>
                 <div class="service-price">Custom pricing</div>
               </div>
             </div>
@@ -9494,9 +9422,8 @@
         .service-modal .field-header,
         .modal .field-header {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
           gap: 0.5rem;
-          width: 100%;
         }
 
         .service-modal .field-label,
@@ -9718,6 +9645,15 @@
         gap: 0.75rem;
         font-weight: 600;
         color: #1f2937;
+        box-sizing: border-box;
+      }
+
+      .single-option-field .single-option-arrow {
+        color: #6b7280;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
       }
 
       .single-option-field .single-option-meta {
@@ -10704,6 +10640,10 @@
         margin-bottom: 1.5rem;
         padding: 0;
         gap: 0.5rem;
+        width: 100%;
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .service-modal .modal-field-group:last-child,
@@ -10719,6 +10659,23 @@
       .modal-field-group .field-description {
         margin-bottom: 0.75rem;
         margin-top: 0.25rem;
+      }
+
+      /* Keep every input wrapper aligned with equal left/right width */
+      .service-modal .select-wrapper,
+      .service-modal .number-input-wrapper,
+      .service-modal .text-input-wrapper,
+      .service-modal .feedback-wrapper,
+      .modal .select-wrapper,
+      .modal .number-input-wrapper,
+      .modal .text-input-wrapper,
+      .modal .feedback-wrapper,
+      .single-option-field .single-option-display {
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        box-sizing: border-box;
       }
 
       /* Mobile: Consistent spacing for all modals */
@@ -10992,7 +10949,7 @@
         }
 
         .invoice-item {
-          padding: 14px 1px;
+          padding: 14px 20px;
           font-size: 0.875rem;
         }
 
@@ -12647,9 +12604,9 @@
             {
               label: 'Select Photo File',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+              accept: '.jpg,.jpeg,.png,.bmp,.tiff,.gif',
               required: true,
-              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). Other formats like CSV, XLS are not allowed.',
+              description: 'Upload your photo in JPG, PNG, BMP, TIFF, or GIF format (Max 10MB)',
               icon: 'fas fa-image'
             },
             {
@@ -12666,10 +12623,10 @@
               label: 'Photo Size',
               type: 'select',
               options: [
-                { value: '4x6', label: '4" x 6" (Standard)', price: '' },
-                { value: '5x7', label: '5" x 7" (Large)', price: '' },
-                { value: '6x8', label: '6" x 8" (Extra Large)', price: '' },
-                { value: 'A4', label: 'A4 (Full Page)', price: '' }
+                { value: '4x6', label: '4" x 6" (Standard)', price: '₹5' },
+                { value: '5x7', label: '5" x 7" (Large)', price: '₹8' },
+                { value: '6x8', label: '6" x 8" (Extra Large)', price: '₹12' },
+                { value: 'A4', label: 'A4 (Full Page)', price: '₹15' }
               ],
               required: true,
               description: 'Choose the size for your photo prints',
@@ -12679,9 +12636,9 @@
               label: 'Paper Quality',
               type: 'select',
               options: [
-                { value: 'standard', label: 'Standard Glossy', price: '' },
-                { value: 'premium', label: 'Premium Glossy', price: '' },
-                { value: 'matte', label: 'Matte Finish', price: '' }
+                { value: 'standard', label: 'Standard Glossy', price: 'Included' },
+                { value: 'premium', label: 'Premium Glossy', price: '+₹2' },
+                { value: 'matte', label: 'Matte Finish', price: '+₹3' }
               ],
               required: true,
               description: 'Select the paper finish for your photos',
@@ -12698,10 +12655,10 @@
             {
               label: 'Upload Document or Images',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+              accept: '.pdf,.jpeg,.png,',
               required: true,
               multiple: true,
-              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
+              description: 'Upload PDF, Word, PPT, Excel, Text, or image files (Multiple files supported). Image previews will be shown.',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12754,8 +12711,8 @@
               label: 'Print Quality',
               type: 'select',
               options: [
-                { value: 'standard_quality', label: 'Standard Quality ' },
-                { value: 'high_quality', label: 'High Quality ' }
+                { value: 'standard_quality', label: 'Standard Quality - ₹5' },
+                { value: 'high_quality', label: 'High Quality - ₹24' }
               ],
               required: true,
               description: 'Choose the print quality for your documents',
@@ -12772,10 +12729,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx',
               required: true,
               multiple: true,
-              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
+              description: 'Upload your documents in PDF, Word, PowerPoint, Excel, or Text format (Multiple files supported)',
               icon: 'fas fa-file-alt'
             },
             {
@@ -12831,10 +12788,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+              accept: '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
+              description: 'Upload your documents or images for glossy printing (Multiple files supported)',
               icon: 'fas fa-file-upload'
             },
             {
@@ -12903,10 +12860,10 @@
             {
               label: 'Upload Document',
               type: 'file',
-              accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+              accept: '.pdf,.jpg,.jpeg,.png',
               required: true,
               multiple: true,
-              description: 'Upload PDF, Word, or image files only (.pdf, .doc, .docx, .jpg, .jpeg, .png). CSV, XLS and other formats not allowed.',
+              description: 'Upload your documents or images for large format printing (Multiple files supported)',
               icon: 'fas fa-file-upload'
             },
             {
@@ -12977,7 +12934,7 @@
               type: 'file',
               accept: '.jpg,.jpeg,.png',
               required: true,
-              description: 'Upload image files only (.jpg, .jpeg, .png). PDF and other formats not allowed for passport photos.',
+              description: 'Upload a clear, front-facing photo with good lighting',
               icon: 'fas fa-camera'
             },
             {
@@ -13006,7 +12963,7 @@
               label: 'Color Photo',
               type: 'select',
               options: [
-                { value: 'color_photo', label: 'Color Photo', price: '' }
+                { value: 'color_photo', label: 'Color Photo', price: 'Included' }
               ],
               required: true,
               description: 'Standard color photo service',
@@ -13016,7 +12973,7 @@
               label: 'Paper Size',
               type: 'select',
               options: [
-                { value: 'A4', label: 'A4 Sheet', price: '' }
+                { value: 'A4', label: 'A4 Sheet', price: 'Included' }
               ],
               required: true,
               description: 'Standard A4 size for passport photos',
@@ -13328,6 +13285,8 @@
               type === 'error' ? 'Action needed' :
                 type === 'warning' ? 'Heads up' : 'Update';
             showCursorNotification('Location', status, message, type, 5000);
+          } else {
+            console.log(`[location:${type}]`, message);
           }
         }
 
@@ -13700,6 +13659,7 @@
         if (!opts.skipLocationCheck && desktopMode) {
           // For desktop devices, always show message to enter shop name (laptop location doesn't work properly)
           // Show message for desktop devices to enter shop name near their location on every service modal click
+          console.log('💻 Desktop device detected - showing shop name entry message');
           // Show custom modal instead of alert (as requested)
           setTimeout(() => {
             showDesktopDeviceModal();
@@ -14099,6 +14059,7 @@
                   <div class="single-option-display">
                     <span class="single-option-text">${optionLabel}</span>
                     ${optionMeta}
+                    <span class="single-option-arrow"><i class="fas fa-chevron-down"></i></span>
                   </div>
                   <input type="hidden" id="${service}-field-${idx}" value="${optionValue}" />
                 </div>
@@ -14252,7 +14213,7 @@
               ${fieldsHtml}
                 <div class="file-preview" id="${service}-file-preview" style="margin-bottom: 16px;"></div>
                 ${shopSelectionHtml}
-                ${service !== 'jumbo' && service !== 'gloss' && service !== 'digital' && service !== 'passport' && service !== 'goldenemboss' ? feedbackHtml : ''}
+                ${feedbackHtml}
                 
                 <!-- Points Application Section (Redeem card) -->
                 <!-- Points section removed - points are now only applied in order summary modal -->
@@ -14346,61 +14307,29 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
 
-            // Denied extensions - CSV, Excel, text and other non-PDF/image/Word/PPT formats (allow .ppt/.pptx for document, gloss, jumbo, golden emboss, digital)
-            const deniedExtensions = ['.csv', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
-            const validTypes = [
-              'application/pdf',
-              'application/msword',
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              'application/vnd.ms-powerpoint',
-              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-              'image/jpeg',
-              'image/png',
-              'image/jpg'
-            ];
-            const validExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png'];
-            // Passport and photo print only allow images, no PDF/Word/PPT
-            const passportValidExtensions = ['.jpg', '.jpeg', '.png'];
-            const photoValidExtensions = ['.jpg', '.jpeg', '.png'];
+            // Validate file types - only allow PDF and images
+            const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+            const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
 
             for (const file of files) {
               const fileName = file.name.toLowerCase();
-              const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
-              const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
-              const allowedExts = service === 'passport' ? passportValidExtensions : (service === 'photo' ? photoValidExtensions : validExtensions);
-              const hasValidExtension = allowedExts.some(ext => fileName.endsWith(ext));
-              const hasValidType = (service === 'passport' || service === 'photo')
-                ? (file.type.startsWith('image/') && ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type))
-                : (validTypes.includes(file.type) || file.type.startsWith('image/'));
+              const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+              const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
 
-              if (isDenied || !hasValidExtension || !hasValidType) {
+              if (!hasValidExtension && !hasValidType) {
+                // Invalid file type - show modal and reset input
                 showInvalidFileTypeModal(file.name);
-                e.target.value = '';
-                if (modal._uploadedFiles) modal._uploadedFiles = [];
-                return;
-              }
-              // Reject password-encrypted PDFs (passport and photo don't allow PDF)
-              if (file.type === 'application/pdf' && service !== 'passport' && service !== 'photo' && typeof pdfjsLib !== 'undefined') {
-                try {
-                  const buf = await file.arrayBuffer();
-                  const loadingTask = pdfjsLib.getDocument({ data: buf });
-                  const pdf = await loadingTask.promise;
-                  if (pdf && pdf.numPages) { /* readable */ }
-                } catch (pdfErr) {
-                  const errMsg = (pdfErr?.message || String(pdfErr)).toLowerCase();
-                  if (errMsg.includes('password') || errMsg.includes('encrypted') || errMsg.includes('permission')) {
-                    showInvalidFileTypeModal(file.name, true);
-                    e.target.value = '';
-                    if (modal._uploadedFiles) modal._uploadedFiles = [];
-                    return;
-                  }
-                  throw pdfErr;
+                e.target.value = ''; // Clear the input
+                if (modal._uploadedFiles) {
+                  modal._uploadedFiles = [];
                 }
+                return; // Stop processing
               }
             }
 
             // Store actual File objects on the modal instance (not dataset)
             modal._uploadedFiles = files;
+            console.log('📁 Files stored on modal instance:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
 
             if (files.length === 1) {
               const file = files[0];
@@ -14503,69 +14432,6 @@
                       }
                     };
                     reader.readAsArrayBuffer(file);
-                  } else {
-                    // Word or PPT: convert to PDF, show PDF preview, and store PDF for upload (document, gloss, jumbo, golden emboss, digital)
-                    const isWordOrPpt =
-                      file.type === 'application/msword' ||
-                      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                      file.type === 'application/vnd.ms-powerpoint' ||
-                      file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
-                      /\.(doc|docx|ppt|pptx)$/i.test(file.name || '');
-
-                    if (isWordOrPpt && typeof convertWordOrPptToPdf === 'function') {
-                      try {
-                        fileUploadLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting to PDF...';
-                        const pdfFile = await convertWordOrPptToPdf(file);
-                        modal._uploadedFiles = [pdfFile];
-                        modal.dataset.fileName = pdfFile.name;
-                        const pdfPages = await getPDFPageCount(pdfFile);
-                        modal.dataset.filePageCount = pdfPages;
-                        fileUploadLabel.textContent = `${pdfFile.name} (${pdfPages} pages)`;
-                        const html = `
-                          <div class="image-preview-container active" style="margin-top: .5rem;">
-                            <div class="preview-title"><i class="fas fa-eye"></i> Live Preview</div>
-                            <div class="preview-canvas-container">
-                              <canvas id="${service}PreviewCanvas" class="preview-canvas" style="max-width:100%; border-radius:12px;"></canvas>
-                            </div>
-                            <div class="preview-info">
-                              <span id="${service}PreviewDimensions">Dimensions: -</span>
-                              <span id="${service}PreviewOrientation">Orientation: Portrait</span>
-                              <span id="${service}PreviewPages">Pages: -</span>
-                            </div>
-                            <div class="preview-controls" style="display:flex;align-items:center;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
-                              <button type="button" id="${service}PrevPageBtn" class="copies-btn" title="Previous page" disabled><i class="fas fa-chevron-left"></i></button>
-                              <span id="${service}PageCounter" style="min-width:64px;text-align:center">0 / 0</span>
-                              <button type="button" id="${service}NextPageBtn" class="copies-btn" title="Next page" disabled><i class="fas fa-chevron-right"></i></button>
-                            </div>
-                          </div>`;
-                        filePreview.innerHTML = html;
-                        const pdfArrayBuffer = await pdfFile.arrayBuffer();
-                        await initializeServicePDFPreview(service, pdfFile, pdfArrayBuffer);
-                      } catch (convErr) {
-                        console.error('Convert to PDF failed:', convErr);
-                        filePreview.innerHTML = '<div style="color:#ef4444; margin-top: .5rem;">' + (convErr.message || 'Could not convert to PDF. Please upload a PDF.') + '</div>';
-                        fileUploadLabel.textContent = 'Click to select file';
-                        modal._uploadedFiles = [];
-                      }
-                    } else {
-                      const isWordDoc = /\.(doc|docx)$/i.test(file.name || '') || file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                      if (isWordDoc) {
-                        const safeName = file.name || 'Document';
-                        const html = `
-                          <div class="image-preview-container active" style="margin-top: .5rem;">
-                            <div class="preview-title"><i class="fas fa-file-word"></i> Document Preview</div>
-                            <div class="preview-canvas-container" style="display:flex;align-items:center;justify-content:center;min-height:260px;">
-                              <div style="text-align:center;padding:1.5rem;">
-                                <div style="font-size:2.5rem;margin-bottom:.75rem;color:#2563eb;"><i class="fas fa-file-word"></i></div>
-                                <div style="font-weight:600;color:#111827;margin-bottom:.25rem;word-break:break-word;">${safeName}</div>
-                                <div style="font-size:.875rem;color:#6b7280;max-width:320px;margin:0 auto;">Live page-by-page preview is available for PDF. Converted PDF will be stored for printing.</div>
-                              </div>
-                            </div>
-                            <div class="preview-info"><span>File type: DOC/DOCX</span><span>Pages: ${await getPageCount(file)}</span></div>
-                          </div>`;
-                        filePreview.innerHTML = html;
-                      }
-                    }
                   }
                 }
               }
@@ -14713,6 +14579,21 @@
             // Store file info in modal dataset for access by other functions
             modal.dataset.filePageCount = pages;
             modal.dataset.fileName = file.name;
+
+            console.log('File processed:', {
+              name: file.name,
+              pages: pages,
+              fileObjPageCount: fileObj.pageCount,
+              modalDatasetPageCount: modal.dataset.filePageCount,
+              fileType: file.type
+            });
+
+            // Test: Log the page count immediately after setting it
+            console.log('Immediate page count check:', {
+              modalDataset: modal.dataset.filePageCount,
+              fileObj: fileObj.pageCount,
+              pages: pages
+            });
 
           } catch (error) {
             console.error('Error processing file:', error);
@@ -15189,6 +15070,8 @@
             // Get files from modal instance (File objects)
             const files = modal._uploadedFiles || [];
 
+            console.log('📁 Files retrieved from modal instance:', files);
+
             // Validate files: support both stored File objects and dataset name fallback
             const hasFileObjects = Array.isArray(files) && files.length > 0;
             const hasDatasetName = !!modal.dataset.fileName;
@@ -15206,6 +15089,7 @@
                 alert(`Invalid file detected: ${file?.name || 'Unknown file'}. Please try selecting the file again.`);
                 return;
               }
+              console.log(`✅ File ${i} valid:`, { name: file.name, type: file.type, size: file.size });
             }
 
             // Validate shop selection
@@ -15304,18 +15188,14 @@
             if (orderSummaryModal && files.length > 0) {
               // Store files as a property on the order summary modal (File objects can't be in dataset)
               orderSummaryModal._pendingFiles = files;
+              console.log('📁 Files stored in order summary modal:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
             }
 
-            // For photo print modal, images will be converted to PDF during payment processing
-            // This ensures all images are stored in PDF format only
+            // For photo print modal, create PDF in background (like passport photo modal)
             if (service === 'photo' && files.length > 0) {
-              // Mark files as images so they get converted to PDF during payment
-              files.forEach(file => {
-                if (file.type.startsWith('image/')) {
-                  file.isImage = true;
-                  file.originalImageFile = file;
-                }
-              });
+              // Photo print files are already images, no need to convert to PDF
+              // The backend will handle the photo print processing
+              console.log('📸 Photo print files ready for processing:', files.length);
             }
 
             // Close service modal and open order summary modal
@@ -15341,6 +15221,7 @@
                 let enhancedReady = filePreview?.dataset.enhancedReady === 'true';
                 if (selectedVersion === 'enhanced') {
                   if (!enhancedReady || !enhancedUrl) {
+                    console.log('Enhanced image not ready, using original image for passport photo');
                     // Use the original file if enhanced image is not available
                     formData.append(`file_${i}`, file);
                   } else {
@@ -15351,6 +15232,7 @@
                       const enhancedFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
                       formData.append(`file_${i}`, enhancedFile);
                     } catch (err) {
+                      console.log('Failed to fetch enhanced image, using original image for passport photo');
                       // Use the original file if enhanced image fetch fails
                       formData.append(`file_${i}`, file);
                     }
@@ -15635,20 +15517,15 @@
                         if (uploadFailed) {
                           const failedFiles = verifyData.failed_files || [];
                           const failedFileNames = failedFiles.map(f => f.filename).join(', ');
-                          const orderSummaryModal = document.getElementById('orderSummaryModal');
-                          const pointsUsed = parseInt(modal?.dataset?.pointsUsed || orderSummaryModal?.dataset?.pointsUsed || '0');
-                          const pointsApplied = modal?.dataset?.pointsApplied === 'true' || orderSummaryModal?.dataset?.pointsApplied === 'true';
+                          const refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
 
-                          let refundMessage = verifyData.refund_message || `Payment of ₹${verifyData.refund_amount || 0} has been refunded due to document upload failure.`;
-                          if (pointsApplied && pointsUsed > 0) {
-                            refundMessage = `${refundMessage}\n\nYour applied points (${pointsUsed}) have been returned to your account.`;
-                          }
+                          let modalMessage = refundMessage;
                           if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
-                            refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
+                            modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
                           } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
-                            refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
+                            modalMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
                           }
-                          showFailedUploadModal(verifyData.files_failed || 0, failedFileNames, refundMessage);
+                          showFailedUploadModal(verifyData.files_failed || 0, failedFileNames, modalMessage);
 
                           console.error('❌ Document print upload failed:', {
                             files_failed: verifyData.files_failed,
@@ -16314,7 +16191,11 @@
             </div>
             <div class="bill-content">
               <div class="service-info">
-                <h4>Print Details</h4>
+                <h4>Service Details</h4>
+                <div class="service-row">
+                  <span class="service-name">${serviceDisplayName}</span>
+                  <span class="service-status">Ready to Process</span>
+                </div>
               </div>
               <div class="invoice-items">
         `;
@@ -16348,7 +16229,7 @@
 
         html += `
                 <div class="invoice-total">
-                  <span class="invoice-total-label">Total Payment</span>
+                  <span class="invoice-total-label">Grand Total</span>
                   <span class="invoice-total-value">₹${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
@@ -17661,12 +17542,12 @@
               </div>
             </div>
             
-      <div class="job-card-actions">
-              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="Preview Details">
-                <i class="fas fa-eye"></i><span class="job-action-label">Preview</span>
+            <div class="job-card-actions">
+              <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
+                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
               </button>
-              <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Invoice">
-                <i class="fas fa-receipt"></i><span class="job-action-label">Invoice</span>
+              <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
+                <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
               </button>
               <button class="job-action-btn track-btn" 
                       data-job-filename="${job.filename}"
@@ -17676,8 +17557,8 @@
                       data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
                       data-vendor-id="${job.vendor_id || job.vendor || ''}"
                       data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
-                      onclick="trackVendorLocation('${job.filename}', this)" title="Find Shop">
-                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Find shop</span>
+                      onclick="trackVendorLocation('${job.filename}', this)" title="Track Vendor">
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
               </button>
             </div>
           </div>
@@ -17923,7 +17804,7 @@
             <i class="fas fa-cloud-upload-alt upload-icon"></i>
             <span class="upload-text">Click to select files</span>
             <span class="upload-hint">or drag and drop them into this window</span>
-            <span class="upload-subtitle">Supported: PDF, Word, PPT, JPEG, PNG</span>
+            <span class="upload-subtitle">Supported: PDF, JPEG, PNG</span>
             <button class="upload-btn" id="uploadBtn">
               <i class="fas fa-file-upload"></i>
               Add files
@@ -17931,7 +17812,7 @@
           </div>
         </div>
 
-        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <input type="file" class="file-input" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png">
 
         <!-- File List -->
         <div class="file-list" id="fileList">
@@ -17940,16 +17821,15 @@
           </div>
         </div>
         <div class="batch-preview-panel" id="batchPreviewPanel">
-          
+          <div class="batch-preview-header">
+            <span>Batch Preview</span>
+            <span class="batch-preview-count" id="batchFileCount">0 files</span>
+          </div>
           <div class="batch-preview-list" id="batchPreviewList">
             <div class="batch-preview-empty">Upload files to see a combined summary.</div>
           </div>
         </div>
 
-        <button class="upload-btn" id="addMoreBtn" style="display: none; width: 100%; margin-bottom: 1.5rem;">
-          <i class="fas fa-plus"></i>
-          Add files
-        </button>
         <!-- Image Preview -->
         <div class="image-preview-container" id="imagePreviewContainer">
           <div class="preview-title">
@@ -17976,7 +17856,10 @@
         </div>
 
         <!-- Add More Files Button -->
-        
+        <button class="upload-btn" id="addMoreBtn" style="display: none; width: 100%; margin-bottom: 1.5rem;">
+          <i class="fas fa-plus"></i>
+          Add files
+        </button>
 
         <!-- Print Settings -->
         <div class="print-settings" id="printSettings" style="display: none;">
@@ -18044,7 +17927,7 @@
                 <div class="color-option-icon">
                   <i class="fas fa-adjust" style="color: #9C27B0;"></i>
                 </div>
-                <div class="color-option-label">Mixed</div>
+                <div class="color-option-label">Both</div>
               </div>
             </div>
 
@@ -18107,23 +17990,11 @@
                 </div>
                 <div class="page-size-label">A4</div>
               </div>
-              <div class="page-size-option" data-size="letter">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">Letter</div>
-              </div>
-              <div class="page-size-option" data-size="a3">
-                <div class="page-size-icon">
-                  <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="page-size-label">A3</div>
-              </div>
             </div>
           </div>
 
           <!-- Additional Options -->
-          <div class="settings-group" id="additionalOptionsSection">
+          <div class="settings-group">
             <label class="settings-label">Additional options</label>
             <p class="settings-subtitle">Extra services for your print job</p>
 
@@ -18133,7 +18004,7 @@
                 <label for="spiralBinding" class="option-label">
                   <i class="fas fa-ring"></i>
                   Spiral binding
-                  <span class="option-price"></span>
+                  <span class="option-price">+₹20</span>
                 </label>
               </div>
 
@@ -18142,7 +18013,7 @@
                 <label for="lamination" class="option-label">
                   <i class="fas fa-shield-alt"></i>
                   Lamination
-                  <span class="option-price"></span>
+                  <span class="option-price">+₹15 per page</span>
                 </label>
               </div>
 
@@ -18151,7 +18022,7 @@
                 <label for="tapeBinding" class="option-label">
                   <i class="fas fa-grip-lines"></i>
                   Tape binding
-                  <span class="option-price"></span>
+                  <span class="option-price">+₹25</span>
                 </label>
               </div>
             </div>
@@ -18216,8 +18087,11 @@
           </div>
         </div>
 
-        <!-- Action Buttons - Inside modal-body flow (scroll to bottom to see, like jumbo print modal) -->
-        <div class="print-modal-action-buttons" id="actionButtons" style="display: none;">
+
+
+
+        <!-- Action Buttons - Only shown after successful file upload -->
+        <div class="modal-footer fixed-bottom-buttons" id="actionButtons" style="display: none;">
           <button type="button" class="btn-cancel" id="cancelBtn">
             <i class="fas fa-times"></i>
             Cancel
@@ -18269,9 +18143,13 @@
             </div>
             <div class="bill-content">
               <div class="service-info">
-                <h4>Print Details</h4>
+                <h4>Service Details</h4>
+                <div class="service-row">
+                  <span class="service-name" id="orderSummaryServiceName">-</span>
+                  <span class="service-status">Ready to Process</span>
+                </div>
                 <div class="shop-name-row">
-                  <span class="shop-label">Shop Name:</span>
+                  <span class="shop-label">Shop:</span>
                   <span class="shop-value" id="orderSummaryShopName">-</span>
                 </div>
                 <div class="shop-address-row" id="orderSummaryShopAddressRow" style="display: none;">
@@ -18283,10 +18161,36 @@
                 <div id="orderSummaryServiceSpecificDetails"></div>
                 <div id="orderSummaryAdditionalOptions"></div>
                 <div class="invoice-item invoice-total">
-                  <span class="invoice-item-label">Total Payment</span>
+                  <span class="invoice-item-label">Grand Total</span>
                   <span class="invoice-item-value" id="orderSummaryTotalAmount">₹0.00</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Points Application Section - Like photprint modal -->
+        <div class="points-section" id="orderSummary-points-section" style="display: none;">
+          <div class="points-header">
+            <div class="points-icon">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="points-title">Apply Points</div>
+          </div>
+          <div class="points-content">
+            <div class="points-info">
+              <span class="points-available">Available Points: <span id="orderSummary-available-points">0</span></span>
+              <span class="points-balance">Balance after payment: <span id="orderSummary-points-balance">0</span></span>
+            </div>
+            <div class="points-actions">
+              <button type="button" class="btn-apply-points" id="orderSummary-apply-points-btn"
+                onclick="applyPoints('orderSummary')">
+                <i class="fas fa-star"></i> Apply Points
+              </button>
+              <button type="button" class="btn-remove-points" id="orderSummary-remove-points-btn"
+                onclick="removePoints('orderSummary')" style="display: none;">
+                <i class="fas fa-times"></i> Remove Points
+              </button>
             </div>
           </div>
         </div>
@@ -18512,10 +18416,10 @@
             
             <div class="job-card-actions">
               <button class="job-action-btn view-btn" onclick="viewJobDetails('${job.filename}')" title="View Details">
-                <i class="fas fa-eye"></i><span class="job-action-label">Preview</span>
+                <i class="fas fa-eye"></i><span class="job-action-label">View</span>
               </button>
               <button class="job-action-btn pricing-btn" onclick="viewPricingDetails('${job.filename}')" title="View Bill">
-                <i class="fas fa-receipt"></i><span class="job-action-label">Invoice</span>
+                <i class="fas fa-receipt"></i><span class="job-action-label">Bill</span>
               </button>
               <button class="job-action-btn track-btn" 
                       data-job-filename="${job.filename}"
@@ -18526,7 +18430,7 @@
                       data-vendor-id="${job.vendor_id || job.vendor || ''}"
                       data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
                       onclick="trackVendorLocation('${job.filename}', this)" title="Track Vendor">
-                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Find shop</span>
+                <i class="fas fa-map-marker-alt"></i><span class="job-action-label">Track</span>
               </button>
             </div>
           </div>
@@ -18555,7 +18459,7 @@
           const lat = parseFloat(btn.dataset.lat);
           const lng = parseFloat(btn.dataset.lng);
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            label.textContent = 'Find shop';
+            label.textContent = 'Track';
             btn.removeAttribute('data-distance-km');
             btn.removeAttribute('data-distance-label');
             return;
@@ -18589,71 +18493,6 @@
         console.warn('Unable to update track button distances:', distanceError);
       }
     }
-
-    // Carousel for print job blocks (mobile only, auto-scroll every 10 seconds)
-    let jobsCarouselInterval = null;
-    function startJobsCarousel() {
-      // Clear any existing interval
-      if (jobsCarouselInterval) {
-        clearInterval(jobsCarouselInterval);
-        jobsCarouselInterval = null;
-      }
-
-      // Only run on mobile (max-width: 768px)
-      if (window.innerWidth > 768) {
-        return;
-      }
-
-      const scrollWrapper = document.querySelector('.jobs-scroll-wrapper');
-      const jobsRow = document.getElementById('jobsContainer');
-      
-      if (!scrollWrapper || !jobsRow || jobsRow.children.length <= 1) {
-        return; // No carousel needed if 1 or fewer cards
-      }
-
-      let currentIndex = 0;
-      const cardWidth = window.innerWidth - 3 * 16; // calc(100vw - 3rem) in pixels
-      const gap = 12; // 0.75rem gap
-
-      function scrollToNext() {
-        if (!scrollWrapper || !jobsRow) return;
-        
-        const totalCards = jobsRow.children.length;
-        if (totalCards <= 1) return;
-
-        currentIndex = (currentIndex + 1) % totalCards;
-        const scrollPosition = currentIndex * (cardWidth + gap);
-        
-        scrollWrapper.scrollTo({
-          left: scrollPosition,
-          behavior: 'smooth'
-        });
-      }
-
-      // Start carousel: scroll every 10 seconds
-      jobsCarouselInterval = setInterval(scrollToNext, 10000);
-      
-      // Reset carousel when user manually scrolls
-      let scrollTimeout;
-      scrollWrapper.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-          // Update currentIndex based on scroll position
-          const scrollLeft = scrollWrapper.scrollLeft;
-          currentIndex = Math.round(scrollLeft / (cardWidth + gap));
-        }, 100);
-      }, { passive: true });
-    }
-
-    // Stop carousel when window resizes to desktop
-    window.addEventListener('resize', () => {
-      if (window.innerWidth > 768 && jobsCarouselInterval) {
-        clearInterval(jobsCarouselInterval);
-        jobsCarouselInterval = null;
-      } else if (window.innerWidth <= 768 && !jobsCarouselInterval) {
-        startJobsCarousel();
-      }
-    });
 
     const vendorCoordinateRegistry = (() => {
       const byEmail = new Map();
@@ -19018,66 +18857,22 @@
       const orientation = formData['Print Orientation'] || 'portrait';
       const numCopies = formData['Number of Copies'] || 1;
       const pageRange = formData['Page Range'] || formData['pageRange'] || 'all';
-      const rawSize =
-        formData['Page Size'] ||
-        formData['pageSize'] ||
-        formData.pageSize ||
-        'A4';
-      const normalizedSize = String(rawSize).trim().toUpperCase();
-      // For now, pricing always uses the vendor's A4 document print rates.
-      // We still surface the visual size label in the breakdown.
-      const sizeForLabel =
-        normalizedSize === 'LETTER'
-          ? 'Letter'
-          : normalizedSize === 'A3'
-          ? 'A3'
-          : 'A4';
 
       // Determine print type based on color and orientation
       let printType = 'single_bw'; // Default to single-sided black & white
       if (color === 'Color') {
         printType = 'single_color';
       }
+
+      // Construct the pricing key
+      const pricingKey = `a4_print_${printType}`;
+
+      // Get the categorized pricing for A4 print
       const categorizedPricing = vendorPricing['categorized_pricing'] || {};
       const a4PrintPricing = categorizedPricing['a4_print'] || {};
-      const jumboPricing = categorizedPricing['jumbo_print'] || {};
-      const flatPricing = vendorPricing || {};
-      let basePrice = 0;
 
-      if (normalizedSize === 'A4') {
-        // Preferred modern keys: a4_print_single_bw / a4_print_single_color
-        const pricingKey = `a4_print_${printType}`;
-        basePrice = a4PrintPricing[pricingKey];
-
-        // Fallback to legacy A4 keys stored under a4_print or flat pricing
-        if (!basePrice) {
-          const legacyKey =
-            color === 'Color' ? 'regular_print_a4_color' : 'regular_print_a4_bw';
-          basePrice =
-            a4PrintPricing[legacyKey] ||
-            flatPricing[legacyKey] ||
-            0;
-        }
-      } else if (normalizedSize === 'LETTER') {
-        // Use dedicated doc_letter_* keys from vendor pricing table
-        const legacyKey =
-          color === 'Color'
-            ? 'doc_letter_color'
-            : 'doc_letter_bw';
-        basePrice = flatPricing[legacyKey] || 0;
-      } else if (normalizedSize === 'A3') {
-        // For A3 document printing, reuse Jumbo A3 rates from vendor pricing
-        const jumboKey =
-          color === 'Color'
-            ? 'jumbo_print_a3_color'
-            : 'jumbo_print_a3_bw';
-        basePrice = jumboPricing[jumboKey] || flatPricing[jumboKey] || 0;
-      }
-
-      // Final safety fallback
-      if (!basePrice || isNaN(basePrice)) {
-        basePrice = 2; // Default per‑page price if nothing configured
-      }
+      // Get the base price for this print type
+      let basePrice = a4PrintPricing[pricingKey] || 2; // Default to ₹2 if not found
 
       // Calculate actual pages to print based on page range
       let actualPages = pages;
@@ -19106,7 +18901,7 @@
       // Calculate total price based on actual pages to print
       let subtotal = basePrice * actualPages * copies;
       breakdown.push({
-        label: `${sizeForLabel} ${color} Print (${actualPages}${pageRangeLabel} pages × ${copies} copies)`,
+        label: `A4 ${color} Print (${actualPages}${pageRangeLabel} pages × ${copies} copies)`,
         value: `₹${subtotal}`
       });
 
@@ -19116,7 +18911,6 @@
       breakdown.totalPages = pages;
       breakdown.page_count = actualPages; // Use actualPages as page_count for server
       breakdown.num_copies = copies; // Store copies for server
-      breakdown.page_size = sizeForLabel;
 
       total += subtotal;
 
@@ -19230,7 +19024,11 @@
             
             <div class="bill-content">
               <div class="service-info">
-                <h4>Print Details</h4>
+                <h4>Service Details</h4>
+                <div class="service-row">
+                  <span class="service-name">${serviceDisplayName}</span>
+                  <span class="service-status">Ready to Process</span>
+                </div>
               </div>
               
               <div class="invoice-items">
@@ -19296,30 +19094,23 @@
         subtotal += amount;
       }
 
-      // Add pages, color, orientation, and copies details
+      // Add pages, color, and copies details
       const pages = breakdown.page_count || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || 1;
       const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || 'Black and White';
       const size = breakdown.print_size || breakdown.size || 'N/A';
-      let orientation = breakdown.orientation || breakdown['Print Orientation'] || 'Portrait';
-      // Capitalize first letter
-      orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
 
       html += `
           <div class="invoice-item">
-            <span class="invoice-item-label"><b>Pages</b></span>
+            <span class="invoice-item-label">Pages</span>
             <span class="invoice-item-value">${pages}</span>
           </div>
           <div class="invoice-item">
-            <span class="invoice-item-label"><b>Color</b></span>
+            <span class="invoice-item-label">Color</span>
             <span class="invoice-item-value">${color}</span>
           </div>
           <div class="invoice-item">
-            <span class="invoice-item-label"><b>Orientation</b></span>
-            <span class="invoice-item-value">${orientation}</span>
-          </div>
-          <div class="invoice-item">
-            <span class="invoice-item-label"><b>Copies</b></span>
+            <span class="invoice-item-label">Copies</span>
             <span class="invoice-item-value">${copies}</span>
           </div>
         `;
@@ -19395,7 +19186,7 @@
       // Grand total only (includes commission on base price)
       html += `
           <div class="invoice-item invoice-total">
-            <span class="invoice-item-label">Total Payment</span>
+            <span class="invoice-item-label">Grand Total</span>
             <span class="invoice-item-value">₹${finalSubtotal.toFixed(2)}</span>
           </div>
         `;
@@ -19410,7 +19201,7 @@
                 </div>
                 <div class="contact-info">
                   <p>Thank you for choosing PrintMax!</p>
-                  <p>For queries, contact: printmax_support@printmax.in</p>
+                  <p>For queries, contact: support@printmax.com</p>
                 </div>
               </div>
             </div>
@@ -19815,7 +19606,7 @@
                       const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
                       const notificationOptions = {
                         body: payload.notification?.body || payload.data?.message || 'You have a new notification',
-                        icon: payload.notification?.icon || payload.data?.icon || '/static/images/printmaxdaylogo.png',
+                        icon: payload.notification?.icon || payload.data?.icon || '/static/images/android-chrome-192x192.png',
                         badge: '/static/images/android-chrome-192x192.png',
                         tag: payload.data?.notification_id || 'printmax-notification',
                         requireInteraction: true,
@@ -20625,17 +20416,20 @@
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
 
-      // Filter shops by service availability - only 1/true = available
+      // Filter shops by service availability for document printing (regular_print)
       shopsWithDistance = shopsWithDistance.filter(shop => {
-        const isAvailable = (val) => val === true || val === 1 || val === '1' || val === 'true';
+        // If shop has service_availability data, check it
         if (shop.service_availability && typeof shop.service_availability === 'object') {
           const serviceData = shop.service_availability.service_data || shop.service_availability;
-          return isAvailable(serviceData.regular_print);
+          // Check if regular_print is available (default to true if not specified)
+          return serviceData.regular_print !== false && serviceData.regular_print !== 0;
         }
+        // If shop has direct service availability fields, check them
         if (shop.regular_print !== undefined) {
-          return isAvailable(shop.regular_print);
+          return shop.regular_print !== false && shop.regular_print !== 0;
         }
-        return false;
+        // Default to true (show shop) if service availability data is not available
+        return true;
       });
 
       // Filter shops based on search text
@@ -20682,11 +20476,11 @@
       function getTrafficInfo(pendingJobs) {
         const count = pendingJobs || 0;
         if (count < 10) {
-          return { level: 'low', label: 'Low shop traffic', color: '#10b981' };
+          return { level: 'low', label: 'Low Traffic', color: '#10b981' };
         } else if (count < 16) {
-          return { level: 'medium', label: 'Mid shop traffic', color: '#f59e0b' };
+          return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
         } else {
-          return { level: 'high', label: 'High shop traffic', color: '#ef4444' };
+          return { level: 'high', label: 'High Traffic', color: '#ef4444' };
         }
       }
 
@@ -21524,33 +21318,34 @@
       // Get shops with distance info (prefer locationBasedShops if available)
       let shopsWithDistance = locationBasedShops.length > 0 ? locationBasedShops : availableShops;
 
-      // Map service names to Vendor_service_availability field names
+      // Map service names to service availability field names
       const serviceAvailabilityMap = {
         'print': 'regular_print',
-        'orderSummary': 'regular_print',
+        'orderSummary': 'regular_print', // Order summary modal uses regular_print service
         'digital': 'digital_print',
         'gloss': 'gloss_printing',
         'jumbo': 'jumbo_printing',
         'photo': 'photo_print',
         'passport': 'passport_print',
-        'passport_photo': 'passport_print',
-        'goldenemboss': 'project_binding',
-        'golden_embossing': 'project_binding'
+        'goldenemboss': 'project_binding' // Assuming golden emboss uses project_binding
       };
 
-      // Filter shops by service availability - only 1/true = available
+      // Filter shops by service availability
       const serviceAvailabilityField = serviceAvailabilityMap[service];
-      const isServiceAvailable = (val) => val === true || val === 1 || val === '1' || val === 'true';
       if (serviceAvailabilityField) {
         shopsWithDistance = shopsWithDistance.filter(shop => {
+          // If shop has service_availability data, check it
           if (shop.service_availability && typeof shop.service_availability === 'object') {
             const serviceData = shop.service_availability.service_data || shop.service_availability;
-            return isServiceAvailable(serviceData[serviceAvailabilityField]);
+            // Check if service is available (default to true if not specified)
+            return serviceData[serviceAvailabilityField] !== false && serviceData[serviceAvailabilityField] !== 0;
           }
+          // If shop has direct service availability fields, check them
           if (shop[serviceAvailabilityField] !== undefined) {
-            return isServiceAvailable(shop[serviceAvailabilityField]);
+            return shop[serviceAvailabilityField] !== false && shop[serviceAvailabilityField] !== 0;
           }
-          return false;
+          // Default to true (show shop) if service availability data is not available
+          return true;
         });
       }
 
@@ -21593,11 +21388,11 @@
       function getTrafficInfo(pendingJobs) {
         const count = pendingJobs || 0;
         if (count < 10) {
-          return { level: 'low', label: 'Low shop traffic', color: '#10b981' };
+          return { level: 'low', label: 'Low Traffic', color: '#10b981' };
         } else if (count < 16) {
-          return { level: 'medium', label: 'Mid shop traffic', color: '#f59e0b' };
+          return { level: 'medium', label: 'Med Traffic', color: '#f59e0b' };
         } else {
-          return { level: 'high', label: 'High shop traffic', color: '#ef4444' };
+          return { level: 'high', label: 'High Traffic', color: '#ef4444' };
         }
       }
 
@@ -22828,9 +22623,6 @@
         container.innerHTML = '';
         container.appendChild(fragment);
         updateJobTrackDistances();
-        
-        // Start carousel for mobile (auto-scroll every 10 seconds)
-        startJobsCarousel();
       }
 
       // Completed jobs are displayed via the History modal only
@@ -23162,14 +22954,6 @@
           print_color: job.color || 'Black and White',
           total_price: job.total_price || job.final_amount || 0
         };
-        if (job.metadata) {
-          breakdown.bwPageRangeValue = job.metadata.bwPageRangeValue || breakdown.bwPageRangeValue;
-          breakdown.colorPageRangeValue = job.metadata.colorPageRangeValue || breakdown.colorPageRangeValue;
-          breakdown.pageRange = job.metadata.pageRange || breakdown.pageRange;
-        }
-        if (job.bw_page_range_value != null) breakdown.bwPageRangeValue = job.bw_page_range_value;
-        if (job.color_page_range_value != null) breakdown.colorPageRangeValue = job.color_page_range_value;
-        if (job.page_range != null) breakdown.pageRange = job.page_range;
         pricing = {
           total_price: job.total_price || job.final_amount || 0,
           pricing_breakdown: breakdown
@@ -23179,6 +22963,7 @@
       // Use the existing pricing summary modal
       const modal = document.getElementById('pricingSummaryModal');
       const breakdownEl = document.getElementById('pricingBreakdown');
+      const invoiceDate = document.getElementById('invoiceDate');
 
       if (!modal || !breakdownEl) {
         alert('Invoice modal not available.');
@@ -23206,14 +22991,30 @@
       };
       const serviceDisplayName = serviceNames[serviceType] || 'Printing Service';
 
+      // Set current date and time
+      const now = new Date();
+      const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
+      const formattedDate = now.toLocaleDateString('en-US', options);
+      if (invoiceDate) {
+        invoiceDate.textContent = formattedDate;
+      }
+
       // Get shop name and address with fallbacks for different field name variations
       const shopName = job.shop_name || job['shop name'] || job.shopName || job.vendor_name || job.vendor_label || '';
       const shopAddress = job.shop_address || job['shop address'] || job.shopAddress || '';
 
-      // Build professional bill format matching order summary modal exactly
+      // Build professional bill format matching the modal
       let html = `
-        <div class="professional-bill job-invoice-bill">
-          <div class="bill-header bill-header-with-close">
+        <div class="professional-bill">
+          <div class="bill-header">
             <div class="bill-identity">
               <div class="bill-logo">
                 <i class="fas fa-print" style="color: rgba(255, 255, 255, 0.95); font-size: 1.75rem;"></i>
@@ -23223,22 +23024,27 @@
                 <p class="bill-subtitle">Professional Printing Services</p>
               </div>
             </div>
-            <button class="invoice-close-btn-in-bill" onclick="hidePricingSummary()" title="Close">
-              <i class="fas fa-times"></i>
-            </button>
+            <div class="bill-date">
+              <p>Date: ${new Date().toLocaleDateString()}</p>
+              <p>Time: ${new Date().toLocaleTimeString()}</p>
+            </div>
           </div>
           
           <div class="bill-content">
             <div class="service-info">
-              <h4>Print Details</h4>
+              <h4>Service Details</h4>
+              <div class="service-row">
+                <span class="service-name">${serviceDisplayName}</span>
+                <span class="service-status">Completed</span>
+              </div>
               ${shopName ? `
                 <div class="shop-name-row">
-                  <span class="shop-label">Shop Name:</span>
+                  <span class="shop-label">Shop:</span>
                   <span class="shop-value">${shopName}</span>
                 </div>
               ` : ''}
               ${shopAddress ? `
-                <div class="shop-address-row">
+                <div class="shop-name-row">
                   <span class="shop-label">Shop Address:</span>
                   <span class="shop-value">${shopAddress}</span>
                 </div>
@@ -23277,20 +23083,32 @@
           subtotal += embossCost;
         }
       } else if (breakdown.pricing_key_used) {
-        // Don't add redundant row (e.g. "Gloss Printing ₹2.48") - Service row already shows service name
+        const serviceDesc = breakdown.pricing_key_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         const qty = breakdown.page_count || breakdown.print_quantity || 1;
         const copies = breakdown.num_copies || 1;
         const totalQty = qty * copies;
         const rate = Number(breakdown.base_price || 0);
+        // Calculate amount, but prefer job.total_price if available (final amount customer paid)
         let amount = rate * totalQty;
+        // If calculated amount is 0 or job has a total_price, use that instead
         if (amount === 0 && Number(job.total_price || 0) > 0) {
           amount = Number(job.total_price);
         } else if (Number(job.total_price || 0) > 0 && Number(job.total_price) !== amount) {
+          // If job.total_price exists and differs, use it (it's the final amount with commission)
           amount = Number(job.total_price);
         }
+
+        html += `
+          <div class="invoice-item">
+            <span class="invoice-item-label">${serviceDesc}</span>
+            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
+          </div>
+        `;
         subtotal += amount;
       } else {
-        // Don't add redundant row (e.g. "Gloss Printing ₹2.48") - Service row later shows service name, amount flows to Total Payment
+        const serviceDesc = serviceDisplayName;
+        // Use job.total_price as primary source (final amount customer paid), then fallback to breakdown/pricing
+        // This ensures we always show the actual final amount, not 0
         const amount = Number(job.total_price || 0) > 0
           ? Number(job.total_price)
           : (Number(breakdown.total_price || 0) > 0
@@ -23299,6 +23117,13 @@
               ? Number(pricing.total_price)
               : (subtotal > 0 ? subtotal : 0)));
 
+        html += `
+          <div class="invoice-item">
+            <span class="invoice-item-label">${serviceDesc}</span>
+            <span class="invoice-item-value">₹${amount.toFixed(2)}</span>
+          </div>
+        `;
+        // Only add to subtotal if amount is valid and we haven't already calculated it
         if (amount > 0 && subtotal === 0) {
           subtotal = amount;
         } else if (amount > 0) {
@@ -23306,36 +23131,13 @@
         }
       }
 
-      // Add service, pages, color, orientation, copies (match order summary modal layout)
+      // Add pages, color, and copies details
       const pages = breakdown.page_count || breakdown.pages || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || breakdown.copies || 1;
-      const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || (job && job.color) || 'Black and White';
+      const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || 'Black and White';
       const size = breakdown.print_size || breakdown.size || 'N/A';
-      let orientation = breakdown.orientation || breakdown['Print Orientation'] || (job && job.orientation) || 'Portrait';
-      orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
-      const isMixColor = /^(mix|mixed|both)$/i.test(String(color));
-
-      let bwRangeDisplay = '';
-      let colorRangeDisplay = '';
-      if (isMixColor) {
-        bwRangeDisplay = (breakdown.bwPageRangeValue || (job && job.bw_page_range_value) || (job && job.metadata && job.metadata.bwPageRangeValue) || '').toString().trim();
-        colorRangeDisplay = (breakdown.colorPageRangeValue || (job && job.color_page_range_value) || (job && job.metadata && job.metadata.colorPageRangeValue) || '').toString().trim();
-        const pageRangeStr = String(breakdown.pageRange || (job && job.page_range) || (job && job.metadata && job.metadata.pageRange) || '');
-        if (!bwRangeDisplay && !colorRangeDisplay && pageRangeStr) {
-          const bwMatch = pageRangeStr.match(/BW:\s*([^|]+)/);
-          const colorMatch = pageRangeStr.match(/Color:\s*(.+)/);
-          if (bwMatch) bwRangeDisplay = bwMatch[1].trim();
-          if (colorMatch) colorRangeDisplay = colorMatch[1].trim();
-        }
-        if (!bwRangeDisplay) bwRangeDisplay = 'all';
-        if (!colorRangeDisplay) colorRangeDisplay = 'all';
-      }
 
       html += `
-        <div class="invoice-item">
-          <span class="invoice-item-label">Service</span>
-          <span class="invoice-item-value">${serviceDisplayName}</span>
-        </div>
         <div class="invoice-item">
           <span class="invoice-item-label">Pages</span>
           <span class="invoice-item-value">${pages}</span>
@@ -23344,20 +23146,6 @@
           <span class="invoice-item-label">Color</span>
           <span class="invoice-item-value">${color}</span>
         </div>
-        <div class="invoice-item">
-          <span class="invoice-item-label">Orientation</span>
-          <span class="invoice-item-value">${orientation}</span>
-        </div>
-        ${isMixColor ? `
-        <div class="invoice-item">
-          <span class="invoice-item-label">B&W Pages</span>
-          <span class="invoice-item-value">${bwRangeDisplay}</span>
-        </div>
-        <div class="invoice-item">
-          <span class="invoice-item-label">Color Pages</span>
-          <span class="invoice-item-value">${colorRangeDisplay}</span>
-        </div>
-        ` : ''}
         <div class="invoice-item">
           <span class="invoice-item-label">Copies</span>
           <span class="invoice-item-value">${copies}</span>
@@ -23409,12 +23197,23 @@
       // Grand total only (no subtotal)
       html += `
         <div class="invoice-item invoice-total">
-          <span class="invoice-item-label">Total Payment</span>
+          <span class="invoice-item-label">Grand Total</span>
           <span class="invoice-item-value">₹${Number(finalTotal).toFixed(2)}</span>
         </div>
       `;
 
       html += `
+            </div>
+            
+            <div class="bill-footer">
+              <div class="payment-info">
+                <p><strong>Payment Method:</strong> Online Payment</p>
+                <p><strong>Status:</strong> <span class="status-paid" style="color: #059669; font-weight: 600;">Paid</span></p>
+              </div>
+              <div class="contact-info">
+                <p>Thank you for choosing PrintMax!</p>
+                <p>For queries, contact: support@printmax.com</p>
+              </div>
             </div>
           </div>
         </div>
@@ -23783,18 +23582,6 @@
       const body = printModal.querySelector('.modal-body');
       if (body) body.addEventListener('scroll', ensureModalButtonsVisible, { passive: true });
 
-      // For document print, scroll the modal body so that the "Additional options"
-      // section is visible by default, avoiding overlap with the action buttons.
-      const additionalOptionsSection = printModal.querySelector('#additionalOptionsSection');
-      if (body && additionalOptionsSection) {
-        try {
-          additionalOptionsSection.scrollIntoView({ behavior: 'auto', block: 'start' });
-        } catch (e) {
-          // Fallback for older browsers
-          body.scrollTop = additionalOptionsSection.offsetTop - body.offsetTop;
-        }
-      }
-
       // Show points section if price is already calculated and user has points
       const printModalEl = document.getElementById('printModal');
       if (printModalEl && printModalEl.dataset.calculatedPrice) {
@@ -23845,7 +23632,7 @@
             <i class="fas fa-cloud-upload-alt upload-icon"></i>
             <span class="upload-text">Click to select files</span>
             <span class="upload-hint">or drag and drop them into this window</span>
-            <span class="upload-subtitle">Supported: PDF, Word, PPT, JPEG, PNG</span>
+            <span class="upload-subtitle">Supported: PDF,JPG, PNG </span>
             <button class="upload-btn" id="uploadBtn">
               <i class="fas fa-file-upload"></i>
               Add files
@@ -23961,16 +23748,10 @@
           );
 
           if (!isDuplicate) {
-            let pages;
-            try {
-              pages = await getPageCount(file);
-            } catch (pageErr) {
-              if (pageErr?.message === 'PASSWORD_PROTECTED_PDF') {
-                showInvalidFileTypeModal(file.name, true);
-                continue;
-              }
-              throw pageErr;
-            }
+            const fileId = Date.now() + Math.random();
+
+            // Get accurate page count
+            const pages = await getPageCount(file);
             console.log(`File ${file.name} has ${pages} pages`);
 
             // Enforce 100-page limit for PDFs/documents
@@ -23979,10 +23760,6 @@
               continue;
             }
 
-            const fileId = Date.now() + Math.random();
-            const isWordOrPpt = /\.(doc|docx|ppt|pptx)$/i.test(file.name) ||
-              ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'].includes(file.type);
             const fileObj = {
               id: fileId,
               file: file,
@@ -23990,34 +23767,13 @@
               size: file.size,
               pages: pages,
               isImage: file.type.startsWith('image/'),
-              originalImageFile: file.type.startsWith('image/') ? file : null,
-              convertedPdfFile: null
+              originalImageFile: file.type.startsWith('image/') ? file : null
             };
 
             uploadedFiles.push(fileObj);
             fileSettings[fileId] = { ...defaultSettings };
             filesAdded = true;
-
-            if (isWordOrPpt) {
-              try {
-                loadingMessage.querySelector('p').textContent = `Converting ${file.name} to PDF...`;
-                const pdfFile = await convertWordOrPptToPdf(file);
-                fileObj.convertedPdfFile = pdfFile;
-                fileObj.pages = await getPDFPageCount(pdfFile);
-                console.log('Word/PPT converted to PDF:', pdfFile.name, fileObj.pages, 'pages');
-              } catch (convErr) {
-                console.error('Convert to PDF failed:', convErr);
-                uploadedFiles.pop();
-                fileSettings[fileId] = undefined;
-                filesAdded = false;
-                loadingMessage.remove();
-                alert(convErr.message || 'Could not convert document to PDF. Please upload a PDF or try again.');
-                return;
-              }
-            }
-
-            if (loadingMessage.querySelector('p')) loadingMessage.querySelector('p').textContent = 'Processing files and counting pages...';
-            console.log('File added successfully:', file.name, 'with', fileObj.pages, 'pages');
+            console.log('File added successfully:', file.name, 'with', pages, 'pages');
           } else {
             console.log('Duplicate file skipped:', file.name);
           }
@@ -24045,24 +23801,17 @@
     }
 
     function isValidFile(file) {
-      const deniedExtensions = ['.csv', '.txt', '.xls', '.xlsx', '.bmp', '.tiff', '.gif', '.docm', '.xlsm', '.pptm'];
       const validTypes = [
         'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         'image/jpeg',
-        'image/png',
-        'image/jpg'
+        'image/png'
       ];
-      const validExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png'];
+
       const fileName = file.name.toLowerCase();
-      const fileExt = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
-      const isDenied = deniedExtensions.some(d => fileExt === d || fileName.endsWith(d));
+      const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
       const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-      const hasValidType = validTypes.includes(file.type) || file.type.startsWith('image/');
-      return !isDenied && hasValidExtension && hasValidType;
+
+      return validTypes.includes(file.type) || hasValidExtension;
     }
 
     // Build filtered page list based on settings
@@ -24175,125 +23924,6 @@
         return;
       }
 
-      const fileType = (fileObj.file && fileObj.file.type) || '';
-      const fileName = (fileObj.name || '').toLowerCase();
-      const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf');
-      const hasConvertedPdf = fileObj.convertedPdfFile && fileObj.convertedPdfFile.type === 'application/pdf';
-
-      // Use converted PDF for preview when available (Word/PPT converted to PDF)
-      if (hasConvertedPdf) {
-        const bytes = await fileObj.convertedPdfFile.arrayBuffer();
-        const task = pdfjsLib.getDocument({ data: bytes });
-        pdfDocument = await task.promise;
-        pdfLoadedForFileId = fileObj.id;
-        const totalPages = pdfDocument.numPages;
-        filteredPageNumbers = [];
-        for (let p = 1; p <= totalPages; p++) filteredPageNumbers.push(p);
-        if (filteredPageNumbers.length === 0) filteredPageNumbers = [1];
-        if (currentPreviewPageIdx >= filteredPageNumbers.length) currentPreviewPageIdx = 0;
-        async function renderCurrent() {
-          if (currentRenderTask) {
-            try { currentRenderTask.cancel(); } catch (e) {}
-            currentRenderTask = null;
-          }
-          if (canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
-          isRendering = true;
-          try {
-            const pageNumber = filteredPageNumbers[currentPreviewPageIdx];
-            const page = await pdfDocument.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: 1.2 });
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const renderTask = page.render({ canvasContext: ctx, viewport });
-            currentRenderTask = renderTask;
-            await renderTask.promise;
-            if (currentRenderTask === renderTask && isRendering) {
-              if (pageCounter) pageCounter.textContent = `${currentPreviewPageIdx + 1} / ${filteredPageNumbers.length}`;
-              if (prevBtn) prevBtn.disabled = currentPreviewPageIdx === 0;
-              if (nextBtn) nextBtn.disabled = currentPreviewPageIdx === filteredPageNumbers.length - 1;
-              currentRenderTask = null;
-              isRendering = false;
-            }
-          } catch (err) {
-            if (err.name !== 'RenderingCancelledException') console.error('Error rendering PDF preview:', err);
-            currentRenderTask = null;
-            isRendering = false;
-          }
-        }
-        if (!prevBtn._wired) {
-          prevBtn._wired = true;
-          prevBtn.addEventListener('click', () => { if (currentPreviewPageIdx > 0) { currentPreviewPageIdx--; renderCurrent(); } });
-        }
-        if (!nextBtn._wired) {
-          nextBtn._wired = true;
-          nextBtn.addEventListener('click', () => { if (currentPreviewPageIdx < filteredPageNumbers.length - 1) { currentPreviewPageIdx++; renderCurrent(); } });
-        }
-        await renderCurrent();
-        return;
-      }
-
-      // For non-PDF documents (e.g. DOC/DOCX) without conversion, show a static placeholder preview
-      if (!isPDF) {
-        if (canvas) {
-          const container = canvas.parentElement;
-          const previewWrapper = document.getElementById('imagePreviewContainer');
-          if (previewWrapper) {
-            previewWrapper.classList.add('active');
-          }
-
-          const width = 640;
-          const height = 400;
-          canvas.width = width;
-          canvas.height = height;
-
-          // Background
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
-
-          // Border
-          ctx.strokeStyle = '#e5e7eb';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(1, 1, width - 2, height - 2);
-
-          // Icon circle
-          ctx.fillStyle = '#2563eb';
-          ctx.beginPath();
-          ctx.arc(width / 2, height / 2 - 40, 40, 0, Math.PI * 2);
-          ctx.fill();
-
-          // "W" like Word icon
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 32px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('W', width / 2, height / 2 - 30);
-
-          // File name
-          ctx.fillStyle = '#111827';
-          ctx.font = '600 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-          const displayName = fileObj.name || 'Document';
-          ctx.fillText(displayName.length > 40 ? displayName.slice(0, 37) + '...' : displayName, width / 2, height / 2 + 20);
-
-          // Helper text
-          ctx.fillStyle = '#6b7280';
-          ctx.font = '400 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-          ctx.fillText('Preview is limited for DOC/DOCX. File will print normally.', width / 2, height / 2 + 48);
-        }
-
-        if (pageCounter) pageCounter.textContent = '1 / 1';
-        if (prevBtn) prevBtn.disabled = true;
-        if (nextBtn) nextBtn.disabled = true;
-
-        // Reset PDF state so future PDF uploads work normally
-        pdfDocument = null;
-        pdfLoadedForFileId = null;
-        filteredPageNumbers = [1];
-        currentPreviewPageIdx = 0;
-        currentRenderTask = null;
-        isRendering = false;
-        return;
-      }
-
       // Load PDF if needed or file changed
       if (!pdfDocument || pdfLoadedForFileId !== fileObj.id) {
         // Cancel any ongoing render before loading new PDF
@@ -24312,10 +23942,38 @@
         pdfLoadedForFileId = fileObj.id;
       }
 
-      // Preview remains static: always show all pages (do not filter by B&W or Color range)
-      const totalPages = pdfDocument.numPages;
-      filteredPageNumbers = [];
-      for (let p = 1; p <= totalPages; p++) filteredPageNumbers.push(p);
+      // Build filtered pages based on selection
+      // Use new range settings based on color selection
+      let rangeType = 'all';
+      let rangeText = '';
+      if (settings.color === 'color') {
+        rangeType = settings.colorPageRange || 'all';
+        rangeText = settings.colorPageRangeValue || '';
+      } else if (settings.color === 'Mixed') {
+        // For Mixed, we need to handle both ranges
+        // Use the appropriate range based on current page being viewed
+        rangeType = settings.colorPageRange || 'all';
+        rangeText = settings.colorPageRangeValue || '';
+      } else {
+        rangeType = settings.bwPageRange || 'all';
+        rangeText = settings.bwPageRangeValue || '';
+      }
+
+      // Handle 'range' type - check if rangeText is 'odd' or 'even'
+      if (rangeType === 'range') {
+        const rangeTextLower = rangeText.trim().toLowerCase();
+        if (rangeTextLower === 'odd') {
+          rangeType = 'odd';
+          rangeText = '';
+        } else if (rangeTextLower === 'even') {
+          rangeType = 'even';
+          rangeText = '';
+        } else {
+          rangeType = 'specific';
+        }
+      }
+
+      filteredPageNumbers = buildFilteredPages(pdfDocument.numPages, rangeType, rangeText);
       if (filteredPageNumbers.length === 0) filteredPageNumbers = [1];
       if (currentPreviewPageIdx >= filteredPageNumbers.length) currentPreviewPageIdx = 0;
 
@@ -24400,24 +24058,6 @@
       await renderCurrent();
     }
 
-    // Convert Word/PPT to PDF via backend (for document, gloss, jumbo, golden emboss, digital)
-    async function convertWordOrPptToPdf(file) {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch('/convert-to-pdf/', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' }
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(err.error || 'Conversion failed');
-      }
-      const blob = await response.blob();
-      const baseName = (file.name || 'document').replace(/\.[^/.]+$/, '');
-      return new File([blob], baseName + '.pdf', { type: 'application/pdf' });
-    }
-
     // Function to get accurate page count for files
     async function getPageCount(file) {
       if (file.type === 'application/pdf') {
@@ -24434,7 +24074,7 @@
       }
     }
 
-    // Function to get PDF page count using PDF.js - rejects password-encrypted PDFs
+    // Function to get PDF page count using PDF.js
     async function getPDFPageCount(file) {
       try {
         const arrayBuffer = await file.arrayBuffer();
@@ -24442,13 +24082,8 @@
         const pdf = await loadingTask.promise;
         return pdf.numPages;
       } catch (error) {
-        const errMsg = (error?.message || String(error)).toLowerCase();
-        if (errMsg.includes('password') || errMsg.includes('encrypted') || errMsg.includes('permission')) {
-          const e = new Error('PASSWORD_PROTECTED_PDF');
-          e.originalError = error;
-          throw e;
-        }
         console.warn('Error reading PDF pages, using estimation:', error);
+        // Fallback to size-based estimation for PDFs
         const sizeInKB = file.size / 1024;
         return Math.max(1, Math.ceil(sizeInKB / 100));
       }
@@ -24519,7 +24154,21 @@
         const settings = fileSettings[fileObj.id] || defaultSettings;
         const colorLabel = settings.color === 'color' ? 'Color' : 'Black & White';
         return `
-         
+          <div class="batch-preview-item">
+            <div class="batch-preview-info">
+              <div class="batch-preview-name" title="${fileObj.name}">${fileObj.name}</div>
+              <div class="batch-preview-meta">
+                <span><i class="fas fa-file-alt"></i>${fileObj.pages} pages</span>
+                <span><i class="fas fa-copy"></i>${settings.copies} copies</span>
+                <span><i class="fas fa-palette"></i>${colorLabel}</span>
+              </div>
+            </div>
+            <div class="batch-preview-actions">
+              <button class="batch-preview-btn" onclick="handleBatchPreviewClick(${index})">
+                View
+              </button>
+            </div>
+          </div>
         `;
       }).join('');
     }
@@ -24558,9 +24207,6 @@
 
     function updateUI() {
       const hasFiles = uploadedFiles.length > 0;
-      // Keep legacy/global references in sync for other helpers (e.g., button visibility).
-      // NOTE: `uploadedFiles` is the source of truth for the Document Print modal.
-      try { window.uploadedFiles = uploadedFiles; } catch (e) { /* no-op */ }
 
       // Check if all documents are configured
       const validation = validateAllDocumentsConfigured();
@@ -24588,8 +24234,7 @@
         }
       }
 
-      // Show action buttons when files are uploaded (like jumbo print modal).
-      // Cancel/Print bar appears below the Additional options section.
+      // Only show action buttons after successful file upload
       if (actionButtons) {
         if (hasFiles) {
           actionButtons.style.display = 'flex';
@@ -25341,23 +24986,22 @@
         }
       });
 
-      // Handle Document Print modal actions - show buttons when files are uploaded (like jumbo print modal)
+      // Handle Document Print modal actions - show buttons when files are uploaded (no scroll requirement)
       const printModal = document.getElementById('printModal');
       if (printModal && printModal.classList.contains('active')) {
         const body = printModal.querySelector('.modal-body');
         const actionButtons = document.getElementById('actionButtons');
 
         if (body && actionButtons) {
-          const hasFiles =
-            (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) ||
-            (window.uploadedFiles && window.uploadedFiles.length > 0);
+          // Only show buttons if files are uploaded (removed scroll-to-bottom requirement)
+          const hasFiles = window.uploadedFiles && window.uploadedFiles.length > 0;
 
           if (hasFiles) {
+            // Always show buttons if files are uploaded (no scroll validation needed)
             actionButtons.classList.add('show');
-            actionButtons.style.display = 'flex';
           } else {
+            // Hide buttons if no files uploaded
             actionButtons.classList.remove('show');
-            actionButtons.style.display = 'none';
           }
         }
       }
@@ -25840,8 +25484,9 @@
           updateCurrentFileSettings('bwPageRange', 'range');
           updateCurrentFileSettings('bwPageRangeValue', currentValue);
 
-          // Do NOT update preview when range changes - keep preview static (full document)
+          // Debounce preview update to avoid multiple renders
           bwPageRangeInput._debounceTimeout = setTimeout(() => {
+            debouncedUpdateDocumentPreview();
             if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
           }, 300);
         };
@@ -25899,8 +25544,9 @@
           updateCurrentFileSettings('colorPageRange', 'range');
           updateCurrentFileSettings('colorPageRangeValue', currentValue);
 
-          // Do NOT update preview when range changes - keep preview static (full document)
+          // Debounce preview update to avoid multiple renders
           colorPageRangeInput._debounceTimeout = setTimeout(() => {
+            debouncedUpdateDocumentPreview();
             if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
           }, 300);
         };
@@ -26027,23 +25673,7 @@
         return;
       }
 
-      // Prefer currently uploaded files, but gracefully fall back to files stored
-      // on the modals (order summary / print modal) so that calculation still
-      // works after the first step of the flow.
-      let filesForCalc = uploadedFiles || [];
-      if (!filesForCalc || filesForCalc.length === 0) {
-        const orderSummaryModal = document.getElementById('orderSummaryModal');
-        if (orderSummaryModal && Array.isArray(orderSummaryModal._pendingFiles) && orderSummaryModal._pendingFiles.length > 0) {
-          filesForCalc = orderSummaryModal._pendingFiles;
-        } else {
-          const printModal = document.getElementById('printModal');
-          if (printModal && Array.isArray(printModal._uploadedFiles) && printModal._uploadedFiles.length > 0) {
-            filesForCalc = printModal._uploadedFiles;
-          }
-        }
-      }
-
-      if (!filesForCalc || filesForCalc.length === 0) {
+      if (uploadedFiles.length === 0) {
         if (!suppress) alert('Please upload at least one file first');
         return;
       }
@@ -26064,7 +25694,7 @@
       let colorPages = 0;  // Color pages per copy (sum across all files)
       let colorType = 'Black and White'; // Default
 
-      for (const fileObj of filesForCalc) {
+      for (const fileObj of uploadedFiles) {
         const settings = fileSettings[fileObj.id];
         const pages = fileObj.pages;
         const copies = settings.copies;
@@ -26117,26 +25747,6 @@
       const lamination = document.getElementById('lamination').checked;
       const tapeBinding = document.getElementById('tapeBinding').checked;
 
-      // Derive a primary page size for this batch (assumes same size across files)
-      let primaryPageSize = 'A4';
-      try {
-        if (filesForCalc && filesForCalc.length > 0) {
-          for (const fileObj of filesForCalc) {
-            const settings = fileSettings[fileObj.id] || {};
-            if (settings.pageSize) {
-              const sz = String(settings.pageSize).trim();
-              if (sz) {
-                primaryPageSize = sz.toUpperCase();
-                break;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Unable to determine primary page size, defaulting to A4', e);
-        primaryPageSize = 'A4';
-      }
-
       // Collect form data for A4 print
       // Backend expects: bw_pages and color_pages as per-copy counts (not multiplied by copies)
       // Backend formula: Copies × [(B&W Pages × B&W Rate) + (Color Pages × Color Rate) + ...]
@@ -26149,12 +25759,11 @@
         color_pages: colorPages,  // Color pages per copy
         spiral_binding: spiralBinding,
         lamination: lamination,
-        tape_binding: tapeBinding,
-        page_size: primaryPageSize   // NEW: allow backend to differentiate A4 / LETTER / A3
+        tape_binding: tapeBinding
       };
 
-      console.log('📊 Document print form data being sent:', formData);
-      console.log(`💰 Expected pricing key: Document_print_${printType}`);
+      console.log('📊 A4 print form data being sent:', formData);
+      console.log(`💰 Expected pricing key: a4_print_${printType}`);
 
       // Show loading state
       const originalText = calculateBtn ? calculateBtn.innerHTML : '';
@@ -26212,25 +25821,6 @@
             subtotal: totalBillAmount  // Subtotal before commission
           };
 
-          // Include B&W and Color page range display values for invoice (so bill shows actual ranges, not "all")
-          let bwRangeDisplay = '';
-          let colorRangeDisplay = '';
-          if (filesForCalc && filesForCalc.length > 0 && typeof fileSettings !== 'undefined') {
-            const bwParts = filesForCalc.map(f => (fileSettings[f.id] && fileSettings[f.id].bwPageRangeValue) ? String(fileSettings[f.id].bwPageRangeValue).trim() : '').filter(Boolean);
-            const colorParts = filesForCalc.map(f => (fileSettings[f.id] && fileSettings[f.id].colorPageRangeValue) ? String(fileSettings[f.id].colorPageRangeValue).trim() : '').filter(Boolean);
-            bwRangeDisplay = bwParts.length ? bwParts.join(', ') : '';
-            colorRangeDisplay = colorParts.length ? colorParts.join(', ') : '';
-          }
-          if (!bwRangeDisplay || !colorRangeDisplay) {
-            const bwInput = document.getElementById('bwPageRangeInput');
-            const colorInput = document.getElementById('colorPageRangeInput');
-            if (bwInput && bwInput.value) bwRangeDisplay = bwInput.value.trim();
-            if (colorInput && colorInput.value) colorRangeDisplay = colorInput.value.trim();
-          }
-          completeBreakdown.bwPageRangeValue = bwRangeDisplay;
-          completeBreakdown.colorPageRangeValue = colorRangeDisplay;
-          completeBreakdown.print_color = colorType;
-
           // Store the calculated price in modal metadata (final amount with 20% commission already applied)
           const printModalEl = document.getElementById('printModal');
           printModalEl.dataset.calculatedPrice = finalAmount.toString();
@@ -26243,13 +25833,10 @@
           // REMOVED: Order summary elements no longer exist in print modal
           // Order summary is now shown in separate orderSummaryModal when user clicks Print button
 
-          // Show action buttons after successful price calculation.
-          // Visibility is also guarded by updateUI/ensureModalButtonsVisible so they
-          // remain hidden until pricing is available.
+          // Show action buttons after successful price calculation
           const actionButtonsEl = document.getElementById('actionButtons');
           if (actionButtonsEl) {
             actionButtonsEl.style.display = 'flex';
-            actionButtonsEl.classList.add('show');
           }
 
           // Show points section after price calculation - always show it (like photoprint modal)
@@ -26274,7 +25861,7 @@
           }
         }
       } catch (error) {
-        console.error('Error calculating Document print price:', error);
+        console.error('Error calculating A4 print price:', error);
         // Only show alert if user explicitly clicked calculate button
         if (!suppress) {
           alert('Error calculating price. Please try again.');
@@ -26320,13 +25907,12 @@
       }
 
       if (unconfiguredFiles.length > 0) {
-        const hasColorMissing = unconfiguredFiles.some(f => f.missingFields && f.missingFields.includes('color'));
-        const message = hasColorMissing
-          ? 'Please choose color for print .'
-          : 'Please configure print settings for each file.';
+        const fileList = unconfiguredFiles.length === 1
+          ? `File ${unconfiguredFiles[0].index + 1}: ${unconfiguredFiles[0].name}`
+          : unconfiguredFiles.map(f => `File ${f.index + 1}: ${f.name}`).join(', ');
         return {
           valid: false,
-          message: message,
+          message: `Please provide details for all documents before proceeding. Missing details for: ${fileList}. Click on each file to configure its settings.`,
           unconfiguredFiles: unconfiguredFiles
         };
       }
@@ -26448,21 +26034,6 @@
         icon.remove();
       });
 
-      // Validate shop selection first (required before proceeding)
-      const shopSelectionButton = document.getElementById('print-shop-selection-button');
-      let currentSelectedVendor = selectedVendor;
-      if (shopSelectionButton && shopSelectionButton.dataset.selectedShop) {
-        currentSelectedVendor = shopSelectionButton.dataset.selectedShop;
-      }
-      const orderSummaryModal = document.getElementById('orderSummaryModal');
-      if (orderSummaryModal && orderSummaryModal.dataset.selectedShop) {
-        currentSelectedVendor = orderSummaryModal.dataset.selectedShop;
-      }
-      if (!currentSelectedVendor || currentSelectedVendor === '') {
-        alert('Please choose shop for print.');
-        return;
-      }
-
       // Validate inputs - use alerts like jumbo print modal
       if (uploadedFiles.length === 0) {
         alert('Please upload at least one file.');
@@ -26487,7 +26058,10 @@
         });
 
         if (filesWithoutColor.length > 0) {
-          alert('Please choose color for print.');
+          const fileList = filesWithoutColor.length === 1
+            ? filesWithoutColor[0].name
+            : filesWithoutColor.map(f => f.name).join(', ');
+          alert(`Please select print color for: ${fileList}`);
           return;
         }
 
@@ -26528,6 +26102,27 @@
             }
           }
         }
+      }
+
+      // Check if a shop is selected first (needed for calculation)
+      // First check if shop is selected from shop selection button
+      const shopSelectionButton = document.getElementById('print-shop-selection-button');
+      let currentSelectedVendor = selectedVendor;
+
+      // If shopSelectionButton exists and has a selected shop, use that instead
+      if (shopSelectionButton && shopSelectionButton.dataset.selectedShop) {
+        currentSelectedVendor = shopSelectionButton.dataset.selectedShop;
+      }
+
+      // Also check if there's a shop selected in the order summary modal (for multiple uploads)
+      const orderSummaryModal = document.getElementById('orderSummaryModal');
+      if (orderSummaryModal && orderSummaryModal.dataset.selectedShop) {
+        currentSelectedVendor = orderSummaryModal.dataset.selectedShop;
+      }
+
+      if (!currentSelectedVendor || currentSelectedVendor === '') {
+        alert('Please select a print shop.');
+        return;
       }
 
       // Update selectedVendor BEFORE calculation (critical for calculateA4PrintPrice to work)
@@ -26580,25 +26175,20 @@
         };
       }
 
-      // IMPORTANT: Store files AND file settings in order summary modal before closing print modal
-      // This ensures files and Mixed B&W/color ranges persist when Pay now is clicked (same logic as photoprint modal)
+      // IMPORTANT: Store files in order summary modal before closing print modal
+      // This ensures files persist even if print modal gets reset (same logic as photoprint modal)
       // Reuse orderSummaryModal variable declared earlier in this function
       if (orderSummaryModal && typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        // Convert uploadedFiles array to File objects for storage (use converted PDF for Word/PPT so storage gets PDF)
+        // Convert uploadedFiles array to File objects for storage
         const filesToStore = uploadedFiles.map(fileObj => {
-          return (fileObj.convertedPdfFile || fileObj.file || fileObj);
+          // Return the actual File object from fileObj.file
+          return fileObj.file || fileObj;
         }).filter(file => file instanceof File);
 
         if (filesToStore.length > 0) {
           // Store files as a property on the order summary modal (File objects can't be in dataset)
           orderSummaryModal._pendingFiles = filesToStore;
-          // Store file settings (including Mixed B&W/color ranges) so Pay now can use them even if fileSettings is cleared
-          orderSummaryModal._pendingFileSettings = uploadedFiles.map(fileObj =>
-            (typeof fileSettings !== 'undefined' && fileSettings[fileObj.id])
-              ? { ...fileSettings[fileObj.id] }
-              : {}
-          );
-          console.log('📁 Files and settings stored in order summary modal (print modal):', filesToStore.length, 'files, Mixed ranges preserved');
+          console.log('📁 Files stored in order summary modal (print modal):', filesToStore.map(f => ({ name: f.name, type: f.type, size: f.size })));
         }
       }
 
@@ -26752,7 +26342,7 @@
 
       const printType = colorType === 'color' ? 'single_color' : 'single_bw';
       // Service name should be just "A4 print"
-      const serviceName = 'Document print';
+      const serviceName = 'A4 print';
 
       // Format color display text - show exact color type; use "Mix" for Both/Mixed
       let colorDisplayText = 'Black and White'; // Default
@@ -26781,20 +26371,6 @@
           colorDisplayText = 'Black and White';
         }
       }
-
-      // Determine orientation display text (Portrait / Landscape / Mixed)
-      let orientationDisplayText = 'Portrait';
-      if (orientationTypes && orientationTypes.size === 1) {
-        const rawOrientation = Array.from(orientationTypes)[0];
-        if (rawOrientation) {
-          orientationDisplayText = String(rawOrientation);
-        }
-      } else if (orientationTypes && orientationTypes.size > 1) {
-        orientationDisplayText = 'Mixed';
-      } else if (breakdownObj && (breakdownObj.orientation || breakdownObj['Print Orientation'])) {
-        orientationDisplayText = String(breakdownObj.orientation || breakdownObj['Print Orientation']);
-      }
-      orientationDisplayText = orientationDisplayText.charAt(0).toUpperCase() + orientationDisplayText.slice(1).toLowerCase();
 
       // Calculate commission if not available - use same method as jumbo print
       if (commissionPercent === 0) {
@@ -26930,8 +26506,7 @@
 
       // Populate modal fields
       document.getElementById('orderSummaryShopName').textContent = shopName;
-      const serviceNameEl = document.getElementById('orderSummaryServiceName');
-      if (serviceNameEl) serviceNameEl.textContent = serviceName;
+      document.getElementById('orderSummaryServiceName').textContent = serviceName;
 
       // Get and display shop address if available - show below shop name (full address, no truncation)
       const shopAddress = selectedVendorData ? (selectedVendorData.shop_address || selectedVendorData.address || '') : '';
@@ -27007,24 +26582,20 @@
             `;
           });
 
-          // Show total pages, copies, and orientation summary for multiple documents
+          // Show total pages and copies summary for multiple documents
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Pages</b></span>
+              <span class="invoice-item-label">Pages</span>
               <span class="invoice-item-value">${totalPagesSum}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Copies</b></span>
+              <span class="invoice-item-label">Copies</span>
               <span class="invoice-item-value">${totalCopiesSum}</span>
-            </div>
-            <div class="invoice-item">
-              <span class="invoice-item-label"><b>Orientation</b></span>
-              <span class="invoice-item-value">${orientationDisplayText}</span>
             </div>
           `;
         } else {
           // Single document or no files - show standard format with accurate details
-          // Print details
+          // Service details
           // Ensure we have valid values
           const displayPages = totalPagesCount > 0 ? totalPagesCount : (breakdownObj?.total_pages || breakdownObj?.page_count || 1);
           const displayCopies = totalCopiesCount > 0 ? totalCopiesCount : (breakdownObj?.total_copies || breakdownObj?.num_copies || breakdownObj?.copies || 1);
@@ -27075,27 +26646,58 @@
             colorRangeDisplay = breakdownObj.colorPageRangeValue || breakdownObj.color_page_range_value || '';
           }
 
-          // Desktop: match jumbo print order summary exactly - Print Name, Pages, Color, Orientation, Copies
-          const printName = serviceName;
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Print Name</b></span>
-              <span class="invoice-item-value">${printName}</span>
+              <span class="invoice-item-label">Print Name</span>
+              <span class="invoice-item-value">${serviceName}</span>
             </div>
+          `;
+
+          const isMixedForBill = /^(Mix|Mixed|Both)$/i.test(colorType + '') || (breakdownObj.color && /^(Mix|Mixed|Both)$/i.test((breakdownObj.color || '') + ''));
+          const showBw = bwPagesCount > 0 || (breakdownObj.bw_pages !== undefined && breakdownObj.bw_pages > 0) || (isMixedForBill && bwRangeDisplay);
+          const showColor = colorPagesCount > 0 || (breakdownObj.color_pages !== undefined && breakdownObj.color_pages > 0) || (isMixedForBill && colorRangeDisplay);
+          if (showBw) {
+            const bwRangeText = bwRangeDisplay ? ` (${bwRangeDisplay})` : '';
+            const displayBwPages = bwPagesCount > 0 ? bwPagesCount : (parseInt(breakdownObj.bw_pages) || 0);
+            invoiceHtml += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Black & White Pages</span>
+                <span class="invoice-item-value">${displayBwPages}${bwRangeText}</span>
+              </div>
+            `;
+          }
+          if (showColor) {
+            const colorRangeText = colorRangeDisplay ? ` (${colorRangeDisplay})` : '';
+            const displayColorPages = colorPagesCount > 0 ? colorPagesCount : (parseInt(breakdownObj.color_pages) || 0);
+            invoiceHtml += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Color Pages</span>
+                <span class="invoice-item-value">${displayColorPages}${colorRangeText}</span>
+              </div>
+            `;
+          }
+
+          // Page range for single-color "specific" case (when not Mixed/Both)
+          const specificPagesVal = breakdownObj.specificPages || breakdownObj.specific_pages ||
+            (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].specificPages : '');
+          const pageRangeVal = breakdownObj.pageRange || breakdownObj.page_range ||
+            (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined' && fileSettings[uploadedFiles[0].id] ? fileSettings[uploadedFiles[0].id].pageRange : '');
+          if (!isMixedForBill && (pageRangeVal + '').toLowerCase() === 'specific' && specificPagesVal) {
+            invoiceHtml += `
+              <div class="invoice-item">
+                <span class="invoice-item-label">Page range</span>
+                <span class="invoice-item-value">${String(specificPagesVal)}</span>
+              </div>
+            `;
+          }
+
+          invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Pages</b></span>
+              <span class="invoice-item-label">Total Pages</span>
               <span class="invoice-item-value">${displayPages}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Color</b></span>
-              <span class="invoice-item-value">${displayColor}</span>
-            </div>
-            <div class="invoice-item">
-              <span class="invoice-item-label"><b>Orientation</b></span>
-              <span class="invoice-item-value">${orientationDisplayText}</span>
-            </div>
-            <div class="invoice-item">
-              <span class="invoice-item-label"><b>Copies</b></span>
+              <span class="invoice-item-label">Copies</span>
               <span class="invoice-item-value">${displayCopies}</span>
             </div>
           `;
@@ -27326,8 +26928,7 @@
 
       // Populate modal fields
       document.getElementById('orderSummaryShopName').textContent = shopName;
-      const serviceNameEl = document.getElementById('orderSummaryServiceName');
-      if (serviceNameEl) serviceNameEl.textContent = serviceDisplayName;
+      document.getElementById('orderSummaryServiceName').textContent = serviceDisplayName;
 
       // Get and display shop address if available - show below shop name (full address, no truncation)
       const shopAddress = selectedShopData ? (selectedShopData.shop_address || selectedShopData.address || '') : '';
@@ -27350,12 +26951,11 @@
       if (serviceSpecificContainer) {
         let invoiceHtml = '';
 
-        // Extract print name, color, pages, copies, orientation from print details or breakdown
+        // Extract print name, color, pages, copies from service details or breakdown
         let printName = serviceDisplayName;
         let printColor = 'N/A';
         let pages = 1;
         let copies = 1;
-        let orientation = 'Portrait';
 
         // Get values from form inputs first (most accurate), then fallback to breakdown
         const form = modal.querySelector(`#${service}-modal-form`);
@@ -27385,18 +26985,6 @@
               printColor = colorValue;
             }
           }
-
-          // Get orientation from form
-          const orientationInput = form.querySelector('select[id*="orientation"], input[id*="orientation"], .orientation-option.selected');
-          if (orientationInput) {
-            if (orientationInput.classList && orientationInput.classList.contains('orientation-option')) {
-              orientation = orientationInput.getAttribute('data-orientation') || orientation;
-            } else {
-              orientation = orientationInput.value || orientation;
-            }
-            // Capitalize first letter
-            orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
-          }
         }
 
         // Fallback to breakdown if form values not found
@@ -27404,9 +26992,6 @@
           if (pages === 1) pages = breakdownObj.page_count || breakdownObj.print_quantity || breakdownObj.total_pages || pages;
           if (copies === 1) copies = breakdownObj.num_copies || breakdownObj.copies || copies;
           if (printColor === 'N/A') printColor = breakdownObj.print_color || breakdownObj.color || breakdownObj.color_photo || breakdownObj['Print Color'] || printColor;
-          if (orientation === 'Portrait') orientation = breakdownObj.orientation || breakdownObj['Print Orientation'] || orientation;
-          // Capitalize first letter
-          if (orientation) orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
         }
 
         // For passport photos, always show "Color" instead of "N/A"
@@ -27483,27 +27068,23 @@
 
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Print Name</b></span>
+              <span class="invoice-item-label">Print Name</span>
               <span class="invoice-item-value">${serviceDisplayName}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Pages</b></span>
+              <span class="invoice-item-label">Pages</span>
               <span class="invoice-item-value">${pages}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Color</b></span>
+              <span class="invoice-item-label">Color</span>
               <span class="invoice-item-value">${printColor}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Orientation</b></span>
-              <span class="invoice-item-value">${orientation || 'Portrait'}</span>
-            </div>
-            <div class="invoice-item">
-              <span class="invoice-item-label"><b>Copies</b></span>
+              <span class="invoice-item-label">Copies</span>
               <span class="invoice-item-value">${copies}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Paper Type</b></span>
+              <span class="invoice-item-label">Paper Type</span>
               <span class="invoice-item-value">${paperType}</span>
             </div>
           `;
@@ -27511,7 +27092,7 @@
           if (breakdownObj.emboss_cost) {
             invoiceHtml += `
               <div class="invoice-item">
-                <span class="invoice-item-label"><b>Golden Embossing</b></span>
+                <span class="invoice-item-label">Golden Embossing</span>
                 <span class="invoice-item-value">₹${Number(breakdownObj.emboss_cost).toFixed(2)}</span>
               </div>
             `;
@@ -27520,20 +27101,16 @@
           // Standard format for other services
           invoiceHtml += `
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Print Name</b></span>
+              <span class="invoice-item-label">Print Name</span>
               <span class="invoice-item-value">${printName}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Pages</b></span>
+              <span class="invoice-item-label">Pages</span>
               <span class="invoice-item-value">${pages}</span>
             </div>
             <div class="invoice-item">
-              <span class="invoice-item-label"><b>Color</b></span>
+              <span class="invoice-item-label">Color</span>
               <span class="invoice-item-value">${printColor}</span>
-            </div>
-            <div class="invoice-item">
-              <span class="invoice-item-label"><b>Orientation</b></span>
-              <span class="invoice-item-value">${orientation}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label">${service === 'passport' ? 'Total Photos' : 'Copies'}</span>
@@ -27732,7 +27309,7 @@
       // Close order summary modal
       closeOrderSummaryModal();
 
-      // Show loading state while processing payment / direct submission
+      // Show loading state while processing payment
       showPaymentProcessingState();
 
       try {
@@ -27747,7 +27324,7 @@
         let files = [];
         let selectedShopValue = '';
         let modal = null;
-        let totalAmountRupees = 0; // Declare outside if/else blocks (used only for Razorpay flows)
+        let totalAmountRupees = 0; // Declare outside if/else blocks
 
         if (isPrintModal) {
           // Handle print modal
@@ -27816,14 +27393,6 @@
           // Log files being added to formData for debugging
           console.log('📦 Building formData with files:', filesFromPrintModal.length, 'files');
 
-          // Decide for which services image files should be converted to PDF.
-          // As requested, DO NOT convert images to PDF for:
-          // - document print (serviceType: 'print')
-          // - gloss, jumbo, or digital print services
-          // Only allow conversion for services that explicitly need PDF storage (e.g. photo/passport).
-          const imagePdfConversionServices = ['photo', 'passport'];
-          const shouldConvertImagesToPdf = imagePdfConversionServices.includes((serviceType || '').toLowerCase());
-
           // CRITICAL: Validate files are proper File objects before processing
           for (let i = 0; i < filesFromPrintModal.length; i++) {
             const fileToUpload = filesFromPrintModal[i];
@@ -27839,19 +27408,18 @@
               throw new Error(`Invalid file properties for ${fileToUpload.name || 'file'}. Please try uploading again.`);
             }
 
-            // Prefer stored _pendingFileSettings (includes Mixed B&W/color ranges) so data is never lost
+            // Find corresponding fileObj from uploadedFiles for settings
             let fileObj = null;
             let settings = {};
-            if (orderSummaryModal._pendingFileSettings && orderSummaryModal._pendingFileSettings[i]) {
-              settings = { ...orderSummaryModal._pendingFileSettings[i] };
-            }
             if (typeof uploadedFiles !== 'undefined' && Array.isArray(uploadedFiles)) {
-              fileObj = uploadedFiles.find(f => (f.file && f.file === fileToUpload) || (f.convertedPdfFile && f.convertedPdfFile === fileToUpload) || f === fileToUpload);
-              if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id] && Object.keys(settings).length === 0) {
+              fileObj = uploadedFiles.find(f => (f.file && f.file === fileToUpload) || f === fileToUpload);
+              if (fileObj && typeof fileSettings !== 'undefined' && fileSettings[fileObj.id]) {
                 settings = fileSettings[fileObj.id];
               }
             }
-            if (Object.keys(settings).length === 0) {
+
+            // If no settings found, use defaults
+            if (!fileObj || !settings || Object.keys(settings).length === 0) {
               settings = {
                 copies: 1,
                 color: 'Black and White',
@@ -27868,41 +27436,21 @@
             let finalFilename = fileToUpload.name;
             let processedFile = fileToUpload;
 
-            // Check if file is an image (jpg, jpeg, png, etc.)
-            const isImageFile = fileToUpload.type.startsWith('image/') ||
-                               /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileToUpload.name);
-
-            // Only convert images to PDF for specific services (e.g. photo/passport).
-            // For document, gloss, jumbo, and digital print services we keep the original
-            // PNG/JPG files and store them as images, not PDFs.
-            if (isImageFile && shouldConvertImagesToPdf) {
+            // Convert images to PDF based on settings (if fileObj exists and has originalImageFile)
+            if (fileObj && fileObj.isImage && fileObj.originalImageFile) {
               try {
-                // Get original image file (either from fileObj or use fileToUpload directly)
-                const originalImageFile = (fileObj && fileObj.originalImageFile) ? fileObj.originalImageFile : fileToUpload;
-                
-                // Ensure settings have required fields for PDF conversion
-                if (!settings.pageSize) {
-                  settings.pageSize = 'A4';
-                }
-                if (!settings.orientation) {
-                  settings.orientation = 'portrait';
-                }
-                
-                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting image to PDF...';
-                processedFile = await convertImageToPDF(originalImageFile, settings);
+                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting images to PDF...';
+                processedFile = await convertImageToPDF(fileObj.originalImageFile, settings);
                 finalFilename = fileToUpload.name.replace(/\.[^/.]+$/, ".pdf");
-                
                 // Validate converted file is still a File object
                 if (!(processedFile instanceof File)) {
                   console.error('❌ Converted file is not a File object, using original');
-                  processedFile = originalImageFile || fileToUpload;
-                } else {
-                  console.log(`✅ Converted image ${fileToUpload.name} to PDF: ${finalFilename}`);
+                  processedFile = fileObj.originalImageFile || fileToUpload;
                 }
               } catch (error) {
                 console.error('Error converting image to PDF:', error);
                 // Fallback to original file if conversion fails
-                processedFile = (fileObj && fileObj.originalImageFile) ? fileObj.originalImageFile : fileToUpload;
+                processedFile = fileObj.originalImageFile || fileToUpload;
               }
             }
 
@@ -27916,7 +27464,7 @@
             console.log(`✅ File ${i} appended to formData:`, { name: processedFile.name, size: processedFile.size, type: processedFile.type });
 
             // Extract page_count and num_copies from pricing breakdown for database storage (same as jumbo print)
-            let pageCountForDb = fileObj ? (fileObj.pages || 1) : (settings.pages || settings.page_count || 1);
+            let pageCountForDb = fileObj ? (fileObj.pages || 1) : 1;
             let numCopiesForDb = settings.copies || 1;
 
             // Get all file names for document_count (same as jumbo print)
@@ -27928,36 +27476,14 @@
               service_type: 'regular_print', // CRITICAL: Use 'regular_print' (normalized) to match jumbo_printing storage pattern
               service_name: 'Regular Print', // Default service name for regular print modal
               copies: settings.copies || 1,
-              // Store Mix (not Black and White) when Mixed is selected so Vendor_print_jobs and User_print_jobs get correct color
-              color: (settings.color === 'Mixed' ? 'Mix' : (settings.color || 'Black and White')),
+              color: settings.color || 'Black and White',
               orientation: settings.orientation || 'portrait',
               pageRange: settings.pageRange || 'all',
               specificPages: settings.specificPages || '',
               bwPageRange: settings.bwPageRange || 'all',
-              // Ensure latest Mixed color range values from the modal inputs are sent to backend
-              bwPageRangeValue: (() => {
-                let value = settings.bwPageRangeValue || '';
-                if (settings.color === 'Mixed') {
-                  const bwInput = document.getElementById('bwPageRangeInput');
-                  if (bwInput && bwInput.value != null) {
-                    const trimmed = bwInput.value.trim();
-                    if (trimmed) value = trimmed;
-                  }
-                }
-                return value;
-              })(),
+              bwPageRangeValue: settings.bwPageRangeValue || '',
               colorPageRange: settings.colorPageRange || 'all',
-              colorPageRangeValue: (() => {
-                let value = settings.colorPageRangeValue || '';
-                if (settings.color === 'Mixed') {
-                  const colorInput = document.getElementById('colorPageRangeInput');
-                  if (colorInput && colorInput.value != null) {
-                    const trimmed = colorInput.value.trim();
-                    if (trimmed) value = trimmed;
-                  }
-                }
-                return value;
-              })(),
+              colorPageRangeValue: settings.colorPageRangeValue || '',
               pageSize: settings.pageSize || 'A4',
               page_count: pageCountForDb,
               num_copies: numCopiesForDb,
@@ -28418,7 +27944,7 @@
 
         const amountPaise = Math.round(totalAmountRupees * 100);
 
-        // 1) Create Razorpay order from server (all services including document print, same as jumbo)
+        // 1) Create Razorpay order from server
         const orderResp = await fetch('/payments/create-order/', {
           method: 'POST',
           headers: {
@@ -28465,7 +27991,6 @@
               const orderSummaryModal = document.getElementById('orderSummaryModal');
               if (orderSummaryModal && orderSummaryModal._pendingFiles) {
                 delete orderSummaryModal._pendingFiles;
-                if (orderSummaryModal._pendingFileSettings) delete orderSummaryModal._pendingFileSettings;
                 console.log('✅ Cleaned up stored files from order summary modal');
               }
 
@@ -28627,23 +28152,20 @@
                       ? parseFloat(verifyData.refund_amount)
                       : actualPaymentAmount;
 
-                    // CRITICAL: Return points first (only the amount that was applied), then build message
-                    const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
-                    const pointsUsed = parseInt(orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0');
-                    const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
-
-                    // Build message with points information: compensate only points amount (like document print)
+                    // Build message with points information if points were allotted (like jumboprint modal)
                     let refundMessage = verifyData.refund_message ||
                       `Payment of ₹${refundAmount.toFixed(2)} has been refunded due to document upload failure.`;
-                    if (pointsApplied && pointsUsed > 0) {
-                      refundMessage = `${refundMessage}\n\nYour applied points (${pointsUsed}) have been returned to your account.`;
-                    }
                     if (verifyData.points_allotted && Number(verifyData.points_allotted) > 0) {
                       refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.points_allotted} points.`;
                     } else if (verifyData.compensation_points_awarded && Number(verifyData.compensation_points_awarded) > 0) {
                       refundMessage = `${refundMessage}\n\nYou have been compensated with ${verifyData.compensation_points_awarded} points.`;
                     }
                     showFailedUploadModal(actualFilesFailed, failedFileNames, refundMessage);
+
+                    // CRITICAL: Return points if files failed to store
+                    const userEmail = window.userEmail || document.body?.dataset?.userEmail || '';
+                    const pointsUsed = parseInt(orderSummaryModal?.dataset.pointsUsed || printModal?.dataset.pointsUsed || '0');
+                    const pointsApplied = orderSummaryModal?.dataset.pointsApplied === 'true' || printModal?.dataset.pointsApplied === 'true';
 
                     let pointsToReturn = 0;
                     let compensationPoints = 0;
@@ -28810,7 +28332,7 @@
           }
         };
 
-        // Ensure Razorpay is loaded for paid service modals
+        // Ensure Razorpay is loaded
         if (typeof Razorpay === 'undefined') {
           throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
         }
@@ -29513,67 +29035,28 @@
             .then(data => {
               if (data.success) {
                 const completedJobs = data.jobs || [];
-                const twoDaysAgo = new Date();
-                twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-                const parseJobDate = (job) => {
-                  const rawDate = job.uploaded_at || job.completion_time || job.timestamp || job.created_at || job.updated_at;
-                  if (!rawDate) return null;
-                  const numeric = Number(rawDate);
-                  if (!Number.isNaN(numeric) && rawDate !== true && rawDate !== false) {
-                    const millis = rawDate.toString().length <= 10 ? numeric * 1000 : numeric;
-                    const parsed = new Date(millis);
-                    return Number.isNaN(parsed.getTime()) ? null : parsed;
-                  }
-                  const parsed = new Date(rawDate);
-                  return Number.isNaN(parsed.getTime()) ? null : parsed;
-                };
-
-                const recentJobs = completedJobs.filter(job => {
-                  const parsedDate = parseJobDate(job);
-                  return parsedDate && parsedDate >= twoDaysAgo;
-                });
-
-                if (recentJobs.length === 0) {
+                if (completedJobs.length === 0) {
                   completedJobsList.innerHTML = '<div class="no-jobs-message"><i class="fas fa-history"></i><p>No completed print jobs found.</p></div>';
                   return;
                 }
 
-                completedJobsList.innerHTML = recentJobs.map(job => {
+                completedJobsList.innerHTML = completedJobs.map(job => {
                   // STRICT: Use ONLY database fields from User_print_jobs table, NOT metadata
                   let resolvedPages = 'N/A';
                   let resolvedCopies = '1';
-                  let resolvedSize = job.pageSize || job.page_size || 'A4';
-                  const pricingDetails = (() => {
-                    if (!job.pricing_details) return {};
-                    if (typeof job.pricing_details === 'string') {
-                      try { return JSON.parse(job.pricing_details); } catch (e) { return {}; }
-                    }
-                    return job.pricing_details;
-                  })();
 
                   if (job.page_count !== null && job.page_count !== undefined && job.page_count !== '') {
                     resolvedPages = String(job.page_count);
                   } else if (job.pages !== null && job.pages !== undefined && job.pages !== '') {
                     resolvedPages = String(job.pages);
-                  } else if (pricingDetails.pages) {
-                    resolvedPages = String(pricingDetails.pages);
-                  } else if (pricingDetails.page_count) {
-                    resolvedPages = String(pricingDetails.page_count);
                   }
 
                   if (job.num_copies !== null && job.num_copies !== undefined && job.num_copies !== '') {
                     resolvedCopies = String(job.num_copies);
                   } else if (job.copies !== null && job.copies !== undefined && job.copies !== '') {
                     resolvedCopies = String(job.copies);
-                  } else if (pricingDetails.copies) {
-                    resolvedCopies = String(pricingDetails.copies);
                   }
-                  if (!resolvedSize && pricingDetails.page_size) {
-                    resolvedSize = pricingDetails.page_size;
-                  }
-
-                  const resolvedColor = job.color || job.color_mode || pricingDetails.color_mode || pricingDetails.color || 'Color';
                   const totalPrice = (job.pricing_details && job.pricing_details.total_price) ? job.pricing_details.total_price : (
                     parseInt(job.pages || 1) * parseInt(job.copies || 1) * (job.color === 'color' ? 5 : 3)
                     + (job.spiralBinding === 'Yes' ? 20 * parseInt(job.copies || 1) : 0)
@@ -29593,8 +29076,8 @@
                     <div class="completed-job-details">
                       <div><span class="completed-job-details-label">Pages</span><br><span class="completed-job-details-value">${resolvedPages}</span></div>
                       <div><span class="completed-job-details-label">Copies</span><br><span class="completed-job-details-value">${resolvedCopies}</span></div>
-                      <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${resolvedColor === 'Black and White' ? 'Black and White' : resolvedColor}</span></div>
-                      <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${resolvedSize}</span></div>
+                      <div><span class="completed-job-details-label">Color</span><br><span class="completed-job-details-value">${job.color === 'Black and White' ? 'Black and White' : 'Color'}</span></div>
+                      <div><span class="completed-job-details-label">Size</span><br><span class="completed-job-details-value">${job.pageSize || 'A4'}</span></div>
                     </div>
                   </div>
                   <div class="completed-job-section">
@@ -29603,6 +29086,18 @@
                       <div><span class="completed-job-details-label">Estimated Cost</span><br><span class="completed-job-details-value">₹${totalPrice}</span></div>
                       <div><span class="completed-job-details-label">Status</span><br><span class="completed-job-details-value">Paid</span></div>
                     </div>
+                  </div>
+                  <div class="completed-job-actions">
+                    <button class="completed-job-btn" onclick="viewJobDetails('${job.filename}')"><i class="fas fa-eye"></i> View</button>
+                    <button class="completed-job-btn track-vendor-btn" 
+                            data-job-filename="${job.filename}"
+                            data-lat="${job.vendor_lat || ''}" 
+                            data-lng="${job.vendor_lng || ''}"
+                            data-vendor="${job.vendor_label || job.vendor || ''}"
+                            data-vendor-email="${job.vendor_email || job.user_vendor_email || job.vendor || ''}"
+                            data-vendor-id="${job.vendor_id || job.vendor || ''}"
+                            data-shop-folder="${job.vendor_shop_folder || job.shop_folder || ''}"
+                            onclick="trackVendorLocation('${job.filename}', this)"><i class="fas fa-map-marker-alt"></i> Track</button>
                   </div>
                 </div>
               `}).join('');
@@ -29704,8 +29199,8 @@
 
       // Service name mapping
       const serviceNames = {
-        'a4_print_bw': 'Document Print (Black & White)',
-        'a4_print_color': 'Dcoument Print (Color)',
+        'a4_print_bw': 'A4 Print (Black & White)',
+        'a4_print_color': 'A4 Print (Color)',
         'photo_print_a4_bw': 'Photo Print A4 (Black & White)',
         'photo_print_a4_color': 'Photo Print A4 (Color)',
         'passport_photo': 'Passport Photo',
@@ -30305,6 +29800,16 @@
   <!-- Order Summary Modal - Vertical Invoice Style -->
   <div id="pricingSummaryModal" class="modal-overlay" style="display: none;">
     <div class="modal-content invoice-modal">
+      <div class="invoice-header">
+        <h2 class="invoice-title">Invoice</h2>
+        <div class="invoice-date" id="invoiceDate">
+          <!-- Date will be populated here -->
+        </div>
+        <button class="invoice-close-btn" onclick="hidePricingSummary()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
       <div class="invoice-content">
         <div class="invoice-items" id="pricingBreakdown">
           <!-- Pricing details will be populated here -->
@@ -30350,97 +29855,6 @@
 
     [data-theme="dark"] .pricing-summary-modal {
       background: #fff;
-    }
-
-    /* Desktop: align legacy invoice modal with photoprint-style professional bill */
-    @media (min-width: 769px) {
-      #pricingSummaryModal {
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-      }
-
-      #pricingSummaryModal .invoice-modal {
-        max-width: 720px;
-        width: 100%;
-        border-radius: 24px;
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
-        overflow: hidden;
-      }
-
-      #pricingSummaryModal .invoice-header {
-        background: #2563eb;
-        color: #ffffff;
-        padding: 1.5rem 1.75rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-      }
-
-      #pricingSummaryModal .invoice-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin: 0;
-      }
-
-      #pricingSummaryModal .invoice-date {
-        font-size: 0.85rem;
-        opacity: 0.95;
-      }
-
-      #pricingSummaryModal .invoice-content {
-        padding: 1.5rem 2rem;
-        background: #f9fafb;
-      }
-
-      #pricingSummaryModal .invoice-items {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 1.25rem 1.5rem;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-      }
-
-      #pricingSummaryModal .invoice-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.4rem 0;
-        font-size: 0.95rem;
-      }
-
-      #pricingSummaryModal .invoice-item-label {
-        color: #4b5563;
-        font-weight: 500;
-      }
-
-      #pricingSummaryModal .invoice-item-value {
-        color: #111827;
-        font-weight: 600;
-      }
-
-      #pricingSummaryModal .invoice-item.invoice-total {
-        margin-top: 1rem;
-        padding: 1rem 1.25rem;
-        border-radius: 14px;
-        background: #2563eb;
-        color: #ffffff;
-      }
-
-      #pricingSummaryModal .invoice-item.invoice-total .invoice-item-label,
-      #pricingSummaryModal .invoice-item.invoice-total .invoice-item-value {
-        color: #ffffff;
-        font-size: 1.05rem;
-      }
-
-      #pricingSummaryModal .invoice-footer {
-        padding: 1.25rem 1.75rem 1.5rem;
-        background: #ffffff;
-        border-top: 1px solid #e5e7eb;
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.75rem;
-      }
     }
 
     .pricing-header {
@@ -30733,8 +30147,8 @@
       border-radius: 24px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
       width: 90%;
-      max-width: 380px;
-      padding: 1.75rem 1.5rem;
+      max-width: 400px;
+      padding: 2rem 1.5rem;
       text-align: center;
       transform: scale(0.85) translateY(20px);
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -31141,27 +30555,22 @@
     }
 
     @media (min-width: 769px) {
-      .success-modal {
-        max-width: 360px;
-        padding: 1.5rem 1.25rem;
-      }
-
       .success-lottie-container {
-        width: 180px;
-        height: 180px;
+        width: 220px;
+        height: 220px;
       }
 
       .success-lottie-player {
-        width: 180px !important;
-        height: 180px !important;
+        width: 220px !important;
+        height: 220px !important;
       }
 
       .success-title {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
       }
 
       .success-subtitle {
-        font-size: 1rem;
+        font-size: 1.1rem;
       }
     }
 
@@ -31202,8 +30611,25 @@
     function showPricingSummary(pricingData) {
       const modal = document.getElementById('pricingSummaryModal');
       const breakdown = document.getElementById('pricingBreakdown');
+      const invoiceDate = document.getElementById('invoiceDate');
 
       if (!modal || !breakdown) return;
+
+      // Set current date and time
+      const now = new Date();
+      const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
+      const formattedDate = now.toLocaleDateString('en-US', options);
+      if (invoiceDate) {
+        invoiceDate.textContent = formattedDate;
+      }
 
       // Build vertical invoice format
       let html = '';
@@ -31251,7 +30677,7 @@
         const total = pricingData.total_price || pricingData.breakdown.total_price || subtotal + tax;
         html += `
           <div class="invoice-item invoice-total">
-            <span class="invoice-item-label">Total Payment</span>
+            <span class="invoice-item-label">Grand Total</span>
             <span class="invoice-item-value">₹${parseFloat(total).toFixed(2)}</span>
           </div>
         `;
@@ -31328,20 +30754,12 @@
     }
 
     // Invalid File Type Modal Functions
-    function showInvalidFileTypeModal(fileName, isPasswordProtectedPdf) {
+    function showInvalidFileTypeModal(fileName) {
       const modal = document.getElementById('invalidFileTypeModal');
       if (modal) {
         const messageEl = document.getElementById('invalidFileTypeMessage');
-        const noteEl = modal.querySelector('.failed-upload-note');
         if (messageEl && fileName) {
-          messageEl.textContent = isPasswordProtectedPdf
-            ? `"${fileName}" is password-protected or encrypted. Please upload an unprotected PDF.`
-            : `"${fileName}" is not allowed for printing. Only PDF and image files (.pdf, .jpg, .jpeg, .png) are accepted.`;
-        }
-        if (noteEl) {
-          noteEl.textContent = isPasswordProtectedPdf
-            ? 'Password-encrypted PDFs cannot be processed. Please remove the password and try again.'
-            : 'Please upload only PDF or image files (JPG, PNG). CSV, DOC, XLS and other formats are not allowed.';
+          messageEl.textContent = `"${fileName}" is not allowed for printing.`;
         }
         modal.classList.add('active');
       }
