@@ -33,6 +33,9 @@ import io
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 import threading
 import schedule
+import subprocess
+import tempfile
+import shutil
 from urllib.parse import urlparse, urlunparse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -328,7 +331,7 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.debug('[firebase-messaging-sw.js] Received background message', payload);
   
   const notificationTitle = payload.notification?.title || payload.data?.title || 'PrintMax Notification';
   // Default to PrintMax colored logo (shows like Ola/Rapido style icons)
@@ -355,7 +358,7 @@ messaging.onBackgroundMessage(function(payload) {
 
 // Handle notification clicks
 self.addEventListener('notificationclick', function(event) {
-  console.log('[firebase-messaging-sw.js] Notification click received.');
+  console.debug('[firebase-messaging-sw.js] Notification click received.');
   
   event.notification.close();
 
@@ -1806,6 +1809,22 @@ def get_user_jobs_from_d1(user_email):
                     if parsed_pricing is not None:
                         job['pricing_details'] = parsed_pricing
 
+                    # Page range and B&W/Color range values for invoice (Mix type)
+                    page_range_raw = (job.get('page_range') or job.get('pageRange') or '').strip()
+                    job['page_range'] = page_range_raw
+                    bw_range_display = (job.get('bw_page_range_value') or job.get('bwPageRangeValue') or '').strip()
+                    color_range_display = (job.get('color_page_range_value') or job.get('colorPageRangeValue') or '').strip()
+                    if not bw_range_display and not color_range_display and page_range_raw:
+                        import re
+                        bw_m = re.search(r'BW:\s*([^|]+)', page_range_raw, re.I)
+                        color_m = re.search(r'Color:\s*(.+)$', page_range_raw, re.I)
+                        if bw_m:
+                            bw_range_display = bw_m.group(1).strip()
+                        if color_m:
+                            color_range_display = color_m.group(1).strip()
+                    job['bw_page_range_value'] = bw_range_display or None
+                    job['color_page_range_value'] = color_range_display or None
+
                     # Create metadata structure from D1 fields (not R2)
                     job['metadata'] = {
                         'status': job.get('status', 'pending'),
@@ -1826,6 +1845,9 @@ def get_user_jobs_from_d1(user_email):
                         'vendor_status': job.get('vendor_status', 'not sended'),
                         'total_price': job.get('total_price', 0),
                         'final_amount': job.get('final_amount', 0),
+                        'pageRange': page_range_raw,
+                        'bwPageRangeValue': bw_range_display or '',
+                        'colorPageRangeValue': color_range_display or '',
                     }
                     
                     job['metadata']['pricing_details'] = parsed_pricing
@@ -2452,6 +2474,9 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
                 'service_name': job.get('service_name', '') or '',
                 'completion_time': job.get('completion_time', '') or '',
                 'platform_profit': job.get('platform_profit', 0) or 0,
+                'pageRange': job.get('pageRange', '') or '',
+                'bwPageRangeValue': job.get('bwPageRangeValue', '') or '',
+                'colorPageRangeValue': job.get('colorPageRangeValue', '') or '',
             }
             
             # Add pricing details from D1 if available
@@ -2844,7 +2869,8 @@ def upload_vendor_documents(request):
 @csrf_exempt
 def get_vendor_print_jobs(request):
     """
-    Fetch print jobs for a specific vendor from vendor_print_jobs/<vendor_id>/
+    Fetch print jobs for a specific vendor from Vendor_print_jobs table (D1) only.
+    Uses Worker API for job list; R2 only for generating download URLs.
     """
     if request.method == 'POST':
         try:
@@ -2853,16 +2879,7 @@ def get_vendor_print_jobs(request):
             if not vendor_id:
                 return JsonResponse({'success': False, 'error': 'Missing vendor_id'})
 
-            # Convert vendor_id to string to ensure consistency
             vendor_id = str(vendor_id).strip()
-
-            s3 = boto3.client(
-                's3',
-                aws_access_key_id=settings.R2_ACCESS_KEY,
-                aws_secret_access_key=settings.R2_SECRET_KEY,
-                endpoint_url=settings.R2_ENDPOINT,
-                region_name='auto'
-            )
 
             # Treat successful polling as connection activity to prevent UI flapping
             try:
@@ -2871,21 +2888,6 @@ def get_vendor_print_jobs(request):
             except Exception:
                 pass
 
-            # HARDCODED PATH: Only fetch from vendor_print_jobs/<vendor_id>/
-            prefix = f'vendor_print_jobs/{vendor_id}/'
-            print(f"🔍 HARDCODED PATH - Searching for jobs in: {prefix}")
-            print(f"🔑 Vendor ID: '{vendor_id}' (type: {type(vendor_id)})")
-
-            # First, let's list all objects under vendor_print_jobs/ to debug
-            debug_prefix = 'vendor_print_jobs/'
-            debug_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=debug_prefix)
-            print(f"🔍 DEBUG - All vendor folders under {debug_prefix}:")
-            for obj in debug_response.get('Contents', []):
-                print(f"   📁 {obj['Key']}")
-
-            response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
-            jobs = []
-            # Load vendor printer configuration for assignment
             try:
                 vendor_email = get_vendor_email_by_vendor_id(vendor_id)
             except Exception:
@@ -2894,211 +2896,41 @@ def get_vendor_print_jobs(request):
             if vendor_email:
                 printer_config = get_vendor_printer_configuration(vendor_email)
 
-            print(f"📊 Response details:")
-            print(f"   - IsTruncated: {response.get('IsTruncated', False)}")
-            print(f"   - KeyCount: {response.get('KeyCount', 0)}")
-            print(f"   - Contents count: {len(response.get('Contents', []))}")
+            # Fetch jobs from Vendor_print_jobs table (D1) only via Worker API
+            d1_jobs = get_vendor_jobs_from_d1(
+                vendor_id=vendor_id,
+                vendor_email=vendor_email,
+                job_status='NO'
+            )
 
-            if 'Contents' not in response or len(response.get('Contents', [])) == 0:
-                print(f"📭 No objects found in {prefix}")
-                print(f"📊 Available vendors in vendor_print_jobs/:")
-
-                # List all vendor folders for debugging
-                vendor_prefix = 'vendor_print_jobs/'
-                vendor_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=vendor_prefix, Delimiter='/')
-                for prefix_info in vendor_response.get('CommonPrefixes', []):
-                    folder_name = prefix_info['Prefix'].replace('vendor_print_jobs/', '').rstrip('/')
-                    print(f"   📂 Found vendor folder: '{folder_name}'")
-
-                return JsonResponse({
-                    'success': True, 
-                    'jobs': [],
-                    'debug_info': {
-                        'searched_prefix': prefix,
-                        'vendor_id': vendor_id,
-                        'available_vendors': [p['Prefix'].replace('vendor_print_jobs/', '').rstrip('/') 
-                                            for p in vendor_response.get('CommonPrefixes', [])]
-                    }
-                })
-
-            print(f"🎯 Found {len(response.get('Contents', []))} objects in {prefix}")
-
-            for obj in response.get('Contents', []):
-                key = obj['Key']
-                filename = key.split('/')[-1]
-
-                print(f"🔍 Processing object: {key}")
-                print(f"   📄 Filename: '{filename}'")
-                print(f"   📏 Size: {obj.get('Size', 0)} bytes")
-                print(f"   📅 LastModified: {obj.get('LastModified', 'Unknown')}")
-
-                # Skip folder itself but include all files (even without extensions)
-                if not filename or filename == '':
-                    print(f"   ⏭️ Skipping empty filename")
+            # Filter to accepted jobs only (same behavior as previous R2-based filter)
+            allowed_services = {
+                'regular print', 'regular_print',
+                'passport photo', 'passport_photo', 'passport print', 'passport_print',
+                'photo print', 'photo_print'
+            }
+            jobs = []
+            for job in d1_jobs:
+                service_type = (job.get('service_type') or '').strip().lower()
+                vendor_status = (job.get('vendor_status') or 'not sended').strip().lower()
+                if service_type not in allowed_services or vendor_status != 'accepted':
                     continue
+                pages_value = job.get('metadata', {}).get('pages', job.get('pages', '0'))
+                service_value = job.get('service_type', 'regular print')
+                assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
+                meta = job.get('metadata', {})
+                meta['vendor_status'] = 'sended'
+                meta['assigned_printer'] = assigned
+                job_info = {
+                    'filename': job.get('filename', ''),
+                    'download_url': job.get('download_url', ''),
+                    'r2_path': job.get('r2_path', ''),
+                    'metadata': meta,
+                    'assigned_printer': assigned
+                }
+                jobs.append(job_info)
 
-                try:
-                    # Generate download URL first (always works)
-                    download_url = s3.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': settings.R2_BUCKET, 'Key': key},
-                        ExpiresIn=3600
-                    )
-
-                    # Try to get object metadata (might fail for some objects)
-                    metadata = {}
-                    try:
-                        head_response = s3.head_object(Bucket=settings.R2_BUCKET, Key=key)
-                        metadata = head_response.get('Metadata', {})
-                        print(f"   ✅ Retrieved metadata: {metadata}")
-                    except Exception as meta_error:
-                        print(f"   ⚠️ Could not get metadata: {meta_error}")
-                        metadata = {}
-
-                    # Create default metadata if none exists
-                    if not metadata:
-                        print(f"   🔧 Creating default metadata for {filename}")
-                        metadata = {
-                            'job_completed': 'NO',
-                            'status': 'pending',
-                            'copies': '1',
-                            'color': 'Black and White',
-                            'orientation': 'portrait',
-                            'pagesize': 'A4',
-                            'service_type': 'regular print',
-                            'vendor': vendor_id,
-                            'user': 'Unknown',
-                            'timestamp': obj["LastModified"].isoformat(),
-                            'rendered_status': 'NO'
-                        }
-
-                    # Filter only desired services and statuses - ONLY ACCEPTED JOBS
-                    service_type = (metadata.get('service_type') or '').strip().lower()
-                    job_completed = (metadata.get('job_completed') or 'NO').upper()
-                    vendor_status = (metadata.get('vendor_status') or 'not sended').lower()
-                    # Accept both underscore and space variants to avoid skipping jobs
-                    allowed_services = {
-                        'regular print', 'regular_print',
-                        'passport photo', 'passport_photo', 'passport print', 'passport_print',
-                        'photo print', 'photo_print'
-                    }
-                    # Accept both underscore and space variants to avoid skipping jobs
-                    allowed_services = {
-                        'regular print', 'regular_print',
-                        'passport photo', 'passport_photo', 'passport print', 'passport_print',
-                        'photo print', 'photo_print'
-                    }
-
-                    # Only process jobs that are accepted by vendor and not completed
-                    if not (service_type in allowed_services and job_completed == 'NO' and vendor_status == 'accepted'):
-                        print(f"   ⏭️ Skipping (service/status): service={service_type}, job_completed={job_completed}, vendor_status={vendor_status}")
-                        continue
-                    
-                    print(f"   ✅ Found accepted job: {filename} (service: {service_type}, vendor_status: {vendor_status})")
-
-                    # Force job to be pending for processing and assign printer
-                    pages_value = metadata.get('pages', '0')
-                    service_value = metadata.get('service_type', 'regular print')
-                    assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
-                    job_info = {
-                        'filename': filename,
-                        'download_url': download_url,
-                        'r2_path': key,
-                        'metadata': {
-                            'status': 'no',  # Force status to 'no' for pending jobs
-                            'job_completed': 'NO',  # Force to pending
-                            'copies': metadata.get('copies', '1'),
-                            'color': metadata.get('color', 'Black and White'),
-                            'orientation': metadata.get('orientation', 'portrait'),
-                            'page_size': metadata.get('pagesize', 'A4'),
-                            'pages': metadata.get('pages', '1'),
-                            'timestamp': metadata.get('timestamp', obj["LastModified"].isoformat()),
-                            'vendor': vendor_id,
-                            'user': metadata.get('user', 'Unknown'),
-                            'service_type': metadata.get('service_type', 'regular print'),
-                            'job_id': metadata.get('job_id', filename.split('.')[0]),
-                            'token': metadata.get('token', filename.split('.')[0]),
-                            'vendor_id': vendor_id,
-                            'vendor_status': 'sended',
-                            'assigned_printer': assigned,
-                            'rendered_status': metadata.get('rendered_status', 'NO')
-                        },
-                        'assigned_printer': assigned
-                    }
-
-                    jobs.append(job_info)
-                    # Update metadata in R2 to mark vendor_status as sended
-                    try:
-                        current_metadata = metadata.copy()
-                        current_metadata['vendor_status'] = 'sended'
-                        # Initialize rendered_status if missing
-                        if 'rendered_status' not in current_metadata:
-                            current_metadata['rendered_status'] = 'NO'
-                        # Keep original keys lowercase as in R2 metadata
-                        copy_source = {'Bucket': settings.R2_BUCKET, 'Key': key}
-                        s3.copy_object(
-                            CopySource=copy_source,
-                            Bucket=settings.R2_BUCKET,
-                            Key=key,
-                            Metadata=current_metadata,
-                            MetadataDirective='REPLACE'
-                        )
-                        print(f"   ✉️ Marked vendor_status=sended for {filename}")
-                    except Exception as mark_err:
-                        print(f"   ⚠️ Failed to mark vendor_status for {filename}: {mark_err}")
-                    print(f"   ✅ Added job: {filename}")
-
-                except Exception as e:
-                    print(f"   ❌ Error processing file {key}: {str(e)}")
-                    # Add file anyway with minimal metadata
-                    try:
-                        download_url = s3.generate_presigned_url(
-                            'get_object',
-                            Params={'Bucket': settings.R2_BUCKET, 'Key': key},
-                            ExpiresIn=3600
-                        )
-
-                        # Minimal metadata path: still assign a printer deterministically
-                        pages_value = '1'
-                        service_value = 'regular print'
-                        assigned = _assign_printer_alternating(vendor_id, printer_config, service_value, pages_value)
-                        job_info = {
-                            'filename': filename,
-                            'download_url': download_url,
-                            'r2_path': key,
-                            'metadata': {
-                                'status': 'no',
-                                'job_completed': 'NO',
-                                'copies': '1',
-                                'color': 'Black and White',
-                                'orientation': 'portrait',
-                                'page_size': 'A4',
-                                'pages': '1',
-                                'timestamp': obj["LastModified"].isoformat(),
-                                'vendor': vendor_id,
-                                'user': 'Unknown',
-                                'service_type': 'regular print',
-                                'job_id': filename.split('.')[0],
-                                'token': filename.split('.')[0],
-                                'vendor_id': vendor_id,
-                                'feedback': '',
-                                'quality': '',
-                                'thickness': '',
-                                'service_name': '',
-                                'assigned_printer': assigned
-                            },
-                            'assigned_printer': assigned
-                        }
-                        jobs.append(job_info)
-                        print(f"   ⚠️ Added job with minimal metadata: {filename}")
-                    except Exception as e2:
-                        print(f"   ❌ Failed to create job entry: {e2}")
-                        continue
-
-            print(f"📋 FINAL RESULT: Found {len(jobs)} jobs for vendor {vendor_id}")
-            for job in jobs:
-                print(f"   📄 {job['filename']} - {job['r2_path']}")
-
+            print(f"📋 get_vendor_print_jobs (D1 only): {len(jobs)} jobs for vendor {vendor_id}")
             return JsonResponse({'success': True, 'jobs': jobs})
 
         except Exception as e:
@@ -4762,59 +4594,6 @@ def create_passport_photo_layout(input_image_data, total_prints=8, country='Indi
 
 
 @csrf_exempt
-def convert_to_pdf(request):
-    """
-    Convert an uploaded image file (JPG/PNG/WEBP) to PDF.
-    If the uploaded file is already a PDF, return it unchanged.
-    """
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
-
-    try:
-        uploaded_file = (
-            request.FILES.get('file')
-            or request.FILES.get('image')
-            or request.FILES.get('uploaded_file')
-        )
-
-        if not uploaded_file:
-            return JsonResponse({'success': False, 'error': 'No file provided'}, status=400)
-
-        original_name = uploaded_file.name or 'document'
-        lower_name = original_name.lower()
-        file_bytes = uploaded_file.read()
-
-        # Already PDF: return as-is to preserve existing client flow.
-        if lower_name.endswith('.pdf') or uploaded_file.content_type == 'application/pdf':
-            response = HttpResponse(file_bytes, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{os.path.splitext(original_name)[0]}.pdf"'
-            return response
-
-        # Convert supported image formats to PDF.
-        if not (lower_name.endswith(('.jpg', '.jpeg', '.png', '.webp')) or (uploaded_file.content_type or '').startswith('image/')):
-            return JsonResponse({'success': False, 'error': 'Unsupported file type. Please upload PDF or image file.'}, status=400)
-
-        image = Image.open(io.BytesIO(file_bytes))
-        if image.mode not in ('RGB',):
-            image = image.convert('RGB')
-
-        pdf_buffer = io.BytesIO()
-        image.save(pdf_buffer, format='PDF', resolution=300.0)
-        pdf_data = pdf_buffer.getvalue()
-        pdf_buffer.close()
-
-        output_name = f"{os.path.splitext(original_name)[0]}.pdf"
-        response = HttpResponse(pdf_data, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{output_name}"'
-        return response
-
-    except Exception as e:
-        print(f"❌ Error in convert_to_pdf: {e}")
-        traceback.print_exc()
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-@csrf_exempt
 def process_print_request(request):
     if request.method == 'POST':
         try:
@@ -4876,17 +4655,184 @@ def process_print_request(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
+# ─────────────────────────────────────────────────────────────
+# CONVERT WORD / PPT TO PDF (for document, gloss, jumbo, golden emboss, digital)
+# Try Docling first (modern, no LibreOffice); fall back to LibreOffice
+# ─────────────────────────────────────────────────────────────
+
+ALLOWED_CONVERT_EXTENSIONS = ('.doc', '.docx', '.ppt', '.pptx')
+MAX_CONVERT_SIZE = 50 * 1024 * 1024  # 50 MB
+
+PY_CONVERT_FORMATS = ('.docx', '.pptx')
+
+
+def _html_to_pdf(html_content):
+    """Convert HTML string to PDF bytes. Returns bytes or None."""
+    try:
+        from xhtml2pdf import pisa
+        import io
+        html_full = f'''<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>body{{font-family:Segoe UI,Arial,sans-serif;padding:24px;line-height:1.5;color:#333;}}
+        table{{border-collapse:collapse;margin:1em 0;width:100%;}}
+        td,th{{border:1px solid #ddd;padding:8px;}}
+        pre{{background:#f5f5f5;padding:10px;overflow-x:auto;}}
+        h1,h2,h3{{margin-top:1em;}} img{{max-width:100%;}}</style></head>
+        <body>{html_content}</body></html>'''
+        pdf_buffer = io.BytesIO()
+        pisa_status = pisa.CreatePDF(html_full, dest=pdf_buffer, encoding='utf-8')
+        return pdf_buffer.getvalue() if not pisa_status.err else None
+    except Exception:
+        return None
+
+
+def _convert_docx_with_mammoth(input_path):
+    """Convert DOCX to PDF using mammoth (fast, pure Python). Returns PDF bytes or None."""
+    try:
+        import mammoth
+        with open(input_path, 'rb') as f:
+            result = mammoth.convert_to_html(f)
+        html = result.value
+        if not html or not html.strip():
+            return None
+        return _html_to_pdf(html)
+    except Exception:
+        return None
+
+
+def _convert_pptx_with_pptx(input_path):
+    """Convert PPTX to PDF using python-pptx (fast, pure Python). Returns PDF bytes or None."""
+    try:
+        from pptx import Presentation
+        import html
+        prs = Presentation(input_path)
+        parts = []
+        for slide_num, slide in enumerate(prs.slides, 1):
+            parts.append(f'<div class="slide"><h3>Slide {slide_num}</h3>')
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    text = shape.text.strip()
+                    if text:
+                        escaped = html.escape(text).replace('\n', '<br>')
+                        parts.append(f'<p>{escaped}</p>')
+            parts.append('</div>')
+        html_content = ''.join(parts) if parts else '<p>No content</p>'
+        return _html_to_pdf(html_content)
+    except Exception:
+        return None
+
+
+def _convert_with_python(ext, input_path):
+    """Try Python-based conversion. Returns PDF bytes or None."""
+    if ext == '.docx':
+        return _convert_docx_with_mammoth(input_path)
+    if ext == '.pptx':
+        return _convert_pptx_with_pptx(input_path)
+    return None
+
+
+def _find_libreoffice():
+    """Return path to LibreOffice executable or None."""
+    names = ['soffice', 'soffice.exe', 'libreoffice', 'libreoffice.exe']
+    for name in names:
+        path = shutil.which(name)
+        if path:
+            return path
+    # Common Windows paths
+    if os.name == 'nt':
+        for base in [os.environ.get('ProgramFiles', 'C:\\Program Files'),
+                     os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)')]:
+            for sub in ['LibreOffice\\program', 'OpenOffice 4\\program']:
+                exe = os.path.join(base, sub, 'soffice.exe')
+                if os.path.isfile(exe):
+                    return exe
+    return None
+
+
+@csrf_exempt
+@require_POST
+def convert_to_pdf(request):
+    """Accept a single doc/docx/ppt/pptx file; return PDF bytes. Used by document, gloss, jumbo, golden emboss, digital modals."""
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'error': 'No file provided'}, status=400)
+    file = request.FILES['file']
+    name = (file.name or '').lower()
+    ext = os.path.splitext(name)[1]
+    if ext not in ALLOWED_CONVERT_EXTENSIONS:
+        return JsonResponse({'success': False, 'error': 'Invalid file type. Allowed: .doc, .docx, .ppt, .pptx'}, status=400)
+    if file.size > MAX_CONVERT_SIZE:
+        return JsonResponse({'success': False, 'error': 'File too large (max 50 MB)'}, status=400)
+
+    tmpdir = None
+    try:
+        tmpdir = tempfile.mkdtemp()
+        input_path = os.path.join(tmpdir, file.name.replace('/', '_').replace('\\', '_'))
+        with open(input_path, 'wb') as f:
+            for chunk in file.chunks():
+                f.write(chunk)
+
+        base = os.path.splitext(os.path.basename(input_path))[0]
+        pdf_data = None
+
+        # Try Python converters first (mammoth for DOCX, python-pptx for PPTX - fast, no external deps)
+        if ext in PY_CONVERT_FORMATS:
+            pdf_data = _convert_with_python(ext, input_path)
+
+        # Fall back to LibreOffice if Docling failed or format is .doc/.ppt
+        if not pdf_data:
+            soffice = _find_libreoffice()
+            if not soffice:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Server conversion not available. Please upload a PDF or install LibreOffice.'
+                }, status=501)
+            outdir = os.path.join(tmpdir, 'out')
+            os.makedirs(outdir, exist_ok=True)
+            cmd = [
+                soffice,
+                '--headless',
+                '--convert-to', 'pdf',
+                '--outdir', outdir,
+                input_path
+            ]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=120,
+                cwd=tmpdir
+            )
+            if proc.returncode != 0:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Conversion failed. Please try uploading a PDF instead.'
+                }, status=500)
+            pdf_path = os.path.join(outdir, base + '.pdf')
+            if not os.path.isfile(pdf_path):
+                return JsonResponse({'success': False, 'error': 'Conversion produced no PDF'}, status=500)
+            with open(pdf_path, 'rb') as f:
+                pdf_data = f.read()
+
+        from django.http import HttpResponse
+        response = HttpResponse(pdf_data, content_type='application/pdf')
+        response['Content-Disposition'] = 'inline; filename="%s.pdf"' % (base.replace('"', '_'),)
+        return response
+    except subprocess.TimeoutExpired:
+        return JsonResponse({'success': False, 'error': 'Conversion timed out'}, status=504)
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    finally:
+        if tmpdir and os.path.isdir(tmpdir):
+            try:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            except Exception:
+                pass
+
+
 from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import hmac
 import hashlib
-try:
-    import razorpay
-    RAZORPAY_IMPORT_ERROR = None
-except Exception as razorpay_import_err:
-    razorpay = None
-    RAZORPAY_IMPORT_ERROR = str(razorpay_import_err)
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 
@@ -5154,17 +5100,52 @@ def sign_in(request):
 # ─────────────────────────────────────────────────────────────
 # Razorpay: Create Order
 # ─────────────────────────────────────────────────────────────
+def _ensure_pkg_resources_available_for_razorpay():
+    """
+    Razorpay Python SDK (razorpay==1.4.2) hard-depends on `pkg_resources`
+    (from setuptools). Some environments (minimal installs / certain packagers)
+    omit it and crash on import.
+
+    This function preserves existing behavior when `pkg_resources` exists,
+    and provides a tiny compatibility shim when it doesn't, using
+    `importlib.metadata` for the version lookup Razorpay uses.
+    """
+    try:
+        import pkg_resources  # noqa: F401
+        return
+    except ModuleNotFoundError:
+        pass
+
+    import sys
+    import types
+    from importlib import metadata as importlib_metadata
+
+    class DistributionNotFound(Exception):
+        """Compat: mirrors pkg_resources.DistributionNotFound"""
+
+    def require(dist_name: str):
+        try:
+            version = importlib_metadata.version(dist_name)
+        except importlib_metadata.PackageNotFoundError as e:
+            raise DistributionNotFound(str(e))
+        # Razorpay accesses: pkg_resources.require("razorpay")[0].version
+        return [types.SimpleNamespace(version=version)]
+
+    shim = types.ModuleType("pkg_resources")
+    shim.DistributionNotFound = DistributionNotFound
+    shim.require = require
+    sys.modules["pkg_resources"] = shim
+
 @csrf_exempt
 def create_razorpay_order(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     try:
-        if razorpay is None:
-            return JsonResponse({
-                'success': False,
-                'error': f'Razorpay SDK unavailable: {RAZORPAY_IMPORT_ERROR or "unknown import error"}. Install/upgrade setuptools and razorpay.'
-            }, status=500)
+        _ensure_pkg_resources_available_for_razorpay()
+        # Lazy import so that deploys/admin startup don't fail
+        # if Razorpay or its transitive dependencies are missing.
+        import razorpay
 
         body = json.loads(request.body.decode('utf-8')) if request.body else {}
         amount_paise = int(body.get('amount_paise'))  # amount in paise
@@ -5860,9 +5841,12 @@ def verify_razorpay_payment(request):
                 refund_id = None
                 if payment_id:  # Only attempt refund if payment was made
                     try:
-                        if razorpay is None:
-                            print(f"⚠️ Razorpay SDK unavailable, cannot process refund: {RAZORPAY_IMPORT_ERROR}")
-                        elif settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+                        _ensure_pkg_resources_available_for_razorpay()
+                        # Lazy import to avoid startup-time failures if Razorpay
+                        # isn't available; this code path only runs after payment.
+                        import razorpay
+
+                        if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
                             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
                             refund_data = {
                                 'amount': refund_amount_paise,
@@ -6936,6 +6920,9 @@ def vendor_pricing(request):
                     # Regular Print
                     'regular_print_a4_bw': 'regular_print_a4_bw',
                     'regular_print_a4_color': 'regular_print_a4_color',
+                    # Document Print (Letter)
+                    'doc_letter_bw': 'doc_letter_bw',
+                    'doc_letter_color': 'doc_letter_color',
                     # Photo Print
                     'photo_print_a4_bw': 'photo_print_a4_bw',
                     'photo_print_a4_color': 'photo_print_a4_color',
@@ -6960,7 +6947,6 @@ def vendor_pricing(request):
                     'passport_print_30': 'passport_print_30',
                     # Golden Embossing
                     'golden_emboss_cover': 'golden_emboss_cover',
-                    'golden_emboss_a4_color': 'golden_emboss_a4_color',
                     'golden_emboss_bond_color': 'golden_emboss_bond_color',
                     # Lamination
                     'lamination_a4_standard': 'lamination_a4_standard',
@@ -8010,7 +7996,6 @@ def get_vendor_pricing(request):
                 'passport_print_16': 70,
                 'passport_print_30': 120,
                 'golden_emboss_cover': 50,
-                'golden_emboss_a4_color': 8,
                 'golden_emboss_bond_color': 10,
                 'lamination_a4_standard': 30,
                 'lamination_a4_glossy': 35,
@@ -8074,7 +8059,6 @@ def get_vendor_pricing(request):
                 },
                 'golden_embossing': {
                     'golden_emboss_cover': 50,
-                    'golden_emboss_a4_color': 8,
                     'golden_emboss_bond_color': 10
                 },
                 'lamination': {
@@ -8262,7 +8246,7 @@ def calculate_golden_emboss_pricing(request):
             data = json.loads(request.body)
             vendor_email = data.get('vendor_email')
             print_color = data.get('print_color', 'Color')
-            paper_type = str(data.get('paper_type', 'A4') or 'A4').strip()
+            paper_type = data.get('paper_type', 'A4')
             num_copies = data.get('num_copies', 1)
             page_count = data.get('page_count', 1)
             
@@ -8314,28 +8298,46 @@ def calculate_golden_emboss_pricing(request):
             a4_color_price = safe_price(golden_emboss_pricing.get('golden_emboss_a4_color'))
             bond_color_price = safe_price(golden_emboss_pricing.get('golden_emboss_bond_color'))
 
-            normalized_paper_type = paper_type.lower()
-            if normalized_paper_type in ('bond', 'bond paper', 'bond_paper'):
-                selected_price_per_page = bond_color_price
-                selected_paper_label = 'Bond Color'
-                selected_pricing_key = 'golden_emboss_bond_color'
-                paper_type = 'Bond'
-            else:
-                selected_price_per_page = a4_color_price
-                selected_paper_label = 'A4 Color'
-                selected_pricing_key = 'golden_emboss_a4_color'
-                paper_type = 'A4'
-            
             if cover_price <= 0 and a4_color_price <= 0 and bond_color_price <= 0:
-                print("❌ Golden emboss pricing table missing cover/A4/bond color entries")
+                print("❌ Golden emboss pricing table missing cover/A4/bond entries")
                 return JsonResponse({
                     'success': False,
-                    'error': 'Golden emboss pricing not configured for this vendor. Please ask the vendor to set cover, A4 color, and bond color rates.'
+                    'error': 'Golden emboss pricing not configured for this vendor. Please ask the vendor to set cover and paper rates.'
                 })
-            
+
+            normalized_paper_type = str(paper_type or 'A4').strip().lower()
+            if normalized_paper_type in ('bond', 'bond paper', 'bond_paper'):
+                selected_paper_type = 'Bond'
+                selected_pricing_key = 'golden_emboss_bond_color'
+                selected_per_page_price = bond_color_price
+                selected_label = 'Bond Color'
+            else:
+                selected_paper_type = 'A4'
+                selected_pricing_key = 'golden_emboss_a4_color'
+                selected_per_page_price = a4_color_price
+                selected_label = 'A4 Color'
+
+            # Fallback safely to the other paper key when the selected one is not configured.
+            if selected_per_page_price <= 0:
+                fallback_price = bond_color_price if selected_paper_type == 'A4' else a4_color_price
+                if fallback_price > 0:
+                    print(
+                        f"⚠️ {selected_pricing_key} not configured, falling back to "
+                        f"{'golden_emboss_bond_color' if selected_paper_type == 'A4' else 'golden_emboss_a4_color'}"
+                    )
+                    selected_per_page_price = fallback_price
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'{selected_paper_type} pricing is not configured for this vendor.'
+                    })
+
             cover_cost_per_book = max(cover_price, 0.0)
-            color_cost_per_book = max(selected_price_per_page, 0.0) * page_count
-            print(f"Golden emboss cover cost: {cover_cost_per_book}, color charge per book: {color_cost_per_book}")
+            color_cost_per_book = max(selected_per_page_price, 0.0) * page_count
+            print(
+                f"Golden emboss cover cost: {cover_cost_per_book}, "
+                f"{selected_label} charge per book: {color_cost_per_book}"
+            )
             
             total_price_per_book = cover_cost_per_book + color_cost_per_book
             if total_price_per_book <= 0:
@@ -8355,7 +8357,7 @@ def calculate_golden_emboss_pricing(request):
                     'value': f'₹{cover_cost_per_book:.2f}'
                 },
                 {
-                    'label': f'{selected_paper_label} ({page_count} pages)',
+                    'label': f'{selected_label} ({page_count} pages)',
                     'value': f'₹{color_cost_per_book:.2f}'
                 }
             ]
@@ -8373,15 +8375,15 @@ def calculate_golden_emboss_pricing(request):
             structured_breakdown = {
                 'pricing_breakdown': pricing_breakdown,
                 'total_price': total_price,
-                'price_per_page': selected_price_per_page,
+                'price_per_page': selected_per_page_price,
                 'page_count': page_count,
                 'num_copies': num_copies,
-                'paper_type': paper_type,
-                'paper_rate_key': selected_pricing_key,
+                'paper_type': selected_paper_type,
                 'emboss_cost': cover_cost_per_book,
                 'paper_cost': color_cost_per_book,
                 'total_per_book': total_price_per_book,
-                'total_pages': page_count * num_copies  # Total pages across all copies
+                'total_pages': page_count * num_copies,  # Total pages across all copies
+                'pricing_key_used': selected_pricing_key
             }
             
             return JsonResponse({
@@ -8947,7 +8949,7 @@ def calculate_passport_photo_pricing(request):
 
 @csrf_exempt
 def calculate_a4_print_pricing(request):
-    """Calculate pricing for A4 print service based on vendor pricing.json
+    """Calculate pricing for document print service (A4 / Letter / A3) based on vendor pricing.json
     Formula: Copies × [(B&W Pages × B&W Rate) + (Color Pages × Color Rate) + 
              (IF Lamination Selected → Lamination Rate) + 
              (IF Spiral Binding Selected → Spiral Binding Rate for page based of document ELSE → 0) + 
@@ -8966,8 +8968,10 @@ def calculate_a4_print_pricing(request):
             lamination = data.get('lamination', False)  # Lamination option
             spiral_binding = data.get('spiral_binding', False)  # Spiral binding option
             tape_binding = data.get('tape_binding', False)  # Tape binding option
+            page_size_raw = data.get('page_size', 'A4')
+            page_size = str(page_size_raw).strip().upper() if page_size_raw else 'A4'
             
-            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, bw_pages={bw_pages}, color_pages={color_pages}, lamination={lamination}, spiral_binding={spiral_binding}, tape_binding={tape_binding}")
+            print(f"Received A4 print data: vendor_email={vendor_email}, print_type={print_type}, total_pages={total_pages}, total_copies={total_copies}, bw_pages={bw_pages}, color_pages={color_pages}, lamination={lamination}, spiral_binding={spiral_binding}, tape_binding={tape_binding}, page_size={page_size}")
             
             # Convert values to int/float
             try:
@@ -9011,8 +9015,9 @@ def calculate_a4_print_pricing(request):
                     'error': f'Unable to load pricing data for vendor. Please contact the vendor.'
                 })
             
-            # Access categorized pricing
+            # Access categorized pricing and flat pricing
             categorized_pricing = pricing_data.get('categorized_pricing', {})
+            flat_pricing = pricing_data.get('pricing_data') or pricing_data.get('pricing') or {}
             print(f"📊 Categorized pricing keys: {list(categorized_pricing.keys())}")
             
             a4_pricing = categorized_pricing.get('a4_print', {})
@@ -9023,16 +9028,24 @@ def calculate_a4_print_pricing(request):
             print(f"📊 Lamination pricing keys: {list(lamination_pricing.keys())}")
             print(f"📊 Binding pricing keys: {list(binding_pricing.keys())}")
             
-            # Get B&W and Color rates - STRICTLY from vendor pricing, no defaults
-            bw_rate_key = 'regular_print_a4_bw'
-            color_rate_key = 'regular_print_a4_color'
-            
-            bw_rate = a4_pricing.get(bw_rate_key)
-            color_rate = a4_pricing.get(color_rate_key)
+            # Get B&W and Color rates - STRICTLY from vendor pricing, no defaults.
+            if page_size == 'LETTER':
+                # Use dedicated Letter document print pricing from Vendor_pricing
+                bw_rate = flat_pricing.get('doc_letter_bw')
+                color_rate = flat_pricing.get('doc_letter_color')
+            elif page_size == 'A3':
+                # For A3 document printing, reuse Jumbo A3 rates
+                jumbo_pricing = categorized_pricing.get('jumbo_print', {})
+                bw_rate = jumbo_pricing.get('jumbo_print_a3_bw')
+                color_rate = jumbo_pricing.get('jumbo_print_a3_color')
+            else:
+                # Default and backward‑compatible behaviour: A4 pricing
+                bw_rate = a4_pricing.get('regular_print_a4_bw')
+                color_rate = a4_pricing.get('regular_print_a4_color')
             
             # Check if pricing is available - STRICTLY require vendor pricing
             if bw_rate is None and bw_pages > 0:
-                print(f"❌ B&W pricing not found for key: {bw_rate_key}")
+                print(f"❌ B&W pricing not found for page_size={page_size}")
                 print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
                 return JsonResponse({
                     'success': False,
@@ -9040,7 +9053,7 @@ def calculate_a4_print_pricing(request):
                 })
             
             if color_rate is None and color_pages > 0:
-                print(f"❌ Color pricing not found for key: {color_rate_key}")
+                print(f"❌ Color pricing not found for page_size={page_size}")
                 print(f"Available A4 print pricing keys: {list(a4_pricing.keys())}")
                 return JsonResponse({
                     'success': False,
@@ -9266,6 +9279,7 @@ def get_available_shops(request):
                             
                             if vendor_name and vendor_email:
                                 shop_folder = sanitize_shop_name(vendor_name)
+                                service_availability = vendor.get('service_availability') or {}
                                 shop_info = {
                                     'shop_name': vendor_name,
                                     'shop_folder': shop_folder,
@@ -9279,7 +9293,16 @@ def get_available_shops(request):
                                     'status': vendor.get('status', 'Available'),
                                     'vendor_id': vendor.get('vendor_id', ''),
                                     'vendor_token': vendor.get('vendor_token', ''),
-                                    'pending_jobs_count': vendor.get('pending_jobs_count', 0)
+                                    'pending_jobs_count': vendor.get('pending_jobs_count', 0),
+                                    'service_availability': service_availability,
+                                    # Flatten service flags - only 1/true = available, else NOT available
+                                    'digital_print': service_availability.get('service_data', {}).get('digital_print', False),
+                                    'project_binding': service_availability.get('service_data', {}).get('project_binding', False),
+                                    'gloss_printing': service_availability.get('service_data', {}).get('gloss_printing', False),
+                                    'jumbo_printing': service_availability.get('service_data', {}).get('jumbo_printing', False),
+                                    'regular_print': service_availability.get('service_data', {}).get('regular_print', False),
+                                    'passport_print': service_availability.get('service_data', {}).get('passport_print', False),
+                                    'photo_print': service_availability.get('service_data', {}).get('photo_print', False),
                                 }
                                 if not any(s['shop_folder'] == shop_folder for s in shops):
                                     shops.append(shop_info)
@@ -12109,15 +12132,13 @@ def get_2day_period_for_date(date_obj):
     """
     Calculate the 2-day period for a given date.
     Returns (period_start, period_end) as date objects.
-    Ensures non-overlapping periods: 27-28, 28-29, etc.
+    Ensures non-overlapping 2-day buckets: 1-2, 3-4, 5-6, ..., 27-28, 29-30 (not 2-3, 3-4, 4-5).
     """
     # Get the day of month
     day = date_obj.day
     
-    # Calculate which 2-day period this date belongs to
-    # Periods: 1-2, 3-4, 5-6, ..., 27-28, 29-30, 31 (if applicable)
-    # For odd days: start is the day itself, end is day+1
-    # For even days: start is day-1, end is the day itself
+    # 2-day buckets: (1-2), (3-4), (5-6), ... so one row per two calendar days
+    # Odd days (1,3,5,...): start=this day, end=next day. Even days (2,4,6,...): start=prev day, end=this day
     
     if day % 2 == 1:  # Odd day (1, 3, 5, ..., 27, 29, 31)
         period_start = date_obj
@@ -12148,6 +12169,29 @@ def create_or_update_vendor_transaction(vendor_email, vendor_id, vendor_name, co
             print("⚠️ Worker API not configured - skipping transaction report creation")
             return False
         
+        # Best-effort: resolve a friendly vendor/shop name if we only have a placeholder
+        try:
+            normalized_name = (vendor_name or '').strip()
+            if not normalized_name or normalized_name.lower() in ['printmax vendor', 'unknown vendor']:
+                # Try rich vendor details first
+                details = get_vendor_details_by_email(vendor_email) or {}
+                resolved_name = (
+                    details.get('vendor_name')
+                    or details.get('shop_name')
+                )
+                # Fallback to coordinates helper (which also returns vendor_name / shop_name)
+                if not resolved_name:
+                    coords = get_vendor_coordinates_from_email(vendor_email) or {}
+                    resolved_name = (
+                        coords.get('vendor_name')
+                        or coords.get('shop_name')
+                    )
+                if resolved_name:
+                    vendor_name = resolved_name
+        except Exception as name_err:
+            # Do not block transaction creation because of name resolution issues
+            print(f"⚠️ Unable to resolve vendor_name for transactions: {name_err}")
+
         # Calculate 2-day period
         period_start, period_end = get_2day_period_for_date(completion_date)
         period_start_str = period_start.strftime('%Y-%m-%d')
@@ -12550,7 +12594,8 @@ def mark_job_completed(request):
                     return JsonResponse({'success': False, 'error': 'Vendor details not found'})
                 
                 vendor_id = vendor_details.get('vendor_id', 'vendor1')
-                vendor_name = vendor_details.get('shop_name', 'Unknown Vendor')
+                # Get vendor shop name - try vendor_name first (from database), then shop_name as fallback
+                vendor_name = vendor_details.get('vendor_name') or vendor_details.get('shop_name', 'Unknown Vendor')
                 
                 # Get the token associated with this job before updating status
                 job_token = get_token_from_file_metadata(filename, vendor_id)
@@ -14808,12 +14853,11 @@ def send_fcm_notification(user_email, notification_data):
         # Normalize domain to not have trailing slash
         full_domain = full_domain.rstrip('/')
         
-        # Use notification-icon.png as requested by user, with printmaxdarklogo.png as fallback
-        # Use PrintMax colored logo as the primary notification icon
-        icon_url = f"{full_domain}/static/images/printmax-color-512.png"
+        # Use PrintMax day-time logo for mobile notifications (visible in system notification shade)
+        icon_url = f"{full_domain}/static/images/printmaxdaylogo.png"
         # Reuse the same logo for badge so branding is consistent
-        badge_url = f"{full_domain}/static/images/printmax-color-512.png"
-        fallback_icon_url = f"{full_domain}/static/images/printmaxdarklogo.png"
+        badge_url = f"{full_domain}/static/images/printmaxdaylogo.png"
+        fallback_icon_url = f"{full_domain}/static/images/printmax-color-512.png"
 
         # Create FCM message
         # Build webpush config conditionally to avoid link issues
