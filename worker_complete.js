@@ -854,7 +854,6 @@ export default {
           passport_print_30: ['passport_print_30', 'passport_photo_30_photos'],
           // Golden Embossing
           golden_emboss_cover: ['golden_emboss_cover', 'golden_embossing_per_book'],
-          golden_emboss_a4_color: ['golden_emboss_a4_color', 'golden_emboss_a4_per_page'],
           golden_emboss_bond_color: ['golden_emboss_bond_color', 'golden_emboss_color_per_page'],
           // Lamination
           lamination_a4_standard: ['lamination_a4_standard', 'lamination_a4'],
