@@ -6,6 +6,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PrintMax Print Shop Dashboard - Manage print jobs efficiently">
+    <script>
+        // Reduce console noise: keep only warn/error/debug (no functional changes).
+        (function () {
+            try {
+                if (window.__printmaxConsoleFilterInstalled) return;
+                window.__printmaxConsoleFilterInstalled = true;
+
+                if (!window.console) return;
+
+                const original = {
+                    debug: (console.debug || console.log).bind(console),
+                    warn: (console.warn || console.log).bind(console),
+                    error: (console.error || console.log).bind(console),
+                };
+
+                function routeToLevel(args) {
+                    const first = args && args.length ? args[0] : '';
+                    const msg = typeof first === 'string' ? first : '';
+                    const lower = msg.toLowerCase();
+
+                    if (msg.includes('❌') || lower.includes('error') || lower.includes('failed')) return 'error';
+                    if (msg.includes('⚠️') || lower.includes('warning')) return 'warn';
+                    return 'debug';
+                }
+
+                console.log = (...args) => original[routeToLevel(args)](...args);
+                console.info = (...args) => original[routeToLevel(args)](...args);
+                console.table = (...args) => original[routeToLevel(args)](...args);
+                console.dir = (...args) => original[routeToLevel(args)](...args);
+                console.trace = (...args) => original[routeToLevel(args)](...args);
+            } catch (_) {
+                // Never block app behavior if console filtering fails.
+            }
+        })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         if (window.pdfjsLib) {
@@ -1903,7 +1938,7 @@
         }
 
         .job-card.compact .job-token::before {
-            font-size: 11px;
+            font-size: 14px;
         }
 
         .job-card.compact .job-status {
@@ -2046,7 +2081,7 @@
         .job-card.compact.completed .job-actions {
             margin-top: 0 !important;
             /* No margin for completed jobs */
-            padding-top: 4px !important;
+            padding-top: 8px !important;
             /* Minimal padding for completed jobs */
         }
 
@@ -2556,7 +2591,7 @@
         }
 
         .month-documents {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 500;
             background: rgba(255, 255, 255, 0.2);
             padding: 8px 16px;
@@ -2568,7 +2603,7 @@
 
         .month-documents::before {
             content: "📄";
-            font-size: 14px;
+            font-size: 18px;
         }
 
         .reports-grid {
@@ -2971,14 +3006,25 @@
         }
 
         .manual-job-actions .btn-success {
-            background: var(--success);
-            color: var(--on-success);
+            background: var(--primary);
+            color: var(--on-primary);
             border: none;
         }
 
         .manual-job-actions .btn-success:hover {
-            background: var(--success-dark);
+            background: #22c55e;
+            color: var(--on-primary);
             transform: translateY(-1px);
+        }
+
+        [data-theme="dark"] .manual-job-actions .btn-success {
+            background: var(--primary);
+            color: var(--on-primary);
+        }
+
+        [data-theme="dark"] .manual-job-actions .btn-success:hover {
+            background: #16a34a;
+            color: var(--on-primary);
         }
 
         .service-type-badge {
@@ -3114,7 +3160,18 @@
 
         .btn-success {
             background: var(--completed-color);
-            color: var(--on-primary);
+            color: #0f172a;
+        }
+
+        .btn-success:hover {
+            background: #22c55e;
+            color: #0f172a;
+        }
+
+        [data-theme="dark"] .btn-success:hover,
+        [data-theme="dark"] .manual-job-actions .btn-success:hover {
+            color: #d1d5db;
+            background: #16a34a;
         }
 
         .btn-danger {
@@ -3198,6 +3255,7 @@
             width: 600px;
             max-width: 95%;
             max-height: 80vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
 
         .print-info-grid {
@@ -3214,6 +3272,7 @@
             border: 1px solid var(--outline);
             border-radius: 12px;
             padding: 20px;
+            font-family: inherit;
         }
 
         .print-info-title {
@@ -3260,7 +3319,7 @@
             background: var(--primary-bg);
             padding: 4px 8px;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         .print-preview-section {
@@ -3414,6 +3473,18 @@
             background: var(--on-surface-variant);
         }
 
+        /* Desktop: show all print info without inner scrolling */
+        @media (min-width: 1024px) {
+            .print-info-modal {
+                max-height: none;
+            }
+
+            .print-info-grid {
+                max-height: none;
+                overflow-y: visible;
+            }
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -3426,14 +3497,14 @@
 
         .modal-close-top {
             position: absolute;
-            top: -12px;
+            top: -4px;
             right: -12px;
             background: var(--manual-color);
             color: var(--on-primary);
             border: none;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -4326,7 +4397,7 @@
                 <a href="#" class="nav-link" id="vendorServicePricesBtn"
                     onclick="event.preventDefault(); event.stopPropagation(); if(typeof setActiveNav === 'function') setActiveNav(this); openVendorServicePricesModal(); return false;">
                     <i class="fas fa-tags"></i>
-                    <span>Printing Prices</span>
+                    <span>View Printing Prices</span>
                 </a>
             </div>
 
@@ -4334,7 +4405,7 @@
                 <a href="/vendor-pricing/?from_dashboard=1&vendorEmail={{ vendor_details.vendor_email }}"
                     class="nav-link" onclick="if(typeof setActiveNav === 'function') setActiveNav(this);">
                     <i class="fas fa-rupee-sign"></i>
-                    <span>Pricing Update</span>
+                    <span>Update Pricing</span>
                 </a>
             </div>
 
@@ -4345,14 +4416,6 @@
                     <span>Payment History</span>
                 </a>
             </div>
-
-            <div class="nav-item">
-                <a href="#profile" class="nav-link"
-                    onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showProfile()">
-                    <i class="fas fa-user-circle"></i>
-                    <span>Profile</span>
-                </a>
-            </div>
             <div class="nav-item">
                 <a href="#settings" class="nav-link"
                     onclick="if(typeof setActiveNav === 'function') setActiveNav(this); openSettingsModal(); return false;">
@@ -4360,6 +4423,14 @@
                     <span>Print Services</span>
                 </a>
             </div>
+            <div class="nav-item">
+                <a href="#profile" class="nav-link"
+                    onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showProfile()">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile</span>
+                </a>
+            </div>
+           
             <div class="nav-item">
                 <a href="#" class="nav-link" onclick="toggleTheme(); return false;" title="Toggle Theme">
                     <i class="fas fa-moon" id="themeIcon"></i>
@@ -4377,7 +4448,7 @@
                 <a href="#rules" class="nav-link"
                     onclick="if(typeof setActiveNav === 'function') setActiveNav(this); showRulesModal(); return false;">
                     <i class="fas fa-gavel"></i>
-                    <span>Rules & Guidelines</span>
+                    <span>Policies & Guidelines</span>
                 </a>
             </div>
         </nav>
@@ -4421,7 +4492,16 @@
                     </div>
                 </div>
                 <div class="stat-number" id="manualStatCount">0</div>
-                <div class="stat-label">Pending Prints</div>
+                <div class="stat-label">Pending Print Requests</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-header">
+                    <div class="stat-icon completed">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+                <div class="stat-number" id="completedStatCount">0</div>
+                <div class="stat-label">Completed Print Requests</div>
             </div>
             <div class="stat-card requests">
                 <div class="stat-header">
@@ -4432,15 +4512,6 @@
                 <div class="stat-number" id="requestsStatCount">0</div>
                 <div class="stat-label">Total Print Requests</div>
             </div>
-            <div class="stat-card completed">
-                <div class="stat-header">
-                    <div class="stat-icon completed">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                </div>
-                <div class="stat-number" id="completedStatCount">0</div>
-                <div class="stat-label">Completed Prints</div>
-            </div>
             <div class="stat-card total">
                 <div class="stat-header">
                     <div class="stat-icon total">
@@ -4448,7 +4519,7 @@
                     </div>
                 </div>
                 <div class="stat-number" id="totalStatCount">₹{{ daily_earnings|floatformat:2 }}</div>
-                <div class="stat-label">Total Earnings</div>
+                <div class="stat-label">Total Daily Earnings</div>
             </div>
         </div>
 
@@ -4459,9 +4530,11 @@
                     <div class="section-icon requests">
                         <i class="fas fa-tasks"></i>
                     </div>
-                    <h2 class="section-title">Pending Jobs <span class="pending-warning-icon" id="pendingSectionWarning"
+                    <h2 class="section-title">Pending Print Jobs <span class="pending-warning-icon" id="pendingSectionWarning"
                             style="display: none; margin-left: 8px; color: #ef4444; font-size: 1.1em;">⚠️</span></h2>
+                            <div class="job-count" id="pendingCount"><span id="pendingCount">0</span> </div>
                 </div>
+                
                 <div class="section-controls">
                     <div class="search-container">
                         <i class="fas fa-search search-icon"></i>
@@ -4470,7 +4543,7 @@
                             oninput="searchJobs('pending', this.value)"
                             title="Search by token number, PDF filename, user email, or service type">
                     </div>
-                    <div class="job-count" id="pendingCount">0</div>
+                   
                 </div>
             </div>
             <div class="jobs-container section-loaded">
@@ -4495,7 +4568,8 @@
                     <div class="section-icon completed">
                         <i class="fas fa-check-circle"></i>
                     </div>
-                    <h2 class="section-title">Completed Jobs</h2>
+                    <h2 class="section-title">Completed Prints History</h2>
+                    <div class="job-count" id="completedCount">0</div>
                 </div>
                 <div class="section-controls">
                     <div class="search-container">
@@ -4504,7 +4578,7 @@
                             oninput="searchJobs('completed', this.value)"
                             title="Search by token number, PDF filename, user email, or service type">
                     </div>
-                    <div class="job-count" id="completedCount">0</div>
+                   
                 </div>
             </div>
             <div class="jobs-container section-loaded">
@@ -4534,8 +4608,8 @@
                 <div class="section-controls">
                     <div class="month-selector">
                         <label for="history-month-select"
-                            style="font-weight: 600; margin-right: 10px; color: var(--on-surface);">Select
-                            Month:</label>
+                            style="font-weight: 600;font-size: 18px; margin-right: 10px; color: var(--on-surface);"><b>Select</b>
+                            <b></b>Month:</b></label>
                         <select id="history-month-select" class="month-dropdown">
                             <option value="">Loading months...</option>
                         </select>
@@ -4623,7 +4697,7 @@
                 <div class="print-info-section">
                     <div class="print-info-title">
                         <i class="fas fa-print"></i>
-                        Print Settings
+                        Print Details
                     </div>
                     <div class="print-info-item">
                         <span class="print-info-label">Filename:</span>
@@ -4633,25 +4707,24 @@
                         <span class="print-info-label">Token:</span>
                         <span class="print-info-value highlight" id="printInfoToken">-</span>
                     </div>
-                    <div class="print-info-item">
-                        <span class="print-info-label">Copies:</span>
-                        <span class="print-info-value" id="printInfoCopies">-</span>
+                    <div class="print-info-item" id="printInfoPaymentItem">
+                        <span class="print-info-label">Payment Received:</span>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                            <span class="print-info-value highlight" id="printInfoPaymentValue">₹0.00</span>
+                            <span style="display:none;" id="printInfoPaymentDetails"></span>
+                        </div>
                     </div>
                     <div class="print-info-item">
                         <span class="print-info-label">Color:</span>
                         <span class="print-info-value" id="printInfoColor">-</span>
                     </div>
                     <div class="print-info-item">
-                        <span class="print-info-label">Orientation:</span>
-                        <span class="print-info-value" id="printInfoOrientation">-</span>
-                    </div>
-                    <div class="print-info-item">
-                        <span class="print-info-label">Page Size:</span>
-                        <span class="print-info-value" id="printInfoPageSize">-</span>
-                    </div>
-                    <div class="print-info-item">
                         <span class="print-info-label">Pages:</span>
                         <span class="print-info-value" id="printInfoPages">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Copies:</span>
+                        <span class="print-info-value" id="printInfoCopies">-</span>
                     </div>
                     <div class="print-info-item" id="printInfoPageRangeItem" style="display: none;">
                         <span class="print-info-label">Page Range:</span>
@@ -4670,6 +4743,14 @@
                         <span class="print-info-value" id="printInfoThickness">-</span>
                     </div>
                     <div class="print-info-item">
+                        <span class="print-info-label">Page Size:</span>
+                        <span class="print-info-value" id="printInfoPageSize">-</span>
+                    </div>
+                    <div class="print-info-item">
+                        <span class="print-info-label">Orientation:</span>
+                        <span class="print-info-value" id="printInfoOrientation">-</span>
+                    </div>
+                    <div class="print-info-item">
                         <span class="print-info-label">Service Type:</span>
                         <span class="print-info-value" id="printInfoServiceType">-</span>
                     </div>
@@ -4680,13 +4761,6 @@
                     <div class="print-info-item" id="printInfoFeedbackItem" style="display: none;">
                         <span class="print-info-label">Feedback:</span>
                         <span class="print-info-value" id="printInfoFeedback">-</span>
-                    </div>
-                    <div class="print-info-item" id="printInfoPaymentItem">
-                        <span class="print-info-label">Payment Received:</span>
-                        <div style="display:flex; flex-direction:column;">
-                            <span class="print-info-value highlight" id="printInfoPaymentValue">₹0.00</span>
-                            <span style="display:none;" id="printInfoPaymentDetails"></span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -4767,49 +4841,49 @@
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-print"></i> Digital Print</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('digital_print', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('digital_print', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-book"></i> Project Binding</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('project_binding', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('project_binding', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-file-image"></i> Gloss Printing</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('gloss_printing', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('gloss_printing', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-expand"></i> Jumbo Printing</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('jumbo_printing', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('jumbo_printing', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-file-alt"></i> Regular Print</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('regular_print', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('regular_print', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-passport"></i> Passport Print</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('passport_print', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('passport_print', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <div class="service-item">
                     <span class="service-label"><i class="fas fa-camera"></i> Photo Print</span>
                     <label class="switch">
-                        <input type="checkbox" onchange="toggleService('photo_print', this.checked)">
+                        <input type="checkbox" checked onchange="toggleService('photo_print', this.checked)">
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -4823,7 +4897,7 @@
             <div class="modal-header">
                 <h3 class="modal-title">
                     <i class="fas fa-gavel"></i>
-                    Rules & Guidelines
+                    Policies & Guidelines
                 </h3>
                 <button class="modal-close" onclick="closeRulesModal()">
                     <i class="fas fa-times"></i>
@@ -4855,7 +4929,7 @@
                     <ul>
                         <li>Always greet customers with a smile</li>
                         <li>Maintain calm and professional behavior at all times</li>
-                        <li>Handle complaints with patience and understanding</li>
+                        <li>Handle complaints with patience and resolve them as soon as possible</li>
                         <li>Never show anger or frustration to customers</li>
                         <li>Provide clear explanations for any issues</li>
                     </ul>
@@ -4866,7 +4940,7 @@
                     <ul>
                         <li><strong>NEVER print licensed books, copyrighted materials, or official documents</strong>
                         </li>
-                        <li>Do not print any government-issued documents (passports, licenses, etc.)</li>
+                        
                         <li>Refuse any suspicious or illegal printing requests</li>
                         <li>Report any inappropriate content to management immediately</li>
                         <li>Only print personal documents, photos, and educational materials</li>
@@ -4880,9 +4954,9 @@
                             receive more print requests</li>
                         <li>Build strong relationships with regular customers</li>
                         <li>Offer quality service to encourage repeat business</li>
-                        <li>Ask satisfied customers for referrals</li>
-                        <li>Maintain clean and professional workspace</li>
-                        <li>Keep updated with latest printing technologies</li>
+                
+                        <li>Maintain clean and professional workspace by providing ontime prints</li>
+                        
                     </ul>
                 </div>
 
@@ -4891,7 +4965,7 @@
                     <ul>
                         <li>Check your dashboard regularly for new jobs</li>
                         <li>Keep your profile information updated</li>
-                        <li>Maintain good communication with the support team</li>
+                        <li>Maintain good communication with the Customers</li>
                         <li>Follow all platform policies and guidelines</li>
                         <li>Report any technical issues immediately</li>
                     </ul>
@@ -5035,6 +5109,12 @@
                     }
                     filteredJobs[jobType].push(job);
 
+                    // Keep pending array in sync for Total = Pending + Completed (completed already synced via jobType)
+                    if (jobType !== 'completed') {
+                        if (!filteredJobs.pending) filteredJobs.pending = [];
+                        if (!filteredJobs.pending.includes(job)) filteredJobs.pending.push(job);
+                    }
+
                     // Update count for this type
                     updateSingleCount(jobType, filteredJobs[jobType].length);
 
@@ -5064,14 +5144,9 @@
                 countElement.textContent = count;
             }
 
-            // Update overview stats
-            const totalPending = (filteredJobs.document?.length || 0) +
-                (filteredJobs.photo?.length || 0) +
-                (filteredJobs.passport?.length || 0) +
-                (filteredJobs.jumbo?.length || 0) +
-                (filteredJobs.golden?.length || 0) +
-                (filteredJobs.digital?.length || 0);
-            const totalCompleted = filteredJobs.completed?.length || 0;
+            // Update overview stats: Total Print Requests = Pending + Completed
+            const totalPending = filteredJobs.pending?.length ?? 0;
+            const totalCompleted = filteredJobs.completed?.length ?? 0;
             const totalRequests = totalPending + totalCompleted;
 
             document.getElementById('requestsStatCount').textContent = totalRequests;
@@ -5161,26 +5236,26 @@
             const resolvedPages = pagesFromMetadata || job.pages || 1;
             const resolvedCopies = copiesFromMetadata || job.copies || 1;
             const serviceTypeDisplay = {
-                'regular_print': 'DOCUMENT PRINT',
-                'regular print': 'DOCUMENT PRINT',
-                'document_print': 'DOCUMENT PRINT',
-                'photo_print': 'PHOTO PRINT',
-                'passport_print': 'PASSPORT PHOTO',
-                'passport_photo': 'PASSPORT PHOTO',
-                'digital_print': 'DIGITAL PRINT',
-                'project_binding': 'PROJECT BINDING',
-                'gloss_printing': 'GLOSS PRINTING',
-                'jumbo_printing': 'JUMBO PRINTING',
-                'jumbo_print': 'JUMBO PRINTING',
-                'golden_embossing': 'GOLDEN EMBOSSING',
-                'golden_emboss': 'GOLDEN EMBOSSING'
+                'regular_print': 'Document Print',
+                'regular print': 'Document Print',
+                'document_print': 'Document Print',
+                'photo_print': 'Photo Print',
+                'passport_print': 'Passport Photo',
+                'passport_photo': 'Passport Photo',
+                'digital_print': 'Digital Print',
+                'project_binding': 'Project Binding',
+                'gloss_printing': 'Gloss Printing',
+                'jumbo_printing': 'Jumbo Printing',
+                'jumbo_print': 'Jumbo Printing',
+                'golden_embossing': 'Golden Embossing Black Book',
+                'golden_emboss': 'Golden Embossing Black Book'
             }[(job.service_type || '').trim().toLowerCase()] || (job.service_type ? job.service_type.replace('_', ' ').toUpperCase() : 'DOCUMENT PRINT');
 
             return `
                 <div class="job-card completed compact" data-filename="${job.filename}" data-token="${(job.token || '').toString()}" style="padding:10px 10px 8px; border-radius:10px; min-height:160px;">
                     <div class="job-header compact" style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid var(--outline-variant);">
                         <div class="job-token" title="Job Token" style="font-size:11px; padding:4px 8px; border-radius:6px;">${tokenNumber}</div>
-                        <div class="job-status status-completed" style="font-size:10px; padding:4px 8px; border-radius:6px;">DONE</div>
+                        <div class="job-status status-completed" style="font-size:10px; padding:4px 8px; border-radius:6px;">COMPLETED</div>
                     </div>
                     <div class="job-content" style="margin:0;">
                         <div class="job-title" title="${job.filename}" style="display:flex; align-items:center; gap:6px; font-size:15px; font-weight:700; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -5214,7 +5289,7 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            const completedJobs = allJobs.filter(job => {
+            let completedJobs = allJobs.filter(job => {
                 // Filter out cancelled jobs
                 const jobCompleted = (job.job_completed || '').toString().trim().toUpperCase();
                 if (jobCompleted === 'CANCELLED') return false;
@@ -5253,6 +5328,20 @@
                     return false; // If we can't parse the date, don't show it
                 }
             });
+
+            // Optional token-based filter for completed section.
+            // When a token is provided via query string (e.g. ?token=123 or ?completed_token=123),
+            // show ONLY the matching completed job block in the Completed Prints History section.
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                const tokenFilter = (params.get('completed_token') || params.get('token') || '').trim();
+                if (tokenFilter) {
+                    completedJobs = completedJobs.filter(job => (job.token || '').toString() === tokenFilter);
+                }
+            } catch (e) {
+                // If URL parsing fails, fall back to showing all completed jobs.
+                console.warn('Error applying token filter for completed jobs:', e);
+            }
 
             const container = document.getElementById('completedJobs');
             const jobsContainer = container.closest('.jobs-container');
@@ -5353,62 +5442,51 @@
             }
 
             initTheme();
-            // Load vendor availability status
-            try { loadVendorAvailability(); } catch (e) { console.error('Error loading vendor availability:', e); }
-            // Preload service toggle states immediately after login
-            try { loadServiceAvailability(); } catch (e) { console.error('Error preloading service availability:', e); }
+            // Load vendor availability FIRST so renderJobs uses correct state, then load jobs
+            const initAvailabilityAndJobs = async () => {
+                try {
+                    await loadVendorAvailability();
+                } catch (e) { console.error('Error loading vendor availability:', e); }
+                try {
+                    const initialJobsScript = document.getElementById('initial-jobs-data');
+                    if (initialJobsScript) {
+                        const initialJobsData = JSON.parse(initialJobsScript.textContent);
+                        if (Array.isArray(initialJobsData) && initialJobsData.length > 0) {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
 
-            // Load initial jobs from backend context immediately for fast rendering
-            try {
-                const initialJobsScript = document.getElementById('initial-jobs-data');
-                if (initialJobsScript) {
-                    const initialJobsData = JSON.parse(initialJobsScript.textContent);
-                    if (Array.isArray(initialJobsData) && initialJobsData.length > 0) {
-                        // Filter completed jobs to only show today's jobs
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-
-                        allJobs = initialJobsData.filter(job => {
-                            // Keep all pending jobs
-                            if (job.job_completed !== 'YES') return true;
-
-                            // For completed jobs, only keep today's jobs
-                            const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
-                            if (!completionTime) return false; // No completion time, don't show
-
-                            try {
-                                let completionDate;
-                                if (typeof completionTime === 'string') {
-                                    if (completionTime.includes('T') || completionTime.includes(' ')) {
-                                        completionDate = new Date(completionTime.replace('Z', '+00:00'));
+                            allJobs = initialJobsData.filter(job => {
+                                if (job.job_completed !== 'YES') return true;
+                                const completionTime = job.completion_time || job.timestamp || job.metadata?.completion_time;
+                                if (!completionTime) return false;
+                                try {
+                                    let completionDate;
+                                    if (typeof completionTime === 'string') {
+                                        completionDate = completionTime.includes('T') || completionTime.includes(' ')
+                                            ? new Date(completionTime.replace('Z', '+00:00'))
+                                            : new Date(parseFloat(completionTime) * 1000);
                                     } else {
                                         completionDate = new Date(parseFloat(completionTime) * 1000);
                                     }
-                                } else {
-                                    completionDate = new Date(parseFloat(completionTime) * 1000);
+                                    if (isNaN(completionDate.getTime())) return false;
+                                    completionDate.setHours(0, 0, 0, 0);
+                                    return completionDate.getTime() === today.getTime();
+                                } catch (e) {
+                                    console.warn('Error parsing completion time for initial job:', job.filename, e);
+                                    return false;
                                 }
+                            });
 
-                                if (isNaN(completionDate.getTime())) return false;
-
-                                completionDate.setHours(0, 0, 0, 0);
-                                return completionDate.getTime() === today.getTime();
-                            } catch (e) {
-                                console.warn('Error parsing completion time for initial job:', job.filename, e);
-                                return false;
-                            }
-                        });
-
-                        categorizeJobs();
-                        // Cache initial jobs (already filtered)
-                        localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                            categorizeJobs();
+                            localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                        }
                     }
+                } catch (e) {
+                    console.error('Error loading initial jobs:', e);
                 }
-            } catch (e) {
-                console.error('Error loading initial jobs:', e);
-            }
-
-            // Load jobs from cache first, then fetch new ones
-            loadJobs();
+                loadJobs();
+            };
+            initAvailabilityAndJobs();
 
             // Trigger snapshot for logged-in vendor when dashboard loads
             try {
@@ -5418,9 +5496,8 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken')
                     }
-                }).catch(err => {
+                }).catch(() => {
                     // Silent fail - snapshot is not critical
-                    console.log('Snapshot request failed (non-critical):', err);
                 });
             } catch (e) {
                 // Silent fail
@@ -5494,7 +5571,6 @@
             // Ensure availability status is saved after page loads
             setTimeout(async () => {
                 if (vendorAvailability) {
-                    console.log('🔍 DEBUG - Ensuring availability status is saved on page load:', vendorAvailability);
                     await saveAvailabilityStatus(vendorAvailability);
                 }
             }, 3000);
@@ -5503,13 +5579,6 @@
             setTimeout(() => {
                 const toggleBtn = document.getElementById('availabilityToggle');
                 const icon = toggleBtn?.querySelector('i');
-                console.log('Availability toggle debug:', {
-                    vendorAvailability,
-                    toggleBtn: !!toggleBtn,
-                    icon: !!icon,
-                    iconClass: icon?.className,
-                    iconVisible: icon?.offsetWidth > 0
-                });
             }, 1000);
         });
 
@@ -5633,9 +5702,12 @@
                     if (loading) loading.style.display = 'none';
 
                     if (data.success && Array.isArray(data.reports) && data.reports.length > 0) {
-                        displayHistoryReports(data.reports);
+                        // Always filter strictly on the selected month on the client as a safety net,
+                        // in case the worker returns a broader date range.
+                        const effectiveMonth = selectedMonth || (document.getElementById('history-month-select')?.value || null);
+                        displayHistoryReports(data.reports, effectiveMonth);
                         if (Array.isArray(data.available_months_list)) {
-                            updateHistoryMonthSelector(data.available_months_list, selectedMonth);
+                            updateHistoryMonthSelector(data.available_months_list, effectiveMonth);
                         }
                     } else {
                         if (container) {
@@ -5675,7 +5747,7 @@
                 });
         }
 
-        function displayHistoryReports(reports) {
+        function displayHistoryReports(reports, selectedMonth = null) {
             const container = document.getElementById('history-container');
             const emptyState = document.getElementById('history-empty');
             const loading = document.getElementById('history-loading');
@@ -5704,17 +5776,45 @@
                 return;
             }
 
-            // Show container when we have data
+            // Normalize and optionally filter by the selected month (YYYY-MM)
+            const normalizedReports = (reports || []).map(report => {
+                const generated = report.generated_at || report.period_start || '';
+                let monthKey = '';
+                try {
+                    if (generated && generated.length >= 7) {
+                        monthKey = generated.substring(0, 7); // YYYY-MM
+                    }
+                } catch (e) {
+                    monthKey = '';
+                }
+                return { ...report, _monthKey: monthKey };
+            }).filter(report => {
+                if (!selectedMonth) return true;
+                return report._monthKey === selectedMonth;
+            });
+
+            if (normalizedReports.length === 0) {
+                if (container) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+                if (emptyState) {
+                    emptyState.style.display = 'block';
+                }
+                return;
+            }
+
+            // Show container when we have filtered data
             if (container) container.style.display = 'block';
 
             // Sort reports by date (newest first)
-            reports.sort((a, b) => new Date(b.generated_at) - new Date(a.generated_at));
+            normalizedReports.sort((a, b) => new Date(b.generated_at || b.period_start) - new Date(a.generated_at || a.period_start));
 
             // Group reports by month
             const reportsByMonth = {};
-            reports.forEach(report => {
-                const date = new Date(report.generated_at);
-                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            normalizedReports.forEach(report => {
+                const date = new Date(report.generated_at || report.period_start);
+                const monthKey = report._monthKey || `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
                 if (!reportsByMonth[monthKey]) {
@@ -5726,35 +5826,8 @@
                 reportsByMonth[monthKey].reports.push(report);
             });
 
-            // Calculate summary statistics for the 4 cards
-            const totalReports = reports.length;
-            const totalEarnings = reports.reduce((sum, report) => sum + (report.total_amount || report.total_earning || 0), 0);
-            const totalDocuments = reports.reduce((sum, report) => sum + (report.total_documents || 0), 0);
-            const activeMonths = Object.keys(reportsByMonth).length;
-
-            // Display the 4 summary cards
-            let html = `
-                <div class="history-summary">
-                    <div class="summary-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${totalReports}</div>
-                            <div class="stat-label">Total Reports</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">₹${totalEarnings.toFixed(2)}</div>
-                            <div class="stat-label">Total Earnings</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${totalDocuments}</div>
-                            <div class="stat-label">Total Documents</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${activeMonths}</div>
-                            <div class="stat-label">Active Months</div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // Payment history should render only the monthly report list.
+            let html = ``;
 
             // Display reports grouped by month
             Object.keys(reportsByMonth).sort().reverse().forEach(monthKey => {
@@ -5767,16 +5840,18 @@
                         <div class="month-header">
                             <h3>${monthData.monthName}</h3>
                             <div class="month-stats">
-                                <span class="month-earnings">₹${monthEarnings.toFixed(2)}</span>
-                                <span class="month-documents">${monthDocuments} docs</span>
+                                <span class="month-earnings">Total Earnings: ₹${monthEarnings.toFixed(2)}</span>
+                                <span class="month-documents">Total Documents: ${monthDocuments} docs</span>
                             </div>
                         </div>
                         <div class="reports-grid">
                 `;
 
                 monthData.reports.forEach(report => {
-                    const reportDate = new Date(report.generated_at);
-                    const statusClass = report.payment_status === 'completed' ? 'completed' : 'not-completed';
+                    const reportDate = new Date(report.generated_at || report.period_start);
+                    const rawStatus = (report.payment_status || '').toString().toLowerCase();
+                    const isPaid = ['paid', 'completed', 'complete', 'success'].includes(rawStatus);
+                    const statusClass = isPaid ? 'completed' : 'not-completed';
                     const periodStart = report.period_start || '';
                     const periodEnd = report.period_end || '';
                     const periodDisplaySafe = report.period_display || `${periodStart} to ${periodEnd}` || 'N/A';
@@ -5786,7 +5861,7 @@
                             <div class="report-header">
                                 <div class="report-period">${periodDisplaySafe}</div>
                                 <div class="report-status ${statusClass}">
-                                    ${report.payment_status === 'completed' ? 'Completed' : 'Pending'}
+                                    ${isPaid ? 'Paid' : 'Pending'}
                                 </div>
                             </div>
                             <div class="report-content">
@@ -5834,7 +5909,7 @@
                                 <div class="report-actions">
                                     <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; margin-top: 4px;"
                                         onclick="openHistoryDetailsModal('${periodStart}', '${periodEnd}', '${periodDisplaySafe}')">
-                                        Show
+                                        Show print history
                                     </button>
                                 </div>
                             </div>
@@ -6297,23 +6372,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    console.log('🔍 Profile Image URL Test:', JSON.stringify({
-                        url: data.profile_image_url,
-                        is_accessible: data.is_accessible,
-                        status_code: data.status_code,
-                        error_message: data.error_message,
-                        file_exists_in_r2: data.file_exists_in_r2,
-                        extracted_key: data.extracted_key
-                    }, null, 2));
-
                     if (data.profile_image_url && !data.is_accessible) {
                         showToast('Warning: Profile image URL is not accessible');
-                        console.log('❌ Profile image URL is not accessible:', data.profile_image_url);
-
                         // Also test R2 URL generation
                         const r2Response = await fetch('/test-r2-url-generation/');
                         const r2Data = await r2Response.json();
-                        console.log('🔍 R2 URL Generation Test:', JSON.stringify(r2Data, null, 2));
                     }
                 }
             } catch (error) {
@@ -6435,7 +6498,6 @@
 
                     // If availability status is not in the data, save it automatically
                     if (!data.data.vendor_shop_avaliability) {
-                        console.log('🔍 DEBUG - Availability status not found in data, saving automatically...');
                         await saveAvailabilityStatus(vendorAvailability);
                     }
                 } else {
@@ -6472,7 +6534,6 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    console.log('✅ DEBUG - Availability status saved successfully:', status);
                 } else {
                     console.error('❌ DEBUG - Failed to save availability status:', data.error);
                 }
@@ -6517,7 +6578,7 @@
             const sectionTitles = document.querySelectorAll('.section-title');
             const jobContainers = document.querySelectorAll('.jobs-container');
 
-            if (false && vendorAvailability === 'offline') {
+            if (vendorAvailability === 'offline') {
                 // Update toggle button
                 toggleBtn.classList.add('offline');
                 toggleBtn.setAttribute('aria-label', 'Click to go online');
@@ -6535,8 +6596,6 @@
                 jobContainers.forEach(container => {
                     container.classList.add('offline');
                 });
-
-                // Vendor status removed from sidebar - status is now only shown in navbar toggle button
             } else {
                 // Update toggle button
                 toggleBtn.classList.remove('offline');
@@ -6567,9 +6626,8 @@
                 // Vendor status removed from sidebar - status is now only shown in navbar toggle button
             }
 
-            // Re-render jobs to show/hide based on availability
-            if (filteredJobs.manual) renderJobs('manual', filteredJobs.manual);
-            if (filteredJobs.requests) renderJobs('requests', filteredJobs.requests);
+            // Re-render jobs instantly when availability changes - show/hide based on online status
+            if (filteredJobs.pending) renderJobs('pending', filteredJobs.pending);
             if (filteredJobs.completed) renderJobs('completed', filteredJobs.completed);
         }
 
@@ -6809,9 +6867,6 @@
                 completed: completedCount
             });
 
-            // Double-check: Log for debugging
-            console.log(`📊 Pending count update: ${pendingCount} pending, ${completedCount} completed`);
-
             renderJobs('pending', pendingJobs);
 
             // Render completed jobs quickly
@@ -6823,7 +6878,6 @@
                 const manualStatEl = document.getElementById('manualStatCount');
                 if (manualStatEl && pendingCount !== parseInt(manualStatEl.textContent)) {
                     manualStatEl.textContent = pendingCount;
-                    console.log(`🔧 Fixed pending count: ${pendingCount}`);
                 }
             }, 100);
         }
@@ -6861,7 +6915,6 @@
             // CRITICAL: Always set pending count - this is the main fix
             if (manualStatEl) {
                 manualStatEl.textContent = totalPending;
-                console.log(`✅ Updated pending prints count to: ${totalPending}`);
             }
             if (completedStatEl) completedStatEl.textContent = actualCompletedCount;
             // Earnings placeholder (sum not computed yet) => keep as ₹0
@@ -7007,7 +7060,7 @@
 
             // Force all pending jobs to use manual styling classes (jumbo print style)
             const statusClass = type === 'completed' ? 'status-completed' : 'status-manual';
-            const statusText = type === 'completed' ? 'Done' : '';
+            const statusText = type === 'completed' ? 'Comepleted' : '';
             const cardClass = type === 'completed' ? 'completed' : 'manual';
 
             const tokenNumber = job.token ? `Token ${job.token}` : '';
@@ -7026,19 +7079,19 @@
             // Show service type badge for ALL pending jobs (using jumbo print style)
             if (isManualStyleRequest && serviceTypeForBadge) {
                 const serviceTypeDisplay = {
-                    'regular_print': 'DOCUMENT PRINT',
-                    'regular print': 'DOCUMENT PRINT',
-                    'document_print': 'DOCUMENT PRINT',
-                    'photo_print': 'PHOTO PRINT',
-                    'passport_print': 'PASSPORT PHOTO',
-                    'passport_photo': 'PASSPORT PHOTO',
-                    'digital_print': 'DIGITAL PRINT',
-                    'project_binding': 'PROJECT BINDING',
-                    'gloss_printing': 'GLOSS PRINTING',
-                    'jumbo_printing': 'JUMBO PRINTING',
-                    'jumbo_print': 'JUMBO PRINTING',
-                    'golden_embossing': 'GOLDEN EMBOSSING',
-                    'golden_emboss': 'GOLDEN EMBOSSING'
+                    'regular_print': 'Document Print',
+                    'regular print': 'Document Print',
+                    'document_print': 'Document Print',
+                    'photo_print': 'Photo Print',
+                    'passport_print': 'Passport Photo',
+                    'passport_photo': 'Passport Photo',
+                    'digital_print': 'Digital Print',
+                    'project_binding': 'Project Binding',
+                    'gloss_printing': 'Gloss Printing',
+                    'jumbo_printing': 'Jumbo Printing',
+                    'jumbo_print': 'Jumbo Printing',
+                    'golden_embossing': 'Golden Embossing Black Book',
+                    'golden_emboss': 'Golden Embossing Black Book'
                 };
                 const serviceTypeClass = {
                     'regular_print': 'regular-print',
@@ -7080,10 +7133,10 @@
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
                         <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})" title="Cancel job">
-                            <i class="fas fa-times"></i> Cancel
+                            <i class="fas fa-times"></i> Cancel Print
                         </button>
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
-                            <i class="fas fa-check"></i> Completed
+                            <i class="fas fa-check"></i>Mark Completed
                         </button>
                     </div>`;
             } else if (type === 'requests') {
@@ -7099,7 +7152,7 @@
                 } else if (vendorStatus === 'accepted') {
                     actions = `
                         <button class="btn-small btn-success" onclick="event.stopPropagation(); markJobCompleted('${job.filename}')" title="Mark as completed">
-                            <i class="fas fa-check"></i> Completed
+                            <i class="fas fa-check"></i>Completed
                         </button>`;
                 } else {
                     actions = `
@@ -7223,7 +7276,6 @@
                         const currentEarnings = parseFloat(currentEarningsText.replace('₹', '').replace(/,/g, '')) || 0;
                         const newEarnings = currentEarnings + vendorPayment;
                         earningsCard.textContent = `₹${newEarnings.toFixed(2)}`;
-                        console.log(`💰 Updated earnings: ₹${currentEarnings.toFixed(2)} + ₹${vendorPayment.toFixed(2)} = ₹${newEarnings.toFixed(2)}`);
                     }
                 }
 
@@ -7431,14 +7483,12 @@
                             return parseFloat(pricingDetails.total);
                         }
                     } catch (e) {
-                        console.log('Error parsing pricing_details:', e);
                     }
                 }
 
                 // Default to 0 if no price found
                 return 0;
             } catch (e) {
-                console.log('Error extracting job price:', e);
                 return 0;
             }
         }
@@ -7478,7 +7528,6 @@
                             platformProfit = parseFloat(pricingDetails.platform_profit);
                         }
                     } catch (e) {
-                        console.log('Error parsing pricing_details for vendor payment:', e);
                     }
                 }
 
@@ -7486,7 +7535,6 @@
                 const vendorPayment = Math.max(0, totalPrice - platformProfit);
                 return vendorPayment;
             } catch (e) {
-                console.log('Error calculating vendor payment:', e);
                 return 0;
             }
         }
@@ -7707,7 +7755,7 @@
             const title = document.getElementById('printInfoTitle');
 
             // Set modal title
-            title.textContent = `Print Settings - ${filename}`;
+            title.textContent = `Print Details - ${filename}`;
 
             // Populate print settings
             document.getElementById('printInfoFilename').textContent = jobData.filename || '-';
@@ -7845,9 +7893,7 @@
             modal.dataset.jobData = JSON.stringify(jobData);
 
             // Show modal
-            console.log('Showing print info modal for:', filename);
             modal.classList.add('show');
-            console.log('Modal classes after show:', modal.className);
         }
 
         function closePrintInfoModal() {
@@ -7855,13 +7901,11 @@
         }
 
         function loadPrintInfoPreview(url, filename) {
-            console.log('loadPrintInfoPreview called with:', { url, filename });
             const frame = document.getElementById('printInfoPreviewFrame');
             const image = document.getElementById('printInfoPreviewImage');
             const canvas = document.getElementById('printInfoPreviewCanvas');
             const ext = filename.split('.').pop().toLowerCase();
 
-            console.log('Preview elements found:', { frame: !!frame, image: !!image, canvas: !!canvas, ext });
 
             // Reset any previous content
             frame.src = 'about:blank';
@@ -7884,7 +7928,6 @@
                             await ensurePdfJsLoaded();
                             await renderPdfToCanvas(pdfUrl, canvas);
                         } catch (e) {
-                            console.log('PDF.js failed, trying iframe fallback:', e);
                             // Fallback 1: iframe
                             canvas.style.display = 'none';
                             frame.style.display = 'block';
@@ -7893,14 +7936,12 @@
                             frame.style.border = 'none';
                             frame.src = pdfUrl;
                             frame.onerror = () => {
-                                console.log('Direct iframe failed, trying Google Docs viewer');
                                 // Fallback 2: Google Docs viewer
                                 frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
                             };
                         }
                     })();
                 } else {
-                    console.log('Canvas not available, using iframe fallback');
                     // If canvas not available, fallback to iframe with Google Docs viewer fallback
                     frame.style.display = 'block';
                     frame.style.width = '100%';
@@ -7909,7 +7950,6 @@
                     const directUrl = url || '';
                     frame.src = directUrl;
                     frame.onerror = () => {
-                        console.log('Direct iframe failed, trying Google Docs viewer');
                         frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(directUrl)}&embedded=true`;
                     };
                 }
@@ -7946,7 +7986,6 @@
 
         // Render first page of a PDF into a canvas element
         async function renderPdfToCanvas(pdfUrl, canvas) {
-            console.log('Rendering PDF to canvas:', pdfUrl);
             try {
                 const pdf = await window.pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise;
                 const page = await pdf.getPage(1);
@@ -7960,11 +7999,7 @@
                 canvas.style.height = 'auto';
                 canvas.style.maxHeight = '400px';
                 canvas.style.objectFit = 'contain';
-
-                console.log('Canvas dimensions set:', { width: canvas.width, height: canvas.height });
-
                 await page.render({ canvasContext: context, viewport }).promise;
-                console.log('PDF rendered successfully to canvas');
             } catch (error) {
                 console.error('Error rendering PDF to canvas:', error);
                 throw error;
@@ -8492,11 +8527,17 @@
                     card.style.opacity = '1';
                     matchCount++;
                 } else {
-                    // Keep non-matching blocks visible as-is; only remove highlight
+                    // For completed jobs, hide non-matching blocks entirely.
+                    // For pending jobs, keep them visible as-is; only remove any previous highlight.
                     card.classList.remove('search-highlight');
                     card.classList.remove('search-hidden');
-                    card.style.display = '';
-                    card.style.opacity = '1';
+                    if (type === 'completed') {
+                        card.style.display = 'none';
+                        card.style.opacity = '0';
+                    } else {
+                        card.style.display = '';
+                        card.style.opacity = '1';
+                    }
                 }
             });
 
@@ -8678,6 +8719,11 @@
                             toggle.checked = data.data[service];
                         }
                     });
+                    enforceOfflineWhenServicesDisabled(Array.from(toggles).reduce((acc, toggle) => {
+                        const service = toggle.getAttribute('onchange').match(/toggleService\('([^']+)'/)[1];
+                        acc[service] = toggle.checked;
+                        return acc;
+                    }, {}));
                 }
             } catch (error) {
                 console.error('Error loading service availability:', error);
@@ -8695,6 +8741,21 @@
         function closeRulesModal() {
             document.getElementById('rulesModal').classList.remove('show');
         }
+        function enforceOfflineWhenServicesDisabled(serviceAvailability) {
+            const availabilityValues = serviceAvailability ? Object.values(serviceAvailability) : [];
+            const areAllServicesOff = availabilityValues.length > 0 && availabilityValues.every(v => v === false);
+            if (areAllServicesOff) {
+                showToast('All services are off. Please enable a service to accept jobs.');
+                vendorAvailability = 'offline';
+                localStorage.setItem('vendorAvailability', 'offline');
+                updateAvailabilityUI();
+                if (typeof scheduleAvailabilitySync === 'function') {
+                    scheduleAvailabilitySync('offline');
+                } else if (typeof saveAvailabilityStatus === 'function') {
+                    saveAvailabilityStatus('offline');
+                }
+            }
+        }
         // Toggle service handler - updates backend
         async function toggleService(serviceKey, isEnabled) {
             try {
@@ -8707,7 +8768,7 @@
                     serviceAvailability[service] = toggle.checked;
                 });
 
-                console.log('🔍 DEBUG - Sending service availability:', serviceAvailability);
+                enforceOfflineWhenServicesDisabled(serviceAvailability);
 
                 // Send to backend
                 const response = await fetch('/update-vendor-service-availability/', {
@@ -8719,9 +8780,7 @@
                     body: JSON.stringify(serviceAvailability)
                 });
 
-                console.log('🔍 DEBUG - Response status:', response.status);
                 const data = await response.json();
-                console.log('🔍 DEBUG - Response data:', data);
 
                 if (data.success) {
                     showToast(`${formatServiceType(serviceKey)} ${isEnabled ? 'enabled' : 'disabled'}`);
@@ -9038,6 +9097,11 @@
                 jobContainers.forEach(container => {
                     container.classList.remove('offline');
                 });
+            }
+            // Re-render jobs instantly when availability changes - show jobs when online, hide when offline
+            if (typeof filteredJobs !== 'undefined') {
+                if (filteredJobs.pending) renderJobs('pending', filteredJobs.pending);
+                if (filteredJobs.completed) renderJobs('completed', filteredJobs.completed);
             }
         }
 
@@ -9406,6 +9470,10 @@
             const serviceDisplayNames = {
                 'regular_print_a4_bw': 'A4 Print (Black & White)',
                 'regular_print_a4_color': 'A4 Print (Color)',
+                'doc_letter_bw': 'Letter Print (Black & White)',
+                'doc_letter_color': 'Letter Print (Color)',
+                'doc_a3_bw': 'A3 Print (Black & White)',
+                'doc_a3_color': 'A3 Print (Color)',
                 'photo_print_a4_bw': 'Photo Print A4 (Black & White)',
                 'photo_print_a4_color': 'Photo Print A4 (Color)',
                 'passport_print_standard': 'Passport Photo',
@@ -9448,7 +9516,8 @@
                 'gloss_printing': 'Gloss Printing',
                 'jumbo_print': 'Jumbo Printing',
                 'jumbo_printing': 'Jumbo Printing',
-                'golden_embossing': 'Golden Embossing',
+                'golden_embossing': 'Golden Embossing Black Book',
+                'golden_emboss': 'Golden Embossing Black Book',
                 'lamination': 'Lamination',
                 'binding': 'Binding',
                 'project_binding': 'Binding',
@@ -9543,7 +9612,7 @@
                         } else if (serviceKey.startsWith('jumbo_print')) {
                             categoryDisplayName = 'Jumbo Printing';
                         } else if (serviceKey.startsWith('golden_emboss')) {
-                            categoryDisplayName = 'Golden Embossing';
+                            categoryDisplayName = 'Golden Embossing Black Book';
                         } else if (serviceKey.startsWith('lamination')) {
                             categoryDisplayName = 'Lamination';
                         } else if (serviceKey.startsWith('tape_binding') || serviceKey.startsWith('spiral_binding') ||

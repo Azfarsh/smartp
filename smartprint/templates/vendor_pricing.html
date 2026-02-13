@@ -7,6 +7,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Print Shop Pricing Setup - PrintMax</title>
+    <script>
+        // Reduce console noise: keep only warn/error/debug (no functional changes).
+        (function () {
+            try {
+                if (window.__printmaxConsoleFilterInstalled) return;
+                window.__printmaxConsoleFilterInstalled = true;
+
+                if (!window.console) return;
+
+                const original = {
+                    debug: (console.debug || console.log).bind(console),
+                    warn: (console.warn || console.log).bind(console),
+                    error: (console.error || console.log).bind(console),
+                };
+
+                function routeToLevel(args) {
+                    const first = args && args.length ? args[0] : '';
+                    const msg = typeof first === 'string' ? first : '';
+                    const lower = msg.toLowerCase();
+
+                    if (msg.includes('❌') || lower.includes('error') || lower.includes('failed')) return 'error';
+                    if (msg.includes('⚠️') || lower.includes('warning')) return 'warn';
+                    return 'debug';
+                }
+
+                console.log = (...args) => original[routeToLevel(args)](...args);
+                console.info = (...args) => original[routeToLevel(args)](...args);
+                console.table = (...args) => original[routeToLevel(args)](...args);
+                console.dir = (...args) => original[routeToLevel(args)](...args);
+                console.trace = (...args) => original[routeToLevel(args)](...args);
+            } catch (_) {
+                // Never block app behavior if console filtering fails.
+            }
+        })();
+    </script>
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}?v=2">
@@ -1724,78 +1759,7 @@
             </div>
         </div>
 
-        <!-- Print Shop Information -->
-        <div class="vendor-info">
-            <div class="vendor-image" id="vendorImageContainer">
-                {% if vendor.profile_image_url %}
-                    <img src="{{ vendor.profile_image_url }}" alt="Print Shop" id="vendorImage" onerror="showDefaultAvatar()">
-                {% else %}
-                    <img src="{% static 'images/priceimage.png' %}" alt="Print Shop" id="vendorImage" onerror="showDefaultAvatar()">
-                {% endif %}
-            </div>
-            <div class="vendor-details">
-                <h3>
-                    <i class="fas fa-store icon"></i>
-                    Shop Information
-                </h3>
-                <div class="vendor-grid">
-                    <div class="detail-item">
-                        <div class="detail-icon">
-                            <i class="fas fa-user icon"></i>
-                        </div>
-                        <div class="detail-text">
-                            <span class="label">Name:</span>
-                            <span class="value">{% if vendor %}{{ vendor.vendor_name|default:"-" }}{% else %}-{% endif %}</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-icon">
-                            <i class="fas fa-envelope icon"></i>
-                        </div>
-                        <div class="detail-text">
-                            <span class="label">Email:</span>
-                            <span class="value">{% if vendor %}{{ vendor.vendor_email|default:"-" }}{% else %}-{% endif %}</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-icon">
-                            <i class="fas fa-map-marker-alt icon"></i>
-                        </div>
-                        <div class="detail-text">
-                            <span class="label">Address:</span>
-                            <span class="value">{% if vendor %}{{ vendor.shop_address|default:"-" }}{% else %}-{% endif %}</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-icon">
-                            <i class="fas fa-city icon"></i>
-                        </div>
-                        <div class="detail-text">
-                            <span class="label">City:</span>
-                            <span class="value">{% if vendor %}{{ vendor.city|default:"-" }}{% else %}-{% endif %}</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-icon">
-                            <i class="fas fa-mail-bulk icon"></i>
-                        </div>
-                        <div class="detail-text">
-                            <span class="label">PIN Code:</span>
-                            <span class="value">{% if vendor %}{{ vendor.pincode|default:"-" }}{% else %}-{% endif %}</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-icon">
-                            <i class="fas fa-id-card icon"></i>
-                        </div>
-                        <div class="detail-text">
-                            <span class="label">Print Shop ID:</span>
-                            <span class="value">{% if vendor %}{{ vendor.vendor_id|default:"-" }}{% else %}-{% endif %}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Print Shop Information - REMOVED as requested -->
 
         <!-- Pricing Form -->
         <div class="form-container">
@@ -1823,11 +1787,11 @@
                 <div class="service-section">
                     <div class="service-header">
                         <i class="fas fa-print icon"></i>
-                        <h3>Regular Print & Photo Print Pricing</h3>
+                        <h3>Document Print & Photo Print Pricing</h3>
                     </div>
                     <div class="service-content">
                         <div class="service-description">
-                            <p><strong>Note:</strong> Set your pricing for regular document printing and photo printing services. Both are available only in A4 size. Regular print is for text documents, while photo print is for images and photographs.</p>
+                            <p><strong>Note:</strong> Set your pricing for document printing and photo printing services. Document print now supports <strong>A4</strong>, <strong>Letter</strong>, and <strong>A3</strong> sizes. Document print is for text documents, while photo print is for images and photographs.</p>
                         </div>
                         <div class="pricing-table">
                             <div class="table-header">
@@ -1838,7 +1802,7 @@
                                 <div class="enable-column">Enable</div>
                             </div>
                             <div class="table-row">
-                                <div class="service-cell">Regular Print</div>
+                                <div class="service-cell">Document Print</div>
                                 <div class="size-cell">A4</div>
                                 <div class="color-cell">Black & White</div>
                                 <div class="price-cell">
@@ -1863,6 +1827,34 @@
                             </div>
                                 <div class="enable-cell">
                                     <input type="checkbox" onchange="toggleServiceInput(this, 'regular_print_a4_color')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell">Document Print</div>
+                                <div class="size-cell">Letter</div>
+                                <div class="color-cell">Black & White</div>
+                                <div class="price-cell">
+                                <div class="price-input-container">
+                                    <span class="rupee-icon">₹</span>
+                                        <input type="number" id="doc_letter_bw" class="price-input" name="doc_letter_bw" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                </div>
+                            </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'doc_letter_bw')">
+                                </div>
+                            </div>
+                            <div class="table-row">
+                                <div class="service-cell"></div>
+                                <div class="size-cell">Letter</div>
+                                <div class="color-cell">Color</div>
+                                <div class="price-cell">
+                                <div class="price-input-container">
+                                    <span class="rupee-icon">₹</span>
+                                        <input type="number" id="doc_letter_color" class="price-input" name="doc_letter_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
+                                </div>
+                            </div>
+                                <div class="enable-cell">
+                                    <input type="checkbox" onchange="toggleServiceInput(this, 'doc_letter_color')">
                                 </div>
                             </div>
                             <div class="table-row">
@@ -2039,7 +2031,7 @@
                     </div>
                     <div class="service-content">
                         <div class="service-description">
-                            <p><strong>Note:</strong> Set pricing for premium golden embossing services. This includes cover design pricing and per-page pricing for both A4 paper and bond paper printing with golden finishing.</p>
+                            <p><strong>Note:</strong> Set pricing for premium golden embossing services. This includes cover design pricing and per-page pricing for bond paper printing with golden finishing.</p>
                         </div>
                         <div class="pricing-table">
                             <div class="table-header">
@@ -2063,20 +2055,6 @@
                                     <input type="checkbox" onchange="toggleServiceInput(this, 'golden_emboss_cover')">
                         </div>
                     </div>
-                            <div class="table-row">
-                                <div class="service-cell">Golden Embossing</div>
-                                <div class="size-cell">A4 Paper (per page)</div>
-                                <div class="color-cell">Color</div>
-                                <div class="price-cell">
-                                <div class="price-input-container">
-                                    <span class="rupee-icon">₹</span>
-                                        <input type="number" id="golden_emboss_a4_color" class="price-input" name="golden_emboss_a4_color" min="0" step="1" placeholder="2" disabled oninput="handleInputChange(this)">
-                                    </div>
-                                </div>
-                                <div class="enable-cell">
-                                    <input type="checkbox" onchange="toggleServiceInput(this, 'golden_emboss_a4_color')">
-                                </div>
-                            </div>
                             <div class="table-row">
                                 <div class="service-cell">Golden Embossing</div>
                                 <div class="size-cell">Bond Paper (per page)</div>
@@ -2755,7 +2733,7 @@
                 const data = await response.json();
                 
                 if (data.success && data.pricing_data) {
-                    console.log('📋 Loading existing pricing data:', data.pricing_data);
+                    console.log('📋 Loading existing pricing data (vendor-pricing view):', data.pricing_data);
                     
                     // Handle both old format (pricing_data) and new categorized format
                     let pricingToLoad = data.pricing_data;
@@ -2772,90 +2750,177 @@
                             });
                         });
                     }
-                    
-                    const legacyFieldMap = {
-                        'digital_print_a4_single_color': 'digital_print_a4_color',
-                        'digital_print_a3_single_color': 'digital_print_a3_color',
-                        'digital_print_12x18_single_color': 'digital_print_12x18_color',
-                        'digital_print_a2_single_color': 'digital_print_a2_color',
-                        'digital_print_a1_single_color': 'digital_print_a1_color',
-                        'digital_print_al_single_color': 'digital_print_a1_color',
-                        'digital_print_a0_single_color': 'digital_print_a0_color',
-                        'regular_print_a4_single_bw': 'regular_print_a4_bw',
-                        'regular_print_a4_single_color': 'regular_print_a4_color',
-                        'photo_print_a4_standard': 'photo_print_a4_color',
-                        'photo_print_a4_standard_bw': 'photo_print_a4_bw',
-                        'gloss_print_a4_colour': 'gloss_print_a4_color',
-                        'jumbo_print_a3_single_bw': 'jumbo_print_a3_bw',
-                        'jumbo_print_a3_single_color': 'jumbo_print_a3_color',
-                        'jumbo_print_a2_single_bw': 'jumbo_print_a2_bw',
-                        'jumbo_print_a2_single_color': 'jumbo_print_a2_color',
-                        'jumbo_print_a1_single_bw': 'jumbo_print_a1_bw',
-                        'jumbo_print_a1_single_color': 'jumbo_print_a1_color',
-                        'jumbo_print_a0_single_bw': 'jumbo_print_a0_bw',
-                        'jumbo_print_a0_single_color': 'jumbo_print_a0_color',
-                        'passport_photo_8_photos': 'passport_print_8',
-                        'passport_photo_16_photos': 'passport_print_16',
-                        'passport_photo_30_photos': 'passport_print_30',
-                        'golden_embossing_per_book': 'golden_emboss_cover',
-                        'golden_emboss_a4_per_page': 'golden_emboss_a4_color',
-                        'golden_emboss_color_per_page': 'golden_emboss_bond_color',
-                        'lamination_a4': 'lamination_a4_standard',
-                        'lamination_a4_high_gloss': 'lamination_a4_glossy',
-                        'lamination_a3': 'lamination_a3_standard',
-                        'lamination_a3_high_gloss': 'lamination_a3_glossy',
-                        'lamination_a2': 'lamination_a2_standard',
-                        'lamination_a2_high_gloss': 'lamination_a2_glossy',
-                        'lamination_a1': 'lamination_a1_standard',
-                        'lamination_a1_high_gloss': 'lamination_a1_glossy',
-                        'lamination_a0': 'lamination_a0_standard',
-                        'lamination_a0_high_gloss': 'lamination_a0_glossy',
-                        'tape_binding_a4_150': 'tape_binding_a4_200',
-                        'tape_binding_a3_150': 'tape_binding_a3_200',
-                        'spiral_binding_a4_150': 'spiral_binding_a4_200',
-                        'spiral_binding_a3_150': 'spiral_binding_a3_200'
-                    };
 
-                    const normalizedPricing = {};
+                    populatePricingForm(pricingToLoad, data.services_summary || 'Not available');
+                    return;
+                }
 
-                    Object.entries(pricingToLoad).forEach(([service, price]) => {
-                        const normalizedKey = legacyFieldMap[service] || service;
-                        normalizedPricing[normalizedKey] = price;
+                // If we reach here, vendor-pricing view didn't return pricing JSON – fall back to D1 API
+                console.log('ℹ️ No JSON pricing data from vendor-pricing view. Falling back to /get-vendor-pricing/ API.');
+                await loadPricingFromD1Fallback();
+            } catch (error) {
+                console.log('ℹ️ No existing pricing data found or error loading from vendor-pricing view:', error.message);
+                // Fallback: fetch directly from D1-backed API used in vendor dashboard
+                await loadPricingFromD1Fallback();
+            }
+        }
+
+        // Helper to map flat pricing object into form fields (inputs + checkboxes)
+        function populatePricingForm(pricingToLoad, servicesSummary) {
+            if (!pricingToLoad || typeof pricingToLoad !== 'object') {
+                console.log('ℹ️ populatePricingForm called without pricing data');
+                return;
+            }
+
+            const legacyFieldMap = {
+                'digital_print_a4_single_color': 'digital_print_a4_color',
+                'digital_print_a3_single_color': 'digital_print_a3_color',
+                'digital_print_12x18_single_color': 'digital_print_12x18_color',
+                'digital_print_a2_single_color': 'digital_print_a2_color',
+                'digital_print_a1_single_color': 'digital_print_a1_color',
+                'digital_print_al_single_color': 'digital_print_a1_color',
+                'digital_print_a0_single_color': 'digital_print_a0_color',
+                'regular_print_a4_single_bw': 'regular_print_a4_bw',
+                'regular_print_a4_single_color': 'regular_print_a4_color',
+                'photo_print_a4_standard': 'photo_print_a4_color',
+                'photo_print_a4_standard_bw': 'photo_print_a4_bw',
+                'gloss_print_a4_colour': 'gloss_print_a4_color',
+                'jumbo_print_a3_single_bw': 'jumbo_print_a3_bw',
+                'jumbo_print_a3_single_color': 'jumbo_print_a3_color',
+                'jumbo_print_a2_single_bw': 'jumbo_print_a2_bw',
+                'jumbo_print_a2_single_color': 'jumbo_print_a2_color',
+                'jumbo_print_a1_single_bw': 'jumbo_print_a1_bw',
+                'jumbo_print_a1_single_color': 'jumbo_print_a1_color',
+                'jumbo_print_a0_single_bw': 'jumbo_print_a0_bw',
+                'jumbo_print_a0_single_color': 'jumbo_print_a0_color',
+                'passport_photo_8_photos': 'passport_print_8',
+                'passport_photo_16_photos': 'passport_print_16',
+                'passport_photo_30_photos': 'passport_print_30',
+                'golden_embossing_per_book': 'golden_emboss_cover',
+                'golden_emboss_color_per_page': 'golden_emboss_bond_color',
+                'lamination_a4': 'lamination_a4_standard',
+                'lamination_a4_high_gloss': 'lamination_a4_glossy',
+                'lamination_a3': 'lamination_a3_standard',
+                'lamination_a3_high_gloss': 'lamination_a3_glossy',
+                'lamination_a2': 'lamination_a2_standard',
+                'lamination_a2_high_gloss': 'lamination_a2_glossy',
+                'lamination_a1': 'lamination_a1_standard',
+                'lamination_a1_high_gloss': 'lamination_a1_glossy',
+                'lamination_a0': 'lamination_a0_standard',
+                'lamination_a0_high_gloss': 'lamination_a0_glossy',
+                'tape_binding_a4_150': 'tape_binding_a4_200',
+                'tape_binding_a3_150': 'tape_binding_a3_200',
+                'spiral_binding_a4_150': 'spiral_binding_a4_200',
+                'spiral_binding_a3_150': 'spiral_binding_a3_200'
+            };
+
+            const normalizedPricing = {};
+
+            Object.entries(pricingToLoad).forEach(([service, price]) => {
+                const normalizedKey = legacyFieldMap[service] || service;
+                normalizedPricing[normalizedKey] = price;
+            });
+
+            // Populate form fields with existing data
+            Object.entries(normalizedPricing).forEach(([service, price]) => {
+                const input = document.getElementById(service);
+                if (!input) return;
+
+                // Find checkbox - it's in the same table row, in the enable-cell div
+                const tableRow = input.closest('.table-row');
+                const checkbox = tableRow ? tableRow.querySelector('.enable-cell input[type="checkbox"]') : null;
+                if (!checkbox) return;
+
+                const numericPrice = Number(price);
+                const hasPrice =
+                    price !== 'not available' &&
+                    price !== null &&
+                    price !== undefined &&
+                    !Number.isNaN(numericPrice) &&
+                    numericPrice >= 0;
+
+                if (hasPrice && numericPrice > 0) {
+                    // Service is available - enable checkbox and input with value
+                    checkbox.checked = true;
+                    input.disabled = false;
+                    input.value = numericPrice;
+                    input.required = true;
+                    input.placeholder = input.getAttribute('data-placeholder') || input.placeholder;
+                    input.style.background = 'white';
+                    input.style.color = 'var(--text-primary)';
+                } else {
+                    // Service is not priced or explicitly NA - still show as enabled with NA placeholder
+                    checkbox.checked = false;
+                    input.disabled = true;
+                    input.value = '';
+                    input.required = false;
+                    input.placeholder = 'NA';
+                    input.style.background = 'var(--bg-tertiary)';
+                    input.style.color = 'var(--text-muted)';
+                }
+            });
+
+            console.log('✅ Pricing data populated into form from map');
+            if (servicesSummary) {
+                console.log('📊 Services status:', servicesSummary);
+            }
+        }
+
+        // Fallback loader: pull pricing from the same API used in vendor dashboard (/get-vendor-pricing/)
+        async function loadPricingFromD1Fallback() {
+            try {
+                if (!vendorEmail) {
+                    console.log('ℹ️ Skipping D1 pricing fallback because vendorEmail is missing');
+                    return;
+                }
+
+                const response = await fetch('/get-vendor-pricing/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ vendor_email: vendorEmail }),
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    console.log('ℹ️ /get-vendor-pricing/ returned non-OK status:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                if (!data.success || !data.pricing) {
+                    console.log('ℹ️ /get-vendor-pricing/ did not return pricing object:', data);
+                    return;
+                }
+
+                console.log('📋 Loading existing pricing data from D1 /get-vendor-pricing/ API');
+
+                const flatPricing = {};
+
+                // 1) Pull from categorized_pricing, if present
+                if (data.categorized_pricing && typeof data.categorized_pricing === 'object') {
+                    Object.values(data.categorized_pricing).forEach(services => {
+                        if (!services) return;
+                        Object.entries(services).forEach(([key, value]) => {
+                            flatPricing[key] = value;
+                        });
                     });
+                }
 
-                    // Populate form fields with existing data
-                    Object.entries(normalizedPricing).forEach(([service, price]) => {
-                        const input = document.getElementById(service);
-                        const checkbox = input?.previousElementSibling?.querySelector('input[type="checkbox"]');
-                        
-                        if (input && checkbox) {
-                            if (price !== "not available" && price !== null && price !== undefined && price > 0) {
-                                // Service is available
-                                checkbox.checked = true;
-                                input.disabled = false;
-                                input.value = price;
-                                input.required = true;
-                                input.placeholder = input.placeholder; // Keep original placeholder
-                                input.style.background = 'white';
-                                input.style.color = 'var(--text-primary)';
-                            } else {
-                                // Service is not available
-                                checkbox.checked = false;
-                                input.disabled = true;
-                                input.value = '';
-                                input.required = false;
-                                input.placeholder = 'NA';
-                                input.style.background = 'var(--bg-tertiary)';
-                                input.style.color = 'var(--text-muted)';
-                            }
+                // 2) Merge in flat pricing keys (without overwriting categorized ones)
+                if (data.pricing && typeof data.pricing === 'object') {
+                    Object.entries(data.pricing).forEach(([key, value]) => {
+                        if (!(key in flatPricing)) {
+                            flatPricing[key] = value;
                         }
                     });
-                    
-                    console.log('✅ Existing pricing data loaded successfully');
-                    console.log('📊 Services status:', data.services_summary || 'Not available');
                 }
+
+                populatePricingForm(flatPricing, data.services_summary || 'Not available');
             } catch (error) {
-                console.log('ℹ️ No existing pricing data found or error loading:', error.message);
+                console.log('ℹ️ Error while loading pricing from D1 /get-vendor-pricing/ API:', error.message);
             }
         }
 
@@ -2874,9 +2939,11 @@
             return cookieValue;
         }
 
-                 // Function to handle enabling/disabling price inputs
+         // Function to handle enabling/disabling price inputs
          function toggleServiceInput(checkbox, inputId) {
              const input = document.getElementById(inputId);
+             if (!input) return;
+
              if (checkbox.checked) {
                  input.disabled = false;
                  input.required = true;
@@ -2884,6 +2951,7 @@
                  input.style.background = 'white';
                  input.style.color = 'var(--text-primary)';
              } else {
+                 // Only disable/reset when the vendor explicitly turns the service off.
                  input.disabled = true;
                  input.value = '';
                  input.required = false;
@@ -2896,18 +2964,28 @@
          // Function to auto-tick checkbox when user enters a value
          function autoTick(input) {
              const checkbox = input.parentElement.parentElement.parentElement.querySelector('input[type="checkbox"]');
-             if (input.value && input.value > 0) {
+             if (!checkbox) return;
+
+             const value = (input.value || '').trim();
+
+             // When a positive value is entered, automatically enable the service.
+             if (value !== '' && Number(value) > 0) {
                  checkbox.checked = true;
                  input.disabled = false;
                  input.required = true;
                  input.style.background = 'white';
                  input.style.color = 'var(--text-primary)';
-             } else if (input.value === '' || input.value == 0) {
-                 checkbox.checked = false;
-                 input.disabled = true;
-                 input.required = false;
-                 input.style.background = 'var(--bg-tertiary)';
-                 input.style.color = 'var(--text-muted)';
+                 return;
+             }
+
+             // When the value is cleared while the service is enabled, keep the checkbox ON
+             // so the vendor can type a new price without the enable switch turning off.
+             // Validation on submit will ensure enabled services cannot be left empty.
+             if (checkbox.checked) {
+                 input.disabled = false;
+                 input.required = true;
+                 input.style.background = 'white';
+                 input.style.color = 'var(--text-primary)';
              }
          }
 
