@@ -4980,7 +4980,7 @@
         let filteredJobs = { document: [], photo: [], passport: [], jumbo: [], golden: [], digital: [], completed: [] };
         let sidebarCollapsed = false;
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
-        let vendorAvailability = 'online'; // Default to online
+        let vendorAvailability = 'offline'; // Start offline on login for immediate safe state
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
         const JOB_REFRESH_INTERVAL_MS = 60 * 1000; // Refresh once per minute as requested
 
@@ -5442,6 +5442,12 @@
             }
 
             initTheme();
+            // Keep print service OFF immediately after vendor login, then sync backend.
+            vendorAvailability = 'offline';
+            localStorage.setItem('vendorAvailability', 'offline');
+            updateAvailabilityUI();
+            scheduleAvailabilitySync('offline');
+
             // Load vendor availability FIRST so renderJobs uses correct state, then load jobs
             const initAvailabilityAndJobs = async () => {
                 try {
@@ -8900,46 +8906,10 @@
 
         // Availability Toggle Functions
         async function loadVendorAvailability() {
-            try {
-                const response = await fetch('/get-vendor-service-availability/', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.data) {
-                        vendorAvailability = data.data.vendor_shop_avaliability || 'online';
-
-                        // If availability status is not in the data, save it automatically
-                        if (!data.data.vendor_shop_avaliability) {
-                            console.log('🔍 DEBUG - Availability status not found in data, saving automatically...');
-                            await saveAvailabilityStatus(vendorAvailability);
-                        }
-                    } else {
-                        // Fallback to localStorage
-                        vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
-                        // Save the availability status to ensure it's stored
-                        await saveAvailabilityStatus(vendorAvailability);
-                    }
-                } else {
-                    // Fallback to localStorage
-                    vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
-                    // Save the availability status to ensure it's stored
-                    await saveAvailabilityStatus(vendorAvailability);
-                }
-            } catch (error) {
-                console.error('Error loading vendor availability:', error);
-                // Fallback to localStorage
-                vendorAvailability = localStorage.getItem('vendorAvailability') || 'online';
-                // Save the availability status to ensure it's stored
-                await saveAvailabilityStatus(vendorAvailability);
-            }
-
-            // Always update UI after loading availability
+            // Enforce OFF state on each login load, and sync to backend.
+            vendorAvailability = 'offline';
+            localStorage.setItem('vendorAvailability', 'offline');
+            scheduleAvailabilitySync('offline');
             updateAvailabilityUI();
         }
 
