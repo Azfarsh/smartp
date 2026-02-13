@@ -8951,7 +8951,7 @@
       <div class="section-header">
         <h2 class="section-title">
           <span class="material-icons">assignment</span>
-          Print Requests (Pending Jobs)
+          Print Requests 
         </h2>
       </div>
 
@@ -14098,61 +14098,41 @@
               </div>
             `;
           } else if (f.type === 'select') {
-            const hasSingleOption = Array.isArray(f.options) && f.options.length === 1;
-            if (hasSingleOption) {
-              const soleOption = f.options[0];
-              const optionValue = typeof soleOption === 'object' ? soleOption.value : soleOption;
-              const optionLabel = typeof soleOption === 'object' ? soleOption.label : soleOption;
-              const optionMeta = typeof soleOption === 'object' && soleOption.price ? `<span class="single-option-meta">${soleOption.price}</span>` : '';
-              fieldsHtml += `
-                <div class="modal-field-group single-option-field">
-                  <div class="field-header">
-                    <div class="field-icon">
-                      <i class="${fieldIcon}"></i>
-                    </div>
-                    <div class="field-label">
-                      <span class="field-title">${fieldLabel}</span>
-                      <span class="field-required">*</span>
-                    </div>
-                  </div>
-                  <div class="field-description">${fieldDescription}</div>
-                  <div class="single-option-display">
-                    <span class="single-option-text">${optionLabel}</span>
-                    ${optionMeta}
-                  </div>
-                  <input type="hidden" id="${service}-field-${idx}" value="${optionValue}" />
-                </div>
-              `;
-            } else {
-              const optionsHtml = f.options.map(opt => {
-                if (typeof opt === 'object') {
-                  return `<option value="${opt.value}">${opt.label}</option>`;
-                } else {
-                  return `<option value="${opt}">${opt}</option>`;
-                }
-              }).join('');
+            const safeOptions = Array.isArray(f.options) ? f.options : [];
+            const optionsHtml = safeOptions.map(opt => {
+              if (typeof opt === 'object') {
+                return `<option value="${opt.value}">${opt.label}</option>`;
+              }
+              return `<option value="${opt}">${opt}</option>`;
+            }).join('');
+            const placeholderText = fieldLabel.toLowerCase().includes('color')
+              ? 'Choose color for print'
+              : `Choose ${fieldLabel.toLowerCase()}`;
+            const selectOptionsHtml = f.required
+              ? `<option value="" selected disabled>${placeholderText}</option>${optionsHtml}`
+              : optionsHtml;
+            const singleOptionClass = safeOptions.length === 1 ? ' single-option-field' : '';
 
-              fieldsHtml += `
-                <div class="modal-field-group">
-                  <div class="field-header">
-                    <div class="field-icon">
-                      <i class="${fieldIcon}"></i>
-                    </div>
-                    <div class="field-label">
-                      <span class="field-title">${fieldLabel}</span>
-                      <span class="field-required">*</span>
-                    </div>
+            fieldsHtml += `
+              <div class="modal-field-group${singleOptionClass}" data-field-title="${fieldLabel}" data-field-type="select">
+                <div class="field-header">
+                  <div class="field-icon">
+                    <i class="${fieldIcon}"></i>
                   </div>
-                  <div class="field-description">${fieldDescription}</div>
-                  <div class="select-wrapper">
-                    <select id="${service}-field-${idx}" ${f.required ? 'required' : ''}>
-                      ${optionsHtml}
-                </select>
-                    <i class="fas fa-chevron-down select-arrow"></i>
+                  <div class="field-label">
+                    <span class="field-title">${fieldLabel}</span>
+                    <span class="field-required">*</span>
                   </div>
                 </div>
-              `;
-            }
+                <div class="field-description">${fieldDescription}</div>
+                <div class="select-wrapper">
+                  <select id="${service}-field-${idx}" ${f.required ? 'required' : ''}>
+                    ${selectOptionsHtml}
+              </select>
+                  <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+              </div>
+            `;
           } else if (f.type === 'number') {
             fieldsHtml += `
               <div class="modal-field-group">
@@ -14313,7 +14293,7 @@
       function attachServiceModalEvents(service, modal) {
         const tmpl = serviceModalTemplates[service];
         let fileObj = null;
-        let selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : 'firozshop';
+        let selectedShop = '';
         // Reorder: place shop selection immediately after the preview block for consistency with document print modal
         try {
           const previewEl = modal.querySelector(`#${service}-file-preview`);
@@ -15148,12 +15128,6 @@
               try {
                 if (countrySelect && countrySelect.value) {
                   countrySelect.dispatchEvent(new Event('change'));
-                } else {
-                  // Set default value if none exists
-                  if (countrySelect.options && countrySelect.options.length > 0) {
-                    countrySelect.value = countrySelect.options[0].value;
-                    countrySelect.dispatchEvent(new Event('change'));
-                  }
                 }
               } catch (error) {
                 console.error('Error triggering initial country selection:', error);
@@ -15228,11 +15202,8 @@
               }
             }
 
-            // Validate shop selection
-            const shopSelectValidation = modal.querySelector(`#${service}-shop-select`);
-            if (!shopSelectValidation || !shopSelectValidation.value || shopSelectValidation.value === '') {
-              alert('Please select a print shop.');
-              shopSelectValidation?.focus();
+            // Validate required selections before allowing order summary
+            if (!validateRequiredServiceFields(service, modal)) {
               return;
             }
 
@@ -15251,7 +15222,7 @@
                   } else if (service === 'passport') {
                     await calculatePassportPhotoPrice(service);
                   } else if (service === 'goldenemboss') {
-                    await calculateGoldenEmbossingPrice(service);
+                    await calculateGoldenEmbossPrice(service);
                   } else if (service === 'photo') {
                     await calculatePhotoPrintPrice(service);
                   }
@@ -15277,7 +15248,10 @@
             }
 
             // Populate and open order summary modal instead of directly submitting
-            populateOrderSummaryModalForService(service, modal);
+            const hasOrderSummaryData = populateOrderSummaryModalForService(service, modal);
+            if (!hasOrderSummaryData) {
+              return;
+            }
 
             // Update order summary modal title and icon based on service
             const orderSummaryModal = document.getElementById('orderSummaryModal');
@@ -20625,20 +20599,20 @@
               }))
             );
             console.log('🏪 Available shops:', availableShops);
-            if (availableShops.length > 0 && !selectedVendor) {
-              selectedVendor = availableShops[0].shop_folder;
+            if (!selectedVendor) {
+              selectedVendor = '';
             }
             renderVendorOptions();
           } else {
             console.error('Error loading shops:', data.error);
             availableShops = [];
-            selectedVendor = 'firozshop';
+            selectedVendor = '';
             renderVendorOptions();
           }
         } catch (error) {
           console.error('Error fetching shops:', error);
           availableShops = [];
-          selectedVendor = 'firozshop';
+          selectedVendor = '';
           renderVendorOptions();
         }
         return availableShops;
@@ -22469,6 +22443,55 @@
 
       // Reflect points usage in any order summary sections tied to this modal
       updateOrderSummaryPoints();
+    }
+
+    function validateRequiredServiceFields(service, modal) {
+      if (!modal) return false;
+
+      const shopSelect = modal.querySelector(`#${service}-shop-select`);
+      if (!shopSelect || !shopSelect.value) {
+        alert('Please choose shop for print.');
+        shopSelect?.focus();
+        return false;
+      }
+
+      const form = modal.querySelector(`#${service}-modal-form`);
+      if (!form) return true;
+
+      const requiredFields = form.querySelectorAll('select[required], input[required], textarea[required]');
+      for (const field of requiredFields) {
+        if (field.type === 'file' || field.type === 'hidden') continue;
+        if (field.closest('[style*="display: none"]')) continue;
+
+        const rawValue = (field.value || '').toString().trim();
+        const fieldTitle = field.closest('.modal-field-group')?.getAttribute('data-field-title')
+          || field.closest('.modal-field-group')?.querySelector('.field-title')?.textContent
+          || 'this field';
+
+        if (field.tagName === 'SELECT' && !rawValue) {
+          if (fieldTitle.toLowerCase().includes('color')) {
+            alert('Please choose color for print.');
+          } else {
+            alert(`Please choose ${fieldTitle.toLowerCase()} for print.`);
+          }
+          field.focus();
+          return false;
+        }
+
+        if (field.type === 'number' && (!rawValue || Number(rawValue) <= 0)) {
+          alert(`Please enter valid ${fieldTitle.toLowerCase()}.`);
+          field.focus();
+          return false;
+        }
+
+        if (field.tagName !== 'SELECT' && field.type !== 'number' && !rawValue) {
+          alert(`Please fill ${fieldTitle.toLowerCase()}.`);
+          field.focus();
+          return false;
+        }
+      }
+
+      return true;
     }
 
     // Check if all required inputs are provided for a service modal
@@ -26925,9 +26948,6 @@
           shopValueToStore = selectedVendor;
         } else if (selectedVendorData && selectedVendorData.shop_folder) {
           shopValueToStore = selectedVendorData.shop_folder;
-        } else if (availableShops && availableShops.length > 0) {
-          shopValueToStore = availableShops[0].shop_folder;
-          console.log('⚠️ No shop selected in print modal, using first available shop:', shopValueToStore);
         }
         orderSummaryModal.dataset.selectedShop = shopValueToStore;
         console.log('📊 Stored shop value in order summary modal (print):', shopValueToStore);
@@ -27233,10 +27253,9 @@
       const shopSelect = modal.querySelector(`#${service}-shop-select`);
       let selectedShopValue = shopSelect ? shopSelect.value : '';
 
-      // Fallback: if no shop selected, use first available shop
-      if (!selectedShopValue && availableShops && availableShops.length > 0) {
-        selectedShopValue = availableShops[0].shop_folder;
-        console.log('⚠️ No shop selected, using first available shop:', selectedShopValue);
+      if (!selectedShopValue) {
+        alert('Please choose shop for print.');
+        return false;
       }
 
       const selectedShopData = availableShops.find(shop => shop.shop_folder === selectedShopValue);
@@ -27717,6 +27736,7 @@
           selectedShop: orderSummaryModal.dataset.selectedShop
         });
       }
+      return true;
     }
 
     // Function to open order summary modal
@@ -27846,13 +27866,12 @@
             throw new Error('No files provided. Please upload at least one file.');
           }
 
-          // Use stored shop value from order summary modal, fallback to global selectedVendor, then first shop
+          // Use stored shop value from order summary modal, fallback to global selectedVendor
           let shopValueToUse = orderSummarySelectedShop || (typeof selectedVendor !== 'undefined' ? selectedVendor : '');
 
-          // If still no shop value, use first available shop
-          if (!shopValueToUse && availableShops.length > 0) {
-            shopValueToUse = availableShops[0].shop_folder;
-            console.log('⚠️ No shop selected, using first available shop:', shopValueToUse);
+          if (!shopValueToUse) {
+            alert('Please choose shop for print.');
+            throw new Error('No shop selected');
           }
 
           console.log('🔍 Print Modal - Shop Selection:', {
@@ -28213,10 +28232,9 @@
             console.log('✅ Using shop value from modal:', selectedShopValue);
           }
 
-          // If still no shop value, use first available shop
-          if (!selectedShopValue && availableShops.length > 0) {
-            selectedShopValue = availableShops[0].shop_folder;
-            console.log('⚠️ No shop selected, using first available shop:', selectedShopValue);
+          if (!selectedShopValue) {
+            alert('Please choose shop for print.');
+            throw new Error('No shop selected');
           }
 
           console.log('🔍 Service Modal - Shop Selection:', {
@@ -29464,10 +29482,9 @@
           }
         }
 
-        // Update selected vendor to first available location-based shop
-        if (locationBasedShops.length > 0) {
-          selectedVendor = locationBasedShops[0].shop_folder;
-          console.log('🏆 Selected nearest shop:', selectedVendor);
+        // Keep shop unselected until user manually chooses one
+        if (!selectedVendor) {
+          selectedVendor = '';
         }
 
         // Update UI with location-based shops
@@ -30426,6 +30443,17 @@
       background: #fff;
     }
 
+    #pricingSummaryModal .invoice-header {
+      position: relative;
+      justify-content: flex-end;
+    }
+
+    #pricingSummaryModal .invoice-close-btn {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.6rem;
+    }
+
     /* Desktop: align legacy invoice modal with photoprint-style professional bill */
     @media (min-width: 769px) {
       #pricingSummaryModal {
@@ -30454,7 +30482,9 @@
       }
 
       #pricingSummaryModal .invoice-close-btn {
-        position: static;
+        position: absolute;
+        top: 0.55rem;
+        right: 0.6rem;
         width: 30px;
         height: 30px;
         border-radius: 8px;
@@ -30520,6 +30550,29 @@
         display: none !important;
       }
 
+      #orderSummaryModal .shop-name-row,
+      #orderSummaryModal .shop-address-row,
+      #pricingSummaryModal .shop-name-row {
+        display: flex !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        gap: 0.5rem !important;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-label,
+      #orderSummaryModal .shop-address-row .shop-label,
+      #pricingSummaryModal .shop-name-row .shop-label {
+        min-width: 100px !important;
+        text-align: left !important;
+      }
+
+      #orderSummaryModal .shop-name-row .shop-value,
+      #orderSummaryModal .shop-address-row .shop-value,
+      #pricingSummaryModal .shop-name-row .shop-value {
+        text-align: left !important;
+        line-height: 1.45 !important;
+      }
+
       #pricingSummaryModal .invoice-footer {
         padding: 1.25rem 1.75rem 1.5rem;
         background: #ffffff;
@@ -30528,6 +30581,35 @@
         justify-content: flex-end;
         gap: 0.75rem;
       }
+    }
+
+    /* Keep all service modal inputs uniformly aligned */
+    .service-modal .modal-field-group,
+    .modal .modal-field-group {
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    .service-modal .select-wrapper,
+    .service-modal .text-input-wrapper,
+    .service-modal .number-input-wrapper,
+    .modal .select-wrapper,
+    .modal .text-input-wrapper,
+    .modal .number-input-wrapper {
+      width: 100%;
+    }
+
+    .service-modal .select-wrapper select,
+    .modal .select-wrapper select {
+      padding-right: 2.35rem !important;
+    }
+
+    .service-modal .select-wrapper .select-arrow,
+    .modal .select-wrapper .select-arrow {
+      right: 0.75rem;
+      display: block;
+      pointer-events: none;
+      z-index: 2;
     }
 
     .pricing-header {
