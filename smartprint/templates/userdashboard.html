@@ -4711,9 +4711,9 @@
         gap: 0.75rem;
         margin-top: 1rem;
         padding: 1rem 1.25rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        background:#ffffff;
         border-radius: 10px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #ffffff;
         font-size: 0.9rem;
         flex-wrap: wrap;
       }
@@ -7111,7 +7111,7 @@
     .shop-name-row .shop-label {
       display: inline-block;
       font-weight: 600;
-      color: #4b5563;
+      color: #38414c;
       font-size: 0.9rem;
       margin: 0;
       padding: 0;
@@ -11012,7 +11012,7 @@
         }
 
         .invoice-item {
-          padding: 14px 20px;
+          padding: 12px 20px;
           font-size: 0.875rem;
         }
 
@@ -18252,6 +18252,9 @@
                     Duration: <span id="orderSummaryETA">-</span></p>
                 </div>
               </div>
+              <button class="bill-close-btn" type="button" onclick="closeOrderSummaryModal()" aria-label="Close invoice">
+                <i class="fas fa-times"></i>
+              </button>
               <div class="bill-date">
                 <p>Date: <span id="orderSummaryDate">-</span></p>
                 <p>Time: <span id="orderSummaryTime">-</span></p>
@@ -18261,7 +18264,7 @@
               <div class="service-info">
                 <h4>Print Details</h4>
                 <div class="shop-name-row">
-                  <span class="shop-label">Shop:</span>
+                  <span class="shop-label">Shop Name:</span>
                   <span class="shop-value" id="orderSummaryShopName">-</span>
                 </div>
                 <div class="shop-address-row" id="orderSummaryShopAddressRow" style="display: none;">
@@ -23304,6 +23307,9 @@
                 <p class="bill-subtitle">Professional Printing Services</p>
               </div>
             </div>
+            <button class="bill-close-btn" type="button" onclick="hidePricingSummary()" aria-label="Close invoice">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
           
           <div class="bill-content">
@@ -30610,6 +30616,156 @@
       display: block;
       pointer-events: none;
       z-index: 2;
+    }
+
+    /* Final alignment overrides for user dashboard service/invoice modals */
+    .service-modal .modal-field-group,
+    .modal .modal-field-group {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+    }
+
+    .service-modal .select-wrapper,
+    .service-modal .text-input-wrapper,
+    .service-modal .number-input-wrapper,
+    .modal .select-wrapper,
+    .modal .text-input-wrapper,
+    .modal .number-input-wrapper {
+      position: relative;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0;
+      box-sizing: border-box;
+      margin: 0;
+    }
+
+    .service-modal .select-wrapper select,
+    .modal .select-wrapper select,
+    .service-modal .text-input-wrapper input,
+    .modal .text-input-wrapper input,
+    .service-modal .number-input-wrapper input,
+    .modal .number-input-wrapper input,
+    .service-modal .shop-trigger,
+    .modal .shop-trigger {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-height: 46px;
+      box-sizing: border-box;
+      margin: 0;
+    }
+
+    .service-modal .select-wrapper select,
+    .modal .select-wrapper select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 2.55rem !important;
+      background-position: right 0.85rem center !important;
+    }
+
+    .service-modal .select-wrapper .select-arrow,
+    .modal .select-wrapper .select-arrow {
+      display: flex !important;
+      position: absolute;
+      top: 50%;
+      right: 0.85rem;
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    #orderSummaryModal .shop-name-row,
+    #orderSummaryModal .shop-address-row,
+    #pricingSummaryModal .shop-name-row,
+    #pricingSummaryModal .shop-address-row {
+      display: grid !important;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: start !important;
+      column-gap: 0.6rem !important;
+      row-gap: 0;
+      width: 100%;
+    }
+
+    #orderSummaryModal .shop-name-row .shop-label,
+    #orderSummaryModal .shop-address-row .shop-label,
+    #pricingSummaryModal .shop-name-row .shop-label,
+    #pricingSummaryModal .shop-address-row .shop-label {
+      min-width: 0 !important;
+      margin: 0 !important;
+      text-align: left !important;
+      font-size: 0.9rem !important;
+      font-weight: 500 !important;
+    }
+
+    #orderSummaryModal .shop-name-row .shop-value,
+    #orderSummaryModal .shop-address-row .shop-value,
+    #pricingSummaryModal .shop-name-row .shop-value,
+    #pricingSummaryModal .shop-address-row .shop-value {
+      min-width: 0;
+      margin: 0 !important;
+      text-align: left !important;
+      line-height: 1.45 !important;
+      font-size: 0.9rem !important;
+      font-weight: 500 !important;
+      word-break: break-word;
+    }
+
+    #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-label,
+    #orderSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value,
+    #pricingSummaryModal .invoice-item:not(.invoice-total) .invoice-item-label,
+    #pricingSummaryModal .invoice-item:not(.invoice-total) .invoice-item-value {
+      font-size: 0.9rem !important;
+      font-weight: 500 !important;
+    }
+
+    #orderSummaryModal .invoice-item-label b,
+    #pricingSummaryModal .invoice-item-label b {
+      font-size: inherit;
+      font-weight: 500;
+    }
+
+    .bill-close-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 5;
+    }
+
+    .bill-close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.04);
+    }
+
+    #pricingSummaryModal .invoice-header {
+      position: absolute !important;
+      inset: 0 0 auto 0;
+      height: 0 !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    #pricingSummaryModal .invoice-close-btn {
+      pointer-events: auto;
+      position: absolute !important;
+      top: 0.75rem !important;
+      right: 0.75rem !important;
+      z-index: 21;
     }
 
     .pricing-header {
