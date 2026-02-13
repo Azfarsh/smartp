@@ -2149,6 +2149,24 @@
                 .catch(() => { availableShops = []; });
         }
 
+        function isServiceAvailable(val) {
+            return val === true || val === 1 || val === '1' || val === 'true';
+        }
+
+        function getPhotoServiceAvailableShops(shops) {
+            if (!Array.isArray(shops)) return [];
+            return shops.filter(shop => {
+                if (shop.service_availability && typeof shop.service_availability === 'object') {
+                    const serviceData = shop.service_availability.service_data || shop.service_availability;
+                    return isServiceAvailable(serviceData.photo_print);
+                }
+                if (shop.photo_print !== undefined) {
+                    return isServiceAvailable(shop.photo_print);
+                }
+                return false;
+            });
+        }
+
         // Function to open shop selection modal for photo print
         function openPhotoShopSelectionModal() {
             let modal = document.getElementById('photo-shop-selection-modal');
@@ -2262,10 +2280,20 @@
                 return;
             }
 
-            // Filter shops to only show those within 3km radius (like jumbo print modal)
-            let shopsToRender = availableShops;
+            // Filter by photo service availability first (same behavior as document modal service filtering).
+            let shopsToRender = getPhotoServiceAvailableShops(availableShops);
             if (typeof locationBasedShops !== 'undefined' && locationBasedShops.length > 0) {
-                shopsToRender = locationBasedShops;
+                shopsToRender = getPhotoServiceAvailableShops(locationBasedShops);
+            }
+
+            if (!shopsToRender || shopsToRender.length === 0) {
+                shopList.innerHTML = `
+          <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <p>No shops available for Photo Print service.</p>
+          </div>
+        `;
+                return;
             }
 
             // Filter to only show shops within 3km
@@ -2585,7 +2613,7 @@
             const totalHeight = pageH - (2 * margin);
             const slotW = (totalWidth - ((cols - 1) * spacing)) / cols;
             const slotH = (totalHeight - ((rows - 1) * spacing)) / rows;
-            const innerPad = Math.max(2, Math.round(Math.min(slotW, slotH) * 0.025));
+            const innerPad = 0;
             return { cols, rows, margin, spacing, slotW, slotH, innerPad };
         }
 
@@ -2614,27 +2642,29 @@
                 ctx.save();
 
                 if (i < uploadedImages.length && uploadedImages[i]) {
-                    // Draw filled slot with actual image (no border)
+                    // Draw filled slot with actual image
+                    ctx.strokeStyle = '#e5e7eb';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, y, geometry.slotW, geometry.slotH);
+
                     const img = uploadedImages[i];
                     const image = new window.Image();
                     image.src = img.data;
                     imagesToLoad++;
 
                     image.onload = function () {
-                        // Fit image in slot, keep aspect ratio
+                        // Fill each slot fully like Windows multi-photo layout.
                         const aspect = image.width / image.height;
                         const slotAspect = geometry.slotW / geometry.slotH;
-                        let drawW, drawH, dx, dy;
+                        let srcX = 0, srcY = 0, srcW = image.width, srcH = image.height;
                         if (aspect > slotAspect) {
-                            drawW = geometry.slotW - (2 * geometry.innerPad);
-                            drawH = drawW / aspect;
+                            srcW = image.height * slotAspect;
+                            srcX = (image.width - srcW) / 2;
                         } else {
-                            drawH = geometry.slotH - (2 * geometry.innerPad);
-                            drawW = drawH * aspect;
+                            srcH = image.width / slotAspect;
+                            srcY = (image.height - srcH) / 2;
                         }
-                        dx = x + ((geometry.slotW - drawW) / 2);
-                        dy = y + ((geometry.slotH - drawH) / 2);
-                        ctx.drawImage(image, dx, dy, drawW, drawH);
+                        ctx.drawImage(image, srcX, srcY, srcW, srcH, x, y, geometry.slotW, geometry.slotH);
                         imagesLoaded++;
                     };
 
@@ -2642,7 +2672,17 @@
                         imagesLoaded++;
                     };
                 } else {
-                    // Keep empty slots clean (no border/text) to match requested output.
+                    // Draw empty slot with light grey border
+                    ctx.strokeStyle = '#d1d5db';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([]);
+                    ctx.strokeRect(x, y, geometry.slotW, geometry.slotH);
+
+                    // Add subtle placeholder text
+                    ctx.fillStyle = '#d1d5db';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Empty', x + geometry.slotW / 2, y + geometry.slotH / 2);
                 }
 
                 ctx.restore();
@@ -2678,21 +2718,31 @@
                                 // Calculate dimensions to fit image in slot while maintaining aspect ratio
                                 const imgAspect = image.width / image.height;
                                 const slotAspect = geometry.slotW / geometry.slotH;
-                                let drawW, drawH, dx, dy;
+                                let srcX = 0, srcY = 0, srcW = image.width, srcH = image.height;
 
                                 if (imgAspect > slotAspect) {
-                                    drawW = geometry.slotW - (2 * geometry.innerPad);
-                                    drawH = drawW / imgAspect;
+                                    srcW = image.height * slotAspect;
+                                    srcX = (image.width - srcW) / 2;
                                 } else {
-                                    drawH = geometry.slotH - (2 * geometry.innerPad);
-                                    drawW = drawH * imgAspect;
+                                    srcH = image.width / slotAspect;
+                                    srcY = (image.height - srcH) / 2;
                                 }
 
-                                dx = x + ((geometry.slotW - drawW) / 2);
-                                dy = y + ((geometry.slotH - drawH) / 2);
+                                const targetW = Math.max(1, Math.round(geometry.slotW));
+                                const targetH = Math.max(1, Math.round(geometry.slotH));
+                                const cropCanvas = document.createElement('canvas');
+                                cropCanvas.width = targetW;
+                                cropCanvas.height = targetH;
+                                const cropCtx = cropCanvas.getContext('2d');
+                                cropCtx.drawImage(image, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
 
                                 // Add image to PDF
-                                pdf.addImage(image, 'JPEG', dx, dy, drawW, drawH);
+                                pdf.addImage(cropCanvas, 'JPEG', x, y, geometry.slotW, geometry.slotH);
+
+                                // Use a very light grey border around each slot.
+                                pdf.setDrawColor(229, 231, 235);
+                                pdf.setLineWidth(0.5);
+                                pdf.rect(x, y, geometry.slotW, geometry.slotH);
 
                                 resolve();
                             } catch (error) {
@@ -2707,7 +2757,16 @@
                         image.src = img.data;
                     });
                 } else {
-                    // Keep empty slots clean in generated PDF (no border/text).
+                    // Draw empty slot with light grey border
+                    pdf.setDrawColor(229, 231, 235);
+                    pdf.setLineWidth(1);
+                    pdf.setLineDashPattern([], 0);
+                    pdf.rect(x, y, geometry.slotW, geometry.slotH);
+
+                    // Add subtle placeholder text
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(209, 213, 219);
+                    pdf.text('Empty Slot', x + geometry.slotW / 2, y + geometry.slotH / 2, { align: 'center' });
                 }
             }
 
@@ -2720,7 +2779,8 @@
             uploadedImages = [];
             currentLayout = 1;
             currentOrientation = 'portrait';
-            selectedShop = availableShops.length > 0 ? availableShops[0].shop_folder : '';
+            const photoServiceShops = getPhotoServiceAvailableShops(availableShops);
+            selectedShop = photoServiceShops.length > 0 ? photoServiceShops[0].shop_folder : '';
             document.getElementById('color').value = 'Color';
             document.getElementById('copies').value = 1;
             document.getElementById('pages').value = 1;
