@@ -4828,7 +4828,12 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import hmac
 import hashlib
-import razorpay
+try:
+    import razorpay
+    RAZORPAY_IMPORT_ERROR = None
+except Exception as razorpay_import_err:
+    razorpay = None
+    RAZORPAY_IMPORT_ERROR = str(razorpay_import_err)
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 
@@ -5102,6 +5107,12 @@ def create_razorpay_order(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     try:
+        if razorpay is None:
+            return JsonResponse({
+                'success': False,
+                'error': f'Razorpay SDK unavailable: {RAZORPAY_IMPORT_ERROR or "unknown import error"}. Install/upgrade setuptools and razorpay.'
+            }, status=500)
+
         body = json.loads(request.body.decode('utf-8')) if request.body else {}
         amount_paise = int(body.get('amount_paise'))  # amount in paise
         receipt = body.get('receipt', f"rcpt_{int(time.time())}")
@@ -5796,7 +5807,9 @@ def verify_razorpay_payment(request):
                 refund_id = None
                 if payment_id:  # Only attempt refund if payment was made
                     try:
-                        if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+                        if razorpay is None:
+                            print(f"⚠️ Razorpay SDK unavailable, cannot process refund: {RAZORPAY_IMPORT_ERROR}")
+                        elif settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
                             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
                             refund_data = {
                                 'amount': refund_amount_paise,
@@ -6894,6 +6907,7 @@ def vendor_pricing(request):
                     'passport_print_30': 'passport_print_30',
                     # Golden Embossing
                     'golden_emboss_cover': 'golden_emboss_cover',
+                    'golden_emboss_a4_color': 'golden_emboss_a4_color',
                     'golden_emboss_bond_color': 'golden_emboss_bond_color',
                     # Lamination
                     'lamination_a4_standard': 'lamination_a4_standard',
@@ -7943,6 +7957,7 @@ def get_vendor_pricing(request):
                 'passport_print_16': 70,
                 'passport_print_30': 120,
                 'golden_emboss_cover': 50,
+                'golden_emboss_a4_color': 8,
                 'golden_emboss_bond_color': 10,
                 'lamination_a4_standard': 30,
                 'lamination_a4_glossy': 35,
@@ -8006,6 +8021,7 @@ def get_vendor_pricing(request):
                 },
                 'golden_embossing': {
                     'golden_emboss_cover': 50,
+                    'golden_emboss_a4_color': 8,
                     'golden_emboss_bond_color': 10
                 },
                 'lamination': {
@@ -8193,7 +8209,7 @@ def calculate_golden_emboss_pricing(request):
             data = json.loads(request.body)
             vendor_email = data.get('vendor_email')
             print_color = data.get('print_color', 'Color')
-            paper_type = data.get('paper_type', 'A4')
+            paper_type = str(data.get('paper_type', 'A4') or 'A4').strip()
             num_copies = data.get('num_copies', 1)
             page_count = data.get('page_count', 1)
             
@@ -8242,17 +8258,30 @@ def calculate_golden_emboss_pricing(request):
             print(f"📊 Golden emboss pricing keys: {list(golden_emboss_pricing.keys())}")
             
             cover_price = safe_price(golden_emboss_pricing.get('golden_emboss_cover'))
+            a4_color_price = safe_price(golden_emboss_pricing.get('golden_emboss_a4_color'))
             bond_color_price = safe_price(golden_emboss_pricing.get('golden_emboss_bond_color'))
+
+            normalized_paper_type = paper_type.lower()
+            if normalized_paper_type in ('bond', 'bond paper', 'bond_paper'):
+                selected_price_per_page = bond_color_price
+                selected_paper_label = 'Bond Color'
+                selected_pricing_key = 'golden_emboss_bond_color'
+                paper_type = 'Bond'
+            else:
+                selected_price_per_page = a4_color_price
+                selected_paper_label = 'A4 Color'
+                selected_pricing_key = 'golden_emboss_a4_color'
+                paper_type = 'A4'
             
-            if cover_price <= 0 and bond_color_price <= 0:
-                print("❌ Golden emboss pricing table missing cover/bond color entries")
+            if cover_price <= 0 and a4_color_price <= 0 and bond_color_price <= 0:
+                print("❌ Golden emboss pricing table missing cover/A4/bond color entries")
                 return JsonResponse({
                     'success': False,
-                    'error': 'Golden emboss pricing not configured for this vendor. Please ask the vendor to set cover and bond color rates.'
+                    'error': 'Golden emboss pricing not configured for this vendor. Please ask the vendor to set cover, A4 color, and bond color rates.'
                 })
             
             cover_cost_per_book = max(cover_price, 0.0)
-            color_cost_per_book = max(bond_color_price, 0.0) * page_count
+            color_cost_per_book = max(selected_price_per_page, 0.0) * page_count
             print(f"Golden emboss cover cost: {cover_cost_per_book}, color charge per book: {color_cost_per_book}")
             
             total_price_per_book = cover_cost_per_book + color_cost_per_book
@@ -8273,7 +8302,7 @@ def calculate_golden_emboss_pricing(request):
                     'value': f'₹{cover_cost_per_book:.2f}'
                 },
                 {
-                    'label': f'Bond Color ({page_count} pages)',
+                    'label': f'{selected_paper_label} ({page_count} pages)',
                     'value': f'₹{color_cost_per_book:.2f}'
                 }
             ]
@@ -8291,10 +8320,11 @@ def calculate_golden_emboss_pricing(request):
             structured_breakdown = {
                 'pricing_breakdown': pricing_breakdown,
                 'total_price': total_price,
-                'price_per_page': bond_color_price,
+                'price_per_page': selected_price_per_page,
                 'page_count': page_count,
                 'num_copies': num_copies,
                 'paper_type': paper_type,
+                'paper_rate_key': selected_pricing_key,
                 'emboss_cost': cover_cost_per_book,
                 'paper_cost': color_cost_per_book,
                 'total_per_book': total_price_per_book,
