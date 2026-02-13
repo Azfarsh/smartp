@@ -4828,7 +4828,12 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 import hmac
 import hashlib
-import razorpay
+try:
+    import razorpay
+    RAZORPAY_IMPORT_ERROR = None
+except Exception as razorpay_import_error:
+    razorpay = None
+    RAZORPAY_IMPORT_ERROR = str(razorpay_import_error)
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 
@@ -5102,6 +5107,12 @@ def create_razorpay_order(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     try:
+        if razorpay is None:
+            return JsonResponse({
+                'success': False,
+                'error': f'Payment gateway is temporarily unavailable. Missing dependency: {RAZORPAY_IMPORT_ERROR or "razorpay import failed"}'
+            }, status=500)
+
         body = json.loads(request.body.decode('utf-8')) if request.body else {}
         amount_paise = int(body.get('amount_paise'))  # amount in paise
         receipt = body.get('receipt', f"rcpt_{int(time.time())}")
