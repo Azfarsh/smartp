@@ -26410,12 +26410,10 @@
       }
 
       if (unconfiguredFiles.length > 0) {
-        const fileList = unconfiguredFiles.length === 1
-          ? `File ${unconfiguredFiles[0].index + 1}: ${unconfiguredFiles[0].name}`
-          : unconfiguredFiles.map(f => `File ${f.index + 1}: ${f.name}`).join(', ');
+        const hasMissingColor = unconfiguredFiles.some(fileInfo => Array.isArray(fileInfo.missingFields) && fileInfo.missingFields.includes('color'));
         return {
           valid: false,
-          message: `Please provide details for all documents before proceeding. Missing details for: ${fileList}. Click on each file to configure its settings.`,
+          message: hasMissingColor ? 'Please choose print color for all files.' : 'Please complete print settings for all files.',
           unconfiguredFiles: unconfiguredFiles
         };
       }
@@ -26561,10 +26559,7 @@
         });
 
         if (filesWithoutColor.length > 0) {
-          const fileList = filesWithoutColor.length === 1
-            ? filesWithoutColor[0].name
-            : filesWithoutColor.map(f => f.name).join(', ');
-          alert(`Please select print color for: ${fileList}`);
+          alert('Please choose print color for all files.');
           return;
         }
 
@@ -27913,14 +27908,6 @@
           // Log files being added to formData for debugging
           console.log('📦 Building formData with files:', filesFromPrintModal.length, 'files');
 
-          // Decide for which services image files should be converted to PDF.
-          // As requested, DO NOT convert images to PDF for:
-          // - document print (serviceType: 'print')
-          // - gloss, jumbo, or digital print services
-          // Only allow conversion for services that explicitly need PDF storage (e.g. photo/passport).
-          const imagePdfConversionServices = ['photo', 'passport'];
-          const shouldConvertImagesToPdf = imagePdfConversionServices.includes((serviceType || '').toLowerCase());
-
           // CRITICAL: Validate files are proper File objects before processing
           for (let i = 0; i < filesFromPrintModal.length; i++) {
             const fileToUpload = filesFromPrintModal[i];
@@ -27969,10 +27956,8 @@
             const isImageFile = fileToUpload.type.startsWith('image/') ||
                                /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileToUpload.name);
 
-            // Only convert images to PDF for specific services (e.g. photo/passport).
-            // For document, gloss, jumbo, and digital print services we keep the original
-            // PNG/JPG files and store them as images, not PDFs.
-            if (isImageFile && shouldConvertImagesToPdf) {
+            // Convert image uploads to PDF for storage consistency across all dashboard services.
+            if (isImageFile) {
               try {
                 // Get original image file (either from fileObj or use fileToUpload directly)
                 const originalImageFile = (fileObj && fileObj.originalImageFile) ? fileObj.originalImageFile : fileToUpload;
@@ -28280,10 +28265,28 @@
           // Prepare form data
           formData = new FormData();
           const allFileNames = files.map(f => f.name);
+          const form = modal.querySelector(`#${serviceType}-modal-form`);
+          let uploadPageSize = 'A4';
+          let uploadOrientation = 'portrait';
+
+          if (form && tmpl.fields && Array.isArray(tmpl.fields)) {
+            tmpl.fields.forEach((f, idx) => {
+              if (f.type === 'file') return;
+              const val = form.querySelector(`#${serviceType}-field-${idx}`)?.value;
+              if (!val) return;
+              const label = String(f.label || '').toLowerCase();
+              if (label.includes('paper size') || label.includes('size') || label.includes('photo size')) {
+                uploadPageSize = val;
+              }
+              if (label.includes('orientation')) {
+                uploadOrientation = val;
+              }
+            });
+          }
 
           // Handle files
           for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+            let uploadFile = files[i];
 
             // Passport photo selection logic
             if (serviceType === 'passport') {
@@ -28295,21 +28298,36 @@
                 try {
                   const resp = await fetch(enhancedUrl);
                   const blob = await resp.blob();
-                  const enhancedFile = new File([blob], 'enhanced_' + file.name, { type: blob.type });
-                  formData.append(`file_${i}`, enhancedFile);
+                  uploadFile = new File([blob], 'enhanced_' + files[i].name, { type: blob.type });
                 } catch (err) {
-                  formData.append(`file_${i}`, file);
+                  uploadFile = files[i];
                 }
-              } else {
-                formData.append(`file_${i}`, file);
               }
-            } else {
-              formData.append(`file_${i}`, file);
             }
+
+            const isImageFile = uploadFile && (
+              uploadFile.type.startsWith('image/') ||
+              /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(uploadFile.name || '')
+            );
+
+            if (isImageFile) {
+              try {
+                confirmPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting image to PDF...';
+                const sourceImageFile = uploadFile.originalImageFile || uploadFile;
+                uploadFile = await convertImageToPDF(sourceImageFile, {
+                  pageSize: uploadPageSize || 'A4',
+                  orientation: uploadOrientation || 'portrait',
+                  serviceType
+                });
+              } catch (err) {
+                console.error('Error converting service image to PDF:', err);
+              }
+            }
+
+            formData.append(`file_${i}`, uploadFile);
           }
 
           // Collect field values
-          const form = modal.querySelector(`#${serviceType}-modal-form`);
           let copies = 1;
           let pageSize = 'A4';
           let color = 'Black and White';
