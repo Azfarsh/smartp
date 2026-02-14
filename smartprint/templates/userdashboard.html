@@ -21573,36 +21573,57 @@
       const searchInput = document.getElementById(`${service}-shop-search-input`);
       const searchText = searchInput ? searchInput.value.trim() : '';
 
-      // Filter shops based on search text (uses shared 3km + search logic)
+      // Filter shops based on search text (uses shared logic)
       const { displayShops } = getFilteredShops(shopsWithDistance, searchText);
+
+      // Enforce 3km cap in shop selection modal for all services.
+      // If no numeric distance data exists at all (e.g. location unavailable),
+      // keep existing fallback behavior so modal functionality is not blocked.
+      const getShopDistanceKm = (shop) => {
+        if (typeof shop?.distanceKm === 'number' && Number.isFinite(shop.distanceKm)) return shop.distanceKm;
+        if (shop?.distance !== null && shop?.distance !== undefined) {
+          const d = Number(shop.distance);
+          if (Number.isFinite(d)) return d;
+        }
+        if (shop?.distance_km !== null && shop?.distance_km !== undefined) {
+          const d = Number(shop.distance_km);
+          if (Number.isFinite(d)) return d;
+        }
+        return null;
+      };
+
+      const hasAnyDistanceData = shopsWithDistance.some((shop) => getShopDistanceKm(shop) !== null);
+      const shopsWithin3km = displayShops.filter((shop) => {
+        const d = getShopDistanceKm(shop);
+        return d !== null && d <= 3;
+      });
+      const shopsToRender = hasAnyDistanceData ? shopsWithin3km : displayShops;
 
       // Show appropriate message based on mode
       if (searchText.length === 0) {
         // DEFAULT MODE: Show message if no shops available at all
-        if (displayShops.length === 0) {
+        if (shopsToRender.length === 0) {
           shopList.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
               <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-              <p>⚠️ No shops available.</p>
-              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try searching for a shop or check back later.</p>
+              <p>⚠️ No shops available within 3 km.</p>
+              <p style="font-size: 0.9em; margin-top: 0.5rem;">Try another nearby area or refresh location.</p>
             </div>
           `;
           return;
         }
       } else {
         // SEARCH MODE: Show message if no matching shops
-        if (displayShops.length === 0) {
+        if (shopsToRender.length === 0) {
           shopList.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
               <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-              <p>No shops found for "${searchText}"</p>
+              <p>No shops found within 3 km for "${searchText}"</p>
             </div>
           `;
           return;
         }
       }
-
-      const shopsToRender = displayShops;
 
       // Helper function to get traffic level and label
       function getTrafficInfo(pendingJobs) {
