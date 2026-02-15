@@ -1372,6 +1372,26 @@
                                     <option value="">All Months</option>
                                 </select>
                             </div>
+                            <div class="month-selector">
+                                <label for="activity-focus-table-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Significant Table:</label>
+                                <select id="activity-focus-table-select" class="month-dropdown"></select>
+                            </div>
+                            <div class="month-selector">
+                                <label for="activity-time-basis-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Time Basis:</label>
+                                <select id="activity-time-basis-select" class="month-dropdown">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly" selected>Monthly</option>
+                                </select>
+                            </div>
+                            <div class="month-selector">
+                                <label for="activity-chart-type-select" style="font-weight: 600; margin-right: 10px; color: #374151;">Chart Type:</label>
+                                <select id="activity-chart-type-select" class="month-dropdown">
+                                    <option value="line" selected>Line</option>
+                                    <option value="bar">Bar</option>
+                                    <option value="pie">Pie</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
@@ -1449,6 +1469,20 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="data-container" style="margin-bottom: 20px;">
+                        <div class="data-header">
+                            <i class="fas fa-chart-area"></i> Significant Tables Visualization
+                        </div>
+                        <div class="data-content" style="padding: 20px;">
+                            <div id="activity-focus-recommendation" style="margin-bottom: 12px; color: #374151; font-size: 14px;">
+                                Recommended chart: <strong>Line</strong>
+                            </div>
+                            <div style="min-height: 360px;">
+                                <canvas id="activity-focus-chart" style="max-height: 360px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div id="activity-loading" class="loading" style="display: none;">
                         <i class="fas fa-spinner"></i>
@@ -1469,6 +1503,8 @@
         let filteredTransactions = [];
         let vendorAvailableMonths = [];
         let currentVendorPeriodType = 'month';
+        let latestActivityData = null;
+        let activityFocusChart = null;
 
         // CSRF helper (same as used elsewhere)
         function getCookie(name) {
@@ -1613,6 +1649,27 @@
                 activityMonthSelect.addEventListener('change', function() {
                     const selectedMonth = this.value || '';
                     loadActivityData(selectedMonth);
+                });
+            }
+
+            const activityFocusTableSelect = document.getElementById('activity-focus-table-select');
+            if (activityFocusTableSelect) {
+                activityFocusTableSelect.addEventListener('change', function() {
+                    renderActivityFocusChart();
+                });
+            }
+
+            const activityTimeBasisSelect = document.getElementById('activity-time-basis-select');
+            if (activityTimeBasisSelect) {
+                activityTimeBasisSelect.addEventListener('change', function() {
+                    renderActivityFocusChart();
+                });
+            }
+
+            const activityChartTypeSelect = document.getElementById('activity-chart-type-select');
+            if (activityChartTypeSelect) {
+                activityChartTypeSelect.addEventListener('change', function() {
+                    renderActivityFocusChart();
                 });
             }
         }
@@ -3154,6 +3211,11 @@
                 
                     // Update charts with monthly revenue data
                     updateActivityCharts(activityData, selectedMonth);
+
+                    // Update significant table visualization controls + chart
+                    latestActivityData = activityData;
+                    initActivityFocusTableSelector(activityData.table_visualization_config || []);
+                    renderActivityFocusChart();
                 })
                 .catch(error => {
                 console.error('Error loading activity data:', error);
@@ -3187,6 +3249,214 @@
                     option.value = month;
                     option.textContent = month;
                     monthSelect.appendChild(option);
+                }
+            });
+        }
+
+        function initActivityFocusTableSelector(tableConfigs) {
+            const select = document.getElementById('activity-focus-table-select');
+            if (!select) return;
+
+            const currentValue = select.value;
+            select.innerHTML = '';
+
+            if (!Array.isArray(tableConfigs) || tableConfigs.length === 0) {
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = 'No data available';
+                select.appendChild(emptyOpt);
+                return;
+            }
+
+            tableConfigs.forEach(cfg => {
+                const opt = document.createElement('option');
+                opt.value = cfg.table_key || '';
+                opt.textContent = cfg.table_label || cfg.table_key || 'Table';
+                select.appendChild(opt);
+            });
+
+            const hasPrevious = tableConfigs.some(cfg => (cfg.table_key || '') === currentValue);
+            if (hasPrevious) {
+                select.value = currentValue;
+            }
+        }
+
+        function getSelectedTableConfig() {
+            if (!latestActivityData || !Array.isArray(latestActivityData.table_visualization_config)) {
+                return null;
+            }
+            const tableConfigs = latestActivityData.table_visualization_config;
+            if (!tableConfigs.length) return null;
+
+            const select = document.getElementById('activity-focus-table-select');
+            const selectedKey = select ? (select.value || '') : '';
+            const selectedCfg = tableConfigs.find(cfg => (cfg.table_key || '') === selectedKey);
+            return selectedCfg || tableConfigs[0];
+        }
+
+        function getWeekStartKey(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            if (Number.isNaN(date.getTime())) return null;
+            const dayIndex = (date.getDay() + 6) % 7; // Monday=0 ... Sunday=6
+            date.setDate(date.getDate() - dayIndex);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function aggregateSeriesByBasis(dailySeries, basis) {
+            const aggregated = {};
+            (dailySeries || []).forEach(point => {
+                const dateStr = String(point.date || '').slice(0, 10);
+                if (!dateStr) return;
+                const value = parseFloat(point.value || 0) || 0;
+                let bucketKey = dateStr;
+
+                if (basis === 'weekly') {
+                    const weekKey = getWeekStartKey(dateStr);
+                    if (!weekKey) return;
+                    bucketKey = weekKey;
+                } else if (basis === 'monthly') {
+                    bucketKey = dateStr.slice(0, 7);
+                }
+
+                if (!aggregated[bucketKey]) aggregated[bucketKey] = 0;
+                aggregated[bucketKey] += value;
+            });
+
+            const keys = Object.keys(aggregated).sort();
+            return {
+                keys: keys,
+                values: keys.map(k => aggregated[k])
+            };
+        }
+
+        function formatBucketLabel(bucketKey, basis) {
+            try {
+                if (basis === 'daily') {
+                    const date = new Date(bucketKey + 'T00:00:00');
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+                if (basis === 'weekly') {
+                    const date = new Date(bucketKey + 'T00:00:00');
+                    const weekEnd = new Date(date);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    const startLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const endLabel = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    return `${startLabel} - ${endLabel}`;
+                }
+                if (basis === 'monthly') {
+                    const [year, monthNum] = bucketKey.split('-');
+                    const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+                    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                }
+            } catch (e) {}
+            return bucketKey;
+        }
+
+        function renderActivityFocusChart() {
+            const chartCanvas = document.getElementById('activity-focus-chart');
+            const chartTypeSelect = document.getElementById('activity-chart-type-select');
+            const basisSelect = document.getElementById('activity-time-basis-select');
+            const recommendationEl = document.getElementById('activity-focus-recommendation');
+
+            if (!chartCanvas || typeof Chart === 'undefined') return;
+
+            if (activityFocusChart) {
+                activityFocusChart.destroy();
+                activityFocusChart = null;
+            }
+
+            const tableCfg = getSelectedTableConfig();
+            if (!tableCfg) return;
+
+            const supportedCharts = Array.isArray(tableCfg.supported_charts) && tableCfg.supported_charts.length
+                ? tableCfg.supported_charts
+                : ['line', 'bar', 'pie'];
+            const recommendedChart = tableCfg.recommended_chart || 'line';
+            let chartType = chartTypeSelect ? (chartTypeSelect.value || recommendedChart) : recommendedChart;
+            if (!supportedCharts.includes(chartType)) {
+                chartType = recommendedChart;
+                if (chartTypeSelect) chartTypeSelect.value = chartType;
+            }
+
+            const basis = basisSelect ? (basisSelect.value || 'monthly') : 'monthly';
+            const aggregated = aggregateSeriesByBasis(tableCfg.daily_series || [], basis);
+            let labels = aggregated.keys.map(key => formatBucketLabel(key, basis));
+            let values = aggregated.values.map(v => Number(v || 0));
+
+            if (chartType === 'pie' && values.length > 8) {
+                const indexed = values.map((value, idx) => ({ value, label: labels[idx] }));
+                indexed.sort((a, b) => b.value - a.value);
+                const top = indexed.slice(0, 7);
+                const others = indexed.slice(7).reduce((sum, item) => sum + item.value, 0);
+                labels = top.map(item => item.label);
+                values = top.map(item => item.value);
+                if (others > 0) {
+                    labels.push('Others');
+                    values.push(others);
+                }
+            }
+
+            if (recommendationEl) {
+                recommendationEl.innerHTML = `Recommended chart for <strong>${tableCfg.table_label || 'selected table'}</strong>: <strong>${recommendedChart.toUpperCase()}</strong>. ${tableCfg.description || ''}`;
+            }
+
+            const isCurrency = (tableCfg.value_type || '') === 'currency';
+            const datasetLabel = `${tableCfg.table_label || 'Table Data'} (${basis})`;
+            const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#14b8a6', '#8b5cf6', '#f97316', '#84cc16'];
+
+            activityFocusChart = new Chart(chartCanvas, {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: datasetLabel,
+                        data: values,
+                        backgroundColor: chartType === 'pie'
+                            ? labels.map((_, idx) => palette[idx % palette.length])
+                            : (chartType === 'bar' ? '#93c5fd' : 'rgba(59, 130, 246, 0.15)'),
+                        borderColor: chartType === 'pie'
+                            ? labels.map((_, idx) => palette[idx % palette.length])
+                            : '#2563eb',
+                        borderWidth: 2,
+                        tension: chartType === 'line' ? 0.3 : 0,
+                        fill: chartType === 'line'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: chartType === 'pie' ? 'bottom' : 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const parsed = chartType === 'pie' ? context.parsed : context.parsed.y;
+                                    if (isCurrency) return `${context.label}: ${formatCurrency(parsed || 0)}`;
+                                    return `${context.label}: ${Math.round(parsed || 0)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: chartType === 'pie' ? {} : {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return isCurrency ? formatCurrency(value) : Math.round(value);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: isCurrency ? 'Amount (INR)' : 'Count'
+                            }
+                        }
+                    }
                 }
             });
         }
