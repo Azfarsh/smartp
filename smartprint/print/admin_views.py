@@ -3218,26 +3218,29 @@ def admin_activity_data(request):
             payload['month'] = selected_month
         
         # Fetch notifications from D1 database (filtered by month if provided)
-        all_notifications = fetch_user_jobs_from_worker(payload=payload, timeout=30)
-        
-        if not all_notifications:
-            return JsonResponse({
-                'success': True,
-                'notifications': [],
-                'monthly_revenue': {},
-                'total_revenue': 0.0,
-                'total_payments': 0.0,
-                'total_users': 0,
-                'total_vendors': 0,
-                'total_count': 0
-            })
+        all_notifications = fetch_user_jobs_from_worker(payload=payload, timeout=30) or []
+
+        def _date_key_from_value(raw_value):
+            """Extract YYYY-MM-DD date key from datetime-like values."""
+            parsed = _safe_parse_datetime(raw_value)
+            if parsed:
+                return parsed.date().isoformat()
+
+            safe_value = str(raw_value or '').strip()
+            if len(safe_value) >= 10:
+                possible_date = safe_value[:10]
+                if len(possible_date) == 10 and possible_date[4] == '-' and possible_date[7] == '-':
+                    return possible_date
+            return None
         
         # Calculate statistics from User_notifications
         monthly_revenue = {}
+        platform_revenue_daily = {}
         total_revenue = 0.0
         total_payments = 0.0
         unique_users = set()
         unique_vendors = set()
+        user_first_seen = {}
         
         for notification in all_notifications:
             # Get platform_profit (revenue)
@@ -3278,6 +3281,13 @@ def admin_activity_data(request):
                 if month_key not in monthly_revenue:
                     monthly_revenue[month_key] = 0.0
                 monthly_revenue[month_key] += platform_profit
+
+            # Track daily platform revenue
+            activity_day = _date_key_from_value(completion_time or created_at)
+            if activity_day:
+                if activity_day not in platform_revenue_daily:
+                    platform_revenue_daily[activity_day] = 0.0
+                platform_revenue_daily[activity_day] += platform_profit
             
             # Update totals
             total_revenue += platform_profit
@@ -3287,16 +3297,179 @@ def admin_activity_data(request):
             user_email = notification.get('user_email', '').strip().lower()
             if user_email:
                 unique_users.add(user_email)
+                user_seen_at = get_job_timestamp(notification)
+                if not user_seen_at:
+                    user_seen_at = _safe_parse_datetime(completion_time or created_at)
+                previous_seen = user_first_seen.get(user_email)
+                if user_seen_at and (previous_seen is None or user_seen_at < previous_seen):
+                    user_first_seen[user_email] = user_seen_at
             
             vendor_id = notification.get('vendor_id', '').strip()
             if vendor_id:
                 unique_vendors.add(vendor_id)
         
+        # Derive user signup counts from first seen activity per user
+        user_signups_daily = {}
+        for first_seen in user_first_seen.values():
+            signup_day = first_seen.date().isoformat()
+            user_signups_daily[signup_day] = user_signups_daily.get(signup_day, 0) + 1
+
+        # Contact submissions from D1 contacts table (all records, solved + unsolved)
+        contact_submissions_daily = {}
+        total_contacts = 0
+        try:
+            api_url = getattr(settings, 'WORKER_API_URL', '')
+            api_key = getattr(settings, 'WORKER_API_KEY', '')
+            if api_url and api_key:
+                base_url = api_url.rstrip('/')
+                for endpoint in ['/add-contact', '/add-vendor-register', '/add-vendor-pricing', '/get-all-vendors', '/contacts']:
+                    if base_url.endswith(endpoint):
+                        base_url = base_url[:-len(endpoint)]
+
+                contacts_endpoint = base_url.rstrip('/') + '/contacts'
+                resp = requests.get(
+                    contacts_endpoint,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': api_key
+                    },
+                    timeout=20
+                )
+                if resp.status_code == 200:
+                    contact_response = resp.json()
+                    if contact_response.get('success'):
+                        all_contacts = contact_response.get('data', []) or []
+                        total_contacts = len(all_contacts)
+                        for contact in all_contacts:
+                            submitted_day = _date_key_from_value(contact.get('submitted_at'))
+                            if submitted_day:
+                                contact_submissions_daily[submitted_day] = contact_submissions_daily.get(submitted_day, 0) + 1
+        except Exception as contacts_error:
+            print(f"⚠️ Failed to aggregate contact submissions for activity dashboard: {contacts_error}")
+
+        # Vendor registrations from R2 (deduplicated by vendor email, earliest registration date)
+        vendor_registrations_daily = {}
+        total_vendor_registrations = 0
+        try:
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=settings.R2_ACCESS_KEY,
+                aws_secret_access_key=settings.R2_SECRET_KEY,
+                endpoint_url=settings.R2_ENDPOINT,
+                region_name='auto'
+            )
+            prefix = 'vendor_register_details/'
+            objects = s3.list_objects_v2(Bucket=settings.R2_BUCKET, Prefix=prefix)
+            first_registration_by_vendor = {}
+
+            for obj in objects.get('Contents', []):
+                key = obj.get('Key', '')
+                if not (key.endswith('registration.json') or key.endswith('registration_details.json')):
+                    continue
+
+                registration_day = None
+                vendor_email = ''
+                try:
+                    reg_obj = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+                    reg_data = json.loads(reg_obj['Body'].read().decode('utf-8'))
+                    vendor_email = str(reg_data.get('vendor_email', '')).strip().lower()
+                    registration_day = (
+                        _date_key_from_value(reg_data.get('created_at'))
+                        or _date_key_from_value(reg_data.get('submitted_at'))
+                        or _date_key_from_value(reg_data.get('registered_at'))
+                    )
+                except Exception:
+                    pass
+
+                if not vendor_email:
+                    # Infer email from folder path: vendor_register_details/email_at_domain_dot_com/...
+                    try:
+                        folder_name = key.split('/')[1]
+                        vendor_email = folder_name.replace('_at_', '@').replace('_dot_', '.').strip().lower()
+                    except Exception:
+                        vendor_email = ''
+
+                if not vendor_email:
+                    continue
+
+                if not registration_day:
+                    last_modified = obj.get('LastModified')
+                    if isinstance(last_modified, datetime.datetime):
+                        registration_day = last_modified.date().isoformat()
+
+                if not registration_day:
+                    continue
+
+                previous_day = first_registration_by_vendor.get(vendor_email)
+                if previous_day is None or registration_day < previous_day:
+                    first_registration_by_vendor[vendor_email] = registration_day
+
+            total_vendor_registrations = len(first_registration_by_vendor)
+            for registration_day in first_registration_by_vendor.values():
+                vendor_registrations_daily[registration_day] = vendor_registrations_daily.get(registration_day, 0) + 1
+        except Exception as vendors_error:
+            print(f"⚠️ Failed to aggregate vendor registrations for activity dashboard: {vendors_error}")
+
         # Sort monthly revenue by month
         sorted_monthly_revenue = dict(sorted(monthly_revenue.items()))
         
         # Get available months for the selector
         available_months = fetch_user_job_months_from_worker()
+
+        def _sorted_daily_series(day_map, round_to_two=False):
+            series = []
+            for day_key in sorted(day_map.keys()):
+                value = day_map.get(day_key, 0)
+                if round_to_two:
+                    value = round(float(value), 2)
+                series.append({
+                    'date': day_key,
+                    'value': value
+                })
+            return series
+
+        table_visualization_config = [
+            {
+                'table_key': 'platform_revenue',
+                'table_label': 'Platform Revenue (User_notifications)',
+                'value_type': 'currency',
+                'recommended_chart': 'line',
+                'description': 'Our revenue from platform_profit (not vendor total earning).',
+                'supported_charts': ['line', 'bar', 'pie'],
+                'total_value': round(total_revenue, 2),
+                'daily_series': _sorted_daily_series(platform_revenue_daily, round_to_two=True)
+            },
+            {
+                'table_key': 'user_signups',
+                'table_label': 'User Signups (Derived)',
+                'value_type': 'count',
+                'recommended_chart': 'line',
+                'description': 'First-seen unique users derived from notifications activity.',
+                'supported_charts': ['line', 'bar', 'pie'],
+                'total_value': len(user_first_seen),
+                'daily_series': _sorted_daily_series(user_signups_daily)
+            },
+            {
+                'table_key': 'vendor_registrations',
+                'table_label': 'Vendor Registrations',
+                'value_type': 'count',
+                'recommended_chart': 'bar',
+                'description': 'Vendor registrations from vendor_register_details records.',
+                'supported_charts': ['line', 'bar', 'pie'],
+                'total_value': total_vendor_registrations,
+                'daily_series': _sorted_daily_series(vendor_registrations_daily)
+            },
+            {
+                'table_key': 'contact_submissions',
+                'table_label': 'Contact Submissions',
+                'value_type': 'count',
+                'recommended_chart': 'bar',
+                'description': 'All contacts submitted through contact forms.',
+                'supported_charts': ['line', 'bar', 'pie'],
+                'total_value': total_contacts,
+                'daily_series': _sorted_daily_series(contact_submissions_daily)
+            }
+        ]
         
         return JsonResponse({
             'success': True,
@@ -3308,7 +3481,8 @@ def admin_activity_data(request):
             'total_vendors': len(unique_vendors),
             'total_count': len(all_notifications),
             'available_months': available_months,
-            'selected_month': selected_month
+            'selected_month': selected_month,
+            'table_visualization_config': table_visualization_config
         })
         
     except Exception as e:
