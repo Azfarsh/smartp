@@ -4982,7 +4982,7 @@
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
         let vendorAvailability = 'offline'; // Start offline on login for immediate safe state
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
-        const JOB_REFRESH_INTERVAL_MS = 60 * 1000; // Refresh once per minute as requested
+        const JOB_REFRESH_INTERVAL_MS = 10 * 1000; // Refresh every 10 seconds for near-real-time pending jobs
 
         // Availability toggle variables
         let previousAvailabilityBeforeOptimistic = null;
@@ -6101,6 +6101,14 @@
         let notificationPermission = 'default';
         let lastJobCount = 0;
 
+        function canShowDesktopNotifications() {
+            return ('Notification' in window) && Notification.permission === 'granted';
+        }
+
+        function isDashboardTabInactive() {
+            return document.hidden || !document.hasFocus();
+        }
+
         async function initializeNotifications() {
             await loadNotifications();
             setupNotificationListeners();
@@ -6718,29 +6726,28 @@
                         if (newJobs.length > 0) {
                             showToast(`${newJobs.length} new jobs loaded successfully`);
 
-                            // Show browser notification for new jobs (works even when tab is inactive)
-                            if (!isInitialLoad && notificationPermission === 'granted') {
-                                const pendingNewJobs = newJobs.filter(j => j.job_completed === 'NO');
-                                if (pendingNewJobs.length > 0) {
-                                    const jobCount = pendingNewJobs.length;
-                                    const jobText = jobCount === 1 ? 'job' : 'jobs';
-                                    const firstJob = pendingNewJobs[0];
-                                    const serviceType = firstJob.service_type || 'print';
-                                    const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+                            const pendingNewJobs = newJobs.filter(j => j.job_completed === 'NO');
 
-                                    if (jobCount === 1) {
-                                        showBrowserNotification(
-                                            'New Print Job Arrived',
-                                            `${serviceName} job: ${firstJob.filename || 'New job'} (Token: ${firstJob.token || 'N/A'})`,
-                                            'job'
-                                        );
-                                    } else {
-                                        showBrowserNotification(
-                                            'New Print Jobs Arrived',
-                                            `${jobCount} new ${jobText} have arrived. Check your dashboard.`,
-                                            'job'
-                                        );
-                                    }
+                            // Show desktop notification when new pending jobs arrive while vendor is away from this tab.
+                            if (!isInitialLoad && pendingNewJobs.length > 0 && canShowDesktopNotifications() && isDashboardTabInactive()) {
+                                const jobCount = pendingNewJobs.length;
+                                const jobText = jobCount === 1 ? 'job' : 'jobs';
+                                const firstJob = pendingNewJobs[0];
+                                const serviceType = firstJob.service_type || 'print';
+                                const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+
+                                if (jobCount === 1) {
+                                    showBrowserNotification(
+                                        'New Print Job Arrived',
+                                        `${serviceName} job: ${firstJob.filename || 'New job'} (Token: ${firstJob.token || 'N/A'})`,
+                                        'job'
+                                    );
+                                } else {
+                                    showBrowserNotification(
+                                        'New Print Jobs Arrived',
+                                        `${jobCount} new ${jobText} have arrived. Check your dashboard.`,
+                                        'job'
+                                    );
                                 }
                             }
                         }
