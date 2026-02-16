@@ -1316,7 +1316,7 @@ export default {
         const type = (body.type || "").trim();
         const token = (body.token || "").trim();
         const service_type = (body.service_type || "").trim();
-        const platform_profit = 0;
+        const platform_profit = body.platform_profit !== undefined ? parseFloat(body.platform_profit) : 0;
         const total_price = body.total_price !== undefined ? parseFloat(body.total_price) : 0;
 
         if (!notification_id || !user_email) {
@@ -1399,7 +1399,7 @@ export default {
         const user_email = (body.user_email || "").trim();
         const filename = (body.filename || "").trim();
         const service_type = (body.service_type || "").trim();
-        const platform_profit = 0;
+        const platform_profit = body.platform_profit !== undefined ? parseFloat(body.platform_profit) : 0;
         const total_price = body.total_price !== undefined ? parseFloat(body.total_price) : 0;
         const completion_time = (body.completion_time || "").trim();
         const timestamp = (body.timestamp || new Date().toISOString()).trim();
@@ -2400,11 +2400,9 @@ export default {
         
         // Decimal values
         const total_price = body.total_price !== undefined ? parseFloat(body.total_price) : null;
-        const platform_profit = 0;
+        const platform_profit = body.platform_profit !== undefined ? parseFloat(body.platform_profit) : null;
         const price_per_page = body.price_per_page !== undefined ? parseFloat(body.price_per_page) : null;
-        const final_amount = total_price !== null
-          ? total_price
-          : (body.final_amount !== undefined ? parseFloat(body.final_amount) : null);
+        const final_amount = body.final_amount !== undefined ? parseFloat(body.final_amount) : null;
         
         // Integer values
         const page_count = body.page_count !== undefined ? parseInt(body.page_count, 10) : null;
@@ -3031,11 +3029,9 @@ export default {
         
         // Decimal values
         const total_price = body.total_price !== undefined ? parseFloat(body.total_price) : null;
-        const platform_profit = 0;
+        const platform_profit = body.platform_profit !== undefined ? parseFloat(body.platform_profit) : null;
         const price_per_page = body.price_per_page !== undefined ? parseFloat(body.price_per_page) : null;
-        const final_amount = total_price !== null
-          ? total_price
-          : (body.final_amount !== undefined ? parseFloat(body.final_amount) : null);
+        const final_amount = body.final_amount !== undefined ? parseFloat(body.final_amount) : null;
         
         // Integer values
         const page_count = body.page_count !== undefined ? parseInt(body.page_count, 10) : null;
