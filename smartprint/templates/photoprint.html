@@ -2838,17 +2838,16 @@
             return cookieValue;
         }
 
-        // Commission helper (same logic as dashboard)
+        // Commission helper (commission disabled)
         function calculatePlatformCommission(serviceKey, vendorPrice) {
-            // Default 20% for A4 color-like services
             const commissionRates = {
-                a4_print_bw: 0.12,
-                a4_print_color: 0.2,
-                digital_print_a4: 0.15,
-                digital_print_12x18: 0.18,
-                gloss_paper_a4: 0.2
+                a4_print_bw: 0,
+                a4_print_color: 0,
+                digital_print_a4: 0,
+                digital_print_12x18: 0,
+                gloss_paper_a4: 0
             };
-            const rate = commissionRates[serviceKey] ?? 0.2;
+            const rate = commissionRates[serviceKey] ?? 0;
             const amount = vendorPrice * rate;
             return { rate, amount, total: vendorPrice + amount };
         }
@@ -2917,12 +2916,12 @@
                     const commission = calculatePlatformCommission('a4_print_color', vendorPrice);
 
                     // Store pricing breakdown with platform profit in body dataset for later use
-                    document.body.dataset.calculatedPrice = breakdown.final_amount || commission.total || vendorPrice;
+                    document.body.dataset.calculatedPrice = breakdown.total_bill_amount || breakdown.final_amount || commission.total || vendorPrice;
                     document.body.dataset.pricingBreakdown = JSON.stringify({
                         ...breakdown,
                         platform_profit: platformProfit || commission.commission || 0,
-                        platform_commission: breakdown.platform_commission || 20,
-                        final_amount: breakdown.final_amount || commission.total || vendorPrice
+                        platform_commission: 0,
+                        final_amount: breakdown.total_bill_amount || breakdown.final_amount || commission.total || vendorPrice
                     });
 
                     if (summaryServiceName) summaryServiceName.textContent = 'Photo Printing';
@@ -3031,7 +3030,7 @@
                             total_price: breakdown.total_price || parseFloat(document.body.dataset.calculatedPrice),
                             final_amount: breakdown.final_amount || parseFloat(document.body.dataset.calculatedPrice),
                             platform_profit: breakdown.platform_profit || 0,
-                            platform_commission: breakdown.platform_commission || 20,
+                            platform_commission: breakdown.platform_commission || 0,
                             pricing_breakdown: breakdown,
                             calculation_timestamp: new Date().toISOString(),
                             vendor_email: selectedShopData ? selectedShopData.vendor_email : null

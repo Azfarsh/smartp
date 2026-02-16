@@ -15462,7 +15462,7 @@
                     vendor_email: selectedShopData ? selectedShopData.vendor_email : null,
                     platform_profit: Number((commissionInfo.amount || 0).toFixed(2)),
                     base_price: commissionInfo.base_price || breakdownObj.base_price || breakdownObj.price_per_page || 0,
-                    commission_percentage: commissionInfo.percentage || PLATFORM_COMMISSIONS[serviceKey] || 15,
+                    commission_percentage: commissionInfo.percentage || PLATFORM_COMMISSIONS[serviceKey] || 0,
                     user_email: userEmail || null
                   };
 
@@ -19008,24 +19008,24 @@
       }
     }
 
-    // Platform Commission Percentages
+    // Platform Commission Percentages (commission disabled for all services)
     const PLATFORM_COMMISSIONS = {
-      'a4_print_bw': 20,           // A4 Print (B/W): 20%
-      'a4_print_color': 20,         // A4 Print (Color): 20%
-      'passport_photo_30': 15,      // Passport Photos (A4 - 30 photos): 15%
-      'passport_photo_8': 15,       // Passport Photos (A4 - 8 photos): 15%
-      'passport_photo_16': 15,      // Passport Photos (A4 - 16 photos): 15%
-      'digital_print_a4': 15,       // Digital Print (A4): 15%
-      'digital_print_12x18': 15,    // Digital Print (12x18): 15%
-      'gloss_paper_a4': 12,         // Gloss Paper Printing (A4): 12%
-      'spiral_binding': 10,         // Spiral Binding: 10%
-      'lamination_a4': 12,          // Lamination (A4): 12%
-      'tape_binding': 10,           // Tape Binding: 10%
-      'jumbo_a0': 10,               // Jumbo Paper Printing (A0): 10%
-      'jumbo_a1': 8,                // Jumbo Paper Printing (A1): 8%
-      'jumbo_a2': 12,               // Jumbo Paper Printing (A2): 12%
-      'jumbo_a3': 20,               // Jumbo Paper Printing (A3): 20%
-      'enhanced_image': 15          // Enhanced image charge: 15 rupees
+      'a4_print_bw': 0,
+      'a4_print_color': 0,
+      'passport_photo_30': 0,
+      'passport_photo_8': 0,
+      'passport_photo_16': 0,
+      'digital_print_a4': 0,
+      'digital_print_12x18': 0,
+      'gloss_paper_a4': 0,
+      'spiral_binding': 0,
+      'lamination_a4': 0,
+      'tape_binding': 0,
+      'jumbo_a0': 0,
+      'jumbo_a1': 0,
+      'jumbo_a2': 0,
+      'jumbo_a3': 0,
+      'enhanced_image': 0
     };
 
     function calculateA4PrintPricing(formData, vendorPricing, pages, copies, breakdown) {
@@ -26296,9 +26296,9 @@
           // - final_amount: after 20% commission (this is what customer pays)
           // - commission_amount: the 20% commission
           const totalBillAmount = breakdown.total_bill_amount || 0;  // Before commission
-          const finalAmount = breakdown.final_amount || result.total_price || 0;  // After commission (customer pays this)
-          const commissionAmount = breakdown.commission_amount || (finalAmount - totalBillAmount);
-          const commissionPercent = breakdown.commission_percentage || 20;
+          const finalAmount = totalBillAmount || breakdown.final_amount || result.total_price || 0;
+          const commissionAmount = 0;
+          const commissionPercent = 0;
 
           // Build additional options array from breakdown
           const additionalOptions = [];
@@ -26315,8 +26315,8 @@
           // Complete breakdown with all details
           const completeBreakdown = {
             ...breakdown,
-            total_price: finalAmount,  // Final amount customer pays (includes 20% commission)
-            vendor_price: totalBillAmount,  // Total bill amount before commission
+            total_price: finalAmount,
+            vendor_price: totalBillAmount || finalAmount,
             commission_amount: commissionAmount,
             commission_percentage: commissionPercent,
             additional_options: additionalOptions,
@@ -26913,7 +26913,7 @@
       // Calculate commission if not available - use same method as jumbo print
       if (commissionPercent === 0) {
         const serviceKey = colorType === 'color' ? 'a4_print_color' : 'a4_print_bw';
-        commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 20;
+        commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 0;
       }
 
       // Get pricing from breakdown - backend now returns final_amount (with 20% commission already applied)
@@ -26921,27 +26921,25 @@
       let baseTotalPrice = 0;
       let grandTotal = 0;
 
-      // Priority: final_amount from breakdown > total_bill_amount > calculatedPrice
-      if (breakdownObj.final_amount && breakdownObj.final_amount > 0) {
-        // Backend already calculated final_amount with 20% commission
-        grandTotal = parseFloat(breakdownObj.final_amount);
-        baseTotalPrice = parseFloat(breakdownObj.total_bill_amount || 0);
-      } else if (breakdownObj.total_bill_amount && breakdownObj.total_bill_amount > 0) {
-        // If we have total_bill_amount but no final_amount, calculate it
+      // Priority: total_bill_amount (no commission) > final_amount > calculatedPrice
+      if (breakdownObj.total_bill_amount && breakdownObj.total_bill_amount > 0) {
         baseTotalPrice = parseFloat(breakdownObj.total_bill_amount);
-        grandTotal = baseTotalPrice * 1.20;  // Apply 20% commission
+        grandTotal = baseTotalPrice;
+      } else if (breakdownObj.final_amount && breakdownObj.final_amount > 0) {
+        grandTotal = parseFloat(breakdownObj.final_amount);
+        baseTotalPrice = grandTotal;
       } else if (breakdownObj.subtotal && breakdownObj.subtotal > 0) {
         // Fallback to subtotal (legacy support)
         baseTotalPrice = parseFloat(breakdownObj.subtotal);
-        grandTotal = baseTotalPrice * 1.20;  // Apply 20% commission
+        grandTotal = baseTotalPrice * (1 + commissionPercent / 100);
       } else if (breakdownObj.vendor_price && breakdownObj.vendor_price > 0) {
         // Fallback to vendor_price (legacy support)
         baseTotalPrice = parseFloat(breakdownObj.vendor_price);
-        grandTotal = baseTotalPrice * 1.20;  // Apply 20% commission
+        grandTotal = baseTotalPrice * (1 + commissionPercent / 100);
       } else if (calculatedPrice > 0) {
         // Last resort: use calculatedPrice (should already include commission from new backend)
         grandTotal = calculatedPrice;
-        baseTotalPrice = grandTotal / 1.20;  // Reverse calculate base
+        baseTotalPrice = grandTotal / (1 + commissionPercent / 100 || 1);
       } else {
         // Default fallback
         grandTotal = 0;
@@ -27097,7 +27095,7 @@
             const copies = settings.copies;
             const fileColorType = settings.color === 'color' ? 'single_color' : 'single_bw';
             const fileServiceKey = fileColorType === 'single_color' ? 'a4_print_color' : 'a4_print_bw';
-            const fileCommissionPercent = PLATFORM_COMMISSIONS[fileServiceKey] || 20;
+            const fileCommissionPercent = PLATFORM_COMMISSIONS[fileServiceKey] || 0;
 
             // Calculate document price (price per unit × pages × copies)
             // This price already includes commission percentage as it's calculated from the total which includes commission
@@ -27396,7 +27394,7 @@
       // Calculate commission percentage if not available
       if (commissionPercent === 0) {
         const serviceKey = getServiceKey(service, breakdownObj || {});
-        commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 15;
+        commissionPercent = PLATFORM_COMMISSIONS[serviceKey] || 0;
       }
 
       // Calculate grand total: baseTotalPrice × (1 + commissionPercent/100)
@@ -28138,7 +28136,7 @@
 
                 // Calculate platform profit from service percentage
                 const vendorPriceNum = Number(breakdownObj.vendor_price || breakdownObj.total_price || 0);
-                const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 20; // Default 20%
+                const commissionPercentage = PLATFORM_COMMISSIONS[serviceKey] || 0;
                 const platformProfit = (vendorPriceNum * commissionPercentage) / 100;
                 pricingDetails.platform_profit = Number(platformProfit.toFixed(2));
 
@@ -28439,7 +28437,7 @@
                 vendor_email: selectedShopData ? selectedShopData.vendor_email : null,
                 platform_profit: Number((commissionInfo.amount || 0).toFixed(2)),
                 base_price: commissionInfo.base_price || breakdownObj.base_price || breakdownObj.price_per_page || 0,
-                commission_percentage: commissionInfo.percentage || PLATFORM_COMMISSIONS[serviceKey] || 15,
+                commission_percentage: commissionInfo.percentage || PLATFORM_COMMISSIONS[serviceKey] || 0,
                 user_email: userEmail || null
               };
 
