@@ -4719,6 +4719,10 @@
                         <span class="print-info-value" id="printInfoColor">-</span>
                     </div>
                     <div class="print-info-item">
+                        <span class="print-info-label">Print Type:</span>
+                        <span class="print-info-value" id="printInfoPrintType">Single Side Print</span>
+                    </div>
+                    <div class="print-info-item">
                         <span class="print-info-label">Pages:</span>
                         <span class="print-info-value" id="printInfoPages">-</span>
                     </div>
@@ -7775,6 +7779,9 @@
             document.getElementById('printInfoToken').textContent = jobData.token ? `${jobData.token}` : '-';
             document.getElementById('printInfoCopies').textContent = jobData.copies || '1';
             document.getElementById('printInfoColor').textContent = jobData.color || 'Black and White';
+            const rawPrintType = (jobData.print_type || jobData.printType || '').toString().toLowerCase();
+            const printTypeLabel = rawPrintType.includes('double') ? 'Double Side Print (Front - Back)' : 'Single Side Print';
+            document.getElementById('printInfoPrintType').textContent = printTypeLabel;
             document.getElementById('printInfoOrientation').textContent = formatOrientation(jobData.orientation || 'portrait');
             document.getElementById('printInfoPageSize').textContent = jobData.pageSize || jobData.page_size || 'A4';
             // Get correct pages count from pricing_details
