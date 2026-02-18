@@ -6164,7 +6164,8 @@
       margin-top: 0.5rem;
     }
 
-    .orientation-options {
+    .orientation-options,
+    .print-type-options {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
@@ -6172,7 +6173,8 @@
     }
 
     .color-option,
-    .orientation-option {
+    .orientation-option,
+    .print-type-option {
       padding: 1.25rem 1rem;
       border: 2px solid var(--outline);
       border-radius: var(--radius-sm);
@@ -6188,27 +6190,31 @@
     }
 
     .color-option:hover,
-    .orientation-option:hover {
+    .orientation-option:hover,
+    .print-type-option:hover {
       border-color: var(--primary);
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .color-option.selected,
-    .orientation-option.selected {
+    .orientation-option.selected,
+    .print-type-option.selected {
       border-color: var(--primary);
       background-color: rgba(25, 118, 210, 0.1);
       box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
     }
 
     .color-option-icon,
-    .orientation-icon {
+    .orientation-icon,
+    .print-type-icon {
       font-size: 2.5rem;
       margin-bottom: 0.75rem;
     }
 
     .color-option-label,
-    .orientation-label {
+    .orientation-label,
+    .print-type-label {
       font-weight: 600;
       color: var(--on-surface);
       font-size: 0.95rem;
@@ -6223,7 +6229,8 @@
       }
 
       /* Keep orientation options in one row on mobile */
-      .orientation-options {
+      .orientation-options,
+      .print-type-options {
         grid-template-columns: 1fr 1fr;
         gap: 0.5rem;
       }
@@ -6239,19 +6246,22 @@
       /* Make options smaller on mobile to fit in row */
       .color-option,
       .orientation-option,
+      .print-type-option,
       .page-size-option {
         padding: 0.75rem 0.5rem;
         min-height: 80px;
       }
 
       .color-option-icon,
-      .orientation-icon {
+      .orientation-icon,
+      .print-type-icon {
         font-size: 1.8rem;
         margin-bottom: 0.5rem;
       }
 
       .color-option-label,
       .orientation-label,
+      .print-type-label,
       .page-size-label {
         font-size: 0.85rem;
       }
@@ -6272,19 +6282,22 @@
 
       .color-option,
       .orientation-option,
+      .print-type-option,
       .page-size-option {
         padding: 0.5rem 0.3rem;
         min-height: 65px;
       }
 
       .color-option-icon,
-      .orientation-icon {
+      .orientation-icon,
+      .print-type-icon {
         font-size: 1.3rem;
         margin-bottom: 0.3rem;
       }
 
       .color-option-label,
       .orientation-label,
+      .print-type-label,
       .page-size-label {
         font-size: 0.7rem;
         line-height: 1.2;
@@ -9191,7 +9204,7 @@
               <div class="service-info">
                 <div class="service-name">Passport Photo Printing</div>
                 <div class="service-description">Government-spec passport photos instantly</div>
-                <div class="service-price">Standard packages</div>
+                <div class="service-price">starting from ₹20/8 photos</div>
               </div>
             </div>
             <div class="service-arrow">
@@ -9275,7 +9288,7 @@
               <div class="service-info">
                 <div class="service-name">Gloss Paper Printing</div>
                 <div class="service-description">Shiny finish printing for presentations and marketing</div>
-                <div class="service-price">Starting from ₹8/page</div>
+                <div class="service-price">Starting from ₹10/page</div>
               </div>
             </div>
             <div class="service-arrow">
@@ -18066,6 +18079,26 @@
             </div>
           </div>
 
+          <!-- Print Type -->
+          <div class="settings-group">
+            <label class="settings-label">Choose print type</label>
+            <p class="settings-subtitle">Choose how pages should be printed</p>
+            <div class="print-type-options">
+              <div class="print-type-option selected" data-print-type="single_side">
+                <div class="print-type-icon">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="print-type-label">Single Side Print</div>
+              </div>
+              <div class="print-type-option" data-print-type="double_side">
+                <div class="print-type-icon">
+                  <i class="fas fa-copy"></i>
+                </div>
+                <div class="print-type-label">Double Side Print (Front - Back)</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Orientation -->
           <div class="settings-group">
             <label class="settings-label">Choose print orientation</label>
@@ -19483,6 +19516,7 @@
     const defaultSettings = {
       copies: 1,
       color: '', // No default color selection - user must choose
+      printType: 'single_side',
       orientation: 'portrait',
       pageRange: 'all',
       specificPages: '',
@@ -23422,6 +23456,10 @@
       const pages = breakdown.page_count || breakdown.pages || breakdown.print_quantity || 1;
       const copies = breakdown.num_copies || breakdown.copies || 1;
       const color = breakdown.print_color || breakdown.color || breakdown['Print Color'] || (job && job.color) || 'Black and White';
+      const printTypeRaw = breakdown.print_type || breakdown.printType || breakdown['Print Type'] || (job && (job.print_type || job.printType)) || '';
+      const printTypeDisplay = String(printTypeRaw).toLowerCase().includes('double')
+        ? 'Double Side Print (Front - Back)'
+        : 'Single Side Print';
       const size = breakdown.print_size || breakdown.size || 'N/A';
       let orientation = breakdown.orientation || breakdown['Print Orientation'] || (job && job.orientation) || 'Portrait';
       // Capitalize first letter
@@ -23452,6 +23490,10 @@
         <div class="invoice-item">
           <span class="invoice-item-label"><b>Color</b></span>
           <span class="invoice-item-value">${color}</span>
+        </div>
+        <div class="invoice-item">
+          <span class="invoice-item-label"><b>Print Type</b></span>
+          <span class="invoice-item-value">${printTypeDisplay}</span>
         </div>
         <div class="invoice-item">
           <span class="invoice-item-label"><b>Orientation</b></span>
@@ -23697,6 +23739,7 @@
     const decreaseCopies = document.getElementById('decreaseCopies');
     const increaseCopies = document.getElementById('increaseCopies');
     const colorOptions = document.querySelectorAll('.color-option');
+    const printTypeOptions = document.querySelectorAll('.print-type-option');
     const orientationOptions = document.querySelectorAll('.orientation-option');
     const pageRangeRadios = document.querySelectorAll('input[name="pageRange"]');
     const pageRangeInput = document.getElementById('pageRangeInput');
@@ -24022,11 +24065,13 @@
 
       // Clear visual selections
       const colorOptions = document.querySelectorAll('.color-option');
+      const printTypeOptions = document.querySelectorAll('.print-type-option');
       const orientationOptions = document.querySelectorAll('.orientation-option');
       const pageSizeOptions = document.querySelectorAll('.page-size-option');
       const pageRangeOptions = document.querySelectorAll('input[name="pageRange"]');
 
       colorOptions.forEach(option => option.classList.remove('selected'));
+      printTypeOptions.forEach(option => option.classList.remove('selected'));
       orientationOptions.forEach(option => option.classList.remove('selected'));
       pageSizeOptions.forEach(option => option.classList.remove('selected'));
       pageRangeOptions.forEach(option => option.checked = false);
@@ -24789,6 +24834,11 @@
 
       orientationOptions.forEach(option => {
         option.classList.toggle('selected', option.dataset.orientation === settings.orientation);
+      });
+      const currentPrintTypeOptions = document.querySelectorAll('.print-type-option');
+      const selectedPrintType = settings.printType || 'single_side';
+      currentPrintTypeOptions.forEach(option => {
+        option.classList.toggle('selected', option.dataset.printType === selectedPrintType);
       });
 
       pageSizeOptions.forEach(option => {
@@ -26048,6 +26098,16 @@
     // Initial attachment of color option listeners
     attachColorOptionListeners();
 
+    printTypeOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        if (selectedFileIndex === -1) return;
+        printTypeOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        updateCurrentFileSettings('printType', option.dataset.printType || 'single_side');
+        if (selectedVendor && uploadedFiles.length > 0) debounceCalculateA4();
+      });
+    });
+
     orientationOptions.forEach(option => {
       option.addEventListener('click', () => {
         if (selectedFileIndex === -1) return;
@@ -26209,13 +26269,21 @@
       totalPages = bwPages + colorPages;
 
       // Determine print type - if we have both bw and color, we'll calculate separately
-      let printType = 'single_bw'; // Default
+      const hasDoubleSide = filesForCalc.some(fileObj => {
+        const settings = fileSettings[fileObj.id] || {};
+        return settings.printType === 'double_side';
+      });
+      const sidePrefix = hasDoubleSide ? 'double' : 'single';
+
+      let printType = `${sidePrefix}_bw`;
       if (colorPages > 0 && bwPages === 0) {
-        printType = 'single_color';
+        printType = `${sidePrefix}_color`;
         colorType = 'Color';
       } else if (colorPages > 0 && bwPages > 0) {
+        printType = `${sidePrefix}_color`;
         colorType = 'Mixed';
       }
+      const printTypeLabel = hasDoubleSide ? 'Double Side Print (Front - Back)' : 'Single Side Print';
 
       // For A4 print, we use single-sided printing by default
       // The pricing structure supports: single_bw, single_color, double_bw, double_color
@@ -26341,6 +26409,8 @@
           completeBreakdown.bwPageRangeValue = bwRangeDisplay;
           completeBreakdown.colorPageRangeValue = colorRangeDisplay;
           completeBreakdown.print_color = colorType;
+          completeBreakdown.print_type = printType;
+          completeBreakdown.print_type_label = printTypeLabel;
 
           // Store the calculated price in modal metadata (final amount with 20% commission already applied)
           const printModalEl = document.getElementById('printModal');
@@ -26864,7 +26934,16 @@
         colorType = breakdownObj.print_color.toLowerCase().includes('color') ? 'color' : 'bw';
       }
 
-      const printType = colorType === 'color' ? 'single_color' : 'single_bw';
+      let printTypeDisplayText = 'Single Side Print';
+      if (breakdownObj && breakdownObj.print_type_label) {
+        printTypeDisplayText = String(breakdownObj.print_type_label);
+      } else if (breakdownObj && breakdownObj.print_type) {
+        const rawPrintType = String(breakdownObj.print_type).toLowerCase();
+        printTypeDisplayText = rawPrintType.includes('double') ? 'Double Side Print (Front - Back)' : 'Single Side Print';
+      } else if (typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0 && typeof fileSettings !== 'undefined') {
+        const hasDoubleSideSetting = uploadedFiles.some(f => (fileSettings[f.id] && fileSettings[f.id].printType === 'double_side'));
+        printTypeDisplayText = hasDoubleSideSetting ? 'Double Side Print (Front - Back)' : 'Single Side Print';
+      }
       // Service name should be just "A4 print"
       const serviceName = 'Document print';
 
@@ -27130,6 +27209,10 @@
               <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientationDisplayText}</span>
             </div>
+            <div class="invoice-item">
+              <span class="invoice-item-label"><b>Print Type</b></span>
+              <span class="invoice-item-value">${printTypeDisplayText}</span>
+            </div>
           `;
         } else {
           // Single document or no files - show standard format with accurate details
@@ -27202,6 +27285,10 @@
             <div class="invoice-item">
               <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientationDisplayText}</span>
+            </div>
+            <div class="invoice-item">
+              <span class="invoice-item-label"><b>Print Type</b></span>
+              <span class="invoice-item-value">${printTypeDisplayText}</span>
             </div>
             <div class="invoice-item">
               <span class="invoice-item-label"><b>Copies</b></span>
@@ -27463,6 +27550,7 @@
         let printColor = 'N/A';
         let pages = 1;
         let copies = 1;
+        let printTypeText = '';
         let orientation = 'Portrait';
 
         // Get values from form inputs first (most accurate), then fallback to breakdown
@@ -27512,6 +27600,12 @@
           if (pages === 1) pages = breakdownObj.page_count || breakdownObj.print_quantity || breakdownObj.total_pages || pages;
           if (copies === 1) copies = breakdownObj.num_copies || breakdownObj.copies || copies;
           if (printColor === 'N/A') printColor = breakdownObj.print_color || breakdownObj.color || breakdownObj.color_photo || breakdownObj['Print Color'] || printColor;
+          if (!printTypeText) {
+            const rawPrintType = (breakdownObj.print_type || breakdownObj.printType || '').toString().toLowerCase();
+            if (rawPrintType) {
+              printTypeText = rawPrintType.includes('double') ? 'Double Side Print (Front - Back)' : 'Single Side Print';
+            }
+          }
           if (orientation === 'Portrait') orientation = breakdownObj.orientation || breakdownObj['Print Orientation'] || orientation;
           // Capitalize first letter
           if (orientation) orientation = orientation.charAt(0).toUpperCase() + orientation.slice(1).toLowerCase();
@@ -27542,6 +27636,10 @@
         // Override with service-specific details if available (but keep passport color as "Color")
         serviceSpecificDetails.forEach(detail => {
           const labelLower = detail.label.toLowerCase();
+          if (labelLower.includes('print type')) {
+            const detailValue = (detail.value || '').toString().toLowerCase();
+            printTypeText = detailValue.includes('double') ? 'Double Side Print (Front - Back)' : 'Single Side Print';
+          }
           if (labelLower.includes('color') && service !== 'passport') {
             const colorValue = detail.value;
             if (colorValue === 'color_photo' || colorValue === 'Color Photo') {
@@ -27606,6 +27704,12 @@
               <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientation || 'Portrait'}</span>
             </div>
+            ${printTypeText ? `
+            <div class="invoice-item">
+              <span class="invoice-item-label"><b>Print Type</b></span>
+              <span class="invoice-item-value">${printTypeText}</span>
+            </div>
+            ` : ''}
             <div class="invoice-item">
               <span class="invoice-item-label"><b>Copies</b></span>
               <span class="invoice-item-value">${copies}</span>
@@ -27643,6 +27747,12 @@
               <span class="invoice-item-label"><b>Orientation</b></span>
               <span class="invoice-item-value">${orientation}</span>
             </div>
+            ${printTypeText ? `
+            <div class="invoice-item">
+              <span class="invoice-item-label"><b>Print Type</b></span>
+              <span class="invoice-item-value">${printTypeText}</span>
+            </div>
+            ` : ''}
             <div class="invoice-item">
               <span class="invoice-item-label">${service === 'passport' ? 'Total Photos' : 'Copies'}</span>
               <span class="invoice-item-value">${copies}</span>
@@ -27958,6 +28068,7 @@
               settings = {
                 copies: 1,
                 color: 'Black and White',
+                printType: 'single_side',
                 orientation: 'portrait',
                 pageRange: 'all',
                 specificPages: '',
@@ -27966,6 +28077,9 @@
                 lamination: false,
                 tapeBinding: false
               };
+            }
+            if (!settings.printType) {
+              settings.printType = 'single_side';
             }
 
             let finalFilename = fileToUpload.name;
@@ -28031,6 +28145,7 @@
               copies: settings.copies || 1,
               // Store Mix (not Black and White) when Mixed is selected so Vendor_print_jobs and User_print_jobs get correct color
               color: (settings.color === 'Mixed' ? 'Mix' : (settings.color || 'Black and White')),
+              print_type: settings.printType || 'single_side',
               orientation: settings.orientation || 'portrait',
               pageRange: settings.pageRange || 'all',
               specificPages: settings.specificPages || '',
