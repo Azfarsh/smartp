@@ -4984,7 +4984,7 @@
         let filteredJobs = { document: [], photo: [], passport: [], jumbo: [], golden: [], digital: [], completed: [] };
         let sidebarCollapsed = false;
         let hiddenCompletedJobs = new Set(JSON.parse(localStorage.getItem('hiddenCompletedJobs') || '[]'));
-        let vendorAvailability = 'online'; // Keep vendor online on login
+        let vendorAvailability = 'offline'; // Start offline on login for immediate safe state
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
         const JOB_REFRESH_INTERVAL_MS = 10 * 1000; // Refresh every 10 seconds for near-real-time pending jobs
 
@@ -5446,11 +5446,11 @@
             }
 
             initTheme();
-            // Keep vendor online immediately after login, then sync backend.
-            vendorAvailability = 'online';
-            localStorage.setItem('vendorAvailability', 'online');
+            // Keep print service OFF immediately after vendor login, then sync backend.
+            vendorAvailability = 'offline';
+            localStorage.setItem('vendorAvailability', 'offline');
             updateAvailabilityUI();
-            scheduleAvailabilitySync('online');
+            scheduleAvailabilitySync('offline');
 
             // Load vendor availability FIRST so renderJobs uses correct state, then load jobs
             const initAvailabilityAndJobs = async () => {
@@ -8920,10 +8920,10 @@
 
         // Availability Toggle Functions
         async function loadVendorAvailability() {
-            // Enforce ONLINE state on each login load, and sync to backend.
-            vendorAvailability = 'online';
-            localStorage.setItem('vendorAvailability', 'online');
-            scheduleAvailabilitySync('online');
+            // Enforce OFF state on each login load, and sync to backend.
+            vendorAvailability = 'offline';
+            localStorage.setItem('vendorAvailability', 'offline');
+            scheduleAvailabilitySync('offline');
             updateAvailabilityUI();
         }
 
@@ -9792,17 +9792,27 @@
         document.addEventListener('DOMContentLoaded', function () {
             const modal = document.getElementById('serviceUpdateModal');
             if (modal) {
-                // Do not auto-open service update/settings modal on vendor login.
-                // Keep manual access via sidebar Settings.
-                modal.style.display = 'none';
-                document.body.style.overflow = '';
+                // Show modal
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden'; // Prevent scrolling
 
-                // Show a non-blocking reminder instead of opening any modal.
-                setTimeout(function () {
-                    if (typeof showToast === 'function') {
-                        showToast('Reminder: Review Service Availability in Settings if needed.');
+                // Handle update button click
+                document.getElementById('btnUpdateServices').addEventListener('click', function () {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+
+                    // Open the Settings Modal (Service Availability)
+                    if (typeof openSettingsModal === 'function') {
+                        openSettingsModal();
+                    } else {
+                        // Fallback if function not found
+                        const settingsModal = document.getElementById('settingsModal');
+                        if (settingsModal) {
+                            settingsModal.style.display = 'flex';
+                            settingsModal.classList.add('active'); // Just in case CSS uses class
+                        }
                     }
-                }, 1200);
+                });
             }
         });
     </script>
