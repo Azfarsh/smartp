@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.contrib.auth import login
@@ -399,18 +399,6 @@ self.addEventListener('notificationclick', function(event) {
     
     content = template.render(context)
     return HttpResponse(content, content_type='application/javascript')
-
-
-def robots_txt(request):
-    """Serve robots.txt at the domain root."""
-    content = render_to_string('robots.txt')
-    return HttpResponse(content, content_type='text/plain')
-
-
-def sitemap_xml(request):
-    """Serve sitemap.xml at the domain root."""
-    content = render_to_string('sitemap.xml')
-    return HttpResponse(content, content_type='application/xml')
 
 
 def terms(request):
