@@ -18,6 +18,9 @@ from .views import (
 )
 
 urlpatterns = [
+    # SEO root files
+    path('robots.txt', views.robots_txt, name='robots_txt'),
+    path('sitemap.xml', views.sitemap_xml, name='sitemap_xml'),
     # Firebase service worker - must be at root level for proper scope
     path('firebase-messaging-sw.js', views.firebase_messaging_sw, name='firebase_messaging_sw'),
     path('', views.home, name='home'),
