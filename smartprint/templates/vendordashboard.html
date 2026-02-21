@@ -5446,11 +5446,11 @@
             }
 
             initTheme();
-            // Keep print service OFF immediately after vendor login, then sync backend.
-            vendorAvailability = 'offline';
-            localStorage.setItem('vendorAvailability', 'offline');
+            // Keep vendor available immediately after login, then sync backend.
+            vendorAvailability = 'online';
+            localStorage.setItem('vendorAvailability', 'online');
             updateAvailabilityUI();
-            scheduleAvailabilitySync('offline');
+            scheduleAvailabilitySync('online');
 
             // Load vendor availability FIRST so renderJobs uses correct state, then load jobs
             const initAvailabilityAndJobs = async () => {
@@ -8920,10 +8920,10 @@
 
         // Availability Toggle Functions
         async function loadVendorAvailability() {
-            // Enforce OFF state on each login load, and sync to backend.
-            vendorAvailability = 'offline';
-            localStorage.setItem('vendorAvailability', 'offline');
-            scheduleAvailabilitySync('offline');
+            // Enforce ONLINE state on each login load, and sync to backend.
+            vendorAvailability = 'online';
+            localStorage.setItem('vendorAvailability', 'online');
+            scheduleAvailabilitySync('online');
             updateAvailabilityUI();
         }
 
@@ -9701,50 +9701,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             const hasAskedSettings = localStorage.getItem('serviceSettingsUpdated');
             if (!hasAskedSettings) {
-                // Create a non-intrusive toast notification
-                const toast = document.createElement('div');
-                toast.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    background: var(--surface);
-                    border: 1px solid var(--primary);
-                    padding: 16px;
-                    border-radius: 12px;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-                    z-index: 10000;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    max-width: 320px;
-                    animation: slideInRight 0.5s ease-out;
-                `;
-                toast.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <i class="fas fa-cog" style="color:var(--primary);font-size:20px;"></i>
-                        <span style="font-weight:600;color:var(--on-surface);">Update Service Settings</span>
-                    </div>
-                    <p style="font-size:12px;color:var(--on-surface-variant);margin:0;">Please ensure your service prices and availability settings are up to date.</p>
-                    <div style="display:flex;gap:8px;justify-content:flex-end;">
-                        <button id="dismissSettings" style="padding:6px 12px;border:none;background:transparent;color:var(--on-surface-variant);cursor:pointer;font-size:12px;">Later</button>
-                        <button id="updateSettings" style="padding:6px 12px;border:none;background:var(--primary);color:var(--on-primary);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Update Now</button>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-
-                document.getElementById('dismissSettings').onclick = function () {
-                    toast.remove();
-                    localStorage.setItem('serviceSettingsUpdated', 'true');
-                };
-
-                document.getElementById('updateSettings').onclick = function () {
-                    toast.remove();
-                    localStorage.setItem('serviceSettingsUpdated', 'true');
-                    // Check if there is a settings link
-                    const settingsLink = document.querySelector('a[href*="vendor-pricing"]');
-                    if (settingsLink) settingsLink.click();
-                    else window.location.href = '/vendor-pricing/';
-                };
+                showToast('Please update your print services and pricing as per your shop.', 'info');
+                localStorage.setItem('serviceSettingsUpdated', 'true');
             }
 
             // Auto-refresh Pending Jobs (every 1 minute)
@@ -9792,27 +9750,12 @@
         document.addEventListener('DOMContentLoaded', function () {
             const modal = document.getElementById('serviceUpdateModal');
             if (modal) {
-                // Show modal
-                modal.style.display = 'flex';
-                document.body.style.overflow = 'hidden'; // Prevent scrolling
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
 
-                // Handle update button click
-                document.getElementById('btnUpdateServices').addEventListener('click', function () {
-                    modal.style.display = 'none';
-                    document.body.style.overflow = '';
-
-                    // Open the Settings Modal (Service Availability)
-                    if (typeof openSettingsModal === 'function') {
-                        openSettingsModal();
-                    } else {
-                        // Fallback if function not found
-                        const settingsModal = document.getElementById('settingsModal');
-                        if (settingsModal) {
-                            settingsModal.style.display = 'flex';
-                            settingsModal.classList.add('active'); // Just in case CSS uses class
-                        }
-                    }
-                });
+            if (typeof showToast === 'function') {
+                showToast('Please update your print services as per your shop.', 'info');
             }
         });
     </script>
