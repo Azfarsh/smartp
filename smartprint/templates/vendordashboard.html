@@ -4366,12 +4366,15 @@
     <aside class="sidebar" id="sidebar">
         <!-- Print Shop Profile -->
         <div class="vendor-profile">
-            <div class="vendor-avatar">
+            <div class="vendor-avatar"
+                data-initial="{% if vendor_details and vendor_details.vendor_name %}{{ vendor_details.vendor_name|slice:':1'|upper }}{% elif vendor_details and vendor_details.vendor_email %}{{ vendor_details.vendor_email|slice:':1'|upper }}{% else %}P{% endif %}">
                 {% if vendor_details and vendor_details.profile_image_url %}
                 <img src="{{ vendor_details.profile_image_url }}" alt="Profile"
+                    onerror="this.onerror=null; this.remove(); this.parentElement.textContent=this.parentElement.dataset.initial || 'P';"
                     style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 {% else %}
-                {% if vendor_details and vendor_details.vendor_email %}{{ vendor_details.vendor_email|slice:':1'|upper
+                {% if vendor_details and vendor_details.vendor_name %}{{ vendor_details.vendor_name|slice:':1'|upper
+                }}{% elif vendor_details and vendor_details.vendor_email %}{{ vendor_details.vendor_email|slice:':1'|upper
                 }}{% else %}<i class="fas fa-user"></i>{% endif %}
                 {% endif %}
             </div>
@@ -8765,7 +8768,7 @@
             const availabilityValues = serviceAvailability ? Object.values(serviceAvailability) : [];
             const areAllServicesOff = availabilityValues.length > 0 && availabilityValues.every(v => v === false);
             if (areAllServicesOff) {
-                showToast('All services are off. Please enable a service to accept jobs.');
+                showToast('All print services are OFF. Please turn ON the services available in your shop.');
                 vendorAvailability = 'offline';
                 localStorage.setItem('vendorAvailability', 'offline');
                 updateAvailabilityUI();
@@ -9734,8 +9737,8 @@
                 </div>
                 <h3 style="margin: 0; color: var(--on-surface); font-size: 1.25rem;">Daily Service Update</h3>
                 <p style="margin: 8px 0 0; color: var(--on-surface-variant); font-size: 0.9rem;">
-                    Good morning! To ensure accurate availability for customers, all print services have been reset to
-                    <strong>OFF</strong>. Please enable the services you are offering today.
+                    All print services are currently <strong>OFF</strong>. Please turn ON only the services available in
+                    your shop.
                 </p>
             </div>
             <button id="btnUpdateServices"
@@ -9755,7 +9758,7 @@
             }
 
             if (typeof showToast === 'function') {
-                showToast('Please update your print services as per your shop.', 'info');
+                showToast('Please turn ON services based on your shop availability.', 'info');
             }
         });
     </script>
