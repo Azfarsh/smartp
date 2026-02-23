@@ -5447,11 +5447,8 @@
             }
 
             initTheme();
-            // Keep vendor available immediately after login, then sync backend.
-            vendorAvailability = 'online';
-            localStorage.setItem('vendorAvailability', 'online');
+            vendorAvailability = localStorage.getItem('vendorAvailability') || vendorAvailability || 'offline';
             updateAvailabilityUI();
-            scheduleAvailabilitySync('online');
 
             // Load vendor availability FIRST so renderJobs uses correct state, then load jobs
             const initAvailabilityAndJobs = async () => {
@@ -8924,10 +8921,36 @@
 
         // Availability Toggle Functions
         async function loadVendorAvailability() {
-            // Enforce ONLINE state on each login load, and sync to backend.
-            vendorAvailability = 'online';
-            localStorage.setItem('vendorAvailability', 'online');
-            scheduleAvailabilitySync('online');
+            try {
+                const response = await fetch('/get-vendor-service-availability/');
+                const data = await response.json();
+                const serviceData = (data && data.success && data.data && typeof data.data === 'object') ? data.data : null;
+
+                if (serviceData) {
+                    vendorAvailability = serviceData.vendor_shop_avaliability || localStorage.getItem('vendorAvailability') || 'offline';
+
+                    const serviceKeys = [
+                        'digital_print',
+                        'project_binding',
+                        'gloss_printing',
+                        'jumbo_printing',
+                        'regular_print',
+                        'passport_print',
+                        'photo_print'
+                    ];
+                    const areAllServicesOff = serviceKeys.every(key => serviceData[key] === false);
+                    if (areAllServicesOff) {
+                        vendorAvailability = 'offline';
+                        scheduleAvailabilitySync('offline');
+                    }
+                } else {
+                    vendorAvailability = localStorage.getItem('vendorAvailability') || 'offline';
+                }
+            } catch (error) {
+                console.error('Error loading vendor availability:', error);
+                vendorAvailability = localStorage.getItem('vendorAvailability') || 'offline';
+            }
+            localStorage.setItem('vendorAvailability', vendorAvailability);
             updateAvailabilityUI();
         }
 
