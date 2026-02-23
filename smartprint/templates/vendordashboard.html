@@ -4371,7 +4371,8 @@
                 <img src="{{ vendor_details.profile_image_url }}" alt="Profile"
                     style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 {% else %}
-                {% if vendor_details and vendor_details.vendor_email %}{{ vendor_details.vendor_email|slice:':1'|upper
+                {% if vendor_details and vendor_details.vendor_name %}{{ vendor_details.vendor_name|slice:':1'|upper
+                }}{% elif vendor_details and vendor_details.vendor_email %}{{ vendor_details.vendor_email|slice:':1'|upper
                 }}{% else %}<i class="fas fa-user"></i>{% endif %}
                 {% endif %}
             </div>
@@ -8719,9 +8720,9 @@
         });
 
         // Settings Modal JS
-        function openSettingsModal() {
-            // Load current service availability
-            loadServiceAvailability();
+        async function openSettingsModal() {
+            // Load current service availability from DB before showing toggles
+            await loadServiceAvailability();
             document.getElementById('settingsModal').classList.add('show');
         }
 
@@ -8745,8 +8746,11 @@
                         return acc;
                     }, {}));
                 }
+                return true;
             } catch (error) {
                 console.error('Error loading service availability:', error);
+                showToast('Could not load latest service settings. Showing saved values.', 'warning');
+                return false;
             }
         }
         function closeSettingsModal() {
@@ -9419,7 +9423,8 @@
                     },
                     body: JSON.stringify({ vendor_email: vendorEmail }),
                     credentials: 'include',
-                    redirect: 'manual' // Prevent automatic redirects
+                    redirect: 'manual', // Prevent automatic redirects
+                    cache: 'no-store'
                 });
 
                 // Check if response is a redirect
@@ -9436,7 +9441,11 @@
                 const data = await response.json();
 
                 if (data.success && data.pricing) {
-                    renderVendorServicePrices(data.pricing, data.categorized_pricing || {});
+                    renderVendorServicePrices(
+                        data.pricing,
+                        data.categorized_pricing || {},
+                        data.services_summary || data.service_availability || data.vendor_service_availability || null
+                    );
                 } else {
                     content.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 16px;"></i><h3 style="margin: 0 0 8px 0; color: var(--on-surface); font-size: 1.25rem;">Pricing Not Available</h3><p style="margin: 0; color: var(--on-surface-variant);">' + (data.error || 'Unable to load pricing information. Please update your pricing in the Pricing section.') + '</p></div>';
                 }
@@ -9446,7 +9455,7 @@
             }
         }
 
-        function renderVendorServicePrices(pricing, categorizedPricing) {
+        function renderVendorServicePrices(pricing, categorizedPricing, serviceAvailability) {
             const content = document.getElementById('vendorServicePricesContent');
             if (!content) return;
 
@@ -9666,6 +9675,15 @@
             if (totalServices > 0) {
                 const averagePrice = totalServicesWithPrice > 0 ? (totalPrice / totalServicesWithPrice).toFixed(2) : '0.00';
                 html = '<div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; color: white;"><div><div style="font-size: 0.75rem; opacity: 0.9; margin-bottom: 2px;">Total Services</div><div style="font-size: 1.1rem; font-weight: 700;">' + totalServices + ' Services</div></div><div style="text-align: right;"><div style="font-size: 0.75rem; opacity: 0.9; margin-bottom: 2px;">Average Price</div><div style="font-size: 1.1rem; font-weight: 700;">₹' + averagePrice + '</div></div></div>' + html;
+            }
+
+            // If every print service is off, prompt vendor to enable services as per shop availability
+            if (serviceAvailability && typeof serviceAvailability === 'object') {
+                const availabilityValues = Object.values(serviceAvailability).filter(v => typeof v === 'boolean');
+                const areAllServicesOff = availabilityValues.length > 0 && availabilityValues.every(v => v === false);
+                if (areAllServicesOff) {
+                    html = '<div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: var(--on-surface); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 0.9rem; line-height: 1.45;"><div style="font-weight: 700; margin-bottom: 4px;"><i class="fas fa-exclamation-circle" style="margin-right: 6px; color: #f59e0b;"></i>All print services are currently OFF</div><div>Please turn ON the print services you are available to provide at your shop.</div></div>' + html;
+                }
             }
 
             if (!html) {
