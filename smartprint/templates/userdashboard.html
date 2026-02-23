@@ -21176,7 +21176,7 @@
 
       // Populate nearby shops with appropriate message
       if (searchText.length === 0) {
-        // DEFAULT MODE: Show message if no shops within 3km
+      // DEFAULT MODE: Show message if no shops within 2km
         if (displayShops.length === 0) {
           nearbyList.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 1rem; color: var(--on-surface-variant);">
@@ -21610,7 +21610,7 @@
       // Filter shops based on search text (uses shared logic)
       const { displayShops } = getFilteredShops(shopsWithDistance, searchText);
 
-      // Enforce 3km cap in shop selection modal for all services.
+      // Enforce 2km cap in shop selection modal for all services.
       // If no numeric distance data exists at all (e.g. location unavailable),
       // keep existing fallback behavior so modal functionality is not blocked.
       const getShopDistanceKm = (shop) => {
@@ -21627,11 +21627,11 @@
       };
 
       const hasAnyDistanceData = shopsWithDistance.some((shop) => getShopDistanceKm(shop) !== null);
-      const shopsWithin3km = displayShops.filter((shop) => {
+      const shopsWithin2km = displayShops.filter((shop) => {
         const d = getShopDistanceKm(shop);
-        return d !== null && d <= 3;
+        return d !== null && d <= 2;
       });
-      const shopsToRender = hasAnyDistanceData ? shopsWithin3km : displayShops;
+      const shopsToRender = hasAnyDistanceData ? shopsWithin2km : displayShops;
 
       // Show appropriate message based on mode
       if (searchText.length === 0) {
@@ -21640,7 +21640,7 @@
           shopList.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
               <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-              <p>⚠️ No shops available within 3 km.</p>
+              <p>⚠️ No shops available within 2 km.</p>
               <p style="font-size: 0.9em; margin-top: 0.5rem;">Try another nearby area or refresh location.</p>
             </div>
           `;
@@ -21652,7 +21652,7 @@
           shopList.innerHTML = `
             <div class="no-shops-message" style="text-align: center; padding: 2rem; color: #6b7280;">
               <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-              <p>No shops found within 3 km for "${searchText}"</p>
+              <p>No shops found within 2 km for "${searchText}"</p>
             </div>
           `;
           return;
@@ -21687,9 +21687,6 @@
           const dist = Number(shop.distance_km);
           distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
           hasDistance = true;
-        } else {
-          distance = 'Location unavailable';
-          hasDistance = false;
         }
 
         // Build address from multiple possible fields (same as photoprint)
@@ -21704,11 +21701,6 @@
         let distanceDisplay = '';
         if (hasDistance) {
           distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
-        } else {
-          distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
-            <i class="fas fa-map-marker-alt" style="font-size: 12px; color: #9ca3af;"></i>
-            <span>Location unavailable</span>
-          </span>`;
         }
 
         return `
@@ -29407,7 +29399,7 @@
         return shops; // Return all shops if no location data
       }
 
-      const maxRadiusKm = 3; // Fixed 3km radius
+      const maxRadiusKm = 2; // Fixed 2km radius
 
       // Filter shops with coordinates
       const shopsWithCoords = shops.filter(shop => {
@@ -29457,13 +29449,13 @@
         .map(shop => ({
           ...shop,
           distanceKm: null,
-          formattedDistance: 'Location not available'
+          formattedDistance: ''
         }));
 
       // Return ALL shops with distance info (filtering will be done in render functions)
       const allShopsWithDistance = [...shopsWithDistance, ...shopsWithoutCoords];
 
-      // Separate into within 3km and outside 3km for logging
+      // Separate into within 2km and outside 2km for logging
       const within3km = shopsWithDistance.filter(shop => shop.distanceKm != null && shop.distanceKm <= maxRadiusKm);
       console.log(`🎯 Within ${maxRadiusKm}km: ${within3km.length} shops`);
       console.log(`📍 Total shops with distance: ${allShopsWithDistance.length}`);
@@ -29477,38 +29469,28 @@
         return { displayShops: [], within3km: [], outside3km: [] };
       }
 
-      // Separate shops into within 3km and outside 3km
-      const within3km = shops.filter(shop => shop.distanceKm != null && shop.distanceKm <= 3);
-      const outside3km = shops.filter(shop => shop.distanceKm == null || shop.distanceKm > 3);
+      // Separate shops into within 2km and outside 2km
+      const within3km = shops.filter(shop => shop.distanceKm != null && shop.distanceKm <= 2);
+      const outside3km = shops.filter(shop => shop.distanceKm == null || shop.distanceKm > 2);
 
-      console.log("3km shops:", within3km.length);
+      console.log("2km shops:", within3km.length);
       console.log("Total shops:", shops.length);
       console.log("Search:", searchText);
 
       let displayShops = [];
 
       if (searchText.length === 0) {
-        // DEFAULT MODE:
-        // - Prefer all shops within 3km, sorted by distance
-        // - If we don't have any distance info yet, gracefully fall back to ALL shops
-        if (within3km.length > 0) {
-          displayShops = [...within3km].sort((a, b) => {
-            if (a.distanceKm == null) return 1;
-            if (b.distanceKm == null) return -1;
-            return a.distanceKm - b.distanceKm;
-          });
-        } else {
-          // No shops with a valid distanceKm – show everything so the user
-          // still sees all available shops instead of an empty list.
-          displayShops = [...shops];
-        }
+        // DEFAULT MODE: always show only shops within 2km, sorted by distance
+        displayShops = [...within3km].sort((a, b) => {
+          if (a.distanceKm == null) return 1;
+          if (b.distanceKm == null) return -1;
+          return a.distanceKm - b.distanceKm;
+        });
         console.log("Showing default shops:", displayShops.length);
       } else {
-        // SEARCH MODE: Show all shops matching search text (name / address / city / pincode),
-        // without hiding shops that are slightly beyond 3km. This makes sure
-        // typing a shop name always shows that shop if it exists.
+        // SEARCH MODE: match text only within 2km shops
         const searchLower = searchText.toLowerCase();
-        const matchedShops = shops.filter(shop => {
+        const matchedShops = within3km.filter(shop => {
           const shopName = (shop.shop_name || '').toLowerCase();
           const shopAddress = (shop.shop_address || '').toLowerCase();
           const shopCity = (shop.city || '').toLowerCase();
@@ -29519,7 +29501,7 @@
             shopPincode.includes(searchLower);
         });
 
-        // Sort matched shops by distance when available, but do NOT filter them out by distance.
+        // Keep nearest shops first
         displayShops = matchedShops.sort((a, b) => {
           const aDist = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
           const bDist = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
@@ -29563,7 +29545,7 @@
             locationBasedShops = availableShops.map(shop => ({
               ...shop,
               distanceKm: null,
-              formattedDistance: 'Location unavailable'
+              formattedDistance: ''
             }));
             availableShops = locationBasedShops;
             console.log('📦 Using all shops without distance info:', locationBasedShops.length);
@@ -29638,7 +29620,7 @@
             locationBasedShops = availableShops.map(shop => ({
               ...shop,
               distanceKm: null,
-              formattedDistance: 'Location unavailable'
+              formattedDistance: ''
             }));
             availableShops = locationBasedShops;
           }
