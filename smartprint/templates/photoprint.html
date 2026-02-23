@@ -2280,7 +2280,7 @@
                 return;
             }
 
-            // Filter shops to only show those within 3km radius (like jumbo print modal)
+            // Filter shops to only show those within 2km radius (like jumbo print modal)
             let shopsToRender = availableShops;
             if (typeof locationBasedShops !== 'undefined' && locationBasedShops.length > 0) {
                 shopsToRender = locationBasedShops;
@@ -2298,15 +2298,15 @@
                 return;
             }
 
-            // Filter to only show shops within 3km
-            const shopsWithin3km = shopsToRender.filter(shop => {
+            // Filter to only show shops within 2km
+            const shopsWithin2km = shopsToRender.filter(shop => {
                 const distanceKm = (typeof shop.distanceKm === 'number') ? shop.distanceKm :
                     (shop.distance !== null && shop.distance !== undefined) ? shop.distance : null;
-                return distanceKm !== null && distanceKm !== undefined && distanceKm <= 3;
+                return distanceKm !== null && distanceKm !== undefined && distanceKm <= 2;
             });
 
-            // Use shops within 3km if available, otherwise use all shops
-            const finalShops = shopsWithin3km.length > 0 ? shopsWithin3km : shopsToRender;
+            // Always use only shops within 2km
+            const finalShops = shopsWithin2km;
 
             // Sort by distance
             const sortedShops = [...finalShops].sort((a, b) => {
@@ -2331,9 +2331,6 @@
                     const dist = Number(shop.distance_km);
                     distance = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
                     hasDistance = true;
-                } else {
-                    distance = 'Location unavailable';
-                    hasDistance = false;
                 }
 
                 const address = [shop.shop_address, shop.city, shop.pincode].filter(Boolean).join(', ') ||
@@ -2358,11 +2355,6 @@
                 let distanceDisplay = '';
                 if (hasDistance) {
                     distanceDisplay = `<span class="shop-selection-item-distance">${distance}</span>`;
-                } else {
-                    distanceDisplay = `<span class="shop-selection-item-distance" style="display: flex; align-items: center; gap: 4px; color: #9ca3af;">
-                <i class="fas fa-map-marker-alt" style="font-size: 12px; color: #9ca3af;"></i>
-                <span>Location unavailable</span>
-            </span>`;
                 }
 
                 return `
