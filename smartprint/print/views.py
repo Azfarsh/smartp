@@ -7270,12 +7270,11 @@ def vendor_login(request):
                     else:
                         request.session.pop('vendor_id', None)
                     
-                    # Ensure Vendor_service_availability row is refreshed on every login
-                    # This now resets all services to OFF as per requirement
+                    # Ensure Vendor_service_availability row exists on login without resetting saved values
                     _sync_vendor_service_on_login(vendor_email_db, vendor_id)
                     
-                    # Set flag to show update modal on dashboard
-                    request.session['service_update_needed'] = True
+                    # Keep service reminder disabled so existing values are not interrupted
+                    request.session['service_update_needed'] = False
 
                     print(f"✅ Vendor login successful: {email} (ID: {vendor_id}, Status: {vendor_status})")
                     
@@ -11191,29 +11190,41 @@ def _reset_service_availability():
 def _sync_vendor_service_on_login(vendor_email, vendor_id):
     """
     Ensure the Vendor_service_availability table has up-to-date rows whenever a vendor logs in.
-    FORCE RESETS all services to OFF so the vendor must manually enable them for the day.
+    Preserves existing settings and only initializes defaults if missing.
     """
     if not vendor_email or not vendor_id:
         return
 
     try:
-        # Use the RESET payload (all False) instead of default (all True) or fetching existing
-        service_payload = _reset_service_availability()
-
-        print(f"🔄 Resetting services for vendor {vendor_email} to OFF on login.")
-
-        # Persist the reset row so it reflects in the DB immediately
+        existing_service_data = None
         try:
-            endpoint, resp = post_to_worker('/upsert-vendor-service', {
+            endpoint, resp = post_to_worker('/get-vendor-service', {
                 'vendor_email': vendor_email,
-                'vendor_id': vendor_id,
-                'service_data': service_payload,
-                'updated_by': vendor_email
+                'vendor_id': vendor_id
             })
-            if resp.status_code != 200:
-                print(f"⚠️ Worker upsert-vendor-service failed during login sync ({resp.status_code}) via {endpoint}: {resp.text[:200]}")
-        except Exception as upsert_err:
-            print(f"⚠️ Unable to upsert vendor service data during login sync: {upsert_err}")
+            if resp.status_code == 200:
+                payload = resp.json()
+                if payload.get('success'):
+                    service_payload = payload.get('service') or {}
+                    existing_service_data = service_payload.get('service_data') or None
+            elif resp.status_code != 404:
+                print(f"⚠️ Worker get-vendor-service failed during login sync ({resp.status_code}) via {endpoint}: {resp.text[:200]}")
+        except Exception as fetch_err:
+            print(f"⚠️ Unable to read vendor service data during login sync: {fetch_err}")
+
+        if existing_service_data is None:
+            service_payload = _default_service_availability()
+            try:
+                endpoint, resp = post_to_worker('/upsert-vendor-service', {
+                    'vendor_email': vendor_email,
+                    'vendor_id': vendor_id,
+                    'service_data': service_payload,
+                    'updated_by': vendor_email
+                })
+                if resp.status_code != 200:
+                    print(f"⚠️ Worker upsert-vendor-service failed during login sync ({resp.status_code}) via {endpoint}: {resp.text[:200]}")
+            except Exception as upsert_err:
+                print(f"⚠️ Unable to upsert vendor service data during login sync: {upsert_err}")
     except Exception as sync_err:
         print(f"⚠️ Vendor service sync on login failed: {sync_err}")
 
