@@ -7719,7 +7719,8 @@
 
             title.textContent = filename;
             const ext = filename.split('.').pop().toLowerCase();
-            const safeUrl = url ? `${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}` : '';
+            // Keep signed URLs unchanged; adding extra params (like ts=) can break cloud signatures.
+            const safeUrl = url || '';
 
             if (ext === 'pdf') {
                 frame.style.display = 'block';
