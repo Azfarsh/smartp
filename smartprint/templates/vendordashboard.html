@@ -3563,6 +3563,7 @@
             overflow: hidden;
             position: relative;
             padding: 20px;
+            margin: 0 auto;
         }
 
         #previewModal .modal-header {
@@ -3570,9 +3571,18 @@
             padding-bottom: 8px;
         }
 
+        #previewModal.show {
+            align-items: center;
+            justify-content: center;
+        }
+
         #previewModal .preview-container {
             height: calc(100% - 48px);
             border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface);
         }
 
         /* Toast */
@@ -6713,7 +6723,6 @@
                     // If we have cached jobs, keep using them
                     if (allJobs.length > 0) {
                         categorizeJobs();
-                        showToast('Using cached jobs - server error occurred', 'warning');
                     } else {
                         // No cached jobs, show empty state
                         allJobs = [];
@@ -6834,7 +6843,6 @@
                 // If we have cached jobs, keep using them
                 if (allJobs.length > 0) {
                     categorizeJobs();
-                    showToast('Using cached jobs due to a temporary server issue', 'warning');
                 } else {
                     // No cached jobs, show empty state
                     console.error('Failed to load jobs for dashboard UI:', formatErrorMessage(error.message));
@@ -7759,7 +7767,7 @@
             function buildPdfPreviewUrl(baseUrl) {
                 if (!baseUrl) return '';
                 if (baseUrl.includes('#')) return baseUrl;
-                return `${baseUrl}#toolbar=0`;
+                return `${baseUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH&pagemode=none`;
             }
 
             if (ext === 'pdf') {
@@ -7767,7 +7775,8 @@
                 image.style.display = 'none';
                 frame.src = buildPdfPreviewUrl(safeUrl);
                 frame.onerror = () => {
-                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                    console.error('PDF preview failed for:', filename);
+                    showToast('Preview is temporarily unavailable for this file.', 'warning');
                 };
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 frame.style.display = 'none';
