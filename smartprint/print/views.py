@@ -11896,6 +11896,7 @@ def generate_fresh_preview_url(request):
     """
     if request.method == 'POST':
         try:
+            from urllib.parse import urlparse, unquote
             data = json.loads(request.body)
             filename = data.get('filename')
             job_data = data.get('job_data', {}) or {}
@@ -11926,6 +11927,28 @@ def generate_fresh_preview_url(request):
             r2_path = job_data.get('r2_path') or job_data.get('metadata', {}).get('r2_path')
             if r2_path:
                 possible_keys.append(r2_path.lstrip('/'))
+
+            # Try extracting exact object key from already known URLs first
+            def _extract_key_from_url(raw_url):
+                try:
+                    if not raw_url:
+                        return None
+                    parsed = urlparse(raw_url)
+                    path = unquote((parsed.path or '').lstrip('/'))
+                    if not path:
+                        return None
+                    # If URL is /<bucket>/<key>, strip bucket segment
+                    bucket = (settings.R2_BUCKET or '').strip('/')
+                    if bucket and path.startswith(bucket + '/'):
+                        path = path[len(bucket) + 1:]
+                    return path.lstrip('/') or None
+                except Exception:
+                    return None
+
+            for url_field in ('preview_url', 'download_url'):
+                extracted = _extract_key_from_url(job_data.get(url_field))
+                if extracted:
+                    possible_keys.append(extracted)
             
             # Check vendor print jobs (fallback construction)
             vendor_id = (
@@ -11972,7 +11995,45 @@ def generate_fresh_preview_url(request):
                     break
                 except:
                     continue
-            
+
+            # Final fallback: scan likely prefixes for exact filename match
+            if not found_key:
+                candidate_prefixes = []
+                if storage_folder:
+                    candidate_prefixes.append(f"{storage_folder.rstrip('/')}/")
+                if vendor_id:
+                    candidate_prefixes.append(f"{storage_folder.rstrip('/')}/{vendor_id}/")
+                    candidate_prefixes.append(f"vendor_print_jobs/{vendor_id}/")
+                if user_email:
+                    candidate_prefixes.append(f"users/{user_email}/")
+                candidate_prefixes.extend([
+                    "vendor_print_jobs/",
+                    "manual_print_jobs/",
+                    "users/"
+                ])
+
+                prefix_seen = set()
+                for prefix in candidate_prefixes:
+                    normalized_prefix = (prefix or '').lstrip('/')
+                    if not normalized_prefix or normalized_prefix in prefix_seen:
+                        continue
+                    prefix_seen.add(normalized_prefix)
+                    try:
+                        resp = s3.list_objects_v2(
+                            Bucket=settings.R2_BUCKET,
+                            Prefix=normalized_prefix,
+                            MaxKeys=1000
+                        )
+                        for item in resp.get('Contents', []) or []:
+                            key = (item.get('Key') or '').lstrip('/')
+                            if key and key.split('/')[-1] == filename:
+                                found_key = key
+                                break
+                        if found_key:
+                            break
+                    except Exception:
+                        continue
+
             if not found_key:
                 return JsonResponse({
                     "success": False,
