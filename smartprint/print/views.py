@@ -36,7 +36,7 @@ import schedule
 import subprocess
 import tempfile
 import shutil
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, unquote
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import VendorLocationSession
@@ -136,6 +136,33 @@ def post_to_worker(path, payload=None, timeout=10):
     )
 
     return endpoint, response
+
+
+def _normalize_r2_key(raw_value):
+    """
+    Convert an R2 key or URL-like value into a clean object key.
+    """
+    if not raw_value:
+        return ''
+
+    value = str(raw_value).strip()
+    if not value:
+        return ''
+
+    try:
+        if '://' in value:
+            parsed = urlparse(value)
+            key = unquote((parsed.path or '').lstrip('/'))
+        else:
+            key = unquote(value.lstrip('/'))
+    except Exception:
+        key = str(raw_value).strip().lstrip('/')
+
+    bucket = (settings.R2_BUCKET or '').strip('/')
+    if bucket and key.startswith(bucket + '/'):
+        key = key[len(bucket) + 1:]
+
+    return key.lstrip('/')
 
 
 def create_or_update_admin_user_in_d1(
@@ -2368,9 +2395,11 @@ def get_vendor_jobs_from_d1(vendor_id=None, vendor_email=None, job_status='NO'):
             job.setdefault('user', job.get('user_email', ''))
 
             # Get R2 path from database (r2_path field) - ONLY use R2 for file URL
-            r2_path = job.get('r2_path')
+            r2_path = _normalize_r2_key(job.get('r2_path'))
             if not r2_path and job.get('filename'):
                 r2_path = f"{storage_folder.rstrip('/')}/{job.get('vendor_id', vendor_id)}/{job.get('filename')}"
+                job['r2_path'] = r2_path
+            elif r2_path:
                 job['r2_path'] = r2_path
 
             if r2_path:
@@ -11896,7 +11925,6 @@ def generate_fresh_preview_url(request):
     """
     if request.method == 'POST':
         try:
-            from urllib.parse import urlparse, unquote
             data = json.loads(request.body)
             filename = data.get('filename')
             job_data = data.get('job_data', {}) or {}
@@ -11924,24 +11952,17 @@ def generate_fresh_preview_url(request):
             
             # Try to find the file in various locations
             possible_keys = []
-            r2_path = job_data.get('r2_path') or job_data.get('metadata', {}).get('r2_path')
+            r2_path = _normalize_r2_key(job_data.get('r2_path') or job_data.get('metadata', {}).get('r2_path'))
             if r2_path:
-                possible_keys.append(r2_path.lstrip('/'))
+                possible_keys.append(r2_path)
 
             # Try extracting exact object key from already known URLs first
             def _extract_key_from_url(raw_url):
                 try:
                     if not raw_url:
                         return None
-                    parsed = urlparse(raw_url)
-                    path = unquote((parsed.path or '').lstrip('/'))
-                    if not path:
-                        return None
-                    # If URL is /<bucket>/<key>, strip bucket segment
-                    bucket = (settings.R2_BUCKET or '').strip('/')
-                    if bucket and path.startswith(bucket + '/'):
-                        path = path[len(bucket) + 1:]
-                    return path.lstrip('/') or None
+                    path = _normalize_r2_key(raw_url)
+                    return path or None
                 except Exception:
                     return None
 
@@ -12019,16 +12040,33 @@ def generate_fresh_preview_url(request):
                         continue
                     prefix_seen.add(normalized_prefix)
                     try:
-                        resp = s3.list_objects_v2(
-                            Bucket=settings.R2_BUCKET,
-                            Prefix=normalized_prefix,
-                            MaxKeys=1000
-                        )
-                        for item in resp.get('Contents', []) or []:
-                            key = (item.get('Key') or '').lstrip('/')
-                            if key and key.split('/')[-1] == filename:
-                                found_key = key
+                        continuation_token = None
+                        while True:
+                            list_args = {
+                                'Bucket': settings.R2_BUCKET,
+                                'Prefix': normalized_prefix,
+                                'MaxKeys': 1000,
+                            }
+                            if continuation_token:
+                                list_args['ContinuationToken'] = continuation_token
+
+                            resp = s3.list_objects_v2(**list_args)
+                            for item in resp.get('Contents', []) or []:
+                                key = _normalize_r2_key(item.get('Key'))
+                                if key and key.split('/')[-1] == filename:
+                                    found_key = key
+                                    break
+
+                            if found_key:
                                 break
+
+                            if not resp.get('IsTruncated'):
+                                break
+
+                            continuation_token = resp.get('NextContinuationToken')
+                            if not continuation_token:
+                                break
+
                         if found_key:
                             break
                     except Exception:

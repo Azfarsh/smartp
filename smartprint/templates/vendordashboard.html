@@ -3563,7 +3563,6 @@
             overflow: hidden;
             position: relative;
             padding: 20px;
-            margin: 0 auto;
         }
 
         #previewModal .modal-header {
@@ -3571,18 +3570,9 @@
             padding-bottom: 8px;
         }
 
-        #previewModal.show {
-            align-items: center;
-            justify-content: center;
-        }
-
         #previewModal .preview-container {
             height: calc(100% - 48px);
             border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--surface);
         }
 
         /* Toast */
@@ -5314,7 +5304,7 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.download_url || job.preview_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -6723,6 +6713,7 @@
                     // If we have cached jobs, keep using them
                     if (allJobs.length > 0) {
                         categorizeJobs();
+                        showToast('Using cached jobs - server error occurred', 'warning');
                     } else {
                         // No cached jobs, show empty state
                         allJobs = [];
@@ -6843,6 +6834,7 @@
                 // If we have cached jobs, keep using them
                 if (allJobs.length > 0) {
                     categorizeJobs();
+                    showToast('Using cached jobs due to a temporary server issue', 'warning');
                 } else {
                     // No cached jobs, show empty state
                     console.error('Failed to load jobs for dashboard UI:', formatErrorMessage(error.message));
@@ -7216,7 +7208,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.download_url || job.preview_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7239,7 +7231,7 @@
             }
 
             // Main info block (compact)
-            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.download_url || job.preview_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})"`;
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
@@ -7757,15 +7749,7 @@
                     ((j.preview_url || j.download_url || '') === fallbackUrl)
                 ) || {};
             }
-            const directPreviewUrl = (resolvedJobData && (resolvedJobData.download_url || resolvedJobData.preview_url)) || fallbackUrl;
-            const alternatePreviewUrl = directPreviewUrl === (resolvedJobData && resolvedJobData.download_url)
-                ? (resolvedJobData && resolvedJobData.preview_url)
-                : (resolvedJobData && resolvedJobData.download_url);
-            const safeUrl = await generateFreshPreviewUrl(
-                filename,
-                resolvedJobData || {},
-                directPreviewUrl || fallbackUrl
-            ) || directPreviewUrl || fallbackUrl;
+            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
             if (!safeUrl) {
                 console.error('Preview URL unavailable for file:', filename);
                 showToast('Preview is currently unavailable for this file.', 'warning');
@@ -7775,78 +7759,24 @@
             function buildPdfPreviewUrl(baseUrl) {
                 if (!baseUrl) return '';
                 if (baseUrl.includes('#')) return baseUrl;
-                return `${baseUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH&pagemode=none`;
+                return `${baseUrl}#toolbar=0`;
             }
 
             if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
                 frame.src = buildPdfPreviewUrl(safeUrl);
-                let triedAlternatePdfUrl = false;
-                let triedFreshPdfUrl = false;
-                frame.onerror = async () => {
-                    // Try alternate signed URL first, then request a fresh URL.
-                    if (!triedAlternatePdfUrl && alternatePreviewUrl && alternatePreviewUrl !== safeUrl) {
-                        triedAlternatePdfUrl = true;
-                        frame.src = buildPdfPreviewUrl(alternatePreviewUrl);
-                        return;
-                    }
-                    if (!triedFreshPdfUrl) {
-                        triedFreshPdfUrl = true;
-                        const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
-                        if (refreshedUrl && refreshedUrl !== safeUrl && refreshedUrl !== alternatePreviewUrl) {
-                            frame.src = buildPdfPreviewUrl(refreshedUrl);
-                            return;
-                        }
-                    }
-                    console.error('PDF preview failed for:', filename);
-                    showToast('Preview is temporarily unavailable for this file.', 'warning');
+                frame.onerror = () => {
+                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
                 };
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 frame.style.display = 'none';
                 image.style.display = 'block';
                 image.src = safeUrl;
-                let triedAlternateImageUrl = false;
-                let triedFreshImageUrl = false;
-                image.onerror = async () => {
-                    if (!triedAlternateImageUrl && alternatePreviewUrl && alternatePreviewUrl !== safeUrl) {
-                        triedAlternateImageUrl = true;
-                        image.src = alternatePreviewUrl;
-                        return;
-                    }
-                    if (!triedFreshImageUrl) {
-                        triedFreshImageUrl = true;
-                        const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
-                        if (refreshedUrl && refreshedUrl !== safeUrl && refreshedUrl !== alternatePreviewUrl) {
-                            image.src = refreshedUrl;
-                            return;
-                        }
-                    }
-                    console.error('Image preview failed for:', filename);
-                    showToast('Preview is temporarily unavailable for this file.', 'warning');
-                };
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = safeUrl;
-                let triedAlternateDocUrl = false;
-                let triedFreshDocUrl = false;
-                frame.onerror = async () => {
-                    if (!triedAlternateDocUrl && alternatePreviewUrl && alternatePreviewUrl !== safeUrl) {
-                        triedAlternateDocUrl = true;
-                        frame.src = alternatePreviewUrl;
-                        return;
-                    }
-                    if (!triedFreshDocUrl) {
-                        triedFreshDocUrl = true;
-                        const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
-                        if (refreshedUrl && refreshedUrl !== safeUrl && refreshedUrl !== alternatePreviewUrl) {
-                            frame.src = refreshedUrl;
-                            return;
-                        }
-                    }
-                    showToast('Preview is temporarily unavailable for this file.', 'warning');
-                };
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
             }
 
             modal.classList.add('show');
