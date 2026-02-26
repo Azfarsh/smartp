@@ -309,26 +309,6 @@
                         <div class="file-status" id="aadharFileStatus"><span class="material-icons">check_circle</span><span class="file-name"></span></div>
                                 <div class="error-message" id="aadharFileError"></div>
                             </div>
-
-                            <div class="form-group">
-                                <label for="panFile" class="form-label">PAN Card (PDF/JPEG/PNG)</label>
-                        <div class="input-wrapper file-input">
-                                    <input type="file" id="panFile" name="panFile" accept=".pdf,.jpg,.jpeg,.png" required>
-                                    <span class="material-icons input-icon">upload_file</span>
-                                </div>
-                        <div class="file-status" id="panFileStatus"><span class="material-icons">check_circle</span><span class="file-name"></span></div>
-                                <div class="error-message" id="panFileError"></div>
-                            </div>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label for="chequeFile" class="form-label">Passbook / Cheque (PDF/JPEG/PNG)</label>
-                            <div class="input-wrapper file-input">
-                                <input type="file" id="chequeFile" name="chequeFile" accept=".pdf,.jpg,.jpeg,.png" required>
-                                <span class="material-icons input-icon">upload_file</span>
-                            </div>
-                            <div class="file-status" id="chequeFileStatus"><span class="material-icons">check_circle</span><span class="file-name"></span></div>
-                            <div class="error-message" id="chequeFileError"></div>
                         </div>
 
                         <div class="form-group full-width" style="margin-top:0.25rem;">
@@ -598,9 +578,6 @@
                 const aadhar = document.getElementById('aadharFile');
                 if (aadhar) aadhar.addEventListener('change', () => updateFileStatus('aadharFile', 'aadharFileError', 'aadharFileStatus'));
 
-                const pan = document.getElementById('panFile');
-                if (pan) pan.addEventListener('change', () => updateFileStatus('panFile', 'panFileError', 'panFileStatus'));
-
                 const acct = document.getElementById('accountNumber');
                 if (acct) acct.addEventListener('blur', validateAccountNumber);
 
@@ -613,15 +590,11 @@
                 const branch = document.getElementById('branchCode');
                 if (branch) branch.addEventListener('blur', validateBranchCode);
 
-                const cheque = document.getElementById('chequeFile');
-                if (cheque) cheque.addEventListener('change', () => updateFileStatus('chequeFile', 'chequeFileError', 'chequeFileStatus'));
             }
 
             function validateAll() {
                 const checks = [];
                 checks.push(validateFile('aadharFile', 'aadharFileError'));
-                checks.push(validateFile('panFile', 'panFileError'));
-                checks.push(validateFile('chequeFile', 'chequeFileError'));
 
                 checks.push(validateRequiredField('beneficiaryName', 'beneficiaryNameError'));
                 checks.push(validateRequiredField('beneficiaryBank', 'beneficiaryBankError'));

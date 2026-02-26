@@ -3554,6 +3554,27 @@
             border: none;
         }
 
+        /* Match preview block behavior to test.html for document previews */
+        #previewModal .modal-content {
+            width: 600px;
+            height: 600px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            position: relative;
+            padding: 20px;
+        }
+
+        #previewModal .modal-header {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+        }
+
+        #previewModal .preview-container {
+            height: calc(100% - 48px);
+            border-radius: 8px;
+        }
+
         /* Toast */
         .toast {
             position: fixed;
@@ -6813,10 +6834,10 @@
                 // If we have cached jobs, keep using them
                 if (allJobs.length > 0) {
                     categorizeJobs();
-                    showToast('Using cached jobs - error loading from server', 'warning');
+                    showToast('Using cached jobs due to a temporary server issue', 'warning');
                 } else {
                     // No cached jobs, show empty state
-                    showToast(`Error loading jobs: ${formatErrorMessage(error.message)}`, 'error');
+                    console.error('Failed to load jobs for dashboard UI:', formatErrorMessage(error.message));
                     allJobs = [];
                     categorizeJobs();
                 }
@@ -7722,10 +7743,16 @@
             // Keep signed URLs unchanged; adding extra params (like ts=) can break cloud signatures.
             const safeUrl = url || '';
 
+            function buildPdfPreviewUrl(baseUrl) {
+                if (!baseUrl) return '';
+                if (baseUrl.includes('#')) return baseUrl;
+                return `${baseUrl}#toolbar=0`;
+            }
+
             if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = safeUrl;
+                frame.src = buildPdfPreviewUrl(safeUrl);
                 frame.onerror = () => {
                     frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
                 };
@@ -7744,6 +7771,10 @@
 
         function closeModal() {
             document.getElementById('previewModal').classList.remove('show');
+            const frame = document.getElementById('previewFrame');
+            const image = document.getElementById('previewImage');
+            if (frame) frame.src = '';
+            if (image) image.src = '';
         }
 
         // Generate fresh URL for preview
