@@ -5304,7 +5304,7 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7208,7 +7208,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7231,7 +7231,7 @@
             }
 
             // Main info block (compact)
-            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})"`;
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
@@ -7740,17 +7740,20 @@
 
             title.textContent = filename;
             const ext = filename.split('.').pop().toLowerCase();
-            // Keep signed URLs unchanged; adding extra params (like ts=) can break cloud signatures.
-            const safeUrl = url || '';
-            let resolvedUrl = safeUrl;
-
-            try {
-                const freshUrl = await generateFreshPreviewUrl(filename, jobData, safeUrl);
-                if (freshUrl) {
-                    resolvedUrl = freshUrl;
-                }
-            } catch (e) {
-                console.warn('Using original preview URL due to refresh failure:', e);
+            // Prefer a fresh signed URL to avoid stale/invalid object keys.
+            const fallbackUrl = url || '';
+            let resolvedJobData = jobData;
+            if (!resolvedJobData && Array.isArray(allJobs)) {
+                resolvedJobData = allJobs.find(j =>
+                    (j && j.filename === filename) ||
+                    ((j.preview_url || j.download_url || '') === fallbackUrl)
+                ) || {};
+            }
+            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
+            if (!safeUrl) {
+                console.error('Preview URL unavailable for file:', filename);
+                showToast('Preview is currently unavailable for this file.', 'warning');
+                return;
             }
 
             function buildPdfPreviewUrl(baseUrl) {
@@ -7762,18 +7765,18 @@
             if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = buildPdfPreviewUrl(resolvedUrl);
+                frame.src = buildPdfPreviewUrl(safeUrl);
                 frame.onerror = () => {
-                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(resolvedUrl)}&embedded=true`;
+                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
                 };
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 frame.style.display = 'none';
                 image.style.display = 'block';
-                image.src = resolvedUrl;
+                image.src = safeUrl;
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(resolvedUrl)}&embedded=true`;
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
             }
 
             modal.classList.add('show');
