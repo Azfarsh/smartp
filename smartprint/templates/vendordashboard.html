@@ -5314,7 +5314,7 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
+                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.download_url || job.preview_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7216,7 +7216,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.download_url || job.preview_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7239,7 +7239,7 @@
             }
 
             // Main info block (compact)
-            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.download_url || job.preview_url}')"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
@@ -7757,7 +7757,11 @@
                     ((j.preview_url || j.download_url || '') === fallbackUrl)
                 ) || {};
             }
-            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
+            const directPreviewUrl = (resolvedJobData && (resolvedJobData.download_url || resolvedJobData.preview_url)) || fallbackUrl;
+            const alternatePreviewUrl = directPreviewUrl === (resolvedJobData && resolvedJobData.download_url)
+                ? (resolvedJobData && resolvedJobData.preview_url)
+                : (resolvedJobData && resolvedJobData.download_url);
+            const safeUrl = directPreviewUrl || await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
             if (!safeUrl) {
                 console.error('Preview URL unavailable for file:', filename);
                 showToast('Preview is currently unavailable for this file.', 'warning');
@@ -7774,7 +7778,23 @@
                 frame.style.display = 'block';
                 image.style.display = 'none';
                 frame.src = buildPdfPreviewUrl(safeUrl);
-                frame.onerror = () => {
+                let triedAlternatePdfUrl = false;
+                let triedFreshPdfUrl = false;
+                frame.onerror = async () => {
+                    // Try alternate signed URL first, then request a fresh URL.
+                    if (!triedAlternatePdfUrl && alternatePreviewUrl && alternatePreviewUrl !== safeUrl) {
+                        triedAlternatePdfUrl = true;
+                        frame.src = buildPdfPreviewUrl(alternatePreviewUrl);
+                        return;
+                    }
+                    if (!triedFreshPdfUrl) {
+                        triedFreshPdfUrl = true;
+                        const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
+                        if (refreshedUrl && refreshedUrl !== safeUrl && refreshedUrl !== alternatePreviewUrl) {
+                            frame.src = buildPdfPreviewUrl(refreshedUrl);
+                            return;
+                        }
+                    }
                     console.error('PDF preview failed for:', filename);
                     showToast('Preview is temporarily unavailable for this file.', 'warning');
                 };
@@ -7782,10 +7802,47 @@
                 frame.style.display = 'none';
                 image.style.display = 'block';
                 image.src = safeUrl;
+                let triedAlternateImageUrl = false;
+                let triedFreshImageUrl = false;
+                image.onerror = async () => {
+                    if (!triedAlternateImageUrl && alternatePreviewUrl && alternatePreviewUrl !== safeUrl) {
+                        triedAlternateImageUrl = true;
+                        image.src = alternatePreviewUrl;
+                        return;
+                    }
+                    if (!triedFreshImageUrl) {
+                        triedFreshImageUrl = true;
+                        const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
+                        if (refreshedUrl && refreshedUrl !== safeUrl && refreshedUrl !== alternatePreviewUrl) {
+                            image.src = refreshedUrl;
+                            return;
+                        }
+                    }
+                    console.error('Image preview failed for:', filename);
+                    showToast('Preview is temporarily unavailable for this file.', 'warning');
+                };
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                frame.src = safeUrl;
+                let triedAlternateDocUrl = false;
+                let triedFreshDocUrl = false;
+                frame.onerror = async () => {
+                    if (!triedAlternateDocUrl && alternatePreviewUrl && alternatePreviewUrl !== safeUrl) {
+                        triedAlternateDocUrl = true;
+                        frame.src = alternatePreviewUrl;
+                        return;
+                    }
+                    if (!triedFreshDocUrl) {
+                        triedFreshDocUrl = true;
+                        const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
+                        if (refreshedUrl && refreshedUrl !== safeUrl && refreshedUrl !== alternatePreviewUrl) {
+                            frame.src = refreshedUrl;
+                            return;
+                        }
+                    }
+                    showToast('Preview is temporarily unavailable for this file.', 'warning');
+                };
             }
 
             modal.classList.add('show');
