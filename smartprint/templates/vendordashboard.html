@@ -5304,7 +5304,7 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
+                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7208,7 +7208,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7231,7 +7231,7 @@
             }
 
             // Main info block (compact)
-            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
@@ -7732,7 +7732,7 @@
         }
 
         // Preview Modal
-        function showPreview(filename, url) {
+        async function showPreview(filename, url, jobData = null) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('modalTitle');
             const frame = document.getElementById('previewFrame');
@@ -7742,6 +7742,16 @@
             const ext = filename.split('.').pop().toLowerCase();
             // Keep signed URLs unchanged; adding extra params (like ts=) can break cloud signatures.
             const safeUrl = url || '';
+            let resolvedUrl = safeUrl;
+
+            try {
+                const freshUrl = await generateFreshPreviewUrl(filename, jobData, safeUrl);
+                if (freshUrl) {
+                    resolvedUrl = freshUrl;
+                }
+            } catch (e) {
+                console.warn('Using original preview URL due to refresh failure:', e);
+            }
 
             function buildPdfPreviewUrl(baseUrl) {
                 if (!baseUrl) return '';
@@ -7752,18 +7762,18 @@
             if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = buildPdfPreviewUrl(safeUrl);
+                frame.src = buildPdfPreviewUrl(resolvedUrl);
                 frame.onerror = () => {
-                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(resolvedUrl)}&embedded=true`;
                 };
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 frame.style.display = 'none';
                 image.style.display = 'block';
-                image.src = safeUrl;
+                image.src = resolvedUrl;
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(resolvedUrl)}&embedded=true`;
             }
 
             modal.classList.add('show');
@@ -7778,7 +7788,7 @@
         }
 
         // Generate fresh URL for preview
-        async function generateFreshPreviewUrl(filename, jobData) {
+        async function generateFreshPreviewUrl(filename, jobData, fallbackUrl = '') {
             try {
                 const response = await fetch('/generate-fresh-preview-url/', {
                     method: 'POST',
@@ -7794,12 +7804,12 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.preview_url || previewUrl;
+                    return data.preview_url || fallbackUrl;
                 }
             } catch (error) {
                 console.error('Error generating fresh URL:', error);
             }
-            return previewUrl; // Fallback to original URL
+            return fallbackUrl; // Fallback to original URL
         }
 
         // Print Info Modal Functions
