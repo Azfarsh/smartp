@@ -3554,27 +3554,6 @@
             border: none;
         }
 
-        /* Match preview block behavior to test.html for document previews */
-        #previewModal .modal-content {
-            width: 600px;
-            height: 600px;
-            max-width: 90vw;
-            max-height: 90vh;
-            overflow: hidden;
-            position: relative;
-            padding: 20px;
-        }
-
-        #previewModal .modal-header {
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-        }
-
-        #previewModal .preview-container {
-            height: calc(100% - 48px);
-            border-radius: 8px;
-        }
-
         /* Toast */
         .toast {
             position: fixed;
@@ -5252,15 +5231,9 @@
             container.appendChild(cardElement);
         }
 
-        // Keep URL selection consistent across Print/Preview actions.
-        function getJobActionUrl(job) {
-            return (job && (job.preview_url || job.download_url || job.url)) || '';
-        }
-
         // Create completed job card with Print Info and Clear buttons
         function createCompletedJobCard(job) {
             const tokenNumber = job.token ? `Token ${job.token}` : '';
-            const actionUrl = getJobActionUrl(job);
             // Prefer pages/copies from pricing metadata when available
             const pricingBreakdown = (job.pricing_details && job.pricing_details.pricing_breakdown) ? job.pricing_details.pricing_breakdown : null;
             const pagesFromMetadata = pricingBreakdown && (pricingBreakdown.page_count || pricingBreakdown.pages || pricingBreakdown.total_pages);
@@ -5307,10 +5280,10 @@
                         </div>
                     </div>
                     <div class="job-actions" style="display:flex; gap:8px; align-items:center; margin-top:4px; padding-top:4px;">
-                        <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${actionUrl}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
+                        <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${actionUrl}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -6840,10 +6813,10 @@
                 // If we have cached jobs, keep using them
                 if (allJobs.length > 0) {
                     categorizeJobs();
-                    showToast('Using cached jobs due to a temporary server issue', 'warning');
+                    showToast('Using cached jobs - error loading from server', 'warning');
                 } else {
                     // No cached jobs, show empty state
-                    console.error('Failed to load jobs for dashboard UI:', formatErrorMessage(error.message));
+                    showToast(`Error loading jobs: ${formatErrorMessage(error.message)}`, 'error');
                     allJobs = [];
                     categorizeJobs();
                 }
@@ -7166,16 +7139,15 @@
 
             // Actions: Only show appropriate buttons based on job status
             let actions = '';
-            const actionUrl = getJobActionUrl(job);
 
             // Use identical action layout for ALL pending jobs (jumbo print style)
             if (isManualStyleRequest) {
                 actions = `
                     <div class="manual-job-actions">
-                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); printJob('${job.filename}', '${actionUrl}', '${job.service_type || ''}')" title="Open print dialog">
+                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); printJob('${job.filename}', '${job.preview_url || job.download_url}', '${job.service_type || ''}')" title="Open print dialog">
                             <i class="fas fa-print"></i> Print
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${actionUrl}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="View print information">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="View print information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
                         <button class="btn-small btn-danger" onclick="event.stopPropagation(); confirmCancelJob('${job.filename}', '${job.user_email || ''}', ${getJobPrice(job)})" title="Cancel job">
@@ -7212,10 +7184,10 @@
             if (type === 'completed') {
                 completedActions = `
                     <div class="job-actions">
-                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${actionUrl}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
+                        <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${actionUrl}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7238,7 +7210,7 @@
             }
 
             // Main info block (compact)
-            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${actionUrl}', ${JSON.stringify(job).replace(/"/g, '&quot;')})"`;
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
@@ -7739,83 +7711,63 @@
         }
 
         // Preview Modal
-        function renderPreviewContent(filename, previewUrl) {
+        function showPreview(filename, url) {
+            const modal = document.getElementById('previewModal');
+            const title = document.getElementById('modalTitle');
             const frame = document.getElementById('previewFrame');
             const image = document.getElementById('previewImage');
-            const ext = filename.split('.').pop().toLowerCase();
 
-            function buildPdfPreviewUrl(baseUrl) {
-                if (!baseUrl) return '';
-                if (baseUrl.includes('#')) return baseUrl;
-                return `${baseUrl}#toolbar=0`;
-            }
+            title.textContent = filename;
+            const ext = filename.split('.').pop().toLowerCase();
+            const rawUrl = (url || '').toString();
+            const isSignedUrl = /(?:[?&]X-Amz-|[?&]Signature=|[?&]Expires=)/i.test(rawUrl);
+            // Do not mutate signed URLs; adding query params breaks signature validation.
+            const safeUrl = rawUrl
+                ? (isSignedUrl ? rawUrl : `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}ts=${Date.now()}`)
+                : '';
+
+            const withPdfViewerParams = (u) => {
+                if (!u) return u;
+                const hasHash = u.includes('#');
+                const viewerParams = 'toolbar=0&navpanes=0&scrollbar=0';
+                return hasHash ? `${u}&${viewerParams}` : `${u}#${viewerParams}`;
+            };
+
+            // Keep preview modal strictly preview-only and block popup/print style actions from iframe context.
+            frame.setAttribute('sandbox', 'allow-same-origin allow-scripts');
+            frame.removeAttribute('allow');
 
             if (ext === 'pdf') {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = buildPdfPreviewUrl(previewUrl);
+                frame.src = withPdfViewerParams(safeUrl);
                 frame.onerror = () => {
-                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}&embedded=true`;
+                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
                 };
-            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
                 frame.style.display = 'none';
                 image.style.display = 'block';
-                image.src = previewUrl;
+                image.src = safeUrl;
             } else {
                 frame.style.display = 'block';
                 image.style.display = 'none';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}&embedded=true`;
-            }
-        }
-
-        async function showPreview(filename, url, jobData = null) {
-            const modal = document.getElementById('previewModal');
-            const title = document.getElementById('modalTitle');
-
-            title.textContent = filename;
-
-            // Always prefer the exact same URL that action buttons (Print/Download) use.
-            const fallbackUrl = url || '';
-            let resolvedJobData = jobData;
-            if (!resolvedJobData && Array.isArray(allJobs)) {
-                resolvedJobData = allJobs.find(j =>
-                    (j && j.filename === filename) ||
-                    ((j.preview_url || j.download_url || '') === fallbackUrl)
-                ) || {};
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
             }
 
-            const instantUrl = fallbackUrl || getJobActionUrl(resolvedJobData);
-
-            // If we already have a working URL (same as Print), render immediately and
-            // skip trying to generate an alternative URL that might point to a missing key.
-            if (instantUrl) {
-                renderPreviewContent(filename, instantUrl);
-                modal.classList.add('show');
-                return;
-            }
-
-            // Only when we don't have any URL at all, ask the backend to generate one.
-            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, '');
-            if (!safeUrl) {
-                console.error('Preview URL unavailable for file:', filename);
-                showToast('Preview is currently unavailable for this file.', 'warning');
-                return;
-            }
-
-            renderPreviewContent(filename, safeUrl);
             modal.classList.add('show');
         }
 
         function closeModal() {
-            document.getElementById('previewModal').classList.remove('show');
+            const modal = document.getElementById('previewModal');
             const frame = document.getElementById('previewFrame');
             const image = document.getElementById('previewImage');
-            if (frame) frame.src = '';
+            modal.classList.remove('show');
+            if (frame) frame.src = 'about:blank';
             if (image) image.src = '';
         }
 
         // Generate fresh URL for preview
-        async function generateFreshPreviewUrl(filename, jobData, fallbackUrl = '') {
+        async function generateFreshPreviewUrl(filename, jobData) {
             try {
                 const response = await fetch('/generate-fresh-preview-url/', {
                     method: 'POST',
@@ -7831,12 +7783,12 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.preview_url || fallbackUrl;
+                    return data.preview_url || previewUrl;
                 }
             } catch (error) {
                 console.error('Error generating fresh URL:', error);
             }
-            return fallbackUrl; // Fallback to original URL
+            return previewUrl; // Fallback to original URL
         }
 
         // Print Info Modal Functions
