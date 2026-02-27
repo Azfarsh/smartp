@@ -7773,7 +7773,8 @@
             const title = document.getElementById('modalTitle');
 
             title.textContent = filename;
-            // Prefer a fresh signed URL to avoid stale/invalid object keys.
+
+            // Always prefer the exact same URL that action buttons (Print/Download) use.
             const fallbackUrl = url || '';
             let resolvedJobData = jobData;
             if (!resolvedJobData && Array.isArray(allJobs)) {
@@ -7783,26 +7784,25 @@
                 ) || {};
             }
 
-            // Show preview instantly with the same URL used by action buttons.
             const instantUrl = fallbackUrl || getJobActionUrl(resolvedJobData);
+
+            // If we already have a working URL (same as Print), render immediately and
+            // skip trying to generate an alternative URL that might point to a missing key.
             if (instantUrl) {
                 renderPreviewContent(filename, instantUrl);
                 modal.classList.add('show');
-            }
-
-            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, instantUrl);
-            if (!safeUrl) {
-                if (!instantUrl) {
-                    console.error('Preview URL unavailable for file:', filename);
-                    showToast('Preview is currently unavailable for this file.', 'warning');
-                }
                 return;
             }
 
-            // If the fresh URL differs (or instant URL was missing), update modal content.
-            if (!instantUrl || safeUrl !== instantUrl) {
-                renderPreviewContent(filename, safeUrl);
+            // Only when we don't have any URL at all, ask the backend to generate one.
+            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, '');
+            if (!safeUrl) {
+                console.error('Preview URL unavailable for file:', filename);
+                showToast('Preview is currently unavailable for this file.', 'warning');
+                return;
             }
+
+            renderPreviewContent(filename, safeUrl);
             modal.classList.add('show');
         }
 
