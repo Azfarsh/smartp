@@ -3540,6 +3540,19 @@
             color: var(--on-surface);
         }
 
+        .modal-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .modal-subtitle {
+            font-size: 13px;
+            color: var(--on-surface-variant);
+            margin: 0;
+            font-weight: 500;
+        }
+
         .modal-close {
             background: var(--manual-color);
             color: var(--on-primary);
@@ -4716,7 +4729,10 @@
     <div class="modal" id="previewModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">Document Preview</h3>
+                <div class="modal-title-group">
+                    <h3 class="modal-title" id="modalTitle">Document Preview</h3>
+                    <p class="modal-subtitle" id="modalSubtitle"></p>
+                </div>
                 <button class="modal-close" onclick="closeModal()">
                     <i class="fas fa-times"></i>
                 </button>
@@ -7902,13 +7918,25 @@
         async function showPreview(filename, url) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('modalTitle');
+            const subtitle = document.getElementById('modalSubtitle');
             const frame = document.getElementById('previewFrame');
             const image = document.getElementById('previewImage');
             const pdfPages = document.getElementById('previewPdfPages');
             const previewContainer = frame ? frame.closest('.preview-container') : null;
 
-            title.textContent = filename;
-            const ext = filename.split('.').pop().toLowerCase();
+            if (title) {
+                title.textContent = filename;
+            }
+            const ext = (filename || '').split('.').pop().toLowerCase();
+
+            // Show the modal immediately with a loading state so the UI feels instant
+            if (subtitle) {
+                subtitle.textContent = ext === 'pdf' ? 'Preparing preview…' : '';
+            }
+            if (modal) {
+                modal.classList.add('show');
+            }
+
             let resolvedUrl = url || '';
             try {
                 const matchedJob = Array.isArray(allJobs)
@@ -7938,29 +7966,54 @@
                 pdfPages.innerHTML = '';
             }
 
+            if (!safeUrl) {
+                if (pdfPages) {
+                    pdfPages.style.display = 'block';
+                    pdfPages.innerHTML = '<div class="preview-pdf-error">Unable to load preview. Please try again.</div>';
+                }
+                if (subtitle) {
+                    subtitle.textContent = '';
+                }
+                return;
+            }
+
             if (ext === 'pdf') {
                 if (previewContainer) previewContainer.classList.add('pdf-mode');
                 if (pdfPages) {
                     pdfPages.style.display = 'block';
                     pdfPages.innerHTML = '<div class="preview-pdf-loading">Loading document preview...</div>';
                     try {
-                        await renderPdfPreviewPages(safeUrl, pdfPages);
+                        const totalPages = await renderPdfPreviewPages(safeUrl, pdfPages);
+                        if (subtitle && totalPages > 0) {
+                            subtitle.textContent = `Total pages: ${totalPages}`;
+                        }
                     } catch (error) {
                         console.error('Error rendering PDF pages in preview modal:', error);
                         pdfPages.innerHTML = '<div class="preview-pdf-error">Unable to load PDF preview. Please try reopening this preview.</div>';
+                        if (subtitle) {
+                            subtitle.textContent = '';
+                        }
                     }
-                } else {
+                } else if (frame) {
                     frame.style.display = 'none';
                 }
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
-                image.style.display = 'block';
-                image.src = safeUrl;
+                if (image) {
+                    image.style.display = 'block';
+                    image.src = safeUrl;
+                }
+                if (subtitle) {
+                    subtitle.textContent = '';
+                }
             } else {
-                frame.style.display = 'block';
-                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                if (frame) {
+                    frame.style.display = 'block';
+                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                }
+                if (subtitle) {
+                    subtitle.textContent = '';
+                }
             }
-
-            modal.classList.add('show');
         }
 
         async function renderPdfPreviewPages(pdfUrl, container) {
@@ -7997,6 +8050,8 @@
                 context.fillRect(0, 0, canvas.width, canvas.height);
                 await page.render({ canvasContext: context, viewport }).promise;
             }
+
+            return pdf.numPages;
         }
 
         function closeModal() {
@@ -8005,6 +8060,7 @@
             const image = document.getElementById('previewImage');
             const pdfPages = document.getElementById('previewPdfPages');
             const previewContainer = frame ? frame.closest('.preview-container') : null;
+            const subtitle = document.getElementById('modalSubtitle');
 
             if (frame) {
                 frame.src = 'about:blank';
@@ -8018,6 +8074,9 @@
                 pdfPages.style.display = 'none';
             }
             if (previewContainer) previewContainer.classList.remove('pdf-mode');
+            if (subtitle) {
+                subtitle.textContent = '';
+            }
             if (modal) modal.classList.remove('show');
         }
 
