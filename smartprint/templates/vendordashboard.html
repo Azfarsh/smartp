@@ -5304,7 +5304,7 @@
                         <button class="btn-small btn-primary" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" style="padding:8px 12px; min-height:32px; font-size:12px; font-weight:600;" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7208,7 +7208,7 @@
                         <button class="btn-small btn-primary" onclick="event.stopPropagation(); showPrintInfo('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})" title="Print Information">
                             <i class="fas fa-info-circle"></i> Print Info
                         </button>
-                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/\"/g, '&quot;')})" title="Preview Document">
+                        <button class="btn-small btn-info" onclick="event.stopPropagation(); showPreview('${job.filename}', '${job.preview_url || job.download_url}')" title="Preview Document">
                             <i class="fas fa-eye"></i> Preview
                         </button>
                     </div>
@@ -7231,7 +7231,7 @@
             }
 
             // Main info block (compact)
-            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}', ${JSON.stringify(job).replace(/"/g, '&quot;')})"`;
+            const cardOnClick = type === 'completed' ? '' : `onclick="showPreview('${job.filename}', '${job.preview_url || job.download_url}')"`;
             return `
                 <div class="job-card ${cardClass} compact" ${cardOnClick} data-filename="${job.filename}" data-token="${(job.token || '').toString()}">
                     ${vendorStatusBadge}
@@ -7745,17 +7745,11 @@
             let resolvedJobData = jobData;
             if (!resolvedJobData && Array.isArray(allJobs)) {
                 resolvedJobData = allJobs.find(j =>
-                    ((j.preview_url || j.download_url || '') === fallbackUrl) ||
-                    (j && j.filename === filename)
+                    (j && j.filename === filename) ||
+                    ((j.preview_url || j.download_url || '') === fallbackUrl)
                 ) || {};
             }
-            // Use the same direct URL path as print/open behavior first.
-            // If backend can produce a newer valid signed URL, it will replace this.
-            let safeUrl = fallbackUrl;
-            const refreshedUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
-            if (refreshedUrl) {
-                safeUrl = refreshedUrl;
-            }
+            const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, fallbackUrl);
             if (!safeUrl) {
                 console.error('Preview URL unavailable for file:', filename);
                 showToast('Preview is currently unavailable for this file.', 'warning');
