@@ -109,6 +109,7 @@ urlpatterns += [
     path('test-r2-url-generation/', test_r2_url_generation, name='test_r2_url_generation'),
     path('test-r2-simple/', test_r2_simple, name='test_r2_simple'),
     path('generate-fresh-preview-url/', views.generate_fresh_preview_url, name='generate_fresh_preview_url'),
+    path('vendor-preview-file/', views.vendor_preview_file, name='vendor_preview_file'),
     path('list-vendor-folder/', list_vendor_folder, name='list_vendor_folder'),
     # Appointment booking removed
     # New job management endpoints
