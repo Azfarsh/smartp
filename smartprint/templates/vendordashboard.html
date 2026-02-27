@@ -3251,6 +3251,21 @@
             border: 1px solid var(--outline);
         }
 
+        #previewModal .modal-content {
+            width: 600px;
+            height: 600px;
+            max-width: 90vw;
+            max-height: 90vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            margin: auto;
+        }
+
+        #previewModal .modal-header {
+            flex: 0 0 auto;
+        }
+
         .print-info-modal {
             width: 600px;
             max-width: 95%;
@@ -3549,6 +3564,12 @@
             background: #f3f4f6;
         }
 
+        #previewModal .preview-container {
+            flex: 1;
+            min-height: 0;
+            height: auto;
+        }
+
         .preview-container.pdf-mode {
             overflow-y: auto;
             padding: 12px;
@@ -3589,6 +3610,18 @@
             text-align: center;
             padding: 24px 12px;
             font-weight: 600;
+        }
+
+        .preview-pdf-error {
+            color: #1f2937;
+            text-align: center;
+            padding: 20px 14px;
+            font-weight: 600;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            margin: 10px auto;
+            max-width: 420px;
         }
 
         .preview-frame {
@@ -5104,6 +5137,7 @@
                 const cache = JSON.parse(localStorage.getItem(PREVIEW_URL_CACHE_KEY) || '{}');
                 const entry = cache[cacheKey];
                 if (!entry || !entry.url || !entry.cached_at) return '';
+                if (!entry.url.startsWith('/vendor-preview-file/')) return '';
                 if ((Date.now() - entry.cached_at) > PREVIEW_URL_CACHE_TTL_MS) {
                     delete cache[cacheKey];
                     localStorage.setItem(PREVIEW_URL_CACHE_KEY, JSON.stringify(cache));
@@ -5119,6 +5153,7 @@
         function setPreviewUrlCache(cacheKey, url) {
             try {
                 if (!cacheKey || !url) return;
+                if (!url.startsWith('/vendor-preview-file/')) return;
                 const cache = JSON.parse(localStorage.getItem(PREVIEW_URL_CACHE_KEY) || '{}');
                 cache[cacheKey] = { url, cached_at: Date.now() };
                 localStorage.setItem(PREVIEW_URL_CACHE_KEY, JSON.stringify(cache));
@@ -7912,20 +7947,10 @@
                         await renderPdfPreviewPages(safeUrl, pdfPages);
                     } catch (error) {
                         console.error('Error rendering PDF pages in preview modal:', error);
-                        if (previewContainer) previewContainer.classList.remove('pdf-mode');
-                        pdfPages.style.display = 'none';
-                        frame.style.display = 'block';
-                        frame.src = buildPdfPreviewUrl(safeUrl);
-                        frame.onerror = () => {
-                            frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
-                        };
+                        pdfPages.innerHTML = '<div class="preview-pdf-error">Unable to load PDF preview. Please try reopening this preview.</div>';
                     }
                 } else {
-                    frame.style.display = 'block';
-                    frame.src = buildPdfPreviewUrl(safeUrl);
-                    frame.onerror = () => {
-                        frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
-                    };
+                    frame.style.display = 'none';
                 }
             } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 image.style.display = 'block';
@@ -8016,7 +8041,10 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    const resolvedUrl = data.proxy_url || data.preview_url || fallbackUrl;
+                    const resolvedUrl = data.proxy_url
+                        || (data.found_key ? `/vendor-preview-file/?key=${encodeURIComponent(data.found_key)}` : '')
+                        || data.preview_url
+                        || fallbackUrl;
                     if (resolvedUrl) setPreviewUrlCache(cacheKey, resolvedUrl);
                     return resolvedUrl;
                 }
