@@ -3546,7 +3546,7 @@
             border: 1px solid var(--outline);
             border-radius: 12px;
             overflow: hidden;
-            background: #0b0b0b;
+            background: #f3f4f6;
         }
 
         .preview-container.pdf-mode {
@@ -3557,6 +3557,7 @@
         .preview-pdf-pages {
             display: none;
             min-height: 100%;
+            width: 100%;
         }
 
         .preview-pdf-page {
@@ -5031,6 +5032,100 @@
         let vendorAvailability = 'offline'; // Start offline on login for immediate safe state
         let connectionStatus = 'checking'; // Connection status: checking, connected, disconnected
         const JOB_REFRESH_INTERVAL_MS = 10 * 1000; // Refresh every 10 seconds for near-real-time pending jobs
+        const JOB_DETAIL_CACHE_KEY = 'vendorJobDetailsCache';
+        const PREVIEW_URL_CACHE_KEY = 'vendorPreviewUrlCache';
+        const PREVIEW_URL_CACHE_TTL_MS = 45 * 60 * 1000;
+        const VENDOR_CACHE_OWNER_KEY = 'vendorJobCacheOwner';
+        const CURRENT_VENDOR_EMAIL = '{{ vendor_details.vendor_email|default:""|escapejs }}'.trim().toLowerCase();
+
+        function initializeVendorJobCaches() {
+            try {
+                const cacheOwner = localStorage.getItem(VENDOR_CACHE_OWNER_KEY) || '';
+                const currentOwner = CURRENT_VENDOR_EMAIL || 'unknown_vendor';
+                if (cacheOwner !== currentOwner) {
+                    localStorage.removeItem('vendorJobs');
+                    localStorage.removeItem(JOB_DETAIL_CACHE_KEY);
+                    localStorage.removeItem(PREVIEW_URL_CACHE_KEY);
+                    localStorage.removeItem('hiddenCompletedJobs');
+                    hiddenCompletedJobs = new Set();
+                    localStorage.setItem(VENDOR_CACHE_OWNER_KEY, currentOwner);
+                }
+            } catch (e) {
+                console.warn('Error initializing vendor cache:', e);
+            }
+        }
+
+        function buildJobCacheKey(job) {
+            return `${job?.filename || ''}__${(job?.token || job?.metadata?.token || 'no_token').toString()}`;
+        }
+
+        function storeJobDetailCache(jobs) {
+            try {
+                if (!Array.isArray(jobs)) return;
+                const cacheMap = JSON.parse(localStorage.getItem(JOB_DETAIL_CACHE_KEY) || '{}');
+                const now = Date.now();
+                jobs.forEach(job => {
+                    if (!job || !job.filename) return;
+                    cacheMap[buildJobCacheKey(job)] = {
+                        filename: job.filename,
+                        token: (job.token || job.metadata?.token || '').toString(),
+                        preview_url: job.preview_url || '',
+                        download_url: job.download_url || '',
+                        user_email: job.user_email || job.metadata?.user_email || '',
+                        vendor_id: job.vendor_id || job.metadata?.vendor_id || '',
+                        storage_folder: job.storage_folder || job.metadata?.storage_folder || '',
+                        metadata: job.metadata || {},
+                        cached_at: now
+                    };
+                });
+                localStorage.setItem(JOB_DETAIL_CACHE_KEY, JSON.stringify(cacheMap));
+            } catch (e) {
+                console.warn('Error storing job detail cache:', e);
+            }
+        }
+
+        function getCachedJobByFilename(filename, sourceUrl = '') {
+            try {
+                const cacheMap = JSON.parse(localStorage.getItem(JOB_DETAIL_CACHE_KEY) || '{}');
+                const cacheEntries = Object.values(cacheMap);
+                if (!cacheEntries.length) return null;
+                return cacheEntries.find(item => item && item.filename === filename && (
+                    !sourceUrl || item.preview_url === sourceUrl || item.download_url === sourceUrl
+                )) || cacheEntries.find(item => item && item.filename === filename) || null;
+            } catch (e) {
+                console.warn('Error reading cached job details:', e);
+                return null;
+            }
+        }
+
+        function getPreviewUrlCache(cacheKey) {
+            try {
+                if (!cacheKey) return '';
+                const cache = JSON.parse(localStorage.getItem(PREVIEW_URL_CACHE_KEY) || '{}');
+                const entry = cache[cacheKey];
+                if (!entry || !entry.url || !entry.cached_at) return '';
+                if ((Date.now() - entry.cached_at) > PREVIEW_URL_CACHE_TTL_MS) {
+                    delete cache[cacheKey];
+                    localStorage.setItem(PREVIEW_URL_CACHE_KEY, JSON.stringify(cache));
+                    return '';
+                }
+                return entry.url;
+            } catch (e) {
+                console.warn('Error reading preview URL cache:', e);
+                return '';
+            }
+        }
+
+        function setPreviewUrlCache(cacheKey, url) {
+            try {
+                if (!cacheKey || !url) return;
+                const cache = JSON.parse(localStorage.getItem(PREVIEW_URL_CACHE_KEY) || '{}');
+                cache[cacheKey] = { url, cached_at: Date.now() };
+                localStorage.setItem(PREVIEW_URL_CACHE_KEY, JSON.stringify(cache));
+            } catch (e) {
+                console.warn('Error storing preview URL cache:', e);
+            }
+        }
 
         // Availability toggle variables
         let previousAvailabilityBeforeOptimistic = null;
@@ -5493,6 +5588,7 @@
             }
 
             initTheme();
+            initializeVendorJobCaches();
             vendorAvailability = localStorage.getItem('vendorAvailability') || vendorAvailability || 'offline';
             updateAvailabilityUI();
 
@@ -5533,6 +5629,7 @@
 
                             categorizeJobs();
                             localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                            storeJobDetailCache(allJobs);
                         }
                     }
                 } catch (e) {
@@ -6844,6 +6941,7 @@
 
                     // Cache all jobs
                     localStorage.setItem('vendorJobs', JSON.stringify(allJobs));
+                    storeJobDetailCache(allJobs);
                 } else {
                     // If no jobs found, show empty state without loading
                     allJobs = [];
@@ -7782,7 +7880,8 @@
                     ? (allJobs.find(job => job.filename === filename && ((job.preview_url || job.download_url) === url))
                         || allJobs.find(job => job.filename === filename))
                     : null;
-                resolvedUrl = await generateFreshPreviewUrl(filename, matchedJob || {}, url || '');
+                const cachedJob = matchedJob || getCachedJobByFilename(filename, url);
+                resolvedUrl = await generateFreshPreviewUrl(filename, cachedJob || {}, url || '');
             } catch (error) {
                 console.error('Error preparing fresh preview URL:', error);
             }
@@ -7869,6 +7968,8 @@
                 container.appendChild(pageWrapper);
 
                 const context = canvas.getContext('2d');
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
                 await page.render({ canvasContext: context, viewport }).promise;
             }
         }
@@ -7897,6 +7998,9 @@
 
         // Generate fresh URL for preview
         async function generateFreshPreviewUrl(filename, jobData = {}, fallbackUrl = '') {
+            const cacheKey = `${filename || ''}__${(jobData?.token || jobData?.metadata?.token || 'no_token').toString()}`;
+            const cachedUrl = getPreviewUrlCache(cacheKey);
+            if (cachedUrl) return cachedUrl;
             try {
                 const response = await fetch('/generate-fresh-preview-url/', {
                     method: 'POST',
@@ -7912,7 +8016,9 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.preview_url || fallbackUrl;
+                    const resolvedUrl = data.proxy_url || data.preview_url || fallbackUrl;
+                    if (resolvedUrl) setPreviewUrlCache(cacheKey, resolvedUrl);
+                    return resolvedUrl;
                 }
             } catch (error) {
                 console.error('Error generating fresh URL:', error);

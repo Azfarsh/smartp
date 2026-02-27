@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.contrib.auth import login
@@ -36,7 +36,7 @@ import schedule
 import subprocess
 import tempfile
 import shutil
-from urllib.parse import urlparse, urlunparse, unquote
+from urllib.parse import urlparse, urlunparse, unquote, quote
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import VendorLocationSession
@@ -11920,193 +11920,206 @@ def update_vendor_profile(request):
         "error": "Invalid request method"
     }, status=405)
 
+def _build_preview_s3_client():
+    endpoint = settings.R2_ENDPOINT.rstrip('/') if getattr(settings, 'R2_ENDPOINT', None) else None
+    return boto3.client(
+        's3',
+        aws_access_key_id=settings.R2_ACCESS_KEY,
+        aws_secret_access_key=settings.R2_SECRET_KEY,
+        endpoint_url=endpoint,
+        region_name='auto'
+    )
+
+
+def _resolve_preview_object_key(s3, filename, job_data, request):
+    """Resolve the R2 object key for a print job preview file."""
+    possible_keys = []
+    r2_path = _normalize_r2_key(job_data.get('r2_path') or job_data.get('metadata', {}).get('r2_path'))
+    if r2_path:
+        possible_keys.append(r2_path)
+
+    def _extract_key_from_url(raw_url):
+        try:
+            if not raw_url:
+                return None
+            path = _normalize_r2_key(raw_url)
+            return path or None
+        except Exception:
+            return None
+
+    for url_field in ('preview_url', 'download_url'):
+        extracted = _extract_key_from_url(job_data.get(url_field))
+        if extracted:
+            possible_keys.append(extracted)
+
+    vendor_id = (
+        job_data.get('vendor_id')
+        or job_data.get('vendor')
+        or job_data.get('shop_id')
+        or job_data.get('metadata', {}).get('vendor_id')
+        or job_data.get('metadata', {}).get('vendor')
+        or request.session.get('vendor_id')
+        or '9080823634'
+    )
+    storage_folder = (
+        job_data.get('storage_folder')
+        or job_data.get('metadata', {}).get('storage_folder')
+        or 'vendor_print_jobs'
+    )
+    if vendor_id:
+        possible_keys.append(f"{storage_folder.rstrip('/')}/{vendor_id}/{filename}")
+
+    user_email = (
+        job_data.get('user_email')
+        or job_data.get('user')
+        or job_data.get('metadata', {}).get('user_email')
+        or job_data.get('metadata', {}).get('user')
+    )
+    if user_email:
+        possible_keys.append(f"users/{user_email}/{filename}")
+
+    possible_keys.append(f"manual_print_jobs/{filename}")
+
+    found_key = None
+    seen_keys = set()
+    for key in possible_keys:
+        normalized_key = (key or '').lstrip('/')
+        if not normalized_key or normalized_key in seen_keys:
+            continue
+        seen_keys.add(normalized_key)
+        try:
+            s3.head_object(Bucket=settings.R2_BUCKET, Key=normalized_key)
+            found_key = normalized_key
+            break
+        except Exception:
+            continue
+
+    if found_key:
+        return found_key
+
+    candidate_prefixes = []
+    if storage_folder:
+        candidate_prefixes.append(f"{storage_folder.rstrip('/')}/")
+    if vendor_id:
+        candidate_prefixes.append(f"{storage_folder.rstrip('/')}/{vendor_id}/")
+        candidate_prefixes.append(f"vendor_print_jobs/{vendor_id}/")
+    if user_email:
+        candidate_prefixes.append(f"users/{user_email}/")
+    candidate_prefixes.extend(["vendor_print_jobs/", "manual_print_jobs/", "users/"])
+
+    prefix_seen = set()
+    for prefix in candidate_prefixes:
+        normalized_prefix = (prefix or '').lstrip('/')
+        if not normalized_prefix or normalized_prefix in prefix_seen:
+            continue
+        prefix_seen.add(normalized_prefix)
+        try:
+            continuation_token = None
+            while True:
+                list_args = {
+                    'Bucket': settings.R2_BUCKET,
+                    'Prefix': normalized_prefix,
+                    'MaxKeys': 1000,
+                }
+                if continuation_token:
+                    list_args['ContinuationToken'] = continuation_token
+
+                resp = s3.list_objects_v2(**list_args)
+                for item in resp.get('Contents', []) or []:
+                    key = _normalize_r2_key(item.get('Key'))
+                    if key and key.split('/')[-1] == filename:
+                        return key
+
+                if not resp.get('IsTruncated'):
+                    break
+                continuation_token = resp.get('NextContinuationToken')
+                if not continuation_token:
+                    break
+        except Exception:
+            continue
+
+    return None
+
+
 @csrf_exempt
 def generate_fresh_preview_url(request):
     """
-    Generate a fresh preview URL for a file to avoid expiration issues
+    Generate a fresh preview URL and a same-origin proxy URL for preview.
     """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             filename = data.get('filename')
             job_data = data.get('job_data', {}) or {}
-            
+
             if not filename:
-                return JsonResponse({
-                    "success": False,
-                    "error": "Filename is required"
-                }, status=400)
-            
-            # Get vendor email from session
+                return JsonResponse({"success": False, "error": "Filename is required"}, status=400)
+
             vendor_email = request.session.get('vendor_email')
             if not vendor_email:
-                return JsonResponse({
-                    "success": False,
-                    "error": "Vendor not authenticated"
-                }, status=401)
-            
-            # Initialize S3 client
-            s3 = boto3.client('s3',
-                            aws_access_key_id=settings.R2_ACCESS_KEY,
-                            aws_secret_access_key=settings.R2_SECRET_KEY,
-                            endpoint_url=settings.R2_ENDPOINT,
-                            region_name='auto')
-            
-            # Try to find the file in various locations
-            possible_keys = []
-            r2_path = _normalize_r2_key(job_data.get('r2_path') or job_data.get('metadata', {}).get('r2_path'))
-            if r2_path:
-                possible_keys.append(r2_path)
+                return JsonResponse({"success": False, "error": "Vendor not authenticated"}, status=401)
 
-            # Try extracting exact object key from already known URLs first
-            def _extract_key_from_url(raw_url):
-                try:
-                    if not raw_url:
-                        return None
-                    path = _normalize_r2_key(raw_url)
-                    return path or None
-                except Exception:
-                    return None
-
-            for url_field in ('preview_url', 'download_url'):
-                extracted = _extract_key_from_url(job_data.get(url_field))
-                if extracted:
-                    possible_keys.append(extracted)
-            
-            # Check vendor print jobs (fallback construction)
-            vendor_id = (
-                job_data.get('vendor_id')
-                or job_data.get('vendor')
-                or job_data.get('shop_id')
-                or job_data.get('metadata', {}).get('vendor_id')
-                or job_data.get('metadata', {}).get('vendor')
-                or request.session.get('vendor_id')
-                or '9080823634'
-            )
-            storage_folder = (
-                job_data.get('storage_folder')
-                or job_data.get('metadata', {}).get('storage_folder')
-                or 'vendor_print_jobs'
-            )
-            if vendor_id:
-                possible_keys.append(f"{storage_folder.rstrip('/')}/{vendor_id}/{filename}")
-            
-            # Check user uploads
-            user_email = (
-                job_data.get('user_email')
-                or job_data.get('user')
-                or job_data.get('metadata', {}).get('user_email')
-                or job_data.get('metadata', {}).get('user')
-            )
-            if user_email:
-                possible_keys.append(f"users/{user_email}/{filename}")
-            
-            # Check manual jobs
-            possible_keys.append(f"manual_print_jobs/{filename}")
-            
-            # Find the actual file
-            found_key = None
-            seen_keys = set()
-            for key in possible_keys:
-                normalized_key = key.lstrip('/')
-                if normalized_key in seen_keys:
-                    continue
-                seen_keys.add(normalized_key)
-                try:
-                    s3.head_object(Bucket=settings.R2_BUCKET, Key=normalized_key)
-                    found_key = normalized_key
-                    break
-                except:
-                    continue
-
-            # Final fallback: scan likely prefixes for exact filename match
-            if not found_key:
-                candidate_prefixes = []
-                if storage_folder:
-                    candidate_prefixes.append(f"{storage_folder.rstrip('/')}/")
-                if vendor_id:
-                    candidate_prefixes.append(f"{storage_folder.rstrip('/')}/{vendor_id}/")
-                    candidate_prefixes.append(f"vendor_print_jobs/{vendor_id}/")
-                if user_email:
-                    candidate_prefixes.append(f"users/{user_email}/")
-                candidate_prefixes.extend([
-                    "vendor_print_jobs/",
-                    "manual_print_jobs/",
-                    "users/"
-                ])
-
-                prefix_seen = set()
-                for prefix in candidate_prefixes:
-                    normalized_prefix = (prefix or '').lstrip('/')
-                    if not normalized_prefix or normalized_prefix in prefix_seen:
-                        continue
-                    prefix_seen.add(normalized_prefix)
-                    try:
-                        continuation_token = None
-                        while True:
-                            list_args = {
-                                'Bucket': settings.R2_BUCKET,
-                                'Prefix': normalized_prefix,
-                                'MaxKeys': 1000,
-                            }
-                            if continuation_token:
-                                list_args['ContinuationToken'] = continuation_token
-
-                            resp = s3.list_objects_v2(**list_args)
-                            for item in resp.get('Contents', []) or []:
-                                key = _normalize_r2_key(item.get('Key'))
-                                if key and key.split('/')[-1] == filename:
-                                    found_key = key
-                                    break
-
-                            if found_key:
-                                break
-
-                            if not resp.get('IsTruncated'):
-                                break
-
-                            continuation_token = resp.get('NextContinuationToken')
-                            if not continuation_token:
-                                break
-
-                        if found_key:
-                            break
-                    except Exception:
-                        continue
+            s3 = _build_preview_s3_client()
+            found_key = _resolve_preview_object_key(s3, filename, job_data, request)
 
             if not found_key:
-                return JsonResponse({
-                    "success": False,
-                    "error": "File not found"
-                }, status=404)
-            
-            # Generate fresh presigned URL
+                return JsonResponse({"success": False, "error": "File not found"}, status=404)
+
             fresh_url = s3.generate_presigned_url(
                 ClientMethod='get_object',
-                Params={
-                    'Bucket': settings.R2_BUCKET,
-                    'Key': found_key
-                },
-                ExpiresIn=3600  # 1 hour
+                Params={'Bucket': settings.R2_BUCKET, 'Key': found_key},
+                ExpiresIn=3600
             )
-            
+            proxy_url = f"/vendor-preview-file/?key={quote(found_key, safe='')}"
+
             return JsonResponse({
                 "success": True,
                 "preview_url": fresh_url,
+                "proxy_url": proxy_url,
                 "found_key": found_key
             })
-            
+
         except Exception as e:
             print(f"Error generating fresh preview URL: {str(e)}")
-            return JsonResponse({
-                "success": False,
-                "error": str(e)
-            }, status=500)
-    
-    return JsonResponse({
-        "success": False,
-        "error": "Invalid request method"
-    }, status=405)
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+    return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+
+@require_GET
+def vendor_preview_file(request):
+    """Serve preview file via same-origin response to avoid CORS in browser preview."""
+    try:
+        vendor_email = request.session.get('vendor_email')
+        if not vendor_email:
+            return JsonResponse({"success": False, "error": "Vendor not authenticated"}, status=401)
+
+        raw_key = request.GET.get('key', '')
+        key = _normalize_r2_key(raw_key)
+        if not key:
+            return JsonResponse({"success": False, "error": "Missing file key"}, status=400)
+
+        allowed_prefixes = (
+            "vendor_print_jobs/",
+            "manual_print_jobs/",
+            "users/",
+            "vendor_register_details/",
+        )
+        if not key.startswith(allowed_prefixes):
+            return JsonResponse({"success": False, "error": "Invalid file key"}, status=403)
+
+        s3 = _build_preview_s3_client()
+        obj = s3.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        body = obj['Body'].read()
+        content_type = obj.get('ContentType') or 'application/octet-stream'
+
+        response = HttpResponse(body, content_type=content_type)
+        response['Content-Disposition'] = f'inline; filename="{os.path.basename(key)}"'
+        response['Cache-Control'] = 'private, max-age=900'
+        return response
+    except Exception as e:
+        print(f"Error serving vendor preview file: {str(e)}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 @csrf_exempt
 def test_r2_url_generation(request):
