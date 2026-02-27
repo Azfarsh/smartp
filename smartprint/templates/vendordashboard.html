@@ -5254,8 +5254,7 @@
 
         // Keep URL selection consistent across Print/Preview actions.
         function getJobActionUrl(job) {
-            // Match print behavior by preferring the direct document URL first.
-            return (job && (job.download_url || job.preview_url || job.url)) || '';
+            return (job && (job.preview_url || job.download_url || job.url)) || '';
         }
 
         // Create completed job card with Print Info and Clear buttons
@@ -7789,17 +7788,21 @@
             if (instantUrl) {
                 renderPreviewContent(filename, instantUrl);
                 modal.classList.add('show');
-                return;
             }
 
             const safeUrl = await generateFreshPreviewUrl(filename, resolvedJobData || {}, instantUrl);
             if (!safeUrl) {
-                console.error('Preview URL unavailable for file:', filename);
-                showToast('Preview is currently unavailable for this file.', 'warning');
+                if (!instantUrl) {
+                    console.error('Preview URL unavailable for file:', filename);
+                    showToast('Preview is currently unavailable for this file.', 'warning');
+                }
                 return;
             }
 
-            renderPreviewContent(filename, safeUrl);
+            // If the fresh URL differs (or instant URL was missing), update modal content.
+            if (!instantUrl || safeUrl !== instantUrl) {
+                renderPreviewContent(filename, safeUrl);
+            }
             modal.classList.add('show');
         }
 
@@ -7829,10 +7832,6 @@
                 if (response.ok) {
                     const data = await response.json();
                     return data.preview_url || fallbackUrl;
-                }
-                if (response.status === 404) {
-                    // Endpoint not available on this deployment; use original URL silently.
-                    return fallbackUrl;
                 }
             } catch (error) {
                 console.error('Error generating fresh URL:', error);
