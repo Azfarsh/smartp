@@ -3546,6 +3546,48 @@
             border: 1px solid var(--outline);
             border-radius: 12px;
             overflow: hidden;
+            background: #0b0b0b;
+        }
+
+        .preview-container.pdf-mode {
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .preview-pdf-pages {
+            display: none;
+            min-height: 100%;
+        }
+
+        .preview-pdf-page {
+            background: #ffffff;
+            border-radius: 8px;
+            margin: 0 auto 14px;
+            padding: 8px;
+            max-width: 920px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        }
+
+        .preview-pdf-page-number {
+            font-size: 12px;
+            font-weight: 700;
+            color: #374151;
+            margin: 0 0 6px;
+            text-align: center;
+        }
+
+        .preview-pdf-canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .preview-pdf-loading {
+            color: #e5e7eb;
+            text-align: center;
+            padding: 24px 12px;
+            font-weight: 600;
         }
 
         .preview-frame {
@@ -4648,6 +4690,7 @@
             <div class="preview-container">
                 <iframe id="previewFrame" class="preview-frame"></iframe>
                 <img id="previewImage" class="preview-frame" style="display: none; object-fit: contain;" alt="Preview">
+                <div id="previewPdfPages" class="preview-pdf-pages"></div>
             </div>
         </div>
     </div>
@@ -6692,7 +6735,6 @@
                     // If we have cached jobs, keep using them
                     if (allJobs.length > 0) {
                         categorizeJobs();
-                        showToast('Using cached jobs - server error occurred', 'warning');
                     } else {
                         // No cached jobs, show empty state
                         allJobs = [];
@@ -6813,10 +6855,8 @@
                 // If we have cached jobs, keep using them
                 if (allJobs.length > 0) {
                     categorizeJobs();
-                    showToast('Using cached jobs - error loading from server', 'warning');
                 } else {
                     // No cached jobs, show empty state
-                    showToast(`Error loading jobs: ${formatErrorMessage(error.message)}`, 'error');
                     allJobs = [];
                     categorizeJobs();
                 }
@@ -7710,64 +7750,153 @@
             }
         }
 
+        function appendTimestampToUrl(url) {
+            if (!url) return '';
+            const ts = `ts=${Date.now()}`;
+            const hashIndex = url.indexOf('#');
+            const base = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
+            const hash = hashIndex >= 0 ? url.slice(hashIndex) : '';
+            return `${base}${base.includes('?') ? '&' : '?'}${ts}${hash}`;
+        }
+
+        function buildPdfPreviewUrl(url) {
+            if (!url) return '';
+            const toolbarParams = 'toolbar=0&navpanes=0&scrollbar=1&view=FitH';
+            return url.includes('#') ? `${url}&${toolbarParams}` : `${url}#${toolbarParams}`;
+        }
+
         // Preview Modal
-        function showPreview(filename, url) {
+        async function showPreview(filename, url) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('modalTitle');
             const frame = document.getElementById('previewFrame');
             const image = document.getElementById('previewImage');
+            const pdfPages = document.getElementById('previewPdfPages');
+            const previewContainer = frame ? frame.closest('.preview-container') : null;
 
             title.textContent = filename;
             const ext = filename.split('.').pop().toLowerCase();
-            const rawUrl = (url || '').toString();
-            const isSignedUrl = /(?:[?&]X-Amz-|[?&]Signature=|[?&]Expires=)/i.test(rawUrl);
-            // Do not mutate signed URLs; adding query params breaks signature validation.
-            const safeUrl = rawUrl
-                ? (isSignedUrl ? rawUrl : `${rawUrl}${rawUrl.includes('?') ? '&' : '?'}ts=${Date.now()}`)
-                : '';
+            let resolvedUrl = url || '';
+            try {
+                const matchedJob = Array.isArray(allJobs)
+                    ? (allJobs.find(job => job.filename === filename && ((job.preview_url || job.download_url) === url))
+                        || allJobs.find(job => job.filename === filename))
+                    : null;
+                resolvedUrl = await generateFreshPreviewUrl(filename, matchedJob || {}, url || '');
+            } catch (error) {
+                console.error('Error preparing fresh preview URL:', error);
+            }
+            const safeUrl = appendTimestampToUrl(resolvedUrl);
 
-            const withPdfViewerParams = (u) => {
-                if (!u) return u;
-                const hasHash = u.includes('#');
-                const viewerParams = 'toolbar=0&navpanes=0&scrollbar=0';
-                return hasHash ? `${u}&${viewerParams}` : `${u}#${viewerParams}`;
-            };
-
-            // Keep preview modal strictly preview-only and block popup/print style actions from iframe context.
-            frame.setAttribute('sandbox', 'allow-same-origin allow-scripts');
-            frame.removeAttribute('allow');
+            // Reset previous preview state before showing a new one
+            if (previewContainer) previewContainer.classList.remove('pdf-mode');
+            if (frame) {
+                frame.style.display = 'none';
+                frame.src = 'about:blank';
+                frame.onerror = null;
+            }
+            if (image) {
+                image.style.display = 'none';
+                image.src = '';
+            }
+            if (pdfPages) {
+                pdfPages.style.display = 'none';
+                pdfPages.innerHTML = '';
+            }
 
             if (ext === 'pdf') {
-                frame.style.display = 'block';
-                image.style.display = 'none';
-                frame.src = withPdfViewerParams(safeUrl);
-                frame.onerror = () => {
-                    frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
-                };
-            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                frame.style.display = 'none';
+                if (previewContainer) previewContainer.classList.add('pdf-mode');
+                if (pdfPages) {
+                    pdfPages.style.display = 'block';
+                    pdfPages.innerHTML = '<div class="preview-pdf-loading">Loading document preview...</div>';
+                    try {
+                        await renderPdfPreviewPages(safeUrl, pdfPages);
+                    } catch (error) {
+                        console.error('Error rendering PDF pages in preview modal:', error);
+                        if (previewContainer) previewContainer.classList.remove('pdf-mode');
+                        pdfPages.style.display = 'none';
+                        frame.style.display = 'block';
+                        frame.src = buildPdfPreviewUrl(safeUrl);
+                        frame.onerror = () => {
+                            frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                        };
+                    }
+                } else {
+                    frame.style.display = 'block';
+                    frame.src = buildPdfPreviewUrl(safeUrl);
+                    frame.onerror = () => {
+                        frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
+                    };
+                }
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
                 image.style.display = 'block';
                 image.src = safeUrl;
             } else {
                 frame.style.display = 'block';
-                image.style.display = 'none';
                 frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=true`;
             }
 
             modal.classList.add('show');
         }
 
+        async function renderPdfPreviewPages(pdfUrl, container) {
+            await ensurePdfJsLoaded();
+            const pdf = await window.pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise;
+            container.innerHTML = '';
+
+            const containerWidth = Math.max(320, (container.clientWidth || 900) - 24);
+            const targetWidth = Math.min(containerWidth, 900);
+
+            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                const page = await pdf.getPage(pageNumber);
+                const baseViewport = page.getViewport({ scale: 1 });
+                const scale = targetWidth / baseViewport.width;
+                const viewport = page.getViewport({ scale });
+
+                const pageWrapper = document.createElement('div');
+                pageWrapper.className = 'preview-pdf-page';
+
+                const pageLabel = document.createElement('div');
+                pageLabel.className = 'preview-pdf-page-number';
+                pageLabel.textContent = `Page ${pageNumber} of ${pdf.numPages}`;
+                pageWrapper.appendChild(pageLabel);
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'preview-pdf-canvas';
+                canvas.width = Math.floor(viewport.width);
+                canvas.height = Math.floor(viewport.height);
+                pageWrapper.appendChild(canvas);
+                container.appendChild(pageWrapper);
+
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport }).promise;
+            }
+        }
+
         function closeModal() {
             const modal = document.getElementById('previewModal');
             const frame = document.getElementById('previewFrame');
             const image = document.getElementById('previewImage');
-            modal.classList.remove('show');
-            if (frame) frame.src = 'about:blank';
-            if (image) image.src = '';
+            const pdfPages = document.getElementById('previewPdfPages');
+            const previewContainer = frame ? frame.closest('.preview-container') : null;
+
+            if (frame) {
+                frame.src = 'about:blank';
+                frame.onerror = null;
+            }
+            if (image) {
+                image.src = '';
+            }
+            if (pdfPages) {
+                pdfPages.innerHTML = '';
+                pdfPages.style.display = 'none';
+            }
+            if (previewContainer) previewContainer.classList.remove('pdf-mode');
+            if (modal) modal.classList.remove('show');
         }
 
         // Generate fresh URL for preview
-        async function generateFreshPreviewUrl(filename, jobData) {
+        async function generateFreshPreviewUrl(filename, jobData = {}, fallbackUrl = '') {
             try {
                 const response = await fetch('/generate-fresh-preview-url/', {
                     method: 'POST',
@@ -7783,12 +7912,12 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.preview_url || previewUrl;
+                    return data.preview_url || fallbackUrl;
                 }
             } catch (error) {
                 console.error('Error generating fresh URL:', error);
             }
-            return previewUrl; // Fallback to original URL
+            return fallbackUrl; // Fallback to original URL
         }
 
         // Print Info Modal Functions
